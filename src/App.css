@@ -1,0 +1,38 @@
+/* App.css - Main App Styles */
+.App {
+  text-align: center;
+  background-color: #f9f9f9;
+  min-height: 100vh;
+  font-family: "Roboto", sans-serif;
+}
+
+.App-header {
+  background-color: #1976d2;
+  color: white;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.App-logo {
+  height: 80px;
+  margin-bottom: 1rem;
+}
+
+.App-link {
+  color: #90caf9;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
