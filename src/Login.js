@@ -1,4 +1,4 @@
-// src/Login.js
+﻿// src/Login.js
 import React, { useState, useEffect } from "react";
 import {
   Container,
@@ -8,7 +8,7 @@ import {
   Button,
   Box,
   Alert,
-  Paper,
+  Stack,
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import axios from "axios";
@@ -28,7 +28,27 @@ const STATIC_TIMEZONES = [
   "Australia/Sydney",
 ];
 
-// FE/BE both use IANA TZ names; we detect the browser's and pass it through.
+const ROLE_OPTIONS = [
+  {
+    value: "customer",
+    label: "Customer",
+    description: "Book services or shop with your business",
+    apiValue: "client",
+  },
+  {
+    value: "employee",
+    label: "Employee",
+    description: "Access your schedule, shifts, or payroll",
+    apiValue: "recruiter",
+  },
+  {
+    value: "owner",
+    label: "Business Owner",
+    description: "Manage your company, team, and online bookings",
+    apiValue: "manager",
+  },
+];
+
 const detectedTz =
   (typeof Intl !== "undefined" &&
     Intl.DateTimeFormat().resolvedOptions().timeZone) ||
@@ -52,6 +72,9 @@ function appendQuery(url, paramsObj = {}) {
   return url + (hasQ ? "&" : "?") + tail;
 }
 
+const getRoleMeta = (value) =>
+  ROLE_OPTIONS.find((option) => option.value === value) || ROLE_OPTIONS[1];
+
 const Login = ({ setToken }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,9 +85,11 @@ const Login = ({ setToken }) => {
   const [step, setStep] = useState(1);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [selectedRole, setSelectedRole] = useState("recruiter");
+  const [selectedRole, setSelectedRole] = useState("employee");
   const [timezone, setTimezone] = useState(detectedTz);
   const [forceChange, setForceChange] = useState(false);
+
+  const selectedRoleMeta = getRoleMeta(selectedRole);
 
   // Read optional redirect + site from query
   const qs = new URLSearchParams(location.search);
@@ -83,14 +108,22 @@ const Login = ({ setToken }) => {
     const stored = localStorage.getItem("site");
     if (stored) return stored;
 
-    // As a last resort, infer from same-origin referrer path (/slug or /slug/…)
+    // As a last resort, infer from same-origin referrer path (/slug or /slug/*)
     try {
       const ref = document.referrer ? new URL(document.referrer) : null;
       if (ref && ref.origin === window.location.origin) {
         const seg = ref.pathname.split("/").filter(Boolean)[0];
         if (
           seg &&
-          !["login", "dashboard", "manager", "recruiter"].includes(seg)
+          ![
+            "login",
+            "dashboard",
+            "manager",
+            "recruiter",
+            "employee",
+            "owner",
+            "customer",
+          ].includes(seg)
         ) {
           return seg;
         }
@@ -153,29 +186,28 @@ const Login = ({ setToken }) => {
     return null;
   };
 
-  // Step 1 — initial login submit
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setMessage("");
 
+    const targetRole = getRoleMeta(selectedRole).apiValue;
+
     try {
       const res = await axios.post(`${API_URL}/login`, {
         email,
         password,
-        role: selectedRole,
-        timezone, // IANA TZ; backend should accept this string as-is
+        role: targetRole,
+        timezone,
       });
 
-      // Client: direct login (token returned immediately)
-      if (selectedRole === "client" && res.data?.access_token) {
+      if (targetRole === "client" && res.data?.access_token) {
         const token = res.data.access_token;
         localStorage.setItem("token", token);
-        localStorage.setItem("role", selectedRole);
+        localStorage.setItem("role", targetRole);
         localStorage.setItem("timezone", timezone);
         setToken(token);
 
-        // Try to set company id for client flows too (harmless if unused)
         await resolveAndStoreCompanyId(token, res.data?.company_id);
 
         const site = siteForRedirect();
@@ -186,7 +218,6 @@ const Login = ({ setToken }) => {
         return;
       }
 
-      // Recruiter/Manager proceed to OTP
       setMessage(res.data?.message || "Check your email for the OTP.");
       setStep(2);
       if (res.data?.force_password_change) setForceChange(true);
@@ -195,7 +226,6 @@ const Login = ({ setToken }) => {
     }
   };
 
-  // Step 2 — OTP verification
   const handleOTPSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -210,17 +240,16 @@ const Login = ({ setToken }) => {
       const token = res.data?.access_token;
       if (!token) throw new Error("No access token returned.");
 
-      // Persist auth/session
+      const targetRole = getRoleMeta(selectedRole).apiValue;
+
       localStorage.setItem("token", token);
-      localStorage.setItem("role", selectedRole);
+      localStorage.setItem("role", targetRole);
       localStorage.setItem("timezone", timezone);
       setToken(token);
 
-      // Persist site (if known)
       const site = siteForRedirect();
       if (site) localStorage.setItem("site", site);
 
-      // Resolve/store company_id so builder requests include X-Company-Id
       const cid = await resolveAndStoreCompanyId(token, res.data?.company_id);
 
       if (forceChange) {
@@ -230,7 +259,6 @@ const Login = ({ setToken }) => {
         return;
       }
 
-      // If a specific "next" is provided, append cid/site if it points to builder
       if (nextParam) {
         const isBuilder = nextParam.startsWith("/manage/website/builder");
         const url = isBuilder
@@ -243,15 +271,13 @@ const Login = ({ setToken }) => {
         return;
       }
 
-      // Default redirects by role
-      if (selectedRole === "manager") {
-        // Send managers to builder with explicit company_id (& site) for belt & suspenders
+      if (targetRole === "manager") {
         const url = appendQuery("/manage/website/builder", {
           company_id: cid || undefined,
           site: site || undefined,
         });
         navigate(url);
-      } else if (selectedRole === "recruiter") {
+      } else if (targetRole === "recruiter") {
         navigate("/recruiter");
       } else {
         navigate(site ? `/dashboard?site=${encodeURIComponent(site)}` : "/dashboard");
@@ -261,120 +287,150 @@ const Login = ({ setToken }) => {
     }
   };
 
-  // Build the TZ options, ensuring we include the detected timezone even if not in the static list
   const tzOptions = STATIC_TIMEZONES.includes(timezone)
     ? STATIC_TIMEZONES
     : [timezone, ...STATIC_TIMEZONES];
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
-      <Paper elevation={4} sx={{ p: 4, borderRadius: 3 }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          {selectedRole === "manager"
-            ? "Manager Login"
-            : selectedRole === "client"
-            ? "Client Login"
-            : "Recruiter Login"}
-        </Typography>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        py: { xs: 8, md: 12 },
+        px: 2,
+        background: "linear-gradient(135deg, rgba(255,112,51,0.08) 0%, rgba(56,189,248,0.08) 100%)",
+      }}
+    >
+      <Container maxWidth="sm">
+        <Box
+          sx={{
+            p: { xs: 3, md: 4 },
+            borderRadius: 3,
+            boxShadow: "0 4px 20px rgba(15, 23, 42, 0.05)",
+            bgcolor: "background.paper",
+          }}
+        >
+          <Box sx={{ height: 4, width: "100%", bgcolor: "#FF7033", borderRadius: 1, mb: 3 }} />
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {message && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            {message}
-          </Alert>
-        )}
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            Welcome Back to Schedulaa
+          </Typography>
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Select your role to log into the right dashboard.
+          </Typography>
 
-        {step === 1 ? (
-          <form onSubmit={handleLoginSubmit}>
-            <TextField
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              fullWidth
-              required
-              autoComplete="email"
-              margin="normal"
-            />
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {message && (
+            <Alert severity={step === 1 ? "info" : "success"} sx={{ mb: 2 }}>
+              {message}
+            </Alert>
+          )}
 
-            <PasswordField
-              label="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              fullWidth
-              required
-              autoComplete="current-password"
-              margin="normal"
-            />
+          {step === 1 ? (
+            <Box component="form" onSubmit={handleLoginSubmit} noValidate>
+              <Stack spacing={2.5}>
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  fullWidth
+                  required
+                  autoComplete="email"
+                />
 
-            <Box textAlign="right" mt={1}>
-              <Button
-                size="small"
-                variant="text"
-                onClick={() => navigate("/forgot-password")}
-              >
-                Forgot Password?
-              </Button>
+                <PasswordField
+                  label="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  fullWidth
+                  required
+                  autoComplete="current-password"
+                />
+
+                <Box textAlign="right">
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => navigate("/forgot-password")}
+                  >
+                    Forgot password?
+                  </Button>
+                </Box>
+
+                <TextField
+                  select
+                  label="Role"
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  fullWidth
+                  helperText="Select your account type to ensure the right dashboard experience."
+                >
+                  {ROLE_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={600}>
+                          {option.label}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {option.description}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                <TextField
+                  select
+                  label="Timezone"
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  fullWidth
+                  helperText="We store an IANA timezone (e.g. America/New_York)."
+                >
+                  {!STATIC_TIMEZONES.includes(timezone) && (
+                    <MenuItem value={timezone}>{timezone} (detected)</MenuItem>
+                  )}
+                  {tzOptions.map((tz) => (
+                    <MenuItem key={tz} value={tz}>
+                      {tz}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                <Button type="submit" variant="contained" fullWidth sx={{ py: 1.25 }}>
+                  Sign In
+                </Button>
+              </Stack>
             </Box>
-
-            <TextField
-              select
-              label="Role"
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-              fullWidth
-              margin="normal"
-            >
-              <MenuItem value="client">Client</MenuItem>
-              <MenuItem value="recruiter">Recruiter</MenuItem>
-              <MenuItem value="manager">Manager</MenuItem>
-            </TextField>
-
-            <TextField
-              select
-              label="Timezone"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              fullWidth
-              margin="normal"
-              helperText="We store an IANA timezone (e.g. America/New_York)."
-            >
-              {/* If the detected TZ isn't in our curated list, show it as an option */}
-              {!STATIC_TIMEZONES.includes(timezone) && (
-                <MenuItem value={timezone}>{timezone} (detected)</MenuItem>
-              )}
-              {STATIC_TIMEZONES.map((tz) => (
-                <MenuItem key={tz} value={tz}>
-                  {tz}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
-              Login
-            </Button>
-          </form>
-        ) : (
-          <form onSubmit={handleOTPSubmit}>
-            <TextField
-              label="Enter OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              fullWidth
-              required
-              margin="normal"
-            />
-            <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
-              Verify OTP
-            </Button>
-          </form>
-        )}
-      </Paper>
-    </Container>
+          ) : (
+            <Box component="form" onSubmit={handleOTPSubmit} noValidate>
+              <Stack spacing={2.5}>
+                <Typography variant="body2" color="text.secondary">
+                  Enter the one-time code we emailed you to continue.
+                </Typography>
+                <TextField
+                  label="One-time Passcode"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  fullWidth
+                  required
+                />
+                <Button type="submit" variant="contained" fullWidth sx={{ py: 1.25 }}>
+                  Verify OTP
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </Box>
+      </Container>
+    </Box>
   );
 };
 

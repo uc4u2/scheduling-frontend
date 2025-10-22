@@ -23,7 +23,7 @@ const sections = [
     links: [
       { label: "About", to: "/about" },
       { label: "Careers (coming soon)", to: "/about#careers" },
-      { label: "Press", to: "mailto:press@schedulaa.com", external: true },
+      { label: "Press", to: "mailto:admin@schedulaa.com", external: true },
     ],
   },
   {
@@ -32,7 +32,7 @@ const sections = [
       { label: "Features", to: "/features" },
       { label: "Pricing", to: "/pricing" },
       { label: "Status", to: "/status", external: true },
-      { label: "Roadmap", to: "mailto:product@schedulaa.com", external: true },
+      { label: "Roadmap", to: "mailto:admin@schedulaa.com", external: true },
     ],
   },
   {
@@ -173,7 +173,7 @@ const Footer = () => {
               </IconButton>
             </Tooltip>
             <Tooltip title="Instagram">
-              <IconButton href="https://www.instagram.com/schedulaa" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+              <IconButton href="https://www.instagram.com/schedulaa.app" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                 <InstagramIcon />
               </IconButton>
             </Tooltip>
