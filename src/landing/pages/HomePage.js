@@ -711,7 +711,15 @@ const HomePage = () => {
         cardContentAlign="center"
       />
 
-      {comingSoon ? (\r\n        <Typography\r\n          variant="body2"\r\n          color="text.secondary"\r\n          sx={{ textAlign: "center", mt: 6 }}\r\n        >\r\n          {comingSoon}\r\n        </Typography>\r\n      ) : null}
+      {comingSoon ? (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ textAlign: "center", mt: 6 }}
+        >
+          {comingSoon}
+        </Typography>
+      ) : null}
 
       <Box component="section" sx={{ position: "relative", overflow: "hidden" }}>
         <FloatingBlob
@@ -766,4 +774,6 @@ const HomePage = () => {
 };
 
 export default HomePage;
+
+
 
