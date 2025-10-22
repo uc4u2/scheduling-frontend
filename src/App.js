@@ -110,7 +110,7 @@ import MarketingCouponBridge from "./pages/client/MarketingCouponBridge";
 import LayoutTuningLab from "./pages/sections/management/LayoutTuningLab";
 
 export const ThemeModeContext = createContext({
-  themeName: "emeraldNight",
+  themeName: "sunset",
   setThemeName: () => {},
 });
 
@@ -420,7 +420,7 @@ const AppContent = ({ token, setToken }) => {
 
 const App = () => {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
-  const [themeName, setThemeName] = useState(() => localStorage.getItem("theme") || "emeraldNight");
+  const [themeName, setThemeName] = useState(() => localStorage.getItem("theme") || "sunset");
 
   const tenantHostMode = useMemo(() => getTenantHostMode(), []);
   // TODO: custom domain routing (swap route tree when tenantHostMode === "custom")
@@ -452,42 +452,4 @@ const App = () => {
 };
 
 export default App;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -58,11 +58,11 @@ const sections = [
 ];
 
 const themeNames = [
+  "sunset",
   "emeraldNight",
   "dark",
   "cool",
   "navy",
-  "sunset",
   "aqua",
   "forest",
   "rose",
