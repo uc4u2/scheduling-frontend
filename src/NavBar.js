@@ -60,6 +60,22 @@ const NavBar = ({ token, setToken }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isLoggedIn = Boolean(token);
+  const translateNav = (key, fallback) => {
+    if (!key) return fallback;
+    const value = t(key);
+    if (value && value !== key) {
+      return value;
+    }
+    if (fallback) {
+      return fallback;
+    }
+    const normalized = key.replace(/^nav\./, "").replace(/\./g, " ");
+    return normalized
+      .replace(/([A-Z])/g, " $1")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -147,7 +163,7 @@ const NavBar = ({ token, setToken }) => {
   const renderAuthLinks = () => (
     <Stack direction="row" spacing={1} alignItems="center" sx={{ display: { xs: "none", md: "flex" } }}>
       {authenticatedLinks.map((link) => {
-        const label = link.translationKey ? t(link.translationKey) : link.label;
+        const label = translateNav(link.translationKey, link.label);
         return (
           <Button
             key={link.to}
@@ -167,7 +183,7 @@ const NavBar = ({ token, setToken }) => {
         startIcon={<LogoutIcon fontSize="small" />}
         sx={{ textTransform: "none", fontWeight: 600 }}
       >
-        {t("nav.logout")}
+        {translateNav("nav.logout", "Logout")}
       </Button>
     </Stack>
   );
@@ -175,7 +191,7 @@ const NavBar = ({ token, setToken }) => {
   const renderGuestLinks = () => (
     <Stack direction="row" spacing={1} alignItems="center" sx={{ display: { xs: "none", md: "flex" } }}>
       {guestLinks.map((link) => {
-        const label = link.translationKey ? t(link.translationKey) : link.label;
+        const label = translateNav(link.translationKey, link.label);
         return (
           <Button
             key={link.to}
@@ -228,7 +244,7 @@ const NavBar = ({ token, setToken }) => {
             <Divider sx={{ my: 1.5 }} />
 
             {appLinks.map((link) => {
-              const label = link.translationKey ? t(link.translationKey) : link.label;
+              const label = translateNav(link.translationKey, link.label);
               return (
                 <ListItemButton
                   key={link.to}
@@ -247,7 +263,7 @@ const NavBar = ({ token, setToken }) => {
                 <ListItemIcon>
                   <LogoutIcon fontSize="small" />
                 </ListItemIcon>
-                <ListItemText primary={t("nav.logout")} />
+                <ListItemText primary={translateNav("nav.logout", "Logout")} />
               </ListItemButton>
             )}
           </List>
@@ -255,10 +271,10 @@ const NavBar = ({ token, setToken }) => {
           {!isLoggedIn && (
             <Stack spacing={1}>
               <Button component={Link} to="/register" variant="contained" color="primary" onClick={toggleMobile} sx={{ textTransform: "none", borderRadius: 999 }}>
-                {t("nav.startFreeTrial") || "Start Free Trial"}
+                {translateNav("nav.startFreeTrial", "Start Free Trial")}
               </Button>
               <Button component={Link} to="/contact" variant="outlined" color="primary" onClick={toggleMobile} sx={{ textTransform: "none", borderRadius: 999 }}>
-                {t("nav.talkToSales") || "Talk to Sales"}
+                {translateNav("nav.talkToSales", "Talk to Sales")}
               </Button>
             </Stack>
           )}
@@ -286,7 +302,7 @@ const NavBar = ({ token, setToken }) => {
         </Box>
 
         <Button color="inherit" component={Link} to="/" sx={{ textTransform: "none", fontWeight: 600 }}>
-          {t("nav.home")}
+          {translateNav("nav.home", "Home")}
         </Button>
 
         {renderMarketingLinks()}
@@ -296,10 +312,10 @@ const NavBar = ({ token, setToken }) => {
         {!isLoggedIn && (
           <Stack direction="row" spacing={1} sx={{ display: { xs: "none", md: "flex" }, ml: 2 }}>
             <Button component={Link} to="/register" variant="contained" color="primary" sx={{ textTransform: "none", borderRadius: 999 }}>
-              {t("nav.startFreeTrial") || "Start Free Trial"}
+              {translateNav("nav.startFreeTrial", "Start Free Trial")}
             </Button>
             <Button component={Link} to="/contact" variant="outlined" color="primary" sx={{ textTransform: "none", borderRadius: 999 }}>
-              {t("nav.talkToSales") || "Talk to Sales"}
+              {translateNav("nav.talkToSales", "Talk to Sales")}
             </Button>
           </Stack>
         )}
@@ -318,8 +334,4 @@ const NavBar = ({ token, setToken }) => {
 };
 
 export default NavBar;
-
-
-
-
 
