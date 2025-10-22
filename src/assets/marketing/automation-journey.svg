@@ -1,0 +1,41 @@
+<svg width="1040" height="720" viewBox="0 0 1040 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="autoTitle autoDesc">
+  <title id="autoTitle">Schedulaa integrations canvas</title>
+  <desc id="autoDesc">Abstract automation flow with steps connected by arrows.</desc>
+  <defs>
+    <linearGradient id="autoBg" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ecfeff" />
+      <stop offset="100%" stop-color="#f5f3ff" />
+    </linearGradient>
+    <linearGradient id="autoAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#34d399" />
+    </linearGradient>
+  </defs>
+  <rect width="1040" height="720" rx="40" fill="url(#autoBg)" />
+  <g transform="translate(120 120)" fill="none" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.4">
+    <path d="M120 120 L 240 120 C 280 120 300 140 300 180 L 300 260" />
+    <path d="M300 260 L 300 340 C 300 380 320 400 360 400 L 520 400" />
+    <path d="M520 400 L 720 400 C 760 400 780 380 780 340 L 780 220" />
+    <path d="M520 180 L 660 180" />
+  </g>
+  <g transform="translate(140 140)">
+    <rect width="220" height="120" rx="24" fill="url(#autoAccent)" opacity="0.18" />
+    <text x="24" y="56" font-family="Poppins, Roboto, sans-serif" font-size="26" fill="#0f172a">Bookings</text>
+    <text x="24" y="92" font-family="Poppins, Roboto, sans-serif" font-size="16" fill="#1f2937" opacity="0.72">Form submissions</text>
+  </g>
+  <g transform="translate(280 320)">
+    <rect width="240" height="140" rx="28" fill="#ffffff" opacity="0.92" stroke="#e2e8f0" />
+    <text x="24" y="60" font-family="Poppins, Roboto, sans-serif" font-size="26" fill="#0f172a">Automation</text>
+    <text x="24" y="96" font-family="Poppins, Roboto, sans-serif" font-size="16" fill="#1f2937" opacity="0.72">Trigger payroll sync</text>
+  </g>
+  <g transform="translate(540 160)">
+    <rect width="220" height="120" rx="26" fill="#fef3c7" opacity="0.92" stroke="#f59e0b" stroke-opacity="0.2" />
+    <text x="24" y="56" font-family="Poppins, Roboto, sans-serif" font-size="24" fill="#92400e">Notifications</text>
+    <text x="24" y="92" font-family="Poppins, Roboto, sans-serif" font-size="16" fill="#b45309" opacity="0.7">Slack + Email</text>
+  </g>
+  <g transform="translate(720 320)">
+    <rect width="220" height="140" rx="28" fill="#e0f2fe" opacity="0.95" stroke="#0ea5e9" stroke-opacity="0.2" />
+    <text x="24" y="60" font-family="Poppins, Roboto, sans-serif" font-size="26" fill="#0f172a">Finance</text>
+    <text x="24" y="96" font-family="Poppins, Roboto, sans-serif" font-size="16" fill="#0f172a" opacity="0.6">QBO, Xero sync</text>
+  </g>
+</svg>

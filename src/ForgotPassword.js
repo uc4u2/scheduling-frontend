@@ -16,7 +16,7 @@ const ForgotPassword = () => {
       return;
     }
     try {
-      const response = await axios.post("https://scheduling-application.onrender.com/forgot-password", { email });
+      const response = await axios.post("http://localhost:5000/forgot-password", { email });
       setMessage(response.data.message);
       setError("");
     } catch (err) {

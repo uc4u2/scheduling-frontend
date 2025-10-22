@@ -1,0 +1,3619 @@
+{
+  "language": {
+    "label": "\u8bed\u8a00",
+    "short": {
+      "english": "EN",
+      "russian": "RU",
+      "farsi": "FA",
+      "mandarin": "ZH"
+    },
+    "english": "\u82f1\u8bed",
+    "russian": "\u4fc4\u8bed",
+    "farsi": "\u6ce2\u65af\u8bed",
+    "mandarin": "\u4e2d\u6587\uff08\u7b80\u4f53\uff09"
+  },
+  "nav": {
+    "visualSiteBuilder": "\u53ef\u89c6\u5316\u7f51\u7ad9\u6784\u5efa\u5668",
+    "marketingCampaigns": "\u8425\u9500\u6d3b\u52a8",
+    "home": "\u9996\u9875",
+    "recruiterDashboard": "\u5458\u5de5\u4eea\u8868\u677f",
+    "myCandidates": "\u6211\u7684\u5019\u9009\u4eba",
+    "managerDashboard": "\u7ecf\u7406\u4eea\u8868\u677f",
+    "analytics": "\u5206\u6790",
+    "logout": "\u9000\u51fa\u767b\u5f55",
+    "login": "\u767b\u5f55",
+    "register": "\u6ce8\u518c",
+    "forgotPassword": "\u5fd8\u8bb0\u5bc6\u7801"
+  },
+  "titles": {
+    "promotionsCoupons": "\u4fc3\u9500 / \u4f18\u60e0\u5238",
+    "marketingCampaigns": "\u8425\u9500\u6d3b\u52a8",
+    "websiteBuilderGuide": "\u7f51\u7ad9\u6784\u5efa\u5668\u6307\u5357",
+    "marketingCampaignsGuide": "\u8425\u9500\u6d3b\u52a8\u6307\u5357",
+    "themeDesigner": "\u4e3b\u9898\u8bbe\u8ba1\u5668"
+  },
+  "buttons": {
+    "addCoupon": "\u65b0\u589e\u4f18\u60e0\u5238",
+    "closeGuide": "\u5173\u95ed\u6307\u5357",
+    "language": "\u8bed\u8a00",
+    "sendSelected": "\u53d1\u9001\u6240\u9009",
+    "sendAll": "\u53d1\u9001\u5168\u90e8",
+    "sendAllServer": "\u53d1\u9001\u5168\u90e8\uff08\u670d\u52a1\u5668\u9884\u89c8\uff09"
+  },
+  "tooltips": {
+    "marketingGuide": "\u8425\u9500\u6d3b\u52a8 - \u7ecf\u7406\u6307\u5357"
+  },
+  "help": {
+    "websiteBuilder": {
+      "description": "\u5feb\u901f\u3001\u5b9e\u7528\u7684\u7ad9\u70b9\u5b9a\u5236\u6307\u5357\uff1a\u5185\u5bb9\u3001\u56fe\u7247\u3001\u6837\u5f0f\u4e0e\u53d1\u5e03\u3002",
+      "quickActions": "\u5feb\u901f\u64cd\u4f5c",
+      "goToPageStyle": "\u8df3\u8f6c\u5230\u9875\u9762\u6837\u5f0f",
+      "goToNav": "\u8df3\u8f6c\u5230\u5bfc\u822a",
+      "goToAssets": "\u6253\u5f00\u7d20\u6750\u5e93",
+      "tipsTitle": "\u5c0f\u8d34\u58eb",
+      "tipsList": [
+        "\u80cc\u666f\u8f83\u6742\u65f6\uff0c\u53ef\u964d\u4f4e\u5361\u7247\u900f\u660e\u5ea6\u3001\u589e\u52a0\u6a21\u7cca\u6216\u8c03\u6574 Hero \u53e0\u52a0\u5c42\uff0c\u4f7f\u6587\u672c\u66f4\u6613\u8bfb\u3002",
+        "\u5168\u7ad9\u4f7f\u7528\u4e00\u81f4\u7684\u5b57\u4f53\u7ec4\u5408\uff0c\u89c6\u89c9\u66f4\u534f\u8c03\u3002",
+        "\u670d\u52a1\u7f51\u683c\u4e2d\u6dfb\u52a0\u56fe\u7247\u4e0e\u7b80\u77ed\u8bf4\u660e\uff0c\u4ef7\u683c\u548c\u7ec6\u8282\u4fdd\u6301\u7cbe\u70bc\u3002",
+        "Logo \u4e91\u53ef\u542f\u7528\u5355\u8272\u6a21\u5f0f\uff0c\u8ba9\u754c\u9762\u66f4\u52a0\u6574\u6d01\u3002"
+      ],
+      "troubleshootingTitle": "\u6545\u969c\u6392\u9664",
+      "troubleshootingList": [
+        "\u56fe\u7247\u4e0d\u663e\u793a\uff1f\u8bf7\u786e\u8ba4\u5df2\u4e0a\u4f20\u5230\u7d20\u6750\u5e93\u6216\u94fe\u63a5\u6b63\u786e\uff0c\u6700\u597d\u4f7f\u7528\u81ea\u5df1\u4e0a\u4f20\u7684\u7248\u672c\u3002",
+        "\u5b57\u4f53\u65e0\u6548\uff1f\u786e\u4fdd\u5b57\u4f53\u5df2\u5728\u9879\u76ee\u4e2d\u52a0\u8f7d\uff08\u4f8b\u5982\u901a\u8fc7 Google Fonts \u6216\u81ea\u5b9a\u4e49 CSS\uff09\uff0c\u7136\u540e\u5728\u9875\u9762\u6837\u5f0f\u91cc\u9009\u62e9\u3002",
+        "\u9875\u9762\u4e0e\u7ebf\u4e0a\u7248\u672c\u4e0d\u540c\uff1f\u5f88\u53ef\u80fd\u4ecd\u5728\u67e5\u770b\u8349\u7a3f\uff0c\u70b9\u51fb\u201c\u53d1\u5e03\u201d\u5373\u53ef\u5e94\u7528\u4fee\u6539\u3002",
+        "\u5916\u90e8\u56fe\u7247\u88ab\u62e6\u622a\uff1f\u6e90\u7ad9\u53ef\u80fd\u4e0d\u5141\u8bb8\u76f4\u94fe\uff08CSP/CORS\uff09\uff0c\u8bf7\u5c06\u6587\u4ef6\u4e0a\u4f20\u5230\u7d20\u6750\u5e93\u3002"
+      ],
+      "uploadsTitle": "\u5173\u4e8e\u4e0a\u4f20",
+      "uploadsDescription": "\u5f53\u524d\u6587\u4ef6\u4fdd\u5b58\u5728\u670d\u52a1\u5668\u4e0a\uff0c\u5e76\u4f1a\u81ea\u52a8\u751f\u6210\u591a\u79cd\u5c3a\u5bf8\u3002\u8fc1\u79fb\u5230 S3 \u6216\u5176\u4ed6 CDN \u65f6\uff0c\u4e0a\u4f20\u6d41\u7a0b\u548c\u754c\u9762\u4fdd\u6301\u4e0d\u53d8\uff0c\u4ec5\u540e\u7aef\u5b58\u50a8\u76ee\u6807\u4f1a\u8c03\u6574\u3002",
+      "steps": {
+        "pickPage": {
+          "title": "1) \u9009\u62e9\u9875\u9762\uff08\u6216\u6a21\u677f\uff09",
+          "bullets": [
+            "\u6253\u5f00\u7f51\u7ad9\u6784\u5efa\u5668\uff0c\u9009\u62e9\u8981\u7f16\u8f91\u7684\u9875\u9762\uff08\u9996\u9875\u3001\u670d\u52a1\u7b49\uff09\u3002",
+            "\u6bcf\u4e2a\u9875\u9762\u7531\u591a\u4e2a\u201c\u533a\u5757\u201d\u7ec4\u6210\uff08\u82f1\u96c4\u533a\u3001\u753b\u5eca\u3001\u670d\u52a1\u7f51\u683c\u3001\u5bcc\u6587\u672c\u3001\u5e38\u89c1\u95ee\u9898\u7b49\uff09\u3002",
+            "\u70b9\u51fb\u533a\u5757\u5361\u7247\u5373\u53ef\u9009\u4e2d\uff0c\u53f3\u4fa7\u7f16\u8f91\u5668\u4f1a\u5c55\u793a\u8be5\u533a\u5757\u7684\u5b57\u6bb5\u3002"
+          ]
+        },
+        "editText": {
+          "title": "2) \u7f16\u8f91\u6587\u672c\u4e0e\u5e03\u5c40",
+          "bullets": [
+            "\u6807\u9898\u4e0e\u6b63\u6587\uff1a\u70b9\u51fb\u5b57\u6bb5\u5373\u53ef\u8f93\u5165\uff0c\u5bcc\u6587\u672c\u652f\u6301\u57fa\u7840\u683c\u5f0f\u3002",
+            "\u533a\u5757\u63a7\u4ef6\u5305\u62ec\u5bf9\u9f50\u65b9\u5f0f\u3001\u6700\u5927\u5bbd\u5ea6\u3001\u5185\u5916\u8fb9\u8ddd\u4ee5\u53ca\u201c\u5168\u5bbd\u94fa\u6ee1\u201d\u7b49\u9009\u9879\u3002",
+            "\u9ad8\u7ea7\u7528\u6237\u53ef\u4f7f\u7528\u201cAdvanced: raw JSON props\u201d\u533a\u57df\u8fdb\u884c\u7cbe\u7ec6\u914d\u7f6e\u3002"
+          ]
+        },
+        "images": {
+          "title": "3) \u6dfb\u52a0\u6216\u66ff\u6362\u56fe\u7247\uff08\u5168\u7ad9\u9002\u7528\uff09",
+          "bullets": [
+            "\u4efb\u610f\u56fe\u7247\u5b57\u6bb5\u90fd\u652f\u6301\u4ece\u672c\u5730\u4e0a\u4f20\uff08Upload \u6309\u94ae\u6216\u62d6\u62fd\uff09\u3002",
+            "\u753b\u5eca\u548c\u8f6e\u64ad\u7ec4\u4ef6\u53ef\u901a\u8fc7\u201c\u6dfb\u52a0\u56fe\u7247\u201d\u52a0\u5165\u591a\u9879\u5185\u5bb9\uff0c\u6bcf\u4e2a\u69fd\u4f4d\u90fd\u6709\u72ec\u7acb\u4e0a\u4f20\u5668\u3002",
+            "\u670d\u52a1\u5361\u7247\u548c Logo \u4e91\u540c\u6837\u5305\u542b\u53ef\u4e0a\u4f20\u7684\u56fe\u7247\u5b57\u6bb5\u3002",
+            "\u4e0a\u4f20\u7684\u6587\u4ef6\u4f1a\u8fdb\u5165\u7d20\u6750\u5e93\uff0c\u53ef\u5728\u5404\u9875\u9762\u91cd\u590d\u4f7f\u7528\u3002"
+          ],
+          "footnote": "\u63d0\u793a\uff1a\u4f18\u5148\u4f7f\u7528 JPG/WEBP\u3002Hero \u533a\u5efa\u8bae\u5bbd\u5ea6\u7ea6 1600\u20132400px\uff0c\u753b\u5eca\u7ea6 1200px\u3002\u5927\u6587\u4ef6\u4f1a\u81ea\u52a8\u538b\u7f29\u5e76\u751f\u6210\u591a\u5957\u5c3a\u5bf8\u4ee5\u63d0\u5347\u6027\u80fd\u3002"
+        },
+        "pageStyle": {
+          "title": "4) \u5168\u5c40\u201c\u9875\u9762\u6837\u5f0f\u201d\u63a7\u5236",
+          "bullets": [
+            "\u80cc\u666f\uff1a\u8bbe\u7f6e\u7eaf\u8272\u6216\u4e0a\u4f20\u6574\u9875\u80cc\u666f\u56fe\u3002",
+            "\u6587\u5b57\u989c\u8272\uff1a\u4e3a\u9875\u9762\u6574\u4f53\u9009\u62e9\u6807\u9898\u3001\u6b63\u6587\u4e0e\u94fe\u63a5\u989c\u8272\u3002",
+            "\u5b57\u4f53\uff1a\u6839\u636e\u9700\u8981\u6307\u5b9a\u6807\u9898\u548c\u6b63\u6587\u6240\u7528\u7684\u5df2\u52a0\u8f7d\u5b57\u4f53\u3002",
+            "\u5361\u7247/\u5bb9\u5668\uff1a\u8c03\u6574\u80cc\u666f\u8272\u4e0e\u900f\u660e\u5ea6\u3001\u5706\u89d2\u3001\u6a21\u7cca\uff08\u73bb\u7483\u6548\u679c\uff09\u53ca\u9634\u5f71\u3002",
+            "Hero \u6587\u672c\uff1a\u5355\u72ec\u63a7\u5236 Hero \u533a\u6807\u9898\u4e0e\u6b63\u6587\u989c\u8272\uff0c\u5e76\u53ef\u6dfb\u52a0\u6587\u5b57\u9634\u5f71\u3002"
+          ]
+        },
+        "savePublish": {
+          "title": "5) \u4fdd\u5b58\u3001\u9884\u89c8\u3001\u53d1\u5e03",
+          "bullets": [
+            "\u5e38\u7528\u8349\u7a3f\u4fdd\u5b58\uff0c\u6539\u52a8\u4f1a\u4fdd\u5b58\u4f46\u4e0d\u4f1a\u5bf9\u5916\u53ef\u89c1\u3002",
+            "\u9884\u89c8\u53ef\u6a21\u62df\u8bbf\u5ba2\u89c6\u89d2\u67e5\u770b\u9875\u9762\uff0c\u65e0\u9700\u7acb\u5373\u53d1\u5e03\u3002",
+            "\u53d1\u5e03\u4f1a\u628a\u5f53\u524d\u8349\u7a3f\u6b63\u5f0f\u63a8\u9001\u5230\u7ebf\u4e0a\u7f51\u7ad9\u3002"
+          ]
+        },
+        "navigation": {
+          "title": "6) \u5bfc\u822a\u83dc\u5355",
+          "bullets": [
+            "\u6253\u5f00\u5bfc\u822a\u8bbe\u7f6e\uff0c\u53ef\u65b0\u589e\u3001\u5220\u9664\u6216\u62d6\u62fd\u8c03\u6574\u83dc\u5355\u9879\u3002",
+            "\u83dc\u5355\u9879\u53ef\u4ee5\u94fe\u63a5\u5230\u7ad9\u5185 slug \u6216\u5916\u90e8 URL\u3002"
+          ]
+        },
+        "revisions": {
+          "title": "7) \u5386\u53f2\u7248\u672c\u4e0e\u64a4\u9500",
+          "bullets": [
+            "\u901a\u8fc7\u201c\u5386\u53f2\u8bb0\u5f55\u201d\u6807\u7b7e\u67e5\u770b\u6216\u6062\u590d\u9875\u9762\u7684\u65e7\u7248\u672c\u3002",
+            "\u51fa\u9519\u65f6\u53ef\u56de\u6eda\u5230\u8f83\u65e9\u7684\u7248\u672c\u3002"
+          ]
+        },
+        "assets": {
+          "title": "8) \u7d20\u6750\u5e93\u3001\u6587\u4ef6\u5939\u4e0e\u6807\u7b7e",
+          "bullets": [
+            "\u6240\u6709\u4e0a\u4f20\u7684\u56fe\u7247\u90fd\u4f1a\u8fdb\u5165\u7d20\u6750\u5e93\uff0c\u53ef\u968f\u65f6\u590d\u7528\uff0c\u65e0\u9700\u91cd\u590d\u4e0a\u4f20\u3002",
+            "\u4f7f\u7528\u6587\u4ef6\u5939\u4e0e\u6807\u7b7e\u6574\u7406\u7d20\u6750\u5e93\uff08\u5927\u91cf\u7d20\u6750\u65f6\u5c24\u5176\u5b9e\u7528\uff09\u3002",
+            "\u70b9\u51fb\u201c{{assetsLabel}}\u201d\u5373\u53ef\u5feb\u901f\u8fdb\u5165\u7ba1\u7406\u9875\u9762\u3002"
+          ]
+        },
+        "optimization": {
+          "title": "9) \u56fe\u7247\u5c3a\u5bf8\u4e0e\u4f18\u5316",
+          "bullets": [
+            "\u4e0a\u4f20\u540e\u4f1a\u81ea\u52a8\u751f\u6210\u591a\u79cd\u5bbd\u5ea6\u7684\u7248\u672c\u3002",
+            "\u4f9d\u636e\u7ad9\u70b9\u7b56\u7565\uff0c\u8fc7\u5927\u7684\u6587\u4ef6\u4f1a\u88ab\u62d2\u7edd\uff0c\u4ee5\u4fdd\u6301\u9875\u9762\u52a0\u8f7d\u901f\u5ea6\u3002",
+            "\u63a8\u8350\u4f7f\u7528 WEBP/JPG\uff0c\u5e76\u4e3a\u91cd\u8981\u56fe\u7247\u6dfb\u52a0\u66ff\u4ee3\u6587\u672c\uff08\u53ef\u8bbf\u95ee\u6027\u4e0e SEO\uff09\u3002",
+            "\u5b58\u50a8\u540e\u7aef\u53ef\u968f\u65f6\u5207\u6362\uff1a\u5f53\u524d\u5b58\u653e\u5728\u670d\u52a1\u5668\u4e0a\uff0c\u8fc1\u79fb\u5230 S3/CDN \u53ea\u9700\u8c03\u6574\u540e\u7aef\u76ee\u6807\uff0c\u6d41\u7a0b\u4fdd\u6301\u4e0d\u53d8\u3002"
+          ]
+        }
+      }
+    },
+    "marketing": {
+      "title": "\u8425\u9500\u6d3b\u52a8\u6307\u5357\uff08\u7ecf\u7406\u7248\uff09",
+      "intro": "\u6b64\u9875\u9762\u53ef\u8ba9\u4f60\u5411\u76ee\u6807\u5ba2\u6237\uff08\u6216\u5168\u90e8\u5ba2\u6237\uff09\u53d1\u9001\u5e26\u6709\u54c1\u724c\u8272\u5f69\u7684\u7cbe\u7f8e\u90ae\u4ef6\uff0c\u5e76\u81ea\u52a8\u63d0\u4f9b\u7eaf\u6587\u672c\u5907\u7528\u7248\u672c\u3002",
+      "quickStartTitle": "\u4e00\u5206\u949f\u5185\u4e0a\u624b",
+      "quickStartSteps": [
+        "\u9009\u62e9\u4e00\u4e2a\u6d3b\u52a8\u5361\u7247\u3002",
+        "\u8bbe\u7f6e\u5404\u5b57\u6bb5\uff08\u6298\u6263\u3001\u4f18\u60e0\u7801\u3001\u65e5\u671f\u3001\u94fe\u63a5\u7b49\uff09\u3002",
+        "\u70b9\u51fb\u201c\u9884\u89c8\u201d\u67e5\u770b\u7b26\u5408\u6761\u4ef6\u7684\u5ba2\u6237\u4ee5\u53ca\u6bcf\u884c\u6700\u7ec8\u90ae\u4ef6\u5185\u5bb9\u3002",
+        "\u52fe\u9009\u9700\u8981\u7684\u884c\uff0c\u6216\u76f4\u63a5\u9009\u62e9\u201c\u5168\u90e8\u53d1\u9001\u201d\u3002",
+        "\u5173\u95ed Dry-run \u6a21\u5f0f\u5373\u53ef\u771f\u6b63\u53d1\u9001\u3002",
+        "\u70b9\u51fb\u201c\u53d1\u9001\u7ed9\u5df2\u9009\u201d\u6216\u201c\u53d1\u9001\u7ed9\u5168\u90e8\u201d\u3002"
+      ],
+      "quickStartTip": "\u63d0\u793a\uff1a\u53ea\u8981\u4fee\u6539\u4e86\u5b57\u6bb5\uff0c\u9884\u89c8\u5c31\u4f1a\u6e05\u7a7a\u3002\u53d1\u9001\u524d\u8bf7\u91cd\u65b0\u70b9\u51fb\u201c\u9884\u89c8\u201d\u3002",
+      "customize": {
+        "title": "\u81ea\u5b9a\u4e49\u90ae\u4ef6\u6587\u6848",
+        "description": "\u9664\u5e7f\u64ad\u6d3b\u52a8\u5916\uff0c\u6bcf\u4e2a\u5361\u7247\u90fd\u5305\u542b\u201c\u81ea\u5b9a\u4e49\u90ae\u4ef6\u6587\u6848\uff08\u53ef\u9009\uff09\u201d\u6298\u53e0\u9762\u677f\uff0c\u65e0\u9700\u4fee\u6539 HTML \u5373\u53ef\u8986\u76d6\u6a21\u677f\u5185\u5bb9\u3002",
+        "fields": [
+          "\u4e3b\u9898",
+          "\u6807\u9898",
+          "\u5f00\u573a",
+          "\u8865\u5145\u6587\u672c"
+        ],
+        "note": "\u4efb\u4f55\u5b57\u6bb5\u7559\u7a7a\u90fd\u4f1a\u4f7f\u7528\u4e13\u4e1a\u7684\u9ed8\u8ba4\u6587\u6848\u3002"
+      },
+      "primaryTitle": "\u6d3b\u52a8\u53ca\u76ee\u6807\u53d7\u4f17",
+      "optionalTitle": "\u8f7b\u91cf\u6d3b\u52a8\u6a21\u677f\uff08\u53ef\u9009\uff09",
+      "labels": {
+        "goal": "\u76ee\u6807\uff1a",
+        "audience": "\u53d7\u4f17\u9009\u9879\uff1a",
+        "highlights": "\u5173\u952e\u5b57\u6bb5",
+        "bestUse": "\u6700\u4f73\u7528\u9014\uff1a"
+      },
+      "campaigns": {
+        "broadcast": {
+          "title": "0\uff09\u5e7f\u64ad\uff08\u7b80\u5355\u516c\u544a\uff09",
+          "goal": "\u5411\u6240\u6709\u5ba2\u6237\u6216\u6307\u5b9a\u5206\u7ec4\u5feb\u901f\u53d1\u5e03\u516c\u544a\uff08\u505c\u4e1a\u3001\u8282\u5047\u65e5\u8425\u4e1a\u65f6\u95f4\u3001\u653f\u7b56\u8c03\u6574\u7b49\uff09\u3002",
+          "audience": [
+            "\u5168\u90e8\u5ba2\u6237\u6216 <em>\u65e0\u672a\u6765\u9884\u7ea6</em>\uff08\u6392\u9664\u5df2\u9884\u7ea6\u7684\u5ba2\u6237\uff09\u3002",
+            "\u4ec5\u9650\u6700\u8fd1 <em>N</em> \u5929\u5230\u8bbf\u7684\u5ba2\u6237\uff08\u53ef\u9009\uff09\u3002"
+          ],
+          "highlights": [
+            "<strong>\u4e3b\u9898 / \u6807\u9898 / \u5f00\u573a / \u8865\u5145\u6587\u672c</strong> \u2014\u2014 \u90ae\u4ef6\u4e3b\u4f53\uff08\u5f00\u573a\u4e0e\u8865\u5145\u6587\u672c\u652f\u6301\u591a\u884c\uff09\u3002",
+            "<strong>\u6309\u94ae\u6587\u5b57 / \u94fe\u63a5</strong> \u2014\u2014 \u53ef\u9009 CTA\uff0c\u53ef\u4f7f\u7528\u76f8\u5bf9\u8def\u5f84\uff08\u5982 <code>/services</code>\uff09\u6216\u5b8c\u6574 URL\u3002",
+            "<strong>\u4f18\u60e0\u7801 / \u5230\u671f\u65e5</strong> \u2014\u2014 \u53ef\u9009\uff0c\u4f1a\u5728\u90ae\u4ef6\u4e2d\u5c55\u793a\u5e76\u9644\u5e26\u5230\u94fe\u63a5\u3002",
+            "<strong>\u53d1\u9001\u4e0a\u9650</strong> \u2014\u2014 \u9650\u5236\u6536\u4ef6\u4eba\u6570\u4ee5\u4fdd\u8bc1\u5b89\u5168\u3002"
+          ],
+          "bestUse": "\u505c\u4e1a\u901a\u77e5\u3001\u65f6\u6bb5\u8c03\u6574\u3001\u4fc3\u9500\u3001\u653f\u7b56\u66f4\u65b0\u3002"
+        },
+        "winback": {
+          "title": "1\uff09\u5524\u56de\u6d41\u5931\u5ba2\u6237",
+          "goal": "\u63d0\u9192\u90a3\u4e9b\u6bd4\u5e73\u5e38\u8282\u594f\u66f4\u4e45\u672a\u56de\u5e97\u7684\u5ba2\u6237\u3002",
+          "highlights": [
+            "<strong>\u903e\u671f\u500d\u6570</strong> \u2014\u2014 \u95e8\u69db\uff08\u5982 1.5 \u8868\u793a\u6bd4\u5e73\u5e38\u665a 50%\uff09\u3002",
+            "<strong>\u6298\u6263\u767e\u5206\u6bd4</strong> \u2014\u2014 \u90ae\u4ef6\u4e2d\u5c55\u793a\u7684\u6298\u6263\u3002",
+            "<strong>\u6709\u6548\u671f\uff08\u5929\uff09</strong> \u2014\u2014 \u672a\u6307\u5b9a\u65e5\u671f\u65f6\u7684\u5907\u7528\u671f\u9650\u3002",
+            "<strong>\u5230\u671f\u65e5\u671f\uff08\u7cbe\u786e\uff09</strong> \u2014\u2014 \u90ae\u4ef6\u548c\u94fe\u63a5\u4e2d\u663e\u793a\u7684\u786e\u5207\u65e5\u671f\u3002",
+            "<strong>\u53d1\u9001\u4e0a\u9650</strong> \u2014\u2014 \u63a7\u5236\u53d7\u4f17\u8303\u56f4\u3002",
+            "<strong>\u4f18\u60e0\u7801\u524d\u7f00 / \u81ea\u5b9a\u4e49</strong> \u2014\u2014 \u7559\u7a7a\u4f1a\u751f\u6210\u5982 <code>WINBACK123</code> \u7684\u4ee3\u7801\u3002",
+            "<strong>\u518d\u6b21\u9884\u7ea6\u94fe\u63a5</strong> \u2014\u2014 CTA \u9875\u9762\uff08\u9644\u5e26\u8ddf\u8e2a\u4e0e\u4f18\u60e0\u53c2\u6570\uff09\u3002"
+          ],
+          "bestUse": "\u6bcf\u6708\u53d1\u9001\uff0c\u5524\u56de\u9010\u6e10\u6d41\u5931\u7684\u5ba2\u6237\u3002"
+        },
+        "skipped": {
+          "title": "2\uff09\u590d\u7ea6\u63d0\u9192",
+          "goal": "\u5728\u5ba2\u6237\u6700\u8fd1\u4e00\u6b21\u670d\u52a1\u540e\u5c1a\u672a\u9884\u7ea6\u65f6\u8fdb\u884c\u8ddf\u8fdb\u3002",
+          "highlights": [
+            "<strong>\u56de\u6eaf\u533a\u95f4\uff08\u5929\uff09</strong> \u2014\u2014 \u4e0a\u4e00\u6b21\u5b8c\u6210\u670d\u52a1\u7684\u65f6\u95f4\u7a97\u3002",
+            "<strong>\u6298\u6263\u767e\u5206\u6bd4</strong> \u2014\u2014 \u8bbe\u4e3a 0 \u5373\u4e3a\u6e29\u548c\u63d0\u9192\u3002",
+            "<strong>\u4f18\u60e0\u7801\u524d\u7f00 / \u81ea\u5b9a\u4e49</strong> \u2014\u2014 \u53ef\u9009\u6fc0\u52b1\u3002",
+            "<strong>\u6df1\u5ea6\u94fe\u63a5</strong> \u2014\u2014 \u6307\u5411\u5feb\u901f\u590d\u7ea6\u7684\u9875\u9762\u3002"
+          ],
+          "bestUse": "\u5728\u5230\u8bbf\u51e0\u5929\u540e\u53d1\u9001\u53cb\u597d\u63d0\u9192\u3002"
+        },
+        "vip": {
+          "title": "3\uff09VIP \u5c0a\u4eab",
+          "goal": "\u4e3a\u9ad8\u4ef7\u503c\u5ba2\u6237\u63d0\u4f9b\u4f18\u5148\u4f53\u9a8c\u6216\u4e13\u5c5e\u793c\u9047\u3002",
+          "highlights": [
+            "<strong>\u9876\u7ea7\u767e\u5206\u6bd4\uff08\u6309 LTV\uff09</strong> \u2014\u2014 \u9009\u62e9\u6700\u6709\u4ef7\u503c\u7684\u5ba2\u6237\u6bd4\u4f8b\u3002",
+            "<strong>\u53d1\u9001\u4e0a\u9650</strong> \u2014\u2014 \u82e5\u9700\u8425\u9020\u7a00\u7f3a\u611f\uff0c\u53ef\u9650\u5236\u4eba\u6570\u3002",
+            "<strong>\u6298\u6263\u767e\u5206\u6bd4</strong> \u2014\u2014 \u90ae\u4ef6\u4e2d\u5c55\u793a\u7684\u793c\u9047\u3002",
+            "<strong>\u4f18\u60e0\u7801\u524d\u7f00 / \u81ea\u5b9a\u4e49</strong> \u2014\u2014 \u751f\u6210\u4e13\u5c5e\u7684 VIP \u4ee3\u7801\u3002",
+            "<strong>VIP \u94fe\u63a5</strong> \u2014\u2014 \u4e13\u5c5e\u4f18\u60e0\u7684\u843d\u5730\u9875\u3002"
+          ],
+          "bestUse": "\u4f18\u5148\u4f53\u9a8c\u4fc3\u9500\u3001\u7279\u8272\u6d3b\u52a8\u3001\u5fe0\u8bda\u56de\u9988\u3002"
+        },
+        "anniversary": {
+          "title": "4\uff09\u5468\u5e74\u81f4\u8c22",
+          "goal": "\u5e86\u795d\u5ba2\u6237\u9996\u6b21\u5230\u8bbf\u7684\u6708\u4efd\u3002",
+          "highlights": [
+            "<strong>\u6708\u4efd</strong> \u2014\u2014 \u9009\u62e9\u8981\u5e86\u795d\u7684\u6708\u4efd\uff08\u9ed8\u8ba4\u5f53\u524d\u6708\uff09\u3002",
+            "<strong>\u53d1\u9001\u4e0a\u9650</strong> \u2014\u2014 \u9650\u5236\u6536\u4ef6\u4eba\u6570\u3002",
+            "<strong>\u4f18\u60e0\u7801\u524d\u7f00 / \u81ea\u5b9a\u4e49</strong> \u2014\u2014 \u8d60\u793c\u4ee3\u7801\u3002",
+            "<strong>\u5468\u5e74\u94fe\u63a5</strong> \u2014\u2014 CTA\uff08\u9644\u5e26\u8ddf\u8e2a\u548c\u4f18\u60e0/\u5230\u671f\u53c2\u6570\uff09\u3002",
+            "<strong>\u5230\u671f\u65e5\u671f</strong> \u2014\u2014 \u793c\u9047\u7ed3\u675f\u65f6\u95f4\u3002",
+            "<strong>\u5fc5\u987b\u62e5\u6709\u90ae\u7bb1</strong> \u2014\u2014 \u82e5\u9700\u67e5\u770b\u6ca1\u6709\u90ae\u7bb1\u7684\u5ba2\u6237\uff0c\u8bf7\u9009\u62e9\u201c\u5426\u201d\u3002"
+          ],
+          "bestUse": "\u6bcf\u6708\u53d1\u9001\u7684\u6e29\u99a8\u611f\u8c22\u4e0e\u5c0f\u793c\u7269\u3002"
+        },
+        "newService": {
+          "title": "\u65b0\u670d\u52a1\u4e0a\u7ebf",
+          "goal": "\u901a\u77e5\u6700\u8fd1\u5230\u8bbf\u4f46\u5c1a\u672a\u4f53\u9a8c\u65b0\u670d\u52a1\u7684\u5ba2\u6237\u3002",
+          "highlights": [
+            "<strong>\u670d\u52a1</strong>\uff08\u6309\u540d\u79f0\u641c\u7d22\uff09\u3001<strong>\u56de\u6eaf\u533a\u95f4\uff08\u6708\uff09</strong>\u3001<strong>\u6298\u6263\u767e\u5206\u6bd4</strong>\u3002",
+            "<strong>\u4f18\u60e0\u7801\u524d\u7f00 / \u81ea\u5b9a\u4e49</strong>\u3001<strong>\u4e0a\u7ebf\u94fe\u63a5</strong>\u3001<strong>\u5230\u671f\u65e5\u671f</strong>\u3001<strong>\u53d1\u9001\u4e0a\u9650</strong>\u3002"
+          ],
+          "note": "\u4f7f\u7528\u670d\u52a1\u9009\u62e9\u5668\u6309\u540d\u79f0\u641c\u7d22\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u586b\u5165 ID\u3002"
+        },
+        "noShow": {
+          "title": "\u723d\u7ea6\u633d\u56de",
+          "goal": "\u633d\u56de\u88ab\u6807\u8bb0\u4e3a\u723d\u7ea6\u6216\u5df2\u6263\u9664\u723d\u7ea6\u8d39\u7528\u7684\u5ba2\u6237\u3002",
+          "highlights": [
+            "<strong>\u56de\u6eaf\u533a\u95f4\uff08\u5929\uff09</strong>\u3001<strong>\u9700\u65e0\u672a\u6765\u9884\u7ea6</strong> \u2014\u2014 \u6392\u9664\u5df2\u91cd\u65b0\u9884\u7ea6\u7684\u5ba2\u6237\u3002",
+            "<strong>\u6298\u6263\u767e\u5206\u6bd4</strong>\u3001<strong>\u4f18\u60e0\u7801\u524d\u7f00 / \u81ea\u5b9a\u4e49</strong>\u3001<strong>\u843d\u5730\u94fe\u63a5</strong>\u3001<strong>\u5230\u671f\u65e5\u671f</strong>\u3001<strong>\u53d1\u9001\u4e0a\u9650</strong>\u3002"
+          ]
+        },
+        "addon": {
+          "title": "\u9644\u52a0\u9879\u76ee\u63a8\u8350",
+          "goal": "\u5411\u57fa\u7840\u670d\u52a1\u5ba2\u6237\u63a8\u8350\u70ed\u95e8\u9644\u52a0\u9879\u76ee\uff08\u7b80\u5355\u53c8\u5feb\u901f\uff09\u3002",
+          "highlights": [
+            "<strong>\u57fa\u7840\u670d\u52a1</strong>\uff08\u6309\u540d\u79f0\u641c\u7d22\uff09\u3001<strong>\u9644\u52a0\u9879\u76ee\u540d\u79f0</strong>\u3001<strong>\u56de\u6eaf\u533a\u95f4\uff08\u5929\uff09</strong>\u3002",
+            "<strong>\u6298\u6263\u767e\u5206\u6bd4</strong>\u3001<strong>\u4f18\u60e0\u7801\u524d\u7f00 / \u81ea\u5b9a\u4e49</strong>\u3001<strong>\u6df1\u5ea6\u94fe\u63a5</strong>\u3001<strong>\u5230\u671f\u65e5\u671f</strong>\u3001<strong>\u53d1\u9001\u4e0a\u9650</strong>\u3002"
+          ],
+          "note": "\u4f7f\u7528\u670d\u52a1\u9009\u62e9\u5668\u6309\u540d\u79f0\u641c\u7d22\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u586b\u5165 ID\u3002"
+        }
+      },
+      "controls": {
+        "title": "\u63a7\u4ef6\u542b\u4e49\u8bf4\u660e",
+        "items": {
+          "discountPercent": {
+            "label": "\u6298\u6263\u767e\u5206\u6bd4",
+            "description": "\u5728\u90ae\u4ef6\u6587\u6848\u4e2d\u5c55\u793a\u3002\u8bbe\u7f6e\u4e3a 0 \u5373\u4e3a\u65e0\u6298\u6263\u63d0\u793a\uff1b\u5982\u679c <em>\u81ea\u5b9a\u4e49\u4f18\u60e0\u7801</em> \u4e3a\u7a7a\uff0c\u4f18\u60e0\u6a21\u5757\u4f1a\u9690\u85cf\u3002"
+          },
+          "coupon": {
+            "label": "\u4f18\u60e0\u7801\u524d\u7f00 / \u81ea\u5b9a\u4e49",
+            "description": "\u586b\u5199\u201c\u81ea\u5b9a\u4e49\u201d\u65f6\u4f1a\u663e\u793a\u5e76\u4f20\u9012\u8be5\u4ee3\u7801\uff1b\u7559\u7a7a\u5219\u4f9d\u636e\u524d\u7f00\u667a\u80fd\u751f\u6210\u3002"
+          },
+          "expires": {
+            "label": "\u5230\u671f\u65e5\u671f",
+            "description": "\u90ae\u4ef6\u4e2d\u4f1a\u663e\u793a\u5177\u4f53\u65e5\u671f\uff0c\u5e76\u4ee5 <code>expires=YYYY-MM-DD</code> \u8ffd\u52a0\u5230\u94fe\u63a5\u3002"
+          },
+          "links": {
+            "label": "\u94fe\u63a5",
+            "description": "\u94fe\u63a5\u4f1a\u81ea\u52a8\u9644\u52a0 <code>?coupon=CODE&expires=YYYY-MM-DD&utm_source=&lt;campaign&gt;</code>\uff0c\u65b9\u4fbf\u843d\u5730\u9875\u5c55\u793a\u4f18\u60e0\u7801\u5e76\u8ffd\u8e2a\u6765\u6e90\u3002"
+          }
+        }
+      },
+      "preview": {
+        "title": "\u9884\u89c8\u4e0e\u53d1\u9001",
+        "items": {
+          "preview": {
+            "label": "\u9884\u89c8",
+            "description": "\u7b5b\u9009\u7b26\u5408\u6761\u4ef6\u7684\u5ba2\u6237\uff0c\u5e76\u6e32\u67d3\u6bcf\u4e00\u884c\u7684\u6700\u7ec8\u90ae\u4ef6\u3002\u4fee\u6539\u8bbe\u7f6e\u540e\u8bf7\u518d\u6b21\u9884\u89c8\u3002"
+          },
+          "dryRun": {
+            "label": "Dry-run",
+            "description": "\u5f53 <strong>\u5f00\u542f</strong> \u65f6\u4e0d\u4f1a\u53d1\u9001\u90ae\u4ef6\uff0c\u53ea\u8bb0\u5f55\u201c\u5c06\u4f1a\u53d1\u9001\u201d\u7684\u6570\u91cf\uff1b\u5173\u95ed\u540e\u624d\u4f1a\u771f\u6b63\u53d1\u9001\u3002"
+          },
+          "send": {
+            "label": "\u53d1\u9001\u7ed9\u5df2\u9009 / \u5168\u90e8",
+            "description": "\u4f7f\u7528\u6700\u8fd1\u4e00\u6b21\u9884\u89c8\u7684\u7ed3\u679c\u3002\u201c\u5df2\u9009\u201d\u4ec5\u53d1\u9001\u52fe\u9009\u884c\uff0c\u201c\u5168\u90e8\u201d\u53d1\u9001\u5168\u90e8\u9884\u89c8\u884c\u3002"
+          }
+        }
+      },
+      "export": {
+        "title": "\u5bfc\u51fa\u5ba2\u6237\uff08\u516c\u53f8\u8303\u56f4\uff09",
+        "description": "\u4f7f\u7528 <strong>\u5bfc\u51fa\u5ba2\u6237</strong> \u4e0b\u8f7d\u672c\u516c\u53f8\u9884\u7ea6\u5ba2\u6237\u7684 CSV/XLSX\u3002\u652f\u6301\u201c\u6700\u8fd1 N \u5929\u5230\u8bbf\u201d\u201c\u6700\u5c11\u5230\u8bbf\u6b21\u6570\u201d\u201c\u5fc5\u987b\u62e5\u6709\u90ae\u7bb1\u201d\u7b49\u7b5b\u9009\uff0c\u6570\u636e\u6309\u79df\u6237\u9694\u79bb\u3002"
+      },
+      "troubleshooting": {
+        "title": "\u95ee\u9898\u6392\u67e5\u4e0e\u5e38\u89c1\u95ee\u7b54",
+        "items": {
+          "noRows": {
+            "label": "\u9884\u89c8\u672a\u663e\u793a\u4efb\u4f55\u884c",
+            "description": "\u8bf7\u6839\u636e\u6d3b\u52a8\u7c7b\u578b\u8c03\u6574\u7b5b\u9009\u6761\u4ef6\u6216\u653e\u5bbd\u65f6\u95f4\u7a97\u53e3\u3002",
+            "list": [
+              "<strong>\u5e7f\u64ad\uff1a</strong> \u51cf\u5c11\u7b5b\u9009\uff08\u5982\u6e05\u7a7a\u201c\u6700\u8fd1 N \u5929\u5230\u8bbf\u201d\uff09\u3002",
+              "<strong>\u5524\u56de\u5ba2\u6237\uff1a</strong> \u964d\u4f4e\u903e\u671f\u500d\u6570\u6216\u63d0\u9ad8\u53d1\u9001\u4e0a\u9650\u3002",
+              "<strong>\u590d\u7ea6\u63d0\u9192\uff1a</strong> \u5ef6\u957f\u56de\u6eaf\u5929\u6570\u3002",
+              "<strong>\u5468\u5e74\u81f4\u8c22\uff1a</strong> \u786e\u8ba4\u6708\u4efd\u6b63\u786e\uff0c\u5e76\u786e\u4fdd\u5b58\u5728\u9996\u6b21\u5230\u8bbf\u65e5\u671f\u3002",
+              "<strong>VIP\uff1a</strong> \u63d0\u9ad8\u9876\u7ea7\u767e\u5206\u6bd4\u6216\u4e0a\u9650\u3002",
+              "<strong>\u723d\u7ea6\u633d\u56de\uff1a</strong> \u62c9\u957f\u56de\u6eaf\u671f\uff0c\u6216\u4e34\u65f6\u5141\u8bb8\u65e0\u90ae\u7bb1\u5ba2\u6237\u4ee5\u67e5\u770b\u6570\u91cf\u3002"
+            ]
+          },
+          "sentZero": {
+            "label": "\u201cSent: 0 \u2014 dry_run=on/off\u201d",
+            "description": "\u8bf7\u68c0\u67e5 Dry-run \u72b6\u6001\u4ee5\u53ca\u662f\u5426\u9009\u4e2d\u4e86\u884c\u3002",
+            "list": [
+              "<strong>on</strong> \u2014\u2014 Dry-run \u6253\u5f00\uff0c\u6309\u8bbe\u8ba1\u4e0d\u4f1a\u53d1\u9001\u3002",
+              "<strong>off</strong> \u2014\u2014 \u53ef\u80fd\u6ca1\u6709\u52fe\u9009\u4efb\u4f55\u884c\uff08\u91cd\u65b0\u9884\u89c8\u5e76\u52fe\u9009\uff09\u6216\u670d\u52a1\u5668\u5728\u8be5\u6b21\u53d1\u9001\u4e2d\u53bb\u9664\u4e86\u91cd\u590d\u5185\u5bb9\u3002"
+            ]
+          },
+          "duplicates": {
+            "label": "\u5ba2\u6237\u6536\u5230\u591a\u5c01\u91cd\u590d\u90ae\u4ef6",
+            "description": "\u540c\u4e00\u6b21\u53d1\u9001\u4e2d\u6211\u4eec\u4f1a\u963b\u6b62\u201c\u540c\u6536\u4ef6\u4eba + \u4e3b\u9898 + \u6b63\u6587\u201d\u7684\u91cd\u590d\u3002\u5982\u679c\u4f60\u4ee5\u76f8\u540c\u5185\u5bb9\u518d\u6b21\u53d1\u9001\uff0c\u5ba2\u6237\u53ef\u80fd\u4f1a\u91cd\u590d\u6536\u5230\u3002"
+          },
+          "coupon": {
+            "label": "\u7ed3\u8d26\u65f6\u4f18\u60e0\u7801\u65e0\u6548",
+            "description": "\u90ae\u4ef6\u4e0d\u4f1a\u81ea\u52a8\u521b\u5efa\u4f18\u60e0\u7801\u3002\u8bf7\u5728\u4f18\u60e0\u7ba1\u7406\u4e2d\u521b\u5efa/\u542f\u7528\u76f8\u5e94\u4ee3\u7801\uff0c\u6216\u4ec5\u4f5c\u4fe1\u606f\u5c55\u793a\u4f7f\u7528\u3002"
+          },
+          "button": {
+            "label": "\u6309\u94ae\u4f1a\u8df3\u8f6c\u5230\u54ea\u91cc\uff1f",
+            "description": "\u8df3\u8f6c\u5230\u4f60\u8bbe\u7f6e\u7684\u94fe\u63a5\u3002\u7cfb\u7edf\u4f1a\u9644\u52a0\u4f18\u60e0\u7801\u3001\u5230\u671f\u65e5\u4ee5\u53ca utm_source\uff0c\u65b9\u4fbf\u843d\u5730\u9875\u586b\u5145\u5e76\u8ffd\u8e2a\u6765\u6e90\u3002"
+          }
+        }
+      },
+      "copyTips": {
+        "title": "\u6587\u6848\u7075\u611f\uff08\u9002\u5408\u6c99\u9f99\uff09",
+        "items": {
+          "vip": "<strong>VIP\uff1a</strong> \u201c\u4e13\u5c5e\u63d0\u524d\u4f53\u9a8c\uff0c\u53ea\u4e3a\u4f60\u51c6\u5907\u3002\u9ec4\u91d1\u65f6\u6bb5\u8f6c\u77ac\u5373\u901d\u2014\u2014\u7acb\u5373\u9884\u7ea6\u5fc3\u4eea\u65f6\u95f4\u3002\u201d",
+          "winback": "<strong>\u5524\u56de\u5ba2\u6237\uff1a</strong> \u201c\u597d\u4e45\u4e0d\u89c1\uff0c\u6211\u4eec\u671f\u5f85\u518d\u89c1\u5230\u4f60\u3002\u8bf7\u5728 {date} \u524d\u9884\u7ea6\u3002\u201d",
+          "skipped": "<strong>\u590d\u7ea6\u63d0\u9192\uff1a</strong> \u201c\u4e09\u6b65\u5373\u53ef\u9884\u7ea6\u540c\u4e00\u4f4d\u6280\u5e08\u2014\u2014\u4fdd\u6301\u4f60\u7684\u7f8e\u4e3d\u8282\u594f\u3002\u201d",
+          "anniversary": "<strong>\u5468\u5e74\u81f4\u8c22\uff1a</strong> \u201c\u5468\u5e74\u5feb\u4e50\uff01\u8bf7\u6536\u4e0b\u6211\u4eec\u7684\u5c0f\u5c0f\u5fc3\u610f\u3002\u201d",
+          "broadcast": "<strong>\u5e7f\u64ad\uff1a</strong> \u4fdd\u6301\u6e29\u6696\u800c\u6e05\u6670\u2014\u2014\u544a\u8bc9\u5ba2\u6237\u53d1\u751f\u4e86\u4ec0\u4e48\uff0c\u4ee5\u53ca\u4e0b\u4e00\u6b65\u8be5\u505a\u4ec0\u4e48\u3002"
+        },
+        "subject": "\u4e3b\u9898\u884c\u5efa\u8bae\u63a7\u5236\u5728 45 \u4e2a\u5b57\u7b26\u4ee5\u5185\u3002\u793a\u4f8b\uff1a\u201cVIP \u63d0\u524d\u4f53\u9a8c\uff1a\u7acb\u7701 {X}%\u201d\u201c\u597d\u4e45\u4e0d\u89c1\u2014\u2014\u8bf7\u5728 {date} \u524d\u9884\u7ea6\u201d\u201c\u5468\u4e00\u6682\u505c\u8425\u4e1a\u2014\u2014\u5468\u4e8c\u6062\u590d\u201d\u201c\u9001\u4f60\u4e00\u4efd\u5f53\u6708\u5c0f\u793c {emoji}\u201d\u3002"
+      },
+      "dataNotes": {
+        "title": "\u6570\u636e\u4e0e\u5408\u89c4\u63d0\u793a",
+        "items": {
+          "emailsOnly": "\u4ec5\u9650\u62e5\u6709\u6709\u6548\u90ae\u7bb1\u7684\u5ba2\u6237\u53ef\u63a5\u6536\u90ae\u4ef6\uff08\u90e8\u5206\u6d3b\u52a8\u5141\u8bb8\u5728\u65e0\u90ae\u7bb1\u60c5\u51b5\u4e0b\u9884\u89c8\uff09\u3002",
+          "consent": "\u8bf7\u5728\u57fa\u7840\u6a21\u677f\u4e2d\u52a0\u5165\u6240\u5728\u5730\u533a\u8981\u6c42\u7684\u540c\u610f/\u9000\u8ba2\u6587\u6848\u3002",
+          "utm": "\u7cfb\u7edf\u4f1a\u81ea\u52a8\u6dfb\u52a0 UTM\uff1a<code>utm_source=broadcast|vip|winback|skipped_rebook|anniversary|new_service|no_show_recovery|addon_upsell</code>\u3002",
+          "tenant": "\u5bfc\u51fa\u6570\u636e\u6309\u79df\u6237\u9694\u79bb\uff1a\u53ea\u5305\u542b\u5728\u4f60\u516c\u53f8\u6709\u9884\u7ea6\u7684\u5ba2\u6237\u3002"
+        }
+      },
+      "editorTip": "\u7f16\u8f91\u63d0\u793a\uff1a\u957f\u6587\u672c\u5b57\u6bb5\u652f\u6301\u591a\u884c\u8f93\u5165\uff0c\u6309 Enter \u53ef\u6362\u884c\u3002"
+    }
+  },
+  "messages": {
+    "errorLoadingCoupons": "\u52a0\u8f7d\u4f18\u60e0\u5238\u65f6\u51fa\u9519",
+    "couponCreated": "\u4f18\u60e0\u5238\u5df2\u521b\u5efa",
+    "couponUpdated": "\u4f18\u60e0\u5238\u5df2\u66f4\u65b0",
+    "couponDeleted": "\u4f18\u60e0\u5238\u5df2\u5220\u9664",
+    "couponCodeRequired": "\u8bf7\u8f93\u5165\u4f18\u60e0\u5238\u4ee3\u7801",
+    "discountGreaterThanZero": "\u6298\u6263\u5fc5\u987b\u5927\u4e8e\u96f6",
+    "saveFailed": "\u4fdd\u5b58\u5931\u8d25",
+    "deleteFailed": "\u5220\u9664\u5931\u8d25",
+    "confirmDeleteCoupon": "\u786e\u5b9a\u5220\u9664\u6b64\u4f18\u60e0\u5238\u5417\uff1f"
+  },
+  "common": {
+    "yes": "\u662f",
+    "no": "\u5426",
+    "never": "\u4ece\u4e0d",
+    "allServices": "\u6240\u6709\u670d\u52a1",
+    "unlimited": "\u4e0d\u9650",
+    "rowsPerPage": "\u6bcf\u9875\u884c\u6570",
+    "none": "\u65e0",
+    "previous": "\u4e0a\u4e00\u9875",
+    "next": "\u4e0b\u4e00\u9875",
+    "enabled": "\u5df2\u542f\u7528",
+    "disabled": "\u5df2\u505c\u7528"
+  },
+  "campaigns": {
+    "preview": "\u9884\u89c8",
+    "dryRun": "\u8bd5\u8fd0\u884c",
+    "dryRunOn": "\u5f00\u542f = \u4e0d\u53d1\u9001",
+    "dryRunOff": "\u5173\u95ed = \u7acb\u5373\u53d1\u9001",
+    "dryRunStatusOnShort": "\u5f00",
+    "dryRunStatusOffShort": "\u5173",
+    "customizeCopy": "\u81ea\u5b9a\u4e49\u90ae\u4ef6\u6587\u6848\uff08\u53ef\u9009\uff09",
+    "subjectLabel": "\u4e3b\u9898\uff08\u53ef\u9009\uff09",
+    "subjectHelper": "\u7559\u7a7a\u4ee5\u4f7f\u7528\u9ed8\u8ba4\u4e3b\u9898\u3002",
+    "headingLabel": "\u6807\u9898\uff08\u53ef\u9009\uff09",
+    "introLabel": "\u5f00\u573a\u6587\u6848 / \u4e3b\u4f53\u5185\u5bb9",
+    "introHelper": "\u7559\u7a7a\u4ee5\u4f7f\u7528\u9ed8\u8ba4\u5f00\u573a\u6587\u6848\u3002",
+    "subtextLabel": "\u8865\u5145\u6587\u672c\uff08\u53ef\u9009\uff09",
+    "subtextHelper": "\u7559\u7a7a\u4ee5\u4f7f\u7528\u9ed8\u8ba4\u8865\u5145\u6587\u672c\u3002",
+    "noSelection": "\u672a\u9009\u62e9\u4efb\u4f55\u884c\uff0c\u672a\u53d1\u9001\u5185\u5bb9\u3002",
+    "noPreviewRows": "\u6682\u65e0\u9884\u89c8\u6570\u636e\uff0c\u8bf7\u5148\u70b9\u51fb\u201c\u9884\u89c8\u201d\u3002",
+    "failedToLoadPreview": "\u9884\u89c8\u52a0\u8f7d\u5931\u8d25",
+    "failedToSend": "\u53d1\u9001\u5931\u8d25",
+    "noPreviewYet": "\u5c1a\u672a\u751f\u6210\u9884\u89c8\u3002",
+    "sendResult": "\u5df2\u53d1\u9001\uff1a{{count}} \u2014 dry_run={{mode}}",
+    "placeholders": {
+      "noCoupon": "-",
+      "empty": "-"
+    },
+    "fields": {
+      "subject": {
+        "label": "\u4e3b\u9898",
+        "helper": "\u7559\u7a7a\u4ee5\u4f7f\u7528\u9ed8\u8ba4\u4e3b\u9898\u3002"
+      },
+      "heading": {
+        "label": "\u6807\u9898",
+        "helper": "\u7559\u7a7a\u4ee5\u4f7f\u7528\u9ed8\u8ba4\u6807\u9898\u3002"
+      },
+      "intro": {
+        "label": "\u5f00\u573a\u6587\u6848 / \u4e3b\u4f53\u5185\u5bb9",
+        "helper": "\u7559\u7a7a\u4ee5\u4f7f\u7528\u9ed8\u8ba4\u5f00\u573a\u6587\u6848\u3002"
+      },
+      "subtext": {
+        "label": "\u8865\u5145\u6587\u672c",
+        "helper": "\u7559\u7a7a\u4ee5\u4f7f\u7528\u9ed8\u8ba4\u8865\u5145\u6587\u672c\u3002"
+      },
+      "ctaText": {
+        "label": "\u6309\u94ae\u6587\u5b57",
+        "helper": "\u53ef\u9009\u7684\u884c\u52a8\u53f7\u53ec\u6807\u7b7e\u3002"
+      },
+      "ctaUrl": {
+        "label": "\u6309\u94ae\u94fe\u63a5",
+        "helper": "\u53ef\u586b\u5199\u76f8\u5bf9\u8def\u5f84\uff08\u4f8b\u5982 /services\uff09\u6216\u5b8c\u6574 URL\u3002"
+      },
+      "couponOverride": {
+        "label": "\u81ea\u5b9a\u4e49\u4f18\u60e0\u7801",
+        "helper": "\u7559\u7a7a\u5219\u6309\u524d\u7f00\u81ea\u52a8\u751f\u6210\u4f18\u60e0\u7801\u3002"
+      },
+      "expiresOptional": {
+        "label": "\u5230\u671f\u65e5\u671f\uff08\u53ef\u9009\uff09",
+        "helper": "\u7559\u7a7a\u5c06\u5728\u90ae\u4ef6\u4e2d\u9690\u85cf\u5230\u671f\u4fe1\u606f\u3002"
+      },
+      "segment": {
+        "label": "\u5ba2\u6237\u5206\u7ec4",
+        "helper": "\u9009\u62e9\u5168\u90e8\u5ba2\u6237\u6216\u4ec5\u9650\u6ca1\u6709\u672a\u6765\u9884\u7ea6\u7684\u5ba2\u6237\u3002"
+      },
+      "sinceDays": {
+        "label": "\u6700\u8fd1 N \u5929\u5185\u5230\u8bbf",
+        "helper": "\u53ef\u9009\u8fc7\u6ee4\u5668\uff1b\u4ec5\u5305\u542b\u5728\u8be5\u65f6\u95f4\u7a97\u5185\u5230\u8bbf\u7684\u5ba2\u6237\u3002"
+      },
+      "limit": {
+        "label": "\u53d1\u9001\u4e0a\u9650",
+        "helper": "\u9650\u5236\u6536\u4ef6\u4eba\u6570\u3002"
+      },
+      "overdueMultiplier": {
+        "label": "\u903e\u671f\u500d\u6570",
+        "helper": "\u5f53\u8ddd\u79bb\u4e0a\u6b21\u5230\u8bbf\u7684\u5929\u6570\u8fbe\u5230\u6b64\u500d\u6570\u7684\u5e73\u5747\u95f4\u9694\u65f6\u7eb3\u5165\u5ba2\u6237\u3002"
+      },
+      "discountPercent": {
+        "label": "\u6298\u6263\u767e\u5206\u6bd4",
+        "helper": "\u663e\u793a\u5728\u90ae\u4ef6\u6587\u6848\u4e2d\uff1b\u586b\u5199 0 \u8868\u793a\u4e0d\u63d0\u4f9b\u6298\u6263\u3002"
+      },
+      "discountPercentZero": {
+        "label": "\u6298\u6263\u767e\u5206\u6bd4",
+        "helper": "\u586b\u5199 0 \u5373\u53ef\u5728\u65e0\u4f18\u60e0\u7801\u7684\u60c5\u51b5\u4e0b\u53d1\u9001\u3002"
+      },
+      "validDays": {
+        "label": "\u6709\u6548\u671f\uff08\u5929\uff09",
+        "helper": "\u5f53\u672a\u8bbe\u7f6e\u7cbe\u786e\u65e5\u671f\u65f6\u4f7f\u7528\u8be5\u5907\u7528\u6709\u6548\u671f\u3002"
+      },
+      "expiresOverride": {
+        "label": "\u5230\u671f\u65e5\u671f\uff08\u7cbe\u786e\uff09",
+        "helper": "\u586b\u5199\u5177\u4f53\u65e5\u671f\u4ee5\u8986\u76d6\u9ed8\u8ba4\u8ba1\u7b97\u3002"
+      },
+      "couponPrefix": {
+        "label": "\u4f18\u60e0\u7801\u524d\u7f00",
+        "helper": "\u7528\u4e8e\u751f\u6210\u7c7b\u4f3c PREFIX123 \u7684\u4ee3\u7801\u3002"
+      },
+      "rebookLink": {
+        "label": "\u518d\u6b21\u9884\u7ea6\u94fe\u63a5",
+        "helper": "\u884c\u52a8\u6309\u94ae\u6307\u5411\u7684\u9875\u9762\u3002"
+      },
+      "lookbackDays": {
+        "label": "\u56de\u6eaf\u533a\u95f4\uff08\u5929\uff09",
+        "helper": "\u5305\u542b\u5728\u6700\u8fd1\u6307\u5b9a\u5929\u6570\u5185\u5230\u8bbf\u7684\u5ba2\u6237\u3002"
+      },
+      "lookbackMonths": {
+        "label": "\u56de\u6eaf\u533a\u95f4\uff08\u6708\uff09",
+        "helper": "\u5305\u542b\u5728\u6700\u8fd1\u6307\u5b9a\u6708\u6570\u5185\u5230\u8bbf\u7684\u5ba2\u6237\u3002"
+      },
+      "deepLink": {
+        "label": "\u6df1\u5ea6\u94fe\u63a5",
+        "helper": "\u6309\u94ae\u8df3\u8f6c\u7684\u5177\u4f53\u9875\u9762\u3002"
+      },
+      "vipPct": {
+        "label": "\u9876\u7ea7\u767e\u5206\u6bd4\uff08\u6309 LTV\uff09",
+        "helper": "\u9009\u62e9\u4ef7\u503c\u6700\u9ad8\u7684\u5ba2\u6237\u767e\u5206\u6bd4\u3002"
+      },
+      "vipLink": {
+        "label": "VIP \u94fe\u63a5",
+        "helper": "\u63d0\u4f9b\u7ed9 VIP \u7684\u4e13\u5c5e\u9875\u9762\u3002"
+      },
+      "annivLink": {
+        "label": "\u5468\u5e74\u94fe\u63a5",
+        "helper": "\u5468\u5e74\u90ae\u4ef6\u7684\u843d\u5730\u9875\u3002"
+      },
+      "month": {
+        "label": "\u6708\u4efd",
+        "helper": "\u9009\u62e9\u9700\u8981\u81f4\u656c\u7684\u6708\u4efd\u3002"
+      },
+      "requireEmail": {
+        "label": "\u5fc5\u987b\u62e5\u6709\u90ae\u7bb1",
+        "helper": "\u82e5\u9700\u9884\u89c8\u6ca1\u6709\u90ae\u7bb1\u7684\u5ba2\u6237\uff0c\u8bf7\u9009\u62e9\u201c\u5426\u201d\u3002"
+      },
+      "serviceId": {
+        "label": "\u670d\u52a1",
+        "helper": "\u6309\u540d\u79f0\u641c\u7d22\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u586b\u5165 ID\u3002"
+      },
+      "baseServiceId": {
+        "label": "\u57fa\u7840\u670d\u52a1",
+        "helper": "\u6309\u540d\u79f0\u641c\u7d22\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u586b\u5165 ID\u3002"
+      },
+      "addonName": {
+        "label": "\u9644\u52a0\u9879\u76ee\u540d\u79f0",
+        "helper": "\u4f1a\u663e\u793a\u5728\u90ae\u4ef6\u6587\u6848\u4e2d\u3002"
+      },
+      "requireNoFuture": {
+        "label": "\u9700\u65e0\u672a\u6765\u9884\u7ea6",
+        "helper": "\u4ec5\u5305\u542b\u6ca1\u6709\u540e\u7eed\u9884\u7ea6\u7684\u5ba2\u6237\u3002"
+      },
+      "requireFee": {
+        "label": "\u9700\u5df2\u6536\u53d6\u8d39\u7528",
+        "helper": "\u4ec5\u5305\u542b\u5df2\u6536\u53d6\u723d\u7ea6\u8d39\u7528\u7684\u5ba2\u6237\u3002"
+      },
+      "landingLink": {
+        "label": "\u843d\u5730\u94fe\u63a5",
+        "helper": "\u723d\u7ea6\u633d\u56de\u90ae\u4ef6\u6700\u7ec8\u8df3\u8f6c\u7684\u9875\u9762\u3002"
+      },
+      "launchLink": {
+        "label": "\u4e0a\u7ebf\u94fe\u63a5",
+        "helper": "\u65b0\u670d\u52a1\u7684\u4ecb\u7ecd\u9875\u9762\u3002"
+      },
+      "serviceSearchHelper": "\u6309\u540d\u79f0\u641c\u7d22\u5373\u53ef\u81ea\u52a8\u586b\u5165 ID\u3002"
+    },
+    "columns": {
+      "clientId": "\u5ba2\u6237ID",
+      "name": "\u59d3\u540d",
+      "email": "\u90ae\u7bb1",
+      "subject": "\u4e3b\u9898",
+      "daysSince": "\u8ddd\u4e0a\u6b21\u5230\u8bbf\u5929\u6570",
+      "expectedGap": "\u9884\u671f\u95f4\u9694\uff08\u5929\uff09",
+      "overdueRatio": "\u903e\u671f\u500d\u6570",
+      "coupon": "\u4f18\u60e0\u7801",
+      "expiry": "\u5efa\u8bae\u5230\u671f\u65e5",
+      "lastService": "\u4e0a\u6b21\u670d\u52a1\u65e5\u671f",
+      "ltv": "\u5ba2\u6237\u7ec8\u8eab\u4ef7\u503c (LTV)",
+      "firstVisit": "\u9996\u6b21\u5230\u8bbf"
+    },
+    "segments": {
+      "all": "\u5168\u90e8\u5ba2\u6237",
+      "noFuture": "\u65e0\u672a\u6765\u9884\u7ea6"
+    },
+    "defaults": {
+      "broadcast": {
+        "subject": "\u6765\u81ea\u56e2\u961f\u7684\u6700\u65b0\u901a\u77e5",
+        "heading": "\u5de5\u4f5c\u5ba4\u7684\u7b80\u77ed\u95ee\u5019",
+        "intro": "\u6211\u4eec\u6b63\u5728\u4e0e\u5ba2\u6237\u5206\u4eab\u4e00\u5219\u66f4\u65b0\u3002",
+        "subtext": "\u611f\u8c22\u60a8\u4e00\u76f4\u4e0e\u6211\u4eec\u540c\u884c\u3002",
+        "ctaText": "\u67e5\u770b\u8be6\u60c5"
+      }
+    },
+    "cards": {
+      "broadcast": {
+        "title": "\u7fa4\u53d1\u516c\u544a\uff08\u7b80\u5355\u63d0\u9192\uff09",
+        "subtitle": "\u5411\u5168\u90e8\u5ba2\u6237\u6216\u9009\u5b9a\u5206\u7ec4\u53d1\u9001\u4e00\u6761\u7b80\u77ed\u516c\u544a\u3002",
+        "help": "\u9002\u7528\u4e8e\u505c\u4e1a\u901a\u77e5\u3001\u8282\u5047\u65e5\u8425\u4e1a\u65f6\u95f4\u3001\u653f\u7b56\u66f4\u65b0\u6216\u4e00\u822c\u6d88\u606f\u3002"
+      },
+      "winback": {
+        "title": "\u5524\u56de\u6d41\u5931\u5ba2\u6237",
+        "subtitle": "\u9488\u5bf9\u8d85\u8fc7\u5e38\u89c4\u8282\u594f\u7684\u5ba2\u6237\u63a8\u9001\u9650\u65f6\u4f18\u60e0\u3002",
+        "help": "\u5229\u7528\u7559\u5b58\u6570\u636e\u627e\u51fa\u95f4\u9694\u8d85\u51fa\u5e73\u5747\u503c\u7684\u5ba2\u6237\u3002"
+      },
+      "skippedRebook": {
+        "title": "\u590d\u7ea6\u63d0\u9192",
+        "subtitle": "\u5728\u6700\u8fd1\u4e00\u6b21\u9884\u7ea6\u540e\u5c1a\u672a\u4e8c\u6b21\u9884\u7ea6\u7684\u5ba2\u6237\u8fdb\u884c\u8ddf\u8fdb\u3002",
+        "help": "\u51e0\u5929\u540e\u914d\u5408\u6e29\u548c\u8bdd\u672f\u6216\u5c0f\u6fc0\u52b1\u6548\u679c\u6700\u4f73\u3002"
+      },
+      "vip": {
+        "title": "VIP \u5c0a\u4eab",
+        "subtitle": "\u4e3a\u9ad8\u4ef7\u503c\u5ba2\u6237\u63d0\u4f9b\u4f18\u5148\u6743\u6216\u4e13\u5c5e\u793c\u9047\u3002",
+        "help": "\u6839\u636e\u6d88\u8d39\u4e0e\u5230\u8bbf\u9891\u6b21\u7b5b\u9009 VIP\uff0c\u53d1\u9001\u4e13\u5c5e\u4f18\u60e0\u3002"
+      },
+      "anniversary": {
+        "title": "\u5468\u5e74\u81f4\u8c22",
+        "subtitle": "\u5728\u5ba2\u6237\u9996\u8bbf\u6708\u4efd\u9001\u4e0a\u4e2a\u6027\u5316\u95ee\u5019\u6216\u793c\u9047\u3002",
+        "help": "\u5339\u914d\u9996\u8bbf\u6708\u4efd\u4e0e\u6240\u9009\u6708\u4efd\u4e00\u81f4\u7684\u5ba2\u6237\u3002"
+      },
+      "newService": {
+        "title": "\u65b0\u670d\u52a1\u4e0a\u7ebf",
+        "subtitle": "\u544a\u77e5\u6700\u8fd1\u6765\u5e97\u5374\u5c1a\u672a\u4f53\u9a8c\u65b0\u670d\u52a1\u7684\u5ba2\u6237\u3002",
+        "help": "\u7b5b\u9009\u6700\u8fd1\u5230\u5e97\u4e14\u672a\u9884\u8ba2\u8be5\u670d\u52a1\u7684\u5ba2\u6237\u3002"
+      },
+      "noShow": {
+        "title": "\u723d\u7ea6\u633d\u56de",
+        "subtitle": "\u5e2e\u52a9\u723d\u7ea6\u6216\u88ab\u6263\u8d39\u7684\u5ba2\u6237\u518d\u6b21\u9884\u7ea6\u3002",
+        "help": "\u9762\u5411\u8fd1\u671f\u6807\u8bb0\u4e3a\u723d\u7ea6\u6216\u5df2\u6536\u53d6\u723d\u7ea6\u8d39\u7684\u5ba2\u6237\u3002"
+      },
+      "addonUpsell": {
+        "title": "\u9644\u52a0\u9879\u76ee\u63a8\u8350",
+        "subtitle": "\u5411\u57fa\u7840\u670d\u52a1\u5ba2\u6237\u63a8\u8350\u70ed\u95e8\u9644\u52a0\u9879\u76ee\u3002",
+        "help": "\u7b80\u5316\u7248\u672c\uff0c\u4e0d\u6821\u9a8c\u5386\u53f2\u8bb0\u5f55\uff0c\u5feb\u901f\u6709\u6548\u3002"
+      }
+    }
+  },
+  "manager": {
+    "menu": {
+      "advancedManagement": "\u9ad8\u7ea7\u7ba1\u7406",
+      "employeeManagement": "\u5458\u5de5\u7ba1\u7406",
+      "websitePages": "\u7f51\u7ad9\u4e0e\u9875\u9762",
+      "advancedPayroll": "\u9ad8\u7ea7\u85aa\u8d44",
+      "shiftsAvailability": "\u73ed\u6b21\u4e0e\u53ef\u7528\u6027",
+      "leaves": "\u8bf7\u5047",
+      "swapApprovals": "\u6362\u73ed\u5ba1\u6279",
+      "auditHistory": "\u5ba1\u8ba1\u5386\u53f2",
+      "attendanceCalendar": "\u51fa\u52e4\u65e5\u5386",
+      "overview": "\u6982\u89c8",
+      "settings": "\u8bbe\u7f6e",
+      "companyProfile": "\u516c\u53f8\u8d44\u6599",
+      "employeeProfiles": "\u5458\u5de5\u6863\u6848",
+      "payroll": "\u85aa\u8d44",
+      "savedPayrolls": "\u5df2\u4fdd\u5b58\u7684\u85aa\u8d44\u8868",
+      "tax": "\u7a0e\u52a1",
+      "roe": "ROE",
+      "t4": "T4",
+      "w2": "W2",
+      "availableShifts": "\u53ef\u7528\u73ed\u6b21",
+      "availableSlots": "\u53ef\u7528\u65f6\u6bb5",
+      "shiftManagement": "\u73ed\u6b21\u7ba1\u7406",
+      "teamActivityOverview": "\u56e2\u961f\u6d3b\u52a8\u6982\u89c8",
+      "masterCalendar": "\u4e3b\u65e5\u5386",
+      "candidateFunnel": "\u5019\u9009\u4eba\u6f0f\u6597",
+      "recruiterPerformance": "\u62db\u8058\u4eba\u5458\u7ee9\u6548",
+      "candidateSearch": "\u5019\u9009\u4eba\u641c\u7d22",
+      "feedbackNotes": "\u53cd\u9988\u4e0e\u5907\u6ce8",
+      "recruiterAvailability": "\u62db\u8058\u4eba\u5458\u53ef\u7528\u6027",
+      "recentBookings": "\u6700\u65b0\u9884\u7ea6"
+    },
+    "advanced": {
+      "heading": "\u9ad8\u7ea7\u7ba1\u7406",
+      "description": "\u914d\u7f6e\u670d\u52a1\u3001\u5458\u5de5\u4e0e\u6392\u73ed\u3002\u67e5\u770b\u9884\u7ea6\u3001\u5904\u7406\u6536\u8d39\u548c\u9000\u6b3e\uff0c\u5e76\u5728\u540c\u4e00\u9875\u9762\u6253\u5f00\u5206\u6790\u3002",
+      "quickActions": {
+        "payments": "\u6253\u5f00\u652f\u4ed8\u4e2d\u5fc3",
+        "analytics": "\u4f01\u4e1a\u5206\u6790\uff08\u5f39\u7a97\uff09"
+      },
+      "stripe": {
+        "title": "Stripe Connect",
+        "loading": "\u6b63\u5728\u68c0\u67e5 Stripe Connect \u72b6\u6001...",
+        "summaryCharges": "\u6536\u8d39\u5df2\u542f\u7528 \u2014 \u4ed8\u6b3e {{status}}",
+        "summaryDisabled": "Stripe Connect \u6536\u6b3e\u5df2\u7981\u7528",
+        "payouts": {
+          "enabled": "\u5df2\u542f\u7528",
+          "pending": "\u5f85\u5904\u7406"
+        },
+        "requirements": "\u5269\u4f59\u8981\u6c42\uff1a{{count}}",
+        "actions": {
+          "opening": "\u6b63\u5728\u6253\u5f00...",
+          "finishSetup": "\u5b8c\u6210 Stripe \u8bbe\u7f6e",
+          "openDashboard": "\u6253\u5f00 Stripe \u4eea\u8868\u76d8",
+          "refreshing": "\u6b63\u5728\u5237\u65b0...",
+          "resume": "\u7ee7\u7eed\u5f00\u6237\u6d41\u7a0b",
+          "newLink": "\u65b0\u7684\u5f00\u6237\u94fe\u63a5"
+        },
+        "errors": {
+          "noLink": "Stripe \u672a\u8fd4\u56de\u94fe\u63a5\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",
+          "generic": "\u65e0\u6cd5\u8fde\u63a5\u5230 Stripe Connect\u3002"
+        }
+      },
+      "panels": {
+        "services": "\u670d\u52a1",
+        "products": "\u4ea7\u54c1",
+        "productOrders": "\u4ea7\u54c1\u8ba2\u5355",
+        "assignServices": "\u670d\u52a1\u5206\u914d",
+        "promotions": "\u4fc3\u9500",
+        "campaigns": "\u8425\u9500\u6d3b\u52a8",
+        "addons": "\u9644\u52a0\u9879\u76ee",
+        "slots": "\u65f6\u6bb5",
+        "resources": "\u8d44\u6e90",
+        "employeeAvailability": "\u5458\u5de5\u53ef\u7528\u6027",
+        "shiftTemplates": "\u73ed\u6b21\u6a21\u677f",
+        "clientBookings": "\u5ba2\u6237\u9884\u7ea6",
+        "managerBookings": "\u7ecf\u7406\u9884\u7ea6",
+        "payments": "\u652f\u4ed8\u4e0e\u9000\u6b3e",
+        "analytics": "\u5206\u6790\uff08\u6982\u89c8\uff09"
+      },
+      "analyticsCard": {
+        "title": "\u5206\u6790\u6982\u89c8",
+        "description": "\u65e0\u9700\u79bb\u5f00\u6b64\u9875\u9762\u5373\u53ef\u6253\u5f00\u5b8c\u6574\u7684\u4f01\u4e1a\u5206\u6790\u3002",
+        "launch": "\u6253\u5f00\u4f01\u4e1a\u5206\u6790\uff08\u5f39\u7a97\uff09",
+        "openFullPage": "\u6253\u5f00\u5b8c\u6574\u9875\u9762"
+      },
+      "tabsHint": "\u9009\u62e9\u4e0a\u65b9\u4efb\u4e00\u6807\u7b7e\u4ee5\u5728\u5f39\u7a97\u4e2d\u6253\u5f00\u76f8\u5e94\u7684\u5de5\u4f5c\u533a\u3002\u5206\u6790\u540c\u6837\u4f1a\u4ee5\u5f39\u7a97\u5f62\u5f0f\u6253\u5f00\u3002",
+      "dialog": {
+        "analyticsTitle": "\u4f01\u4e1a\u5206\u6790",
+        "close": "\u5173\u95ed"
+      }
+    },
+    "service": {
+      "title": "\u670d\u52a1\u7ba1\u7406",
+      "buttonAdd": "\u65b0\u589e\u670d\u52a1",
+      "confirmDelete": "\u786e\u5b9a\u5220\u9664\u6b64\u670d\u52a1\uff1f",
+      "columns": {
+        "name": "\u540d\u79f0",
+        "category": "\u7c7b\u522b",
+        "duration": "\u5206\u949f",
+        "price": "\u4ef7\u683c ($)",
+        "actions": "\u64cd\u4f5c"
+      },
+      "dialog": {
+        "addTitle": "\u65b0\u589e\u670d\u52a1",
+        "editTitle": "\u7f16\u8f91\u670d\u52a1",
+        "name": "\u540d\u79f0",
+        "category": "\u7c7b\u522b",
+        "duration": "\u65f6\u957f\uff08\u5206\u949f\uff09",
+        "basePrice": "\u57fa\u7840\u4ef7\u683c ($)",
+        "description": "\u63cf\u8ff0",
+        "cancel": "\u53d6\u6d88",
+        "create": "\u521b\u5efa",
+        "update": "\u66f4\u65b0"
+      },
+      "messages": {
+        "loadError": "\u52a0\u8f7d\u670d\u52a1\u65f6\u51fa\u9519",
+        "added": "\u670d\u52a1\u5df2\u65b0\u589e",
+        "updated": "\u670d\u52a1\u5df2\u66f4\u65b0",
+        "saveFailed": "\u4fdd\u5b58\u5931\u8d25",
+        "deleted": "\u670d\u52a1\u5df2\u5220\u9664",
+        "deleteFailed": "\u5220\u9664\u5931\u8d25"
+      },
+      "table": {
+        "noRows": "\u6682\u65e0\u670d\u52a1"
+      }
+    },
+    "product": {
+      "title": "\u4ea7\u54c1\u7ba1\u7406",
+      "buttonAdd": "\u65b0\u589e\u4ea7\u54c1",
+      "columns": {
+        "sku": "SKU",
+        "name": "\u540d\u79f0",
+        "price": "\u4ef7\u683c",
+        "stock": "\u5e93\u5b58",
+        "actions": "\u64cd\u4f5c"
+      },
+      "filters": {
+        "active": "\u542f\u7528",
+        "inactive": "\u505c\u7528",
+        "inStock": "\u6709\u5e93\u5b58",
+        "outOfStock": "\u65e0\u5e93\u5b58"
+      },
+      "labels": {
+        "sku": "SKU",
+        "name": "\u540d\u79f0",
+        "description": "\u63cf\u8ff0",
+        "price": "\u552e\u4ef7",
+        "cost": "\u6210\u672c",
+        "qty": "\u5e93\u5b58\u6570\u91cf",
+        "track": "\u8ddf\u8e2a\u5e93\u5b58",
+        "visible": "\u5728\u7f51\u7ad9\u663e\u793a"
+      },
+      "dialog": {
+        "addTitle": "\u65b0\u589e\u4ea7\u54c1",
+        "editTitle": "\u7f16\u8f91\u4ea7\u54c1",
+        "cancel": "\u53d6\u6d88",
+        "save": "\u4fdd\u5b58",
+        "create": "\u521b\u5efa"
+      },
+      "images": {
+        "title": "\u4ea7\u54c1\u56fe\u7247",
+        "upload": "\u4e0a\u4f20\u56fe\u7247",
+        "uploading": "\u6b63\u5728\u4e0a\u4f20...",
+        "empty": "\u6682\u65e0\u56fe\u7247",
+        "close": "\u5173\u95ed"
+      },
+      "messages": {
+        "loadError": "\u65e0\u6cd5\u52a0\u8f7d\u4ea7\u54c1",
+        "added": "\u4ea7\u54c1\u5df2\u65b0\u589e",
+        "updated": "\u4ea7\u54c1\u5df2\u66f4\u65b0",
+        "deleted": "\u4ea7\u54c1\u5df2\u5220\u9664",
+        "saveFailed": "\u4fdd\u5b58\u5931\u8d25",
+        "deleteFailed": "\u5220\u9664\u5931\u8d25",
+        "uploadFailed": "\u4e0a\u4f20\u5931\u8d25",
+        "uploadSuccess": "\u56fe\u7247\u5df2\u4e0a\u4f20",
+        "removeFailed": "\u65e0\u6cd5\u5220\u9664\u56fe\u7247"
+      },
+      "table": {
+        "noRows": "\u6682\u65e0\u4ea7\u54c1"
+      }
+    },
+    "bookings": {
+      "title": "\u9884\u7ea6\u7ba1\u7406",
+      "filters": {
+        "heading": "\u7b5b\u9009\u5668",
+        "department": "\u90e8\u95e8",
+        "employee": "\u5458\u5de5",
+        "allDepartments": "\u5168\u90e8\u90e8\u95e8",
+        "allEmployees": "\u5168\u90e8\u5458\u5de5"
+      },
+      "columns": {
+        "id": "\u7f16\u53f7",
+        "client": "\u5ba2\u6237",
+        "service": "\u670d\u52a1",
+        "employee": "\u5458\u5de5",
+        "whenLocal": "\u65f6\u95f4\uff08\u672c\u5730\uff09",
+        "status": "\u72b6\u6001",
+        "payment": "\u4ed8\u6b3e",
+        "actions": "\u64cd\u4f5c"
+      },
+      "actions": {
+        "tooltip": "\u64cd\u4f5c",
+        "edit": "\u7f16\u8f91",
+        "cancel": "\u53d6\u6d88",
+        "markNoShow": "\u6807\u8bb0\u4e3a\u672a\u5230",
+        "markShow": "\u6807\u8bb0\u4e3a\u5df2\u5230",
+        "reassign": "\u91cd\u65b0\u6307\u6d3e",
+        "refund": "\u9000\u6b3e",
+        "payments": "\u4ed8\u6b3e\u8bb0\u5f55",
+        "chargeCard": "\u6263\u6b3e\uff08\u5df2\u4fdd\u5b58\u7684\u5361\uff09",
+        "chargeNoShow": "\u6263\u9664\u672a\u5230\u8d39\u7528",
+        "noShowFee": "\u672a\u5230\u8d39\u7528"
+      },
+      "snackbar": {
+        "cancelled": "\u9884\u7ea6\u5df2\u53d6\u6d88",
+        "noShow": "\u5df2\u6807\u8bb0\u4e3a\u672a\u5230",
+        "show": "\u5df2\u6807\u8bb0\u4e3a\u5230\u5e97",
+        "actionFailed": "\u64cd\u4f5c\u5931\u8d25",
+        "updatedPublished": "\u9884\u7ea6\u5df2\u66f4\u65b0\uff08\u53ef\u7528\u65f6\u6bb5\u5df2\u53d1\u5e03\uff09\u3002",
+        "updatedHidden": "\u9884\u7ea6\u5df2\u66f4\u65b0\uff08\u5728\u53ef\u7528\u65f6\u6bb5\u4e2d\u4e0d\u53ef\u89c1\uff09\u3002",
+        "updateFailed": "\u66f4\u65b0\u9884\u7ea6\u5931\u8d25\u3002",
+        "reassigned": "\u9884\u7ea6\u5df2\u91cd\u65b0\u6307\u6d3e",
+        "reassignFailed": "\u91cd\u65b0\u6307\u6d3e\u5931\u8d25",
+        "paymentsFailed": "\u65e0\u6cd5\u52a0\u8f7d\u4ed8\u6b3e\u8bb0\u5f55",
+        "loadError": "\u65e0\u6cd5\u52a0\u8f7d\u9884\u7ea6"
+      },
+      "saving": {
+        "updatingSchedule": "\u66f4\u65b0\u65e5\u7a0b",
+        "syncingCalendars": "\u540c\u6b65\u65e5\u5386",
+        "propagatingChanges": "\u5e94\u7528\u53d8\u66f4",
+        "notifyingClient": "\u901a\u77e5\u5ba2\u6237",
+        "reconfirmingAvailability": "\u91cd\u65b0\u786e\u8ba4\u53ef\u7528\u6027",
+        "finalizingUpdate": "\u5b8c\u6210\u66f4\u65b0"
+      },
+      "dialog": {
+        "edit": {
+          "title": "\u7f16\u8f91\u9884\u7ea6",
+          "date": "\u65e5\u671f\uff08\u672c\u5730\uff09",
+          "start": "\u5f00\u59cb\u65f6\u95f4\uff08\u672c\u5730\uff09",
+          "end": "\u7ed3\u675f\u65f6\u95f4\uff08\u672c\u5730\uff09",
+          "service": "\u670d\u52a1",
+          "loading": "\u6b63\u5728\u52a0\u8f7d\u670d\u52a1\u2026",
+          "note": "\u7ecf\u7406\u5907\u6ce8",
+          "info": "\u66f4\u6539\u670d\u52a1\u4f1a\u8bf7\u6c42\u540e\u53f0\u91cd\u65b0\u8ba1\u7b97\u65f6\u957f\u548c\u53ef\u7528\u6027\uff08auto_adjust=true\uff09\u3002\u5982\u6709\u51b2\u7a81\uff0c\u5c06\u8fd4\u56de\u9519\u8bef\u4e14\u4e0d\u4f1a\u4fdd\u5b58\u66f4\u6539\u3002",
+          "save": "\u4fdd\u5b58",
+          "close": "\u5173\u95ed",
+          "confirmOutsideAvailability": "\u6b64\u66f4\u6539\u8d85\u51fa\u4e86 {{timezone}} \u7684\u53ef\u7528\u65f6\u6bb5\uff08{{date}} {{start}}-{{end}}\uff09\u3002\n\n\u662f\u5426\u521b\u5efa\u8be5\u65f6\u6bb5\u7684\u53ef\u7528\u65f6\u95f4\u5e76\u4fdd\u5b58\uff1f",
+          "serviceFallback": "\u670d\u52a1 #{{id}}"
+        },
+        "reassign": {
+          "title": "\u91cd\u65b0\u6307\u6d3e\u9884\u7ea6",
+          "cancel": "\u53d6\u6d88",
+          "confirm": "\u91cd\u65b0\u6307\u6d3e"
+        },
+        "payments": {
+          "title": "\u4ed8\u6b3e\u8bb0\u5f55",
+          "empty": "\u6b64\u9884\u7ea6\u6682\u65e0\u4ed8\u6b3e\u3002",
+          "close": "\u5173\u95ed"
+        }
+      },
+      "connect": {
+        "checking": "\u6b63\u5728\u68c0\u67e5 Stripe Connect \u72b6\u6001\u2026",
+        "warning": "Stripe \u5165\u9a7b\u672a\u5b8c\u6210\u2014\u2014\u5728\u5b8c\u6210\u4e4b\u524d\uff0cStripe \u6258\u7ba1\u7684\u4ed8\u6b3e\u5df2\u7981\u7528\u3002",
+        "ready": {
+          "withPayouts": "Stripe Connect \u5c31\u7eea\u2014\u2014\u5df2\u542f\u7528\u6536\u6b3e\u548c\u4ed8\u6b3e\u3002",
+          "pending": "Stripe Connect \u5c31\u7eea\u2014\u2014\u5df2\u542f\u7528\u6536\u6b3e\uff1b\u4ed8\u6b3e\u5f85\u5904\u7406\u3002"
+        },
+        "buttons": {
+          "opening": "\u6253\u5f00\u4e2d\u2026",
+          "finish": "\u5b8c\u6210\u8bbe\u7f6e",
+          "refreshing": "\u5237\u65b0\u4e2d\u2026",
+          "resume": "\u7ee7\u7eed\u5165\u9a7b\u6d41\u7a0b",
+          "dashboard": "Stripe \u63a7\u5236\u53f0"
+        }
+      },
+      "table": {
+        "noRows": "\u6682\u65e0\u9884\u7ea6"
+      },
+      "paymentStatus": {
+        "paid": "\u5df2\u652f\u4ed8",
+        "card_on_file": "\u5df2\u4fdd\u5b58\u5361\u7247",
+        "pending": "\u7b49\u5f85\u4e2d",
+        "processing": "\u5904\u7406\u4e2d",
+        "partially_refunded": "\u90e8\u5206\u9000\u6b3e",
+        "refunded": "\u5df2\u9000\u6b3e",
+        "failed": "\u5931\u8d25",
+        "requires_payment_method": "\u9700\u9009\u62e9\u4ed8\u6b3e\u65b9\u5f0f",
+        "unpaid": "\u672a\u652f\u4ed8",
+        "succeeded": "\u6210\u529f",
+        "captured": "\u5df2\u6263\u6b3e",
+        "complete": "\u5b8c\u6210",
+        "unknown": "\u672a\u77e5"
+      },
+      "status": {
+        "booked": "\u5df2\u9884\u7ea6",
+        "confirmed": "\u5df2\u786e\u8ba4",
+        "cancelled": "\u5df2\u53d6\u6d88",
+        "no_show": "\u672a\u5230\u8bbf",
+        "pending": "\u7b49\u5f85\u4e2d",
+        "completed": "\u5df2\u5b8c\u6210",
+        "in_progress": "\u8fdb\u884c\u4e2d",
+        "refunded": "\u5df2\u9000\u6b3e",
+        "processing": "\u5904\u7406\u4e2d",
+        "draft": "\u8349\u7a3f",
+        "unknown": "\u672a\u77e5"
+      }
+    },
+    "visualBuilder": {
+      "pageStyle": {
+        "title": "\u9875\u9762\u6837\u5f0f",
+        "description": "\u8bbe\u7f6e\u6b64\u9875\u9762\u7684\u80cc\u666f\u3001\u5361\u7247\u548c\u6309\u94ae\u6837\u5f0f\u3002\uff08\u6587\u672c\u4e0e\u80cc\u666f\u56fe\u5728\u201c\u9875\u9762\u6837\u5f0f\u201d\u90e8\u5206\u7ba1\u7406\u3002\uff09",
+        "background": {
+          "heading": "\u80cc\u666f",
+          "color": "\u80cc\u666f\u989c\u8272",
+          "repeat": {
+            "noRepeat": "\u4e0d\u91cd\u590d",
+            "repeat": "\u91cd\u590d",
+            "repeatX": "\u6a2a\u5411\u91cd\u590d",
+            "repeatY": "\u7eb5\u5411\u91cd\u590d"
+          },
+          "size": {
+            "cover": "cover",
+            "contain": "contain",
+            "auto": "auto"
+          },
+          "position": {
+            "center": "\u5c45\u4e2d",
+            "top": "\u9876\u90e8",
+            "bottom": "\u5e95\u90e8",
+            "left": "\u5de6\u4fa7",
+            "right": "\u53f3\u4fa7"
+          },
+          "attachment": {
+            "scroll": "scroll",
+            "fixed": "fixed"
+          },
+          "overlayColor": "\u53e0\u52a0\u989c\u8272",
+          "overlayOpacity": "\u53e0\u52a0\u900f\u660e\u5ea6 (0-1)"
+        },
+        "card": {
+          "heading": "\u5361\u7247/\u5bb9\u5668\u6837\u5f0f",
+          "backgroundColor": "\u5361\u7247\u80cc\u666f\u989c\u8272",
+          "opacity": "\u5361\u7247\u900f\u660e\u5ea6 (0-1)",
+          "radius": "\u5361\u7247\u5706\u89d2 (px)",
+          "blur": "\u5361\u7247\u6a21\u7cca (px)",
+          "shadow": "\u5361\u7247\u9634\u5f71 (CSS)",
+          "shadowExample": "\u793a\u4f8b\uff1a0 8px 32px rgba(0,0,0,.12)"
+        },
+        "hero": {
+          "heading": "\u82f1\u96c4\u533a\u6807\u9898\u6548\u679c",
+          "shadow": "\u6807\u9898\u9634\u5f71 (CSS)"
+        },
+        "buttons": {
+          "heading": "\u6309\u94ae",
+          "background": "\u6309\u94ae\u989c\u8272\uff08\u80cc\u666f\uff09",
+          "textColor": "\u6309\u94ae\u6587\u5b57\u989c\u8272",
+          "radius": "\u6309\u94ae\u5706\u89d2 (px)",
+          "radiusPlaceholder": "10"
+        },
+        "applyAllLabel": "\u4fdd\u5b58\u65f6\u5c06\u6b64\u9875\u9762\u6837\u5f0f\u5e94\u7528\u5230\u6240\u6709\u9875\u9762",
+        "applyNow": "\u7acb\u5373\u5e94\u7528",
+        "openAdvanced": "\u6253\u5f00\u9ad8\u7ea7\u9875\u9762\u6837\u5f0f\u7f16\u8f91\u5668",
+        "applyAll": {
+          "none": "\u6ca1\u6709\u53ef\u5e94\u7528\u7684\u5185\u5bb9\uff1a\u8bf7\u5148\u6dfb\u52a0\u6216\u7f16\u8f91\u9875\u9762\u6837\u5f0f\u3002",
+          "success": "\u6b64\u9875\u9762\u6837\u5f0f\u5df2\u5e94\u7528\u5230\u6240\u6709\u9875\u9762\u3002",
+          "failed": "\u65e0\u6cd5\u5c06\u6837\u5f0f\u5e94\u7528\u5230\u6240\u6709\u9875\u9762\u3002",
+          "tooltip": "\u5c06\u6b64\u9875\u9762\u7684\u6837\u5f0f\uff08\u80cc\u666f\u3001\u989c\u8272\u3001\u6309\u94ae\uff09\u590d\u5236\u5230\u6240\u6709\u9875\u9762",
+          "button": "\u5c06\u9875\u9762\u6837\u5f0f\u5e94\u7528\u5230\u6240\u6709\u9875\u9762"
+        }
+      },
+      "load": {
+        "error": "\u65e0\u6cd5\u52a0\u8f7d\u7ad9\u70b9\u6570\u636e\u3002",
+        "unauthorized": "\u65e0\u6743\u8bbf\u95ee\u3002\u8bf7\u4ee5\u7ba1\u7406\u5458\u8eab\u4efd\u767b\u5f55\u540e\u518d\u7f16\u8f91\u7f51\u7ad9\u3002",
+        "starterCreated": "\u5df2\u521b\u5efa\u521d\u59cb\u9875\u9762\u3002",
+        "autoprovisionFailed": "\u65e0\u6cd5\u81ea\u52a8\u521b\u5efa\u9875\u9762\uff0c\u8bf7\u91cd\u8bd5\u3002",
+        "loading": "?????????\u2026"
+      },
+      "auth": {
+        "title": "\u767b\u5f55\u540e\u5373\u53ef\u7f16\u8f91\u6b64\u7ad9\u70b9",
+        "body": "\u5f53\u524d\u4f1a\u8bdd\u6ca1\u6709\u7ba1\u7406\u8be5\u516c\u53f8\u7684\u6743\u9650\uff08HTTP {{code}}\uff09\u3002",
+        "login": "\u524d\u5f80\u767b\u5f55",
+        "tip": "??:????????,???????????:<code>localStorage.setItem('company_id','{{companyId}}')</code>",
+        "switcherHint": "\u6216\u8f93\u5165\u8981\u7ba1\u7406\u7684\u516c\u53f8 ID\uff1a",
+        "switcherPlaceholder": "\u516c\u53f8 ID\uff08\u4f8b\u5982 2\uff09",
+        "switcherApply": "\u4f7f\u7528\u6b64\u516c\u53f8"
+      },
+      "shell": {
+        "title": "Visual Site Builder",
+        "description": "Theme-driven editor with reusable sections"
+      },
+      "controls": {
+        "title": "Controls",
+        "description": "Manage theme, history, mode, and publishing",
+        "tooltips": {
+          "guide": "Builder guide",
+          "save": "Save this page (but don\u2019t publish it yet)",
+          "publish": "Publish your site live (uses the last saved content)",
+          "themeOpen": "Open theme designer",
+          "themeSignIn": "Sign in as a manager first"
+        },
+        "buttons": {
+          "chooseTemplate": "Choose another template",
+          "layoutLab": "Layout Tuning Lab",
+          "importServer": "Import Lab Settings (Server)",
+          "importSettings": "Import Lab Settings",
+          "importAll": "Import Lab Settings (All)",
+          "refresh": "Refresh",
+          "save": "Save",
+          "publish": "Publish",
+          "theme": "Theme",
+          "undo": "Undo",
+          "redo": "Redo"
+        },
+        "toggles": {
+          "simpleMode": "Simple mode",
+          "fullPreview": "Full-page preview",
+          "dock": "Docked",
+          "inline": "Inline",
+          "float": "Float"
+        }
+      },
+      "status": {
+        "title": "Status"
+      },
+      "pages": {
+        "title": "\u9875\u9762",
+        "settings": {
+          "title": "\u9875\u9762\u8bbe\u7f6e",
+          "save": "\u4fdd\u5b58",
+          "reload": "\u91cd\u65b0\u52a0\u8f7d",
+          "fields": {
+            "slug": "Slug",
+            "slugHint": "home\u3001services\u3001contact",
+            "pageTitle": "\u9875\u9762\u6807\u9898",
+            "menuTitle": "\u83dc\u5355\u6807\u9898",
+            "sortOrder": "\u6392\u5e8f"
+          },
+          "layout": {
+            "label": "\u5e03\u5c40",
+            "boxed": "\u5c45\u4e2d\uff08\u56fa\u5b9a\u5bbd\u5ea6\uff09",
+            "full": "\u5168\u5bbd"
+          },
+          "sectionSpacing": {
+            "label": "\u533a\u5757\u95f4\u8ddd",
+            "hint": "1 \u4e2a\u5355\u4f4d\u7ea6\u7b49\u4e8e 8 \u50cf\u7d20\u3002\u4f8b\u5982\u9009\u62e9 6 \u65f6\uff0c\u4e24\u6bb5\u4e4b\u95f4\u5927\u7ea6\u662f 48px\u3002"
+          },
+          "toggles": {
+            "showInMenu": "\u5728\u83dc\u5355\u4e2d\u663e\u793a",
+            "published": "\u5df2\u53d1\u5e03",
+            "homepage": "\u8bbe\u4e3a\u9996\u9875",
+            "autosave": "\u81ea\u52a8\u4fdd\u5b58"
+          }
+        }
+      },
+      "sections": {
+        "title": "\u677f\u5757",
+        "description": "\u9009\u62e9\u8981\u7f16\u8f91\u7684\u677f\u5757\uff0c\u6216\u5728\u4e0b\u65b9\u65b0\u589e\u533a\u5757",
+        "tooltip": "\u70b9\u51fb\u677f\u5757\u5373\u53ef\u7f16\u8f91\u5176\u5185\u5bb9",
+        "add": {
+          "hero": "Add hero",
+          "text": "Add text",
+          "gallery": "Add gallery",
+          "textFree": "Add free text (drag)",
+          "carousel": "Add carousel",
+          "faq": "Add FAQ",
+          "services": "Add services",
+          "contact": "Add contact",
+          "contactForm": "Add contact form",
+          "footer": "Add footer"
+        },
+        "hint": "Select a section to edit (or add a Hero).",
+        "types": {
+          "hero": "\u9996\u5c4f Hero",
+          "text": "\u6587\u672c",
+          "gallery": "\u56fe\u5e93",
+          "textFree": "\u81ea\u7531\u6587\u672c",
+          "galleryCarousel": "\u56fe\u5e93\uff08\u8f6e\u64ad\uff09",
+          "faq": "\u5e38\u89c1\u95ee\u9898",
+          "serviceGrid": "\u670d\u52a1\u7f51\u683c",
+          "contact": "\u8054\u7cfb\u4fe1\u606f",
+          "contactForm": "\u8054\u7cfb\u8868\u5355",
+          "footer": "\u9875\u811a",
+          "pricingTable": "\u4ef7\u683c\u8868",
+          "bookingCtaBar": "\u9884\u7ea6 CTA \u680f",
+          "testimonials": "\u7528\u6237\u8bc4\u4ef7"
+        }
+      },
+      "canvas": {
+        "title": "Canvas",
+        "description": {
+          "block": "Block-by-block preview",
+          "full": "Full page preview"
+        },
+        "toggles": {
+          "fullPage": "Full page",
+          "titles": {
+            "short": "Short height",
+            "medium": "Medium height",
+            "tall": "Tall height",
+            "auto": "Auto height"
+          },
+          "height": {
+            "short": "S",
+            "medium": "M",
+            "tall": "L",
+            "auto": "Auto"
+          }
+        },
+        "controls": {
+          "moveUp": "Move up",
+          "moveDown": "Move down",
+          "duplicate": "Duplicate",
+          "delete": "Delete"
+        },
+        "empty": {
+          "title": "Get started",
+          "description": "No sections yet",
+          "body": "Add a Hero to get started."
+        },
+        "drag": {
+          "spaceAbove": "Drag to increase/decrease space above this section",
+          "spaceBelow": "Drag to increase/decrease space below this section"
+        }
+      },
+      "inspector": {
+        "title": "\u68c0\u67e5\u5668",
+        "description": "\u5185\u5bb9\u4e0e\u9ad8\u7ea7\u5c5e\u6027",
+        "design": "\u8bbe\u8ba1\uff08\u4e3b\u9898\uff09",
+        "notMapped": "\u6b64\u533a\u5757\u7c7b\u578b\u6682\u672a\u63d0\u4f9b\u53ef\u89c6\u5316\u7f16\u8f91\u5668\uff0c\u53ef\u4ee5\u5728\u4e0b\u65b9\u76f4\u63a5\u7f16\u8f91\u5c5e\u6027\u3002",
+        "sizeSpacing": "\u5c3a\u5bf8\u4e0e\u95f4\u8ddd",
+        "resetTooltip": "\u6062\u590d\u4e3a\u6b64\u533a\u5757\u7684\u9ed8\u8ba4\u8bbe\u7f6e",
+        "reset": "\u91cd\u7f6e",
+        "sectionPadding": "\u533a\u5757\u5185\u8fb9\u8ddd\uff08Y\uff09",
+        "spaceAbove": "\u4e0a\u65b9\u95f4\u8ddd\uff08\u4e3b\u9898\u5355\u4f4d\uff09",
+        "spaceBelow": "\u4e0b\u65b9\u95f4\u8ddd\uff08\u4e3b\u9898\u5355\u4f4d\uff09",
+        "tip": "\u63d0\u793a\uff1a1 \u4e2a\u5355\u4f4d\u7b49\u4e8e\u4e3b\u9898\u7684\u95f4\u8ddd\u6b65\u957f\uff08\u901a\u5e38\u4e3a 8 \u50cf\u7d20\uff09",
+        "advanced": "Advanced props",
+        "rawProps": {
+          "label": "\u9ad8\u7ea7\uff1a\u539f\u59cb JSON \u5c5e\u6027",
+          "invalid": "JSON \u65e0\u6548",
+          "apply": "\u5e94\u7528",
+          "reset": "\u91cd\u7f6e"
+        },
+        "common": {
+          "title": "\u533a\u5757\u8bbe\u7f6e",
+          "sectionId": "\u533a\u5757 ID\uff08\u53ef\u9009\uff09",
+          "sectionIdHint": "\u7528\u4e8e\u951a\u70b9 / \u6df1\u5ea6\u94fe\u63a5",
+          "backgroundColor": "\u80cc\u666f\u989c\u8272",
+          "paddingY": "\u5782\u76f4\u5185\u8fb9\u8ddd (px)",
+          "maxWidth": "\u6700\u5927\u5bbd\u5ea6",
+          "maxWidthHint": "\u4f8b\u5982 sm | md | lg | 1200px"
+        },
+        "imageField": {
+          "placeholder": "https://... \u6216 /media/file.jpg",
+          "drop": "\u62d6\u62fd\u56fe\u7247\u6216\u70b9\u51fb\u4e0a\u4f20",
+          "error": "\u56fe\u7247\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u94fe\u63a5\u6216 CORS/CSP \u8bbe\u7f6e\u3002",
+          "upload": "\u4e0a\u4f20",
+          "clear": "\u6e05\u9664",
+          "uploadFailed": "\u56fe\u7247\u4e0a\u4f20\u5931\u8d25\u3002"
+        },
+        "emptySelection": "\u8bf7\u9009\u62e9\u4e00\u4e2a\u533a\u5757\u4ee5\u7f16\u8f91\u5185\u5bb9\u3002"
+      },
+      "messages": {
+        "navSaved": "Navigation settings saved",
+        "saved": "Saved",
+        "created": "Created",
+        "importedPreset": "Imported Lab preset from server. Remember to Save/Publish.",
+        "sitePublished": "Site published with your latest edits",
+        "autosaved": "Autosaved",
+        "pageSettingsSaved": "Page settings saved",
+        "importedLayoutLab": "Imported settings from Layout Tuning Lab (remember to Save/Publish).",
+        "importedAllLab": "Imported Lab settings to page + all sections. Remember to Save/Publish.",
+        "themeSaved": "Theme saved."
+      },
+      "errors": {
+        "savePage": "Failed to save page.",
+        "signIn": "Sign in as a manager first.",
+        "noPreset": "No Lab preset saved on server.",
+        "publishFailed": "Publish failed: {{reason}}",
+        "unknown": "unknown error",
+        "savePageSettings": "Failed to save page settings.",
+        "importSettings": "Failed to import settings.",
+        "noLayoutSettings": "No saved Layout Lab settings found.",
+        "importLabSettings": "Failed to import lab settings.",
+        "noSavedLabSettings": "No saved settings found in Layout Tuning Lab.",
+        "saveTheme": "Failed to save theme.",
+        "importPreset": "Failed to import Lab preset from server.",
+        "importPresetDetail": "Failed to import Lab preset from server: {{detail}}"
+      },
+      "drawer": {
+        "themeDesignerTitle": "Theme Designer"
+      },
+      "themeDesigner": {
+        "title": "\u4e3b\u9898\u8bbe\u8ba1\u5668",
+        "fields": {
+          "primary": "\u4e3b\u8272",
+          "secondary": "\u8f85\u8272",
+          "borderRadius": "\u5706\u89d2",
+          "fontFamily": "\u5b57\u4f53\u65cf",
+          "h1Weight": "H1 \u5b57\u91cd"
+        },
+        "buttons": {
+          "save": "\u4fdd\u5b58\u8986\u76d6\u914d\u7f6e"
+        },
+        "labels": {
+          "json": "\u8986\u76d6\u914d\u7f6e JSON"
+        },
+        "alerts": {
+          "saved": "\u4e3b\u9898\u914d\u7f6e\u5df2\u4fdd\u5b58\u3002",
+          "genericFailure": "\u4fdd\u5b58\u4e3b\u9898\u5931\u8d25\u3002",
+          "saveFailed": "\u4fdd\u5b58\u5931\u8d25\uff1a{{reason}}"
+        },
+        "previewTitle": "\u5b9e\u65f6\u9884\u89c8"
+      },
+      "schemas": {
+        "pageStyle": {
+          "note": "\u63d0\u793a\uff1a\u8bf7\u5c06\u6b64\u533a\u5757\u653e\u5728\u9875\u9762\u6700\u524d\u9762\uff0c\u5b83\u4f1a\u8bbe\u7f6e\u6574\u9875\u80cc\u666f\u989c\u8272\u6216\u56fe\u50cf\uff0c\u5e76\u53ef\u9009\u6dfb\u52a0\u906e\u7f69\u5c42\u3002",
+          "fields": {
+            "backgroundColor": "\u80cc\u666f\u989c\u8272",
+            "backgroundImage": "\u80cc\u666f\u56fe\u7247",
+            "backgroundRepeat": "\u91cd\u590d\u65b9\u5f0f",
+            "backgroundSize": "\u5c3a\u5bf8",
+            "backgroundPosition": "\u4f4d\u7f6e",
+            "backgroundAttachment": "\u9644\u7740\u65b9\u5f0f",
+            "overlayColor": "\u906e\u7f69\u989c\u8272",
+            "overlayOpacity": "\u906e\u7f69\u900f\u660e\u5ea6 (0-1)",
+            "headingColor": "\u6807\u9898\u989c\u8272",
+            "bodyColor": "\u6b63\u6587\u989c\u8272",
+            "linkColor": "\u94fe\u63a5\u989c\u8272",
+            "headingFont": "\u6807\u9898\u5b57\u4f53\uff08\u53ef\u9009\uff09",
+            "bodyFont": "\u6b63\u6587\u5b57\u4f53\uff08\u53ef\u9009\uff09",
+            "heroHeadingShadow": "Hero \u6807\u9898\u6587\u5b57\u9634\u5f71 (CSS)",
+            "cardBg": "\u5361\u7247\u80cc\u666f\uff08CSS \u989c\u8272\u6216 rgba\uff09",
+            "cardRadius": "\u5361\u7247\u5706\u89d2 (px)",
+            "cardBlur": "\u5361\u7247\u6a21\u7cca (px)",
+            "cardShadow": "\u5361\u7247\u9634\u5f71 (CSS)",
+            "btnBg": "\u6309\u94ae\u80cc\u666f (CSS)",
+            "btnColor": "\u6309\u94ae\u6587\u5b57\u989c\u8272 (CSS)",
+            "btnRadius": "\u6309\u94ae\u5706\u89d2 (px)"
+          }
+        },
+        "array": {
+          "addValue": "\u6dfb\u52a0",
+          "addItem": "\u6dfb\u52a0\u6761\u76ee"
+        },
+        "shared": {
+          "contentAlignment": "\u5185\u5bb9\u5bf9\u9f50\u65b9\u5f0f",
+          "innerContentMaxWidth": "\u5185\u90e8\u5185\u5bb9\u6700\u5927\u5bbd\u5ea6",
+          "maxWidth": "\u6700\u5927\u5bbd\u5ea6",
+          "innerGutter": "\u5185\u90e8\u95f4\u8ddd (px)"
+        },
+        "bookingCtaBar": {
+          "title": "\u9884\u7ea6 CTA \u680f",
+          "fields": {
+            "text": "\u6587\u672c",
+            "buttonText": "\u6309\u94ae\u6587\u672c",
+            "buttonLink": "\u6309\u94ae\u94fe\u63a5 (URL)"
+          }
+        },
+        "testimonials": {
+          "title": "\u7528\u6237\u8bc4\u4ef7",
+          "items": "\u8bc4\u4ef7\u5217\u8868",
+          "fields": {
+            "title": "\u6807\u9898",
+            "avatar": "\u5934\u50cf\uff08\u53ef\u9009\uff09",
+            "quote": "\u5f15\u7528",
+            "author": "\u4f5c\u8005"
+          }
+        },
+        "pricingTable": {
+          "fields": {
+            "title": "\u6807\u9898",
+            "ribbon": "\u89d2\u6807\uff08\u53ef\u9009\uff09",
+            "name": "\u540d\u79f0",
+            "price": "\u4ef7\u683c\uff08\u4f8b\u5982 \u00a5450\uff09",
+            "features": "\u529f\u80fd\u5217\u8868",
+            "ctaText": "CTA \u6587\u6848",
+            "ctaLink": "CTA \u94fe\u63a5 (URL)",
+            "featured": "\u7a81\u51fa\u663e\u793a\u6b64\u65b9\u6848"
+          },
+          "plans": "\u65b9\u6848"
+        },
+        "faq": {
+          "fields": {
+            "title": "\u6807\u9898"
+          }
+        }
+      }
+    },
+    "employeeProfiles": {
+      "title": "\u5458\u5de5\u6863\u6848",
+      "subtitle": "\u7ba1\u7406\u5458\u5de5\u8d44\u6599\u3001\u85aa\u8d44\u548c\u8054\u7cfb\u65b9\u5f0f\u3002",
+      "filters": {
+        "department": "\u6309\u90e8\u95e8\u7b5b\u9009",
+        "allDepartments": "\u6240\u6709\u90e8\u95e8",
+        "employee": "\u9009\u62e9\u5458\u5de5"
+      },
+      "pagination": {
+        "summary": "\u7b2c {{page}} \u9875\uff0c\u5171 {{total}} \u9875"
+      },
+      "form": {
+        "fields": {
+          "firstName": "\u540d",
+          "lastName": "\u59d3",
+          "email": "\u7535\u5b50\u90ae\u4ef6",
+          "phone": "\u7535\u8bdd",
+          "department": "\u90e8\u95e8",
+          "hourlyRate": "\u65f6\u85aa\uff08\u7f8e\u5143\uff09",
+          "rrspContribution": "RRSP \u4e2a\u4eba\u7f34\u8d39 (%)",
+          "rrspMatch": "RRSP \u96c7\u4e3b\u914d\u6bd4 (%)",
+          "retirementContribution": "401(k) \u7f34\u8d39 (%)",
+          "retirementMatch": "401(k) \u96c7\u4e3b\u914d\u6bd4 (%)",
+          "insuranceNumber": "\u4fdd\u9669\u53f7\u7801",
+          "sin": "\u793e\u4f1a\u4fdd\u9669\u53f7 (SIN)",
+          "hireDate": "\u5165\u804c\u65e5\u671f",
+          "addressStreet": "\u8857\u9053\u5730\u5740",
+          "country": "\u56fd\u5bb6",
+          "province": "\u7701/\u5dde",
+          "city": "\u57ce\u5e02",
+          "postalCodeCa": "\u90ae\u653f\u7f16\u7801 (A1A 1A1)",
+          "postalCodeUs": "\u90ae\u7f16 / ZIP"
+        },
+        "country": {
+          "options": {
+            "canada": "\u52a0\u62ff\u5927",
+            "usa": "\u7f8e\u56fd"
+          }
+        },
+        "hints": {
+          "postalTitleCa": "\u683c\u5f0f\uff1aA1A 1A1",
+          "postalTitleUs": "\u683c\u5f0f\uff1a12345 \u6216 12345-6789",
+          "postalHelperCa": "\u683c\u5f0f\uff1aA1A 1A1\uff08\u5927\u5199\u5b57\u6bcd\u5e76\u5305\u542b\u7a7a\u683c\uff09",
+          "postalHelperUs": "\u683c\u5f0f\uff1a12345 \u6216 12345-6789"
+        }
+      },
+      "actions": {
+        "save": "\u4fdd\u5b58\u6863\u6848"
+      },
+      "messages": {
+        "recruiterLoadFailed": "\u65e0\u6cd5\u52a0\u8f7d\u5458\u5de5\u5217\u8868\u3002",
+        "profileLoadFailed": "\u65e0\u6cd5\u52a0\u8f7d\u5458\u5de5\u6863\u6848\u3002",
+        "updateSuccess": "\u6863\u6848\u5df2\u6210\u529f\u66f4\u65b0\u3002",
+        "updateFailed": "\u66f4\u65b0\u5458\u5de5\u4fe1\u606f\u5931\u8d25\u3002"
+      }
+    },
+    "companyProfile": {
+      "title": "\u516c\u53f8\u6863\u6848",
+      "subtitle": "\u7ba1\u7406\u516c\u53f8\u4fe1\u606f\u3001\u54c1\u724c\u5f62\u8c61\u548c\u8054\u7cfb\u65b9\u5f0f\u3002",
+      "sections": {
+        "locationSettings": "\u4f4d\u7f6e\u8bbe\u7f6e",
+        "paymentsTax": "\u652f\u4ed8\u4e0e\u7a0e\u52a1"
+      },
+      "location": {
+        "country": {
+          "label": "\u56fd\u5bb6\u4ee3\u7801",
+          "options": {
+            "ca": "\u52a0\u62ff\u5927",
+            "qc": "\u52a0\u62ff\u5927 - \u9b41\u5317\u514b\u7701 (QST)",
+            "us": "\u7f8e\u56fd",
+            "other": "\u5176\u4ed6"
+          }
+        },
+        "province": {
+          "label": "\u7701/\u5dde\u4ee3\u7801"
+        },
+        "provinceGroup": {
+          "us": "\u7f8e\u56fd",
+          "ca": "\u52a0\u62ff\u5927",
+          "qc": "\u9b41\u5317\u514b",
+          "other": "\u5176\u4ed6"
+        }
+      },
+      "form": {
+        "fields": {
+          "companyName": "\u516c\u53f8\u540d\u79f0",
+          "businessNumber": "\u4f01\u4e1a\u7f16\u53f7 (BN)",
+          "employerNumber": "\u96c7\u4e3b\u7f16\u53f7",
+          "federalEmployerId": "\u8054\u90a6\u96c7\u4e3b\u7f16\u53f7 (EIN)",
+          "payrollProgram": "\u85aa\u8d44\u9879\u76ee\uff08\u4f8b\u5982 RP0001\uff09",
+          "craContactPerson": "CRA \u8054\u7cfb\u4eba",
+          "craContactPhone": "CRA \u8054\u7cfb\u7535\u8bdd",
+          "craContactEmail": "CRA \u8054\u7cfb\u90ae\u7bb1",
+          "naicsCode": "NAICS \u884c\u4e1a\u4ee3\u7801",
+          "email": "\u7535\u5b50\u90ae\u4ef6",
+          "phone": "\u7535\u8bdd",
+          "website": "\u7f51\u7ad9",
+          "streetAddress": "\u8857\u9053\u5730\u5740",
+          "country": "\u56fd\u5bb6",
+          "city": "\u57ce\u5e02",
+          "postalCodeCa": "\u90ae\u653f\u7f16\u7801 (A1A 1A1)",
+          "postalCodeUs": "\u90ae\u7f16\uff08\u4f8b\u5982 12345 \u6216 12345-6789\uff09"
+        }
+      },
+      "messages": {
+        "departmentsLoadFailed": "\u65e0\u6cd5\u52a0\u8f7d\u90e8\u95e8\u3002",
+        "departmentNameRequired": "\u90e8\u95e8\u540d\u79f0\u4e3a\u5fc5\u586b\u9879\u3002",
+        "departmentCreated": "\u90e8\u95e8\u5df2\u521b\u5efa\u3002",
+        "departmentCreateFailed": "\u521b\u5efa\u90e8\u95e8\u5931\u8d25\u3002",
+        "profileLoadFailed": "\u65e0\u6cd5\u52a0\u8f7d\u516c\u53f8\u6863\u6848\u3002",
+        "slugUpdated": "\u516c\u53f8\u77ed\u94fe\u5df2\u66f4\u65b0\u3002",
+        "slugUpdateFailed": "\u66f4\u65b0\u516c\u53f8\u77ed\u94fe\u5931\u8d25\u3002",
+        "nameEmailRequired": "\u540d\u79f0\u548c\u7535\u5b50\u90ae\u4ef6\u4e3a\u5fc5\u586b\u9879\u3002",
+        "saveSuccess": "\u516c\u53f8\u6863\u6848\u5df2\u6210\u529f\u4fdd\u5b58\u3002",
+        "saveFailed": "\u4fdd\u5b58\u516c\u53f8\u6863\u6848\u5931\u8d25\u3002"
+      },
+      "payments": {
+        "stripePayments": "Stripe \u652f\u4ed8",
+        "cardsOnFile": "\u4fdd\u5b58\u7684\u94f6\u884c\u5361",
+        "pricesIncludeTax": "\u4ef7\u683c\u542b\u7a0e",
+        "chargeCurrencyMode": "\u6263\u6b3e\u5e01\u79cd\u6a21\u5f0f",
+        "taxCountry": "\u7a0e\u52a1\u56fd\u5bb6",
+        "taxRegion": "\u7a0e\u52a1\u5730\u533a",
+        "displayCurrency": "\u663e\u793a\u5e01\u79cd",
+        "allowed": "\u5141\u8bb8",
+        "notSet": "\u672a\u8bbe\u7f6e",
+        "manageHint": "\u8bf7\u5728 Checkout Pro & Payments \u9009\u9879\u5361\u7ba1\u7406 Stripe \u652f\u4ed8\u3001\u7a0e\u52a1\u3001\u663e\u793a\u5e01\u79cd\u548c\u54c1\u724c\u6807\u8bc6\u3002",
+        "chargeModes": {
+          "platformFixed": "\u5e73\u53f0\u56fa\u5b9a\uff08\u7f8e\u5143\uff09",
+          "localized": "\u672c\u5730\u5316\uff08\u7f8e\u56fd\u7528 USD\uff0c\u52a0\u62ff\u5927\u7528 CAD\uff09"
+        },
+        "taxCountries": {
+          "us": "\u7f8e\u56fd",
+          "ca": "\u52a0\u62ff\u5927",
+          "qc": "\u52a0\u62ff\u5927 - \u9b41\u5317\u514b\u7701 (QST)"
+        },
+        "stripeTax": {
+          "enabledIntro": "Stripe Tax \u4f1a\u6839\u636e\u60a8\u7684\u6ce8\u518c\u4fe1\u606f\u8ba1\u7b97\u6b63\u786e\u7a0e\u7387\u3002\u524d\u5f80",
+          "dashboardLink": "Stripe Tax \u63a7\u5236\u53f0",
+          "enablePrompt": "\u542f\u7528 Stripe \u652f\u4ed8\uff0c\u8ba9\u5ba2\u6237\u53ef\u4ee5\u5728\u7ebf\u4ed8\u6b3e\u5e76\u81ea\u52a8\u5e94\u7528\u6b63\u786e\u7a0e\u7387\u3002"
+        }
+      },
+      "public": {
+        "copyUrl": "\u590d\u5236\u94fe\u63a5",
+        "openViewer": "\u6253\u5f00\u9884\u89c8",
+        "openEditor": "\u6253\u5f00\u7f16\u8f91\u5668",
+        "services": "\u670d\u52a1",
+        "reviews": "\u8bc4\u8bba",
+        "checkPage": "\u68c0\u67e5\u516c\u5171\u9875\u9762",
+        "checking": "\u6b63\u5728\u68c0\u67e5...",
+        "setSlugFirst": "\u8bf7\u5148\u8bbe\u7f6e\u77ed\u94fe\u3002",
+        "success": "\u516c\u5171\u9875\u9762\u53ef\u8bbf\u95ee\u3002",
+        "notFound": "\u672a\u627e\u5230\u516c\u5171\u9875\u9762\uff0c\u8bf7\u786e\u8ba4\u77ed\u94fe\u6b63\u786e\u4e14\u5df2\u53d1\u5e03\u3002",
+        "setSlugHint": {
+          "prefix": "\u8bbe\u7f6e\u77ed\u94fe\u4ee5\u542f\u7528\u516c\u5171\u7ad9\u70b9\uff08\u4f8b\u5982",
+          "suffix": "\uff09\u3002"
+        }
+      },
+      "branding": {
+        "currentLogo": "\u5f53\u524d\u5fbd\u6807"
+      },
+      "actions": {
+        "manageStripeSettings": "\u7ba1\u7406 Stripe \u652f\u4ed8\u8bbe\u7f6e",
+        "save": "\u4fdd\u5b58\u516c\u53f8\u6863\u6848"
+      },
+      "departments": {
+        "title": "\u90e8\u95e8",
+        "fields": {
+          "name": "\u90e8\u95e8\u540d\u79f0",
+          "description": "\u63cf\u8ff0"
+        },
+        "actions": {
+          "add": "\u6dfb\u52a0"
+        },
+        "empty": "\u6682\u65e0\u90e8\u95e8\u3002"
+      }
+    },
+    "websiteSuite": {
+      "title": "\u7f51\u7ad9\u4e0e\u9875\u9762",
+      "subtitle": "\u642d\u5efa\u5bf9\u5916\u7f51\u7ad9\uff0c\u7ba1\u7406\u9875\u9762\u4e0e\u4e3b\u9898\uff0c\u8fde\u63a5\u81ea\u5b9a\u4e49\u57df\u540d\uff0c\u5e76\u53d1\u5e03\u6a21\u677f\u3002",
+      "tabs": {
+        "manager": {
+          "label": "\u7f51\u7ad9\u7ba1\u7406\u5668",
+          "dialogTitle": "\u7f51\u7ad9\u7ba1\u7406\u5668"
+        },
+        "editor": {
+          "label": "\u6253\u5f00\u7f16\u8f91\u5668",
+          "dialogTitle": "\u6253\u5f00\u7f16\u8f91\u5668"
+        },
+        "templates": {
+          "label": "\u7f51\u7ad9\u6a21\u677f",
+          "dialogTitle": "\u7f51\u7ad9\u6a21\u677f"
+        },
+        "builder": {
+          "label": "\u53ef\u89c6\u5316\u7ad9\u70b9\u6784\u5efa\u5668",
+          "dialogTitle": "\u53ef\u89c6\u5316\u7ad9\u70b9\u6784\u5efa\u5668"
+        }
+      }
+    }
+  },
+  "settings": {
+    "title": "\u5de5\u4f5c\u533a\u8bbe\u7f6e",
+    "description": "\u7edf\u4e00\u7684\u4e3b\u9898\u9a71\u52a8\u5e03\u5c40",
+    "toast": {
+      "workspaceSaved": "\u5de5\u4f5c\u533a\u8bbe\u7f6e\u5df2\u4fdd\u5b58\u3002"
+    },
+    "common": {
+      "saving": "\u6b63\u5728\u4fdd\u5b58...",
+      "saveError": "\u4fdd\u5b58\u5931\u8d25",
+      "copy": "\u590d\u5236",
+      "preview": "\u9884\u89c8",
+      "loading": "\u6b63\u5728\u52a0\u8f7d...",
+      "optional": "\u53ef\u9009",
+      "beta": "\u6d4b\u8bd5\u7248"
+    },
+    "tabs": {
+      "workspace": "\u5de5\u4f5c\u533a",
+      "embed": "\u5d4c\u5165",
+      "reviewsTips": "\u8bc4\u4ef7\u4e0e\u5c0f\u8d39",
+      "artistVisibility": "\u5458\u5de5\u53ef\u89c1\u6027",
+      "clientVideo": "\u5ba2\u6237\u89c6\u9891",
+      "checkout": "Checkout Pro \u4e0e\u4ed8\u6b3e"
+    },
+    "general": {
+      "title": "\u5e38\u89c4",
+      "description": "\u5de5\u4f5c\u533a\u7684\u57fa\u7840\u9996\u9009\u9879",
+      "actions": {
+        "save": "\u4fdd\u5b58\u8bbe\u7f6e"
+      },
+      "profession": {
+        "label": "\u884c\u4e1a\u7c7b\u522b",
+        "options": {
+          "hr": "\u4eba\u529b\u8d44\u6e90 / \u62db\u8058",
+          "salon": "\u6c99\u9f99 / \u6c34\u7597",
+          "clinic": "\u8bca\u6240 / \u533b\u7597",
+          "education": "\u6559\u80b2 / \u8f85\u5bfc",
+          "other": "\u5176\u4ed6"
+        }
+      },
+      "workspaceName": {
+        "label": "\u5de5\u4f5c\u533a\u540d\u79f0"
+      },
+      "language": {
+        "label": "\u8bed\u8a00",
+        "options": {
+          "en": "\u82f1\u8bed",
+          "fr": "\u6cd5\u8bed",
+          "es": "\u897f\u73ed\u7259\u8bed",
+          "de": "\u5fb7\u8bed",
+          "ar": "\u963f\u62c9\u4f2f\u8bed"
+        }
+      },
+      "theme": {
+        "label": "\u4e3b\u9898",
+        "options": {
+          "light": "\u6d45\u8272",
+          "dark": "\u6df1\u8272",
+          "blue": "\u84dd\u8272",
+          "pastel": "\u7c89\u5f69"
+        }
+      },
+      "primaryColor": {
+        "label": "\u4e3b\u8272",
+        "tooltip": "\u7528\u4e8e\u9884\u7ea6\u6309\u94ae\u548c\u5d4c\u5165\u5f0f\u5c0f\u90e8\u4ef6\u7684\u5f3a\u8c03\u8272"
+      }
+    },
+    "policy": {
+      "title": "\u53d6\u6d88\u4e0e\u6539\u671f\u7b56\u7565",
+      "description": "\u8fd9\u4e9b\u9650\u5236\u6709\u52a9\u4e8e\u51cf\u5c11\u4e34\u65f6\u723d\u7ea6",
+      "fields": {
+        "freeCancelWindow": "\u514d\u8d39\u53d6\u6d88\u65f6\u95f4\uff08\u5c0f\u65f6\uff09",
+        "maxCancels": "\u6bcf\u6708\u6700\u591a\u53d6\u6d88\u6b21\u6570",
+        "freeRescheduleWindow": "\u514d\u8d39\u6539\u671f\u65f6\u95f4\uff08\u5c0f\u65f6\uff09",
+        "maxReschedules": "\u6bcf\u6708\u6700\u591a\u6539\u671f\u6b21\u6570"
+      },
+      "actions": {
+        "save": "\u4fdd\u5b58\u66f4\u6539"
+      }
+    },
+    "embed": {
+      "title": "\u5c06\u9884\u7ea6\u6dfb\u52a0\u5230\u7f51\u7ad9",
+      "description": "\u590d\u5236\u4e0b\u9762\u7684\u4ee3\u7801\u6bb5\u5e76\u7c98\u8d34\u5230\u60a8\u7684\u7f51\u7ad9",
+      "choosePrompt": "\u9009\u62e9\u5728\u7f51\u7ad9\u4e0a\u7684\u663e\u793a\u65b9\u5f0f\uff1a",
+      "modes": {
+        "popup": "\u5f39\u7a97\u6309\u94ae",
+        "inline": "\u5185\u5d4c\u5757"
+      },
+      "snippetLabel": {
+        "popup": "\u811a\u672c\u4ee3\u7801\uff08\u7c98\u8d34\u5230\u9875\u9762\uff09",
+        "inline": "Iframe \u4ee3\u7801\uff08\u7c98\u8d34\u5230\u9875\u9762\uff09"
+      },
+      "previewTitle": "\u9884\u7ea6\u9884\u89c8",
+      "faq": {
+        "title": "\u5982\u4f55\u628a\u5b83\u6dfb\u52a0\u5230\u7f51\u7ad9\uff1f",
+        "subtitle": "\u5927\u591a\u6570\u7ba1\u7406\u5458\u4f1a\u9009\u62e9\u4ee5\u4e0b\u65b9\u6848\u4e4b\u4e00\uff1a",
+        "popup": "<strong>\u5f39\u7a97\u6309\u94ae\uff08\u811a\u672c\uff09</strong> - \u663e\u793a <em>\u201c\u7acb\u5373\u9884\u7ea6\u201d</em> \u6309\u94ae\u3002\u70b9\u51fb\u540e\u65e5\u5386\u5c06\u4ee5\u5f39\u7a97\u65b9\u5f0f\u6253\u5f00\u3002<em>\u9002\u7528\u4e8e\u652f\u6301\u63d2\u5165\u811a\u672c\u7684\u7f51\u7ad9\u6784\u5efa\u5668</em>\u3002",
+        "inline": "<strong>\u5185\u5d4c iframe</strong> - \u5728\u9875\u9762\u4e0a\u76f4\u63a5\u663e\u793a\u5b8c\u6574\u7684\u9884\u7ea6\u9875\u9762\u3002<em>\u9002\u7528\u4e8e Wix\u3001WordPress\u3001Squarespace\u3001Webflow \u7b49\u6240\u6709\u5e73\u53f0</em>\u3002"
+      },
+      "platforms": {
+        "wix": {
+          "title": "Wix",
+          "description": "\u4f7f\u7528 <bold>\u201cAdd -> Embed -> Embed a Site\u201d</bold> \u5e76\u7c98\u8d34 <bold>Iframe</bold> \u4ee3\u7801\u3002\u82e5\u8981\u4f7f\u7528\u5f39\u7a97\u6309\u94ae\uff0c\u53ef\u5728\u7ad9\u70b9\u8bbe\u7f6e\u4e2d\u901a\u8fc7 <bold>\u201cCustom Code\u201d</bold> \u6dfb\u52a0\u811a\u672c\u3002"
+        },
+        "wordpress": {
+          "title": "WordPress",
+          "description": "\u5728\u9875\u9762\u7f16\u8f91\u5668\u4e2d\u6dfb\u52a0\u4e00\u4e2a <bold>Custom HTML</bold> \u6a21\u5757\u5e76\u7c98\u8d34\u4ee3\u7801\u3002\u5982\u679c\u4e3b\u673a\u7981\u6b62\u811a\u672c\uff0c\u8bf7\u6539\u7528 <bold>Iframe</bold> \u9009\u9879\u3002"
+        },
+        "squarespace": {
+          "title": "Squarespace / Webflow",
+          "description": "\u4f7f\u7528 <bold>Code/Embed</bold> \u6a21\u5757\u3002\u5982\u679c\u811a\u672c\u88ab\u79fb\u9664\uff0c\u8bf7\u6539\u7528 <bold>Iframe</bold>\u3002"
+        }
+      }
+    },
+    "reviews": {
+      "title": "\u8bc4\u4ef7\u4e0e\u5c0f\u8d39\uff08\u670d\u52a1\u540e\uff09",
+      "subheader": "\u81ea\u52a8\u53d1\u9001\u8bc4\u4ef7\u90ae\u4ef6\u5e76\u53ef\u9644\u52a0\u5c0f\u8d39\u94fe\u63a5",
+      "loadError": "\u65e0\u6cd5\u52a0\u8f7d\u8bc4\u4ef7\u4e0e\u5c0f\u8d39\u8bbe\u7f6e\u3002",
+      "saveSuccess": "\u8bc4\u4ef7\u4e0e\u5c0f\u8d39\u8bbe\u7f6e\u5df2\u4fdd\u5b58\u3002",
+      "fields": {
+        "autoSend": {
+          "label": "\u81ea\u52a8\u53d1\u9001\u8bc4\u4ef7\u90ae\u4ef6",
+          "tooltip": "\u82e5\u5173\u95ed\uff0c\u5c06\u4e0d\u4f1a\u81ea\u52a8\u53d1\u9001\u90ae\u4ef6\uff0c\u4ecd\u53ef\u624b\u52a8\u89e6\u53d1\u3002"
+        },
+        "sendAfter": {
+          "label": "\u53d1\u9001\u5ef6\u8fdf\uff08\u5c0f\u65f6\uff09",
+          "helper": "\u9884\u7ea6\u7ed3\u675f\u540e\u5ef6\u8fdf\u591a\u4e45\u53d1\u9001\u90ae\u4ef6"
+        },
+        "requireApproval": {
+          "label": "\u9700\u7ecf\u7406\u6279\u51c6",
+          "tooltip": "\u90ae\u4ef6\u4f1a\u6392\u961f\u7b49\u5f85\u7ecf\u7406\u6279\u51c6\u540e\u518d\u53d1\u9001\u3002"
+        },
+        "includeTip": {
+          "label": "\u5728\u90ae\u4ef6\u4e2d\u52a0\u5165\u5c0f\u8d39\u94fe\u63a5",
+          "tooltip": "\u5728\u90ae\u4ef6\u4e2d\u6dfb\u52a0\u5b89\u5168\u7684\u201c\u652f\u4ed8\u5c0f\u8d39\u201d\u6309\u94ae\uff0c\u4f4d\u4e8e\u201c\u7559\u4e0b\u8bc4\u4ef7\u201d\u65c1\u8fb9\u3002"
+        },
+        "autoPublish": {
+          "label": "\u81ea\u52a8\u53d1\u5e03\u8bc4\u4ef7",
+          "tooltip": "\u5f00\u542f\u540e\uff0c\u5ba2\u6237\u8bc4\u4ef7\u4f1a\u7acb\u5373\u663e\u793a\u5728\u516c\u5171\u9875\u9762\uff1b\u5173\u95ed\u5219\u9700\u7ecf\u7406\u624b\u52a8\u53d1\u5e03\u3002"
+        },
+        "reviewWindow": {
+          "label": "\u5ba2\u6237\u53ef\u8bc4\u4ef7\u65f6\u957f\uff08\u5929\uff09",
+          "helper": "\u767b\u5f55\u5ba2\u6237\u53ef\u5728\u9884\u7ea6\u7ed3\u675f\u540e\u6307\u5b9a\u5929\u6570\u5185\u63d0\u4ea4\u8bc4\u4ef7"
+        },
+        "tipPresets": {
+          "label": "\u9884\u8bbe\u5c0f\u8d39\u91d1\u989d\uff08\u4ee5\u9017\u53f7\u5206\u9694\uff0c\u5982 3,5,10\uff09",
+          "helper": "\u5728\u5c0f\u8d39\u6d41\u7a0b\u4e2d\u663e\u793a\u4e3a\u5feb\u6377\u6309\u94ae"
+        },
+        "redirectUrl": {
+          "label": "\u8bc4\u4ef7\u8df3\u8f6c\u94fe\u63a5\uff08\u53ef\u9009\uff09",
+          "helper": "\u8bbe\u7f6e\u540e\uff0c\u5728\u5e94\u7528\u5185\u8bc4\u4ef7\u5b8c\u6210\u540e\u4f1a\u663e\u793a\u6309\u94ae\u8df3\u8f6c\u81f3\u5916\u90e8\u5e73\u53f0\uff08Google\u3001Yelp \u7b49\uff09"
+        },
+        "subject": {
+          "label": "\u90ae\u4ef6\u4e3b\u9898\u81ea\u5b9a\u4e49",
+          "placeholder": "\u6211\u4eec\u505a\u5f97\u5982\u4f55\uff1f"
+        },
+        "html": {
+          "label": "\u90ae\u4ef6 HTML \u5185\u5bb9",
+          "tooltip": "\u53ef\u4f7f\u7528 {{client_first}}\u3001{{service_name}}\u3001{{date_local}}\u3001{{review_link}}\u3001{{tip_link}} \u7b49\u5360\u4f4d\u7b26",
+          "placeholder": "\u7559\u7a7a\u5c06\u4f7f\u7528\u9ed8\u8ba4\u4f01\u4e1a\u6a21\u677f"
+        }
+      },
+      "actions": {
+        "save": "\u4fdd\u5b58\u8bc4\u4ef7\u4e0e\u5c0f\u8d39\u8bbe\u7f6e"
+      }
+    },
+    "artist": {
+      "loadError": "\u65e0\u6cd5\u52a0\u8f7d\u8bbe\u7f6e\u3002",
+      "saveSuccess": "\u8bbe\u7f6e\u5df2\u4fdd\u5b58\u3002",
+      "title": "\u5458\u5de5\u53ef\u89c1\u6027\u4e0e\u6743\u9650",
+      "subheader": "\u63a7\u5236\u9884\u7ea6\u4e2d\u663e\u793a\u7ed9\u5458\u5de5\u7684\u4fe1\u606f\u4ee5\u53ca\u4ed6\u4eec\u5728\u53ef\u7528\u6027\u4e0a\u7684\u6743\u9650",
+      "restoreTooltip": "\u6062\u590d\u63a8\u8350\u503c",
+      "quickToggles": "\u5feb\u901f\u5207\u6362",
+      "toggles": {
+        "showIdentity": "\u663e\u793a\u8eab\u4efd\u4fe1\u606f",
+        "hideIdentity": "\u9690\u85cf\u8eab\u4efd\u4fe1\u606f",
+        "showService": "\u663e\u793a\u670d\u52a1\u4e0e\u91d1\u989d",
+        "hideService": "\u9690\u85cf\u670d\u52a1\u4e0e\u91d1\u989d",
+        "showMisc": "\u663e\u793a\u5176\u4ed6\u4fe1\u606f",
+        "hideMisc": "\u9690\u85cf\u5176\u4ed6\u4fe1\u606f"
+      },
+      "sections": {
+        "identity": "\u8eab\u4efd",
+        "service": "\u670d\u52a1\u4e0e\u91d1\u989d",
+        "misc": "\u5176\u4ed6"
+      },
+      "fields": {
+        "clientName": "\u5ba2\u6237\u59d3\u540d",
+        "clientEmail": "\u5ba2\u6237\u90ae\u7bb1",
+        "serviceName": "\u670d\u52a1\u540d\u79f0",
+        "serviceDuration": "\u670d\u52a1\u65f6\u957f",
+        "servicePrice": "\u670d\u52a1\u4ef7\u683c",
+        "paymentStatus": "\u652f\u4ed8\u72b6\u6001",
+        "paidAmount": "\u5df2\u4ed8\u91d1\u989d",
+        "bookingNotes": "\u9884\u7ea6\u5907\u6ce8",
+        "meetingLink": "\u4f1a\u8bae\u94fe\u63a5"
+      },
+      "hints": {
+        "listPrice": "\u5f00\u542f\u540e\uff0c\u5458\u5de5\u53ef\u770b\u5230\u6240\u9884\u7ea6\u670d\u52a1\u7684\u6807\u4ef7",
+        "paymentStatus": "\u4f8b\u5982 \"paid\"\uff08\u5df2\u4ed8\uff09\u3001\"unpaid\"\uff08\u672a\u4ed8\uff09\u3001\"refunded\"\uff08\u5df2\u9000\u6b3e\uff09",
+        "paidAmount": "\u8be5\u9884\u7ea6\u5df2\u6210\u529f\u6536\u6b3e\u7684\u603b\u91d1\u989d"
+      },
+      "permissions": {
+        "title": "\u5458\u5de5\u6743\u9650\uff08\u53ef\u7528\u6027\u7ba1\u7406\uff09",
+        "closeSlots": {
+          "label": "\u5141\u8bb8\u5458\u5de5\u5173\u95ed\u6216\u7f29\u77ed\u5f53\u65e5\u7a7a\u6863",
+          "hint": "\u5728\u53ef\u7528\u6027\u65e5\u5386\u4e2d\u542f\u7528 Bulk \u25b8 Close rest of day / Truncate day to time \u64cd\u4f5c"
+        },
+        "editSlots": {
+          "label": "\u5141\u8bb8\u5458\u5de5\u7f16\u8f91\u5355\u4e2a\u7a7a\u6863",
+          "hint": "\u5141\u8bb8\u5458\u5de5\u7f16\u8f91\u6216\u5220\u9664\u5355\u4e2a\u7a7a\u95f2\u65f6\u6bb5\uff08\u7ecf\u7406\u59cb\u7ec8\u62e5\u6709\u6743\u9650\uff09"
+        }
+      },
+      "preview": {
+        "title": "\u9884\u89c8\uff08\u5458\u5de5\u89c6\u56fe\uff09",
+        "masked": "---",
+        "fields": {
+          "name": "\u59d3\u540d",
+          "email": "\u90ae\u7bb1",
+          "service": "\u670d\u52a1",
+          "duration": "\u65f6\u957f",
+          "price": "\u4ef7\u683c",
+          "status": "\u72b6\u6001",
+          "paid": "\u5df2\u4ed8",
+          "meetingLink": "\u4f1a\u8bae\u94fe\u63a5",
+          "notes": "\u5907\u6ce8"
+        },
+        "sample": {
+          "name": "Alex Johnson",
+          "email": "alex@example.com",
+          "service": "Brow Wax & Tint",
+          "duration": "20 min",
+          "price": "$35.00",
+          "status": "paid",
+          "paid": "$35.00",
+          "meetingLink": "https://meet.example/abc",
+          "notes": "Client prefers dark tint"
+        }
+      },
+      "actions": {
+        "save": "\u4fdd\u5b58\u5168\u90e8\u8bbe\u7f6e",
+        "reset": "\u6062\u590d\u9ed8\u8ba4"
+      }
+    },
+    "clientVideo": {
+      "loadError": "\u52a0\u8f7d\u5ba2\u6237\u89c6\u9891\u7b56\u7565\u5931\u8d25\u3002",
+      "saveSuccess": "\u8bbe\u7f6e\u5df2\u4fdd\u5b58\u3002",
+      "title": "\u5ba2\u6237\u89c6\u9891\uff08Jitsi\uff09",
+      "subheader": "\u4e3a\u5ba2\u6237\u9884\u7ea6\u81ea\u52a8\u6dfb\u52a0 Jitsi \u89c6\u9891\u4f1a\u8bae\u94fe\u63a5",
+      "fields": {
+        "enableLink": "\u542f\u7528\u5ba2\u6237\u9884\u7ea6\u7684 Jitsi \u94fe\u63a5",
+        "domain": {
+          "label": "Jitsi \u57df\u540d",
+          "helper": "\u4f8b\u5982 https://meet.jit.si"
+        },
+        "roomPrefix": {
+          "label": "\u623f\u95f4\u524d\u7f00",
+          "helper": "\u7528\u4e8e\u751f\u6210\u623f\u95f4\u540d\u79f0"
+        },
+        "stableRoom": "\u6bcf\u6b21\u9884\u7ea6\u56fa\u5b9a\u623f\u95f4",
+        "includeInEmails": "\u5728\u5ba2\u6237\u90ae\u4ef6\u4e2d\u5305\u542b\u89c6\u9891\u94fe\u63a5"
+      },
+      "actions": {
+        "save": "\u4fdd\u5b58"
+      }
+    },
+    "checkout": {
+      "title": "Stripe \u652f\u4ed8\u4e0e\u4fdd\u5b58\u5361\u7247",
+      "subheader": "\u914d\u7f6e Stripe \u96c6\u6210\u3001\u7a0e\u52a1\u884c\u4e3a\u548c\u4fdd\u5b58\u5361\u7247\u529f\u80fd",
+      "loadError": "\u65e0\u6cd5\u52a0\u8f7d Stripe \u652f\u4ed8\u8bbe\u7f6e\u3002",
+      "saveSuccess": "Stripe \u652f\u4ed8\u8bbe\u7f6e\u5df2\u4fdd\u5b58\u3002",
+      "openDashboardError": "\u65e0\u6cd5\u6253\u5f00 Stripe \u63a7\u5236\u9762\u677f\u3002",
+      "alerts": {
+        "payNow": "\u9884\u7ea6\u65f6\u5fc5\u987b\u901a\u8fc7 Stripe \u4ed8\u6b3e\u3002\u4fdd\u5b58\u7684\u5361\u7247\u53ef\u7528\u4e8e\u540e\u7eed\u6263\u8d39\u3002",
+        "cardOnFile": "\u5ba2\u6237\u5728\u9884\u7ea6\u65f6\u65e0\u9700\u4ed8\u6b3e\uff0c\u4f46\u53ef\u4ee5\u5b89\u5168\u4fdd\u5b58\u5361\u7247\uff0c\u65b9\u4fbf\u7ba1\u7406\u8005\u7a0d\u540e\u6263\u6b3e\u3002",
+        "offline": "\u9884\u7ea6\u5728\u65e0 Stripe \u7684\u60c5\u51b5\u4e0b\u521b\u5efa\u3002\u8bf7\u901a\u8fc7\u7ba1\u7406\u7aef\u4ed8\u6b3e\u6216\u5176\u4ed6\u65b9\u5f0f\u6536\u6b3e\u3002"
+      },
+      "publishableKey": {
+        "label": "Stripe \u53d1\u5e03\u5bc6\u94a5",
+        "placeholder": "\u4f8b\u5982 pk_live_xxxxxxxxxxxxxxxxxxxxx"
+      },
+      "section": {
+        "taxLocalization": "\u7a0e\u52a1\u4e0e\u672c\u5730\u5316"
+      },
+      "pricesIncludeTax": {
+        "label": "\u4ef7\u683c\u5df2\u542b\u7a0e",
+        "helper": "\u542f\u7528\u540e\uff0c\u663e\u793a\u4ef7\u683c\u5df2\u5305\u542b\u7a0e\u989d\uff0cStripe \u4f1a\u5728\u7ed3\u7b97\u65f6\u62c6\u5206\u7a0e\u8d39\u3002"
+      },
+      "chargeCurrencyMode": {
+        "label": "\u6263\u6b3e\u5e01\u79cd\u6a21\u5f0f"
+      },
+      "chargeModes": {
+        "platformFixed": "\u56fa\u5b9a\u5e73\u53f0\u5e01\u79cd (USD)",
+        "localized": "\u672c\u5730\u5316\uff08\u7f8e\u56fd USD\u3001\u52a0\u62ff\u5927 CAD\uff09"
+      },
+      "taxCountry": {
+        "label": "\u7a0e\u52a1\u56fd\u5bb6/\u5730\u533a",
+        "placeholder": "\u9009\u62e9\u56fd\u5bb6/\u5730\u533a",
+        "options": {
+          "us": "\u7f8e\u56fd",
+          "ca": "\u52a0\u62ff\u5927",
+          "qc": "\u52a0\u62ff\u5927 - \u9b41\u5317\u514b (QST)"
+        }
+      },
+      "taxRegion": {
+        "selectLabel": "\u7a0e\u52a1\u7701/\u5dde",
+        "overrideLabel": "\u7a0e\u52a1\u533a\u57df\u4ee3\u7801",
+        "overrideHelper": "\u5f53 Stripe \u9700\u8981\u7279\u5b9a\u4ee3\u7801\u65f6\u53ef\u8986\u76d6\u586b\u5199\u3002"
+      },
+      "displayCurrency": {
+        "label": "\u663e\u793a\u5e01\u79cd",
+        "helper": "\u542f\u7528\u672c\u5730\u5316\u5b9a\u4ef7\u65f6\uff0c\u663e\u793a\u5e01\u79cd\u4f1a\u8ddf\u968f\u7a0e\u52a1\u56fd\u5bb6/\u5730\u533a\u3002"
+      },
+      "logo": {
+        "label": "Logo \u94fe\u63a5",
+        "helper": "\u7c98\u8d34\u56fe\u7247\u7684\u76f4\u63a5\u94fe\u63a5",
+        "previewAlt": "Logo \u9884\u89c8",
+        "empty": "\u5c1a\u672a\u8bbe\u7f6e Logo\u3002"
+      },
+      "buttons": {
+        "save": "\u4fdd\u5b58 Stripe \u8bbe\u7f6e",
+        "openTaxHelp": "\u6253\u5f00\u7a0e\u52a1\u6307\u5357",
+        "openStripeDashboard": "\u6253\u5f00 Stripe \u63a7\u5236\u9762\u677f"
+      },
+      "modes": {
+        "legend": "\u7ed3\u8d26\u6a21\u5f0f",
+        "offline": {
+          "title": "\u79bb\u7ebf\u9884\u7ea6",
+          "description": "\u5ba2\u6237\u65e0\u9700\u63d0\u4f9b\u652f\u4ed8\u4fe1\u606f\u5373\u53ef\u9884\u7ea6\u3002\u8bf7\u5728 Stripe \u4e4b\u5916\u6536\u6b3e\u3002"
+        },
+        "cardOnFile": {
+          "title": "\u4fdd\u5b58\u5361\u7247",
+          "description": "\u5ba2\u6237\u9884\u7ea6\u65f6\u4fdd\u5b58\u5361\u7247\uff0c\u65b9\u4fbf\u7ba1\u7406\u8005\u7a0d\u540e\u5728\u540e\u53f0\u6263\u6b3e\u3002"
+        },
+        "payNow": {
+          "title": "\u7ed3\u8d26\u65f6\u4ed8\u6b3e",
+          "description": "\u5ba2\u6237\u901a\u8fc7 Stripe \u5373\u65f6\u4ed8\u6b3e\u3002\u5361\u7247\u53ef\u7528\u4e8e\u540e\u7eed\u6263\u6b3e\u6216\u9000\u6b3e\u3002"
+        }
+      },
+      "taxGuide": {
+        "title": "\u7a0e\u52a1\u8bbe\u7f6e\u6307\u5357\uff08\u9002\u7528\u4e8e\u7ba1\u7406\u5458\uff09",
+        "intro": "\u6309\u7167\u4ee5\u4e0b\u6b65\u9aa4\u64cd\u4f5c\u4e00\u6b21\uff0c\u4e4b\u540e\u6bcf\u7b14\u652f\u4ed8\u90fd\u4f1a\u81ea\u52a8\u8ba1\u7b97\u7a0e\u8d39\u3002",
+        "steps": {
+          "app": {
+            "heading": "1) \u5728\u672c\u5e94\u7528\u4e2d \u2014 \u516c\u53f8\u8d44\u6599",
+            "country": "\u8bbe\u7f6e <strong>\u56fd\u5bb6</strong> \u548c <strong>\u7701/\u5dde</strong>\u3002",
+            "pricesIncludeTax": {
+              "on": "<strong>\u4ef7\u683c\u5df2\u542b\u7a0e</strong>\uff1a<em>\uff08\u5f53\u524d\u4e3a\u5f00\u542f\u72b6\u6001 \u2014 \u663e\u793a\u7684\u4ef7\u683c\u5df2\u5305\u542b\u7a0e\u8d39\uff09</em>",
+              "off": "<strong>\u4ef7\u683c\u5df2\u542b\u7a0e</strong>\uff1a<em>\uff08\u5f53\u524d\u4e3a\u5173\u95ed\u72b6\u6001 \u2014 \u7a0e\u8d39\u4f1a\u5728\u7ed3\u8d26\u65f6\u53e6\u884c\u6dfb\u52a0\uff09</em>"
+            }
+          },
+          "connect": {
+            "heading": "2) \u8fde\u63a5 Stripe\uff08\u4e00\u6b21\u6027\uff09",
+            "useButton": "\u70b9\u51fb\u4e0a\u65b9\u7684 <strong>Connect with Stripe</strong> \u6309\u94ae\u5e76\u5b8c\u6210\u63a5\u5165\u6d41\u7a0b\u3002",
+            "ready": "\u5f53\u7cfb\u7edf\u663e\u793a <strong>Ready to accept payments</strong> \u65f6\uff0c\u5373\u8868\u793a\u8bbe\u7f6e\u5b8c\u6210\u3002"
+          },
+          "stripe": {
+            "heading": "3) \u5728 Stripe \u4e2d\u5f00\u542f\u81ea\u52a8\u7a0e",
+            "openDashboard": "\u70b9\u51fb\u4e0b\u65b9\u7684 <strong>Open Stripe Dashboard</strong>\u3002",
+            "navigate": "\u8fdb\u5165 <strong>Tax \u2192 Overview</strong>\uff0c\u5c06 <strong>Automatic tax</strong> \u5207\u6362\u4e3a <strong>ON</strong>\u3002",
+            "origin": "\u5728 <strong>Business information</strong> \u4e2d\u586b\u5199 <strong>\u8d77\u59cb\u5730\u5740</strong>\uff08\u4f01\u4e1a\u6240\u5728\u5730\uff09\u3002",
+            "products": "\u5728 <strong>Products & prices</strong> \u4e2d\u9009\u62e9\u9ed8\u8ba4\u7684 <strong>\u7a0e\u52a1\u5206\u7c7b</strong>\uff08\u5efa\u8bae\u4ece\u201c\u901a\u7528 \u2014 \u670d\u52a1\u201d\u5f00\u59cb\uff0c\u4e4b\u540e\u53ef\u9488\u5bf9\u4ea7\u54c1\u7ec6\u5206\uff09\u3002",
+            "includeQuestion": "<strong>\u4ef7\u683c\u662f\u5426\u5305\u542b\u7a0e\u8d39\uff1f</strong> \u82e5\u5e0c\u671b\u5728\u7ed3\u8d26\u65f6\u518d\u52a0\u7a0e\uff0c\u8bf7\u9009\u62e9 <strong>\u5426</strong>\uff08\u7f8e\u56fd/\u52a0\u62ff\u5927\u56e2\u961f\u5e38\u7528\uff09\uff1b\u82e5\u4ef7\u683c\u672c\u8eab\u5df2\u542b\u7a0e\uff0c\u8bf7\u9009\u62e9 <strong>\u662f</strong>\u3002"
+          },
+          "registrations": {
+            "heading": "4) \u6ce8\u518c\u4fe1\u606f\uff08\u5728\u54ea\u4e9b\u5730\u533a\u6536\u7a0e\uff09",
+            "open": "\u8fdb\u5165 <strong>Tax \u2192 Registrations</strong>\u3002",
+            "homeRegion": "\u6dfb\u52a0\u60a8\u7684 <strong>\u4e3b\u8425\u5730\u533a</strong>\uff08\u4f8b\u5982\u5b89\u5927\u7565\u6216\u5fb7\u514b\u8428\u65af\uff09\u3002",
+            "additionalRegions": "\u4ec5\u5728\u5df2\u6ce8\u518c\u6216 Stripe \u63d0\u9192\u8fbe\u5230\u9500\u552e\u9608\u503c\u65f6\uff0c\u624d\u6dfb\u52a0\u5176\u4ed6\u7701/\u5dde\u3002",
+            "thresholds": "\u542f\u7528 <strong>Thresholds</strong> \u76d1\u63a7\uff0c\u4ee5\u4fbf Stripe \u5728\u4e1a\u52a1\u589e\u957f\u65f6\u53ca\u65f6\u63d0\u9192\u3002"
+          }
+        },
+        "tip": "<strong>\u63d0\u793a\uff1a</strong> \u82e5\u4ef7\u683c\u4e3a 40 \u7f8e\u5143\u4e14 <em>\u4ef7\u683c\u5df2\u542b\u7a0e</em> \u5173\u95ed\uff0c\u5ba2\u6237\u5728\u7ed3\u8d26\u65f6\u4f1a\u770b\u5230 40 \u7f8e\u5143\u52a0\u7a0e\u3002\u5982\u679c\u5f00\u542f\uff0c\u8be5 40 \u7f8e\u5143\u5df2\u5305\u542b\u7a0e\u8d39\uff0cStripe \u4f1a\u81ea\u52a8\u62c6\u5206\u3002",
+        "faqs": {
+          "title": "\u5e38\u89c1\u95ee\u9898",
+          "usRegistration": "<strong>\u5411\u7f8e\u56fd\u5ba2\u6237\u9500\u552e\u9700\u8981\u5728\u7f8e\u56fd\u6ce8\u518c\u5417\uff1f</strong> \u53ea\u6709\u5728\u8fbe\u5230\u67d0\u5dde\u9608\u503c\u6216\u60a8\u9009\u62e9\u6ce8\u518c\u65f6\u624d\u9700\u8981\u3002\u5148\u4ece\u4e3b\u8425\u5730\u533a\u5f00\u59cb\uff0c\u6839\u636e\u9700\u8981\u518d\u6dfb\u52a0\u5176\u4ed6\u5730\u533a\u3002",
+          "receipts": "<strong>Stripe \u4f1a\u5904\u7406\u6536\u636e\u5417\uff1f</strong> \u4f1a\u7684\uff0c\u6536\u636e\u4f1a\u4ee5\u60a8\u4f01\u4e1a\u7684\u540d\u4e49\u5f00\u5177\u3002",
+          "crossBorder": "<strong>\u8de8\u5883\u8ba2\u5355\u600e\u4e48\u529e\uff1f</strong> \u7a0e\u8d39\u53d6\u51b3\u4e8e\u4e70\u5bb6\u6240\u5728\u5730\u53ca\u60a8\u7684\u6ce8\u518c\u5730\u533a\u3002\u5982\u679c\u67d0\u5730\u672a\u6ce8\u518c\uff0cStripe \u4e0d\u4f1a\u5728\u8be5\u5730\u533a\u4ee3\u6536\u7a0e\u8d39\u3002"
+        },
+        "buttons": {
+          "openDashboard": "\u6253\u5f00 Stripe \u63a7\u5236\u9762\u677f"
+        }
+      }
+    }
+  },
+  "management": {
+    "website": {
+      "title": "Website & Domain",
+      "states": {
+        "resolvingCompany": "Resolving company..."
+      },
+      "domainStatus": {
+        "verified": "Domain: Live",
+        "pending": "Domain: Pending DNS",
+        "none": "Domain: Not Connected"
+      },
+      "pageStatus": {
+        "published": "published",
+        "draft": "draft"
+      },
+      "labels": {
+        "themeFallback": "Theme #{{id}}",
+        "homeSuffix": "(home)"
+      },
+      "fields": {
+        "publicUrl": "Public URL",
+        "publicUrlPlaceholder": "Set slug in Company Profile",
+        "theme": "Theme",
+        "slug": "Slug",
+        "title": "Title",
+        "menuTitle": "Menu Title",
+        "sortOrder": "Sort Order",
+        "showInMenu": "Show in menu",
+        "published": "Published",
+        "homepage": "Homepage",
+        "contentJson": "Content JSON"
+      },
+      "tooltips": {
+        "openPublic": "Open public site",
+        "copyLink": "Copy link"
+      },
+      "buttons": {
+        "theme": "Theme",
+        "saveTheme": "Save Theme",
+        "republish": "Republish",
+        "publish": "Publish",
+        "templates": "Templates",
+        "visualBuilder": "Visual Builder",
+        "refresh": "Refresh",
+        "edit": "Edit",
+        "delete": "Delete",
+        "save": "Save",
+        "create": "Create",
+        "cancel": "Cancel",
+        "open": "Open",
+        "copy": "Copy"
+      },
+      "sections": {
+        "pages": {
+          "title": "Pages"
+        },
+        "form": {
+          "editTitle": "Edit Page",
+          "newTitle": "New Page"
+        }
+      },
+      "messages": {
+        "publicSnapshot": "Showing public snapshot of pages (read-only). Use Visual Site Builder to edit.",
+        "pagesRefreshed": "Pages refreshed from manager API.",
+        "pagesRefreshedPublic": "Pages refreshed from public snapshot (read-only).",
+        "settingsSaved": "Settings saved.",
+        "sitePublished": "Site published.",
+        "pageSaved": "Page saved.",
+        "pageCreated": "Page created.",
+        "pageDeleted": "Page deleted.",
+        "urlCopied": "Public URL copied to clipboard."
+      },
+      "errors": {
+        "missingCompany": "Missing company context.",
+        "pageLoad": "Failed to load pages. Visual Builder may still work.",
+        "companyLoad": "Unable to load company profile.",
+        "settingsLoad": "Failed to load website settings.",
+        "refresh": "Failed to refresh pages.",
+        "settingsSave": "Failed to save settings.",
+        "publish": "Publish failed.",
+        "pageSave": "Failed to save page.",
+        "pageDelete": "Failed to delete page."
+      },
+      "alerts": {
+        "pickTheme": "Pick a theme first.",
+        "slugTitleRequired": "Slug and title are required.",
+        "confirmDelete": "Delete this page?",
+        "publicSnapshot": "Manager page endpoints are not available; showing public snapshot (read-only). Use <builderLink>Visual Site Builder</builderLink> to edit.",
+        "readOnlyMode": "Read-only mode. Open <builderLink>Visual Site Builder</builderLink> to modify content."
+      },
+      "placeholders": {
+        "slug": "home, about, contact"
+      },
+      "pageSecondary": "{{slug}} - order {{order}} - {{status}}"
+    },
+    "domainSettings": {
+      "title": "Custom Domain",
+      "status": {
+        "none": "Not Connected",
+        "pending": "Pending DNS",
+        "verified": "Live"
+      },
+      "ssl": {
+        "pending": "SSL Pending",
+        "active": "SSL Active",
+        "error": "SSL Error"
+      },
+      "purchaseLinks": {
+        "godaddy": "Buy on GoDaddy",
+        "namecheap": "Buy on Namecheap",
+        "cloudflare": "Explore Cloudflare Registrar"
+      },
+      "help": {
+        "title": "Need help?",
+        "sections": [
+          {
+            "title": "Buy a new domain",
+            "body": [
+              "Prefer .com when available?customers trust it the most.",
+              "Start with the www version (www.yoursite.com). You can add the apex later if needed.",
+              "Avoid trademarks or other brands in your domain to prevent DNS issues."
+            ]
+          },
+          {
+            "title": "Connect an existing domain",
+            "body": [
+              "Generate the TXT and CNAME records from Schedulaa.",
+              "Add those records at your DNS provider (GoDaddy, Namecheap, Cloudflare, etc.).",
+              "DNS can take up to 30 minutes to propagate?verify a little later if it is still pending."
+            ]
+          },
+          {
+            "title": "Where to click in GoDaddy",
+            "body": [
+              "Log into GoDaddy and open your domain.",
+              "Choose DNS > Manage Zones.",
+              "Add a TXT record named _schedulaa and paste the token from this screen.",
+              "Add a CNAME record for www pointing to schedulaa.com, then save your changes."
+            ]
+          },
+          {
+            "title": "Common gotchas",
+            "body": [
+              "Removing old A records is important?otherwise browsers may continue to point to the legacy site.",
+              "If you purchased the domain recently, registrars sometimes block updates for the first few minutes.",
+              "DNS hosts that proxy (like Cloudflare orange-cloud) may require you to disable proxy until verification completes."
+            ]
+          }
+        ]
+      },
+      "connectState": {
+        "pending": {
+          "title": "Waiting on GoDaddy",
+          "description": "We asked GoDaddy to create the DNS records. This usually takes under a minute."
+        },
+        "verifying": {
+          "title": "Verifying DNS",
+          "description": "We are checking for the new records and will refresh automatically."
+        },
+        "completed": {
+          "title": "Records Created",
+          "description": "GoDaddy confirmed the records. We will finish verification shortly?no action needed."
+        },
+        "failed": {
+          "title": "Domain Connect failed",
+          "description": "GoDaddy could not create the records automatically. You can retry or switch to manual instructions."
+        },
+        "created": "Created: {{time}}",
+        "updated": "Updated: {{time}}"
+      },
+      "labels": {
+        "never": "Never",
+        "registrar": "Registrar: {{name}}",
+        "lastChecked": "Last checked: {{time}}",
+        "verifiedAt": "Verified: {{time}}",
+        "verifiedPending": "Verified: Not yet",
+        "unknownRegistrar": "unknown"
+      },
+      "messages": {
+        "verifyHint": "Please wait {{time}} before trying again."
+      },
+      "notifications": {
+        "connectResumed": "Domain Connect session resumed.",
+        "connectResumeFailed": "Unable to resume Domain Connect.",
+        "statusRefreshed": "Domain status refreshed.",
+        "refreshFailed": "Unable to refresh status.",
+        "dnsGenerated": "DNS instructions generated. Add the TXT/CNAME records, then click Verify.",
+        "requestFailed": "Request failed.",
+        "verifySuccess": "Success! Your domain is verified.",
+        "verifyPending": "DNS records not found yet. Try again in a few minutes.",
+        "verifyFailed": "Verification failed.",
+        "domainRemoved": "Domain removed. Visitors will use the schedulaa.com link.",
+        "removeFailed": "Removal failed.",
+        "notifyEnabled": "We will notify you when the domain is live.",
+        "notifyDisabled": "Notifications disabled for this domain.",
+        "notifyFailed": "Unable to update notification preference.",
+        "copySuccess": "{{label}} copied to clipboard.",
+        "copyFailed": "Copy failed. Highlight the text manually.",
+        "connectCreated": "Domain Connect session created. Follow the GoDaddy prompt in a new tab.",
+        "connectFailed": "Unable to start Domain Connect.",
+        "selectCompany": "Select a company to manage domains."
+      },
+      "validation": {
+        "enterDomain": "Enter a domain to connect.",
+        "invalidDomain": "Domain looks invalid. Use hostnames like www.example.com.",
+        "connectEnterDomain": "Enter a domain before starting Domain Connect."
+      },
+      "confirmations": {
+        "remove": "Remove the custom domain mapping?"
+      },
+      "instructions": {
+        "title": "DNS Instructions",
+        "tooltip": "Add these records at your DNS provider, then click Verify",
+        "txtLabel": "TXT record",
+        "cnameLabel": "CNAME record",
+        "token": "Verification token: {{token}}"
+      },
+      "sections": {
+        "needDomain": "Need a domain?"
+      },
+      "tabs": {
+        "manual": "Manual setup",
+        "connect": "Connect automatically ({{registrar}})"
+      },
+      "buttons": {
+        "help": "Help",
+        "refresh": "Refresh",
+        "generateDns": "Generate DNS Instructions",
+        "verifyDns": "Verify DNS",
+        "remove": "Remove",
+        "docsLink": "DNS setup guide",
+        "setupHelp": "We can set this up for you",
+        "open": "Open",
+        "copy": "Copy"
+      },
+      "tooltips": {
+        "openHelp": "Open help guide",
+        "refreshStatus": "Refresh status",
+        "verifyDns": "Verify that DNS records exist",
+        "copyRecord": "Copy record"
+      },
+      "manual": {
+        "domainLabel": "Domain",
+        "helper": "Enter the hostname customers will use.",
+        "sslPending": "SSL is provisioning. This usually takes a couple of minutes after DNS is verified.",
+        "sslError": "SSL provisioning failed: {{error}}",
+        "liveUrlTitle": "Live Site URL",
+        "liveUrlVerified": "Visitors will be directed to your verified custom domain.",
+        "liveUrlPending": "Until the domain is verified, schedulaa.com links will remain active.",
+        "urlLabel": "URL",
+        "notifyToggle": "Email me when SSL goes live"
+      },
+      "connect": {
+        "description": "Auto-connect uses GoDaddy Domain Connect to apply the TXT and CNAME records for you. After you approve the GoDaddy prompt, we will verify DNS automatically.",
+        "registrarDetected": "Detected registrar: {{registrar}}. Edit this if you want to connect a different host.",
+        "start": "Connect automatically with GoDaddy",
+        "switchManual": "Switch to manual setup",
+        "popup": "Popup blocked? <Link>Open the GoDaddy prompt</Link>.",
+        "recordsConfirmed": "GoDaddy confirmed DNS records. Manual instructions remain available below if you need them."
+      }
+    },
+    "domainHelp": {
+      "title": "Custom Domain Guide",
+      "subtitle": "Follow these steps to connect your marketing site or booking experience to your own domain.",
+      "status": {
+        "none": "Not connected",
+        "pending": "Pending DNS",
+        "verified": "Live"
+      },
+      "ssl": {
+        "pending": "SSL pending",
+        "active": "SSL active",
+        "error": "SSL error"
+      },
+      "chips": {
+        "retry": "Retry verify in {{time}}",
+        "registrarDetected": "Detected registrar: {{registrar}}"
+      },
+      "labels": {
+        "quickActions": "Quick actions",
+        "registrarPlaybooks": "Registrar playbooks",
+        "registrarPlaybooksSubtitle": "Use these guides for the registrars our customers rely on the most."
+      },
+      "buttons": {
+        "generateDns": "Generate DNS",
+        "verify": "Verify now",
+        "startConnect": "Start Domain Connect",
+        "refreshStatus": "Refresh status",
+        "openDocs": "Open documentation",
+        "contactSupport": "Contact Schedulaa support",
+        "close": "Close guide"
+      },
+      "quickSummary": {
+        "title": "Quick summary",
+        "items": [
+          "Buy a domain (GoDaddy / Namecheap / Cloudflare).",
+          "Add the TXT + CNAME records from Schedulaa.",
+          "Click Verify DNS in Schedulaa.",
+          "Wait for SSL to activate. Done!"
+        ]
+      },
+      "dnsInstructions": {
+        "title": "What \"DNS instructions generated\" means",
+        "items": [
+          "When you see this message, Schedulaa has already produced the DNS records you need to finish setup.",
+          "You will also see the DNS Instructions box appear below the button with both records ready to copy.",
+          "TXT record: proves you own the domain so only your team can connect it.",
+          "CNAME record: routes www to Schedulaa so visitors reach your booking site.",
+          "Log into your registrar (GoDaddy, Namecheap, Cloudflare, etc.), open DNS Records or Manage Zones, and add both records exactly as shown.",
+          "TXT record - Name/Host: _schedulaa (or _schedulaa.www if required) | Value: the random token displayed in Schedulaa.",
+          "CNAME record - Name/Host: www | Points to: schedulaa.com.",
+          "Save your changes and wait 5-30 minutes for DNS to update, then return to Schedulaa and click Verify DNS.",
+          "Once verified, https://www.yourdomain.com is live, SSL auto-issues, and all booking links, Stripe checkouts, and emails use your brand domain.",
+          "The TXT value you see in Schedulaa is your verification token; copy it exactly."
+        ]
+      },
+      "timing": {
+        "title": "How long does DNS take?",
+        "items": [
+          "Most changes appear within 5-15 minutes.",
+          "Some registrars can take up to 1 hour.",
+          "Schedulaa automatically checks every few minutes; you can also click Refresh Status."
+        ]
+      },
+      "security": {
+        "title": "Security and SSL",
+        "items": [
+          "Every verified domain automatically gets a TLS (SSL) certificate so visitor data stays encrypted end-to-end.",
+          "Certificates renew automatically. There is no manual work required.",
+          "Schedulaa only issues certificates after ownership is verified, so nobody else can claim your domain.",
+          "You will see SSL Pending and then SSL Active in Schedulaa after verification; no manual certificate install is needed."
+        ]
+      },
+      "baseSections": [
+        {
+          "title": "Before you start",
+          "bullets": [
+            "Confirm you have manager permissions for this company.",
+            "Decide which hostname you want customers to use (we recommend www.yoursite.com for launch).",
+            "Have your DNS credentials ready so you can add TXT and CNAME records without delay."
+          ]
+        },
+        {
+          "title": "Purchase or choose a domain",
+          "bullets": [
+            "If you need a new domain, buy it now (GoDaddy, Namecheap, Cloudflare, or your preferred registrar).",
+            "Use a clear brand name and prefer .com when available.",
+            "Keep both www and bare versions handy in case you want apex forwarding later."
+          ]
+        },
+        {
+          "title": "Generate DNS instructions",
+          "bullets": [
+            "Enter the domain inside Schedulaa and click Generate DNS Instructions.",
+            "Schedulaa issues a TXT record for ownership and a CNAME to route traffic.",
+            "Leave the instructions open so you can copy the exact host/value pairs into your DNS portal."
+          ]
+        },
+        {
+          "title": "Add DNS records at your registrar",
+          "bullets": [
+            "Create the TXT record named _schedulaa with the token we provide.",
+            "Add the CNAME record for www (or your chosen host) pointing to schedulaa.com.",
+            "Save changes and give DNS a few minutes to propagate before you verify."
+          ],
+          "tip": "Tip: DNS instructions generated means Schedulaa already created your verification records. Add them to your registrar, save, and click Verify DNS to finish."
+        },
+        {
+          "title": "Verify and go live",
+          "bullets": [
+            "Back in Schedulaa, click Verify DNS.",
+            "When verification succeeds, SSL provisioning starts automatically (Caddy or Cloudflare depending on your plan).",
+            "Once SSL is active, flip any marketing links and emails to the new domain."
+          ]
+        },
+        {
+          "title": "Post-launch checklist",
+          "bullets": [
+            "Visit the new domain in an incognito window to ensure redirects and branding look right.",
+            "Update Stripe, email templates, and QR codes?they already use tenantBaseUrl but double-check your saved copy.",
+            "Enable the email notification toggle in Schedulaa so managers know when SSL or DNS changes occur."
+          ]
+        }
+      ],
+      "connectSteps": [
+        {
+          "title": "GoDaddy Domain Connect",
+          "bullets": [
+            "Start from Schedulaa using the Connect automatically button when we detect GoDaddy.",
+            "Approve the GoDaddy prompt - this authorizes us to add the TXT and CNAME on your behalf.",
+            "Return to Schedulaa; we will poll GoDaddy, verify DNS, and start SSL automatically."
+          ]
+        },
+        {
+          "title": "GoDaddy manual fallback",
+          "bullets": [
+            "If Domain Connect fails, open GoDaddy > My Products > DNS > Manage Zones.",
+            "Add TXT _schedulaa with the token from Schedulaa. Add CNAME www pointing to schedulaa.com.",
+            "Save and retry verification after a few minutes. Disable proxy or CDN if records still do not resolve."
+          ]
+        },
+        {
+          "title": "Namecheap manual steps",
+          "bullets": [
+            "Go to Domain List > Manage > Advanced DNS.",
+            "Add a TXT record with host _schedulaa and the verification token, TTL 1 minute or Automatic.",
+            "Add a CNAME record for www pointing to schedulaa.com, save, then verify inside Schedulaa."
+          ]
+        },
+        {
+          "title": "Cloudflare registrar or proxy",
+          "bullets": [
+            "In Cloudflare, add the TXT and CNAME records under DNS > Records.",
+            "If proxy (orange cloud) is enabled for the CNAME, temporarily switch it to DNS only until verification finishes.",
+            "After SSL is active in Schedulaa, you can re-enable the proxy to leverage Cloudflare caching."
+          ]
+        }
+      ],
+      "troubleshooting": {
+        "title": "Common mistakes",
+        "labels": {
+          "issue": "Issue",
+          "likelyCause": "Likely cause",
+          "fix": "Fix"
+        },
+        "rows": [
+          {
+            "issue": "TXT not found",
+            "cause": "Typo in host name (_schedulaa.www vs _schedulaa.www.yourdomain.com)",
+            "fix": "Use the exact record shown in Schedulaa."
+          },
+          {
+            "issue": "CNAME ignored",
+            "cause": "Existing A record for www",
+            "fix": "Delete the A record for www before adding the CNAME."
+          },
+          {
+            "issue": "Still pending",
+            "cause": "DNS cache delay",
+            "fix": "Wait 30 minutes, then click Verify DNS again."
+          },
+          {
+            "issue": "Domain already in use",
+            "cause": "Another account connected the same domain",
+            "fix": "Contact Schedulaa Support so we can transfer ownership."
+          }
+        ]
+      },
+      "advanced": {
+        "title": "Advanced options (later)",
+        "items": [
+          "Automatic setup (GoDaddy Domain Connect): When available, click Connect Automatically and skip manual DNS entries.",
+          "Cloudflare proxy: Turn the orange cloud off during verification, then back on once SSL is active.",
+          "Apex forwarding: After www is live, add a forward from yourdomain.com to www.yourdomain.com inside your registrar dashboard."
+        ]
+      },
+      "ownership": {
+        "title": "Ownership and safety",
+        "items": [
+          "You always keep full control of your domain at your registrar.",
+          "Schedulaa cannot transfer, bill, or renew domains on your behalf.",
+          "We simply verify ownership so the booking site can run securely on your hostname."
+        ]
+      },
+      "supportSections": [
+        {
+          "title": "Need more help?",
+          "bullets": [
+            "Schedulaa support can walk you through DNS changes or complete Domain Connect on your behalf.",
+            "Share screenshots of your DNS zone or the exact error message to speed up troubleshooting."
+          ]
+        }
+      ],
+      "commands": {
+        "title": "Check with a command line (optional)",
+        "items": [
+          "nslookup -type=txt _schedulaa.www.yourdomain.com",
+          "nslookup -type=cname www.yourdomain.com"
+        ],
+        "footer": "If both commands return the correct values, return to Schedulaa and click Verify DNS."
+      },
+      "summary": {
+        "title": "In summary",
+        "items": [
+          "Serve securely over HTTPS.",
+          "Show your company name and branding everywhere.",
+          "Keep SSL renewals automatic without extra tools.",
+          "Stay safe - Schedulaa only connects, never owns your domain."
+        ]
+      }
+    },
+    "seo": {
+      "title": "SEO & Metadata",
+      "buttons": {
+        "save": "Save",
+        "open": "Open"
+      },
+      "notifications": {
+        "verifyDomain": "Verify a custom domain before using it as the canonical host.",
+        "saveSuccess": "SEO settings saved.",
+        "saveFailed": "Failed to save SEO settings."
+      },
+      "errors": {
+        "invalidOgImage": "Open Graph image must be a valid URL (https://.)",
+        "lockedCanonical": "Custom canonical domain requires a verified hostname.",
+        "invalidCustomDomain": "Custom domain looks invalid. Fix it before saving."
+      },
+      "fields": {
+        "metaTitle": "Meta Title",
+        "metaDescription": "Meta Description",
+        "ogImage": "Open Graph Image URL",
+        "canonicalHost": "Canonical Host",
+        "structuredData": "Include structured data (schema.org)",
+        "previewTitle": "Preview URL"
+      },
+      "helpers": {
+        "title": "Recommended = {{max}} characters ({{remaining}} remaining)",
+        "description": "Recommended = {{max}} characters ({{remaining}} remaining)"
+      },
+      "placeholders": {
+        "ogImage": "https://example.com/social-preview.jpg"
+      },
+      "canonical": {
+        "slug": "schedulaa.com slug",
+        "custom": "Custom domain",
+        "lockedMessage": "Verify your custom domain to unlock canonical hosting."
+      },
+      "preview": {
+        "custom": "Search engines will treat your custom domain as canonical.",
+        "slug": "Until verified, schedulaa.com links remain the canonical host."
+      }
+    }
+  },
+  "landing": {
+    "home": {
+      "meta": {
+        "title": "Schedulaa | \u4e00\u4f53\u5316\u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u5728\u7ebf\u9500\u552e\u5e73\u53f0",
+        "description": "\u4ece\u5ba2\u6237\u9884\u7ea6\u5230\u85aa\u8d44\u6838\u7b97\u4e0e\u7535\u5546\uff0cSchedulaa \u4e3a\u5de5\u4f5c\u5ba4\u3001\u62db\u8058\u56e2\u961f\u3001\u5065\u8eab\u6559\u7ec3\u53ca\u670d\u52a1\u578b\u4f01\u4e1a\u63d0\u4f9b\u7edf\u4e00\u7684\u6392\u73ed\u3001\u652f\u4ed8\u4e0e\u5206\u6790\u3002",
+        "ogTitle": "Schedulaa | \u4e00\u4f53\u5316\u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u5728\u7ebf\u9500\u552e\u5e73\u53f0",
+        "ogDescription": "\u4ece\u5ba2\u6237\u9884\u7ea6\u5230\u85aa\u8d44\u6838\u7b97\u4e0e\u7535\u5546\uff0cSchedulaa \u4e3a\u5de5\u4f5c\u5ba4\u3001\u62db\u8058\u56e2\u961f\u3001\u5065\u8eab\u6559\u7ec3\u53ca\u670d\u52a1\u578b\u4f01\u4e1a\u63d0\u4f9b\u7edf\u4e00\u7684\u6392\u73ed\u3001\u652f\u4ed8\u4e0e\u5206\u6790\u3002"
+      },
+      "trustedBy": "\u6df1\u53d7\u5de5\u4f5c\u5ba4\u3001\u62db\u8058\u987e\u95ee\u3001\u6559\u7ec3\u4e0e\u521b\u610f\u56e2\u961f\u4fe1\u8d56",
+      "comingSoon": "\u5373\u5c06\u63a8\u51fa\uff1a\u5e94\u7528\u5185\u57df\u540d\u6ce8\u518c\u3001Zapier \u81ea\u52a8\u5316\u4ee5\u53ca\u66f4\u6df1\u7684 Slack \u96c6\u6210\u3002",
+      "hero": {
+        "copy": {
+          "eyebrow": "\u7edf\u4e00\u7684\u4e1a\u52a1\u64cd\u4f5c\u7cfb\u7edf",
+          "heading": "\u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u5728\u7ebf\u9500\u552e\u534f\u540c\u8fd0\u4f5c\u3002",
+          "body": "\u63a5\u5355\u3001\u552e\u5356\u5546\u54c1\u3001\u7ba1\u7406\u5458\u5de5\u5e76\u53d1\u5e03\u7f51\u7ad9\u2014\u2014\u5168\u90e8\u57fa\u4e8e Stripe\uff0c\u652f\u6301\u591a\u95e8\u5e97\u534f\u540c\u3002"
+        },
+        "modules": {
+          "scheduling": {
+            "label": "\u6392\u73ed",
+            "summary": "\u8ba9\u5ba2\u6237\u9884\u7ea6\u591a\u9879\u670d\u52a1\u3001\u6539\u671f\u5e76\u81ea\u4e3b\u7ba1\u7406\uff0c\u5458\u5de5\u65e5\u5386\u5b9e\u65f6\u540c\u6b65\u3002",
+            "stats": [
+              {
+                "label": "\u5faa\u73af\u65f6\u6bb5",
+                "value": "\u5df2\u542f\u7528"
+              },
+              {
+                "label": "\u591a\u4eba\u5458\u9009\u62e9",
+                "value": "\u652f\u6301"
+              },
+              {
+                "label": "\u65e5\u5386\u51c6\u786e\u7387",
+                "value": "99.7%"
+              }
+            ],
+            "bullets": [
+              "\u6309\u90e8\u95e8\u4e0e\u670d\u52a1\u8005\u5b9e\u65f6\u540c\u6b65\u53ef\u7528\u65f6\u6bb5\u3002",
+              "\u652f\u6301\u5faa\u73af\u3001\u4e34\u65f6\u4e0e\u6a21\u677f\u6392\u73ed\u3002",
+              "\u5185\u5efa\u6362\u73ed\u3001\u8bf7\u5047\u4e0e\u5ba1\u6279\u6d41\u7a0b\u3002"
+            ]
+          },
+          "payroll": {
+            "label": "\u85aa\u8d44",
+            "summary": "\u81ea\u52a8\u5904\u7406\u8de8\u533a\u57df\u85aa\u8d44\u3001\u52a0\u73ed\u4e0e\u7a0e\u52a1\uff08\u9002\u7528\u4e8e\u7f8e\u56fd\u4e0e\u52a0\u62ff\u5927*\u4e0d\u542b\u9b41\u5317\u514b\uff09\u3002",
+            "stats": [
+              {
+                "label": "\u8986\u76d6\u5730\u533a",
+                "value": "\u7f8e\u56fd45\u5dde + \u52a0\u62ff\u5927"
+              },
+              {
+                "label": "\u85aa\u8d44\u51c6\u786e\u7387",
+                "value": "99.8%"
+              },
+              {
+                "label": "\u6bcf\u6b21\u8fd0\u884c\u8282\u7701\u65f6\u95f4",
+                "value": "-72%"
+              }
+            ],
+            "bullets": [
+              "\u652f\u6301 CRA \u4e0e IRS \u62a5\u8868\u5bfc\u51fa\uff08T4\u3001W-2\u3001ROE\uff09\u3002",
+              "\u81ea\u52a8\u8c03\u6574\u5e74\u5ea6\u7d2f\u8ba1\u4e0e\u624b\u52a8\u66f4\u6b63\u3002",
+              "\u5458\u5de5\u95e8\u6237\u53ef\u81ea\u52a9\u4e0b\u8f7d\u5de5\u8d44\u5355\u3002"
+            ]
+          },
+          "commerce": {
+            "label": "\u9500\u552e",
+            "summary": "\u5728\u7edf\u4e00\u8d2d\u7269\u8f66\u4e2d\u552e\u5356\u670d\u52a1\u3001\u5546\u54c1\u4e0e\u52a0\u8d2d\uff0c\u5e76\u4f7f\u7528 Stripe Checkout \u5b89\u5168\u7ed3\u8d26\u3002",
+            "stats": [
+              {
+                "label": "\u4e0a\u67b6\u5546\u54c1",
+                "value": "\u5b8c\u6574\u76ee\u5f55"
+              },
+              {
+                "label": "\u9000\u6b3e\u81ea\u52a8\u5316",
+                "value": "\u5df2\u5f00\u542f"
+              },
+              {
+                "label": "Stripe \u7ed3\u8d26\u53ef\u7528\u7387",
+                "value": "99.99%"
+              }
+            ],
+            "bullets": [
+              "\u670d\u52a1\u4e0e\u5546\u54c1\u6df7\u5408\u8d2d\u7269\u8f66\u667a\u80fd\u62c6\u5206\u3002",
+              "\u539f\u751f\u652f\u6301\u9644\u52a0\u9879\u76ee\u3001\u4f18\u60e0\u5238\u4e0e\u793c\u54c1\u5361\u3002",
+              "PCI \u5408\u89c4\u7684\u50a8\u5361\u7ba1\u7406\u3002"
+            ]
+          }
+        }
+      },
+      "highlightSlider": {
+        "instantSite": {
+          "title": "\u5feb\u901f\u4e0a\u7ebf\u54c1\u724c\u5b98\u7f51",
+          "caption": "\u51e0\u5206\u949f\u5373\u53ef\u53d1\u5e03\u54c1\u724c\u7f51\u7ad9\uff0c\u8f7b\u677e\u7ed1\u5b9a\u81ea\u6709\u57df\u540d\u3002"
+        },
+        "stripeCheckout": {
+          "title": "Stripe \u7ed3\u8d26\u4e0e\u8ba2\u9605",
+          "caption": "\u552e\u5356\u670d\u52a1\u4e0e\u5546\u54c1\uff0c\u6253\u8d4f\u3001\u4f18\u60e0\u4e0e\u9000\u6b3e\u5168\u90e8\u5185\u7f6e\u3002"
+        },
+        "schedulingPayroll": {
+          "title": "\u6392\u73ed \u00b7 \u85aa\u8d44 \u00b7 HR",
+          "caption": "\u96c6\u4e2d\u7ba1\u7406\u73ed\u8868\u3001\u7533\u8bf7\u4e0e\u85aa\u8d44\u5bfc\u51fa\uff08T4/W2/ROE\uff09\u3002"
+        }
+      },
+      "highlightCards": {
+        "scheduling": {
+          "title": "\u66f4\u806a\u660e\u7684\u6392\u73ed",
+          "description": "\u5faa\u73af\u6a21\u677f\u3001\u5b9e\u65f6\u53ef\u7528\u6027\u4ee5\u53ca\u968f\u5904\u5d4c\u5165\u7684\u54c1\u724c\u5316\u9884\u7ea6\u7ec4\u4ef6\u3002",
+          "points": [
+            "\u5faa\u73af\u6216\u5355\u6b21\u65f6\u6bb5\uff0c\u652f\u6301\u7f13\u51b2\u65f6\u95f4\u3002",
+            "\u5ba2\u6237\u53ef\u81ea\u52a9\u6539\u7ea6\u3001\u53d6\u6d88\u5e76\u52a0\u5165\u5019\u8865\u3002",
+            "\u5d4c\u5165\u7ec4\u4ef6\u81ea\u52a8\u9002\u914d\u54c1\u724c\u98ce\u683c\u3002"
+          ]
+        },
+        "commerce": {
+          "title": "\u8f6c\u5316\u578b\u9500\u552e",
+          "description": "\u5728 Stripe Checkout \u9a71\u52a8\u7684\u7edf\u4e00\u8d2d\u7269\u8f66\u4e2d\u552e\u5356\u670d\u52a1\u3001\u5546\u54c1\u4e0e\u52a0\u8d2d\u3002",
+          "points": [
+            "\u5b89\u5168\u7684 Stripe \u4f1a\u8bdd\u652f\u6301\u6df7\u5408\u8d2d\u7269\u8f66\u3002",
+            "\u4f18\u60e0\u5238\u3001\u9000\u6b3e\u4e0e\u50a8\u5b58\u5361\u7247\u5f00\u7bb1\u5373\u7528\u3002",
+            "\u901a\u8fc7 Stripe Tax \u4e00\u952e\u5f00\u542f\u7a0e\u52a1\u914d\u7f6e\u3002"
+          ]
+        },
+        "analytics": {
+          "title": "\u5206\u6790\u4e0e\u8425\u9500",
+          "description": "\u4f01\u4e1a\u7ea7\u4eea\u8868\u677f\u4e0e\u81ea\u52a8\u89e6\u53d1\u7684\u5524\u9192\u3001VIP \u4e0e\u52a0\u8d2d\u8425\u9500\u6d3b\u52a8\u3002",
+          "points": [
+            "\u5173\u952e\u6307\u6807\uff1a\u8425\u6536\u3001\u6d41\u5931\u3001\u70ed\u95e8\u670d\u52a1\u3002",
+            "\u81ea\u52a8\u5316\u5ba2\u6237\u89e6\u8fbe\u4e0e\u4f18\u60e0\u5238\u6d41\u7a0b\u3002",
+            "\u6309\u5458\u5de5\u6216\u95e8\u5e97\u8ffd\u8e2a\u7ee9\u6548\u3002"
+          ]
+        }
+      },
+      "featureCard": {
+        "eyebrow": "\u5347\u7ea7\u539f\u56e0",
+        "title": "\u8fd0\u8425\u6570\u636e\u4e00\u5904\u638c\u63e1",
+        "subtitle": "\u4ee5\u7edf\u4e00\u6d41\u7a0b\u53d6\u4ee3 5+ \u4e2a\u5206\u6563\u5de5\u5177\uff0c\u8986\u76d6\u6392\u73ed\u3001\u85aa\u8d44\u3001\u7f51\u7ad9\u4e0e\u5206\u6790\u3002"
+      },
+      "featureShowcase": {
+        "eyebrow": "\u5e73\u53f0\u57fa\u77f3",
+        "title": "\u6a21\u5757\u95f4\u5929\u7136\u534f\u540c",
+        "subtitle": "Schedulaa \u6a21\u5757\u65e0\u7f1d\u4f20\u9012\u4e0a\u4e0b\u6587\uff0c\u5458\u5de5\u4e0e\u5ba2\u6237\u59cb\u7ec8\u4fdd\u6301\u5728\u8f68\u3002"
+      },
+      "spotlight": {
+        "workspace": {
+          "title": "\u6bcf\u4e2a\u90e8\u95e8\u5171\u4eab\u540c\u4e00\u5de5\u4f5c\u53f0",
+          "bullets": [
+            "\u6bcf\u4e2a\u95e8\u5e97/\u90e8\u95e8\u62e5\u6709\u72ec\u7acb\u4e3b\u9898\u3001\u5458\u5de5\u4e0e\u9884\u7ea6\u6d41\u7a0b\u3002",
+            "\u5ba2\u6237\u4e0e\u5458\u5de5\u65e5\u7a0b\u5373\u65f6\u540c\u6b65\u6240\u6709\u5730\u70b9\u3002",
+            "\u5185\u5efa\u53ef\u7528\u6027\u3001\u8c03\u73ed\u4e0e\u8bf7\u5047\u7ba1\u7406\u3002"
+          ],
+          "alt": "\u90e8\u95e8\u4e0e\u95e8\u5e97\u7ba1\u7406\u9762\u677f"
+        },
+        "marketing": {
+          "title": "\u5185\u7f6e\u8425\u9500\u81ea\u52a8\u5316",
+          "bullets": [
+            "\u81ea\u52a8\u63a8\u9001\u5524\u9192\u3001\u5931\u7ea6\u3001VIP \u4e0e\u65b0\u54c1\u6d3b\u52a8\u3002",
+            "\u81ea\u52a8\u751f\u6210\u4f18\u60e0\u5238\u3001\u5230\u671f\u65f6\u95f4\u4e0e\u590d\u8d2d\u94fe\u63a5\u3002",
+            "\u9884\u89c8\u53d7\u4f17\u3001\u4e2a\u6027\u5316\u6587\u6848\u5e76\u9884\u7ea6\u53d1\u9001\u3002"
+          ],
+          "alt": "\u8425\u9500\u4e0e\u5ba2\u6237\u81ea\u52a8\u5316\u5957\u4ef6"
+        },
+        "analytics": {
+          "title": "\u53ef\u884c\u52a8\u7684\u5206\u6790",
+          "bullets": [
+            "\u8ffd\u8e2a\u8425\u6536\u3001\u9000\u6b3e\u3001\u5ba2\u6237\u7559\u5b58\u4e0e\u670d\u52a1\u5229\u7528\u7387\u3002",
+            "\u6309\u5458\u5de5\u3001\u90e8\u95e8\u6216\u6d3b\u52a8\u6df1\u5ea6\u5206\u6790\u3002",
+            "\u76f4\u63a5\u4ece\u4eea\u8868\u677f\u5bfc\u51fa\u9ad8\u7ea7 KPI \u6570\u636e\u3002"
+          ],
+          "alt": "Schedulaa \u5206\u6790\u4eea\u8868\u677f"
+        }
+      },
+      "insight": {
+        "eyebrow": "\u8fd0\u8425\u56e2\u961f\u89c2\u70b9",
+        "title": "\u63d0\u5347\u56e2\u961f\u7684\u5b9e\u8df5\u6307\u5357",
+        "subtitle": "\u4e3a\u7ba1\u7406\u8005\u63d0\u4f9b\u5728 Schedulaa \u4e2d\u7cbe\u901a\u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u81ea\u52a8\u5316\u7684\u7b56\u7565\u8d44\u6e90\u3002"
+      },
+      "guides": {
+        "briefing": {
+          "tag": "\u7b80\u62a5",
+          "headline": "\u6253\u9020\u81ea\u6211\u9a71\u52a8\u7684\u5ba2\u6237\u65c5\u7a0b",
+          "description": "\u68b3\u7406\u628a\u9996\u6b21\u9884\u7ea6\u8f6c\u5316\u4e3a\u6301\u7eed\u5ba2\u6237\u7684\u5173\u952e\u89e6\u70b9\u3002",
+          "ctaLabel": "\u67e5\u770b\u7b80\u62a5"
+        },
+        "playbook": {
+          "tag": "\u653b\u7565",
+          "headline": "\u521b\u610f\u56e2\u961f\u7684\u4eba\u529b\u6392\u73ed\u516c\u5f0f",
+          "description": "\u5e73\u8861\u5229\u7528\u7387\u3001\u4f11\u5047\u4e0e\u6280\u80fd\u8986\u76d6\u3002",
+          "ctaLabel": "\u4e0b\u8f7d\u653b\u7565"
+        },
+        "webinar": {
+          "tag": "\u7f51\u7edc\u7814\u8ba8",
+          "headline": "30 \u5206\u949f\u638c\u63e1\u85aa\u916c\u5408\u89c4",
+          "description": "\u4e86\u89e3\u8de8\u5dde\u652f\u4ed8\u4e0e\u8de8\u5883\u7a0e\u52a1\u5982\u4f55\u5728 Schedulaa \u4e2d\u968f\u65f6\u901a\u8fc7\u5ba1\u8ba1\u3002",
+          "ctaLabel": "\u89c2\u770b\u5f55\u64ad"
+        }
+      },
+      "testimonials": {
+        "title": "\u4e0e Schedulaa \u4e00\u540c\u6269\u5f20\u7684\u56e2\u961f"
+      },
+      "cta": {
+        "eyebrow": "\u51c6\u5907\u597d\u7cbe\u7b80\u6d41\u7a0b\u4e86\u5417\uff1f",
+        "title": "\u5728\u4e00\u4e2a\u8d26\u53f7\u4e2d\u8fd0\u884c\u9884\u7ea6\u3001\u85aa\u8d44\u4e0e\u5728\u7ebf\u9500\u552e\u3002",
+        "description": "\u9500\u552e\u4ea7\u54c1\u3001\u7ba1\u7406\u5458\u5de5\u3001\u81ea\u52a8\u5316\u8425\u9500\u2014\u2014\u73b0\u4ee3\u670d\u52a1\u4e1a\u7684\u4e00\u4f53\u5316\u5e73\u53f0\u3002",
+        "primaryLabel": "\u514d\u8d39\u5f00\u59cb",
+        "secondaryLabel": "\u8054\u7cfb\u9500\u552e"
+      }
+    },
+    "features": {
+      "meta": {
+        "title": "Schedulaa \u5e73\u53f0\u529f\u80fd | \u4e00\u4f53\u5316\u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u5728\u7ebf\u9500\u552e",
+        "description": "Schedulaa \u5c06\u6392\u73ed\u3001\u85aa\u8d44\u3001\u5efa\u7ad9\u4e0e\u7535\u5546\u6574\u5408\u4e3a\u4e00\u4f53\u3002\u552e\u5356\u670d\u52a1\u4e0e\u5546\u54c1\u3001\u81ea\u52a8\u5316\u652f\u4ed8\u5e76\u7ba1\u7406\u591a\u95e8\u5e97\uff0c\u4ec5\u9700\u4e00\u4e2a\u5e73\u53f0\u3002",
+        "ogTitle": "Schedulaa \u5e73\u53f0\u529f\u80fd",
+        "ogDescription": "\u9884\u7ea6\u3001\u9500\u552e\u4e0e\u5458\u5de5\u85aa\u8d44\u4e00\u7ad9\u5f0f\u5b8c\u6210\u3002"
+      },
+      "hero": {
+        "eyebrow": "\u6838\u5fc3\u4eae\u70b9",
+        "title": {
+          "line1": "\u4e3a\u4f01\u4e1a\u7ea7\u670d\u52a1\u56e2\u961f",
+          "line2": "\u91cf\u8eab\u6253\u9020\u7684\u529f\u80fd"
+        },
+        "subtitle": "Schedulaa \u5c06\u6392\u73ed\u3001\u85aa\u8d44\u3001\u7f51\u7ad9\u4e0e\u7535\u5546\u878d\u5408\u4e3a\u4e00\u4e2a\u4f53\u9a8c\uff0c\u8ba9\u5458\u5de5\u4e0e\u5ba2\u6237\u59cb\u7ec8\u4fdd\u6301\u540c\u6b65\u3002",
+        "badge": {
+          "title": "Schedulaa OS",
+          "subtitle": "\u7edf\u4e00\u6307\u6325\u4e2d\u5fc3"
+        },
+        "primaryCta": {
+          "label": "\u514d\u8d39\u8bd5\u7528",
+          "supporting": "\u65e0\u9700\u4fe1\u7528\u5361"
+        },
+        "secondaryCta": {
+          "label": "\u6bd4\u8f83\u65b9\u6848"
+        },
+        "mediaAlt": "Schedulaa \u6392\u73ed\u4e0e\u85aa\u8d44\u754c\u9762",
+        "banner": {
+          "title": "\u65b0\u529f\u80fd",
+          "body": "\u81ea\u5b9a\u4e49\u57df\u540d\u63a5\u5165\uff08TXT/CNAME\uff09\u4e0e\u81ea\u52a8 SSL \u5df2\u4e0a\u7ebf\u3002",
+          "ctaLabel": "\u8fde\u63a5\u57df\u540d"
+        },
+        "featureCard": {
+          "eyebrow": "\u4e3a\u4ec0\u4e48\u56e2\u961f\u5347\u7ea7",
+          "title": "\u8fd0\u8425\u6570\u636e\u5355\u4e00\u6765\u6e90",
+          "subtitle": "\u7528\u534f\u4f5c\u7684\u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u7f51\u7ad9\u66ff\u6362 5 \u4e2a\u4ee5\u4e0a\u5206\u6563\u5de5\u5177\u3002"
+        }
+      },
+      "highlightCards": {
+        "scheduling": {
+          "title": "\u66f4\u667a\u80fd\u7684\u6392\u73ed\u4e0e\u9884\u7ea6",
+          "description": "\u90e8\u95e8\u7ea7\u670d\u52a1\u5217\u8868\u3001\u5faa\u73af\u6a21\u677f\u4ee5\u53ca\u968f\u5904\u5d4c\u5165\u7684\u54c1\u724c\u5316\u9884\u7ea6\u7ec4\u4ef6\u3002",
+          "points": [
+            "\u5faa\u73af\u4e0e\u53ef\u7f16\u8f91\u65f6\u6bb5\uff08\u7c7b\u4f3c Vagaro\uff09\u3002",
+            "\u5ba2\u6237\u53ef\u5728\u4e00\u4e2a\u6d41\u7a0b\u4e2d\u9884\u7ea6\u591a\u9879\u670d\u52a1\u3001\u9644\u52a0\u9879\u76ee\u6216\u670d\u52a1\u4eba\u5458\u3002",
+            "\u5728\u5408\u4f5c\u4f19\u4f34\u7f51\u7ad9\u6216\u81ea\u6709\u57df\u540d\u4e2d\u5d4c\u5165\u54c1\u724c\u9884\u7ea6\u7ec4\u4ef6\u3002",
+            "\u6392\u73ed\u81ea\u5e26\u8c03\u73ed\u4e0e\u8bf7\u5047\u5ba1\u6279\u3002"
+          ]
+        },
+        "payroll": {
+          "title": "\u85aa\u8d44\u4e0e\u5408\u89c4",
+          "description": "\u6267\u884c\u9002\u914d\u5730\u533a\u7684\u85aa\u8d44\uff0c\u5185\u542b\u5e74\u5ea6\u6c47\u603b\u3001\u7a0e\u52a1\u5bfc\u51fa\u4e0e\u5458\u5de5\u81ea\u52a9\u95e8\u6237\u3002",
+          "points": [
+            "\u81ea\u52a8\u5904\u7406\u52a0\u73ed\u3001\u63d0\u6210\u4e0e\u8282\u5047\u65e5\u3002",
+            "\u652f\u6301\u5bfc\u51fa W-2\u3001T4\u3001ROE\u3002",
+            "\u4e0e Stripe payouts \u96c6\u6210\uff0c\u5feb\u901f\u3001\u5b89\u5168\u53d1\u85aa\u3002",
+            "\u4e3a\u7f8e\u56fd\u4e0e\u52a0\u62ff\u5927\uff08\u9664\u9b41\u5317\u514b\uff09\u51c6\u5907\u7684\u5ba1\u8ba1\u7ea7\u62a5\u544a\u3002"
+          ]
+        },
+        "commerce": {
+          "title": "\u9500\u552e \u00b7 \u5206\u6790 \u00b7 \u8425\u9500",
+          "description": "\u540c\u65f6\u9500\u552e\u670d\u52a1\u4e0e\u5546\u54c1\uff0c\u81ea\u52a8\u5316\u8425\u9500\u5e76\u5728\u4e00\u4e2a\u4eea\u8868\u677f\u4e2d\u76d1\u63a7\u6210\u6548\u3002",
+          "points": [
+            "\u670d\u52a1\u4e0e\u5546\u54c1\u6df7\u5408\u8d2d\u7269\u8f66\uff0c\u652f\u6301\u9644\u52a0\u9879\u76ee\u4e0e\u4f18\u60e0\u5238\u3002",
+            "Stripe Checkout \u81ea\u5e26\u9000\u6b3e\u4e0e\u7a0e\u52a1\u81ea\u52a8\u5316\u3002",
+            "\u76d1\u6d4b\u6536\u5165\u3001\u5229\u7528\u7387\u3001\u6d41\u5931\u7387\u53ca\u70ed\u95e8\u670d\u52a1\u3002",
+            "\u5185\u7f6e\u5524\u9192\u3001VIP \u4e0e\u7f3a\u5e2d\u53ec\u56de\u6d3b\u52a8\u3002"
+          ]
+        }
+      },
+      "featureShowcase": {
+        "eyebrow": "\u5e73\u53f0\u57fa\u77f3",
+        "title": "\u534f\u540c\u5de5\u4f5c\u7684\u529f\u80fd\u6a21\u5757",
+        "subtitle": "\u6bcf\u4e2a\u6a21\u5757\u90fd\u4f1a\u4f20\u9012\u4e0a\u4e0b\u6587\uff0c\u786e\u4fdd\u5458\u5de5\u4e0e\u5ba2\u6237\u59cb\u7ec8\u4fdd\u6301\u8054\u7cfb\u3002",
+        "features": [
+          {
+            "icon": "01",
+            "title": "\u7edf\u4e00\u7684\u9884\u7ea6\u4e0e\u6392\u73ed",
+            "description": [
+              "\u5b9e\u65f6\u9884\u7ea6\u652f\u6301\u670d\u52a1\u9009\u62e9\u4e0e\u5ba2\u6237\u81ea\u52a9\u6539\u7ea6\u3002",
+              "\u7ba1\u7406\u5458\u5de5\u53ef\u7528\u6027\u3001\u6392\u73ed\u6a21\u677f\u4e0e\u591a\u95e8\u5e97\u652f\u6301\u3002",
+              "\u5305\u542b\u8c03\u73ed\u3001\u8bf7\u5047\u4e0e\u5faa\u73af\u89c4\u5219\u3002",
+              "\u81ea\u52a8\u63d0\u9192\u3001\u6570\u5b57\u5c0f\u8d39\u3001\u8bc4\u4ef7\u4e0e\u56de\u8bbf\u6536\u96c6\u3002"
+            ]
+          },
+          {
+            "icon": "02",
+            "title": "\u5f3a\u5927\u7684\u85aa\u8d44\u4e0e\u4eba\u529b",
+            "description": [
+              "\u8986\u76d6\u52a0\u62ff\u5927\u53ca\u7f8e\u56fd 45 \u4e2a\u5dde\uff08EI\u3001CPP\u3001W-2\u3001T4\u3001ROE\u3001401(k)\uff09\u3002",
+              "\u4e3a\u5458\u5de5\u8bbe\u7f6e\u85aa\u8d44\u3001\u52a0\u73ed\u5c42\u7ea7\u3001\u5047\u671f\u5de5\u8d44\u4e0e\u6263\u6b3e\u3002",
+              "\u5bfc\u51fa\u85aa\u8d44\u6216\u63a5\u5165 API \u81ea\u52a8\u62a5\u7a0e\u3002",
+              "\u5458\u5de5\u5165\u804c\u3001\u5de5\u65f6\u8bb0\u5f55\u4e0e\u7ee9\u6548\u6d41\u7a0b\u96c6\u4e2d\u7ba1\u7406\u3002"
+            ]
+          },
+          {
+            "icon": "03",
+            "title": "\u7f51\u7ad9\u6784\u5efa\u4e0e\u7ebf\u4e0a\u5f62\u8c61",
+            "description": [
+              "\u62d6\u62fd\u5f0f\u6a21\u677f\u6db5\u76d6\u670d\u52a1\u3001\u4ea7\u54c1\u3001\u4e3b\u89c6\u89c9\u4e0e\u8054\u7cfb\u6d41\u7a0b\u3002",
+              "\u81ea\u5b9a\u4e49\u5b57\u4f53\u3001\u989c\u8272\u3001\u80cc\u666f\u4e0e\u5e03\u5c40\u6a21\u5757\u3002",
+              "\u968f\u65f6\u6dfb\u52a0/\u5220\u9664\u9875\u9762\u3001\u91cd\u6392\u5bfc\u822a\u5e76\u7acb\u5373\u53d1\u5e03\u3002",
+              "\u8fde\u63a5\u6216\u8d2d\u4e70\u81ea\u6709\u57df\u540d\uff0c\u5185\u7f6e SEO \u7ed3\u6784\u3002"
+            ]
+          },
+          {
+            "icon": "04",
+            "title": "\u7535\u5546\u4e0e\u5546\u54c1\u9500\u552e",
+            "description": [
+              "\u5185\u7f6e\u5546\u54c1\u76ee\u5f55\u652f\u6301\u5b9e\u4f53\u4e0e\u6570\u5b57\u5546\u54c1\uff0c\u8be6\u60c5\u9875\u4e30\u5bcc\u3002",
+              "Stripe Connect \u5b89\u5168\u7ed3\u8d26\uff0c\u652f\u6301\u9000\u6b3e\u4e0e\u5c0f\u8d39\u3002",
+              "\u5e93\u5b58\u7ba1\u7406\u3001\u5b9a\u4ef7\u63a7\u5236\u4e0e\u89c4\u683c SKU \u9009\u9879\u3002",
+              "\u9500\u552e\u5206\u6790\u5c55\u793a\u6536\u5165\u8d8b\u52bf\u3001\u660e\u661f\u5546\u54c1\u4e0e\u552e\u7f44\u60c5\u51b5\u3002"
+            ]
+          },
+          {
+            "icon": "05",
+            "title": "\u667a\u80fd\u5206\u6790\u4e0e\u62a5\u8868",
+            "description": [
+              "\u4eea\u8868\u677f\u6db5\u76d6\u6536\u5165\u3001\u9884\u7ea6\u3001\u7559\u5b58\u4e0e\u5ba2\u6237\u751f\u547d\u5468\u671f\u4ef7\u503c\u3002",
+              "\u5458\u5de5\u7ee9\u6548\u62a5\u8868\u542b\u5229\u7528\u7387\u4e0e\u6548\u7387\u6307\u6807\u3002",
+              "\u7a0e\u52a1\u3001\u6253\u6b3e\u4e0e\u7ed3\u7b97\u62a5\u8868\u53ef\u5bfc\u51fa CSV\u3002",
+              "\u6d1e\u5bdf\u6570\u636e\u52a9\u529b\u66f4\u51c6\u786e\u7684\u51b3\u7b56\u3001\u9884\u6d4b\u9700\u6c42\u5e76\u53ca\u65e9\u53d1\u73b0\u95ee\u9898\u3002"
+            ]
+          },
+          {
+            "icon": "06",
+            "title": "\u81ea\u52a8\u5316\u4e0e\u96c6\u6210",
+            "description": [
+              "\u901a\u8fc7 Zapier \u8fde\u63a5 Mailchimp\u3001Slack\u3001QuickBooks \u7b49\u670d\u52a1\u3002",
+              "Webhooks \u4e0e REST API \u89e6\u53d1\u5de5\u4f5c\u6d41\u6216\u540c\u6b65\u5916\u90e8\u7cfb\u7edf\u3002",
+              "\u81ea\u52a8\u5316\u6392\u73ed\u7528\u4e8e\u633d\u56de\u6d3b\u52a8\u3001\u7f3a\u5e2d\u63d0\u9192\u4e0e\u8ddf\u8fdb\u3002",
+              "\u5c06\u6302\u4ef6\u4e0e\u9884\u7ea6\u6d41\u7a0b\u76f4\u63a5\u5d4c\u5165\u73b0\u6709\u7f51\u7ad9\u548c\u5408\u4f5c\u95e8\u6237\u3002"
+            ]
+          },
+          {
+            "icon": "07",
+            "title": "\u5b89\u5168\u3001\u5408\u89c4\u4e0e\u6269\u5c55",
+            "description": [
+              "\u57fa\u4e8e\u89d2\u8272\u7684\u8bbf\u95ee\u63a7\u5236\uff0c\u9002\u7528\u4e8e\u7ecf\u7406\u3001\u7ba1\u7406\u5458\u3001\u62db\u8058\u8005\u4e0e\u5458\u5de5\u3002",
+              "\u6570\u636e\u52a0\u5bc6\u5b58\u50a8\uff0c\u63d0\u4f9b\u5ba1\u8ba1\u65e5\u5fd7\u4e0e\u81ea\u52a8\u5907\u4efd\u3002",
+              "\u652f\u6301\u591a\u95e8\u5e97\u3001\u591a\u5206\u652f\u7684\u96c6\u4e2d\u7ba1\u7406\u3002",
+              "\u5f00\u7bb1\u5373\u7b26\u5408\u5404\u5730\u533a\u85aa\u8d44\u4e0e\u9690\u79c1\u6cd5\u89c4\u3002"
+            ]
+          }
+        ]
+      },
+      "platformMap": {
+        "title": "\u4e00\u5f20\u5730\u56fe\u7edf\u7b79\u95e8\u5e97\u3001\u56e2\u961f\u4e0e\u7f51\u7ad9",
+        "subtitle": "\u65e0\u8bba\u662f\u591a\u95e8\u5e97\u3001\u52a0\u76df\u4f53\u7cfb\u8fd8\u662f\u62db\u8058\u5c0f\u7ec4\uff0c\u5e73\u53f0\u5730\u56fe\u90fd\u80fd\u5728\u4fdd\u6301\u672c\u5730\u54c1\u724c\u7684\u540c\u65f6\u5b9e\u73b0\u534f\u540c\u3002",
+        "points": {
+          "branches": "\u4ee5\u72ec\u7acb\u4e3b\u9898\u548c\u6743\u9650\u7ba1\u7406\u95e8\u5e97\u3001\u90e8\u95e8\u4e0e\u56e2\u961f\u3002",
+          "analytics": "\u901a\u8fc7\u5b9e\u65f6\u5206\u6790\u4e0e\u8425\u6536\u6d1e\u5bdf\u5bf9\u6bd4\u5404\u95e8\u5e97\u8868\u73b0\u3002",
+          "templates": "\u884c\u4e1a\u6a21\u677f\uff08\u5065\u8eab\u3001\u5730\u4ea7\u3001\u62db\u8058\u3001\u6559\u80b2\u3001\u6444\u5f71\uff09\u81ea\u5e26\u4e13\u5c5e\u90ae\u4ef6\u4e0e\u95ee\u5377\u3002",
+          "sync": "\u9884\u7ea6\u3001\u6392\u73ed\u4e0e\u85aa\u8d44\u5728\u4e00\u4e2a\u4eea\u8868\u677f\u4e2d\u65e0\u7f1d\u540c\u6b65\u3002",
+          "domains": "\u5728\u81ea\u6709\u57df\u540d\u4e0a\u7ebf\u54c1\u724c\u7f51\u7ad9\u5e76\u81ea\u52a8\u83b7\u5f97 SSL\u3002"
+        },
+        "primaryCta": {
+          "label": "\u8054\u7cfb\u9500\u552e\u56e2\u961f"
+        },
+        "secondaryCta": {
+          "label": "\u67e5\u770b\u6587\u6863"
+        },
+        "mediaAlt": "Schedulaa \u5e73\u53f0\u5730\u56fe\u8fde\u63a5\u6392\u73ed\u3001\u85aa\u8d44\u3001\u81ea\u52a8\u5316\u3001\u7f51\u7ad9\u4e0e\u5206\u6790"
+      },
+      "integrations": {
+        "title": "\u53ef\u89c6\u5316\u7684\u96c6\u6210\u4e0e\u81ea\u52a8\u5316",
+        "subtitle": "\u5728\u4e00\u5f20\u56fe\u4e0a\u89c4\u5212\u7cfb\u7edf\u3001\u6d41\u7a0b\u4e0e\u81ea\u52a8\u5316\uff0c\u8ba9\u5e02\u573a\u3001\u8fd0\u8425\u3001\u8d22\u52a1\u4fdd\u6301\u4e00\u81f4\u3002",
+        "points": {
+          "accounting": "\u5c06\u53d1\u7968\u3001\u652f\u4ed8\u4e0e\u85aa\u8d44\u5bfc\u51fa\u76f4\u63a5\u540c\u6b65\u81f3 QuickBooks \u6216 Xero\u3002",
+          "automation": "\u901a\u8fc7\u90ae\u4ef6\u6216\u77ed\u4fe1\u81ea\u52a8\u6267\u884c\u5524\u9192\u3001\u56de\u8bbf\u4e0e\u7f3a\u5e2d\u53ec\u56de\u3002",
+          "stripe": "\u4f7f\u7528 Stripe Checkout \u5904\u7406\u5b89\u5168\u652f\u4ed8\uff0c\u652f\u6301\u50a8\u5b58\u5361\u7247\u4e0e\u9000\u6b3e\u3002",
+          "domains": "\u81ea\u5b9a\u4e49\u57df\u540d\u914d\u5957\u81ea\u52a8 SSL \u5df2\u4e0a\u7ebf\uff1b\u5185\u7f6e\u57df\u540d\u6ce8\u518c\u4e0e Zapier \u5373\u5c06\u63a8\u51fa\u3002"
+        },
+        "mediaAlt": "Schedulaa \u81ea\u52a8\u5316\u4e0e\u96c6\u6210\u6d41\u7a0b\u56fe",
+        "blocks": {
+          "payments": {
+            "title": "\u652f\u4ed8\u4e0e\u7ed3\u7b97",
+            "items": [
+              "\u652f\u6301\u50a8\u5b58\u5361\u7247\u3001Apple Pay\u3001Google Pay",
+              "Stripe Radar\u3001\u9632PCI\u5408\u89c4\u3001SOC2 \u8fdb\u884c\u4e2d"
+            ]
+          },
+          "compliance": {
+            "title": "\u5408\u89c4",
+            "items": [
+              "CRA \u4e0e IRS \u5bfc\u51fa",
+              "SOC2 \u6b63\u5728\u7533\u8bf7"
+            ]
+          }
+        }
+      },
+      "insight": {
+        "eyebrow": "\u8fd0\u8425\u89c6\u89d2",
+        "title": "\u8ba9\u56e2\u961f\u5347\u7ea7\u7684\u6307\u5357",
+        "subtitle": "\u5728\u6211\u4eec\u6301\u7eed\u8fed\u4ee3\u7684\u540c\u65f6\uff0c\u83b7\u53d6\u6709\u5173\u6392\u73ed\u6a21\u578b\u3001\u85aa\u8d44\u5408\u89c4\u4e0e\u5ba2\u6237\u7559\u5b58\u7684\u5b9e\u6218\u624b\u518c\u3002",
+        "items": [
+          {
+            "tag": "\u653b\u7565",
+            "headline": "\u5236\u5b9a\u591a\u95e8\u5e97\u6392\u73ed\u7b56\u7565",
+            "description": "\u89c4\u5212\u53ef\u7528\u65f6\u6bb5\u3001\u89d2\u8272\u4e0e\u6743\u9650\uff0c\u907f\u514d\u989d\u5916\u52a0\u73ed\u3002",
+            "ctaLabel": "\u67e5\u770b\u6307\u5357",
+            "ctaHref": "https://www.schedulaa.com/blog/multi-location-staffing"
+          },
+          {
+            "tag": "\u7f51\u7edc\u7814\u8ba8",
+            "headline": "\u521b\u610f\u56e2\u961f\u85aa\u8d44\u6df1\u5ea6\u89e3\u8bfb",
+            "description": "30 \u5206\u949f\u5185\u638c\u63e1\u7a0e\u52a1\u3001\u63d0\u6210\u4e0e\u8de8\u5883\u652f\u4ed8\u3002",
+            "ctaLabel": "\u89c2\u770b\u56de\u653e",
+            "ctaHref": "https://www.schedulaa.com/webinars/payroll"
+          },
+          {
+            "tag": "\u6e05\u5355",
+            "headline": "\u81ea\u52a8\u5316\u542f\u52a8\u5de5\u4f5c\u8868",
+            "description": "\u5ba1\u89c6\u5ba2\u6237\u65c5\u7a0b\uff0c\u627e\u51fa\u6700\u7701\u65f6\u7684\u81ea\u52a8\u5316\u8282\u70b9\u3002",
+            "ctaLabel": "\u4e0b\u8f7d PDF",
+            "ctaHref": "https://www.schedulaa.com/resources/automation-checklist"
+          }
+        ]
+      },
+      "testimonials": {
+        "title": "\u4e0e Schedulaa \u4e00\u540c\u6210\u957f\u7684\u56e2\u961f"
+      },
+      "cta": {
+        "eyebrow": "\u51c6\u5907\u597d\u7b80\u5316\u6d41\u7a0b\u4e86\u5417\uff1f",
+        "title": "\u4e00\u4e2a\u8d26\u53f7\u5373\u53ef\u7ba1\u7406\u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u5728\u7ebf\u9500\u552e\u3002",
+        "description": "\u65e0\u8bba\u60a8\u7ecf\u8425\u7f8e\u5bb9\u9662\u3001\u5065\u8eab\u623f\u3001\u62db\u8058\u7f51\u7edc\u6216\u5730\u4ea7\u56e2\u961f\uff0cSchedulaa \u90fd\u80fd\u5728\u5b89\u5168\u7684\u5de5\u4f5c\u533a\u5185\u8fde\u63a5\u9884\u7ea6\u3001\u9500\u552e\u4e0e\u85aa\u8d44\u3002",
+        "primaryCta": {
+          "label": "\u7acb\u5373\u5f00\u59cb"
+        },
+        "secondaryCta": {
+          "label": "\u8054\u7cfb\u9500\u552e"
+        }
+      }
+    },
+    "docsPage": {
+      "meta": {
+        "title": "Schedulaa \u6587\u6863 | \u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u5728\u7ebf\u5546\u52a1\u6307\u5357",
+        "description": "\u4f7f\u7528 Schedulaa \u914d\u7f6e\u9884\u8ba2\u6d41\u7a0b\u3001\u85aa\u8d44\u3001\u5206\u6790\u548c\u57fa\u4e8e Stripe \u7684\u7535\u5546\u3002\u9762\u5411\u670d\u52a1\u578b\u4f01\u4e1a\u7684\u6307\u5357\u3001API\u3001\u96c6\u6210\u4e0e\u5e38\u89c1\u95ee\u9898\u3002",
+        "canonical": "https://www.schedulaa.com/docs",
+        "og": {
+          "title": "Schedulaa \u6587\u6863 | \u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u5728\u7ebf\u5546\u52a1\u6307\u5357",
+          "description": "\u9762\u5411\u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u5728\u7ebf\u9500\u552e\u7684\u6307\u5357\u3001API\u3001\u4e0a\u624b\u6b65\u9aa4\u3001\u96c6\u6210\u4e0e\u5e38\u89c1\u95ee\u9898\u3002",
+          "image": "https://www.schedulaa.com/og/docs.jpg"
+        }
+      },
+      "hero": {
+        "eyebrow": "\u6587\u6863",
+        "title": [
+          "\u6392\u73ed\u6587\u6863\uff0c",
+          "\u85aa\u8d44\u3001\u5206\u6790\u4e0e\u5728\u7ebf\u9500\u552e\u6307\u5357\u3002"
+        ],
+        "subtitle": "\u901a\u8fc7\u5206\u6b65\u6587\u6863\u3001API \u548c\u81ea\u52a8\u5316\u6559\u7a0b\uff0c\u914d\u7f6e\u6392\u73ed\u3001\u85aa\u8d44\u3001\u5206\u6790\u4ee5\u53ca Stripe \u6536\u94f6\u3002",
+        "primaryCta": {
+          "label": "\u641c\u7d22\u6587\u6863"
+        },
+        "secondaryCta": {
+          "label": "\u6d4f\u89c8 API"
+        },
+        "badge": {
+          "overline": "\u6587\u6863\u4e2d\u5fc3",
+          "title": "\u6307\u5357\u3001API \u4e0e\u96c6\u6210\u4e00\u7ad9\u6c47\u603b"
+        },
+        "mediaAlt": "Schedulaa \u6587\u6863\u6982\u89c8"
+      },
+      "quickLinks": {
+        "eyebrow": "\u5feb\u901f\u94fe\u63a5",
+        "title": "\u6309\u76ee\u6807\u9009\u62e9\u5408\u9002\u7ae0\u8282",
+        "subtitle": "\u76f4\u63a5\u8fdb\u5165\u9002\u5408\u56e2\u961f\u7684\u914d\u7f6e\u6307\u5357\u3001API \u8c03\u7528\u3001\u96c6\u6210\u548c\u652f\u6301\u5185\u5bb9\u3002",
+        "ctaLabel": "\u6253\u5f00",
+        "items": {
+          "gettingStarted": {
+            "label": "\u5feb\u901f\u4e0a\u624b",
+            "description": "\u51e0\u5206\u949f\u5185\u542f\u52a8\u6392\u73ed\u3001\u652f\u4ed8\u4e0e\u54c1\u724c\u3002"
+          },
+          "userGuides": {
+            "label": "\u7528\u6237\u6307\u5357",
+            "description": "\u9884\u8ba2\u3001\u85aa\u8d44\u3001\u7f51\u7ad9\u548c\u5206\u6790\u7684\u64cd\u4f5c\u8bb2\u89e3\u3002"
+          },
+          "apiReference": {
+            "label": "API \u53c2\u8003",
+            "description": "\u9884\u8ba2\u3001\u85aa\u8d44\u3001\u5546\u4e1a\u3001\u8425\u9500\u4e0e Webhook API\u3002"
+          },
+          "integrations": {
+            "label": "\u96c6\u6210",
+            "description": "Stripe\u3001QuickBooks/Xero\u3001Jitsi \u4ee5\u53ca\u81ea\u52a8\u5316\u6d41\u7a0b\u3002"
+          },
+          "faq": {
+            "label": "\u5e38\u89c1\u95ee\u9898",
+            "description": "\u6392\u73ed\u3001\u85aa\u8d44\u4e0e\u5ba2\u6237\u95e8\u6237\u7591\u96be\u89e3\u7b54\u3002"
+          },
+          "changelog": {
+            "label": "\u66f4\u65b0\u65e5\u5fd7",
+            "description": "\u5173\u6ce8\u5e73\u53f0\u7248\u672c\u53d1\u5e03\u4e0e\u4fee\u590d\u3002"
+          }
+        }
+      },
+      "search": {
+        "title": "\u641c\u7d22\u6587\u6863",
+        "placeholder": "\u641c\u7d22\u6307\u5357\u3001API \u6216\u5e38\u89c1\u95ee\u9898",
+        "commonTopicsLabel": "\u5e38\u7528\u4e3b\u9898\uff1a"
+      },
+      "gettingStarted": {
+        "title": "\u5f00\u59cb\u914d\u7f6e",
+        "cards": [
+          {
+            "title": "\u8d26\u53f7\u4e0e\u5de5\u4f5c\u533a\u8bbe\u7f6e",
+            "items": [
+              "\u521b\u5efa\u7ba1\u7406\u8d26\u53f7\u5e76\u9a8c\u8bc1\u90ae\u7bb1",
+              "\u9080\u8bf7\u5458\u5de5\u5e76\u5206\u914d\u7ecf\u7406\u3001\u5458\u5de5\u6216\u7ba1\u7406\u5458\u6743\u9650",
+              "\u9009\u62e9\u884c\u4e1a\u6a21\u677f\uff08\u7f8e\u5bb9\u3001\u62db\u8058\u3001\u5065\u8eab\u3001\u623f\u4ea7\u3001\u6444\u5f71\u7b49\uff09",
+              "\u8fde\u63a5 Stripe \u4ee5\u542f\u7528\u4ed8\u6b3e\u3001\u6536\u94f6\u4e0e\u5b58\u5361\u529f\u80fd\uff08\u4e0a\u7ebf\u4ea4\u6613\u6240\u5fc5\u9700\uff09"
+            ]
+          },
+          {
+            "title": "\u516c\u53f8\u8d44\u6599\u4e0e\u54c1\u724c",
+            "items": [
+              "\u914d\u7f6e\u8425\u4e1a\u65f6\u95f4\u3001\u7a0e\u52a1\u8bbe\u7f6e\u548c\u8d27\u5e01",
+              "\u4e0a\u4f20\u6807\u5fd7\u3001\u4e3b\u9898\u8272\u3001\u9884\u8ba2\u7ec4\u4ef6\u4e0e\u901a\u77e5",
+              "\u94fe\u63a5\u73b0\u6709\u81ea\u5b9a\u4e49\u57df\uff1b\u5e94\u7528\u5185\u8d2d\u57df\u529f\u80fd\u5373\u5c06\u63a8\u51fa"
+            ]
+          },
+          {
+            "title": "\u8fd0\u8425\u57fa\u7840",
+            "items": [
+              "\u521b\u5efa\u670d\u52a1\u3001\u9644\u52a0\u9879\u76ee\u3001\u90e8\u95e8\u4e0e\u95e8\u5e97\u76ee\u5f55",
+              "\u53d1\u5e03\u53ef\u7528\u6027\u6a21\u677f\u3001\u5faa\u73af\u6392\u73ed\u4e0e\u8f6e\u73ed\u8868",
+              "\u542f\u7528 Stripe Tax \u81ea\u52a8\u8ba1\u7b97\u5546\u54c1\u4e0e\u9644\u52a0\u9879\u76ee\u7a0e\u8d39",
+              "\u68c0\u67e5\u901a\u77e5\u9ed8\u8ba4\u503c\u3001\u63d0\u9192\u548c\u8425\u9500\u6d3b\u52a8"
+            ]
+          }
+        ]
+      },
+      "productGuides": {
+        "title": "\u4ea7\u54c1\u6307\u5357",
+        "cards": [
+          {
+            "title": "\u9884\u8ba2\u4e0e\u6392\u73ed",
+            "highlights": [
+              "\u8bbe\u7f6e\u670d\u52a1\u76ee\u5f55\u7684\u65f6\u957f\u3001\u7f13\u51b2\u548c\u9644\u52a0\u9879\u76ee",
+              "\u5faa\u73af\u53ef\u7528\u6027\u4e0e\u53ef\u7f16\u8f91\u65f6\u6bb5\uff08\u7c7b\u4f3c Vagaro\uff09",
+              "\u884c\u4e1a\u6a21\u677f\u9644\u5e26\u5b9a\u5236\u90ae\u4ef6\u4e0e\u95ee\u5377",
+              "\u9762\u5411\u95e8\u5e97\u6216\u90e8\u95e8\u7684\u4e13\u5c5e\u9884\u8ba2\u6d41\u7a0b",
+              "\u5ba2\u6237\u53ef\u6536\u5230\u786e\u8ba4\u3001\u63d0\u9192\u3001\u5c0f\u8d39\u3001\u8bc4\u4ef7\u548c\u4f1a\u5458\u8d44\u683c"
+            ]
+          },
+          {
+            "title": "\u85aa\u8d44\u4e0e\u4eba\u4e8b",
+            "highlights": [
+              "\u5458\u5de5\u6863\u6848\u5305\u542b\u85aa\u916c\u3001\u89d2\u8272\u4e0e\u5408\u89c4\u5907\u6ce8",
+              "\u5de5\u65f6\u5ba1\u6279\u3001\u6279\u91cf\u53d1\u85aa\u4e0e\u624b\u52a8\u8c03\u6574",
+              "\u6362\u73ed\u7533\u8bf7\u4e0e\u8bf7\u5047\u5ba1\u6279\u652f\u6301\u7ecf\u7406\u5ba1\u6838",
+              "\u81ea\u52a8\u8ba1\u7b97\u52a0\u73ed\u3001\u8282\u5047\u65e5\u4e0e\u5956\u91d1",
+              "\u5bfc\u51fa\u8986\u76d6\u7f8e\u56fd45\u5dde\u53ca\u52a0\u62ff\u5927\u6240\u6709\u7701\u4efd\uff08\u9b41\u5317\u514b\u9664\u5916\uff09"
+            ]
+          },
+          {
+            "title": "\u7f51\u7ad9\u6784\u5efa\u5668",
+            "highlights": [
+              "\u884c\u4e1a\u6a21\u677f\u5305\u542b\u9996\u5c4f\u3001\u8bc4\u4ef7\u4e0e\u8054\u7cfb\u9875\u9762",
+              "\u5373\u65f6\u81ea\u5b9a\u4e49\u4e3b\u9898\u989c\u8272\u3001\u5b57\u4f53\u4e0e\u5bfc\u822a",
+              "\u7248\u672c\u5386\u53f2\u3001\u53ef\u89c6\u5316\u7f16\u8f91\u5668\u4e0e\u81ea\u52a8\u53d1\u5e03",
+              "\u81ea\u5b9a\u4e49\u57df\u540d\u7ed1\u5b9a\uff08\u5373\u5c06\u652f\u6301\u5e94\u7528\u5185\u8d2d\u4e70\uff09"
+            ]
+          },
+          {
+            "title": "\u5546\u4e1a\u4e0e\u5546\u54c1",
+            "highlights": [
+              "\u901a\u8fc7 Stripe Checkout \u7ec4\u5408\u9500\u552e\u670d\u52a1\u3001\u5546\u54c1\u4e0e\u9644\u52a0\u9879\u76ee",
+              "\u4f18\u60e0\u5238\u3001\u793c\u54c1\u5361\u3001\u9000\u6b3e\u4e0e Stripe Tax \u81ea\u52a8\u5316",
+              "\u4fdd\u5b58\u5ba2\u6237\u5361\u7247\u5e76\u901a\u8fc7 Stripe \u7ba1\u7406\u7ed3\u7b97",
+              "\u8ddf\u8e2a\u8ba2\u5355\u5386\u53f2\u3001\u5bf9\u8d26\u9000\u6b3e\u4e0e\u5404\u95e8\u5e97\u6536\u5165"
+            ]
+          },
+          {
+            "title": "\u5206\u6790\u4e0e\u62a5\u8868",
+            "highlights": [
+              "\u76d1\u63a7\u6536\u5165\u3001\u7559\u5b58\u3001\u5229\u7528\u7387\u4e0e\u6d41\u5931",
+              "\u6df1\u5165\u67e5\u770b\u4eba\u5458\u3001\u90e8\u95e8\u4e0e\u8425\u9500\u6d3b\u52a8\u6570\u636e",
+              "\u9ad8\u7ea7\u4eea\u8868\u76d8\u5c55\u793a\u5c0f\u8d39\u3001\u9000\u6b3e\u4e0e\u8425\u9500\u8868\u73b0",
+              "\u5bfc\u51fa CSV \u62a5\u8868\u6216\u8fde\u63a5 BI \u5de5\u5177"
+            ]
+          },
+          {
+            "title": "\u81ea\u52a8\u5316\u4e0e\u96c6\u6210",
+            "highlights": [
+              "\u914d\u7f6e\u5e26\u7b7e\u540d\u6821\u9a8c\u7684\u51fa\u7ad9 Webhook",
+              "\u81ea\u52a8\u89e6\u53d1\u90ae\u4ef6\u3001\u77ed\u4fe1\u4e0e\u633d\u56de\u6d3b\u52a8",
+              "Stripe \u8d1f\u8d23\u652f\u4ed8\u3001\u7ed3\u7b97\u4e0e\u7a0e\u52a1\u81ea\u52a8\u5316",
+              "\u5bfc\u51fa\u81f3 QuickBooks/Xero\uff1b\u4f7f\u7528 Jitsi \u5f00\u542f\u7ebf\u4e0a\u4f1a\u8bae",
+              "\u5373\u5c06\u63a8\u51fa Zapier\u3001Slack \u901a\u77e5\u4e0e\u5e94\u7528\u5185\u57df\u540d"
+            ]
+          }
+        ]
+      },
+      "apiReference": {
+        "title": "API \u53c2\u8003",
+        "tableHeaders": {
+          "category": "\u7c7b\u522b",
+          "method": "\u65b9\u6cd5",
+          "path": "\u8def\u5f84",
+          "summary": "\u6458\u8981"
+        },
+        "tip": "\u63d0\u793a\uff1a\u5728\u7ba1\u7406\u540e\u53f0\uff08\u8bbe\u7f6e > \u5f00\u53d1\u8005\uff09\u7684 API Console \u4e2d\uff0c\u7528\u6c99\u76d2\u6570\u636e\u8bd5\u7528\u8fd9\u4e9b\u7aef\u70b9\u3002",
+        "endpoints": [
+          {
+            "key": "authToken",
+            "category": "\u8ba4\u8bc1",
+            "method": "POST",
+            "path": "/oauth/token",
+            "summary": "\u4f7f\u7528\u51ed\u8bc1\u6216\u5237\u65b0\u4ee4\u724c\u6362\u53d6\u8bbf\u95ee\u6743\u9650\u3002"
+          },
+          {
+            "key": "bookingsList",
+            "category": "\u9884\u8ba2",
+            "method": "GET",
+            "path": "/bookings",
+            "summary": "\u6309\u72b6\u6001\u3001\u56e2\u961f\u6216\u65e5\u671f\u7b5b\u9009\u8fd4\u56de\u9884\u8ba2\u5217\u8868\u3002"
+          },
+          {
+            "key": "bookingsCreate",
+            "category": "\u9884\u8ba2",
+            "method": "POST",
+            "path": "/bookings",
+            "summary": "\u521b\u5efa\u5305\u542b\u670d\u52a1\u3001\u5458\u5de5\u548c\u5ba2\u6237\u4fe1\u606f\u7684\u9884\u8ba2\u3002"
+          },
+          {
+            "key": "availability",
+            "category": "\u53ef\u7528\u6027",
+            "method": "GET",
+            "path": "/availability",
+            "summary": "\u6309\u670d\u52a1\u3001\u90e8\u95e8\u6216\u65e5\u671f\u83b7\u53d6\u670d\u52a1\u8005\u7684\u53ef\u7528\u6027\u3002"
+          },
+          {
+            "key": "customersList",
+            "category": "\u5ba2\u6237",
+            "method": "GET",
+            "path": "/customers",
+            "summary": "\u652f\u6301\u5206\u9875\u3001\u6807\u7b7e\u4e0e\u641c\u7d22\u7684\u5ba2\u6237\u5217\u8868\u3002"
+          },
+          {
+            "key": "customersUpsert",
+            "category": "\u5ba2\u6237",
+            "method": "POST",
+            "path": "/customers",
+            "summary": "\u521b\u5efa\u6216\u66f4\u65b0\u5ba2\u6237\u6863\u6848\u3002"
+          },
+          {
+            "key": "payrollCalculate",
+            "category": "\u85aa\u8d44",
+            "method": "POST",
+            "path": "/payroll/calculate",
+            "summary": "\u751f\u6210\u5305\u542b\u52a0\u73ed\u3001\u5c0f\u8d39\u4e0e\u5e74\u5ea6\u7d2f\u8ba1\u7684\u85aa\u8d44\u6279\u6b21\u3002"
+          },
+          {
+            "key": "payrollRuns",
+            "category": "\u85aa\u8d44",
+            "method": "GET",
+            "path": "/payroll/runs",
+            "summary": "\u83b7\u53d6\u5df2\u4fdd\u5b58\u7684\u85aa\u8d44\u6279\u6b21\u548c\u5bfc\u51fa\u72b6\u6001\u3002"
+          },
+          {
+            "key": "checkoutSession",
+            "category": "\u5546\u4e1a",
+            "method": "POST",
+            "path": "/checkout/session",
+            "summary": "\u4e3a\u670d\u52a1\u6216\u5546\u54c1\u521b\u5efa Stripe Checkout \u4f1a\u8bdd\u3002"
+          },
+          {
+            "key": "ordersList",
+            "category": "\u8ba2\u5355",
+            "method": "GET",
+            "path": "/orders",
+            "summary": "\u5217\u51fa\u5ba2\u6237\u8ba2\u5355\u3001\u9000\u6b3e\u4e0e\u5c65\u7ea6\u72b6\u6001\u3002"
+          },
+          {
+            "key": "campaignsSend",
+            "category": "\u8425\u9500\u6d3b\u52a8",
+            "method": "POST",
+            "path": "/campaigns/winback/send",
+            "summary": "\u89e6\u53d1\u81ea\u52a8\u56de\u6d41\u6216\u723d\u7ea6\u633d\u56de\u8425\u9500\u6d3b\u52a8\u3002"
+          },
+          {
+            "key": "analyticsSummary",
+            "category": "\u5206\u6790",
+            "method": "GET",
+            "path": "/analytics/summary",
+            "summary": "\u83b7\u53d6\u6536\u5165\u3001\u5229\u7528\u7387\u4e0e\u7559\u5b58\u6307\u6807\u3002"
+          },
+          {
+            "key": "webhooksCreate",
+            "category": "Webhook",
+            "method": "POST",
+            "path": "/webhooks",
+            "summary": "\u6ce8\u518c\u9884\u8ba2\u3001\u85aa\u8d44\u4e0e\u652f\u4ed8\u7684 Webhook \u7ec8\u7aef\u3002"
+          },
+          {
+            "key": "webhooksTest",
+            "category": "Webhook",
+            "method": "POST",
+            "path": "/webhooks/test",
+            "summary": "\u53d1\u9001\u6d4b\u8bd5\u8d1f\u8f7d\u4ee5\u9a8c\u8bc1\u7b7e\u540d\u3002"
+          }
+        ]
+      },
+      "integrations": {
+        "title": "\u96c6\u6210",
+        "description": "Stripe\u3001QuickBooks/Xero\u3001Jitsi \u4e0e\u81ea\u52a8\u5316\u6d41\u7a0b\u5df2\u53ef\u7528\u3002Zapier\u3001Slack \u548c\u57df\u540d\u8d2d\u4e70\u5728\u89c4\u5212\u4e2d\u3002",
+        "statusLabels": {
+          "available": "\u5df2\u4e0a\u7ebf",
+          "beta": "\u6d4b\u8bd5\u7248",
+          "comingSoon": "\u5373\u5c06\u63a8\u51fa"
+        },
+        "items": [
+          {
+            "name": "Stripe",
+            "status": "available",
+            "details": "Checkout\u3001\u7ed3\u7b97\u3001\u5b58\u5361\u4ee5\u53ca Stripe Tax \u81ea\u52a8\u5316\u3002"
+          },
+          {
+            "name": "QuickBooks / Xero",
+            "status": "beta",
+            "details": "\u5c06\u85aa\u8d44\u5206\u5f55\u548c\u6536\u5165\u6c47\u603b\u5bfc\u51fa\u5230\u60a8\u7684\u8d26\u7c3f\u3002"
+          },
+          {
+            "name": "Jitsi",
+            "status": "available",
+            "details": "\u5728\u9884\u8ba2\u6d41\u7a0b\u4e2d\u5d4c\u5165\u865a\u62df\u4f1a\u8bae\u4e0e\u89c6\u9891\u9762\u8bd5\u3002"
+          },
+          {
+            "name": "Zapier",
+            "status": "comingSoon",
+            "details": "\u7528\u4e8e\u81ea\u5b9a\u4e49\u6d41\u7a0b\u548c CRM \u66f4\u65b0\u7684\u81ea\u52a8\u5316\u8fde\u63a5\u5668\u3002"
+          },
+          {
+            "name": "Slack",
+            "status": "comingSoon",
+            "details": "\u9488\u5bf9\u65b0\u9884\u8ba2\u3001\u53d6\u6d88\u4e0e\u6362\u73ed\u7684\u901a\u77e5\u3002"
+          },
+          {
+            "name": "Domain Purchase",
+            "status": "comingSoon",
+            "details": "\u65e0\u9700\u79bb\u5f00 Schedulaa \u5373\u53ef\u8d2d\u4e70\u5e76\u7ed1\u5b9a\u81ea\u5b9a\u4e49\u57df\u540d\u3002"
+          }
+        ]
+      },
+      "faq": {
+        "title": "\u5e38\u89c1\u95ee\u9898\u4e0e\u6545\u969c\u6392\u67e5",
+        "items": [
+          {
+            "question": "\u4e0a\u7ebf\u90e8\u7f72\u9700\u8981\u591a\u4e45\uff1f",
+            "answer": "\u5927\u591a\u6570\u56e2\u961f\u501f\u52a9\u6587\u6863\u4e2d\u7684\u5feb\u901f\u4e0a\u624b\u6e05\u5355\u548c\u5bfc\u5165\u6a21\u677f\uff0c\u53ef\u5728 7\u201314 \u5929\u5185\u4e0a\u7ebf\u3002"
+          },
+          {
+            "question": "\u5ba2\u6237\u80fd\u540c\u65f6\u8d2d\u4e70\u670d\u52a1\u548c\u5546\u54c1\u5417\uff1f",
+            "answer": "\u53ef\u4ee5\u3002\u5ba2\u6237\u53ef\u4ee5\u5c06\u591a\u4e2a\u670d\u52a1\u3001\u9644\u52a0\u9879\u76ee\u6216\u5546\u54c1\u52a0\u5165\u8d2d\u7269\u8f66\uff0c\u5e76\u901a\u8fc7 Stripe \u5b89\u5168\u7ed3\u8d26\u3002"
+          },
+          {
+            "question": "\u662f\u5426\u652f\u6301 Zapier \u6216\u81ea\u5b9a\u4e49 Webhook\uff1f",
+            "answer": "Webhook \u5df2\u5168\u9762\u652f\u6301\u3002Zapier \u96c6\u6210\u6b63\u5728\u5f00\u53d1\uff0c\u8ba1\u5212\u4e8e 2025 \u5e74\u665a\u4e9b\u65f6\u5019\u4e0a\u7ebf\u3002"
+          },
+          {
+            "question": "\u662f\u5426\u63d0\u4f9b\u6570\u636e\u8fc1\u79fb\uff1f",
+            "answer": "\u63d0\u4f9b\u3002\u8bf7\u8054\u7cfb\u652f\u6301\u56e2\u961f\u83b7\u53d6 CSV \u5bfc\u5165\u6a21\u677f\uff0c\u6216\u4ed8\u8d39\u7533\u8bf7\u6258\u7ba1\u8fc1\u79fb\u3002"
+          }
+        ],
+        "schema": [
+          {
+            "question": "\u4e0a\u7ebf\u90e8\u7f72\u9700\u8981\u591a\u4e45\uff1f",
+            "answer": "\u5927\u591a\u6570\u56e2\u961f\u501f\u52a9\u6587\u6863\u4e2d\u7684\u5feb\u901f\u4e0a\u624b\u6e05\u5355\u548c\u5bfc\u5165\u6a21\u677f\uff0c\u53ef\u5728 7\u201314 \u5929\u5185\u4e0a\u7ebf\u3002"
+          },
+          {
+            "question": "Schedulaa \u662f\u5426\u63d0\u4f9b\u5b8c\u6574\u7684 API \u53c2\u8003\uff1f",
+            "answer": "\u662f\u7684\u3002API \u7ae0\u8282\u8986\u76d6\u8ba4\u8bc1\u3001Webhook\u3001\u6392\u73ed\u3001\u85aa\u8d44\u548c\u7f51\u7ad9\u7ba1\u7406\u7aef\u70b9\u3002"
+          },
+          {
+            "question": "\u5728\u54ea\u91cc\u53ef\u4ee5\u627e\u5230\u96c6\u6210\u6559\u7a0b\uff1f",
+            "answer": "\u96c6\u6210\u6307\u5357\u5305\u542b\u652f\u4ed8\u3001\u6d88\u606f\u3001\u89c6\u9891\u4e0e\u5206\u6790\u8fde\u63a5\u7684\u5206\u6b65\u8bf4\u660e\u3002"
+          }
+        ]
+      },
+      "changelog": {
+        "title": "\u66f4\u65b0\u65e5\u5fd7",
+        "releases": [
+          {
+            "version": "v2.5.0",
+            "date": "2025-10-15",
+            "entries": [
+              "\u65b0\u589e\u6309\u884c\u4e1a\u5212\u5206\u7684\u4e0a\u624b\u6a21\u677f\u548c\u53ef\u81ea\u5b9a\u4e49\u90ae\u4ef6\u9080\u8bf7\u3002",
+              "\u4e3a\u57fa\u4e8e\u5546\u54c1\u7684\u4ea4\u6613\u542f\u7528 Stripe Tax\u3002",
+              "\u4e0a\u7ebf\u670d\u52a1\u4e0e\u5546\u54c1\u7684\u9000\u6b3e\u5904\u7406\u3002"
+            ]
+          },
+          {
+            "version": "v2.4.0",
+            "date": "2025-09-30",
+            "entries": [
+              "\u63a8\u51fa\u6cd5\u8bed\u4e0e\u5fb7\u8bed\u8bed\u8a00\u5305\u3002",
+              "\u65b0\u589e\u591a\u95e8\u5e97\u85aa\u8d44\u6210\u672c\u4e2d\u5fc3\u3002",
+              "\u5347\u7ea7\u9884\u8ba2\u5d4c\u5165\u4ee5\u652f\u6301\u91cd\u590d\u9884\u7ea6\u3002"
+            ]
+          },
+          {
+            "version": "v2.3.1",
+            "date": "2025-08-10",
+            "entries": [
+              "\u4e3a\u52a0\u76df\u4f53\u7cfb\u63d0\u4f9b\u65b0\u7684\u7ba1\u7406\u4eea\u8868\u76d8\u3002",
+              "QuickBooks \u96c6\u6210\u6d4b\u8bd5\u7248\u53d1\u5e03\u3002",
+              "\u4f18\u5316\u8425\u9500\u901a\u77e5\u6a21\u677f\u3002"
+            ]
+          }
+        ]
+      },
+      "footer": {
+        "helpText": "\u9700\u8981\u66f4\u591a\u5e2e\u52a9\uff1f\u8bbf\u95ee <supportLink>\u5e2e\u52a9\u4e2d\u5fc3</supportLink> \u6216\u53d1\u9001\u90ae\u4ef6\u81f3 <supportEmail>support@schedulaa.com</supportEmail>\u3002",
+        "links": {
+          "status": "\u72b6\u6001\u9875\u9762",
+          "privacy": "\u9690\u79c1\u653f\u7b56",
+          "terms": "\u670d\u52a1\u6761\u6b3e"
+        }
+      }
+    },
+    "pricingPage": {
+      "meta": {
+        "title": "Schedulaa \u5b9a\u4ef7 | \u81ea\u6709\u57df\u540d\u642d\u914d\u81ea\u52a8 SSL",
+        "description": "\u6bd4\u8f83 Starter\u3001Pro \u4e0e Business \u65b9\u6848\u3002\u81ea\u6709\u57df\u540d\u4e0e\u81ea\u52a8 SSL \u5df2\u5305\u542b\u5728 Pro \u4e0e Business\uff1bStarter \u53ef\u52a0\u8d2d\uff0c\u6bcf\u6708 5 \u7f8e\u5143\u3002",
+        "canonical": "https://www.schedulaa.com/pricing",
+        "og": {
+          "title": "Schedulaa \u5b9a\u4ef7",
+          "description": "\u9002\u7528\u4e8e\u6bcf\u4e2a\u9636\u6bb5\u7684\u65b9\u6848\u3002\u5728 Pro \u4e0e Business \u4e2d\u514d\u8d39\u542f\u7528\u81ea\u6709\u57df\u540d\u4e0e\u81ea\u52a8 SSL\u3002",
+          "image": "https://www.schedulaa.com/og/pricing.jpg"
+        }
+      },
+      "hero": {
+        "eyebrow": "\u53ef\u6269\u5c55\u7684\u5b9a\u4ef7",
+        "title": [
+          "\u968f\u4e1a\u52a1\u6210\u957f\u7684\u5b9a\u4ef7\u3002",
+          "\u5728\u81ea\u6709\u57df\u540d\u4e0a\u81ea\u52a8\u542f\u7528 SSL\u3002"
+        ],
+        "subtitle": "\u81ea\u6709\u57df\u540d\uff08TXT/CNAME\uff09\u4e0e\u81ea\u52a8 SSL \u73b0\u5df2\u5305\u542b\u5728 Pro \u4e0e Business \u65b9\u6848\u4e2d\u3002Starter \u53ef\u6309\u6708 5 \u7f8e\u5143\u52a0\u8d2d\u3002",
+        "primaryCta": {
+          "label": "\u5f00\u59cb\u514d\u8d39\u8bd5\u7528"
+        },
+        "secondaryCta": {
+          "label": "\u5bf9\u6bd4\u65b9\u6848"
+        },
+        "badge": {
+          "overline": "\u5168\u65b0\u80fd\u529b",
+          "title": "\u81ea\u6709\u57df\u540d + \u81ea\u52a8 SSL"
+        },
+        "mediaAlt": "Schedulaa \u5b9a\u4ef7\u4e0e\u5e73\u53f0\u6982\u89c8"
+      },
+      "plans": {
+        "table": {
+          "list": [
+            {
+              "key": "starter",
+              "name": "Starter",
+              "price": "$9/\u6bcf\u6708",
+              "description": "\u9002\u5408\u9700\u8981\u9884\u7ea6\u3001\u652f\u4ed8\u4e0e\u54c1\u724c\u9884\u8ba2\u9875\u7684\u4e2a\u4eba\u6216\u5c0f\u56e2\u961f\u3002",
+              "features": [
+                "\u5e26\u63d0\u9192\u7684\u9884\u7ea6\u6392\u7a0b\uff0c\u53ef\u9009\u77ed\u4fe1\u52a0\u8d2d\u3002",
+                "Stripe Checkout \u652f\u6301\u652f\u4ed8\u4e0e\u9000\u6b3e\u3002",
+                "\u5305\u542b 1 \u540d\u5458\u5de5\u4e0e 1 \u4e2a\u5730\u70b9\u3002",
+                "\u90ae\u4ef6\u786e\u8ba4\u4e0e\u5ba2\u6237\u95e8\u6237\u3002",
+                "\u81ea\u6709\u57df\u540d + \u81ea\u52a8 SSL\uff08\u52a0\u8d2d $5/\u6708\uff09\u3002"
+              ],
+              "ctaLabel": "\u5f00\u59cb\u514d\u8d39\u8bd5\u7528",
+              "ctaTo": "/register"
+            },
+            {
+              "key": "pro",
+              "name": "Pro",
+              "price": "$39/\u6bcf\u6708",
+              "description": "\u9002\u5408\u9700\u8981\u591a\u540d\u5458\u5de5\u3001\u54c1\u724c\u6c9f\u901a\u4e0e\u5206\u6790\u7684\u6210\u957f\u578b\u56e2\u961f\u3002",
+              "features": [
+                "\u5305\u542b Starter \u6240\u6709\u529f\u80fd\u3002",
+                "\u81ea\u6709\u57df\u540d + \u81ea\u52a8 SSL \u5df2\u5305\u542b\u3002",
+                "\u6700\u591a 5 \u540d\u5458\u5de5\u4e0e 5 \u4e2a\u5730\u70b9\u3002",
+                "\u54c1\u724c\u5316\u90ae\u4ef6\u4e0e\u77ed\u4fe1\u6a21\u677f\u3002",
+                "\u8425\u6536\u53ca\u7ee9\u6548\u5206\u6790\u62a5\u8868\u3002",
+                "\u4f18\u5148\u652f\u6301\uff08\u5de5\u4f5c\u65f6\u95f4\uff09\u3002"
+              ],
+              "ctaLabel": "\u5347\u7ea7 Pro",
+              "ctaTo": "/register",
+              "highlight": true
+            },
+            {
+              "key": "business",
+              "name": "Business",
+              "price": "$99/\u6bcf\u6708",
+              "description": "\u9002\u5408\u9700\u8981\u65e0\u9650\u5458\u5de5\u3001\u5ba1\u8ba1\u8bb0\u5f55\u4e0e\u4f01\u4e1a\u7ea7\u63a7\u5236\u7684\u591a\u95e8\u5e97\u54c1\u724c\u3002",
+              "features": [
+                "\u5305\u542b Pro \u6240\u6709\u529f\u80fd\u3002",
+                "\u53ef\u914d\u7f6e\u591a\u4e2a\u81ea\u6709\u57df\u540d\uff08\u542b 1 \u4e2a\uff0c\u989d\u5916\u6bcf\u4e2a $5\uff09\u3002",
+                "\u65e0\u9650\u5458\u5de5\u4e0e\u5730\u70b9\u3002",
+                "\u9ad8\u7ea7\u85aa\u8d44\u5bfc\u51fa\u4e0e\u7a0e\u52a1\u62a5\u8868\u3002",
+                "\u57fa\u4e8e\u89d2\u8272\u7684\u6743\u9650\u4e0e\u5ba1\u8ba1\u65e5\u5fd7\u3002",
+                "7x24 \u4f18\u5148\u652f\u6301\u3002"
+              ],
+              "ctaLabel": "\u5347\u7ea7 Business",
+              "ctaTo": "/register"
+            }
+          ],
+          "addons": {
+            "title": "\u70ed\u95e8\u9644\u52a0\u529f\u80fd",
+            "headers": {
+              "addon": "\u9644\u52a0\u9879",
+              "price": "\u4ef7\u683c"
+            },
+            "items": [
+              {
+                "key": "customDomain",
+                "name": "\u81ea\u6709\u57df\u540d + \u81ea\u52a8 SSL",
+                "price": "$5/\u6bcf\u6708"
+              },
+              {
+                "key": "extraSeat",
+                "name": "\u989d\u5916\u5458\u5de5\u5e2d\u4f4d",
+                "price": "$10/\u6bcf\u6708"
+              }
+            ]
+          }
+        }
+      },
+      "assurances": {
+        "eyebrow": "\u6240\u9700\u4e00\u5e94\u4ff1\u5168",
+        "title": "\u900f\u660e\u5b9a\u4ef7\uff0c\u4f01\u4e1a\u7ea7\u5e73\u53f0",
+        "subtitle": "\u5b89\u5168\u3001\u53ef\u6269\u5c55\u4e14\u9ad8\u901f\uff1a\u5728\u4e00\u4e2a\u540e\u53f0\u5b8c\u6210\u54c1\u724c\u7f51\u7ad9\u3001\u652f\u4ed8\u4e0e\u85aa\u8d44\u81ea\u52a8\u5316\u3002",
+        "items": [
+          {
+            "key": "noHiddenFees",
+            "title": "\u65e0\u9690\u85cf\u8d39\u7528",
+            "description": "\u57fa\u4e8e Stripe \u7684\u7b80\u6d01\u8d39\u7387\u7ed3\u6784\u3002"
+          },
+          {
+            "key": "switchPlans",
+            "title": "\u968f\u65f6\u5207\u6362\u65b9\u6848",
+            "description": "\u968f\u7740\u56e2\u961f\u6210\u957f\u81ea\u7531\u5347\u7ea7\u6216\u964d\u7ea7\uff0c\u81ea\u6709\u57df\u540d\u7acb\u5373\u751f\u6548\u3002"
+          },
+          {
+            "key": "professionReady",
+            "title": "\u54c1\u724c\u7f51\u7ad9",
+            "description": "Pro \u4e0e Business \u542b\u81ea\u6709\u57df\u540d\uff08TXT/CNAME\uff09\u4e0e\u81ea\u52a8 SSL\u3002"
+          },
+          {
+            "key": "enterpriseOnboarding",
+            "title": "\u4f01\u4e1a\u7ea7\u4e0a\u7ebf",
+            "description": "\u591a\u95e8\u5e97\u4e0a\u7ebf\u6307\u5bfc\uff0c\u5305\u542b\u7a0e\u52a1\u4e0e\u85aa\u8d44\u6620\u5c04\u3002"
+          },
+          {
+            "key": "roleAccess",
+            "title": "\u57fa\u4e8e\u89d2\u8272\u7684\u6743\u9650",
+            "description": "\u7ecf\u7406\u3001\u5458\u5de5\u4e0e\u8d22\u52a1\u89d2\u8272\u9ed8\u8ba4\u4fdd\u62a4\u6392\u73ed\u4e0e\u85aa\u8d44\u6570\u636e\u3002"
+          },
+          {
+            "key": "globalPayments",
+            "title": "\u652f\u6301\u5168\u7403\u652f\u4ed8",
+            "description": "Stripe Checkout \u652f\u6301\u9000\u6b3e\u3001\u4fdd\u5b58\u5361\u7247\u4e0e\u8de8\u5883\u7ed3\u7b97\u3002"
+          }
+        ]
+      },
+      "ribbon": {
+        "message": "<strong>\u5168\u65b0\u4e0a\u7ebf\uff1a</strong> \u81ea\u6709\u57df\u540d\uff08TXT/CNAME\uff09\u4e0e\u81ea\u52a8 SSL \u5df2\u5305\u542b\u5728 <strong>Pro</strong> \u548c <strong>Business</strong> \u65b9\u6848\u4e2d\u3002Starter \u53ef\u4f5c\u4e3a\u9644\u52a0\u529f\u80fd\u8d2d\u4e70\u3002",
+        "buttonLabel": "\u8fde\u63a5\u57df\u540d",
+        "buttonTo": "/manager/dashboard"
+      },
+      "footnote": {
+        "message": "<strong>\u81ea\u6709\u57df\u540d + \u81ea\u52a8 SSL\uff1a</strong> \u5df2\u5305\u542b\u5728 <strong>Pro</strong> \u4e0e <strong>Business</strong>\u3002<strong>Starter</strong> \u53ef\u52a0\u8d2d\uff08$5 / \u6bcf\u6708\uff09\u3002"
+      },
+      "ctaBanner": {
+        "eyebrow": "\u7acb\u5373\u542f\u7528",
+        "title": "\u7acb\u5373\u5f00\u59cb\u514d\u8d39\u8bd5\u7528 - \u65e0\u9700\u4fe1\u7528\u5361",
+        "description": "\u5c06\u6392\u73ed\u3001\u652f\u4ed8\u4e0e\u85aa\u8d44\u96c6\u4e2d\u5728\u4e00\u4e2a\u540e\u53f0\uff0c\u5728\u81ea\u6709\u57df\u540d\u4e0a\u81ea\u52a8\u542f\u7528 SSL\u3002",
+        "primaryCta": {
+          "label": "\u5f00\u59cb\u514d\u8d39\u8bd5\u7528"
+        },
+        "secondaryCta": {
+          "label": "\u8054\u7cfb\u9500\u552e\u56e2\u961f"
+        }
+      }
+    },
+    "aboutPage": {
+      "meta": {
+        "title": "\u5173\u4e8e Photo Artisto Corp. | Schedulaa \u56e2\u961f",
+        "description": "\u4e86\u89e3 Photo Artisto Corp. \u5982\u4f55\u6253\u9020 Schedulaa\uff0c\u8ba9\u521b\u610f\u56e2\u961f\u5728\u9884\u8ba2\u3001\u85aa\u8d44\u3001HR \u4e0e\u7535\u5546\u4e0a\u62e5\u6709\u540c\u4e00\u5957\u64cd\u4f5c\u7cfb\u7edf\u3002",
+        "canonical": "https://www.schedulaa.com/about",
+        "og": {
+          "title": "\u5173\u4e8e Photo Artisto Corp.",
+          "description": "\u6211\u4eec\u6784\u5efa Schedulaa\uff0c\u5e2e\u52a9\u521b\u610f\u4eba\u544a\u522b\u5272\u88c2\u7684\u8f6f\u4ef6\u3002",
+          "image": "https://www.schedulaa.com/og/about.jpg"
+        }
+      },
+      "hero": {
+        "eyebrow": "\u6211\u4eec\u7684\u6545\u4e8b",
+        "title": [
+          "Schedulaa \u80cc\u540e\u7684",
+          "\u56e2\u961f"
+        ],
+        "subtitle": "Schedulaa \u8d77\u6e90\u4e8e Photo Artisto Corp.\uff0c\u662f\u6211\u4eec\u4e3a\u9020\u578b\u5e08\u3001\u6444\u5f71\u5e08\u3001\u62db\u8058\u4e0e\u5de5\u4f5c\u5ba4\u6253\u9020\u7684\u4e00\u4f53\u5316\u5e73\u53f0\uff0c\u7528\u6765\u7edf\u4e00\u7ba1\u7406\u9884\u8ba2\u3001\u85aa\u8d44\u3001\u6d3b\u52a8\u548c HR\u3002",
+        "badge": {
+          "overline": "\u56e2\u961f\u81f3\u4e0a",
+          "title": "\u521b\u610f\u56e2\u961f\u4e3a\u521b\u610f\u56e2\u961f\u800c\u751f"
+        }
+      },
+      "intro": {
+        "eyebrow": "\u6211\u4eec\u4e3a\u4ec0\u4e48\u6253\u9020 Schedulaa",
+        "title": "\u521b\u610f\u56e2\u961f\u7684\u4e00\u4f53\u5316\u64cd\u4f5c\u7cfb\u7edf",
+        "subtitle": "\u6bcf\u4e2a\u529f\u80fd\u90fd\u4e3a\u51cf\u5c11\u963b\u529b\u800c\u8bbe\u8ba1\uff0c\u5e2e\u52a9\u56e2\u961f\u521b\u9020\u96be\u5fd8\u7684\u5ba2\u6237\u4f53\u9a8c\u3002",
+        "values": [
+          {
+            "key": "design",
+            "title": "\u4e3a\u5fd9\u788c\u7684\u521b\u610f\u4eba\u800c\u8bbe\u8ba1",
+            "description": "\u51cf\u5c11\u65e0\u8c13\u7684\u70b9\u51fb\uff0c\u8ba9\u9020\u578b\u5e08\u4e0e\u62db\u8058\u8005\u4e13\u6ce8\u670d\u52a1\u5ba2\u6237\u3002"
+          },
+          {
+            "key": "unify",
+            "title": "\u5de5\u5177\u7edf\u4e00",
+            "description": "\u6392\u7a0b\u3001\u85aa\u8d44\u3001\u7f51\u7ad9\u3001\u5546\u52a1\u4e0e\u5206\u6790\u5168\u90e8\u96c6\u4e2d\u5728\u540c\u4e00\u7cfb\u7edf\u3002"
+          },
+          {
+            "key": "trust",
+            "title": "\u6bcf\u6b21\u53d1\u85aa\u90fd\u503c\u5f97\u4fe1\u8d56",
+            "description": "\u5408\u89c4\u7684\u85aa\u8d44\u6d41\u7a0b\u4e0e\u5ba1\u8ba1\u8bb0\u5f55\u8ba9\u56e2\u961f\u5b89\u5fc3\u3002"
+          },
+          {
+            "key": "global",
+            "title": "\u4e3a\u5168\u7403\u56e2\u961f\u800c\u5efa",
+            "description": "\u591a\u5e01\u79cd\u3001\u591a\u8bed\u8a00\u4e0e\u5f53\u5730\u6cd5\u89c4\u5728 Schedulaa \u4e2d\u90fd\u662f\u4e00\u7b49\u516c\u6c11\u3002"
+          },
+          {
+            "key": "secure",
+            "title": "\u5b88\u62a4\u6570\u636e\u5b89\u5168",
+            "description": "\u57fa\u4e8e\u89d2\u8272\u7684\u6743\u9650\u3001\u5ba1\u8ba1\u65e5\u5fd7\u4e0e\u52a0\u5bc6\u6807\u51c6\u4fdd\u62a4\u6bcf\u4e2a\u89e6\u70b9\u3002"
+          },
+          {
+            "key": "partner",
+            "title": "\u4e0e\u56e2\u961f\u5e76\u80a9",
+            "description": "\u4e13\u5c5e\u4e0a\u7ebf\u3001\u5b9e\u65f6\u5ba2\u670d\u4e0e\u6210\u529f\u7ecf\u7406\u786e\u4fdd\u6bcf\u4e2a\u95e8\u5e97\u987a\u5229\u4e0a\u7ebf\u3002"
+          }
+        ]
+      },
+      "timeline": {
+        "title": "\u91cc\u7a0b\u7891",
+        "items": [
+          {
+            "year": "2018",
+            "description": "Photo Artisto Corp. \u6210\u7acb\uff0c\u5e2e\u52a9\u9020\u578b\u5e08\u89e3\u51b3\u9884\u7ea6\u6df7\u4e71\u3002"
+          },
+          {
+            "year": "2022",
+            "description": "\u5185\u90e8\u5de5\u5177\u6f14\u53d8\u4e3a Schedulaa\uff0c\u6574\u5408\u6392\u7a0b\u3001\u85aa\u8d44\u4e0e\u5e97\u9762\u3002"
+          },
+          {
+            "year": "2023-24",
+            "description": "\u65b0\u589e HR\u3001\u9762\u8bd5\u3001\u7f51\u7ad9\u6784\u5efa\u5668\u3001\u81ea\u6709\u57df\u540d\u4ee5\u53ca\u7f8e\u52a0\u85aa\u8d44\u3002"
+          }
+        ]
+      },
+      "mission": {
+        "title": "\u4f7f\u547d",
+        "body": "\u6211\u4eec\u4e3a\u6bcf\u4e00\u5bb6\u521b\u610f\u56e2\u961f\u3001\u6c99\u9f99\u3001\u5de5\u4f5c\u5ba4\u4e0e\u62db\u8058\u516c\u53f8\u63d0\u4f9b\u7edf\u4e00\u5e73\u53f0\uff0c\u8ba9\u4ed6\u4eec\u4e13\u6ce8\u5ba2\u6237\uff0c\u800c\u4e0d\u662f\u5fd9\u4e8e\u8f6f\u4ef6\u3002"
+      },
+      "leadership": {
+        "title": "\u7ba1\u7406\u56e2\u961f",
+        "people": [
+          {
+            "name": "UC Sam",
+            "title": "\u9996\u5e2d\u6267\u884c\u5b98 & \u8054\u5408\u521b\u59cb\u4eba"
+          },
+          {
+            "name": "Anna Lee",
+            "title": "\u9996\u5e2d\u8fd0\u8425\u5b98 & \u4ea7\u54c1\u8d1f\u8d23\u4eba"
+          },
+          {
+            "name": "Marcus Patel",
+            "title": "\u9996\u5e2d\u6280\u672f\u5b98 & \u57fa\u7840\u8bbe\u65bd"
+          }
+        ]
+      },
+      "coreValues": {
+        "title": "\u6838\u5fc3\u4ef7\u503c",
+        "items": [
+          "\u4e3a\u5fd9\u788c\u7684\u521b\u610f\u4eba\u8bbe\u8ba1",
+          "\u7edf\u4e00\u5de5\u5177\u96c6",
+          "\u6bcf\u6b21\u53d1\u85aa\u90fd\u53ef\u4fe1",
+          "\u9762\u5411\u5168\u7403\u56e2\u961f",
+          "\u4fdd\u969c\u6570\u636e\u5b89\u5168",
+          "\u4e0e\u56e2\u961f\u5e76\u80a9"
+        ]
+      },
+      "contact": {
+        "title": "\u8054\u7cfb",
+        "company": "Photo Artisto Corp., 1080 Market Street, Suite 500, San Francisco, CA 94103, USA.",
+        "details": "Email: hello@schedulaa.com | Support: support@schedulaa.com | Press: press@schedulaa.com"
+      }
+    },
+    "contactPage": {
+      "meta": {
+        "title": "\u8054\u7cfb Schedulaa",
+        "description": "\u4e0e Schedulaa \u56e2\u961f\u6c9f\u901a\u5b9a\u5236\u90e8\u7f72\u3001\u5408\u4f5c\u6216\u8fc1\u79fb\u652f\u6301\u3002",
+        "canonical": "https://www.schedulaa.com/contact",
+        "og": {
+          "title": "\u8054\u7cfb Schedulaa",
+          "description": "\u53d1\u9001\u60a8\u7684\u90e8\u7f72\u3001\u5408\u4f5c\u6216\u8fc1\u79fb\u95ee\u9898\uff0c\u6211\u4eec\u5c06\u53ca\u65f6\u56de\u590d\u3002",
+          "image": "https://www.schedulaa.com/og/contact.jpg"
+        }
+      },
+      "hero": {
+        "eyebrow": "\u8054\u7cfb\u6211\u4eec",
+        "title": [
+          "\u804a\u804a",
+          "\u60a8\u7684\u4e0a\u7ebf\u8ba1\u5212\u3002"
+        ],
+        "subtitle": "\u9700\u8981\u5b9a\u5236\u5316\u90e8\u7f72\u3001\u5408\u4f5c\u8ba1\u5212\u6216\u8fc1\u79fb\u534f\u52a9\uff1f\u6211\u4eec\u7684\u4e13\u5bb6\u4f1a\u5728\u4e00\u4e2a\u5de5\u4f5c\u65e5\u5185\u56de\u590d\u3002",
+        "badge": {
+          "overline": "\u968f\u65f6\u652f\u6301",
+          "title": "\u4e0a\u7ebf\u987e\u95ee\u5c06\u5728\u4e00\u4e2a\u5de5\u4f5c\u65e5\u5185\u56de\u590d"
+        },
+        "primaryCta": {
+          "label": "\u53d1\u9001\u90ae\u4ef6\u81f3\u9500\u552e\u56e2\u961f",
+          "href": "mailto:sales@schedulaa.com"
+        },
+        "secondaryCta": {
+          "label": "\u62e8\u6253 +1 (415) 555-0198",
+          "href": "tel:+14155550198",
+          "variant": "outlined"
+        },
+        "mediaAlt": "Schedulaa \u652f\u6301\u6d41\u7a0b\u56fe"
+      },
+      "highlights": {
+        "eyebrow": "\u670d\u52a1\u65b9\u5f0f",
+        "title": "\u627e\u5230\u5408\u9002\u7684\u56e2\u961f",
+        "subtitle": "\u9500\u552e\u5de5\u7a0b\u5e08\u3001\u5408\u4f5c\u4f19\u4f34\u7ecf\u7406\u4e0e\u652f\u6301\u56e2\u961f\u534f\u540c\uff0c\u786e\u4fdd\u90e8\u7f72\u987a\u7545\u3002",
+        "items": [
+          {
+            "key": "sales",
+            "title": "\u9500\u552e\u4e0e\u6f14\u793a",
+            "description": "\u63d0\u4f9b\u65b9\u6848\u6f14\u793a\u3001\u4ef7\u683c\u5efa\u8bae\u4e0e\u8fc1\u79fb\u8ba1\u5212\u3002"
+          },
+          {
+            "key": "partnerships",
+            "title": "\u5408\u4f5c\u4f19\u4f34",
+            "description": "\u9002\u7528\u4e8e\u521b\u610f\u5e73\u53f0\u7684\u4ee3\u7406\u3001\u96c6\u6210\u4e0e\u8054\u5408\u8425\u9500\u673a\u4f1a\u3002"
+          },
+          {
+            "key": "support",
+            "title": "\u5ba2\u6237\u652f\u6301",
+            "description": "24 \u5c0f\u65f6\u5185\u54cd\u5e94\u3001\u4f01\u4e1a\u7ea7\u4e0a\u7ebf\u3001Pro \u65b9\u6848\u542b\u4e13\u5c5e\u6210\u529f\u7ecf\u7406\u3002"
+          }
+        ]
+      },
+      "form": {
+        "title": "\u53d1\u9001\u7559\u8a00",
+        "nameLabel": "\u59d3\u540d",
+        "emailLabel": "\u90ae\u7bb1",
+        "companyLabel": "\u516c\u53f8",
+        "planLabel": "\u610f\u5411\u65b9\u6848",
+        "messageLabel": "\u7559\u8a00",
+        "submit": "\u63d0\u4ea4",
+        "success": "\u611f\u8c22\u60a8\u7684\u54a8\u8be2\uff01\u6211\u4eec\u5c06\u5728\u4e00\u4e2a\u5de5\u4f5c\u65e5\u5185\u56de\u590d\u3002",
+        "planOptions": [
+          "Starter",
+          "Plus",
+          "Pro",
+          "Enterprise",
+          "\u5408\u4f5c\u4f19\u4f34",
+          "\u8fc1\u79fb\u652f\u6301"
+        ]
+      },
+      "direct": {
+        "title": "\u76f4\u901a\u6e20\u9053",
+        "sales": "\u9500\u552e\uff1a+1 (415) 555-0198 \u2014 sales@schedulaa.com",
+        "support": "\u652f\u6301\uff1asupport@schedulaa.com",
+        "partnerships": "\u5408\u4f5c\uff1apartners@schedulaa.com",
+        "hours": "\u670d\u52a1\u65f6\u95f4\uff1a\u5468\u4e00\u81f3\u5468\u4e94 9:00-18:00 (PT)"
+      }
+    }
+  }
+}

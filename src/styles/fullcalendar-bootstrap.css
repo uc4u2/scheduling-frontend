@@ -1,0 +1,27 @@
+/* 👇 Style day columns */
+.fc .fc-daygrid-day-frame,
+.fc .fc-timegrid-col {
+  border-right: 1px solid rgba(0, 0, 0, 0.1); /* subtle divider */
+}
+
+.fc .fc-timegrid-axis {
+  background-color: #f4f6f8;
+  color: #333;
+  font-weight: 500;
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* 👇 Hour row separators */
+.fc .fc-timegrid-slot {
+  border-top: 1px dashed rgba(0, 0, 0, 0.07); /* stylish dashed line */
+}
+
+/* 👇 Stronger line for every hour (not half hour) */
+.fc .fc-timegrid-slot.fc-timegrid-slot-label {
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* 👇 Grid background */
+.fc .fc-timegrid-slots {
+  background-color: #fafbfc;
+}

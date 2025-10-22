@@ -1,0 +1,30 @@
+/* ------------------------------------------------------------------
+   Manager master‑calendar – theme‑aware colours via CSS variables
+   ------------------------------------------------------------------ */
+.fc-event{
+  border:none!important;
+  border-radius:20px!important;
+  font-size:.75rem!important;
+  font-weight:600;
+  user-select:none;
+  transition:transform .15s ease;
+  padding:0 6px!important;
+  line-height:1.25;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  overflow:hidden;
+}
+
+.slot-booked{
+  background:linear-gradient(135deg,var(--slot-bad-start),var(--slot-bad-end))!important;
+  color:#fff!important;
+}
+.slot-open{
+  background:linear-gradient(135deg,var(--slot-ok-start),var(--slot-ok-end))!important;
+  color:#fff!important;
+}
+
+.fc-event:hover{
+  transform:scale(1.05);
+  box-shadow:0 4px 14px rgba(0,0,0,.16);
+}

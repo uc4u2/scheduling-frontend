@@ -1,0 +1,114 @@
+/* calendar-enterprise.css
+   -------------------------------------------------------------
+   Uses CSS variables defined in React (Box sx) so every colour,
+   border, and background adapts to the active MUI theme.
+*/
+
+/* ---------- Grid / Axis colours -------------------------------- */
+.fc .fc-daygrid-day-frame,
+.fc .fc-timegrid-col {
+  border-right: 1px solid var(--grid-border);
+}
+
+.fc .fc-timegrid-axis {
+  background-color: var(--grid-axis-bg);
+  color: var(--grid-axis-color);
+  font-weight: 600;
+  border-right: 1px solid var(--grid-border);
+}
+
+/* Hour row separators */
+.fc .fc-timegrid-slot {
+  border-top: 1px dashed var(--row-sep);
+}
+
+/* Stronger line for every hour (not half hour) */
+.fc .fc-timegrid-slot.fc-timegrid-slot-label {
+  border-top: 1px solid var(--grid-border);
+}
+
+/* Grid background */
+.fc .fc-timegrid-slots {
+  background-color: var(--grid-bg);
+}
+
+/* ---------- Container look ------------------------------------ */
+.fc-view-harness,
+.fc-view,
+.fc-scrollgrid {
+  background: var(--grid-bg);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.06);
+  transition: box-shadow 0.3s ease;
+}
+
+.fc-view-harness:hover,
+.fc-view:hover,
+.fc-scrollgrid:hover {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+/* ---------- Event pills (one definition only) ------------------------- */
+.fc-event {
+  border: 0 !important;
+  border-radius: 20px !important;
+  font-size: 0.75rem !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  user-select: none;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  padding: 0 8px !important; /* comfy but slim */
+  min-height: calc(var(--row-h) - 4px) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  cursor: pointer;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.fc-event.slot-available {
+  background: linear-gradient(135deg, var(--slot-ok-start), var(--slot-ok-end)) !important;
+}
+
+.fc-event.slot-booked {
+  background: linear-gradient(135deg, var(--slot-bad-start), var(--slot-bad-end)) !important;
+  filter: grayscale(0.25);
+  cursor: not-allowed;
+  box-shadow: none;
+  text-decoration: line-through;
+}
+
+.fc-event:hover:not(.slot-booked) {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+}
+
+/* Selected slot highlight */
+.slot-selected {
+  outline: 3px solid #FFCA28 !important;
+  outline-offset: 2px;
+}
+
+/* --- taller half-hour rows --- */
+.fc .fc-timegrid-slot,
+.fc .fc-timegrid-slot.fc-timegrid-slot-label,
+.fc .fc-timegrid-axis-frame {
+  height: var(--row-h) !important;
+  min-height: var(--row-h) !important;
+}
+
+/* ---------- Mobile tweaks ------------------------------------- */
+@media (max-width: 600px) {
+  .fc-event {
+    font-size: 0.65rem !important;
+    padding: 0 6px !important;
+  }
+  .fc .fc-timegrid-slot-label,
+  .fc .fc-col-header-cell {
+    font-size: 0.75rem;
+  }
+}

@@ -16,8 +16,8 @@ const ZoomRedirect = () => {
     if (code) {
       // Construct endpoint URL with code (and state if available)
       const endpoint = state
-        ? `https://scheduling-application.onrender.com/zoom/callback?code=${code}&state=${state}`
-        : `https://scheduling-application.onrender.com/zoom/callback?code=${code}`;
+        ? `http://localhost:5000/zoom/callback?code=${code}&state=${state}`
+        : `http://localhost:5000/zoom/callback?code=${code}`;
       
       axios.get(endpoint)
         .then((response) => {

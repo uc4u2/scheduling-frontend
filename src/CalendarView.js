@@ -9,7 +9,7 @@ const CalendarView = () => {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    axios.get("https://scheduling-application.onrender.com/my-availability", {
+    axios.get("http://localhost:5000/my-availability", {
       headers: {
         // Add your JWT token here if needed.
       },

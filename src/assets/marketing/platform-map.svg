@@ -1,0 +1,46 @@
+<svg width="1200" height="640" viewBox="0 0 1200 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mapTitle mapDesc">
+  <title id="mapTitle">Schedulaa platform map</title>
+  <desc id="mapDesc">Diagram showing scheduling, payroll, and automation nodes connected together.</desc>
+  <defs>
+    <linearGradient id="mapBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0b3d3a" stop-opacity="0.8" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="640" rx="40" fill="url(#mapBg)" />
+  <g fill="none" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.4">
+    <path d="M200 220 C 360 140, 520 140, 720 220" />
+    <path d="M720 220 C 880 300, 960 360, 1000 420" />
+    <path d="M200 420 C 460 480, 660 440, 920 520" />
+    <path d="M360 160 L 360 480" />
+    <path d="M560 160 L 560 480" />
+    <path d="M820 200 L 820 480" />
+  </g>
+  <g>
+    <g transform="translate(180 200)">
+      <rect width="180" height="120" rx="24" fill="#0ea5e9" opacity="0.18" />
+      <text x="24" y="54" font-family="Poppins, Roboto, sans-serif" font-size="28" fill="#f8fafc">Scheduling</text>
+      <text x="24" y="90" font-family="Poppins, Roboto, sans-serif" font-size="16" fill="#cbd5f5">Waitlists, shifts, rooms</text>
+    </g>
+    <g transform="translate(510 140)">
+      <rect width="220" height="140" rx="28" fill="#38bdf8" opacity="0.2" />
+      <text x="24" y="60" font-family="Poppins, Roboto, sans-serif" font-size="28" fill="#f8fafc">Payroll</text>
+      <text x="24" y="96" font-family="Poppins, Roboto, sans-serif" font-size="16" fill="#cbd5f5">Taxes, payouts, benefits</text>
+    </g>
+    <g transform="translate(760 220)">
+      <rect width="220" height="130" rx="28" fill="#34d399" opacity="0.2" />
+      <text x="24" y="56" font-family="Poppins, Roboto, sans-serif" font-size="28" fill="#f8fafc">Websites</text>
+      <text x="24" y="92" font-family="Poppins, Roboto, sans-serif" font-size="16" fill="#cbd5f5">Templates + CMS</text>
+    </g>
+    <g transform="translate(960 420)">
+      <rect width="200" height="120" rx="26" fill="#f59e0b" opacity="0.22" />
+      <text x="24" y="54" font-family="Poppins, Roboto, sans-serif" font-size="28" fill="#fff7ed">Automation</text>
+      <text x="24" y="90" font-family="Poppins, Roboto, sans-serif" font-size="16" fill="#fde68a">Workflows, alerts</text>
+    </g>
+    <g transform="translate(220 420)">
+      <rect width="220" height="130" rx="28" fill="#6366f1" opacity="0.22" />
+      <text x="24" y="56" font-family="Poppins, Roboto, sans-serif" font-size="28" fill="#f8fafc">Analytics</text>
+      <text x="24" y="92" font-family="Poppins, Roboto, sans-serif" font-size="16" fill="#cbd5f5">Labor + revenue</text>
+    </g>
+  </g>
+</svg>

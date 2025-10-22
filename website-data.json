@@ -1,0 +1,1379 @@
+{
+  "company": {
+    "address": "",
+    "contact_email": "photoartisto.ca@gmail.com",
+    "id": 1,
+    "logo_url": "",
+    "name": "Photo Artisto",
+    "phone": "",
+    "slug": "photo-artisto",
+    "timezone": "America/New_York",
+    "website": ""
+  },
+  "company_name": "Photo Artisto",
+  "nav_overrides": {
+    "reviews_page_slug": "reviews",
+    "reviews_tab_target": "builtin",
+    "services_page_slug": "services",
+    "services_tab_target": "builtin",
+    "show_reviews_tab": true,
+    "show_services_tab": true
+  },
+  "pages": [
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "qfl1es9xqdmgv2nmgk",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "id": "8sl31e3kvjgmgv2nmgk",
+            "props": {
+              "align": "left",
+              "backgroundPosition": "center",
+              "backgroundUrl": "https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=2000&auto=format&fit=crop",
+              "brightness": 0.95,
+              "contentMaxWidth": "lg",
+              "ctaLink": "/services#schedule",
+              "ctaText": "Book service",
+              "eyebrow": "AutoCare Nexus",
+              "heading": "Keep your fleet \u2014 and your day \u2014 moving.",
+              "heroHeight": 78,
+              "overlay": 0.4,
+              "overlayColor": "#000000",
+              "overlayGradient": "linear-gradient(180deg, rgba(0,0,0,.25) 0%, rgba(0,0,0,.7) 100%)",
+              "safeTop": true,
+              "secondaryCtaLink": "/fleet",
+              "secondaryCtaText": "Fleet accounts",
+              "subheading": "Oil & filters \u2022 Brakes \u2022 Tires \u2022 Diagnostics \u2022 Alignments"
+            },
+            "type": "hero"
+          },
+          {
+            "id": "f0mj8hb357imgv2nmgk",
+            "props": {
+              "ctaLink": "/services",
+              "ctaText": "See complete menu",
+              "items": [
+                {
+                  "description": "Premium oil + filter, 20-point check.",
+                  "image": "https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?q=80&w=1200&auto=format&fit=crop",
+                  "meta": "45\u201360 min",
+                  "name": "Oil Change & Inspection",
+                  "price": "From $59"
+                },
+                {
+                  "description": "Pads/rotors, fluid flush optional.",
+                  "image": "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?q=80&w=1200&auto=format&fit=crop",
+                  "meta": "2\u20133 hr",
+                  "name": "Brake Service",
+                  "price": "Quote"
+                },
+                {
+                  "description": "Mount/balance + 4-wheel alignment.",
+                  "image": "https://images.unsplash.com/photo-1495435229349-e86db7bfa013?q=80&w=1200&auto=format&fit=crop",
+                  "meta": "1.5\u20132 hr",
+                  "name": "Tires & Alignment",
+                  "price": "From $129"
+                },
+                {
+                  "description": "Check engine lights, electrical, drivability.",
+                  "image": "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?q=80&w=1200&auto=format&fit=crop",
+                  "meta": "1\u20132 hr",
+                  "name": "Diagnostics",
+                  "price": "From $139"
+                },
+                {
+                  "description": "Performance test, recharge & leak check.",
+                  "image": "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?q=80&w=1200&auto=format&fit=crop",
+                  "meta": "1\u20132 hr",
+                  "name": "A/C Service",
+                  "price": "From $129"
+                },
+                {
+                  "description": "Battery test/replacement and charging system check.",
+                  "image": "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?q=80&w=1200&auto=format&fit=crop",
+                  "meta": "45\u201390 min",
+                  "name": "Battery & Electrical",
+                  "price": "From $119"
+                }
+              ],
+              "subtitle": "ASE-certified techs. OEM-grade diagnostics. Transparent, up-front pricing.",
+              "title": "Popular services"
+            },
+            "type": "serviceGrid"
+          },
+          {
+            "id": "3oba9mtbguamgv2nmgk",
+            "props": {
+              "ctaLink": "/services#schedule",
+              "ctaText": "Find a slot",
+              "heading": "Real-time bay availability",
+              "image": "https://images.unsplash.com/photo-1502877338535-766e1452684a?q=80&w=1400&auto=format&fit=crop",
+              "maxWidth": "lg",
+              "subheading": "See open bays and ETAs before you book \u2014 no phone tag."
+            },
+            "type": "heroSplit"
+          },
+          {
+            "id": "iw3rpymcxfmgv2nmgk",
+            "props": {
+              "items": [
+                {
+                  "description": "Performance, longevity, and wet-weather grip.",
+                  "image": "https://images.unsplash.com/photo-1614270283583-1efc7c3f2f4a?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Tires",
+                  "name": "Michelin Tires",
+                  "price": "Partner"
+                },
+                {
+                  "description": "Premium tires and OE electronics.",
+                  "image": "https://images.unsplash.com/photo-1520256862855-398228c41684?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Tires / Sensors",
+                  "name": "Continental",
+                  "price": "Partner"
+                },
+                {
+                  "description": "All-season confidence & run-flat options.",
+                  "image": "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Tires",
+                  "name": "Bridgestone",
+                  "price": "Partner"
+                },
+                {
+                  "description": "Track-proven stopping power for the street.",
+                  "image": "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Brakes",
+                  "name": "Brembo Braking",
+                  "price": "Partner"
+                },
+                {
+                  "description": "Alternators, sensors, and OE electronics.",
+                  "image": "https://images.unsplash.com/photo-1523961131990-5ea7c61b2107?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Electronics",
+                  "name": "Bosch",
+                  "price": "Partner"
+                },
+                {
+                  "description": "Synthetic oils meeting factory specs.",
+                  "image": "https://images.unsplash.com/photo-1551836022-d5d88e9218df?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Fluids",
+                  "name": "Mobil 1",
+                  "price": "Partner"
+                }
+              ],
+              "subtitle": "Top components with OEM specs \u2014 selected for reliability and safety.",
+              "title": "Pro-grade brands we install"
+            },
+            "type": "serviceGrid"
+          },
+          {
+            "id": "qznawubcttmgv2nmgk",
+            "props": {
+              "items": [
+                {
+                  "label": "Vehicles serviced",
+                  "value": "120k+"
+                },
+                {
+                  "label": "Service bays",
+                  "value": "24"
+                },
+                {
+                  "label": "On-time pickup",
+                  "value": "98%"
+                },
+                {
+                  "label": "Avg. rating",
+                  "value": "4.9\u2605"
+                }
+              ],
+              "title": "Operations at scale"
+            },
+            "type": "stats"
+          },
+          {
+            "id": "x5u5tx11dyrmgv2nmgk",
+            "props": {
+              "buttonLink": "/services#schedule",
+              "buttonText": "Find a slot",
+              "text": "Need service today?"
+            },
+            "type": "bookingCtaBar"
+          },
+          {
+            "id": "h9dfijghqxfmgv2nmgk",
+            "props": {
+              "text": "\u00a9 2025 AutoCare Nexus \u2022 Terms \u2022 Privacy"
+            },
+            "type": "footer"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.778995",
+      "id": 168,
+      "is_homepage": true,
+      "locale": "en",
+      "menu_title": "Home",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": "",
+      "seo_title": "",
+      "show_in_menu": true,
+      "slug": "home",
+      "sort_order": 0,
+      "title": "Pro-grade auto service with real-time booking.",
+      "updated_at": "2025-10-18T19:11:56.626648"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "O0wLY-CK",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "props": {
+              "ctaLink": "/services#schedule",
+              "ctaText": "Book now",
+              "heading": "Everything from oil to overhauls",
+              "image": "https://images.unsplash.com/photo-1571601035763-9a631f0a90ad?q=80&w=1400&auto=format&fit=crop",
+              "maxWidth": "lg",
+              "subheading": "Clear line items and ETAs up front."
+            },
+            "type": "heroSplit"
+          },
+          {
+            "props": {
+              "plans": [
+                {
+                  "ctaLink": "/services#schedule",
+                  "ctaText": "Book basic",
+                  "features": [
+                    "Oil + filter",
+                    "20-point inspection"
+                  ],
+                  "name": "Basic Service",
+                  "price": "From $59"
+                },
+                {
+                  "ctaLink": "/services#schedule",
+                  "ctaText": "Request quote",
+                  "featured": true,
+                  "features": [
+                    "Pads/rotors",
+                    "Road test"
+                  ],
+                  "name": "Brake Refresh",
+                  "price": "Quote",
+                  "ribbon": "Popular"
+                },
+                {
+                  "ctaLink": "/services#schedule",
+                  "ctaText": "Book tire service",
+                  "features": [
+                    "Mount & balance",
+                    "4-wheel alignment"
+                  ],
+                  "name": "Tire & Align",
+                  "price": "From $129"
+                }
+              ],
+              "title": "Packages"
+            },
+            "type": "pricingTable"
+          },
+          {
+            "props": {
+              "items": [
+                {
+                  "answer": "<p>We follow OEM torque and fluid specifications; parts warranties honored.</p>",
+                  "question": "Warranty & OEM specs"
+                },
+                {
+                  "answer": "<p>Available at select locations; ask when booking.</p>",
+                  "question": "Loaners & shuttles"
+                }
+              ],
+              "title": "Common questions"
+            },
+            "type": "faq"
+          },
+          {
+            "props": {
+              "text": "\u00a9 2025 AutoCare Nexus"
+            },
+            "type": "footer"
+          },
+          {
+            "id": null,
+            "props": {
+              "align": "left",
+              "body": "<iframe src=\"/{{slug}}/services?dialog=1&embed=1&mode=modal\" style=\"width:100%;min-height:900px;border:none;display:block;\"></iframe>",
+              "maxWidth": "full",
+              "title": "Services"
+            },
+            "type": "richText"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.781690",
+      "id": 169,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Services",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "services",
+      "sort_order": 1,
+      "title": "Services & Pricing",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "qrUD1tFl",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "props": {
+              "align": "center",
+              "backgroundColor": "#0b1220",
+              "backgroundMode": "color",
+              "ctaLink": "/contact#fleet",
+              "ctaText": "Talk to fleet ops",
+              "heading": "Fleet programs built for uptime",
+              "heroHeight": 44,
+              "overlay": 0,
+              "subheading": "Consolidated billing, SLAs, priority booking, and payroll-integrated driver perks."
+            },
+            "type": "hero"
+          },
+          {
+            "props": {
+              "items": [
+                {
+                  "description": "Reserved repair bays and same-day slots.",
+                  "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "SLAs",
+                  "name": "Priority windows"
+                },
+                {
+                  "description": "Net terms, PO support, and monthly rollups.",
+                  "image": "https://images.unsplash.com/photo-1554224155-6726b3ff858f?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Finance",
+                  "name": "Consolidated billing"
+                },
+                {
+                  "description": "Integrations for maintenance alerts and ETAs.",
+                  "image": "https://images.unsplash.com/photo-1535223289827-42f1e9919769?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "APIs",
+                  "name": "Telematics & data"
+                },
+                {
+                  "description": "On-site tires, batteries, and minor repairs.",
+                  "image": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Dispatch",
+                  "name": "Mobile service"
+                },
+                {
+                  "description": "Cost per mile, downtime, and service history.",
+                  "image": "https://images.unsplash.com/photo-1483721310020-03333e577078?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Ops",
+                  "name": "Reporting"
+                },
+                {
+                  "description": "Single point of contact for your drivers.",
+                  "image": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1600&auto=format&fit=crop",
+                  "meta": "Service",
+                  "name": "Dedicated manager"
+                }
+              ],
+              "subtitle": "Everything you need to keep vehicles earning.",
+              "title": "Fleet-ready solutions"
+            },
+            "type": "serviceGrid"
+          },
+          {
+            "props": {
+              "items": [
+                {
+                  "label": "Fleet vehicles managed",
+                  "value": "500+"
+                },
+                {
+                  "label": "Uptime w/ SLAs",
+                  "value": "95%"
+                },
+                {
+                  "label": "Priority support",
+                  "value": "24/7"
+                },
+                {
+                  "label": "Consolidated billing",
+                  "value": "Net 30"
+                }
+              ],
+              "title": "Program scale"
+            },
+            "type": "stats"
+          },
+          {
+            "props": {
+              "body": "<ul><li>National coverage</li><li>Telematics integration</li><li>Priority repair windows</li><li>Payroll deduction for driver services</li></ul>",
+              "title": "Program highlights"
+            },
+            "type": "richText"
+          },
+          {
+            "props": {
+              "autoplay": true,
+              "images": [
+                "https://images.unsplash.com/photo-1551836022-d5d88e9218df?q=80&w=2000&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1523961131990-5ea7c61b2107?q=80&w=2000&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2000&auto=format&fit=crop"
+              ],
+              "maxWidth": "xl",
+              "title": "Shops & bays"
+            },
+            "type": "galleryCarousel"
+          },
+          {
+            "props": {
+              "items": [
+                {
+                  "answer": "<p>Custom SLAs, reporting, and monthly reviews available.</p>",
+                  "question": "Coverage & SLAs"
+                },
+                {
+                  "answer": "<p>Standard Net 30 with volume-based pricing tiers.</p>",
+                  "question": "Terms"
+                }
+              ],
+              "maxWidth": "lg",
+              "title": "Fleet FAQs"
+            },
+            "type": "faq"
+          },
+          {
+            "props": {
+              "buttonLink": "/staff",
+              "buttonText": "Open staff portal",
+              "subtitle": "Timesheets, payroll, and availability for technicians.",
+              "title": "Staff & Payroll Portal"
+            },
+            "type": "cta"
+          },
+          {
+            "props": {
+              "text": "\u00a9 2025 AutoCare Nexus"
+            },
+            "type": "footer"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.783737",
+      "id": 170,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Fleet",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "fleet",
+      "sort_order": 2,
+      "title": "Fleet & Corporate",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "y9PX3d7y",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "props": {
+              "align": "center",
+              "backgroundColor": "#0a0f1a",
+              "backgroundMode": "color",
+              "heading": "Find a service center",
+              "heroHeight": 36,
+              "overlay": 0,
+              "subheading": "Same-day openings at select locations."
+            },
+            "type": "hero"
+          },
+          {
+            "props": {
+              "body": "<p>101 Service Rd \u2022 (555) 444-1001</p>",
+              "title": "Downtown"
+            },
+            "type": "richText"
+          },
+          {
+            "props": {
+              "borderRadius": 12,
+              "embedUrl": "https://www.google.com/maps?q=AutoCare+Nexus+Downtown&output=embed",
+              "height": 280,
+              "provider": "google",
+              "query": "AutoCare Nexus Downtown"
+            },
+            "type": "mapEmbed"
+          },
+          {
+            "props": {
+              "body": "<p>200 Hangar Way \u2022 (555) 444-2002</p>",
+              "title": "Airport"
+            },
+            "type": "richText"
+          },
+          {
+            "props": {
+              "borderRadius": 12,
+              "embedUrl": "https://www.google.com/maps?q=AutoCare+Nexus+Airport&output=embed",
+              "height": 280,
+              "provider": "google",
+              "query": "AutoCare Nexus Airport"
+            },
+            "type": "mapEmbed"
+          },
+          {
+            "props": {
+              "text": "\u00a9 2025 AutoCare Nexus"
+            },
+            "type": "footer"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.786374",
+      "id": 171,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Locations",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "locations",
+      "sort_order": 3,
+      "title": "Locations",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "rfqcR7Ua",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "props": {
+              "ctaLink": "/services#schedule",
+              "ctaText": "Book with our team",
+              "heading": "ASE-certified technicians",
+              "image": "https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1400&auto=format&fit=crop",
+              "maxWidth": "lg",
+              "subheading": "Continuous training. Safety-first culture."
+            },
+            "type": "heroSplit"
+          },
+          {
+            "props": {
+              "ctaLink": "/services#schedule",
+              "ctaText": "See schedule",
+              "items": [
+                {
+                  "description": "Diagnostics & Electrical",
+                  "image": "https://images.unsplash.com/photo-1549728871-5f5a162f6f22?q=80&w=1200&auto=format&fit=crop",
+                  "meta": "12 yrs",
+                  "name": "R. Lopez \u2014 Shop Lead"
+                },
+                {
+                  "description": "Tires & Alignment",
+                  "image": "https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=1200&auto=format&fit=crop",
+                  "meta": "9 yrs",
+                  "name": "K. Singh \u2014 Tire Lead"
+                },
+                {
+                  "description": "Pads/Rotors/ABS",
+                  "image": "https://images.unsplash.com/photo-1544636331-e26879cd4d9b?q=80&w=1200&auto=format&fit=crop",
+                  "meta": "8 yrs",
+                  "name": "M. Chen \u2014 Brakes"
+                }
+              ],
+              "title": "Shop leads"
+            },
+            "type": "serviceGrid"
+          },
+          {
+            "props": {
+              "text": "\u00a9 2025 AutoCare Nexus"
+            },
+            "type": "footer"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.788369",
+      "id": 172,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Team",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "team",
+      "sort_order": 4,
+      "title": "Technicians",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "jKqD6t_k",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "props": {
+              "autoplay": true,
+              "images": [
+                "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2000&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1542362567-b07e54358753?q=80&w=2000&auto=format&fit=crop",
+                "https://images.unsplash.com/photo-1551836022-d5d88e9218df?q=80&w=2000&auto=format&fit=crop"
+              ],
+              "maxWidth": "xl",
+              "title": "Shop & before/after"
+            },
+            "type": "galleryCarousel"
+          },
+          {
+            "props": {
+              "text": "\u00a9 2025 AutoCare Nexus"
+            },
+            "type": "footer"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.790336",
+      "id": 173,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Gallery",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "gallery",
+      "sort_order": 5,
+      "title": "Shop & Results",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "1TkIUYHM",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "props": {
+              "items": [
+                {
+                  "answer": "<p>Change or cancel up to 12 hours before service.</p>",
+                  "question": "Cancellations"
+                },
+                {
+                  "answer": "<p>Nationwide limited warranties on parts & labor.</p>",
+                  "question": "Warranty"
+                }
+              ],
+              "maxWidth": "lg",
+              "title": "Policies"
+            },
+            "type": "faq"
+          },
+          {
+            "props": {
+              "text": "\u00a9 2025 AutoCare Nexus \u2022 Accessibility \u2022 Privacy"
+            },
+            "type": "footer"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.792248",
+      "id": 174,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Policies",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "policies",
+      "sort_order": 6,
+      "title": "Policies & Warranty",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "brHN7PMd",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "props": {
+              "ctaLink": "/careers#openings",
+              "ctaText": "See openings",
+              "heading": "Build your career with us",
+              "image": "https://images.unsplash.com/photo-1523961131990-5ea7c61b2107?q=80&w=1400&auto=format&fit=crop",
+              "maxWidth": "lg",
+              "subheading": "Techs, advisors, and logistics roles."
+            },
+            "type": "heroSplit"
+          },
+          {
+            "props": {
+              "ctaLink": "/careers#apply",
+              "ctaText": "Apply now",
+              "dataSource": "{\n  \"url\": \"/api/jobs?company=slot\",\n  \"pick\": \"roles[].{name:title, meta:location, price:grade}\"\n}",
+              "subtitle": "Sync from your ATS or sheet.",
+              "title": "Open roles"
+            },
+            "type": "serviceGridSmart"
+          },
+          {
+            "props": {
+              "text": "\u00a9 2025 AutoCare Nexus"
+            },
+            "type": "footer"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.794899",
+      "id": 175,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Careers",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "careers",
+      "sort_order": 7,
+      "title": "Careers",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "_KSTNS4X",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "props": {
+              "fields": [
+                {
+                  "label": "Full name",
+                  "name": "name",
+                  "required": true
+                },
+                {
+                  "label": "Email",
+                  "name": "email",
+                  "required": true
+                },
+                {
+                  "label": "Phone",
+                  "name": "phone"
+                },
+                {
+                  "label": "Subject",
+                  "name": "subject"
+                },
+                {
+                  "label": "Message",
+                  "name": "message",
+                  "required": true
+                }
+              ],
+              "formKey": "contact",
+              "intro": "Tell us about your vehicle or goals and we\u2019ll respond within one business day.",
+              "maxWidth": "md",
+              "successMessage": "Thanks! Your message was sent.",
+              "title": "Get in touch",
+              "titleAlign": "left"
+            },
+            "type": "contactForm"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.797022",
+      "id": 176,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Contact",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "contact",
+      "sort_order": 8,
+      "title": "Contact",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "0AWmIYfL",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "id": null,
+            "props": {
+              "align": "left",
+              "body": "<iframe src=\"/{{slug}}/services?embed=1&primary=%234ade80&text=dark&mode=modal&dialog=1\" style=\"width:100%;min-height:900px;border:none;display:block;\"></iframe>",
+              "maxWidth": "full",
+              "title": "Services"
+            },
+            "type": "richText"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.803238",
+      "id": 179,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Services (Classic)",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "services-classic",
+      "sort_order": 11,
+      "title": "Services Classic",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "0boPJSTV",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "id": null,
+            "props": {
+              "align": "left",
+              "body": "<iframe src=\"/{{slug}}/reviews?dialog=1&embed=1&mode=modal\" style=\"width:100%;min-height:900px;border:none;display:block;\"></iframe>",
+              "maxWidth": "full",
+              "title": "Reviews"
+            },
+            "type": "richText"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.799762",
+      "id": 177,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Reviews",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "reviews",
+      "sort_order": 20,
+      "title": "Reviews",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "cBNoAIdP",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "id": null,
+            "props": {
+              "align": "left",
+              "body": "<iframe src=\"/{{slug}}/products?embed=1&primary=%234ade80&text=dark&mode=modal&dialog=1\" style=\"width:100%;min-height:900px;border:none;display:block;\"></iframe>",
+              "maxWidth": "full",
+              "title": "Products"
+            },
+            "type": "richText"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.805234",
+      "id": 180,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "Products",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "products",
+      "sort_order": 30,
+      "title": "Products",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "3_d2VwKh",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          },
+          {
+            "id": null,
+            "props": {
+              "align": "left",
+              "body": "<iframe src=\"/{{slug}}/basket?embed=1&primary=%234ade80&text=dark&mode=modal&dialog=1\" style=\"width:100%;min-height:900px;border:none;display:block;\"></iframe>",
+              "maxWidth": "full",
+              "title": "Basket"
+            },
+            "type": "richText"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.806234",
+      "id": 181,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "My Basket",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "basket",
+      "sort_order": 40,
+      "title": "My Basket",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    },
+    {
+      "company_id": 1,
+      "content": {
+        "meta": {
+          "layout": "full"
+        },
+        "sections": [
+          {
+            "id": "x72SrXiG",
+            "props": {
+              "backgroundColor": "#a21584",
+              "bodyColor": "#cbd5e1",
+              "bodyFont": "Inter",
+              "btnBg": "#4f07d5",
+              "btnColor": "#0b1220",
+              "btnRadius": 12,
+              "cardBg": "rgba(15,23,42,.88)",
+              "cardRadius": 16,
+              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
+              "headingColor": "#e2e8f0",
+              "headingFont": "Montserrat",
+              "linkColor": "#22d3ee",
+              "overlayOpacity": 0
+            },
+            "sx": {
+              "py": 0
+            },
+            "type": "pageStyle"
+          }
+        ]
+      },
+      "created_at": "2025-10-16T01:24:03.801207",
+      "id": 178,
+      "is_homepage": false,
+      "locale": "en",
+      "menu_title": "My Bookings",
+      "og_image_url": null,
+      "path": null,
+      "published": true,
+      "seo_description": null,
+      "seo_title": null,
+      "show_in_menu": true,
+      "slug": "my-bookings",
+      "sort_order": 90,
+      "title": "My Bookings",
+      "updated_at": "2025-10-18T19:11:56.630636"
+    }
+  ],
+  "slug": "photo-artisto",
+  "theme_overrides": {},
+  "title": "FE Save Test",
+  "website_setting": {
+    "cdn_provider": "caddy",
+    "cloudflare_hostname_id": null,
+    "company_id": 1,
+    "custom_domain": "www.photoartisto.com",
+    "default_locale": "en",
+    "domain_last_checked_at": null,
+    "domain_notify_email_enabled": false,
+    "domain_status": "pending_dns",
+    "domain_verified_at": null,
+    "favicon_url": null,
+    "homepage_page_id": null,
+    "integrations": {},
+    "is_live": true,
+    "last_published_at": "2025-09-03T21:58:26.194448",
+    "locales": [
+      "en"
+    ],
+    "settings": {
+      "imported_template": {
+        "imported_at": "2025-08-29T22:44:03.946547",
+        "key": "minimal-spa",
+        "version": "1.0.0"
+      },
+      "is_live": {
+        "companyId": 1
+      },
+      "nav_overrides": {
+        "reviews_page_slug": "reviews",
+        "reviews_tab_target": "builtin",
+        "services_page_slug": "services",
+        "services_tab_target": "builtin",
+        "show_reviews_tab": true,
+        "show_services_tab": true
+      },
+      "site_title": "FE Save Test",
+      "theme_overrides": {}
+    },
+    "ssl_error": null,
+    "ssl_status": null,
+    "theme": {
+      "created_at": null,
+      "default_config": {},
+      "id": 1,
+      "is_active": false,
+      "key": "basic",
+      "name": "Basic",
+      "preview_url": null,
+      "updated_at": null,
+      "version": "1"
+    }
+  }
+}

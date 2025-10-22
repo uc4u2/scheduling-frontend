@@ -1,0 +1,35 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Schedulaa team collaborating</title>
+  <desc id="desc">Abstract illustration of a collaborative workspace with profile cards and charts.</desc>
+  <defs>
+    <linearGradient id="teamBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.85" />
+      <stop offset="50%" stop-color="#6366f1" stop-opacity="0.78" />
+      <stop offset="100%" stop-color="#14b8a6" stop-opacity="0.82" />
+    </linearGradient>
+    <linearGradient id="panelGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#E0F2FE" stop-opacity="0.92" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="720" rx="48" fill="url(#teamBg)" />
+  <g transform="translate(140 120)">
+    <rect x="0" y="0" width="460" height="320" rx="28" fill="url(#panelGradient)" opacity="0.96" />
+    <rect x="32" y="52" width="396" height="72" rx="18" fill="#0ea5e9" opacity="0.18" />
+    <rect x="32" y="144" width="396" height="48" rx="14" fill="#6366f1" opacity="0.16" />
+    <rect x="32" y="208" width="396" height="48" rx="14" fill="#14b8a6" opacity="0.18" />
+    <rect x="510" y="40" width="280" height="200" rx="24" fill="url(#panelGradient)" opacity="0.94" />
+    <rect x="540" y="80" width="220" height="36" rx="12" fill="#0ea5e9" opacity="0.22" />
+    <rect x="540" y="132" width="160" height="24" rx="10" fill="#6366f1" opacity="0.24" />
+    <rect x="540" y="168" width="200" height="24" rx="10" fill="#14b8a6" opacity="0.24" />
+    <rect x="0" y="360" width="360" height="200" rx="26" fill="url(#panelGradient)" opacity="0.92" />
+    <circle cx="80" cy="420" r="42" fill="#0ea5e9" opacity="0.6" />
+    <circle cx="200" cy="420" r="42" fill="#6366f1" opacity="0.55" />
+    <circle cx="320" cy="420" r="42" fill="#14b8a6" opacity="0.55" />
+    <rect x="0" y="360" width="360" height="24" rx="12" fill="#0ea5e9" opacity="0.2" />
+    <rect x="410" y="320" width="360" height="240" rx="28" fill="url(#panelGradient)" opacity="0.9" />
+    <rect x="442" y="360" width="140" height="140" rx="20" fill="#fff" opacity="0.95" />
+    <rect x="602" y="360" width="140" height="140" rx="20" fill="#fff" opacity="0.95" />
+    <rect x="442" y="516" width="300" height="24" rx="12" fill="#0ea5e9" opacity="0.2" />
+  </g>
+</svg>

@@ -1,5 +1,5 @@
 // src/RecruiterDashboard.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -13,180 +13,317 @@ import {
   DialogActions,
   MenuItem,
   Paper,
+  Stack,
+  CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Checkbox,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import RecurringAvailabilityForm from "./RecurringAvailabilityForm";
 import InteractiveCalendar from "./InteractiveCalendar";
+import { useSnackbar } from "notistack";
+import moment from "moment-timezone";
+import { isoFromParts } from "./utils/datetime";   // already used elsewhere
+import SecondEmployeeShiftView from "./pages/sections/SecondEmployeeShiftView";
+import MySetmoreCalendar from "./MySetmoreCalendar";
+import ManagementFrame from "./components/ui/ManagementFrame";
+import RecruiterTabs from "./components/recruiter/RecruiterTabs";
+const PAGE_SIZE = 20; // number of slots per page
+const LOCAL_TABS = ["calendar", "availability", "shifts"];
 
 const RecruiterDashboard = ({ token }) => {
-  // Environment variable for API URL
-  const API_URL = process.env.REACT_APP_API_URL || "https://scheduling-application.onrender.com";
-
-  // Availability form states
+  const [searchParams, setSearchParams] = useSearchParams();
+  const theme = useTheme();
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+  /* ---------- form fields ---------- */
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [dailyDuration, setDailyDuration] = useState("60");
-
-  // Invitation form states
-  const [candidateName, setCandidateName] = useState("");
-  const [candidateEmail, setCandidateEmail] = useState("");
-  const [inviteMessage, setInviteMessage] = useState("");
-
-  // Global states
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  /* ---------- UI + data state ---------- */
   const [slots, setSlots] = useState([]);
-  const [recruiterProfile, setRecruiterProfile] = useState(null);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [recruiter, setRecruiter] = useState(null);
+  const { enqueueSnackbar } = useSnackbar();
+  const initialTab = searchParams.get("tab");
+  const defaultTab = LOCAL_TABS.includes(initialTab) ? initialTab : LOCAL_TABS[0];
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  const navigate = useNavigate();
 
-  // Edit dialog states
+  useEffect(() => {
+    const queryValue = searchParams.get("tab");
+    if (queryValue && !LOCAL_TABS.includes(queryValue)) {
+      if (queryValue === "invitations") {
+        navigate("/recruiter/invitations", { replace: true });
+      } else if (queryValue === "candidate-forms") {
+        navigate("/recruiter/invitations?section=forms", { replace: true });
+      } else if (queryValue === "upcoming-meetings") {
+        navigate("/recruiter/upcoming-meetings", { replace: true });
+      } else {
+        const params = new URLSearchParams(searchParams);
+        params.set("tab", LOCAL_TABS[0]);
+        setSearchParams(params, { replace: true });
+      }
+      return;
+    }
+    if (!queryValue) {
+      const params = new URLSearchParams(searchParams);
+      params.set("tab", activeTab);
+      setSearchParams(params, { replace: true });
+      return;
+    }
+    if (queryValue !== activeTab) {
+      setActiveTab(queryValue);
+    }
+  }, [activeTab, navigate, searchParams, setSearchParams]);
+
+  const handleLocalTabChange = useCallback((newValue) => {
+    if (!LOCAL_TABS.includes(newValue)) {
+      return;
+    }
+    setActiveTab(newValue);
+    const params = new URLSearchParams(searchParams);
+    if (params.get("tab") !== newValue) {
+      params.set("tab", newValue);
+      setSearchParams(params, { replace: true });
+    }
+    const target = document.getElementById(`tab-${newValue}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [searchParams, setSearchParams]);
+  /* Pagination and filtering state */
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filterMonth, setFilterMonth] = useState(""); // format 'YYYY-MM'
+  /* NEW ? how many weeks of history we show (default 4) - still used for fetch */
+  const [pastWeeks, setPastWeeks] = useState(4);
+  const weeksAgoDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - pastWeeks * 7);
+    return d;
+  }, [pastWeeks]);
+  const [selectedSlotIds, setSelectedSlotIds] = useState([]);
+  /* dialogs, calendars, misc (unchanged vars) */
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [currentEditSlot, setCurrentEditSlot] = useState(null);
   const [editDate, setEditDate] = useState("");
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
-
-  // Drag-and-drop pending update state
   const [pendingSlotUpdate, setPendingSlotUpdate] = useState(null);
-
-  // Fetch recruiter profile
-  const fetchProfile = async () => {
+  const [calendarRefreshTrigger, setCalendarRefreshTrigger] = useState(Date.now());
+  const [coolingTime, setCoolingTime] = useState("0");
+  const [dailyMessage, setDailyMessage] = useState("");
+  const [dailyError, setDailyError] = useState("");
+  const [oneTimeMessage, setOneTimeMessage] = useState("");
+  const [oneTimeError, setOneTimeError] = useState("");
+  const [cancelConfirmDialogOpen, setCancelConfirmDialogOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [candidateEmailConfirm, setCandidateEmailConfirm] = useState("");
+  const [cancelError, setCancelError] = useState("");
+  /* ---------- helpers ---------- */
+  const sortDesc = useCallback(
+    (a, b) =>
+      new Date(`${b.date}T${b.start_time}`) - new Date(`${a.date}T${a.start_time}`),
+    []
+  );
+  /* ---------- fetch availability ---------- */
+  const fetchSlots = useCallback(async () => {
+    if (!token) return;
+    setLoadingSlots(true);
     try {
-      const res = await axios.get(`${API_URL}/profile`, {
+      const { data } = await axios.get(`${API_URL}/my-availability`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRecruiterProfile(res.data);
+      const availableSlotsData = data.available_slots || [];
+      const filtered = availableSlotsData
+        .filter((slot) => {
+          if (!weeksAgoDate) return true;
+          const start = new Date(`${slot.date}T${slot.start_time}`);
+          if (Number.isNaN(start.getTime())) return false;
+          return start >= weeksAgoDate;
+        })
+        .sort(sortDesc);
+      setSlots(filtered);
+      setCurrentPage(1); // reset page when data reloads
+      setFilterMonth(""); // reset month filter on fresh fetch
     } catch (err) {
-      console.error("Error fetching profile:", err);
+      enqueueSnackbar(err.response?.data?.error || "Failed to fetch availability.", { variant: "error" });
+    } finally {
+      setLoadingSlots(false);
     }
-  };
-
-  // Fetch availability slots (with booking details)
-  const fetchSlots = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/my-availability`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setSlots(response.data.available_slots);
-    } catch (err) {
-      setError("Failed to fetch availability.");
-    }
-  };
-
+  }, [API_URL, token, weeksAgoDate, sortDesc, enqueueSnackbar]);
+  /* ---------- initial load + re-fetch on pastWeeks change ---------- */
   useEffect(() => {
-    if (token) {
-      fetchProfile();
+    if (!token) return;
+    fetchSlots();
+    axios
+      .get(`${API_URL}/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        setRecruiter(res.data);
+        localStorage.setItem("timezone", res.data.timezone || "UTC");
+      })
+      .catch((e) => console.error("Profile load failed:", e));
+  }, [token, fetchSlots, API_URL]);
+  /* ---------------- derived ---------------- */
+  const filteredSlots = useMemo(() => {
+    if (!filterMonth) return slots;
+    return slots.filter((s) => s.date.startsWith(filterMonth));
+  }, [slots, filterMonth]);
+  const nonBookedFilteredSlots = useMemo(() => filteredSlots.filter((s) => !s.booked), [filteredSlots]);
+  const paginatedSlots = useMemo(() => {
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    return filteredSlots.slice(startIdx, startIdx + PAGE_SIZE);
+  }, [filteredSlots, currentPage]);
+  const totalPages = Math.ceil(filteredSlots.length / PAGE_SIZE);
+  const handleDelete = useCallback(
+    async (slotId) => {
+      try {
+        await axios.delete(`${API_URL}/delete-availability/${slotId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        fetchSlots();
+        setCalendarRefreshTrigger(Date.now());
+        setSelectedSlotIds((prev) => prev.filter((id) => id !== slotId));
+        enqueueSnackbar("Slot deleted", { variant: "success" });
+      } catch (err) {
+        enqueueSnackbar(err.response?.data?.error || "Failed to delete slot.", { variant: "error" });
+      }
+    },
+    [API_URL, token, fetchSlots, enqueueSnackbar]
+  );
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedSlotIds.length === 0) return;
+    try {
+      await Promise.all(
+        selectedSlotIds.map((slotId) =>
+          axios.delete(`${API_URL}/delete-availability/${slotId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        )
+      );
+      enqueueSnackbar("Selected slots deleted", { variant: "success" });
       fetchSlots();
+      setCalendarRefreshTrigger(Date.now());
+      setSelectedSlotIds([]);
+    } catch (err) {
+      enqueueSnackbar(err.response?.data?.error || "Failed to delete selected slots.", { variant: "error" });
     }
-  }, [token]);
-
-  // One-Time Availability Submission
-  const handleSubmitOneTime = async () => {
+  }, [API_URL, token, selectedSlotIds, fetchSlots, enqueueSnackbar]);
+  const handleSelectSlot = useCallback((slotId, isSelected) => {
+    setSelectedSlotIds((prev) =>
+      isSelected ? [...prev, slotId] : prev.filter((id) => id !== slotId)
+    );
+  }, []);
+  const handleSelectAll = useCallback(
+    (isSelected) => {
+      const nonBookedSlotIds = nonBookedFilteredSlots.map((slot) => slot.id);
+      setSelectedSlotIds(isSelected ? nonBookedSlotIds : []);
+    },
+    [nonBookedFilteredSlots]
+  );
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+  };
+  const handleMonthChange = (e) => {
+    setFilterMonth(e.target.value);
+    setCurrentPage(1);
+  };
+  const handleSubmitOneTime = useCallback(async () => {
     if (!date || !startTime || !endTime) {
-      setError("All fields are required.");
+      setOneTimeError("All fields are required.");
+      setOneTimeMessage("");
       return;
     }
     try {
-      const response = await axios.post(
+      const { data } = await axios.post(
         `${API_URL}/set-availability`,
         { date, start_time: startTime, end_time: endTime },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setMessage(response.data.message);
-      setError("");
+      setOneTimeMessage(data.message);
+      setOneTimeError("");
       setDate("");
       setStartTime("");
       setEndTime("");
       fetchSlots();
+      setCalendarRefreshTrigger(Date.now());
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to set availability.");
+      setOneTimeError(err.response?.data?.error || "Failed to set availability.");
+      setOneTimeMessage("");
     }
-  };
-
-  // Daily Availability Submission (Auto-Split Slots)
-  const handleSubmitDailyAvailability = async () => {
+  }, [API_URL, token, date, startTime, endTime, fetchSlots]);
+  const handleSubmitDailyAvailability = useCallback(async () => {
     if (!date || !startTime || !endTime || !dailyDuration) {
-      setError("All fields (date, start time, end time, duration) are required.");
+      setDailyError("All fields (date, start, end, duration) are required.");
       return;
     }
     try {
-      const response = await axios.post(
+      const { data } = await axios.post(
         `${API_URL}/set-daily-availability`,
-        { date, start_time: startTime, end_time: endTime, duration: dailyDuration },
+        {
+          date,
+          start_time: startTime,
+          end_time: endTime,
+          duration: dailyDuration,
+          cooling_time: parseInt(coolingTime) || 0,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setMessage(response.data.message);
-      setError("");
+      setDailyMessage(data.message);
+      setDailyError("");
       setDate("");
       setStartTime("");
       setEndTime("");
       fetchSlots();
+      setCalendarRefreshTrigger(Date.now());
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to set daily availability.");
+      setDailyError(err.response?.data?.error || "Failed to set daily availability.");
+      setDailyMessage("");
     }
-  };
-
-  // Handle candidate invitation sending
-  const handleSendInvitation = async () => {
-    if (!candidateName || !candidateEmail) {
-      setError("Candidate name and email are required for invitation.");
-      return;
-    }
-    try {
-      const response = await axios.post(
-        `${API_URL}/send-invitation`,
-        { candidate_name: candidateName, candidate_email: candidateEmail },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setInviteMessage(response.data.message);
-      setError("");
-      setCandidateName("");
-      setCandidateEmail("");
-    } catch (err) {
-      console.error("Error sending invitation:", err);
-      setError(err.response?.data?.error || "Failed to send invitation.");
-    }
-  };
-
-  // Delete an unbooked slot
-  const handleDelete = async (slotId) => {
-    try {
-      await axios.delete(`${API_URL}/delete-availability/${slotId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      fetchSlots();
-    } catch (err) {
-      console.error("Error deleting slot:", err);
-      setError("Failed to delete slot.");
-    }
-  };
-
-  // Cancel a booked slot using booking_id
-  const handleCancelBooking = async (bookingId) => {
-    try {
-      await axios.delete(`${API_URL}/cancel-booking/${bookingId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setMessage("Booking cancelled successfully.");
-      setError("");
-      fetchSlots();
-    } catch (err) {
-      console.error("Error cancelling booking:", err);
-      setError(err.response?.data?.error || "Failed to cancel booking.");
-    }
-  };
-
-  // Open edit dialog for unbooked slot
-  const handleEditClick = (slot) => {
+  }, [API_URL, token, date, startTime, endTime, dailyDuration, coolingTime, fetchSlots]);
+  const handleCancelBooking = useCallback(
+    async (bookingId) => {
+      if (!candidateEmailConfirm) {
+        setCancelError("Please enter the candidate's email.");
+        return;
+      }
+      try {
+        await axios.delete(`${API_URL}/cancel-booking/${bookingId}`, {
+          params: { email: candidateEmailConfirm },
+        });
+        enqueueSnackbar("Booking cancelled.", { variant: "success" });
+        setCancelConfirmDialogOpen(false);
+        setCandidateEmailConfirm("");
+        setCancelError("");
+        setSelectedBooking(null);
+        fetchSlots();
+        setCalendarRefreshTrigger(Date.now());
+      } catch (err) {
+        const detail = err.response?.data?.error || "Failed to cancel booking.";
+        setCancelError(detail);
+        enqueueSnackbar(detail, { variant: "error" });
+      }
+    },
+    [API_URL, candidateEmailConfirm, fetchSlots, enqueueSnackbar]
+  );
+  /* Handle edit click */
+  const handleEditClick = useCallback((slot) => {
     setCurrentEditSlot(slot);
     setEditDate(slot.date);
     setEditStartTime(slot.start_time);
     setEditEndTime(slot.end_time);
     setEditDialogOpen(true);
-  };
-
-  // Submit slot edits from dialog
-  const handleEditSubmit = async () => {
+  }, []);
+  /* Handle edit submit */
+  const handleEditSubmit = useCallback(async () => {
     try {
       await axios.put(
         `${API_URL}/update-availability/${currentEditSlot.id}`,
@@ -194,22 +331,20 @@ const RecruiterDashboard = ({ token }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setEditDialogOpen(false);
-      setMessage("Slot updated successfully.");
-      setError("");
+      enqueueSnackbar("Availability updated.", { variant: "success" });
       fetchSlots();
+      setCalendarRefreshTrigger(Date.now());
     } catch (err) {
-      console.error("Error updating slot:", err);
-      setError(err.response?.data?.error || "Failed to update slot.");
+      const detail = err.response?.data?.error || "Failed to update slot.";
+      enqueueSnackbar(detail, { variant: "error" });
     }
-  };
-
-  // Drag-and-drop callback from InteractiveCalendar
-  const handleSlotDrop = (slotId, newDate, newStartTime, newEndTime) => {
+  }, [API_URL, token, currentEditSlot, editDate, editStartTime, editEndTime, fetchSlots, enqueueSnackbar]);
+  /* Handle slot drop (drag & drop on calendar) */
+  const handleSlotDrop = useCallback((slotId, newDate, newStartTime, newEndTime) => {
     setPendingSlotUpdate({ slotId, newDate, newStartTime, newEndTime });
-  };
-
-  // Save pending slot update when "Save Changes" is clicked
-  const handleSaveSlotUpdate = async () => {
+  }, []);
+  /* Handle save slot update after drag & drop */
+  const handleSaveSlotUpdate = useCallback(async () => {
     if (!pendingSlotUpdate) return;
     const { slotId, newDate, newStartTime, newEndTime } = pendingSlotUpdate;
     try {
@@ -218,230 +353,401 @@ const RecruiterDashboard = ({ token }) => {
         { date: newDate, start_time: newStartTime, end_time: newEndTime },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setMessage("Slot updated via drag and drop.");
-      setError("");
+      enqueueSnackbar("Slot updated via drag.", { variant: "success" });
       setPendingSlotUpdate(null);
       fetchSlots();
+      setCalendarRefreshTrigger(Date.now());
     } catch (err) {
-      console.error("Error updating slot after drag and drop:", err);
-      setError(err.response?.data?.error || "Failed to update slot after drag and drop.");
+      const detail = err.response?.data?.error || "Drag update failed.";
+      enqueueSnackbar(detail, { variant: "error" });
     }
-  };
-
+  }, [API_URL, token, pendingSlotUpdate, fetchSlots, enqueueSnackbar]);
+  /* ------------------------------------------------------------------ */
+  /*  RENDER                                                            */
+  /* ------------------------------------------------------------------ */
   return (
-    <Box sx={{ p: 3, backgroundColor: "#f7f9fc", minHeight: "100vh" }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 4, color: "#333" }}>
-        Recruiter Dashboard
-      </Typography>
+    <ManagementFrame
+      title="Recruiter Dashboard"
+      subtitle="Manage your availability, bookings, and invites."
+      fullWidth
+      sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
+      contentSx={{ p: { xs: 1.5, md: 2.5 } }}
+    >
+      <RecruiterTabs localTab={activeTab} onLocalTabChange={handleLocalTabChange} />
 
+      {/* --- OTHER PANELS ABOVE (unchanged) --- */}
       <Grid container spacing={2}>
-        {/* Left Column: Forms */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Send Candidate Invitation
-            </Typography>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            {inviteMessage && <Alert severity="success" sx={{ mb: 2 }}>{inviteMessage}</Alert>}
-            <TextField
-              label="Candidate Name"
-              fullWidth
-              margin="normal"
-              value={candidateName}
-              onChange={(e) => setCandidateName(e.target.value)}
-            />
-            <TextField
-              label="Candidate Email"
-              fullWidth
-              margin="normal"
-              value={candidateEmail}
-              onChange={(e) => setCandidateEmail(e.target.value)}
-            />
-            <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleSendInvitation}>
-              Send Invitation
-            </Button>
-          </Paper>
-
-          <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Set One-Time Availability
-            </Typography>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
+        {/* --- left column (panels) ------------------------------------------------ */}
+        <Grid item xs={12} md={4}>
+          {/* Calendar */}
+          <Box id="tab-calendar" sx={{ scrollMarginTop: theme.spacing(10) }}>
+            <Accordion defaultExpanded={true}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
+                My Calendar
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <MySetmoreCalendar token={token} />
+            </AccordionDetails>
+          </Accordion>
+          </Box>
+          <Box id="tab-shifts" sx={{ scrollMarginTop: theme.spacing(10) }}>
+            <Accordion defaultExpanded={false}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
+                  View My Shifts
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <SecondEmployeeShiftView />
+              </AccordionDetails>
+            </Accordion>
+          </Box>
+          <Box id="tab-availability" sx={{ scrollMarginTop: theme.spacing(10) }}>
+            {/* One-Time Availability */}
+          <Accordion defaultExpanded={false}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
+                Set One-Time Availability
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {oneTimeMessage && <Alert severity="success" sx={{ mb: 2 }}>{oneTimeMessage}</Alert>}
+              {oneTimeError && <Alert severity="error" sx={{ mb: 2 }}>{oneTimeError}</Alert>}
+              <Stack spacing={2}>
                 <TextField
                   label="Date"
                   type="date"
-                  fullWidth
                   InputLabelProps={{ shrink: true }}
+                  fullWidth
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
-              </Grid>
-              <Grid item xs={12} sm={4}>
                 <TextField
                   label="Start Time"
                   type="time"
-                  fullWidth
                   InputLabelProps={{ shrink: true }}
+                  fullWidth
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
                 />
-              </Grid>
-              <Grid item xs={12} sm={4}>
                 <TextField
                   label="End Time"
                   type="time"
-                  fullWidth
                   InputLabelProps={{ shrink: true }}
+                  fullWidth
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
                 />
-              </Grid>
-            </Grid>
-            <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleSubmitOneTime}>
-              Set Availability
-            </Button>
-          </Paper>
-
-          <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Set Daily Availability (Auto-Split Slots)
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="Date"
-                  type="date"
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="Start Time"
-                  type="time"
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="End Time"
-                  type="time"
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  label="Slot Duration (minutes)"
-                  select
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  value={dailyDuration}
-                  onChange={(e) => setDailyDuration(e.target.value)}
-                >
-                  <MenuItem value="15">15 minutes</MenuItem>
-                  <MenuItem value="30">30 minutes</MenuItem>
-                  <MenuItem value="45">45 minutes</MenuItem>
-                  <MenuItem value="60">1 hour</MenuItem>
-                  <MenuItem value="120">2 hours</MenuItem>
-                </TextField>
-              </Grid>
-            </Grid>
-            <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleSubmitDailyAvailability}>
-              Set Daily Availability
-            </Button>
-          </Paper>
-
-          <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-            <RecurringAvailabilityForm token={token} onSuccess={fetchSlots} />
-          </Paper>
-        </Grid>
-
-        {/* Right Column: Interactive Calendar */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, mb: 3 }} elevation={3}>
-            <Typography variant="h6" gutterBottom>
-              Interactive Calendar
-            </Typography>
-            <InteractiveCalendar token={token} onSlotDrop={handleSlotDrop} />
-            {pendingSlotUpdate && (
-              <Box sx={{ mt: 2 }}>
-                <Alert severity="info">
-                  You have unsaved changes for slot ID {pendingSlotUpdate.slotId}.{" "}
-                  <Button variant="contained" onClick={handleSaveSlotUpdate} sx={{ ml: 2 }}>
-                    Save Changes
+                <Button variant="contained" onClick={handleSubmitOneTime}>
+                  Set Availability
+                </Button>
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
+          {/* Daily Availability */}
+          <Accordion defaultExpanded={false}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
+                Set Daily Availability
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {dailyMessage && <Alert severity="success" sx={{ mb: 2 }}>{dailyMessage}</Alert>}
+              {dailyError && <Alert severity="error" sx={{ mb: 2 }}>{dailyError}</Alert>}
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Date"
+                    type="date"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Start Time"
+                    type="time"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="End Time"
+                    type="time"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Slot Duration"
+                    select
+                    fullWidth
+                    value={dailyDuration}
+                    onChange={(e) => setDailyDuration(e.target.value)}
+                  >
+                    <MenuItem value="15">15 min</MenuItem>
+                    <MenuItem value="30">30 min</MenuItem>
+                    <MenuItem value="45">45 min</MenuItem>
+                    <MenuItem value="60">1 hour</MenuItem>
+                  </TextField>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Cooling Time Between Slots (minutes)"
+                    type="number"
+                    fullWidth
+                    value={coolingTime}
+                    onChange={(e) => setCoolingTime(e.target.value)}
+                    InputProps={{ inputProps: { min: 0, step: 5 } }}
+                    InputLabelProps={{ shrink: true }}
+                    placeholder="e.g., 5, 10, 15"
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Button variant="contained" fullWidth onClick={handleSubmitDailyAvailability}>
+                    Set Daily Availability
                   </Button>
-                </Alert>
+                </Grid>
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
+          {/* Recurring Availability */}
+          <Accordion defaultExpanded={false}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
+                Set Recurring Availability
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <RecurringAvailabilityForm
+                token={token}
+                onSuccess={() => {
+                  fetchSlots();
+                  setCalendarRefreshTrigger(Date.now());
+                }}
+              />
+            </AccordionDetails>
+          </Accordion>
+          {/* Availability Slots */}
+          <Accordion defaultExpanded={false}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+              <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
+                Your Availability Slots
+              </Typography>
+              <Box sx={{ mt: 1, display: "flex", gap: 2 }}>
+                <TextField
+                  select
+                  size="small"
+                  label="Show past weeks"
+                  value={pastWeeks}
+                  onChange={(e) => setPastWeeks(Number(e.target.value))}
+                  sx={{ width: 140 }}
+                >
+                  {[1, 2, 4, 8, 12, 24].map((w) => (
+                    <MenuItem key={w} value={w}>
+                      {w === 1 ? "1 week" : `${w} weeks`}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  label="Filter by Month"
+                  type="month"
+                  size="small"
+                  value={filterMonth}
+                  onChange={handleMonthChange}
+                  sx={{ width: 140 }}
+                  InputLabelProps={{ shrink: true }}
+                />
               </Box>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {/* Availability Slots Display (Full Width) */}
-      <Paper sx={{ p: 3, mt: 3 }} elevation={3}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Your Availability Slots
-        </Typography>
-        <Grid container spacing={2}>
-          {slots.length > 0 ? (
-            slots.map((slot) => (
-              <Grid item xs={12} sm={6} key={slot.id}>
-                <Box sx={{ border: "1px solid #ddd", p: 2, borderRadius: 2 }}>
-                  <Typography variant="subtitle1">Date: {slot.date}</Typography>
-                  <Typography variant="body2">Start: {slot.start_time}</Typography>
-                  <Typography variant="body2">End: {slot.end_time}</Typography>
-                  {slot.booked ? (
-                    <Box sx={{ mt: 1 }}>
-                      <Alert severity="error">Booked</Alert>
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        Candidate: {slot.candidate_name} ({slot.candidate_email})
-                      </Typography>
-                      {slot.candidate_position && (
-                        <Typography variant="body2">
-                          Position: {slot.candidate_position}
-                        </Typography>
-                      )}
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        color="error"
-                        sx={{ mt: 1 }}
-                        onClick={() => handleCancelBooking(slot.booking_id || slot.id)}
-                      >
-                        Cancel Booking
-                      </Button>
-                    </Box>
-                  ) : (
-                    <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-                      <Button variant="outlined" size="small" onClick={() => handleEditClick(slot)}>
-                        Edit
-                      </Button>
-                      <Button variant="outlined" size="small" color="error" onClick={() => handleDelete(slot.id)}>
-                        Cancel
-                      </Button>
-                    </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              {nonBookedFilteredSlots.length > 0 && (
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                  <Checkbox
+                    checked={
+                      nonBookedFilteredSlots.length > 0 &&
+                      selectedSlotIds.length === nonBookedFilteredSlots.length
+                    }
+                    indeterminate={
+                      selectedSlotIds.length > 0 &&
+                      selectedSlotIds.length < nonBookedFilteredSlots.length
+                    }
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                  />
+                  <Typography variant="body1">Select All</Typography>
+                  {selectedSlotIds.length > 0 && (
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={handleDeleteSelected}
+                      sx={{ ml: 2 }}
+                    >
+                      Delete Selected
+                    </Button>
                   )}
                 </Box>
-              </Grid>
-            ))
-          ) : (
-            <Typography>No available slots.</Typography>
-          )}
+              )}
+              {loadingSlots ? (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    p: 3,
+                  }}
+                >
+                  <CircularProgress />
+                </Box>
+              ) : filteredSlots.length === 0 ? (
+                <Typography>No available slots for selected filter.</Typography>
+              ) : (
+                <Grid container spacing={2}>
+                  {paginatedSlots.map((slot) => {
+                    const localStart = moment(isoFromParts(
+  slot.date,
+  slot.start_time,
+  slot.timezone            // <- use what the server sent
+   ));
+                    const localEnd = moment(
+   isoFromParts(slot.date, slot.end_time, slot.timezone)   // keep the slot’s zone
+);
+                    return (
+                      <Grid key={slot.id} item xs={12} sm={6}>
+                        <Paper variant="outlined" sx={{ p: 2, height: "100%" }}>
+                          <Typography variant="subtitle1">
+                            {`?? ${localStart.format("YYYY-MM-DD")} | ?? ${localStart.format("HH:mm")} - ${localEnd.format("HH:mm")}`}
+                          </Typography>
+                          {slot.booked ? (
+                            <>
+                              <Alert severity="info" sx={{ mt: 1 }}>Booked</Alert>
+                              <Box sx={{ mt: 1 }}>
+                                <Typography variant="body2">
+                                  <strong>Candidate:</strong> {slot.candidate_name}
+                                </Typography>
+                                <Typography variant="body2">
+                                  <strong>Position:</strong> {slot.candidate_position || "N/A"}
+                                </Typography>
+                                <Typography variant="body2">
+                                  <strong>Email:</strong>{" "}
+                                  <Link
+                                    to={`/recruiter/candidates/${encodeURIComponent(slot.candidate_email)}`}
+                                    style={{ color: "#1976d2", textDecoration: "underline" }}
+                                  >
+                                    {slot.candidate_email}
+                                  </Link>
+                                </Typography>
+                              </Box>
+                              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  color="error"
+                                  onClick={() => {
+                                    setSelectedBooking(slot);
+                                    setCancelError("");
+                                    setCandidateEmailConfirm("");
+                                    setCancelConfirmDialogOpen(true);
+                                  }}
+                                >
+                                  Cancel Booking
+                                </Button>
+                              </Stack>
+                            </>
+                          ) : (
+                            <Stack direction="row" spacing={1} sx={{ mt: 1, alignItems: "center" }}>
+                              <Button variant="outlined" size="small" onClick={() => handleEditClick(slot)}>
+                                Edit
+                              </Button>
+                              <Button variant="outlined" size="small" color="error" onClick={() => handleDelete(slot.id)}>
+                                Delete
+                              </Button>
+                              <Checkbox
+                                checked={selectedSlotIds.includes(slot.id)}
+                                onChange={(e) => handleSelectSlot(slot.id, e.target.checked)}
+                              />
+                            </Stack>
+                          )}
+                        </Paper>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
+              {filteredSlots.length > PAGE_SIZE && (
+                <Box sx={{ display: "flex", justifyContent: "center", mt: 3, gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <Typography sx={{ alignSelf: "center" }}>
+                    Page {currentPage} of {totalPages}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    disabled={currentPage === totalPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                  >
+                    Next
+                  </Button>
+                </Box>
+              )}
+            </AccordionDetails>
+          </Accordion>
+          </Box>
         </Grid>
-      </Paper>
-
-      {/* Edit Availability Dialog */}
+        {/* Right Column: Calendar & Upcoming Meetings */}
+        <Grid item xs={12} md={8}>
+          <Stack spacing={3}>
+            <Paper sx={{ p: 3 }} elevation={3}>
+              <Typography variant="h6" gutterBottom>
+                Interactive Calendar
+              </Typography>
+              <InteractiveCalendar
+                token={token}
+                recruiterId={recruiter?.id}
+                onSlotDrop={handleSlotDrop}
+                refreshTrigger={calendarRefreshTrigger}
+              />
+              {pendingSlotUpdate && (
+                <Box sx={{ mt: 2 }}>
+                  <Alert severity="info">
+                    You have unsaved changes for slot ID {pendingSlotUpdate.slotId}.{" "}
+                    <Button variant="contained" onClick={handleSaveSlotUpdate} sx={{ ml: 2 }}>
+                      Save Changes
+                    </Button>
+                  </Alert>
+                </Box>
+              )}
+            </Paper>
+          </Stack>
+        </Grid>
+      </Grid>
+      {loadingSlots && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 1300,
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      )}
+      {/* Edit Slot Dialog */}
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
         <DialogTitle>Edit Availability</DialogTitle>
         <DialogContent>
@@ -480,8 +786,46 @@ const RecruiterDashboard = ({ token }) => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+      {/* Cancel Booking Confirmation Dialog */}
+      <Dialog open={cancelConfirmDialogOpen} onClose={() => setCancelConfirmDialogOpen(false)}>
+        <DialogTitle>Confirm Booking Cancellation</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Enter <strong>{selectedBooking?.candidate_email}</strong> to confirm cancellation.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            label="Candidate Email"
+            margin="normal"
+            value={candidateEmailConfirm}
+            onChange={(e) => setCandidateEmailConfirm(e.target.value)}
+          />
+          {cancelError && <Alert severity="error">{cancelError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelConfirmDialogOpen(false)}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              if (candidateEmailConfirm.trim() !== selectedBooking?.candidate_email) {
+                setCancelError("Email does not match.");
+                return;
+              }
+              handleCancelBooking(selectedBooking?.booking_id || selectedBooking?.id);
+              setCancelConfirmDialogOpen(false);
+            }}
+          >
+            Confirm Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </ManagementFrame>
   );
 };
-
 export default RecruiterDashboard;
+
+
+
+
