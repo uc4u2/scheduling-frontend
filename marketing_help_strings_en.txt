@@ -1,0 +1,129 @@
+"Sent: 0 - dry_run=on/off"
+0) Broadcast (Simple Announcement)
+1) Win-Back (Likely to Lapse)
+2) Skipped Rebook Nudge
+3) VIP Loyalty
+4) Anniversary (Client-versary)
+<strong>Anniversary link</strong> - CTA (tracking + coupon/expiry appended).
+<strong>Anniversary:</strong> "Happy client-versary! Enjoy a little thank-you from our team."
+<strong>Anniversary:</strong> choose the correct month and ensure first-visit dates exist.
+<strong>Base service</strong> (search by name), <strong>Add-on name</strong>, <strong>Lookback (days)</strong>.
+<strong>Broadcast:</strong> Keep it warm and clear-what's changing, and what clients should do next.
+<strong>Broadcast:</strong> reduce filters (e.g., clear "Seen in last N days").
+<strong>Button text / link</strong> - optional CTA; relative (e.g., <code>/services</code>) or full URL.
+<strong>Coupon / Expires on</strong> - optional; shown in the email and passed to the link.
+<strong>Coupon prefix / override</strong> - blank override suggests codes like <code>WINBACK123</code>.
+<strong>Coupon prefix / override</strong> - generate personal VIP codes.
+<strong>Coupon prefix / override</strong> - gift code.
+<strong>Coupon prefix / override</strong> - optional incentive.
+<strong>Coupon prefix / override</strong>, <strong>Launch link</strong>, <strong>Expires on</strong>, <strong>Limit</strong>.
+<strong>Deep link</strong> - landing page for a quick rebook.
+<strong>Discount %</strong> - percent shown in email copy.
+<strong>Discount %</strong> - set to 0 for a gentle reminder.
+<strong>Discount %</strong> - the perk shown in the copy.
+<strong>Discount %</strong>, <strong>Coupon prefix / override</strong>, <strong>Deep link</strong>, <strong>Expires on</strong>, <strong>Limit</strong>.
+<strong>Discount %</strong>, <strong>Coupon prefix / override</strong>, <strong>Landing link</strong>, <strong>Expires on</strong>, <strong>Limit</strong>.
+<strong>Expires on (override)</strong> - exact date shown and passed to the link.
+<strong>Expires on</strong> - when the perk ends.
+<strong>Limit</strong> - cap recipients if you want scarcity.
+<strong>Limit</strong> - cap recipients.
+<strong>Limit</strong> - cap the audience.
+<strong>Limit</strong> - cap total recipients for safety.
+<strong>Lookback (days)</strong> - window for the previous kept visit.
+<strong>Lookback (days)</strong>, <strong>Require no future booking</strong> to exclude those already rebooked.
+<strong>Month</strong> - which month to celebrate (defaults to current).
+<strong>No-Show:</strong> widen Lookback or temporarily allow clients without email to inspect counts.
+<strong>Overdue x gap</strong> - threshold (e.g., 1.5 = 50% later than usual).
+<strong>Rebook URL</strong> - CTA destination (tracking + coupon added automatically).
+<strong>Require email</strong> - set to No to preview even if some clients lack email.
+<strong>Service</strong> (search by name), <strong>Lookback (months)</strong>, <strong>Discount %</strong>.
+<strong>Skipped Rebook:</strong> "Rebook the same pro in 3 clicks-keep your routine effortless."
+<strong>Skipped Rebook:</strong> widen Lookback (days).
+<strong>Subject / Heading / Intro / Subtext</strong> - your message (Intro/Subtext support multi-line).
+<strong>Top % (by LTV)</strong> - pick the slice of high-value clients.
+<strong>VIP link</strong> - landing page for the exclusive offer.
+<strong>VIP:</strong> "Early access just for you. Prime slots go fast-reserve your favorite time now."
+<strong>VIP:</strong> widen Top % or increase Limit.
+<strong>Valid days</strong> - fallback if <em>Expires on</em> is blank.
+<strong>Win-Back:</strong> "It's been a while-we'd love to see you again. Book by {date}."
+<strong>Win-Back:</strong> lower Overdue x gap or increase Limit.
+<strong>off</strong> - Likely no rows selected (re-preview and select rows) or the server suppressed exact duplicates within that send.
+<strong>on</strong> - Dry-run is ON; no emails sent by design.
+A friendly reminder a few days after the appointment.
+Add-on Upsell
+Adjust filters or widen the window, depending on the campaign.
+All clients or <em>No future booking</em> (exclude clients with a future appointment).
+Announce a new service to recent visitors who haven't tried it.
+Audience options:
+Best use:
+Campaigns (who they target)
+Celebrate the month of the client's first visit.
+Click Preview to see eligible clients and the exact email per row.
+Click Send Selected or Send All.
+Client says they received multiple copies
+Closures, schedule changes, promos, new policies.
+Copy tips (salon-friendly)
+Coupon doesn't apply at checkout
+Coupon prefix / override
+Customize email text
+Data & compliance notes
+Discount %
+Dry-run
+Each campaign (except Broadcast, which already collects full copy) includes a "Customize email text (optional)" accordion. You can override the template copy without touching HTML.
+Early access promos, special events, or loyalty perks.
+Editor tip: Long message fields support multi-line editing. Press Enter for new lines.
+Emails do not create coupons. Create/enable the matching code in Coupon Management, or keep coupons informational only.
+Exact date printed in the email and passed as <code>expires=YYYY-MM-DD</code>.
+Expires on
+Export clients (company-scoped)
+Exports are tenant-isolated: only clients who booked with your company are included.
+Fetches eligible clients and renders the final email per row. Change any setting? Preview again.
+Follow up after a recent visit if the client didn't book again.
+Friendly monthly thank-you with a small perk.
+Goal:
+Heading
+If <em>Override</em> is filled, the exact code is shown and passed along. If blank, a smart code is generated from the prefix.
+Include any required consent/unsubscribe text for your region in your base template.
+Interpret the dry-run indicator and selection state.
+Intro
+Key fields
+Leave any field blank to fall back to the professional default.
+Light campaign templates (optional)
+Links
+Links automatically append <code>?coupon=CODE&expires=YYYY-MM-DD&utm_source=&lt;campaign&gt;</code> so landing pages can display the code and analytics can attribute traffic.
+Make-good follow-up to rebook clients who were charged a no-show fee or marked no-show.
+Marketing Campaigns - Manager Guide
+Monthly pulse to re-activate clients who are slipping.
+New Service Launch
+No-Show Recovery
+Nudge clients overdue relative to their usual cadence.
+Offer a popular add-on to recent base-service clients (simple & fast).
+Only clients seen in the last <em>N</em> days (optional).
+Only clients with a valid email can receive emails (some campaigns let you preview without email).
+Pick a campaign card.
+Preview
+Preview & Sending
+Preview shows no rows
+Quick start (under a minute)
+Reward top spenders or frequent visitors with early access or a perk.
+Select rows or use Send All.
+Send Selected / Send All
+Send a quick announcement to everyone or a filtered slice (closures, holiday hours, policy updates).
+Set your fields (discount, coupon, dates, links).
+Shown in the email copy. Set to 0 for a non-discount nudge. If <em>Coupon override</em> is blank, the email hides the coupon block.
+Subject
+Subject lines: keep them short (<= 45 chars). Examples: "VIP Early Access: save {X}%", "We miss you - book by {date}", "Closed Monday - back Tuesday", "A little gift for your month {emoji}".
+Subtext
+This page lets you email targeted clients (or everyone) using clean, branded emails with your salon colors and a plain-text fallback.
+Tip: If you change any fields, previews are cleared. Click Preview again before sending.
+Troubleshooting & FAQs
+Turn Dry-run OFF to actually send.
+UTM tracking is automatic: <code>utm_source=broadcast|vip|winback|skipped_rebook|anniversary|new_service|no_show_recovery|addon_upsell</code>.
+Use <strong>Export clients</strong> to download a CSV/XLSX of clients who have appointments with your company. Filters include "Seen in last N days", "Min visits", and "Require email". Data is tenant-isolated.
+Use the service picker to search by name; the ID fills automatically.
+Uses the rows from your most recent preview. "Selected" sends only the checked rows; "All" sends every previewed row.
+We suppress duplicates within a single send (same recipient + subject + body). If you rerun the same content later, clients may get it again.
+What each control means
+When <strong>ON</strong>, nothing is sent; we log a "would send" count. Turn <strong>OFF</strong> to send.
+Where does the button go?
+Your chosen link. We append coupon, expires, and utm_source so landing pages can prefill/show the code and analytics can attribute traffic.

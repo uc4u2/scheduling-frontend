@@ -1,0 +1,8 @@
+*** Begin Patch
+*** Update File: package.json
+@@
+-    "@mui/icons-material": "^6.4.7",
+-    "@mui/material": "^6.4.7",
++    "@mui/icons-material": "^5.17.1",
++    "@mui/material": "^5.17.1",
+*** End Patch

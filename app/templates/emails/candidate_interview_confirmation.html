@@ -1,0 +1,72 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interview Confirmation</title>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .card { background:#1f1f1f !important; color:#f5f5f5 !important; }
+      .muted { color:#c7c7c7 !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background:#f5f7fb; font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fb; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="card"
+               style="width:600px; max-width:100%; background:#ffffff; border-radius:12px; border:1px solid #e6ebf3; overflow:hidden;">
+          <tr>
+            <td style="background: {{ primary_color|default('#1976d2') }}; color:#ffffff; padding:18px 24px; font-size:18px; font-weight:700;">
+              Interview Confirmation{% if company_name %} · {{ company_name }}{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 28px; color:#111827; font-size:15px; line-height:1.55;">
+              <p style="margin:0 0 16px 0;">Hello {{ candidate_name or 'there' }},</p>
+              <p style="margin:0 0 16px 0;">Your interview with {{ recruiter_name or 'our team' }} is scheduled. Here are the details:</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0; font-size:14px; color:#1f2937;">
+                <tr>
+                  <td style="padding:6px 0; width:120px; font-weight:600;">Date</td>
+                  <td style="padding:6px 0;">{{ date_label }}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0; font-weight:600;">Time</td>
+                  <td style="padding:6px 0;">{{ time_range }}{% if tz_display %} ({{ tz_display }}){% endif %}</td>
+                </tr>
+                {% if location %}
+                <tr>
+                  <td style="padding:6px 0; font-weight:600;">Location</td>
+                  <td style="padding:6px 0;">{{ location }}</td>
+                </tr>
+                {% endif %}
+              </table>
+              {% if meeting_link %}
+              <p style="margin:16px 0 8px 0;">You can join the video meeting using the button below:</p>
+              <p style="margin:0 0 16px 0;">
+                <a href="{{ meeting_link }}" style="background:#10b981; color:#ffffff; text-decoration:none; padding:12px 18px; border-radius:8px; font-size:14px; display:inline-block;">
+                  Join Meeting{% if meeting_provider %} ({{ meeting_provider }}){% endif %}
+                </a>
+              </p>
+              <p class="muted" style="margin:0 0 16px 0; color:#6b7280; font-size:12px;">If the button doesn’t work, copy and paste this link: <span style="word-break:break-all;">{{ meeting_link }}</span></p>
+              {% endif %}
+              <p style="margin:16px 0 8px 0;">Need to make changes?</p>
+              <p style="margin:0 0 16px 0;">
+                <a href="{{ cancel_link }}" style="background:#ef4444; color:#ffffff; text-decoration:none; padding:10px 16px; border-radius:8px; font-size:14px; display:inline-block;">Cancel Interview</a>
+              </p>
+              <p class="muted" style="margin:0 0 12px 0; color:#6b7280; font-size:12px;">Cancellation token: <strong>{{ cancellation_token }}</strong></p>
+              <p class="muted" style="margin:0 0 20px 0; color:#6b7280; font-size:12px;">Invitation token: <strong>{{ invitation_token }}</strong></p>
+              <p style="margin:20px 0 0 0;">We’re looking forward to speaking with you!</p>
+              <p style="margin:4px 0 0 0;">— {{ recruiter_name or 'The Schedulaa Team' }}</p>
+              {% if support_email %}
+              <p class="muted" style="margin:18px 0 0 0; color:#6b7280; font-size:12px;">Questions? Contact {{ support_email }}.</p>
+              {% endif %}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

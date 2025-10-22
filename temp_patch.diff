@@ -1,0 +1,23 @@
+diff --git a/src/pages/sections/Payroll.js b/src/pages/sections/Payroll.js
+--- a/src/pages/sections/Payroll.js
++++ b/src/pages/sections/Payroll.js
+@@
+-import dayjs from "dayjs";
++import dayjs from "dayjs";
++import { useTranslation } from "react-i18next";
+@@
+-export default function Payroll({ token }) {
++export default function Payroll({ token }) {
++  const { t } = useTranslation();
+@@
+   const [snackbar, setSnackbar] = useState({
+     open: false,
+     message: "",
+     severity: "info",
+   });
++
++  const guideSections = t("payroll.workspace.guide.sections", { returnObjects: true });
++  const guideUsItems = guideSections?.us?.items ?? [];
++  const guideUsFootnotes = guideSections?.us?.footnotes ?? [];
++  const guideCanadaItems = guideSections?.canada?.items ?? [];
++  const guideLimitationsItems = guideSections?.limitations?.items ?? [];

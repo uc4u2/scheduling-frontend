@@ -1,0 +1,148 @@
+const DomainManualPanel = ({
+  domainInput,
+  onDomainChange,
+  validationError,
+  status,
+  instructions,
+  verificationToken,
+  onGenerate,
+  onVerify,
+  onRemove,
+  onCopy,
+  notifyEmailEnabled,
+  onNotifyToggle,
+  baseUrl,
+  nextRetrySeconds,
+  processing,
+  isPending,
+  hasDomain,
+  hasInstructions,
+}) => (
+  <Stack spacing={2.5}>
+    <Stack spacing={1}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+        Connect an existing domain
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Enter the domain you want visitors to see. We will generate the DNS records you need to add at your registrar.
+      </Typography>
+      <TextField
+        label="Custom domain"
+        placeholder="www.example.com"
+        value={domainInput}
+        onChange={onDomainChange}
+        error={Boolean(validationError)}
+        helperText={validationError || "Use the fully qualified hostname you plan to publish."}
+        size="small"
+      />
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <Button variant="contained" onClick={onGenerate} disabled={processing}>
+          Generate DNS instructions
+        </Button>
+        <Button variant="outlined" onClick={onVerify} disabled={processing || !hasDomain}>
+          Verify DNS
+        </Button>
+        <Button variant="text" color="error" onClick={onRemove} disabled={processing || !hasDomain}>
+          Remove domain
+        </Button>
+      </Stack>
+      {isPending && (
+        <Alert severity="info" variant="outlined">
+          DNS changes can take up to 30 minutes to propagate. Click Verify DNS after you add the records.
+          {typeof nextRetrySeconds === "number" && nextRetrySeconds > 0 && (
+            <Box component="span" sx={{ display: "block", mt: 0.5 }}>
+              Try again in about {Math.ceil(nextRetrySeconds / 60)} minutes.
+            </Box>
+          )}
+        </Alert>
+      )}
+    </Stack>
+
+    {hasInstructions && (
+      <Box sx={{ borderRadius: 1.5, border: (theme) => `1px solid ${theme.palette.divider}`, p: 2 }}>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            DNS records to add
+          </Typography>
+          <Tooltip title="Add these records at your DNS provider, then click Verify">
+            <HelpOutlineIcon fontSize="small" color="action" />
+          </Tooltip>
+        </Stack>
+        <Stack spacing={1.5}>
+          {instructions?.TXT && (
+            <RecordRow
+              label="TXT"
+              host={instructions.TXT.host}
+              value={instructions.TXT.value}
+              onCopy={() => onCopy(`${instructions.TXT.host} ${instructions.TXT.value}`, "TXT record")}
+            />
+          )}
+          {instructions?.CNAME && (
+            <RecordRow
+              label="CNAME"
+              host={instructions.CNAME.host}
+              value={instructions.CNAME.value}
+              onCopy={() => onCopy(`${instructions.CNAME.host} ${instructions.CNAME.value}`, "CNAME record")}
+            />
+          )}
+          {verificationToken && (
+            <Typography variant="caption" color="text.secondary">
+              Verification token: {verificationToken}
+            </Typography>
+          )}
+        </Stack>
+      </Box>
+    )}
+
+    <Divider />
+
+    <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "flex-start", md: "center" }}>
+      <Box sx={{ flex: 1 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          Live site URL
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {status === "verified"
+            ? "Visitors will be redirected to your custom domain."
+            : "Until verification succeeds, we keep the schedulaa.com link active."}
+        </Typography>
+        <TextField size="small" fullWidth sx={{ mt: 1 }} InputProps={{ readOnly: true }} value={baseUrl || ""} />
+      </Box>
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="outlined"
+          endIcon={<LaunchIcon />}
+          href={baseUrl || undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          disabled={!baseUrl}
+        >
+          Open
+        </Button>
+        <Button variant="text" startIcon={<ContentCopyIcon />} onClick={() => onCopy(baseUrl, "URL")} disabled={!baseUrl}>
+          Copy
+        </Button>
+      </Stack>
+    </Stack>
+
+    <FormControlLabel
+      control={<Switch checked={notifyEmailEnabled} onChange={onNotifyToggle} />}
+      label="Email me when the domain goes live"
+    />
+
+    <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "flex-start", md: "center" }}>
+      <Typography variant="body2" color="text.secondary">
+        Need help? Our team can configure the DNS for you.
+      </Typography>
+      <Stack direction="row" spacing={1}>
+        <Button variant="text" component={Link} href={DOCS_URL} target="_blank" rel="noopener">
+          DNS setup guide
+        </Button>
+        <Button variant="text" component={Link} href={SUPPORT_URL} target="_blank" rel="noopener">
+          We can set this up for you
+        </Button>
+      </Stack>
+    </Stack>
+  </Stack>
+);
+
