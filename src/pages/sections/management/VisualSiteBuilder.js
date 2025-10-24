@@ -680,7 +680,15 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
         if (!pagesList.length) {
           try {
             const { data: all } = await wb.listTemplates();
-            const def = (all || []).find(t => t.is_default) || (all || [])[0];
+            const templates = Array.isArray(all)
+              ? all
+              : Array.isArray(all?.templates)
+              ? all.templates
+              : Array.isArray(all?.items)
+              ? all.items
+              : [];
+
+            const def = templates.find((t) => t.is_default) || templates[0];
             if (def?.key) {
               await wb.importTemplate(companyId, { key: def.key }); // header + ?company_id=
               const pages2 = await wb.listPages(companyId);
@@ -2896,4 +2904,3 @@ return (
   </>
 );
 }
-
