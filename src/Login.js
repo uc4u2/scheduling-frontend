@@ -272,9 +272,9 @@ const Login = ({ setToken }) => {
       }
 
       if (targetRole === "manager") {
-        const url = appendQuery("/manage/website/builder", {
+        const url = appendQuery("/manager/dashboard", {
+          view: "CompanyProfile",
           company_id: cid || undefined,
-          site: site || undefined,
         });
         navigate(url);
       } else if (targetRole === "recruiter") {

@@ -35,7 +35,7 @@ export default function AutoSiteBuilder() {
 
         // 3) auto-import a template when no pages
         if (!pages.length) {
-          let key = "minimal-spa";
+          let key = "starter-basic";
           let version = "1.0.0";
 
           try {
@@ -50,6 +50,7 @@ export default function AutoSiteBuilder() {
 
           try {
             await wb.importTemplate(cid, {
+              key,
               template_key: key,
               version,
               clear_existing: false,
