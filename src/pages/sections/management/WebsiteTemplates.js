@@ -169,6 +169,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
     try {
       const payload = {
         key: selectedKey,
+        template_key: selectedKey,
         version: selectedVersion || DEFAULT_VERSION,
         clear_existing: true,
         publish: true,

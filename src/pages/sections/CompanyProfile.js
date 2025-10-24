@@ -20,7 +20,11 @@ import {
   Alert,
   FormControlLabel,
   Switch,
-  Link
+  Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from "@mui/material";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import axios from "axios";
@@ -116,6 +120,8 @@ export default function CompanyProfile({ token }) {
   const [viewerCheckMsg, setViewerCheckMsg] = useState("");
   const [viewerCheckSeverity, setViewerCheckSeverity] = useState("info");
   const [viewerCheckBusy, setViewerCheckBusy] = useState(false);
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   /* ---------- config ---------- */
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -229,6 +235,9 @@ export default function CompanyProfile({ token }) {
         if (!ignore && data && typeof data === 'object') {
           setForm((prev) => ({ ...prev, ...data }));
         }
+        if (!ignore) {
+          setProfileLoaded(true);
+        }
       } catch (err) {
         console.error('Failed to load company profile', err);
         showMessage('manager.companyProfile.messages.profileLoadFailed', 'error');
@@ -263,6 +272,15 @@ export default function CompanyProfile({ token }) {
       setActiveCurrency(norm);
     }
   }, [form.display_currency]);
+
+  useEffect(() => {
+    if (!profileLoaded) return;
+    const dismissed = localStorage.getItem("company_profile_prompt_dismissed");
+    const needsProfile = !(form.name && form.slug);
+    if (needsProfile && dismissed !== "true") {
+      setShowProfilePrompt(true);
+    }
+  }, [profileLoaded, form.name, form.slug]);
 
 
   /* ---------- handle slug change ---------- */
@@ -380,12 +398,42 @@ export default function CompanyProfile({ token }) {
     }
   };
 
-  /* ---------- render ---------- */
+/* ---------- render ---------- */
 return (
-    <ManagementFrame
-      title={t("manager.companyProfile.title")}
-      subtitle={t("manager.companyProfile.subtitle")}
-    >
+    <>
+      <Dialog
+        open={showProfilePrompt}
+        onClose={() => setShowProfilePrompt(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Complete Your Company Profile</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Add your company name and details so we can publish your starter site at
+            <strong> https://schedulaa.com/&lt;your-slug&gt;</strong>.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            You can always edit these details later, but finishing this step now helps your team launch faster.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setShowProfilePrompt(false);
+              localStorage.setItem("company_profile_prompt_dismissed", "true");
+            }}
+          >
+            Let’s do it
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <ManagementFrame
+        title={t("manager.companyProfile.title")}
+        subtitle={t("manager.companyProfile.subtitle")}
+      >
 
       
 
@@ -917,15 +965,10 @@ return (
         message={snackbarMessage}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       />
-    </ManagementFrame>
+      </ManagementFrame>
+    </>
   );
 }
-
-
-
-
-
-
 
 
 
