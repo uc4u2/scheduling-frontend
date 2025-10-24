@@ -1418,8 +1418,12 @@
           "streetAddress": "Street Address",
           "country": "Country",
           "city": "City",
-          "postalCodeCa": "Postal Code (A1A 1A1)",
-          "postalCodeUs": "ZIP Code (e.g., 12345 or 12345-6789)"
+        "postalCodeCa": "Postal Code (A1A 1A1)",
+        "postalCodeUs": "ZIP Code (e.g., 12345 or 12345-6789)"
+        },
+        "hints": {
+          "businessNumberDigits": "Digits only. Letters or symbols are removed automatically.",
+          "employerNumberDigits": "Digits only. Letters or symbols are removed automatically."
         }
       },
       "messages": {
@@ -3620,4 +3624,3 @@
     }
   }
 }
-

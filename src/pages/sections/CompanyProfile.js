@@ -301,8 +301,13 @@ export default function CompanyProfile({ token }) {
       }
       showMessage("manager.companyProfile.messages.saveSuccess", "success");
     } catch (err) {
+      const serverMessage = err?.response?.data?.error || "";
       console.error("Save failed", err);
-      showMessage("manager.companyProfile.messages.saveFailed", "error");
+      if (serverMessage) {
+        showMessage("", "error", serverMessage);
+      } else {
+        showMessage("manager.companyProfile.messages.saveFailed", "error");
+      }
     } finally {
       setSaving(false);
     }
@@ -459,7 +464,12 @@ return (
                   fullWidth
                   label={t("manager.companyProfile.form.fields.businessNumber")}
                   value={form.business_number || ""}
-                  onChange={handleChange("business_number")}
+                  onChange={(event) => {
+                    const cleaned = (event.target.value || "").replace(/\D/g, "");
+                    setForm((prev) => ({ ...prev, business_number: cleaned }));
+                  }}
+                  inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
+                  helperText={t("manager.companyProfile.form.hints.businessNumberDigits")}
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -467,7 +477,12 @@ return (
                   fullWidth
                   label={t("manager.companyProfile.form.fields.employerNumber")}
                   value={form.employer_number || ""}
-                  onChange={handleChange("employer_number")}
+                  onChange={(event) => {
+                    const cleaned = (event.target.value || "").replace(/\D/g, "");
+                    setForm((prev) => ({ ...prev, employer_number: cleaned }));
+                  }}
+                  inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
+                  helperText={t("manager.companyProfile.form.hints.employerNumberDigits")}
                 />
               </Grid>
               {form.country_code === "US" && (
@@ -905,8 +920,6 @@ return (
     </ManagementFrame>
   );
 }
-
-
 
 
 
