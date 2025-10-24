@@ -19,7 +19,7 @@ const envBase =
   procEnv.REACT_APP_API_URL ||
   "";
 
-const inferDevBase = () => {
+const inferBase = () => {
   try {
     if (
       typeof window !== "undefined" &&
@@ -28,11 +28,25 @@ const inferDevBase = () => {
     ) {
       return "http://localhost:5000";
     }
+    if (
+      typeof window !== "undefined" &&
+      window.location &&
+      typeof window.location.hostname === "string"
+    ) {
+      const host = window.location.hostname.toLowerCase();
+      if (
+        host === "schedulaa.com" ||
+        host === "www.schedulaa.com" ||
+        host.endsWith(".schedulaa.com")
+      ) {
+        return "https://scheduling-application.onrender.com";
+      }
+    }
   } catch {}
   return "/";
 };
 
-export const API_BASE_URL = envBase || inferDevBase();
+export const API_BASE_URL = envBase || inferBase();
 
 /* ------------------------------ Axios ------------------------------ */
 const api = axios.create({
@@ -579,4 +593,3 @@ export const wb = {
 export const apiHelpers = { api, website, websiteAdmin, publicSite, wb, websiteDomains, stripeConnect, isStripeOnboardingIncomplete, questionnaires, invitationQuestionnaires, questionnaireUploadsApi, candidateIntakeApi, settingsApi };
 
 export default api;
-
