@@ -35,8 +35,8 @@ export default function AutoSiteBuilder() {
 
         // 3) auto-import a template when no pages
         if (!pages.length) {
-          let key = "starter-basic";
-          let version = "1.0.0";
+          let key = "enterprise-automotive-autocare-nexus-with-enterprise-contact-contact-fix";
+          let version = "1.2.0";
 
           try {
             const { data: manifest } = await wb.listTemplates();
