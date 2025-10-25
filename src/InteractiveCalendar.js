@@ -43,6 +43,11 @@ import axios from "axios";
 import { alpha, darken, lighten, useTheme } from "@mui/material/styles";
 import { isoFromParts } from "./utils/datetime";
 import { DateTime } from "luxon";
+import { API_BASE_URL } from "./utils/api";
+
+const API_URL =
+  (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
+  API_BASE_URL;
 
 const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilters }) => {
   const theme = useTheme();
@@ -123,7 +128,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
     if (!token) return;
     try {
       const { data } = await axios.get(
-        "http://localhost:5000/api/manager/employees",
+        `${API_URL}/api/manager/employees`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setRecruiters(data || []);
@@ -136,7 +141,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
     if (!token) return;
     try {
       const { data } = await axios.get(
-        "http://localhost:5000/api/departments",
+        `${API_URL}/api/departments`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setDepartments(data || []);
@@ -149,7 +154,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
     if (!token) return;
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:5000/my-availability", {
+      const res = await axios.get(`${API_URL}/my-availability`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const slots   = res.data.available_slots || [];
@@ -307,7 +312,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
       };
 
       await axios.put(
-        `http://localhost:5000/update-availability/${slotId}`,
+        `${API_URL}/update-availability/${slotId}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -328,7 +333,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
     if (!lastChange) return;
     try {
       await axios.put(
-        `http://localhost:5000/update-availability/${lastChange.slotId}`,
+        `${API_URL}/update-availability/${lastChange.slotId}`,
         { start: lastChange.prevStart, end: lastChange.prevEnd },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -504,8 +509,8 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
         attendees: form.attendees,
       };
       const url = editingEvent
-        ? `http://localhost:5000/api/meetings/${editingEvent.id}`
-        : `http://localhost:5000/api/meetings`;
+        ? `${API_URL}/api/meetings/${editingEvent.id}`
+        : `${API_URL}/api/meetings`;
       const method = editingEvent ? "put" : "post";
       await axios[method](url, payload, {
         headers: { Authorization: `Bearer ${token}` },
@@ -526,7 +531,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
     if (!editingEvent) return;
     try {
       await axios.post(
-        `http://localhost:5000/api/employee/bookings/${editingEvent.id}/cancel`,
+        `${API_URL}/api/employee/bookings/${editingEvent.id}/cancel`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -542,7 +547,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
     if (!editingEvent) return;
     try {
       await axios.post(
-        `http://localhost:5000/api/employee/bookings/${editingEvent.id}/no-show`,
+        `${API_URL}/api/employee/bookings/${editingEvent.id}/no-show`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -947,11 +952,4 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
 };
 
 export default InteractiveCalendar;
-
-
-
-
-
-
-
 
