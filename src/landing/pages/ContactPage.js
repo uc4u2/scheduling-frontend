@@ -25,9 +25,13 @@ import FloatingBlob from "../../components/ui/FloatingBlob";
 import { publicSite } from "../../utils/api";
 import automationJourney from "../../assets/marketing/automation-journey.svg";
 
-const DEFAULT_CONTACT_EMAIL = process.env.REACT_APP_CONTACT_ADMIN_EMAIL || "admin@schedulaa.com";
+const DEFAULT_CONTACT_EMAIL =
+  process.env.REACT_APP_CONTACT_ADMIN_EMAIL ||
+  (typeof window !== "undefined" && window.__ENV__?.CONTACT_EMAIL) ||
+  "support@schedulaa.com";
 const DEFAULT_DIRECT_LINES = [
-  `Sales: +1 (415) 555-0198 - Admin: ${DEFAULT_CONTACT_EMAIL}`,
+  `Sales: +1 (415) 555-0198`,
+  `Admin: ${DEFAULT_CONTACT_EMAIL}`,
 ];
 
 const DEFAULT_CONTENT = {
@@ -144,10 +148,16 @@ const ContactPage = () => {
     DEFAULT_CONTENT.direct.lines
   );
 
-  const marketingContactSlugs = (process.env.REACT_APP_CONTACT_SLUGS || "photo-artisto")
-    .split(",")
-    .map((slug) => slug.trim())
-    .filter(Boolean);
+  const rawSlugEnv =
+    process.env.REACT_APP_CONTACT_SLUGS ||
+    (typeof window !== "undefined" && window.__ENV__?.CONTACT_SLUGS) ||
+    "";
+  const marketingContactSlugs = rawSlugEnv
+    ? rawSlugEnv
+        .split(",")
+        .map((slug) => slug.trim())
+        .filter(Boolean)
+    : ["photo-artisto-corp"];
 
   const heroTitle = getArray(heroContent.title, DEFAULT_CONTENT.hero.title);
   const highlightItems = getArray(
@@ -497,7 +507,6 @@ const ContactPage = () => {
 };
 
 export default ContactPage;
-
 
 
 
