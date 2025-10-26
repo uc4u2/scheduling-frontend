@@ -187,9 +187,9 @@ export default function CompanyPublic() {
         setSitePayload(data || null);
         setCompany(data?.company || null);
         const holdMinutes =
+          data?.company?.booking_hold_minutes ??
           data?.website_setting?.settings?.booking_hold_minutes ??
           data?.settings?.booking_hold_minutes ??
-          data?.company?.booking_hold_minutes ??
           null;
         if (holdMinutes != null) {
           setCachedHoldMinutes(holdMinutes);
