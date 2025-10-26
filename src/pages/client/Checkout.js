@@ -1,11 +1,11 @@
 // src/pages/client/Checkout.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { formatCurrency } from "../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, getActiveCurrency } from "../../utils/currency";
 import { api as apiClient } from "../../utils/api";
-import { buildHostedCheckoutPayload, startHostedCheckout } from "../../utils/hostedCheckout";
-import { CartTypes, loadCart, saveCart, clearCart } from "../../utils/cart";
+import { buildHostedCheckoutPayload, startHostedCheckout, releasePendingCheckout } from "../../utils/hostedCheckout";
+import { CartTypes, loadCart, saveCart, clearCart, upsertServiceLine, getItemHoldRemainingMs } from "../../utils/cart";
 
 import {
   Box,
@@ -407,7 +407,9 @@ function CheckoutFormCore({
 
   const [client, setClient] = useState(null);
   const [guest, setGuest] = useState({ name: "", email: "" });
-  const [cart, setCart] = useState([]);
+const [cart, setCart] = useState([]);
+const prevCartRef = useRef(cart);
+const [holdCountdownLabel, setHoldCountdownLabel] = useState(null);
 
   const [dlgSvcOpen, setDlgSvcOpen] = useState(false);
   const [dlgAddonOpen, setDlgAddonOpen] = useState(false);
@@ -440,9 +442,43 @@ function CheckoutFormCore({
     })();
   }, []);
 
+useEffect(() => {
+  setCart(loadCart());
+}, []);
+
+useEffect(() => {
+  prevCartRef.current = cart;
+  setHoldCountdownLabel(formatHoldCountdown(cart));
+}, [cart]);
+
   useEffect(() => {
-    setCart(loadCart());
-  }, []);
+    const timer = setInterval(() => {
+      const next = loadCart();
+      const prev = prevCartRef.current || [];
+      const changed = !cartsEqual(next, prev);
+      if (changed) {
+        const nextIds = new Set(next.map((it) => it.id));
+        const expired = prev.filter(
+          (it) =>
+            !nextIds.has(it.id) &&
+            it.hold_expires_at &&
+            Date.parse(it.hold_expires_at) <= Date.now()
+        );
+        if (expired.length) {
+          setErr((prevErr) => prevErr || "Some held slots expired and were removed from your basket.");
+          if (slugLocal) {
+            releasePendingCheckout({ slug: slugLocal, reason: "hold_expired" }).catch(() => {});
+          }
+        }
+        prevCartRef.current = next;
+        setCart(next);
+      } else {
+        const label = formatHoldCountdown(next);
+        setHoldCountdownLabel((curr) => (curr !== label ? label : curr));
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [slugLocal]);
 
   useEffect(() => {
     if (!service || !slot) return;
@@ -475,8 +511,7 @@ function CheckoutFormCore({
       quantity: 1,
     };
 
-    const merged = [...saved.filter((i) => i.id !== newItem.id), newItem];
-    saveCart(merged);
+    const merged = upsertServiceLine(newItem);
     setCart(merged);
   }, [service, artist, slot]);
 
@@ -496,8 +531,38 @@ function CheckoutFormCore({
   const getAddons = (item) => ensureArray(item?.addons);
   const getAddonIds = (item) => ensureArray(item?.addon_ids);
 
-  const getQuantity = (item) => Math.max(1, Number(item?.quantity || 1));
-  const isProduct = (item) => (item?.type || CartTypes.SERVICE) === CartTypes.PRODUCT;
+const getQuantity = (item) => Math.max(1, Number(item?.quantity || 1));
+const isProduct = (item) => (item?.type || CartTypes.SERVICE) === CartTypes.PRODUCT;
+
+const cartsEqual = (a, b) => {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const ia = a[i];
+    const ib = b[i];
+    if (!ia || !ib) return false;
+    if (ia.id !== ib.id) return false;
+    if ((ia.type || CartTypes.SERVICE) !== (ib.type || CartTypes.SERVICE)) return false;
+    if ((ia.hold_expires_at || "") !== (ib.hold_expires_at || "")) return false;
+    if ((ia.quantity || 1) !== (ib.quantity || 1)) return false;
+  }
+  return true;
+};
+
+const formatHoldCountdown = (itemsList) => {
+  const serviceItems = itemsList.filter((it) => (it?.type || CartTypes.SERVICE) !== CartTypes.PRODUCT);
+  const remaining = serviceItems
+    .map((it) => getItemHoldRemainingMs(it))
+    .filter((ms) => ms != null && ms > 0);
+  if (!remaining.length) return null;
+  const minMs = Math.min(...remaining);
+  const totalSeconds = Math.ceil(minMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
+};
 
   const lineSubtotal = (item) => {
     if (isProduct(item)) {
@@ -1123,6 +1188,11 @@ function CheckoutFormCore({
 
   return (
     <Box p={3} maxWidth={600} mx="auto">
+      {holdCountdownLabel && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          We’re holding your selected times for <strong>{holdCountdownLabel}</strong>. Complete checkout before the timer runs out or the slots will be released.
+        </Alert>
+      )}
       <Typography variant="h4" gutterBottom>
         Checkout
       </Typography>
