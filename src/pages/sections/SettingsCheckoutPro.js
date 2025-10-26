@@ -31,8 +31,6 @@ import {
   normalizeCurrency,
   setActiveCurrency,
 } from "../../utils/currency";
-import { wb } from "../../utils/api";
-import useCompanyId from "../../hooks/useCompanyId";
 
 // 👇 added (same folder as this file)
 import TaxSetupCard from "./TaxSetupCard";
@@ -63,7 +61,6 @@ const CURRENCY_OPTIONS = getCurrencyOptions();
 export default function SettingsCheckoutPro() {
   const { t } = useTranslation();
   const token = useMemo(() => localStorage.getItem("token") || "", []);
-  const companyId = useCompanyId();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -91,6 +88,7 @@ export default function SettingsCheckoutPro() {
 
   useEffect(() => {
     let ignore = false;
+    setHoldLoading(true);
 
     const load = async () => {
       try {
@@ -114,11 +112,16 @@ export default function SettingsCheckoutPro() {
         setDisplayCurrency(normalizedDisplay);
         setLogoUrl(data.logo_url || "");
         setCompanyCountry((data.country_code || "").toUpperCase());
+        const holdMinutes = clampHoldMinutes(data.booking_hold_minutes ?? 3);
+        setBookingHoldMinutes(holdMinutes);
       } catch (error) {
         setMsg(t("settings.checkout.loadError"));
         setMsgSeverity("error");
       } finally {
-        if (!ignore) setLoading(false);
+        if (!ignore) {
+          setLoading(false);
+          setHoldLoading(false);
+        }
       }
     };
 
@@ -126,35 +129,6 @@ export default function SettingsCheckoutPro() {
     return () => { ignore = true; };
   }, [token]);
 
-  useEffect(() => {
-    if (!companyId) {
-      setHoldLoading(false);
-      return;
-    }
-    let ignore = false;
-    setHoldLoading(true);
-    const loadHoldWindow = async () => {
-      try {
-        const res = await wb.getSettings(companyId);
-        if (ignore) return;
-        const minutes =
-          res?.data?.booking_hold_minutes ??
-          res?.data?.settings?.booking_hold_minutes ??
-          3;
-        setBookingHoldMinutes(clampHoldMinutes(minutes));
-      } catch (err) {
-        if (!ignore) {
-          console.warn("settings: failed to load hold window", err);
-        }
-      } finally {
-        if (!ignore) setHoldLoading(false);
-      }
-    };
-    loadHoldWindow();
-    return () => {
-      ignore = true;
-    };
-  }, [companyId]);
 
   const localizedCurrency = chargeCurrencyMode === "LOCALIZED";
 
@@ -239,16 +213,17 @@ export default function SettingsCheckoutPro() {
   };
 
   const saveHoldWindow = async () => {
-    if (!companyId) {
-      setMsg(t("settings.checkout.holdWindow.missingCompany", "Select a company before saving."));
-      setMsgSeverity("error");
-      return;
-    }
     const minutes = clampHoldMinutes(bookingHoldMinutes);
     setBookingHoldMinutes(minutes);
     setHoldSaving(true);
     try {
-      await wb.saveSettings(companyId, { booking_hold_minutes: minutes });
+      const { data } = await axios.post(
+        `${API_URL}/admin/company-profile`,
+        { booking_hold_minutes: minutes },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const saved = clampHoldMinutes(data?.booking_hold_minutes ?? minutes);
+      setBookingHoldMinutes(saved);
       setMsg(t("settings.checkout.holdWindow.saveSuccess", "Hold window updated."));
       setMsgSeverity("success");
     } catch (error) {
