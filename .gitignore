@@ -1,9 +1,5 @@
-﻿node_modules/
+node_modules/
 build/
 .env
-<<<<<<< HEAD
 .DS_Store
 .env.local
-=======
-.DS_Store
->>>>>>> e0a2781f (Improve manager onboarding and fix recruiter calendar API base)
