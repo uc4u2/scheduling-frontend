@@ -73,15 +73,12 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   const handleDomainSnapshotUpdate = useCallback((snapshot) => {
     if (!snapshot) return;
     setDomainSnapshot(snapshot);
-    setSettings((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        custom_domain: snapshot.domain ?? prev.custom_domain,
-        domain_status: snapshot.status ?? prev.domain_status,
-        domain_verified_at: snapshot.verifiedAt ?? prev.domain_verified_at,
-      };
-    });
+        setSettings((prev) => (prev ? {
+          ...prev,
+          custom_domain: snapshot.domain ?? prev.custom_domain,
+          domain_status: snapshot.status ?? prev.domain_status,
+          domain_verified_at: snapshot.verifiedAt ?? prev.domain_verified_at,
+        } : prev));
   }, []);
 
   const handleSeoSave = useCallback(
@@ -218,22 +215,20 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
 
         if (settingsRes.status === "fulfilled") {
           settingsData = settingsRes.value?.data || null;
-          if (alive) {
+          if (alive && settingsData) {
             setSettings(settingsData);
-            if (settingsData) {
-              setDomainSnapshot((prev) => ({
-                ...prev,
-                status:
-                  settingsData.domain_status ||
-                  (settingsData.custom_domain
-                    ? settingsData.domain_verified_at
-                      ? "verified"
-                      : "pending_dns"
-                    : "none"),
-                domain: settingsData.custom_domain || "",
-                verifiedAt: settingsData.domain_verified_at || null,
-              }));
-            }
+            setDomainSnapshot((prev) => ({
+              ...prev,
+              status:
+                settingsData.domain_status ||
+                (settingsData.custom_domain
+                  ? settingsData.domain_verified_at
+                    ? "verified"
+                    : "pending_dns"
+                  : "none"),
+              domain: settingsData.custom_domain || "",
+              verifiedAt: settingsData.domain_verified_at || null,
+            }));
           }
         } else if (alive) {
           setSettings(null);
@@ -546,7 +541,6 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
           </Stack>
         </Stack>
       </Paper>
-
       {/* Pages */}
       <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
         <Paper sx={{ p: 2, flex: 1 }}>

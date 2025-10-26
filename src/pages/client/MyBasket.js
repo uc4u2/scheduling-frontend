@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import {
   Box,
@@ -20,7 +20,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import PublicPageShell from "./PublicPageShell";
-import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
+import { CartTypes, loadCart, removeCartItem, saveCart, getItemHoldRemainingMs } from "../../utils/cart";
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
@@ -72,10 +72,37 @@ const MyBasket = () => {
   const [snack, setSnack] = useState({ open: false, msg: "" });
 
   const [cancelHandled, setCancelHandled] = useState(false);
+  const prevItemsRef = useRef(items);
 
   useEffect(() => {
     setItems(loadCart());
   }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const next = loadCart();
+      const prev = prevItemsRef.current || [];
+      if (next !== prev) {
+        const nextIds = new Set(next.map((it) => it.id));
+        const expired = prev.filter(
+          (it) =>
+            !nextIds.has(it.id) &&
+            it.hold_expires_at &&
+            Date.parse(it.hold_expires_at) <= Date.now()
+        );
+        if (expired.length) {
+          setSnack({ open: true, msg: "Some held slots expired and were removed from your basket." });
+        }
+        prevItemsRef.current = next;
+        setItems(next);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    prevItemsRef.current = items;
+  }, [items]);
 
   useEffect(() => {
     if (cancelHandled) return;
@@ -132,6 +159,20 @@ const MyBasket = () => {
   const hasServiceItems = items.some((it) => it.type !== CartTypes.PRODUCT);
   const hasProductItems = items.some((it) => it.type === CartTypes.PRODUCT);
   const mixedCart = hasServiceItems && hasProductItems;
+  const holdCountdownLabel = useMemo(() => {
+    const serviceItems = items.filter((it) => it.type !== CartTypes.PRODUCT);
+    const remaining = serviceItems
+      .map((it) => getItemHoldRemainingMs(it))
+      .filter((ms) => ms != null && ms > 0);
+    if (!remaining.length) return null;
+    const minMs = Math.min(...remaining);
+    const totalSeconds = Math.ceil(minMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+    return `${minutes}:${seconds}`;
+  }, [items]);
 
   const proceed = () => {
     if (mixedCart) {
@@ -183,6 +224,12 @@ const MyBasket = () => {
             </Button>
           </Stack>
         </Stack>
+
+        {holdCountdownLabel && (
+          <Alert severity="info">
+            We’re holding your selected times for <strong>{holdCountdownLabel}</strong>. Complete checkout before the timer runs out or the slots will be released.
+          </Alert>
+        )}
 
         {mixedCart && (
           <Alert severity="warning">

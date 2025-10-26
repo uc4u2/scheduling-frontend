@@ -31,6 +31,8 @@ import {
   normalizeCurrency,
   setActiveCurrency,
 } from "../../utils/currency";
+import { wb } from "../../utils/api";
+import useCompanyId from "../../hooks/useCompanyId";
 
 // 👇 added (same folder as this file)
 import TaxSetupCard from "./TaxSetupCard";
@@ -38,6 +40,11 @@ import TaxHelpGuide from "./TaxHelpGuide";
 import { useTranslation } from "react-i18next";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const clampHoldMinutes = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 3;
+  return Math.max(1, Math.min(120, Math.round(num)));
+};
 
 const CANADA_PROVINCES = [
   "AB","BC","MB","NB","NL","NS","NT","NU","ON","PE","SK","YT",
@@ -56,6 +63,7 @@ const CURRENCY_OPTIONS = getCurrencyOptions();
 export default function SettingsCheckoutPro() {
   const { t } = useTranslation();
   const token = useMemo(() => localStorage.getItem("token") || "", []);
+  const companyId = useCompanyId();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -71,6 +79,9 @@ export default function SettingsCheckoutPro() {
   const [displayCurrency, setDisplayCurrency] = useState("USD");
   const [logoUrl, setLogoUrl] = useState("");
   const [companyCountry, setCompanyCountry] = useState("");
+  const [bookingHoldMinutes, setBookingHoldMinutes] = useState(3);
+  const [holdLoading, setHoldLoading] = useState(true);
+  const [holdSaving, setHoldSaving] = useState(false);
 
   // 👇 Help drawer state
   const [guideOpen, setGuideOpen] = useState(false);
@@ -114,6 +125,36 @@ export default function SettingsCheckoutPro() {
     load();
     return () => { ignore = true; };
   }, [token]);
+
+  useEffect(() => {
+    if (!companyId) {
+      setHoldLoading(false);
+      return;
+    }
+    let ignore = false;
+    setHoldLoading(true);
+    const loadHoldWindow = async () => {
+      try {
+        const res = await wb.getSettings(companyId);
+        if (ignore) return;
+        const minutes =
+          res?.data?.booking_hold_minutes ??
+          res?.data?.settings?.booking_hold_minutes ??
+          3;
+        setBookingHoldMinutes(clampHoldMinutes(minutes));
+      } catch (err) {
+        if (!ignore) {
+          console.warn("settings: failed to load hold window", err);
+        }
+      } finally {
+        if (!ignore) setHoldLoading(false);
+      }
+    };
+    loadHoldWindow();
+    return () => {
+      ignore = true;
+    };
+  }, [companyId]);
 
   const localizedCurrency = chargeCurrencyMode === "LOCALIZED";
 
@@ -194,6 +235,30 @@ export default function SettingsCheckoutPro() {
       setMsgSeverity("error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveHoldWindow = async () => {
+    if (!companyId) {
+      setMsg(t("settings.checkout.holdWindow.missingCompany", "Select a company before saving."));
+      setMsgSeverity("error");
+      return;
+    }
+    const minutes = clampHoldMinutes(bookingHoldMinutes);
+    setBookingHoldMinutes(minutes);
+    setHoldSaving(true);
+    try {
+      await wb.saveSettings(companyId, { booking_hold_minutes: minutes });
+      setMsg(t("settings.checkout.holdWindow.saveSuccess", "Hold window updated."));
+      setMsgSeverity("success");
+    } catch (error) {
+      setMsg(
+        error?.response?.data?.error ||
+          t("settings.checkout.holdWindow.saveError", "Unable to update the hold window.")
+      );
+      setMsgSeverity("error");
+    } finally {
+      setHoldSaving(false);
     }
   };
 
@@ -443,6 +508,43 @@ export default function SettingsCheckoutPro() {
             {msg}
           </Alert>
         </Snackbar>
+      </Card>
+
+      <Card variant="outlined" sx={{ mt: 3 }}>
+        <CardHeader
+          title={t("settings.checkout.holdWindow.title", "Booking Hold Window")}
+          subheader={t(
+            "settings.checkout.holdWindow.subheader",
+            "Reserve selected service slots for a short window so other clients can't grab them while a checkout is in progress."
+          )}
+        />
+        <Divider />
+        <CardContent>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "flex-start", sm: "center" }}>
+            <TextField
+              type="number"
+              label={t("settings.checkout.holdWindow.label", "Hold duration (minutes)")}
+              value={bookingHoldMinutes}
+              onChange={(e) => setBookingHoldMinutes(clampHoldMinutes(e.target.value))}
+              inputProps={{ min: 1, max: 120 }}
+              helperText={t(
+                "settings.checkout.holdWindow.helper",
+                "How long a client's selected slot stays locked before it is released back to the calendar."
+              )}
+              sx={{ maxWidth: 220 }}
+              disabled={holdLoading || holdSaving}
+            />
+            <Button
+              variant="contained"
+              onClick={saveHoldWindow}
+              disabled={holdLoading || holdSaving}
+            >
+              {holdSaving
+                ? t("settings.common.saving")
+                : t("settings.checkout.holdWindow.save", "Save Hold Window")}
+            </Button>
+          </Stack>
+        </CardContent>
       </Card>
 
       {/* 👇 Your new “Tax setup” card (status + quick actions) */}

@@ -12,6 +12,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import { useParams, useSearchParams, Link as RouterLink, useNavigate } from "react-router-dom";
 
 import { wb } from "../../utils/api";
+import { setCachedHoldMinutes } from "../../utils/cart";
 import { RenderSections } from "../../components/website/RenderSections";
 import VisualSiteBuilder from "../sections/management/VisualSiteBuilder";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
@@ -185,6 +186,14 @@ export default function CompanyPublic() {
         if (!alive) return;
         setSitePayload(data || null);
         setCompany(data?.company || null);
+        const holdMinutes =
+          data?.website_setting?.settings?.booking_hold_minutes ??
+          data?.settings?.booking_hold_minutes ??
+          data?.company?.booking_hold_minutes ??
+          null;
+        if (holdMinutes != null) {
+          setCachedHoldMinutes(holdMinutes);
+        }
         const normalized = Array.isArray(data?.pages)
           ? data.pages.map((p) => ({ ...p, content: Array.isArray(p?.content?.sections) ? p.content : { sections: [] } }))
           : [];
@@ -216,8 +225,10 @@ export default function CompanyPublic() {
         if (!ok) return;
         setThemes(Array.isArray(themesRes.data) ? themesRes.data : []);
         setSettings(settingsRes.data || null);
-      } catch {
-        /* non-fatal */
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("Skipping manager-only data:", err?.response?.status);
+        }
       }
     })();
     return () => { ok = false; };

@@ -30,25 +30,27 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useTheme, alpha } from "@mui/material/styles";
 import { useNavWithEmbed } from "../../embed";
 import PublicPageShell from "./PublicPageShell";
+import { loadCart } from "../../utils/cart";
 
 /* ───────────────── helpers ───────────────── */
 /** Build "cart" JSON for the availability endpoint (filter by date and optional artist) */
 function buildCartPayload({ date, artistId = null }) {
   try {
-    const raw = JSON.parse(sessionStorage.getItem("booking_cart") || "[]");
+    const raw = loadCart();
     const filtered = raw
       .filter(
         (it) =>
           it &&
-          it.date === date &&
-          (!artistId || String(it.artist_id) === String(artistId))
+          (!artistId || String(it.artist_id) === String(artistId)) &&
+          (!date || it.date === date || it.local_date === date)
       )
       .map((it) => ({
         artist_id: it.artist_id,
         service_id: it.service_id,
-        date: it.date,
-        start_time: it.start_time,
-        // normalize to addon_ids array; backend also accepts it.addons with {id}, but we keep compact
+        date: it.date || it.local_date,
+        local_date: it.local_date || it.date,
+        start_time: it.start_time || it.local_time,
+        local_time: it.local_time || it.start_time,
         addon_ids:
           Array.isArray(it.addon_ids) && it.addon_ids.length
             ? it.addon_ids
@@ -56,7 +58,6 @@ function buildCartPayload({ date, artistId = null }) {
             ? it.addons.map((a) => a && a.id).filter(Boolean)
             : [],
       }));
-    // canonical route accepts a raw array
     return JSON.stringify(filtered);
   } catch (e) {
     return "[]";
