@@ -506,6 +506,22 @@ export const publicSite = {
     const { name, email, message } = payload;
     return api.post(url, { name, email, message }, config).then((r) => r.data);
   },
+  sendCorporateContact: async (payload) => {
+    const url = `/api/contact`;
+    const config = { noCompanyHeader: true };
+    try {
+      if (typeof window !== 'undefined') {
+        const host = window.location.host || '';
+        const isLocalFrontend = /localhost:3\d{3}$/.test(host) || host.endsWith('.local');
+        if (isLocalFrontend && /^https?:\/\/localhost:5000/.test(API_BASE_URL)) {
+          config.baseURL = '';
+        }
+      }
+    } catch {
+      /* noop */
+    }
+    return api.post(url, payload, config).then((r) => r.data);
+  },
 };
 
 /* ------------------------------ WEBSITE (builder/Lab convenience) ------------------------------ */
