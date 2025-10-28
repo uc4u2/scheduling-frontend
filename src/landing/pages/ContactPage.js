@@ -157,7 +157,7 @@ const ContactPage = () => {
         .split(",")
         .map((slug) => slug.trim())
         .filter(Boolean)
-    : ["photo-artisto-corp"];
+    : [];
 
   const heroTitle = getArray(heroContent.title, DEFAULT_CONTENT.hero.title);
   const highlightItems = getArray(
@@ -223,6 +223,8 @@ const ContactPage = () => {
     const payload = {
       name: trimmedName,
       email: trimmedEmail,
+      company: form.company.trim(),
+      plan: form.plan,
       message: compiledMessage,
     };
 
@@ -230,13 +232,22 @@ const ContactPage = () => {
       let sent = false;
       let lastError;
 
-      for (const slug of marketingContactSlugs) {
-        try {
-          await publicSite.sendContact(slug, payload);
-          sent = true;
-          break;
-        } catch (err) {
-          lastError = err;
+      try {
+        await publicSite.sendCorporateContact(payload);
+        sent = true;
+      } catch (err) {
+        lastError = err;
+      }
+
+      if (!sent && marketingContactSlugs.length) {
+        for (const slug of marketingContactSlugs) {
+          try {
+            await publicSite.sendContact(slug, payload);
+            sent = true;
+            break;
+          } catch (err) {
+            lastError = err;
+          }
         }
       }
 
@@ -507,7 +518,6 @@ const ContactPage = () => {
 };
 
 export default ContactPage;
-
 
 
 
