@@ -1,8 +1,8 @@
-﻿# https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Disallow: /client/
 Disallow: /recruiter/
 Disallow: /manager/
 Disallow: /admin/
 Disallow: /payroll/
+
 Sitemap: https://www.schedulaa.com/sitemap.xml
