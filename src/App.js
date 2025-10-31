@@ -108,6 +108,7 @@ import ManagerPaymentsView from "./pages/sections/management/ManagerPaymentsView
 import EnterpriseAnalytics from "./pages/sections/management/EnterpriseAnalytics";
 import MarketingCouponBridge from "./pages/client/MarketingCouponBridge";
 import LayoutTuningLab from "./pages/sections/management/LayoutTuningLab";
+import { initAnalytics, trackPageView } from "./analytics/googleAnalytics";
 
 export const ThemeModeContext = createContext({
   themeName: "sunset",
@@ -215,6 +216,21 @@ const FeatureGate = ({ feature, children }) => {
   if (allow === null) return null; // or a spinner
   if (!allow) return <Navigate to={`/${slug}`} replace />;
   return <>{children}</>;
+};
+
+const AnalyticsListener = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
+  useEffect(() => {
+    const path = `${location.pathname}${location.search || ""}${location.hash || ""}`;
+    trackPageView(path);
+  }, [location.pathname, location.search, location.hash]);
+
+  return null;
 };
 
 
@@ -442,6 +458,7 @@ const App = () => {
       <ThemeProvider theme={baseTheme}>
         <CssBaseline />
         <Router>
+          <AnalyticsListener />
           <SnackbarProvider maxSnack={3} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
             <AppContent token={token} setToken={setToken} />
           </SnackbarProvider>

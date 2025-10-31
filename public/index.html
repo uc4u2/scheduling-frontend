@@ -1,8 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <script>
-      (function() {
+      (function () {
         var SUPPRESSED = [
           "ResizeObserver loop completed",
           "ResizeObserver loop limit exceeded"
@@ -42,32 +42,36 @@
       })();
     </script>
     <script>
-      (function() {
+      (function () {
         var overlayHooks = [
           "__REACT_DEV_OVERLAY_GLOBAL_HOOK__",
           "__REACT_ERROR_OVERLAY_GLOBAL_HOOK__"
         ];
 
-        overlayHooks.forEach(function(key) {
+        overlayHooks.forEach(function (key) {
           Object.defineProperty(window, key, {
             configurable: true,
             enumerable: false,
-            get: function() {
+            get: function () {
               return {
-                showCompileError: function() {},
-                clearCompileError: function() {},
-                showRuntimeErrors: function() {},
-                clearRuntimeErrors: function() {},
-                dismissRuntimeErrors: function() {},
-                onUnhandledError: function() {},
-                onCaughtError: function() {},
-                reportError: function() {}
+                showCompileError: function () {},
+                clearCompileError: function () {},
+                showRuntimeErrors: function () {},
+                clearRuntimeErrors: function () {},
+                dismissRuntimeErrors: function () {},
+                onUnhandledError: function () {},
+                onCaughtError: function () {},
+                reportError: function () {}
               };
             },
-            set: function() {}
+            set: function () {}
           });
         });
       })();
+    </script>
+    <script>
+      window.__ENV__ = window.__ENV__ || {};
+      window.__ENV__.GA_MEASUREMENT_ID = window.__ENV__.GA_MEASUREMENT_ID || "%REACT_APP_GA_MEASUREMENT_ID%";
     </script>
     <meta charset="UTF-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
@@ -97,5 +101,3 @@
     <div id="root"></div>
   </body>
 </html>
-
-
