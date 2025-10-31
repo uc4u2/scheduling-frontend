@@ -18,7 +18,7 @@ const readMeasurementId = () => {
     }
   }
 
-  if (typeof process !== "undefined" && process?.env) {
+  if (typeof process !== "undefined" && process && process.env) {
     const fromEnv = process.env.REACT_APP_GA_MEASUREMENT_ID;
     if (isValidMeasurementId(fromEnv)) {
       cachedMeasurementId = fromEnv.trim();
@@ -75,9 +75,11 @@ export const trackPageView = (path) => {
       : window.location?.pathname || "/";
 
   const payload = { page_path: pagePath };
-  if (process?.env?.NODE_ENV === "development") {
-    payload.debug_mode = true;
-  }
+  const isDev =
+    typeof process !== "undefined" &&
+    process.env &&
+    process.env.NODE_ENV === "development";
+  if (isDev) payload.debug_mode = true;
 
   window.gtag("config", measurementId, payload);
 };
