@@ -486,7 +486,7 @@ export const publicSite = {
       .get(`/api/public/${encodeURIComponent(slug)}/website`, { noCompanyHeader: true })
       .then((r) => r.data),
 
-  sendContact: async (slug, payload, formKey = (process.env.REACT_APP_CONTACT_FORM_KEY || 'contact')) => {
+  sendContact: async (slug, payload = {}, formKey = (process.env.REACT_APP_CONTACT_FORM_KEY || 'contact')) => {
     const key = encodeURIComponent(formKey || 'contact');
     const url = `/api/public/${encodeURIComponent(slug)}/form/${key}`;
     const config = { noCompanyHeader: true };
@@ -503,8 +503,8 @@ export const publicSite = {
       /* noop */
     }
 
-    const { name, email, message } = payload;
-    return api.post(url, { name, email, message }, config).then((r) => r.data);
+    const body = typeof payload === "object" && payload !== null ? { ...payload } : {};
+    return api.post(url, body, config).then((r) => r.data);
   },
   sendCorporateContact: async (payload) => {
     const url = `/api/contact`;
