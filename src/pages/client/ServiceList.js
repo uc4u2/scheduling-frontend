@@ -304,6 +304,9 @@ const ServiceList = () => {
           {services.map((service) => {
             const duration = numOr(service.duration, null);
             const price = service.base_price;
+            const imageUrl = Array.isArray(service.images) && service.images.length > 0
+              ? service.images[0]?.url_public || service.images[0]?.url || service.images[0]?.source
+              : null;
             return (
               <Grid item xs={12} md={6} lg={4} key={service.id}>
                 <Card
@@ -321,6 +324,25 @@ const ServiceList = () => {
                     "&:hover": { transform: "translateY(-2px)" },
                   }}
                 >
+                  {imageUrl && (
+                    <Box sx={{ position: "relative", pt: "56.25%" }}>
+                      <Box
+                        component="img"
+                        src={imageUrl}
+                        alt={service.name || "Service"}
+                        loading="lazy"
+                        sx={{
+                          position: "absolute",
+                          inset: 0,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          borderTopLeftRadius: "var(--page-card-radius, 18px)",
+                          borderTopRightRadius: "var(--page-card-radius, 18px)",
+                        }}
+                      />
+                    </Box>
+                  )}
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Typography variant="h6" fontWeight={700} sx={{ color: "var(--page-heading-color, inherit)" }}>
                       {service.name}

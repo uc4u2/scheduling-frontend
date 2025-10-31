@@ -14,9 +14,11 @@ import {
   IconButton,
   Snackbar,
   Paper,
+  Stack,
+  CircularProgress,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import { Add, Edit, Delete } from "@mui/icons-material";
+import { Add, Edit, Delete, PhotoCamera, CloudUpload, DeleteOutline } from "@mui/icons-material";
 import axios from "axios";
 
 const API = process.env.REACT_APP_API_URL || "";
@@ -38,8 +40,17 @@ const ServiceManagement = ({ token }) => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [snk, setSnk] = useState({ open: false, key: "" });
+  const [imageModal, setImageModal] = useState(false);
+  const [imageTarget, setImageTarget] = useState(null);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const auth = { headers: { Authorization: `Bearer ${token}` } };
+  const resolveImageUrl = (img) => {
+    if (!img) return "";
+    if (img.url_public) return img.url_public;
+    const base = API || (typeof window !== "undefined" ? window.location.origin : "");
+    return `${base}/public/service-images/${img.id}`;
+  };
 
   const columns = useMemo(
     () => [
@@ -55,7 +66,7 @@ const ServiceManagement = ({ token }) => {
       {
         field: "actions",
         headerName: t("manager.service.columns.actions"),
-        width: 160,
+        width: 200,
         sortable: false,
         filterable: false,
         disableColumnMenu: true,
@@ -63,6 +74,9 @@ const ServiceManagement = ({ token }) => {
           <>
             <IconButton onClick={() => show(params.row)}>
               <Edit />
+            </IconButton>
+            <IconButton onClick={() => openImages(params.row)}>
+              <PhotoCamera />
             </IconButton>
             <IconButton color="error" onClick={() => handleDelete(params.row.id)}>
               <Delete />
@@ -98,6 +112,69 @@ const ServiceManagement = ({ token }) => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchServiceDetail = async (id) => {
+    const { data } = await axios.get(`${API}/booking/services/${id}`, auth);
+    return data;
+  };
+
+  const openImages = async (row) => {
+    try {
+      const detail = await fetchServiceDetail(row.id);
+      setImageTarget(detail);
+      setImageModal(true);
+    } catch (err) {
+      console.error("ServiceManagement image load error", err);
+      setSnk({ open: true, key: "manager.service.messages.loadError" });
+    }
+  };
+
+  const closeImages = () => {
+    setImageModal(false);
+    setImageTarget(null);
+    setImageUploading(false);
+  };
+
+  const refreshImages = async (id) => {
+    const detail = await fetchServiceDetail(id);
+    setImageTarget(detail);
+    await load();
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !imageTarget) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setImageUploading(true);
+    try {
+      await axios.post(`${API}/booking/services/${imageTarget.id}/images`, formData, {
+        headers: {
+          ...auth.headers,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      await refreshImages(imageTarget.id);
+    } catch (err) {
+      console.error("ServiceManagement image upload error", err);
+      setSnk({ open: true, key: "manager.service.messages.saveFailed" });
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  const removeImage = async (imageId) => {
+    if (!imageTarget) return;
+    try {
+      await axios.delete(`${API}/booking/service-images/${imageId}`, auth);
+      await refreshImages(imageTarget.id);
+    } catch (err) {
+      console.error("ServiceManagement image delete error", err);
+      setSnk({ open: true, key: "manager.service.messages.deleteFailed" });
+    }
+  };
 
   const show = (row = null) => {
     setEditing(row);
@@ -218,6 +295,65 @@ const ServiceManagement = ({ token }) => {
           <Button onClick={save} variant="contained">
             {editing ? t("manager.service.dialog.update") : t("manager.service.dialog.create")}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={imageModal} onClose={closeImages} maxWidth="md" fullWidth>
+        <DialogTitle>{t("manager.service.imagesTitle", { defaultValue: "Service Images" })}</DialogTitle>
+        <DialogContent dividers>
+          {!imageTarget ? (
+            <Box py={4} textAlign="center">
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Stack spacing={2}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {imageTarget.name}
+              </Typography>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Button
+                  variant="outlined"
+                  startIcon={<CloudUpload />}
+                  component="label"
+                  disabled={imageUploading}
+                >
+                  {t("manager.service.imagesUpload", { defaultValue: "Upload Image" })}
+                  <input hidden type="file" accept="image/*" onChange={handleFileUpload} />
+                </Button>
+                {imageUploading && <Typography variant="body2">{t("common.uploading", { defaultValue: "Uploading…" })}</Typography>}
+              </Stack>
+              <Stack direction="row" spacing={2} flexWrap="wrap">
+                {(imageTarget.images || []).map((img) => (
+                  <Paper key={img.id} sx={{ p: 1, width: 160 }} variant="outlined">
+                    <Box sx={{ position: "relative", pb: "100%", borderRadius: 2, overflow: "hidden", mb: 1 }}>
+                      <Box
+                        component="img"
+                        src={resolveImageUrl(img)}
+                        alt={img.filename || ""}
+                        sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    </Box>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="caption" noWrap flex={1}>
+                        {img.filename}
+                      </Typography>
+                      <IconButton size="small" onClick={() => removeImage(img.id)}>
+                        <DeleteOutline fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </Paper>
+                ))}
+                {(imageTarget.images || []).length === 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    {t("manager.service.imagesEmpty", { defaultValue: "No images uploaded yet." })}
+                  </Typography>
+                )}
+              </Stack>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeImages}>{t("common.close", { defaultValue: "Close" })}</Button>
         </DialogActions>
       </Dialog>
 
