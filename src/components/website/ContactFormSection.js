@@ -1,18 +1,22 @@
 // src/components/website/ContactFormSection.js
-import React, { useMemo, useState, useMemo as useMemo2 } from "react";
+import React, { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Box, Button, Container, Grid, Stack, TextField, Alert, CircularProgress, Typography
+  Box,
+  Button,
+  Container,
+  Grid,
+  Stack,
+  TextField,
+  Alert,
+  CircularProgress,
+  Typography,
 } from "@mui/material";
+import { publicSite } from "../../utils/api";
 
 /**
- * ContactFormSection
- * Props:
- * - title, intro
- * - formKey: string (defaults to "contact")
- * - successMessage: string
- * - fields: array<string | { name, label?, required?, type?, placeholder? }>
- * - maxWidth, titleAlign, gutterX
+ * Contact form section rendered on public company pages.
+ * Submits via the publicSite API helper so we respect API base URLs on Render.
  */
 export default function ContactFormSection(props) {
   const {
@@ -21,35 +25,29 @@ export default function ContactFormSection(props) {
     formKey = "contact",
     successMessage = "Thanks! We’ll get back to you shortly.",
     fields = [
-      { name: "name",    label: "Full name", required: true },
-      { name: "email",   label: "Email",     required: true },
-      { name: "phone",   label: "Phone" },
+      { name: "name", label: "Full name", required: true },
+      { name: "email", label: "Email", required: true },
+      { name: "phone", label: "Phone" },
       { name: "subject", label: "Subject" },
-      { name: "message", label: "Message",   required: true }
+      { name: "message", label: "Message", required: true },
     ],
     maxWidth = "lg",
     titleAlign = "left",
-    gutterX
+    gutterX,
   } = props;
 
   const { slug, pageSlug } = useParams();
 
-  const [values, setValues]   = useState({});
+  const [values, setValues] = useState({});
   const [sending, setSending] = useState(false);
-  const [ok, setOk]           = useState(false);
-  const [err, setErr]         = useState("");
+  const [ok, setOk] = useState(false);
+  const [err, setErr] = useState("");
 
-  const endpoint = useMemo(
-    () => (slug ? `/api/public/${slug}/form/${encodeURIComponent(formKey)}` : null),
-    [slug, formKey]
-  );
-
-  // --- helpers ---
-  const capFirst = (s) => (typeof s === "string" && s.length ? s.charAt(0).toUpperCase() + s.slice(1) : "");
+  const capFirst = (s) =>
+    typeof s === "string" && s.length ? s.charAt(0).toUpperCase() + s.slice(1) : "";
   const niceLabel = (name) => capFirst(String(name || "").replace(/[_-]+/g, " "));
 
-  // Normalize fields: allow strings or objects; filter out falsy/invalid
-  const normFields = useMemo2(() => {
+  const normFields = useMemo(() => {
     const arr = Array.isArray(fields) ? fields : [];
     return arr
       .filter(Boolean)
@@ -59,8 +57,15 @@ export default function ContactFormSection(props) {
         ...f,
         name: f.name.trim(),
         label: f.label || niceLabel(f.name),
-        // infer missing types
-        type: f.type || (f.name === "email" ? "email" : f.name === "phone" ? "tel" : f.name === "message" ? "textarea" : "text"),
+        type:
+          f.type ||
+          (f.name === "email"
+            ? "email"
+            : f.name === "phone"
+            ? "tel"
+            : f.name === "message"
+            ? "textarea"
+            : "text"),
       }));
   }, [fields]);
 
@@ -68,24 +73,28 @@ export default function ContactFormSection(props) {
 
   async function submit(e) {
     e.preventDefault();
-    setSending(true); setErr(""); setOk(false);
+    setSending(true);
+    setErr("");
+    setOk(false);
     try {
-      if (!endpoint) throw new Error("Missing company slug in route.");
+      if (!slug) throw new Error("Missing company slug in route.");
+
       const payload = {
         ...values,
-        page_slug: pageSlug || null
+        page_slug: pageSlug || null,
       };
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || "Failed to submit form");
+
+      await publicSite.sendContact(slug, payload, formKey);
       setOk(true);
       setValues({});
     } catch (e2) {
-      setErr(e2.message || "Something went wrong");
+      const message =
+        e2?.response?.data?.error ||
+        e2?.response?.data?.message ||
+        e2?.displayMessage ||
+        e2?.message ||
+        "Something went wrong";
+      setErr(message);
     } finally {
       setSending(false);
     }
@@ -106,12 +115,16 @@ export default function ContactFormSection(props) {
             </Typography>
           )}
           {!!intro && (
-            <Typography variant="body1" color="text.secondary" sx={{ textAlign: titleAlign === "center" ? "center" : "left" }}>
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ textAlign: titleAlign === "center" ? "center" : "left" }}
+            >
               {intro}
             </Typography>
           )}
 
-          {ok  && <Alert severity="success">{successMessage}</Alert>}
+          {ok && <Alert severity="success">{successMessage}</Alert>}
           {err && <Alert severity="error">{err}</Alert>}
 
           <Box component="form" onSubmit={submit} noValidate>
@@ -143,8 +156,14 @@ export default function ContactFormSection(props) {
                 </Grid>
               ))}
               <Grid item xs={12}>
-                <Button type="submit" variant="contained" size="large" disabled={sending || !endpoint}>
-                  {sending ? (<><CircularProgress size={20} sx={{ mr: 1 }} /> Sending…</>) : "Send message"}
+                <Button type="submit" variant="contained" size="large" disabled={sending || !slug}>
+                  {sending ? (
+                    <>
+                      <CircularProgress size={20} sx={{ mr: 1 }} /> Sending…
+                    </>
+                  ) : (
+                    "Send message"
+                  )}
                 </Button>
               </Grid>
             </Grid>
