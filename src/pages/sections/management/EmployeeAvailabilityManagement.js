@@ -1,5 +1,5 @@
 // src/EmployeeAvailabilityManagement.js
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Box,
   Typography,
@@ -41,6 +41,7 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const [tab, setTab] = useState(0);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const alertRef = useRef(null);
 
   /* ─────────────────────────────── Daily‑window state ─────────────────────────── */
   const [wDayFrom, setWDayFrom] = useState("");
@@ -304,16 +305,18 @@ const EmployeeAvailabilityManagement = ({ token }) => {
         Employee Availability Management
       </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {successMessage}
-        </Alert>
-      )}
+      <Box ref={alertRef}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            {successMessage}
+          </Alert>
+        )}
+      </Box>
 
       {/* Department select */}
       <TextField
@@ -607,3 +610,8 @@ const EmployeeAvailabilityManagement = ({ token }) => {
 };
 
 export default EmployeeAvailabilityManagement;
+  useEffect(() => {
+    if ((successMessage || error) && alertRef.current) {
+      alertRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [successMessage, error]);
