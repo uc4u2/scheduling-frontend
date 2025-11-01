@@ -1,5 +1,5 @@
 // src/EmployeeAvailabilityManagement.js
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -14,6 +14,7 @@ import {
   Tab,
   FormControlLabel,
   Checkbox,
+  Snackbar,
 } from "@mui/material";
 import axios from "axios";
 import { pad, isoFromParts } from "../../../utils/datetime";
@@ -41,8 +42,6 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const [tab, setTab] = useState(0);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const alertRef = useRef(null);
-
   /* ─────────────────────────────── Daily‑window state ─────────────────────────── */
   const [wDayFrom, setWDayFrom] = useState("");
   const [wDayTo, setWDayTo] = useState("");
@@ -68,12 +67,12 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const [slotStartTime, setSlotStartTime] = useState("");
 
   /* ─────────────────────────────── Helpers ─────────────────────────────────────── */
-  const resetAlerts = () => {
-    setError("");
-    setSuccessMessage("");
-  };
+const resetAlerts = () => {
+  setError("");
+  setSuccessMessage("");
+};
 
-  const t = (val) => {
+const t = (val) => {
     // normalise “H:MM” → “HH:MM”
     if (/^\d{2}:\d{2}$/.test(val)) return val;
     const [h = 0, m = 0] = String(val).split(":").map(Number);
@@ -305,18 +304,11 @@ const EmployeeAvailabilityManagement = ({ token }) => {
         Employee Availability Management
       </Typography>
 
-      <Box ref={alertRef}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {successMessage && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {successMessage}
-          </Alert>
-        )}
-      </Box>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       {/* Department select */}
       <TextField
@@ -605,13 +597,24 @@ const EmployeeAvailabilityManagement = ({ token }) => {
           {loading ? "Saving..." : "Save Availability"}
         </Button>
       </Box>
+
+      <Snackbar
+        open={Boolean(successMessage)}
+        autoHideDuration={4000}
+        onClose={() => setSuccessMessage("")}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSuccessMessage("")}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
 
 export default EmployeeAvailabilityManagement;
-  useEffect(() => {
-    if ((successMessage || error) && alertRef.current) {
-      alertRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [successMessage, error]);
