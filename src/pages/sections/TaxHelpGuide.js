@@ -3,31 +3,37 @@ import React from "react";
 import { Typography, Divider, Button, Alert, Box } from "@mui/material";
 import { Trans, useTranslation } from "react-i18next";
 
-export default function TaxHelpGuide({ onClose, onOpenStripe, pricesIncludeTax }) {
+export default function TaxHelpGuide({
+  onClose,
+  onOpenStripe,
+  pricesIncludeTax,
+  translationBase = "settings.checkout",
+}) {
   const { t } = useTranslation();
 
+  const guideBase = `${translationBase}.taxGuide`;
   const priceToggleKey = pricesIncludeTax
-    ? "settings.checkout.taxGuide.steps.app.pricesIncludeTax.on"
-    : "settings.checkout.taxGuide.steps.app.pricesIncludeTax.off";
+    ? `${guideBase}.steps.app.pricesIncludeTax.on`
+    : `${guideBase}.steps.app.pricesIncludeTax.off`;
 
   return (
     <>
       <Typography variant="h5" gutterBottom>
-        {t("settings.checkout.taxGuide.title")}
+        {t(`${guideBase}.title`)}
       </Typography>
       <Typography variant="body2" color="text.secondary" gutterBottom>
-        {t("settings.checkout.taxGuide.intro")}
+        {t(`${guideBase}.intro`)}
       </Typography>
 
       <Divider sx={{ my: 2 }} />
 
       <Typography variant="h6" gutterBottom>
-        {t("settings.checkout.taxGuide.steps.app.heading")}
+        {t(`${guideBase}.steps.app.heading`)}
       </Typography>
       <ul>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.app.country"
+            i18nKey={`${guideBase}.steps.app.country`}
             components={{ strong: <strong /> }}
           />
         </li>
@@ -40,84 +46,84 @@ export default function TaxHelpGuide({ onClose, onOpenStripe, pricesIncludeTax }
       </ul>
 
       <Typography variant="h6" gutterBottom>
-        {t("settings.checkout.taxGuide.steps.connect.heading")}
+        {t(`${guideBase}.steps.connect.heading`)}
       </Typography>
       <ul>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.connect.useButton"
+            i18nKey={`${guideBase}.steps.connect.useButton`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.connect.ready"
+            i18nKey={`${guideBase}.steps.connect.ready`}
             components={{ strong: <strong /> }}
           />
         </li>
       </ul>
 
       <Typography variant="h6" gutterBottom>
-        {t("settings.checkout.taxGuide.steps.stripe.heading")}
+        {t(`${guideBase}.steps.stripe.heading`)}
       </Typography>
       <ul>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.stripe.openDashboard"
+            i18nKey={`${guideBase}.steps.stripe.openDashboard`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.stripe.navigate"
+            i18nKey={`${guideBase}.steps.stripe.navigate`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.stripe.origin"
+            i18nKey={`${guideBase}.steps.stripe.origin`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.stripe.products"
+            i18nKey={`${guideBase}.steps.stripe.products`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.stripe.includeQuestion"
+            i18nKey={`${guideBase}.steps.stripe.includeQuestion`}
             components={{ strong: <strong /> }}
           />
         </li>
       </ul>
 
       <Typography variant="h6" gutterBottom>
-        {t("settings.checkout.taxGuide.steps.registrations.heading")}
+        {t(`${guideBase}.steps.registrations.heading`)}
       </Typography>
       <ul>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.registrations.open"
+            i18nKey={`${guideBase}.steps.registrations.open`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.registrations.homeRegion"
+            i18nKey={`${guideBase}.steps.registrations.homeRegion`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.registrations.additionalRegions"
+            i18nKey={`${guideBase}.steps.registrations.additionalRegions`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.steps.registrations.thresholds"
+            i18nKey={`${guideBase}.steps.registrations.thresholds`}
             components={{ strong: <strong /> }}
           />
         </li>
@@ -125,7 +131,7 @@ export default function TaxHelpGuide({ onClose, onOpenStripe, pricesIncludeTax }
 
       <Alert severity="info" sx={{ my: 2 }}>
         <Trans
-          i18nKey="settings.checkout.taxGuide.tip"
+          i18nKey={`${guideBase}.tip`}
           components={{ strong: <strong />, em: <em /> }}
         />
       </Alert>
@@ -133,24 +139,24 @@ export default function TaxHelpGuide({ onClose, onOpenStripe, pricesIncludeTax }
       <Divider sx={{ my: 2 }} />
 
       <Typography variant="h6" gutterBottom>
-        {t("settings.checkout.taxGuide.faqs.title")}
+        {t(`${guideBase}.faqs.title`)}
       </Typography>
       <ul>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.faqs.usRegistration"
+            i18nKey={`${guideBase}.faqs.usRegistration`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.faqs.receipts"
+            i18nKey={`${guideBase}.faqs.receipts`}
             components={{ strong: <strong /> }}
           />
         </li>
         <li>
           <Trans
-            i18nKey="settings.checkout.taxGuide.faqs.crossBorder"
+            i18nKey={`${guideBase}.faqs.crossBorder`}
             components={{ strong: <strong /> }}
           />
         </li>
@@ -158,7 +164,7 @@ export default function TaxHelpGuide({ onClose, onOpenStripe, pricesIncludeTax }
 
       <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
         <Button variant="contained" onClick={onOpenStripe}>
-          {t("settings.checkout.taxGuide.buttons.openDashboard")}
+          {t(`${guideBase}.buttons.openDashboard`)}
         </Button>
         <Button variant="outlined" onClick={onClose}>
           {t("buttons.closeGuide")}

@@ -1561,7 +1561,107 @@
       "reviewsTips": "Reviews & Tips",
       "artistVisibility": "Artist Visibility",
       "clientVideo": "Client Video",
+      "stripeHub": "Stripe Hub",
       "checkout": "Checkout Pro & Payments"
+    },
+    "stripeHub": {
+      "authRequired": "Please sign in as a manager to view Stripe settings.",
+      "buttons": {
+        "refreshStatus": "Refresh status",
+        "resumeOnboarding": "Resume onboarding",
+        "startOnboarding": "Connect with Stripe",
+        "openDashboard": "Open Stripe dashboard"
+      },
+      "connect": {
+        "title": "Stripe Connect status",
+        "description": "Check onboarding progress, charges, and payout readiness.",
+        "loading": "Loading Stripe Connect status\u2026",
+        "status": {
+          "ready": "Stripe Connect ready \u2014 charges enabled and payouts enabled.",
+          "readyNoPayouts": "Stripe Connect ready \u2014 charges enabled; payouts pending.",
+          "notReady": "Stripe Connect connected but charges are disabled. Finish onboarding in Stripe.",
+          "disconnected": "Stripe Connect is not connected yet. Complete onboarding to turn on payments."
+        },
+        "chargesEnabled": "Charges enabled",
+        "chargesDisabled": "Charges disabled",
+        "payoutsEnabled": "Payouts enabled",
+        "payoutsDisabled": "Payouts disabled",
+        "requirementsTitle": "Pending requirements"
+      },
+      "checkout": {
+        "title": "Checkout & payment mode",
+        "description": "Review checkout behaviour, cards on file, and Stripe publishable key.",
+        "mode": {
+          "offline": "Offline booking \u2014 collect payment outside Stripe.",
+          "cardOnFile": "Card on file \u2014 clients secure the booking and managers charge later.",
+          "payNow": "Pay during checkout \u2014 clients pay immediately with Stripe."
+        },
+        "publishableKey": "Publishable key",
+        "copyKey": "Copy publishable key",
+        "copySuccess": "Publishable key copied to clipboard.",
+        "copyError": "Could not copy key.",
+        "missingKey": "Publishable key not set.",
+        "manageCheckout": "Open Checkout Pro & Payments",
+        "manageProfile": "Open Company Profile"
+      },
+      "help": {
+        "title": "Need a checklist?",
+        "subtitle": "Quick reminders for Stripe setup:",
+        "items": [
+          "Complete Stripe Connect onboarding so charges and payouts stay enabled.",
+          "Set checkout mode, publishable key, and logo under Checkout Pro & Payments.",
+          "Update tax country, region, and display currency in Company Profile.",
+          "Use Advanced Management \u2192 Payments to charge cards on file or issue refunds.",
+          "Detailed checkout & tax controls live under Settings \u2192 Checkout Pro & Payments (link below)."
+        ],
+        "openPayments": "Open Payments console",
+        "openCheckout": "Open Checkout Pro & Payments",
+        "openTaxGuide": "View tax setup guide"
+      },
+      "taxGuide": {
+        "title": "Tax setup guide (for managers)",
+        "intro": "Follow this once and tax will be calculated automatically on every payment.",
+        "steps": {
+          "app": {
+            "heading": "1) In this app \u2014 Company Profile",
+            "country": "Set <strong>Country</strong> and <strong>Province/State</strong>.",
+            "pricesIncludeTax": {
+              "on": "<strong>Prices include tax</strong>: <em>(currently ON \u2014 prices shown include tax)</em>",
+              "off": "<strong>Prices include tax</strong>: <em>(currently OFF \u2014 tax will be added on top)</em>"
+            }
+          },
+          "connect": {
+            "heading": "2) Connect Stripe (one-time)",
+            "useButton": "Use the <strong>Connect with Stripe</strong> button above and finish onboarding.",
+            "ready": "When it says <strong>Ready to accept payments</strong>, you're all set."
+          },
+          "stripe": {
+            "heading": "3) In Stripe \u2014 turn on Automatic tax",
+            "openDashboard": "Click <strong>Open Stripe Dashboard</strong> below.",
+            "navigate": "Go to <strong>Tax \u2192 Overview</strong> and switch <strong>Automatic tax</strong> to <strong>ON</strong>.",
+            "origin": "In <strong>Business information</strong>: set your <strong>Origin address</strong> (where your business is based).",
+            "products": "In <strong>Products & prices</strong>: pick a default <strong>tax category</strong> (start with \u201cGeneral \u2014 Services\u201d; you can refine per product later).",
+            "includeQuestion": "<strong>Include tax in prices?</strong> Choose <strong>No</strong> to add tax on top (most US/CA teams), or <strong>Yes</strong> if your prices already include tax."
+          },
+          "registrations": {
+            "heading": "4) Registrations (where you collect tax)",
+            "open": "Go to <strong>Tax \u2192 Registrations</strong>.",
+            "homeRegion": "Add your <strong>home region</strong> (e.g., Ontario or Texas).",
+            "additionalRegions": "Add other provinces/states <strong>only</strong> where you are registered or when Stripe notifies you that a threshold is met.",
+            "thresholds": "Enable <strong>Thresholds</strong> monitoring so Stripe alerts you as you grow."
+          }
+        },
+        "tip": "<strong>Tip:</strong> If your price is $40 and <em>Prices include tax</em> is OFF, customers will see $40 + tax at checkout. If it\u2019s ON, the $40 already contains tax and Stripe will back the tax out automatically.",
+        "faqs": {
+          "title": "FAQs",
+          "usRegistration": "<strong>Do I need US registration to sell to US customers?</strong> Only if you meet a state's threshold or choose to register there. Start with your home region; add others as needed.",
+          "receipts": "<strong>Does Stripe handle receipts?</strong> Yes. Receipts are issued in your business name.",
+          "crossBorder": "<strong>What about cross-border orders?</strong> Tax depends on the buyer's location and where you're registered. If you aren't registered in a region, Stripe won't collect there."
+        },
+        "buttons": {
+          "openDashboard": "Open Stripe Dashboard"
+        }
+      }
     },
     "general": {
       "title": "General",
