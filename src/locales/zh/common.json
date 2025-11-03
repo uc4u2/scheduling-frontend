@@ -141,6 +141,24 @@
             "\u63a8\u8350\u4f7f\u7528 WEBP/JPG\uff0c\u5e76\u4e3a\u91cd\u8981\u56fe\u7247\u6dfb\u52a0\u66ff\u4ee3\u6587\u672c\uff08\u53ef\u8bbf\u95ee\u6027\u4e0e SEO\uff09\u3002",
             "\u5b58\u50a8\u540e\u7aef\u53ef\u968f\u65f6\u5207\u6362\uff1a\u5f53\u524d\u5b58\u653e\u5728\u670d\u52a1\u5668\u4e0a\uff0c\u8fc1\u79fb\u5230 S3/CDN \u53ea\u9700\u8c03\u6574\u540e\u7aef\u76ee\u6807\uff0c\u6d41\u7a0b\u4fdd\u6301\u4e0d\u53d8\u3002"
           ]
+        },
+        "navStyle": {
+          "title": "10) Website Navigation & Menu",
+          "bullets": [
+            "Open the \u201cWebsite Navigation & Menu\u201d panel to style the top bar while you work.",
+            "Pick a variant (pill, underline, ghost, etc.) and set hover / active / background colors.",
+            "Adjust spacing, padding, and the brand/slug font + size \u2014 the preview mirrors the nav instantly.",
+            "Try Quick Presets for fast inspiration; fine-tune any value and click Save to keep it."
+          ],
+          "footnote": "Menu visibility/order still comes from Page Settings (toggle \u201cShow in menu\u201d + sort order)."
+        },
+        "livePreview": {
+          "title": "11) Live preview & sticky controls",
+          "bullets": [
+            "While styling nav or page visuals, the floating preview stays pinned near your scroll position.",
+            "Use the toolbar to reset, compare, or save without climbing back to the top of the inspector.",
+            "Click anywhere on the canvas (e.g., the Hero) to activate Inspector controls for that section."
+          ]
         }
       }
     },
@@ -3617,4 +3635,3 @@
     }
   }
 }
-

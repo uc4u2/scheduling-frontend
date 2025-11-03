@@ -125,6 +125,24 @@
             "Prefer WEBP/JPG. Add alt text for logos/key images (accessibility + SEO).",
             "Storage is pluggable: today files live on the server; moving to S3/CDN later requires only a backend config change - the editor flow stays the same."
           ]
+        },
+        "navStyle": {
+          "title": "10) Website Navigation & Menu",
+          "bullets": [
+            "Open the “Website Navigation & Menu” panel to style the top bar while you work.",
+            "Pick a variant (pill, underline, ghost, etc.) and set hover / active / background colors.",
+            "Adjust spacing, padding, and the brand/slug font + size — the preview mirrors the nav instantly.",
+            "Try Quick Presets for fast inspiration; fine-tune any value and click Save to keep it."
+          ],
+          "footnote": "Menu visibility/order still comes from Page Settings (toggle “Show in menu” + sort order)."
+        },
+        "livePreview": {
+          "title": "11) Live preview & sticky controls",
+          "bullets": [
+            "While styling nav or page visuals, the floating preview stays pinned near your scroll position.",
+            "Use the toolbar to reset, compare, or save without climbing back to the top of the inspector.",
+            "Click anywhere on the canvas (e.g., the Hero) to activate Inspector controls for that section."
+          ]
         }
       },
       "tipsTitle": "Tips",
