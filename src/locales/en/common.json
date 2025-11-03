@@ -129,12 +129,12 @@
         "navStyle": {
           "title": "10) Website Navigation & Menu",
           "bullets": [
-            "Open the “Website Navigation & Menu” panel to style the top bar while you work.",
+            "Open the \u201cWebsite Navigation & Menu\u201d panel to style the top bar while you work.",
             "Pick a variant (pill, underline, ghost, etc.) and set hover / active / background colors.",
-            "Adjust spacing, padding, and the brand/slug font + size — the preview mirrors the nav instantly.",
+            "Adjust spacing, padding, and the brand/slug font + size \u2014 the preview mirrors the nav instantly.",
             "Try Quick Presets for fast inspiration; fine-tune any value and click Save to keep it."
           ],
-          "footnote": "Menu visibility/order still comes from Page Settings (toggle “Show in menu” + sort order)."
+          "footnote": "Menu visibility/order still comes from Page Settings (toggle \u201cShow in menu\u201d + sort order)."
         },
         "livePreview": {
           "title": "11) Live preview & sticky controls",
@@ -1436,8 +1436,8 @@
           "streetAddress": "Street Address",
           "country": "Country",
           "city": "City",
-        "postalCodeCa": "Postal Code (A1A 1A1)",
-        "postalCodeUs": "ZIP Code (e.g., 12345 or 12345-6789)"
+          "postalCodeCa": "Postal Code (A1A 1A1)",
+          "postalCodeUs": "ZIP Code (e.g., 12345 or 12345-6789)"
         },
         "hints": {
           "businessNumberDigits": "Digits only. Letters or symbols are removed automatically.",
