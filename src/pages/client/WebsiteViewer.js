@@ -2,49 +2,44 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
-  Container,
-  Box,
-  Typography,
-  CircularProgress,
   Alert,
-  Button,
-  Tabs,
-  Tab,
-  Paper,
   AppBar,
-  Toolbar,
+  Box,
+  Button,
+  CircularProgress,
+  Container,
   Stack,
+  Toolbar,
+  Typography,
+  Paper,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { wb } from "../../utils/api";
 import { RenderSections } from "../../components/website/RenderSections";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
 import PublicClientAuth from "./PublicClientAuth";
 import PublicMyBookings from "./PublicMyBookings";
 import { resolveSiteHref, transformLinksDeep } from "../../components/website/linking";
-import { useNavigate } from "react-router-dom";
-// Replace hrefs inside HTML strings (RichText bodies) using our resolver
-function rewriteAnchorsHTML(html, resolver) {
+import {
+  normalizeNavStyle,
+  navStyleToCssVars,
+  createNavButtonStyles,
+} from "../../utils/navStyle";
+
+const rewriteAnchorsHTML = (html, resolver) => {
   if (!html || typeof html !== "string") return html;
   try {
     return html.replace(/href="([^"]+)"/g, (_, href) => `href="${resolver(href)}"`);
   } catch {
     return html;
   }
-}
+};
 
 export default function WebsiteViewer() {
   const { slug, pageSlug } = useParams();
-  // Redirect "login" and "my-bookings" to canonical routes
-  React.useEffect(() => {
-    if (active?.slug === "login") {
-      navigate("/login", { replace: true });
-    } else if (active?.slug === "my-bookings") {
-   navigate(`/dashboard?site=${encodeURIComponent(slug)}`, { replace: true });
-   return null;
- }
-  }, [active?.slug, navigate]);
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [site, setSite] = useState(null);
@@ -57,26 +52,25 @@ export default function WebsiteViewer() {
         : { ...to, search: location.search }
     );
 
-  // Load public site payload by slug (no auth, no editor)
   useEffect(() => {
-    let live = true;
+    let alive = true;
     (async () => {
       try {
         setLoading(true);
         setError("");
         const { data } = await wb.publicBySlug(slug);
-        if (!live) return;
+        if (!alive) return;
         setSite(data);
       } catch {
-        if (!live) return;
+        if (!alive) return;
         setSite(null);
         setError("Failed to load website.");
       } finally {
-        if (live) setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
     return () => {
-      live = false;
+      alive = false;
     };
   }, [slug]);
 
@@ -87,7 +81,7 @@ export default function WebsiteViewer() {
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   }, [site]);
 
-  const active = useMemo(() => {
+  const activePage = useMemo(() => {
     if (!pages.length) return null;
     if (pageSlug) return pages.find((p) => p.slug === pageSlug) || pages[0];
     const home =
@@ -97,19 +91,78 @@ export default function WebsiteViewer() {
   }, [pages, pageSlug]);
 
   const pageLayout = useMemo(
-    () => active?.layout ?? active?.content?.meta?.layout ?? "boxed",
-    [active]
+    () => activePage?.layout ?? activePage?.content?.meta?.layout ?? "boxed",
+    [activePage]
   );
 
-  // Set <title> and scroll on page change
   useEffect(() => {
-    if (active) {
-      const siteTitle = site?.title || site?.name || site?.company_name || slug || "Site";
-      const pageTitle = active?.title || active?.menu_title || active?.slug || "Page";
-      document.title = `${pageTitle} — ${siteTitle}`;
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    if (!activePage) return;
+    if (activePage.slug === "login") {
+      navigate("/login", { replace: true });
+    } else if (activePage.slug === "my-bookings") {
+      navigate(`/dashboard?site=${encodeURIComponent(slug)}`, { replace: true });
     }
-  }, [active, site, slug]);
+  }, [activePage, navigate, slug]);
+
+  useEffect(() => {
+    if (!activePage) return;
+    const siteTitle =
+      site?.title || site?.name || site?.company_name || slug || "Site";
+    const pageTitle =
+      activePage?.title || activePage?.menu_title || activePage?.slug || "Page";
+    document.title = `${pageTitle} — ${siteTitle}`;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activePage, site, slug]);
+
+  const navStyleTokens = useMemo(() => {
+    const source =
+      site?.nav_style ||
+      site?.settings?.nav_style ||
+      site?.website_setting?.settings?.nav_style ||
+      {};
+    return normalizeNavStyle(source);
+  }, [site]);
+
+  const navCssVars = useMemo(
+    () => ({
+      "--sched-primary": theme.palette.primary.main,
+      "--sched-text": theme.palette.text.primary,
+      ...navStyleToCssVars(navStyleTokens),
+    }),
+    [navStyleTokens, theme]
+  );
+
+  const navButtonSx = useMemo(
+    () => createNavButtonStyles(navStyleTokens),
+    [navStyleTokens]
+  );
+
+  const navItems = useMemo(() => {
+    const slugLower = String(activePage?.slug || "").toLowerCase();
+    return pages
+      .filter((p) => p.show_in_menu !== false)
+      .map((p) => ({
+        key: p.slug,
+        label: p.menu_title || p.title || p.slug,
+        to: `/${slug}/site/${p.slug}`,
+        active: String(p.slug || "").toLowerCase() === slugLower,
+      }));
+  }, [pages, slug, activePage]);
+
+  const sectionsPatched = useMemo(() => {
+    const secs = activePage?.content?.sections || [];
+    const resolver = (href) => resolveSiteHref(slug, href, pages);
+    return secs.map((s) => {
+      if (!s?.props) return s;
+      let nextProps = transformLinksDeep(s.props, resolver);
+      if (s.type === "richText" && typeof nextProps.body === "string") {
+        nextProps = { ...nextProps, body: rewriteAnchorsHTML(nextProps.body, resolver) };
+      }
+      return { ...s, props: nextProps };
+    });
+  }, [activePage, slug, pages]);
+
+  const themeOverrides = site?.theme_overrides || {};
 
   if (loading) {
     return (
@@ -131,33 +184,15 @@ export default function WebsiteViewer() {
     );
   }
 
-   const overrides = site?.theme_overrides || {};
-
-  // 🔐 Built-in pages: login & my-bookings
-  if (active?.slug === "login") {
+  if (activePage?.slug === "login") {
     return <PublicClientAuth slug={slug} />;
   }
-  if (active?.slug === "my-bookings") {
+  if (activePage?.slug === "my-bookings") {
     return <PublicMyBookings slug={slug} />;
   }
 
-  // Link rewriting (hrefs in props + richText body HTML)
-  const sectionsPatched = useMemo(() => {
-    const secs = active?.content?.sections || [];
-    const resolver = (href) => resolveSiteHref(slug, href, pages);
-    return secs.map((s) => {
-      if (!s?.props) return s;
-      let nextProps = transformLinksDeep(s.props, resolver);
-      if (s.type === "richText" && typeof nextProps.body === "string") {
-        nextProps = { ...nextProps, body: rewriteAnchorsHTML(nextProps.body, resolver) };
-      }
-      return { ...s, props: nextProps };
-    });
-  }, [active, slug, pages]);
-
   return (
-    <ThemeRuntimeProvider overrides={overrides}>
-      {/* Public-only top bar — no “Edit” controls here */}
+    <ThemeRuntimeProvider overrides={themeOverrides}>
       <AppBar
         position="sticky"
         color="default"
@@ -166,45 +201,61 @@ export default function WebsiteViewer() {
       >
         <Toolbar>
           <Container maxWidth="lg" sx={{ display: "flex", alignItems: "center" }}>
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                variant="h6"
-                noWrap
-                sx={{ fontWeight: 800, letterSpacing: "-0.01em" }}
-                title={site?.title || site?.name || slug}
-              >
-                {site?.title || site?.name || slug}
-              </Typography>
-            </Stack>
+            <Typography
+              variant="h6"
+              noWrap
+              sx={{ fontWeight: 800, letterSpacing: "-0.01em" }}
+              title={site?.title || site?.name || slug}
+            >
+              {site?.title || site?.name || slug}
+            </Typography>
           </Container>
         </Toolbar>
 
-        {pages.length > 0 && (
-          <Container maxWidth="lg" sx={{ px: 2, pb: 1 }}>
-            <Tabs
-              value={active ? active.slug : false}
-              variant="scrollable"
-              onChange={(_, v) => go(`/${slug}/site/${v}`)}
-              aria-label="Website pages"
+        {navItems.length > 0 && (
+          <Container
+            maxWidth="lg"
+            sx={{
+              px: 2,
+              pb: 1.5,
+              "--sched-primary": theme.palette.primary.main,
+              "--sched-text": theme.palette.text.primary,
+              ...navCssVars,
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={0}
+              sx={{
+                gap: `${navStyleTokens.item_spacing}px`,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
             >
-              {pages
-                .filter((p) => p.show_in_menu !== false)
-                .map((p) => (
-                  <Tab key={p.id ?? p.slug} value={p.slug} label={p.menu_title || p.title || p.slug} />
-                ))}
-            </Tabs>
+              {navItems.map((item) => (
+                <Button
+                  key={item.key}
+                  variant="text"
+                  color="inherit"
+                  disableElevation
+                  sx={navButtonSx(item.active)}
+                  onClick={() => go(item.to)}
+                >
+                  {item.label}
+                </Button>
+              ))}
+            </Stack>
           </Container>
         )}
       </AppBar>
 
-      {/* Page body */}
       {sectionsPatched.length ? (
         <RenderSections sections={sectionsPatched} layout={pageLayout} />
       ) : (
         <Container maxWidth="lg" sx={{ my: 6 }}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h5" fontWeight={700}>
-              {active?.title || "Page"}
+              {activePage?.title || "Page"}
             </Typography>
             <Typography sx={{ mt: 1.5 }} color="text.secondary">
               This page doesn’t have any content yet.

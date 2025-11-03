@@ -37,15 +37,15 @@ function toArray(val) {
 
 /** Render sanitized (inline) HTML in Typography */
 function HtmlTypo({ variant = "body1", sx, children, ...rest }) {
-  const HtmlTypo = ({ children, ...rest }) => {
   const html = normalizeInlineHtml(String(children ?? ""));
   return (
     <Typography
+      variant={variant}
+      sx={sx}
       {...rest}
       dangerouslySetInnerHTML={{ __html: safeHtml(html) }}
     />
   );
-};
 }
 
 /** Convert schema maxWidth ("full" => false) to MUI Container prop */

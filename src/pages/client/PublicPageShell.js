@@ -1,5 +1,5 @@
 // src/pages/client/PublicPageShell.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
   AppBar, Toolbar, Button, Container, Box, Stack, Typography,
@@ -9,8 +9,125 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { Link as RouterLink, useParams, useNavigate, useLocation } from "react-router-dom";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
 import { publicSite } from "../../utils/api"; // added for edit guard
+import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../../utils/navStyle";
+import NavStyleHydrator from "../../components/website/NavStyleHydrator";
 
 const API = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
+
+const PublicSiteContext = createContext(null);
+
+export function usePublicSite() {
+  return useContext(PublicSiteContext);
+}
+
+const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
+
+const cloneStyle = (val) => {
+  if (!isPlainObject(val)) return null;
+  try {
+    return JSON.parse(JSON.stringify(val));
+  } catch {
+    return { ...val };
+  }
+};
+
+const extractPageStyleProps = (page) => {
+  if (!page) return null;
+  const sections = Array.isArray(page?.content?.sections) ? page.content.sections : [];
+  const section = sections.find((s) => s?.type === "pageStyle");
+  if (section?.props && isPlainObject(section.props)) {
+    const copy = cloneStyle(section.props);
+    if (copy && Object.keys(copy).length) return copy;
+  }
+  const meta = cloneStyle(page?.content?.meta?.pageStyle);
+  if (meta && Object.keys(meta).length) return meta;
+  return null;
+};
+
+const clamp01 = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return 0;
+  return Math.max(0, Math.min(1, num));
+};
+
+const hexToRgba = (hex, alpha = 1) => {
+  if (!hex) return undefined;
+  let h = String(hex).replace("#", "").trim();
+  if (!h) return undefined;
+  if (h.length === 3) {
+    h = h.split("").map((c) => c + c).join("");
+  } else if (h.length === 4) {
+    alpha = parseInt(h[3] + h[3], 16) / 255;
+    h = h.slice(0, 3).split("").map((c) => c + c).join("");
+  } else if (h.length === 8) {
+    alpha = parseInt(h.slice(6, 8), 16) / 255;
+    h = h.slice(0, 6);
+  }
+  if (h.length !== 6) return undefined;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${clamp01(alpha)})`;
+};
+
+const overlayColor = (color, opacity) => {
+  if (!color) return null;
+  const alpha = clamp01(opacity ?? 0);
+  if (alpha <= 0) return null;
+  const trimmed = String(color).trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("#")) {
+    return hexToRgba(trimmed, alpha);
+  }
+  return trimmed;
+};
+
+const toPx = (val) => (val === 0 || Number.isFinite(val) ? `${val}px` : undefined);
+
+const pageStyleToCssVars = (style) => {
+  if (!style) return null;
+  const vars = {};
+  const assign = (key, value) => {
+    if (value !== undefined && value !== null && value !== "") {
+      vars[key] = value;
+    }
+  };
+  assign("--page-heading-color", style.headingColor);
+  assign("--page-body-color", style.bodyColor);
+  assign("--page-link-color", style.linkColor);
+  assign("--page-heading-font", style.headingFont);
+  assign("--page-body-font", style.bodyFont);
+  assign("--page-hero-heading-shadow", style.heroHeadingShadow);
+  assign("--page-card-bg", style.cardBg || style.cardColor);
+  assign("--page-card-radius", toPx(style.cardRadius));
+  assign("--page-card-shadow", style.cardShadow);
+  assign("--page-card-blur", toPx(style.cardBlur));
+  assign("--page-btn-bg", style.btnBg);
+  assign("--page-btn-color", style.btnColor);
+  assign("--page-btn-radius", toPx(style.btnRadius));
+  return Object.keys(vars).length ? vars : null;
+};
+
+const pageStyleToBackgroundSx = (style) => {
+  if (!style) return null;
+  const sx = {};
+  if (style.backgroundColor) sx.backgroundColor = style.backgroundColor;
+  if (style.bodyColor) sx.color = style.bodyColor;
+  const overlay = overlayColor(style.overlayColor, style.overlayOpacity);
+  if (style.backgroundImage) {
+    const layers = [];
+    if (overlay) layers.push(`linear-gradient(${overlay}, ${overlay})`);
+    layers.push(`url(${style.backgroundImage})`);
+    sx.backgroundImage = layers.join(", ");
+  } else if (overlay) {
+    sx.backgroundImage = `linear-gradient(${overlay}, ${overlay})`;
+  }
+  if (style.backgroundRepeat) sx.backgroundRepeat = style.backgroundRepeat;
+  if (style.backgroundSize) sx.backgroundSize = style.backgroundSize;
+  if (style.backgroundPosition) sx.backgroundPosition = style.backgroundPosition;
+  if (style.backgroundAttachment) sx.backgroundAttachment = style.backgroundAttachment;
+  return Object.keys(sx).length ? sx : null;
+};
 
 function useClientAuthed() {
   const [authed, setAuthed] = useState(() => !!localStorage.getItem("token"));
@@ -62,10 +179,21 @@ function useEditGuard() {
 }
 
 // Inner shell that runs *inside* ThemeRuntimeProvider so useTheme() sees the site theme
-function ShellInner({ children, slug, pages, navCfg, activeKey }) {
+function ShellInner({
+  children,
+  slug,
+  pages,
+  navCfg,
+  activeKey,
+  pageStyleOverride,
+  pageCssVars,
+  navStyle,
+}) {
   const theme = useTheme();
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
+
+  const navTokens = useMemo(() => normalizeNavStyle(navStyle), [navStyle]);
 
   const authed = useClientAuthed();
   
@@ -205,6 +333,16 @@ function ShellInner({ children, slug, pages, navCfg, activeKey }) {
     return items;
   }, [navCfg, servicesHref, reviewsHref, productsHref, basketHref, pathname, slug, authed, pages]);
 
+  const allNavItems = useMemo(
+    () => [...mappedMenu, ...extraTabs],
+    [mappedMenu, extraTabs]
+  );
+
+  const navButtonSx = useMemo(
+    () => createNavButtonStyles(navTokens),
+    [navTokens]
+  );
+
   const title = (pages?.company?.name) || slug;
   // Basic role detection to show manager-only controls
   const roleStored = (typeof localStorage !== 'undefined' && localStorage.getItem('role')) || '';
@@ -226,6 +364,19 @@ function ShellInner({ children, slug, pages, navCfg, activeKey }) {
     "--sched-paper": theme.palette.background.paper,
     "--sched-text": theme.palette.text.primary,
   };
+  if (pageCssVars) {
+    Object.entries(pageCssVars).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        cssVars[key] = value;
+      }
+    });
+  }
+  const navCssVars = useMemo(() => navStyleToCssVars(navTokens), [navTokens]);
+  Object.entries(navCssVars).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      cssVars[key] = value;
+    }
+  });
 
   // Derive homepage Page Style to drive background for builtin pages
   const homePageStyle = useMemo(() => {
@@ -257,24 +408,58 @@ function ShellInner({ children, slug, pages, navCfg, activeKey }) {
     return out;
   }, [homePageStyle]);
 
+  const mergedBackground = useMemo(() => {
+    if (!pageStyleOverride) return bgSx;
+    return { ...bgSx, ...pageStyleOverride };
+  }, [bgSx, pageStyleOverride]);
+
   return (
     <>
       {/* Override global body colors for company sites */}
       <GlobalStyles
-        styles={{
-          body: {
-            backgroundColor: bgSx.backgroundColor || theme.palette.background.default,
-            color: theme.palette.text.primary,
-            backgroundImage: bgSx.backgroundImage,
-            backgroundRepeat: bgSx.backgroundRepeat,
-            backgroundSize: bgSx.backgroundSize,
-            backgroundPosition: bgSx.backgroundPosition,
-            backgroundAttachment: bgSx.backgroundAttachment,
-          },
-          a: { color: cssVars['--page-link-color'] || theme.palette.primary.main },
+        styles={(muiTheme) => {
+          const bodyStyles = {
+            backgroundColor:
+              (pageStyleOverride?.backgroundColor ??
+                mergedBackground.backgroundColor ??
+                cssVars["--sched-bg"]) ||
+              muiTheme.palette.background.default,
+            color:
+              cssVars["--page-body-color"] ||
+              mergedBackground.color ||
+              muiTheme.palette.text.primary,
+          };
+          const bgImg =
+            pageStyleOverride?.backgroundImage || mergedBackground.backgroundImage;
+          if (bgImg) bodyStyles.backgroundImage = bgImg;
+          const bgRepeat =
+            pageStyleOverride?.backgroundRepeat || mergedBackground.backgroundRepeat;
+          if (bgRepeat) bodyStyles.backgroundRepeat = bgRepeat;
+          const bgSize =
+            pageStyleOverride?.backgroundSize || mergedBackground.backgroundSize;
+          if (bgSize) bodyStyles.backgroundSize = bgSize;
+          const bgPos =
+            pageStyleOverride?.backgroundPosition ||
+            mergedBackground.backgroundPosition;
+          if (bgPos) bodyStyles.backgroundPosition = bgPos;
+          const bgAttach =
+            pageStyleOverride?.backgroundAttachment ||
+            mergedBackground.backgroundAttachment;
+          if (bgAttach) bodyStyles.backgroundAttachment = bgAttach;
+
+          return {
+            body: bodyStyles,
+            ":root": cssVars,
+            a: {
+              color:
+                cssVars["--page-link-color"] || muiTheme.palette.primary.main,
+            },
+          };
         }}
       />
       <CssBaseline />
+
+      <NavStyleHydrator website={{ nav_style: navStyle }} scopeSelector=".page-scope .site-nav" />
 
       <Box
         className="page-scope"
@@ -293,7 +478,7 @@ function ShellInner({ children, slug, pages, navCfg, activeKey }) {
           const baseStyles = {
             minHeight: hideChrome ? '100%' : '100vh',
             color: 'text.primary',
-            ...bgSx,
+            ...mergedBackground,
             ...cssVars,
             ...embedVars,
           };
@@ -304,7 +489,7 @@ function ShellInner({ children, slug, pages, navCfg, activeKey }) {
         }}
       >
         {!hideChrome && (
-          <AppBar position="sticky" color="default" enableColorOnDark>
+          <AppBar className="site-nav" position="sticky" color="default" enableColorOnDark>
             <Toolbar sx={{ gap: 1 }}>
               <IconButton edge="start" size="small" sx={{ display: { xs: "inline-flex", md: "none" } }}>
               <MenuIcon />
@@ -315,19 +500,41 @@ function ShellInner({ children, slug, pages, navCfg, activeKey }) {
               noWrap
               component={RouterLink}
               to={`/${slug}`}
-              sx={{ textDecoration: "none", color: "inherit", mr: 2 }}
+              sx={{
+                textDecoration: "none",
+                color: "var(--nav-btn-text, inherit)",
+                mr: 2,
+                fontWeight: navStyle.font_weight ?? 600,
+                textTransform: navStyle.text_transform ?? "none",
+                fontFamily: "var(--nav-brand-font-family, inherit)",
+                fontSize: `var(--nav-brand-font-size, ${navStyle.brand_font_size || 20}px)`
+              }}
             >
               {title}
             </Typography>
 
-            <Stack direction="row" spacing={1} sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, justifyContent: 'center' }}>
-              {[...mappedMenu, ...extraTabs].map((item) => (
+            <Stack
+              direction="row"
+              spacing={0}
+              sx={{
+                flexGrow: 1,
+                display: { xs: "none", md: "flex" },
+                justifyContent: "center",
+                gap: `${navTokens.item_spacing}px`,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              {allNavItems.map((item) => (
                 <Button
                   key={item.key}
                   component={RouterLink}
                   to={item.to}
-                  color={item.active ? "primary" : "inherit"}
-                  sx={{ fontWeight: item.active ? 700 : 500 }}
+                  className="nav-btn"
+                  variant="text"
+                  color="inherit"
+                  disableElevation
+                  sx={navButtonSx(item.active)}
                 >
                   {item.label}
                 </Button>
@@ -335,7 +542,7 @@ function ShellInner({ children, slug, pages, navCfg, activeKey }) {
             </Stack>
 
             {!authed ? (
-              <Button variant="contained" component={RouterLink} to={`/login?site=${encodeURIComponent(slug)}`}>
+              <Button className="nav-btn" variant="contained" component={RouterLink} to={`/login?site=${encodeURIComponent(slug)}`}>
                 Login
               </Button>
             ) : (
@@ -349,10 +556,10 @@ function ShellInner({ children, slug, pages, navCfg, activeKey }) {
                     Manage Site
                   </Button>
                 )}
-                <Button component={RouterLink} to={`/dashboard?site=${encodeURIComponent(slug)}`}>
+                <Button className="nav-btn" component={RouterLink} to={`/dashboard?site=${encodeURIComponent(slug)}`}>
                   Dashboard
                 </Button>
-                <Button variant="outlined" onClick={handleLogout}>Logout</Button>
+                <Button className="nav-btn" variant="outlined" onClick={handleLogout}>Logout</Button>
               </Stack>
             )}
           </Toolbar>
@@ -374,7 +581,13 @@ function ShellInner({ children, slug, pages, navCfg, activeKey }) {
   );
 }
 
-export default function PublicPageShell({ children, activeKey, slugOverride }) {
+export default function PublicPageShell({
+  children,
+  activeKey,
+  slugOverride,
+  pageStyleOverride,
+  pageCssVars,
+}) {
   const { slug: routeSlug } = useParams();
   const slug = slugOverride || routeSlug;
   const { search } = useLocation();
@@ -463,6 +676,19 @@ export default function PublicPageShell({ children, activeKey, slugOverride }) {
     site?.theme ||
     {};
 
+  const navStyleSource = useMemo(
+    () =>
+      site?.nav_style ||
+      site?.settings?.nav_style ||
+      site?.website_setting?.settings?.nav_style ||
+      {},
+    [site]
+  );
+  const navStyle = useMemo(
+    () => normalizeNavStyle(navStyleSource),
+    [navStyleSource]
+  );
+
   const adjustedOverrides = useMemo(() => {
     try {
       const qs = new URLSearchParams(search || "");
@@ -479,15 +705,63 @@ export default function PublicPageShell({ children, activeKey, slugOverride }) {
     } catch { return themeOverrides; }
   }, [search, themeOverrides]);
 
+  const servicesPageStyle = useMemo(() => {
+    const slugs = [
+      (navCfg?.services_page_slug || "").toLowerCase(),
+      "services-classic",
+      "services",
+    ].filter(Boolean);
+    for (const slugCandidate of slugs) {
+      const match = pages.find(
+        (p) => String(p?.slug || "").toLowerCase() === slugCandidate
+      );
+      const style = extractPageStyleProps(match);
+      if (style && Object.keys(style).length) return style;
+    }
+    return null;
+  }, [pages, navCfg]);
+
+  const derivedServiceCssVars = useMemo(
+    () => (servicesPageStyle ? pageStyleToCssVars(servicesPageStyle) : null),
+    [servicesPageStyle]
+  );
+  const derivedServiceBackground = useMemo(
+    () => (servicesPageStyle ? pageStyleToBackgroundSx(servicesPageStyle) : null),
+    [servicesPageStyle]
+  );
+
+  const finalPageStyleOverride =
+    pageStyleOverride ||
+    (activeKey === "__services" ? derivedServiceBackground : null);
+  const finalPageCssVars =
+    pageCssVars || (activeKey === "__services" ? derivedServiceCssVars : null);
+
   return (
     <ThemeRuntimeProvider overrides={adjustedOverrides}>
-      {innerContent || (
-        <ShellInner slug={slug} pages={pages} navCfg={navCfg} activeKey={activeKey}>
-          {children}
-        </ShellInner>
-      )}
+      <PublicSiteContext.Provider
+        value={{
+          site,
+          slug,
+          pages,
+          navCfg,
+          navStyle,
+          themeOverrides: adjustedOverrides,
+        }}
+      >
+        {innerContent || (
+          <ShellInner
+            slug={slug}
+            pages={pages}
+            navCfg={navCfg}
+            activeKey={activeKey}
+            pageStyleOverride={finalPageStyleOverride}
+            pageCssVars={finalPageCssVars}
+            navStyle={navStyle}
+          >
+            {children}
+          </ShellInner>
+        )}
+      </PublicSiteContext.Provider>
     </ThemeRuntimeProvider>
   );
 }
-
-

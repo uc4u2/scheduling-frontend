@@ -29,12 +29,6 @@ export default function AddonManagement({ token }) {
   const [imageTarget, setImageTarget] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
   const auth = { headers: { Authorization: `Bearer ${token}` } };
-  const resolveImageUrl = (img) => {
-    if (!img) return "";
-    if (img.url_public) return img.url_public;
-    const base = API || (typeof window !== "undefined" ? window.location.origin : "");
-    return `${base}/public/addon-images/${img.id}`;
-  };
 
   /* ------------------------------------------------ Fetch */
   const fetchAll = async () => {
@@ -95,32 +89,21 @@ export default function AddonManagement({ token }) {
     setOpen(true);
   };
 
-  const fetchAddonDetail = async (id) => {
-    const { data } = await axios.get(`${API}/manager/addons/${id}`, auth);
-    return data;
-  };
-
   const openImages = async (row) => {
+    setImageModal(true);
+    setImageTarget(null);
     try {
-      const detail = await fetchAddonDetail(row.id);
-      setImageTarget(detail);
-      setImageModal(true);
+      const { data } = await axios.get(`${API}/manager/addons/${row.id}`, auth);
+      setImageTarget(data);
     } catch (err) {
-      console.error("AddonManagement image load error", err);
-      setSnk({ open:true, msg:"Load failed" });
+      console.error("AddonManagement openImages error", err);
+      setSnk({ open:true, msg:"Failed to load images" });
     }
   };
 
   const closeImages = () => {
     setImageModal(false);
     setImageTarget(null);
-    setImageUploading(false);
-  };
-
-  const refreshImages = async (id) => {
-    const detail = await fetchAddonDetail(id);
-    setImageTarget(detail);
-    await fetchAll();
   };
 
   const handleFileUpload = async (event) => {
@@ -132,18 +115,26 @@ export default function AddonManagement({ token }) {
 
     setImageUploading(true);
     try {
-      await axios.post(`${API}/manager/addons/${imageTarget.id}/images`, formData, {
-        headers: {
-          ...auth.headers,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      await refreshImages(imageTarget.id);
+      await axios.post(
+        `${API}/manager/addons/${imageTarget.id}/images`,
+        formData,
+        {
+          ...auth,
+          headers: {
+            ...auth.headers,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      const { data } = await axios.get(`${API}/manager/addons/${imageTarget.id}`, auth);
+      setImageTarget(data);
+      setSnk({ open:true, msg:"Image uploaded" });
     } catch (err) {
-      console.error("AddonManagement image upload error", err);
-      setSnk({ open:true, msg:"Save failed" });
+      console.error("AddonManagement upload image error", err);
+      setSnk({ open:true, msg:"Upload failed" });
     } finally {
       setImageUploading(false);
+      if (event?.target) event.target.value = "";
     }
   };
 
@@ -151,9 +142,11 @@ export default function AddonManagement({ token }) {
     if (!imageTarget) return;
     try {
       await axios.delete(`${API}/manager/addon-images/${imageId}`, auth);
-      await refreshImages(imageTarget.id);
+      const { data } = await axios.get(`${API}/manager/addons/${imageTarget.id}`, auth);
+      setImageTarget(data);
+      setSnk({ open:true, msg:"Image removed" });
     } catch (err) {
-      console.error("AddonManagement image delete error", err);
+      console.error("AddonManagement remove image error", err);
       setSnk({ open:true, msg:"Delete failed" });
     }
   };
@@ -180,10 +173,10 @@ export default function AddonManagement({ token }) {
               valueFormatter:p=>`$${Number(p.value).toFixed(2)}` },
             { field:"duration",    headerName:"Min", width:90 },
             {
-              field:"actions", headerName:"", width:180, renderCell:p=>(
+              field:"actions", headerName:"", width:160, renderCell:p=>(
                 <>
+                  <IconButton color="primary" onClick={()=>openImages(p.row)}><PhotoCamera/></IconButton>
                   <IconButton onClick={()=>show(p.row)}><Edit/></IconButton>
-                  <IconButton onClick={()=>openImages(p.row)}><PhotoCamera/></IconButton>
                   <IconButton color="error" onClick={()=>del(p.row.id)}><Delete/></IconButton>
                 </>
               )
@@ -229,8 +222,12 @@ export default function AddonManagement({ token }) {
         </DialogActions>
       </Dialog>
 
+      <Snackbar open={snk.open} autoHideDuration={3000}
+                message={snk.msg}
+                onClose={()=>setSnk({...snk,open:false})}/>
+
       <Dialog open={imageModal} onClose={closeImages} maxWidth="md" fullWidth>
-        <DialogTitle>Addon Images</DialogTitle>
+        <DialogTitle>Addon images</DialogTitle>
         <DialogContent dividers>
           {!imageTarget ? (
             <Box py={4} textAlign="center">
@@ -244,24 +241,40 @@ export default function AddonManagement({ token }) {
               <Stack direction="row" spacing={2} alignItems="center">
                 <Button
                   variant="outlined"
-                  startIcon={<CloudUpload />}
                   component="label"
+                  startIcon={<CloudUpload />}
                   disabled={imageUploading}
                 >
-                  Upload Image
+                  Upload image
                   <input hidden type="file" accept="image/*" onChange={handleFileUpload} />
                 </Button>
-                {imageUploading && <Typography variant="body2">Uploading…</Typography>}
+                {imageUploading && (
+                  <Typography variant="body2">Uploading…</Typography>
+                )}
               </Stack>
               <Stack direction="row" spacing={2} flexWrap="wrap">
                 {(imageTarget.images || []).map((img) => (
-                  <Paper key={img.id} sx={{ p: 1, width: 160 }} variant="outlined">
-                    <Box sx={{ position: "relative", pb: "100%", borderRadius: 2, overflow: "hidden", mb: 1 }}>
+                  <Paper key={img.id} sx={{ p:1, width:160 }} variant="outlined">
+                    <Box
+                      sx={{
+                        position:"relative",
+                        pb:"100%",
+                        borderRadius:2,
+                        overflow:"hidden",
+                        mb:1,
+                      }}
+                    >
                       <Box
                         component="img"
-                        src={resolveImageUrl(img)}
-                        alt={img.filename || ""}
-                        sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                        src={img.url_public || img.url}
+                        alt={img.filename}
+                        sx={{
+                          position:"absolute",
+                          inset:0,
+                          width:"100%",
+                          height:"100%",
+                          objectFit:"cover",
+                        }}
                       />
                     </Box>
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -276,7 +289,7 @@ export default function AddonManagement({ token }) {
                 ))}
                 {(imageTarget.images || []).length === 0 && (
                   <Typography variant="body2" color="text.secondary">
-                    No images uploaded yet.
+                    No images yet
                   </Typography>
                 )}
               </Stack>
@@ -287,10 +300,6 @@ export default function AddonManagement({ token }) {
           <Button onClick={closeImages}>Close</Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar open={snk.open} autoHideDuration={3000}
-                message={snk.msg}
-                onClose={()=>setSnk({...snk,open:false})}/>
     </Box>
   );
 }

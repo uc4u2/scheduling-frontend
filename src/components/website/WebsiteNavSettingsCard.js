@@ -1,314 +1,622 @@
 // src/components/website/WebsiteNavSettingsCard.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
+  Box,
+  Button,
   Card,
-  CardHeader,
   CardContent,
+  CardHeader,
+  Chip,
   Divider,
+  Grid,
+  MenuItem,
+  Slider,
   Stack,
   TextField,
-  Switch,
-  FormControlLabel,
-  Button,
-  Alert,
-  MenuItem,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { wb } from "../../utils/api";
-import { getAuthedCompanyId } from "../../utils/authedCompany";
+import { useTheme } from "@mui/material/styles";
+import {
+  NAV_STYLE_DEFAULT,
+  normalizeNavStyle,
+  navStyleToCssVars,
+  createNavButtonStyles,
+} from "../../utils/navStyle";
+import {
+  NAV_STYLE_PRESETS,
+  NAV_COLOR_PRESETS,
+  NAV_SHADOW_PRESETS,
+  getPresetStyle,
+} from "../../constants/navPresets";
 
-/**
- * Website navigation + title controls.
- * Fixes "toggle flips back on" by normalizing stringy booleans and never
- * overwriting local state with bad defaults.
- */
+const VARIANT_OPTIONS = [
+  { value: "pill", label: "Pill / Filled" },
+  { value: "button", label: "Solid Button" },
+  { value: "underline", label: "Underline" },
+  { value: "ghost", label: "Outline / Ghost" },
+  { value: "link", label: "Link" },
+  { value: "text", label: "Plain text" },
+];
+
+const TEXT_TRANSFORM_OPTIONS = [
+  { value: "none", label: "None" },
+  { value: "uppercase", label: "Uppercase" },
+  { value: "capitalize", label: "Capitalize" },
+  { value: "lowercase", label: "Lowercase" },
+];
+
+const NAV_BUTTON_LABELS = ["Home", "Services", "Reviews"];
+const NAV_KEYS = Object.keys(NAV_STYLE_DEFAULT);
+
+const BRAND_FONT_OPTIONS = [
+  { value: "inherit", label: "Theme default" },
+  { value: "'Helvetica Neue', Arial, sans-serif", label: "Helvetica / Arial" },
+  { value: "'Poppins', 'Helvetica Neue', sans-serif", label: "Poppins" },
+  { value: "'Playfair Display', Georgia, serif", label: "Playfair Display" },
+  { value: "'Georgia', serif", label: "Georgia" },
+  { value: "'Courier New', monospace", label: "Courier" },
+];
+
+const stylesEqual = (a, b) =>
+  NAV_KEYS.every((key) => (a[key] ?? null) === (b[key] ?? null));
+
+const NavPreview = ({ tokens, highlightActive = true }) => {
+  const theme = useTheme();
+  const buttonStyles = useMemo(
+    () => createNavButtonStyles(tokens),
+    [tokens]
+  );
+  const cssVars = useMemo(() => {
+    const vars = navStyleToCssVars(tokens);
+    if (!vars["--sched-primary"]) {
+      vars["--sched-primary"] = theme.palette.primary.main;
+    }
+    if (!vars["--sched-text"]) {
+      vars["--sched-text"] = theme.palette.text.primary;
+    }
+    return vars;
+  }, [tokens, theme]);
+
+  return (
+    <Box
+      sx={{
+        borderRadius: 2,
+        border: (muiTheme) => `1px solid ${muiTheme.palette.divider}`,
+        p: 2,
+        backgroundColor:
+          tokens.variant === "underline"
+            ? "transparent"
+            : "rgba(148,163,184,0.08)",
+        ...cssVars,
+      }}
+    >
+      <Stack spacing={1}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            color: "var(--nav-btn-text, inherit)",
+            fontWeight: tokens.font_weight || 600,
+            textTransform: tokens.text_transform || "none",
+            fontFamily: "var(--nav-brand-font-family, inherit)",
+            fontSize: "var(--nav-brand-font-size, 20px)",
+          }}
+        >
+          Brand / Company
+        </Typography>
+        <Stack
+          direction="row"
+          spacing={0}
+          sx={{
+            gap: `${tokens.item_spacing}px`,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          {NAV_BUTTON_LABELS.map((label, idx) => (
+            <Box
+              key={label}
+              sx={buttonStyles(highlightActive ? idx === 1 : false)}
+            >
+              {label}
+            </Box>
+          ))}
+        </Stack>
+      </Stack>
+    </Box>
+  );
+};
+
+const ColorField = ({ label, value, onChange, placeholder }) => {
+  const inputRef = useRef(null);
+  const effectiveValue = value || "";
+  const isHex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(effectiveValue);
+  const pickerValue = isHex ? effectiveValue : "#000000";
+
+  const triggerPicker = () => {
+    inputRef.current?.click();
+  };
+
+  return (
+    <Stack spacing={0.75}>
+      <Typography variant="body2">{label}</Typography>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Box
+          onClick={triggerPicker}
+          sx={{
+            width: 36,
+            height: 32,
+            borderRadius: 1,
+            border: (theme) => `1px solid ${theme.palette.divider}`,
+            background: effectiveValue || "transparent",
+            cursor: "pointer",
+            position: "relative",
+          }}
+        />
+        <input
+          type="color"
+          ref={inputRef}
+          value={pickerValue}
+          onChange={(e) => onChange(e.target.value)}
+          style={{ display: "none" }}
+        />
+        <TextField
+          size="small"
+          value={effectiveValue}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          sx={{ flex: 1 }}
+        />
+        <Button size="small" onClick={() => onChange(null)} disabled={!effectiveValue}>
+          Clear
+        </Button>
+      </Stack>
+    </Stack>
+  );
+};
+
 export default function WebsiteNavSettingsCard({
-  companyId: propCompanyId,
-  initialSettings,
-  onSaved,
+  companyId,
+  value,
+  onChange,
+  onSave,
+  saving = false,
+  message = "",
+  error = "",
 }) {
-  const companyId = useMemo(
-    () => Number(propCompanyId || getAuthedCompanyId() || 0),
-    [propCompanyId]
+  const theme = useTheme();
+  const normalizedCompanyId = Number(companyId || 0);
+
+  const [navStyle, setNavStyle] = useState(() =>
+    normalizeNavStyle(
+      value?.nav_style ?? value?.settings?.nav_style ?? NAV_STYLE_DEFAULT
+    )
   );
 
-  const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
+  const lastStyleHashRef = useRef("");
 
-  const [siteTitle, setSiteTitle] = useState("");
-
-  const [nav, setNav] = useState({
-    show_services_tab: true,
-    services_tab_target: "builtin", // builtin | page
-    services_page_slug: "services",
-    show_reviews_tab: true,
-    reviews_tab_target: "builtin", // builtin | page
-    reviews_page_slug: "reviews",
-  });
-
-  // Track the last applied settings hash to avoid redundant re-applies.
-  const lastAppliedHashRef = useRef("");
-
-  // ---------- helpers ----------
-  const toBool = (v, def = true) => {
-    if (v === true || v === false) return v;
-    if (v === 1 || v === 0) return Boolean(v);
-    if (typeof v === "string") {
-      return !/^(0|false|no|off|null|undefined)$/i.test(v.trim());
-    }
-    return v == null ? def : Boolean(v);
-  };
-
-  const sanitizeNav = (raw = {}, prev = undefined) => {
-    const prior = prev || {};
-    const svcTarget = (raw.services_tab_target || prior.services_tab_target || "builtin").toLowerCase() === "page" ? "page" : "builtin";
-    const revTarget = (raw.reviews_tab_target || prior.reviews_tab_target || "builtin").toLowerCase() === "page" ? "page" : "builtin";
-
-    const svcSlug = (raw.services_page_slug || prior.services_page_slug || "services").toString().trim() || "services";
-    const revSlug = (raw.reviews_page_slug || prior.reviews_page_slug || "reviews").toString().trim() || "reviews";
-
-    return {
-      show_services_tab: toBool(raw.show_services_tab, prior.show_services_tab ?? true),
-      services_tab_target: svcTarget,
-      services_page_slug: svcSlug,
-      show_reviews_tab: toBool(raw.show_reviews_tab, prior.show_reviews_tab ?? true),
-      reviews_tab_target: revTarget,
-      reviews_page_slug: revSlug,
-    };
-  };
-
-  const hashSettings = (obj) => {
-    try {
-      return JSON.stringify(obj || {});
-    } catch {
-      return "";
-    }
-  };
-
-  // ---------- apply from initialSettings (if provided by parent) ----------
-  useEffect(() => {
-    if (!initialSettings) return;
-
-    const incoming = {
-      site_title:
-        initialSettings?.site_title ??
-        initialSettings?.settings?.site_title ??
-        "",
-      nav_overrides:
-        initialSettings?.nav_overrides ??
-        initialSettings?.settings?.nav_overrides ??
-        {},
-    };
-
-    const nextHash = hashSettings(incoming);
-    if (nextHash && nextHash !== lastAppliedHashRef.current) {
-      setSiteTitle(incoming.site_title || "");
-      setNav((prev) => sanitizeNav(incoming.nav_overrides || {}, prev));
-      lastAppliedHashRef.current = nextHash;
-    }
-  }, [initialSettings]);
-
-  // ---------- initial load from API (manager endpoint adds X-Company-Id) ----------
-  useEffect(() => {
-    if (!companyId) return;
-    let alive = true;
-
-    (async () => {
-      setLoading(true);
-      setErr("");
-      try {
-        const res = await wb.getSettings(companyId);
-        const data = res?.data || res || {};
-
-        const incoming = {
-          site_title: data?.site_title || data?.settings?.site_title || "",
-          nav_overrides: data?.nav_overrides || data?.settings?.nav_overrides || {},
-        };
-
-        if (!alive) return;
-
-        const nextHash = hashSettings(incoming);
-        if (nextHash && nextHash !== lastAppliedHashRef.current) {
-          setSiteTitle(incoming.site_title || "");
-          setNav((prev) => sanitizeNav(incoming.nav_overrides || {}, prev));
-          lastAppliedHashRef.current = nextHash;
-        }
-      } catch (e) {
-        if (!alive) return;
-        setErr(e?.response?.data?.error || "Failed to load website settings.");
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [companyId]);
-
-  // ---------- save ----------
-  const save = async () => {
-    if (!companyId) {
-      setErr("company id missing");
-      return;
-    }
-
-    setBusy(true);
-    setMsg("");
-    setErr("");
-
-    try {
-      const payload = {
-        site_title: (siteTitle || "").trim() || null,
-        nav_overrides: {
-          show_services_tab: !!nav.show_services_tab,
-          services_tab_target: nav.services_tab_target === "page" ? "page" : "builtin",
-          services_page_slug: (nav.services_page_slug || "services").trim() || "services",
-          show_reviews_tab: !!nav.show_reviews_tab,
-          reviews_tab_target: nav.reviews_tab_target === "page" ? "page" : "builtin",
-          reviews_page_slug: (nav.reviews_page_slug || "reviews").trim() || "reviews",
-        },
-      };
-
-      const res = await wb.saveSettings(companyId, payload);
-      const data = res?.data || res || {};
-
-      // Prefer server echo if present, else keep our payload (prevents flip-flop)
-      const returnedNav =
-        data?.nav_overrides ||
-        data?.settings?.nav_overrides ||
-        payload.nav_overrides;
-
-      setSiteTitle(
-        data?.site_title || data?.settings?.site_title || payload.site_title || ""
-      );
-      setNav((prev) => sanitizeNav(returnedNav || {}, prev));
-
-      // Advance the applied-hash, so future GETs don’t overwrite what we just saved.
-      const nextHash = hashSettings({
-        site_title:
-          data?.site_title || data?.settings?.site_title || payload.site_title,
-        nav_overrides: returnedNav,
-      });
-      if (nextHash) lastAppliedHashRef.current = nextHash;
-
-      setMsg("Saved ✔");
-      onSaved?.(data);
-    } catch (e) {
-      const server = e?.response?.data;
-      setErr(server?.error || server?.message || e.message || "Save failed.");
-      // eslint-disable-next-line no-console
-      console.error("[WebsiteNavSettingsCard] save error", e?.response || e);
-    } finally {
-      setBusy(false);
-      if (!err) setTimeout(() => setMsg(""), 3000);
-    }
-  };
-
-  const onChange = (key, val) => {
-    setNav((prev) => {
-      const next = { ...prev, [key]: val };
-      return sanitizeNav(next, prev); // ensure booleans stay booleans
+  const emitChange = (nextStyle) => {
+    if (!onChange) return;
+    onChange({
+      nav_style: normalizeNavStyle(nextStyle || NAV_STYLE_DEFAULT),
     });
   };
+
+  useEffect(() => {
+    const incomingStyle = normalizeNavStyle(
+      value?.nav_style ?? value?.settings?.nav_style ?? NAV_STYLE_DEFAULT
+    );
+    const hash = JSON.stringify(incomingStyle);
+    if (hash !== lastStyleHashRef.current) {
+      setNavStyle(incomingStyle);
+      lastStyleHashRef.current = hash;
+    }
+  }, [value]);
+
+  const updateNavStyleField = (key, input) => {
+    const next =
+      typeof input === "string" && !input.trim()
+        ? null
+        : input;
+    setNavStyle((prev) => {
+      const merged = normalizeNavStyle({ ...(prev || {}), [key]: next });
+      emitChange(merged);
+      return merged;
+    });
+  };
+
+  const applyPreset = (preset) => {
+    const style = normalizeNavStyle(getPresetStyle(preset));
+    setNavStyle(style);
+    emitChange(style);
+  };
+
+  const applyColorPreset = (preset) => {
+    const style = normalizeNavStyle({ ...navStyle, ...(preset?.colors || {}) });
+    setNavStyle(style);
+    emitChange(style);
+  };
+
+  const applyShadowPreset = (preset) => {
+    const value = !preset || preset.value === "none" ? "none" : preset.value;
+    updateNavStyleField("shadow", value);
+  };
+
+  const resetNavStyle = () => {
+    const reset = normalizeNavStyle(NAV_STYLE_DEFAULT);
+    setNavStyle(reset);
+    emitChange(reset);
+  };
+
+const handleSave = () => {
+  if (!onSave) return;
+  const full = normalizeNavStyle(navStyle);
+  onSave({ settings: { nav_style: full } });
+};
+
+  const previewStyle = useMemo(() => normalizeNavStyle(navStyle), [navStyle]);
+  const navCssVars = useMemo(
+    () => ({
+      "--sched-primary": theme.palette.primary.main,
+      "--sched-text": theme.palette.text.primary,
+      ...navStyleToCssVars(previewStyle),
+    }),
+    [previewStyle, theme]
+  );
+
+  const activePresetId = useMemo(() => {
+    const match = NAV_STYLE_PRESETS.find((preset) =>
+      stylesEqual(previewStyle, getPresetStyle(preset))
+    );
+    return match?.id || null;
+  }, [previewStyle]);
+
+  const activeColorPresetId = useMemo(() => {
+    const match = NAV_COLOR_PRESETS.find((preset) =>
+      Object.entries(preset.colors).every(
+        ([key, value]) => (previewStyle[key] ?? null) === (value ?? null)
+      )
+    );
+    return match?.id || null;
+  }, [previewStyle]);
+
+  const activeShadowPresetId = useMemo(() => {
+    if (!previewStyle.shadow || previewStyle.shadow === "none") {
+      return NAV_SHADOW_PRESETS[0]?.id || "none";
+    }
+    const match = NAV_SHADOW_PRESETS.find(
+      (preset) => preset.value === previewStyle.shadow
+    );
+    return match?.id || null;
+  }, [previewStyle]);
+
+  if (!value) {
+    return (
+      <Card variant="outlined">
+        <CardHeader title="Website Navigation & Menu" />
+        <Divider />
+        <CardContent>
+          <Alert severity="info">Loading navigation settings…</Alert>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card variant="outlined">
       <CardHeader
-        title="Website Navigation / Title"
+        title="Website Navigation & Menu"
         subheader={
           <Typography variant="caption" color="text.secondary">
-            {companyId ? `company_id=${companyId}` : "company id missing"}
+            {normalizedCompanyId
+              ? `company_id=${normalizedCompanyId}`
+              : "Company id missing"}
           </Typography>
         }
       />
       <Divider />
-      <CardContent>
-        <Stack spacing={2}>
-          {msg && <Alert severity="success">{msg}</Alert>}
-          {err && <Alert severity="error">{err}</Alert>}
-          {loading && <Alert severity="info">Loading…</Alert>}
+      <CardContent sx={{ position: "relative" }}>
+        <Stack spacing={2} sx={{ mb: 2 }}>
+          {message && <Alert severity="success">{message}</Alert>}
+          {error && <Alert severity="error">{error}</Alert>}
+        </Stack>
 
-          <TextField
-            label="Site title"
-            size="small"
-            value={siteTitle}
-            onChange={(e) => setSiteTitle(e.target.value)}
-          />
+        <Box
+          sx={{
+            position: "sticky",
+            top: (theme) => theme.spacing(2),
+            zIndex: 5,
+            backgroundColor: (theme) => theme.palette.background.paper,
+            borderRadius: 2,
+            border: 1,
+            borderColor: "divider",
+            boxShadow: (theme) => theme.shadows[1],
+            p: 2,
+            mb: 3,
+          }}
+        >
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Live preview</Typography>
+            <Box sx={navCssVars}>
+              <NavPreview tokens={previewStyle} />
+            </Box>
+            <Stack direction="row" spacing={1} justifyContent="flex-end">
+              <Tooltip title="Reset navigation style to defaults">
+                <span>
+                  <Button
+                    size="small"
+                    onClick={resetNavStyle}
+                    disabled={saving}
+                    variant="outlined"
+                    color="inherit"
+                  >
+                    Reset style
+                  </Button>
+                </span>
+              </Tooltip>
+              <Button variant="contained" disabled={saving} onClick={handleSave}>
+                {saving ? "Saving…" : "Save"}
+              </Button>
+            </Stack>
+          </Stack>
+        </Box>
 
-          {/* Services tab controls */}
-          <FormControlLabel
-            control={
-              <Switch
-                checked={!!nav.show_services_tab}
-                onChange={(_, v) => onChange("show_services_tab", v)}
-              />
-            }
-            label="Show Services tab"
-          />
+        <Stack spacing={3}>
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Quick presets</Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {NAV_STYLE_PRESETS.map((preset) => {
+                const active = activePresetId === preset.id;
+                return (
+                  <Chip
+                    key={preset.id}
+                    label={preset.name}
+                    clickable
+                    color={active ? "primary" : "default"}
+                    variant={active ? "filled" : "outlined"}
+                    onClick={() => applyPreset(preset)}
+                  />
+                );
+              })}
+            </Stack>
+            <Typography variant="subtitle2" sx={{ pt: 1 }}>
+              Colour palettes
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {NAV_COLOR_PRESETS.map((preset) => {
+                const active = activeColorPresetId === preset.id;
+                return (
+                  <Chip
+                    key={preset.id}
+                    label={preset.name}
+                    clickable
+                    color={active ? "primary" : "default"}
+                    variant={active ? "filled" : "outlined"}
+                    onClick={() => applyColorPreset(preset)}
+                    sx={{
+                      "& .MuiChip-label": {
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.75,
+                      },
+                    }}
+                  />
+                );
+              })}
+            </Stack>
+          </Stack>
 
-          <TextField
-            select
-            label="Services tab target"
-            size="small"
-            value={nav.services_tab_target}
-            onChange={(e) => onChange("services_tab_target", e.target.value)}
-            helperText='Choose "builtin" for booking UI or "page" to link to a custom page'
-          >
-            <MenuItem value="builtin">Built-in booking</MenuItem>
-            <MenuItem value="page">Custom page</MenuItem>
-          </TextField>
+          <Divider />
 
-          {nav.services_tab_target === "page" && (
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Menu colours</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <ColorField
+                  label="Background color"
+                  value={previewStyle.bg}
+                  onChange={(val) => updateNavStyleField("bg", val)}
+                  placeholder="#6366F1"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <ColorField
+                  label="Hover background"
+                  value={previewStyle.bg_hover}
+                  onChange={(val) => updateNavStyleField("bg_hover", val)}
+                  placeholder="#5A4AD1"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <ColorField
+                  label="Text color"
+                  value={previewStyle.text}
+                  onChange={(val) => updateNavStyleField("text", val)}
+                  placeholder="#ffffff"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <ColorField
+                  label="Hover text color"
+                  value={previewStyle.text_hover}
+                  onChange={(val) => updateNavStyleField("text_hover", val)}
+                  placeholder="#ffffff"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <ColorField
+                  label="Active background"
+                  value={previewStyle.active_bg}
+                  onChange={(val) => updateNavStyleField("active_bg", val)}
+                  placeholder="rgba(255,255,255,0.18)"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <ColorField
+                  label="Active text color"
+                  value={previewStyle.active_text}
+                  onChange={(val) => updateNavStyleField("active_text", val)}
+                  placeholder="#6366F1"
+                />
+              </Grid>
+            </Grid>
+          </Stack>
+
+          <Divider />
+
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Shadow</Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {NAV_SHADOW_PRESETS.map((preset) => {
+                const active = activeShadowPresetId === preset.id;
+                return (
+                  <Chip
+                    key={preset.id}
+                    label={preset.name}
+                    clickable
+                    color={active ? "primary" : "default"}
+                    variant={active ? "filled" : "outlined"}
+                    onClick={() => applyShadowPreset(preset)}
+                  />
+                );
+              })}
+            </Stack>
             <TextField
-              label="Services page slug"
               size="small"
-              value={nav.services_page_slug}
-              onChange={(e) => onChange("services_page_slug", e.target.value)}
-              helperText="Example: services"
+              label="Custom shadow"
+              value={previewStyle.shadow || ""}
+              onChange={(e) => updateNavStyleField("shadow", e.target.value)}
+              placeholder="e.g. 0 18px 36px rgba(15,23,42,0.16)"
             />
-          )}
+          </Stack>
 
-          <Divider sx={{ my: 1 }} />
+          <Divider />
 
-          {/* Reviews tab controls */}
-          <FormControlLabel
-            control={
-              <Switch
-                checked={!!nav.show_reviews_tab}
-                onChange={(_, v) => onChange("show_reviews_tab", v)}
-              />
-            }
-            label="Show Reviews tab"
-          />
-
-          <TextField
-            select
-            label="Reviews tab target"
-            size="small"
-            value={nav.reviews_tab_target}
-            onChange={(e) => onChange("reviews_tab_target", e.target.value)}
-            helperText='Choose "builtin" for the native reviews page or "page" to link to a custom page'
-          >
-            <MenuItem value="builtin">Built-in reviews</MenuItem>
-            <MenuItem value="page">Custom page</MenuItem>
-          </TextField>
-
-          {nav.reviews_tab_target === "page" && (
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Variants & typography</Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {VARIANT_OPTIONS.map((opt) => {
+                const active = previewStyle.variant === opt.value;
+                return (
+                  <Chip
+                    key={opt.value}
+                    label={opt.label}
+                    clickable
+                    color={active ? "primary" : "default"}
+                    variant={active ? "filled" : "outlined"}
+                    onClick={() => updateNavStyleField("variant", opt.value)}
+                  />
+                );
+              })}
+            </Stack>
             <TextField
-              label="Reviews page slug"
+              select
               size="small"
-              value={nav.reviews_page_slug}
-              onChange={(e) => onChange("reviews_page_slug", e.target.value)}
-              helperText="Example: reviews"
-            />
-          )}
+              label="Text transform"
+              value={previewStyle.text_transform}
+              onChange={(e) => updateNavStyleField("text_transform", e.target.value)}
+            >
+              {TEXT_TRANSFORM_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
 
-          <Button variant="contained" disabled={busy} onClick={save}>
-            {busy ? "Saving…" : "Save"}
-          </Button>
+          <Divider />
+
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Brand text</Typography>
+            <TextField
+              select
+              size="small"
+              label="Font family"
+              value={previewStyle.brand_font_family || "inherit"}
+              onChange={(e) => updateNavStyleField("brand_font_family", e.target.value)}
+            >
+              {BRAND_FONT_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Typography variant="body2" gutterBottom>
+              Font size ({previewStyle.brand_font_size}px)
+            </Typography>
+            <Slider
+              min={10}
+              max={48}
+              value={previewStyle.brand_font_size || 20}
+              onChange={(_, v) => updateNavStyleField("brand_font_size", v)}
+            />
+          </Stack>
+
+          <Divider />
+
+          <Stack spacing={2}>
+            <Typography variant="subtitle2">Spacing & layout</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="body2" gutterBottom>
+                  Border radius ({previewStyle.border_radius}px)
+                </Typography>
+                <Slider
+                  min={0}
+                  max={200}
+                  value={previewStyle.border_radius}
+                  onChange={(_, v) => updateNavStyleField("border_radius", v)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="body2" gutterBottom>
+                  Font weight ({previewStyle.font_weight})
+                </Typography>
+                <Slider
+                  min={200}
+                  max={800}
+                  step={50}
+                  value={previewStyle.font_weight}
+                  onChange={(_, v) => updateNavStyleField("font_weight", v)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="body2" gutterBottom>
+                  Horizontal padding ({previewStyle.padding_x}px)
+                </Typography>
+                <Slider
+                  min={0}
+                  max={80}
+                  value={previewStyle.padding_x}
+                  onChange={(_, v) => updateNavStyleField("padding_x", v)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="body2" gutterBottom>
+                  Vertical padding ({previewStyle.padding_y}px)
+                </Typography>
+                <Slider
+                  min={0}
+                  max={48}
+                  value={previewStyle.padding_y}
+                  onChange={(_, v) => updateNavStyleField("padding_y", v)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="body2" gutterBottom>
+                  Gap between buttons ({previewStyle.item_spacing}px)
+                </Typography>
+                <Slider
+                  min={0}
+                  max={40}
+                  value={previewStyle.item_spacing}
+                  onChange={(_, v) => updateNavStyleField("item_spacing", v)}
+                />
+              </Grid>
+            </Grid>
+          </Stack>
+
         </Stack>
       </CardContent>
     </Card>

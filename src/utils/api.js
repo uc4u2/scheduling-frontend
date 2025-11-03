@@ -486,7 +486,7 @@ export const publicSite = {
       .get(`/api/public/${encodeURIComponent(slug)}/website`, { noCompanyHeader: true })
       .then((r) => r.data),
 
-  sendContact: async (slug, payload = {}, formKey = (process.env.REACT_APP_CONTACT_FORM_KEY || 'contact')) => {
+  sendContact: async (slug, payload, formKey = (process.env.REACT_APP_CONTACT_FORM_KEY || 'contact')) => {
     const key = encodeURIComponent(formKey || 'contact');
     const url = `/api/public/${encodeURIComponent(slug)}/form/${key}`;
     const config = { noCompanyHeader: true };
@@ -503,24 +503,8 @@ export const publicSite = {
       /* noop */
     }
 
-    const body = typeof payload === "object" && payload !== null ? { ...payload } : {};
-    return api.post(url, body, config).then((r) => r.data);
-  },
-  sendCorporateContact: async (payload) => {
-    const url = `/api/contact`;
-    const config = { noCompanyHeader: true };
-    try {
-      if (typeof window !== 'undefined') {
-        const host = window.location.host || '';
-        const isLocalFrontend = /localhost:3\d{3}$/.test(host) || host.endsWith('.local');
-        if (isLocalFrontend && /^https?:\/\/localhost:5000/.test(API_BASE_URL)) {
-          config.baseURL = '';
-        }
-      }
-    } catch {
-      /* noop */
-    }
-    return api.post(url, payload, config).then((r) => r.data);
+    const { name, email, message } = payload;
+    return api.post(url, { name, email, message }, config).then((r) => r.data);
   },
 };
 
@@ -528,7 +512,9 @@ export const publicSite = {
 export const wb = {
   // SETTINGS (admin-first with fallback handled by the backend routes; we polyfill shapes here)
   async getSettings(companyId) {
-    const headers = { ...(companyId ? { "X-Company-Id": String(companyId) } : {}) };
+    const fallback = getAuthedCompanyId?.();
+    const cid = companyId ?? fallback;
+    const headers = cid ? { "X-Company-Id": String(cid) } : {};
     try {
       return await api.get("/admin/website/settings", { headers, params: { _ts: Date.now() } });
     } catch (e) {
@@ -540,17 +526,56 @@ export const wb = {
   },
 
   async saveSettings(companyId, payload) {
+    const fallback = getAuthedCompanyId?.();
+    const cid = companyId ?? fallback;
     const headers = {
       "Content-Type": "application/json",
-      ...(companyId ? { "X-Company-Id": String(companyId) } : {}),
+      ...(cid ? { "X-Company-Id": String(cid) } : {}),
     };
 
     // 🔧 Polyfill common shapes so backends with different schemas accept it
+    const flatPayload = Object.fromEntries(
+      Object.entries(payload || {}).filter(
+        ([key]) => key !== "settings" && key !== "website"
+      )
+    );
     const merged = {
       ...payload,
-      settings: { ...(payload.settings || {}), ...payload },
-      website:  { ...(payload.website  || {}), ...payload },
+      settings: {
+        ...(payload.settings || {}),
+        ...flatPayload,
+      },
+      website: {
+        ...(payload.website || {}),
+        ...flatPayload,
+      },
     };
+
+    if (merged?.settings?.nav_style) {
+      // DEBUG: confirm the *outgoing* tokens
+      console.log('[wb.saveSettings] sending nav_style:', merged.settings.nav_style);
+    }
+
+    const hoistKeys = [
+      'nav_style',
+      'nav_overrides',
+      'layout_lab_preset',
+      'theme_overrides',
+      'is_live',
+      'theme_id',
+    ];
+    const settingsBag = merged.settings || {};
+    hoistKeys.forEach((key) => {
+      if (settingsBag[key] === undefined) return;
+      if (merged[key] === undefined) {
+        merged[key] = settingsBag[key];
+      }
+      if (!merged.website) merged.website = {};
+      if (merged.website[key] === undefined) {
+        merged.website[key] = settingsBag[key];
+      }
+    });
+
 
     try {
       return await api.put("/admin/website/settings", merged, { headers });
@@ -602,20 +627,70 @@ export const wb = {
   publicBySlug: async (slug) => ({ data: await publicSite.getBySlug(slug) }),
 
   // Themes convenience
-  listThemes: async (companyId) => {
-    const hasStorage = typeof localStorage !== "undefined";
-    const hasToken = !hasStorage || Boolean(localStorage.getItem("token"));
-    if (!hasToken) {
-      return { data: [] };
-    }
-    try {
-      return await websiteAdmin.listThemes({ companyId });
-    } catch (err) {
-      if (err?.response?.status === 401 || err?.response?.status === 403) {
-        return { data: [] };
+  listThemes: async (companyId) => websiteAdmin.listThemes({ companyId }),
+};
+
+export const navSettings = {
+  async getStyle(companyId, config = {}) {
+    const res = await api.get("/admin/website/nav-style", {
+      ...withCompany(companyId),
+      ...config,
+    });
+    return res.data;
+  },
+
+  async updateStyle(companyId, style, config = {}) {
+    const payload = style?.style ? style : { style };
+    const res = await putWithFallback(
+      "/admin/website/nav-style",
+      payload,
+      {
+        ...withCompany(companyId),
+        ...config,
       }
-      throw err;
-    }
+    );
+    return res.data;
+  },
+
+  async getOverrides(companyId, config = {}) {
+    const res = await api.get("/admin/website/nav-overrides", {
+      ...withCompany(companyId),
+      ...config,
+    });
+    return res.data;
+  },
+
+  async updateOverrides(companyId, overrides, config = {}) {
+    const payload = overrides?.overrides ? overrides : { overrides };
+    const res = await putWithFallback(
+      "/admin/website/nav-overrides",
+      payload,
+      {
+        ...withCompany(companyId),
+        ...config,
+      }
+    );
+    return res.data;
+  },
+
+  async listPages(companyId, config = {}) {
+    const res = await api.get("/admin/pages/nav", {
+      ...withCompany(companyId),
+      ...config,
+    });
+    return res.data;
+  },
+
+  async updatePage(companyId, pageId, payload, config = {}) {
+    const res = await putWithFallback(
+      `/admin/pages/${pageId}/nav`,
+      payload,
+      {
+        ...withCompany(companyId),
+        ...config,
+      }
+    );
+    return res.data;
   },
 };
 

@@ -23,7 +23,8 @@ import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import WebsiteNavSettingsCard from "../../../components/website/WebsiteNavSettingsCard";
 
-import { wb } from "../../../utils/api";
+import { wb, navSettings } from "../../../utils/api";
+import { normalizeNavStyle } from "../../../utils/navStyle";
 import useCompanyId from "../../../hooks/useCompanyId";
 
 /**
@@ -129,7 +130,23 @@ const t = Array.isArray(rawThemes)
   ? rawThemes.items
   : [];
 
-      const st = settingsRes.data || {};
+      let st = settingsRes.data || {};
+      try {
+        const styleRes = await navSettings.getStyle(cid);
+        if (styleRes) {
+          const normalizedStyle = normalizeNavStyle(styleRes);
+          st = {
+            ...st,
+            nav_style: normalizedStyle,
+            settings: {
+              ...(st.settings || {}),
+              nav_style: normalizedStyle,
+            },
+          };
+        }
+      } catch (styleErr) {
+        console.warn("Failed to load navigation style", styleErr?.response?.data || styleErr);
+      }
       const pg = (pagesRes.data || []).map(normalizePage);
 
       setThemes(t);
@@ -497,17 +514,30 @@ const t = Array.isArray(rawThemes)
         </Grid>
 {/* Navigation (Services/Reviews) settings */}
 {settings && (
-  <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }}>
+  <Paper variant="outlined" sx={{ p: 1.5, mb: 2 }} id="nav-settings-card">
     <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
       Navigation (Services / Reviews)
     </Typography>
     <WebsiteNavSettingsCard
       companyId={companyId}
-      pages={pages}
-      initialSettings={settings}
-      onSaved={(data) => {
-        setSettings(data);
-        setMsg("Navigation settings saved");
+      value={settings}
+      onSave={async (draft) => {
+        try {
+          const full = normalizeNavStyle(draft?.nav_style || draft?.settings?.nav_style || {});
+          const saved = await navSettings.updateStyle(companyId, full);
+          const normalizedSaved = normalizeNavStyle(saved || full);
+          setSettings((prev) => ({
+            ...(prev || {}),
+            nav_style: normalizedSaved,
+            settings: {
+              ...(prev?.settings || {}),
+              nav_style: normalizedSaved,
+            },
+          }));
+          setMsg("Navigation settings saved");
+        } catch (error) {
+          setMsg(error?.response?.data?.message || error?.message || "Failed to save navigation settings");
+        }
       }}
     />
   </Paper>

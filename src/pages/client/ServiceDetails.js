@@ -30,27 +30,25 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useTheme, alpha } from "@mui/material/styles";
 import { useNavWithEmbed } from "../../embed";
 import PublicPageShell from "./PublicPageShell";
-import { loadCart } from "../../utils/cart";
 
 /* ───────────────── helpers ───────────────── */
 /** Build "cart" JSON for the availability endpoint (filter by date and optional artist) */
 function buildCartPayload({ date, artistId = null }) {
   try {
-    const raw = loadCart();
+    const raw = JSON.parse(sessionStorage.getItem("booking_cart") || "[]");
     const filtered = raw
       .filter(
         (it) =>
           it &&
-          (!artistId || String(it.artist_id) === String(artistId)) &&
-          (!date || it.date === date || it.local_date === date)
+          it.date === date &&
+          (!artistId || String(it.artist_id) === String(artistId))
       )
       .map((it) => ({
         artist_id: it.artist_id,
         service_id: it.service_id,
-        date: it.date || it.local_date,
-        local_date: it.local_date || it.date,
-        start_time: it.start_time || it.local_time,
-        local_time: it.local_time || it.start_time,
+        date: it.date,
+        start_time: it.start_time,
+        // normalize to addon_ids array; backend also accepts it.addons with {id}, but we keep compact
         addon_ids:
           Array.isArray(it.addon_ids) && it.addon_ids.length
             ? it.addon_ids
@@ -58,6 +56,7 @@ function buildCartPayload({ date, artistId = null }) {
             ? it.addons.map((a) => a && a.id).filter(Boolean)
             : [],
       }));
+    // canonical route accepts a raw array
     return JSON.stringify(filtered);
   } catch (e) {
     return "[]";
@@ -112,39 +111,42 @@ export default function ServiceDetails() {
   const departmentId = searchParams.get("department_id") || "";
   const navigate = useNavWithEmbed();
   const theme = useTheme();
-  const primaryBgVar = "var(--page-btn-bg, var(--sched-primary))";
-  const primaryTextVar = "var(--page-btn-color, #ffffff)";
-  const buttonRadiusVar = 'var(--page-btn-radius, 12px)';
-  const buttonShadowVar = 'var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))';
-  const buttonShadowHoverVar = 'var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))';
-  const buttonHoverBgVar = "var(--page-btn-bg-hover, var(--sched-primary))";
-  const buttonSoftBgVar = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
+  const buttonPalette = {
+    bg: "var(--page-btn-bg, var(--sched-primary))",
+    text: "var(--page-btn-color, #ffffff)",
+    hover: "var(--page-btn-bg-hover, var(--page-btn-bg, var(--sched-primary)))",
+    soft: "var(--page-btn-bg-soft, rgba(15,23,42,0.12))",
+  };
+  const buttonRadiusVar = "var(--page-btn-radius, 12px)";
+  const buttonShadowVar = "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))";
+  const buttonShadowHoverVar = "var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))";
+  const buttonSoftBg = buttonPalette.soft;
 
   const bookingButtonSx = {
-    backgroundColor: primaryBgVar,
-    color: primaryTextVar,
+    backgroundColor: buttonPalette.bg,
+    color: buttonPalette.text,
     borderRadius: buttonRadiusVar,
     fontWeight: 600,
     textTransform: 'none',
     px: 2.5,
     boxShadow: buttonShadowVar,
     '&:hover': {
-      backgroundColor: buttonHoverBgVar,
-      color: primaryTextVar,
+      backgroundColor: buttonPalette.hover,
+      color: buttonPalette.text,
       boxShadow: buttonShadowHoverVar,
     },
   };
 
   const bookingButtonOutlinedSx = {
-    borderColor: primaryBgVar,
-    color: primaryBgVar,
+    borderColor: buttonPalette.bg,
+    color: buttonPalette.bg,
     borderRadius: buttonRadiusVar,
     fontWeight: 600,
     textTransform: 'none',
     '&:hover': {
-      backgroundColor: buttonSoftBgVar,
-      borderColor: buttonHoverBgVar,
-      color: primaryTextVar,
+      backgroundColor: buttonSoftBg,
+      borderColor: buttonPalette.hover,
+      color: buttonPalette.text,
     },
   };
 
@@ -449,6 +451,9 @@ export default function ServiceDetails() {
     const isSelected = selectedDate === ymdStr;
     const hasAvail = availableMap[ymdStr] === true;
 
+    const slotBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
+    const dotColor = buttonPalette.bg || theme.palette.success.main;
+
     return (
       <Box
         key={dNum}
@@ -467,9 +472,7 @@ export default function ServiceDetails() {
           borderRadius: 1.2,
           cursor: isPast ? "default" : "pointer",
           border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
-          bgcolor: isSelected
-            ? alpha(theme.palette.primary.main, 0.12)
-            : "transparent",
+          bgcolor: isSelected ? slotBg : "transparent",
           color: isPast ? "text.disabled" : "text.primary",
           "&:hover": {
             bgcolor: isPast
@@ -493,7 +496,7 @@ export default function ServiceDetails() {
               width: 6,
               height: 6,
               borderRadius: "50%",
-              bgcolor: theme.palette.success.main,
+              bgcolor: dotColor,
             }}
           />
         )}
@@ -505,8 +508,8 @@ export default function ServiceDetails() {
   if (loading) {
     return (
       <PublicPageShell activeKey="__services">
-        <Container sx={{ textAlign: "center", mt: 5 }}>
-          <CircularProgress />
+        <Container sx={{ textAlign: "center", mt: 5, color: buttonPalette.bg }}>
+          <CircularProgress sx={{ color: "currentColor" }} />
         </Container>
       </PublicPageShell>
     );
@@ -830,44 +833,20 @@ export default function ServiceDetails() {
                 />
               </Stack>
 
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: {
-                    xs: "1fr",
-                    sm: "repeat(2, 1fr)",
-                    md: "repeat(3, 1fr)",
-                  },
-                  gap: 1.25,
-                }}
-              >
+              <Stack spacing={1.25}>
                 {selectedSlot?.providers?.map((p) => (
-                  <Card
+                  <Stack
                     key={p.id}
-                    variant="outlined"
-                    sx={{
-                      borderRadius: 2,
-                      "&:hover": {
-                        borderColor: theme.palette.primary.main,
-                        boxShadow: `0 0 0 3px ${alpha(
-                          theme.palette.primary.main,
-                          0.12
-                        )}`,
-                      },
-                    }}
+                    direction="row"
+                    spacing={1.25}
+                    alignItems="center"
+                    justifyContent="space-between"
                   >
-                    <CardContent
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1.25,
-                        p: 1.5,
-                      }}
-                    >
+                    <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
                       <Avatar sx={{ width: 40, height: 40 }}>
                         {p.full_name?.[0] || "•"}
                       </Avatar>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Box minWidth={0}>
                         <Typography noWrap fontWeight={700} title={p.full_name}>
                           {p.full_name}
                         </Typography>
@@ -879,18 +858,24 @@ export default function ServiceDetails() {
                           {p.start_time_local} • {service?.name}
                         </Typography>
                       </Box>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => handleArtistSelect(p)}
-                        sx={{ whiteSpace: "nowrap" }}
-                      >
-                        Select
-                      </Button>
-                    </CardContent>
-                  </Card>
+                    </Stack>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => handleArtistSelect(p)}
+                      sx={{
+                        ...bookingButtonSx,
+                        px: 1.75,
+                        py: 0.75,
+                        minWidth: 0,
+                        width: "auto",
+                      }}
+                    >
+                      Select
+                    </Button>
+                  </Stack>
                 ))}
-              </Box>
+              </Stack>
             </Paper>
           </Collapse>
         </DialogContent>
@@ -900,7 +885,3 @@ export default function ServiceDetails() {
 
   return <PublicPageShell activeKey="__services">{page}</PublicPageShell>;
 }
-
-
-
-
