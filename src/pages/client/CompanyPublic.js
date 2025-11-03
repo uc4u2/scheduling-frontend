@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AppBar, Box, Button, Chip, Container, Dialog, DialogContent, IconButton,
-  Menu, MenuItem, Stack, Toolbar, Tooltip, Typography, Alert, CircularProgress, Divider,
+  Menu, MenuItem, Stack, Toolbar, Tooltip, Typography, Alert, CircularProgress, Divider, GlobalStyles,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import BrushIcon from "@mui/icons-material/Brush";
@@ -12,12 +12,14 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import { useParams, useSearchParams, Link as RouterLink, useNavigate } from "react-router-dom";
 
 import { wb } from "../../utils/api";
-import { setCachedHoldMinutes } from "../../utils/cart";
 import { RenderSections } from "../../components/website/RenderSections";
 import VisualSiteBuilder from "../sections/management/VisualSiteBuilder";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
 import PublicReviewList from "./PublicReviewList";
 import { resolveSiteHref, transformLinksDeep } from "../../components/website/linking";
+import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../../utils/navStyle";
+import { navSettings } from "../../utils/api";
+import NavStyleHydrator from "../../components/website/NavStyleHydrator";
 
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
 const cloneStyle = (val) => {
@@ -114,6 +116,60 @@ const cssColorWithOpacity = (color, overrideOpacity) => {
   return hexToRgba(parsed.hex, finalOpacity);
 };
 
+const pageStyleToCssVars = (style) => {
+  if (!style) return null;
+  const vars = {};
+  const assign = (key, value) => {
+    if (value !== undefined && value !== null && value !== "") {
+      vars[key] = value;
+    }
+  };
+  assign("--page-heading-color", style.headingColor);
+  assign("--page-body-color", style.bodyColor);
+  assign("--page-link-color", style.linkColor);
+  assign("--page-heading-font", style.headingFont);
+  assign("--page-body-font", style.bodyFont);
+  assign("--page-hero-heading-shadow", style.heroHeadingShadow);
+  assign("--page-card-bg", style.cardBg || style.cardColor);
+  assign("--page-card-radius", style.cardRadius != null ? `${style.cardRadius}px` : undefined);
+  assign("--page-card-shadow", style.cardShadow);
+  assign("--page-card-blur", style.cardBlur != null ? `${style.cardBlur}px` : undefined);
+  assign("--page-btn-bg", style.btnBg);
+  assign("--page-btn-color", style.btnColor);
+  assign("--page-btn-radius", style.btnRadius != null ? `${style.btnRadius}px` : undefined);
+  return Object.keys(vars).length ? vars : null;
+};
+
+const pageStyleToBackgroundSx = (style) => {
+  if (!style) return null;
+  const sx = {};
+  if (style.backgroundColor) sx.backgroundColor = style.backgroundColor;
+  if (style.bodyColor) sx.color = style.bodyColor;
+  const overlay = cssColorWithOpacity(
+    style.overlayColor,
+    Number.isFinite(style.overlayOpacity) ? style.overlayOpacity : undefined
+  );
+  if (style.backgroundImage) {
+    const layers = [];
+    if (overlay) layers.push(`linear-gradient(${overlay}, ${overlay})`);
+    layers.push(`url(${style.backgroundImage})`);
+    sx.backgroundImage = layers.join(", ");
+  } else if (overlay) {
+    sx.backgroundImage = `linear-gradient(${overlay}, ${overlay})`;
+  }
+  if (style.backgroundRepeat) sx.backgroundRepeat = style.backgroundRepeat;
+  if (style.backgroundSize) sx.backgroundSize = style.backgroundSize;
+  if (style.backgroundPosition) sx.backgroundPosition = style.backgroundPosition;
+  if (style.backgroundAttachment) sx.backgroundAttachment = style.backgroundAttachment;
+  return Object.keys(sx).length ? sx : null;
+};
+
+const PLACEHOLDER_SITE_TITLES = new Set([
+  "FE Save Test",
+  "FE Preview",
+  "FE Test Site",
+]);
+
 export default function CompanyPublic() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -186,14 +242,6 @@ export default function CompanyPublic() {
         if (!alive) return;
         setSitePayload(data || null);
         setCompany(data?.company || null);
-        const holdMinutes =
-          data?.company?.booking_hold_minutes ??
-          data?.website_setting?.settings?.booking_hold_minutes ??
-          data?.settings?.booking_hold_minutes ??
-          null;
-        if (holdMinutes != null) {
-          setCachedHoldMinutes(holdMinutes);
-        }
         const normalized = Array.isArray(data?.pages)
           ? data.pages.map((p) => ({ ...p, content: Array.isArray(p?.content?.sections) ? p.content : { sections: [] } }))
           : [];
@@ -223,12 +271,24 @@ export default function CompanyPublic() {
           wb.getSettings(company.id),
         ]);
         if (!ok) return;
-        setThemes(Array.isArray(themesRes.data) ? themesRes.data : []);
-        setSettings(settingsRes.data || null);
-      } catch (err) {
-        if (process.env.NODE_ENV === "development") {
-          console.warn("Skipping manager-only data:", err?.response?.status);
+        const baseSettings = settingsRes.data || {};
+        try {
+          const styleRes = await navSettings.getStyle(company.id);
+          if (styleRes) {
+            const normalizedStyle = normalizeNavStyle(styleRes);
+            baseSettings.nav_style = normalizedStyle;
+            baseSettings.settings = {
+              ...(baseSettings.settings || {}),
+              nav_style: normalizedStyle,
+            };
+          }
+        } catch (styleErr) {
+          console.warn("Failed to load navigation style", styleErr?.response?.data || styleErr);
         }
+        setThemes(Array.isArray(themesRes.data) ? themesRes.data : []);
+        setSettings(baseSettings);
+      } catch {
+        /* non-fatal */
       }
     })();
     return () => { ok = false; };
@@ -366,6 +426,37 @@ export default function CompanyPublic() {
     return [...core, ...others, ...shortcuts];
   }, [sitePayload, settings, menuPages, nav, slug, servicesHref, reviewsHref, clientLoggedIn]);
   // ─────────────────────────────────────────────────────────────────────────────
+
+  const rawNavStyle =
+    settings?.nav_style ||
+    sitePayload?.nav_style ||
+    sitePayload?.settings?.nav_style ||
+    {};
+  const navStyle = useMemo(
+    () => normalizeNavStyle(rawNavStyle),
+    [rawNavStyle]
+  );
+  const navCssVars = useMemo(
+    () => navStyleToCssVars(navStyle),
+    [navStyle]
+  );
+
+  const navItemsWithActive = useMemo(() => {
+    const currentSlug = String(currentPage?.slug || "").toLowerCase();
+    return navItems.map((item) => {
+      const keyLower = String(item.key || "").toLowerCase();
+      const active =
+        keyLower === "home"
+          ? !currentSlug || currentSlug === "home"
+          : keyLower === currentSlug;
+      return { ...item, active };
+    });
+  }, [navItems, currentPage]);
+
+  const navButtonSx = useMemo(
+    () => createNavButtonStyles(navStyle),
+    [navStyle]
+  );
 
   const { sections: patchedSections, styleProps: specialPageStyle } = useMemo(() => {
     if (!currentPage) {
@@ -516,6 +607,36 @@ export default function CompanyPublic() {
       )
     : null;
 
+  const activePageStyle = useMemo(() => {
+    if (isReviewsPage && reviewPageStyle) return reviewPageStyle;
+    return specialPageStyle || extractPageStyleProps(currentPage) || siteDefaultPageStyle || null;
+  }, [isReviewsPage, reviewPageStyle, specialPageStyle, currentPage, siteDefaultPageStyle]);
+
+  const activePageCssVars = useMemo(
+    () => pageStyleToCssVars(activePageStyle),
+    [activePageStyle]
+  );
+  const activePageSurface = useMemo(
+    () => pageStyleToBackgroundSx(activePageStyle),
+    [activePageStyle]
+  );
+
+  const rawSiteTitle =
+    settings?.site_title ??
+    sitePayload?.settings?.site_title ??
+    sitePayload?.site_title ??
+    company?.name ??
+    slug ??
+    "";
+
+  const siteTitle = useMemo(() => {
+    const candidate = String(rawSiteTitle || "").trim();
+    if (!candidate || PLACEHOLDER_SITE_TITLES.has(candidate)) {
+      return company?.name || slug || "Our Business";
+    }
+    return candidate;
+  }, [rawSiteTitle, company?.name, slug]);
+
   if (loading) {
     return <Box sx={{ p: 6, textAlign: "center" }}><CircularProgress /></Box>;
   }
@@ -525,6 +646,47 @@ export default function CompanyPublic() {
 
   return (
     <ThemeRuntimeProvider overrides={runtimeOverrides}>
+      <GlobalStyles
+        styles={(theme) => {
+          const bodyStyles = {
+            backgroundColor: activePageSurface?.backgroundColor || theme.palette.background.default,
+            color:
+              activePageCssVars?.["--page-body-color"] ||
+              theme.palette.text.primary,
+          };
+          if (activePageSurface?.backgroundImage) {
+            bodyStyles.backgroundImage = activePageSurface.backgroundImage;
+          }
+          if (activePageSurface?.backgroundRepeat) {
+            bodyStyles.backgroundRepeat = activePageSurface.backgroundRepeat;
+          }
+          if (activePageSurface?.backgroundSize) {
+            bodyStyles.backgroundSize = activePageSurface.backgroundSize;
+          }
+          if (activePageSurface?.backgroundPosition) {
+            bodyStyles.backgroundPosition = activePageSurface.backgroundPosition;
+          }
+          if (activePageSurface?.backgroundAttachment) {
+            bodyStyles.backgroundAttachment = activePageSurface.backgroundAttachment;
+          }
+          const rootVars = { ...(activePageCssVars || {}) };
+          Object.entries(navCssVars).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== "") {
+              rootVars[key] = value;
+            }
+          });
+          return {
+            body: bodyStyles,
+            ":root": rootVars,
+            a: {
+              color:
+                activePageCssVars?.["--page-link-color"] ||
+                theme.palette.primary.main,
+            },
+          };
+        }}
+      />
+      <NavStyleHydrator website={sitePayload || settings || {}} scopeSelector=".site-nav" />
       {/* Manager toolbar — only if role === 'manager' (and matches company if both ids exist) */}
       {isManagerForCompany && (
         <AppBar position="sticky" color="transparent" elevation={0} sx={{ borderBottom: "1px solid rgba(0,0,0,0.08)", backdropFilter: "blur(6px)" }}>
@@ -571,19 +733,69 @@ export default function CompanyPublic() {
       )}
 
       {/* PUBLIC NAV */}
-      <Box sx={{ py: 1.25 }}>
+      <Box className="site-nav" sx={{ py: 1.25 }}>
         <Container maxWidth="lg">
-          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-            <Typography variant="h6" sx={{ mr: 1.5 }}>{settings?.site_title || company?.name || "Our Business"}</Typography>
+          <Stack
+            direction="row"
+            spacing={0}
+            alignItems="center"
+            sx={{
+              gap: `${navStyle.item_spacing}px`,
+              flexWrap: "wrap",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                mr: 1.5,
+                color: "var(--nav-btn-text, inherit)",
+                fontWeight: navStyle.font_weight ?? 600,
+                textTransform: navStyle.text_transform ?? "none",
+                fontFamily: "var(--nav-brand-font-family, inherit)",
+                fontSize: `var(--nav-brand-font-size, ${navStyle.brand_font_size || 20}px)`
+              }}
+            >
+              {siteTitle}
+            </Typography>
             <Divider flexItem orientation="vertical" />
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              {navItems.map((item) => (
+            <Stack
+              direction="row"
+              spacing={0}
+              flexWrap="wrap"
+              sx={{
+                gap: `${navStyle.item_spacing}px`,
+                alignItems: "center",
+              }}
+            >
+              {navItemsWithActive.map((item) =>
                 item.onClick ? (
-                  <Button key={item.key} size="small" onClick={item.onClick}>{item.label}</Button>
+                  <Button
+                    key={item.key}
+                    size="small"
+                    className="nav-btn"
+                    variant="text"
+                    color="inherit"
+                    disableElevation
+                    onClick={item.onClick}
+                    sx={navButtonSx(item.active)}
+                  >
+                    {item.label}
+                  </Button>
                 ) : (
-                  <Button key={item.key} size="small" component={RouterLink} to={item.href}>{item.label}</Button>
+                  <Button
+                    key={item.key}
+                    size="small"
+                    variant="text"
+                    color="inherit"
+                    disableElevation
+                    component={RouterLink}
+                    to={item.href}
+                    sx={navButtonSx(item.active)}
+                  >
+                    {item.label}
+                  </Button>
                 )
-              ))}
+              )}
             </Stack>
           </Stack>
         </Container>
@@ -666,4 +878,3 @@ export default function CompanyPublic() {
     </ThemeRuntimeProvider>
   );
 }
-

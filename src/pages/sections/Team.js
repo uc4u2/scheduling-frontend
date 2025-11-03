@@ -40,12 +40,11 @@ import {
   Pagination,
   Dialog,
   GlobalStyles,
-  FormHelperText,
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { format, endOfMonth, addDays, startOfMonth } from "date-fns";
+import { format, endOfMonth, addDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from "@mui/icons-material";
 import Accordion from "@mui/material/Accordion";
@@ -299,17 +298,16 @@ setFormData({
 
   /* ------------------------------- calendar refs ----------------------------- */
   const calendarRef = useRef(null);
-  const monthCalendarRef = useRef(null);
   const fsCalendarRef = useRef(null);
   const pendingRevertCallbackRef = useRef(null);
   const [pendingEventUpdate, setPendingEventUpdate] = useState(null);
 
   /* ------------------------------ date range -------------------------------- */
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
-  const [calendarRange, setCalendarRange] = useState(() => ({
-    start: format(startOfMonth(new Date()), "yyyy-MM-dd"),
-    end: format(endOfMonth(new Date()), "yyyy-MM-dd"),
-  }));
+  const [dateRange, setDateRange] = useState({
+    start: format(new Date(), "yyyy-MM-dd"),
+    end: format(addDays(new Date(), 30), "yyyy-MM-dd"),
+  });
 
   /* -------------------------------- helpers --------------------------------- */
   const getAuthHeaders = () => {
@@ -410,7 +408,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   useEffect(() => {
     fetchShifts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recruiters, selectedRecruiters, calendarRange]);
+  }, [recruiters, selectedRecruiters, dateRange]);
 
   useEffect(() => {
     const loadTemplates = async () => {
@@ -462,12 +460,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
   const fetchShifts = async () => {
     try {
-      if (!calendarRange.start || !calendarRange.end) return;
       const ids = selectedRecruiters.length
         ? selectedRecruiters.join(",")
         : recruiters.map((r) => r.id).join(",");
-      if (!ids) return;
-      const url = `${API_URL}/automation/shifts/range?start_date=${calendarRange.start}&end_date=${calendarRange.end}&recruiter_ids=${ids}`;
+      const url = `${API_URL}/automation/shifts/range?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
       const res = await fetch(url, { headers: getAuthHeaders() });
       const data = await res.json();
       setShifts(data.shifts || []);
@@ -860,8 +856,9 @@ setFormData({
     // sync month picker with chosen dates
     if (dates.length > 0) {
       const first = dates[0];
+      const last = dates[dates.length - 1];
+      setDateRange({ start: first, end: last });
       setSelectedMonth(first.slice(0, 7));
-      focusCalendarOnDate(first);
     }
 
     let successCount = 0;
@@ -950,7 +947,7 @@ setFormData({
     }
 
     try {
-      const res = await fetch(`${API_URL}/automation/shifts/update/${editingShift.id}`, {
+      await fetch(`${API_URL}/automation/shifts/update/${editingShift.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -958,15 +955,6 @@ setFormData({
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        let msg = "Error updating shift.";
-        try {
-          const data = await res.json();
-          msg = data?.error || data?.message || msg;
-        } catch {}
-        setErrorMsg(msg);
-        return;
-      }
       setSuccessMsg("Shift updated successfully.");
       setModalOpen(false);
       fetchShifts();
@@ -1035,15 +1023,10 @@ setFormData({
   };
 
   const handleExportToExcel = async () => {
-    if (!calendarRange.start || !calendarRange.end) return;
     const ids = selectedRecruiters.length
       ? selectedRecruiters.join(",")
       : recruiters.map((r) => r.id).join(",");
-    if (!ids) {
-      setErrorMsg("Select at least one employee to export.");
-      return;
-    }
-    const url = `${API_URL}/automation/shifts/export?start_date=${calendarRange.start}&end_date=${calendarRange.end}&recruiter_ids=${ids}`;
+    const url = `${API_URL}/automation/shifts/export?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
     try {
       const res = await fetch(url, { headers: getAuthHeaders() });
       if (!res.ok) {
@@ -1133,29 +1116,10 @@ setFormData({
     info.el.setAttribute("title", `${emp}\n${start}–${end}${loc}${note}`);
   };
 
-  const handleCalendarDatesSet = (info) => {
-    if (!info?.start || !info?.end) return;
-    const startStr = format(info.start, "yyyy-MM-dd");
-    const inclusiveEnd = format(addDays(info.end, -1), "yyyy-MM-dd");
-    setCalendarRange((prev) =>
-      prev.start === startStr && prev.end === inclusiveEnd
-        ? prev
-        : { start: startStr, end: inclusiveEnd }
-    );
-  };
-
-  const focusCalendarOnDate = (isoDate) => {
-    if (!isoDate) return;
-    monthCalendarRef.current?.getApi?.()?.gotoDate?.(isoDate);
-    calendarRef.current?.getApi?.()?.gotoDate?.(isoDate);
-    fsCalendarRef.current?.getApi?.()?.gotoDate?.(isoDate);
-  };
-
   // shared props for Week/Day calendars
   const baseCalProps = {
     plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
     events: calendarEvents,
-    datesSet: handleCalendarDatesSet,
     editable: true,
     selectable: true,
     weekends: showWeekends,
@@ -1280,22 +1244,22 @@ setFormData({
         </Grid>
 
         <Grid item xs={12} md={2}>
-          <FormControl fullWidth>
-            <TextField
-              type="month"
-              label="Month"
-              value={selectedMonth}
-              onChange={(e) => {
-                const month = e.target.value;
-                setSelectedMonth(month);
-              }}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-            />
-            <FormHelperText>
-              Used to prefill new shift assignments. Navigate the calendar itself to view other months.
-            </FormHelperText>
-          </FormControl>
+          <TextField
+            type="month"
+            label="Month"
+            value={selectedMonth}
+            onChange={(e) => {
+              const month = e.target.value;
+              setSelectedMonth(month);
+              const first = `${month}-01`;
+const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
+
+              setDateRange({ start: first, end: last });
+              setSelectedDate(first);
+            }}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+          />
         </Grid>
 
         {/* ✅ Template Box */}
@@ -1371,13 +1335,10 @@ setFormData({
         <>
           <Paper sx={{ p: 2, mb: 2 }} elevation={1}>
             <FullCalendar
-              ref={monthCalendarRef}
               plugins={[dayGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
-              initialDate={calendarRange.start}
               height="auto"
               dayMaxEvents={3}
-              datesSet={handleCalendarDatesSet}
               events={monthEvents}
               dateClick={handleMonthDateClick}
               eventClick={handleMonthEventClick}

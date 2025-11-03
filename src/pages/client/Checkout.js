@@ -1,11 +1,11 @@
 // src/pages/client/Checkout.js
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { formatCurrency } from "../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, getActiveCurrency } from "../../utils/currency";
-import { api as apiClient } from "../../utils/api";
+import { api as apiClient, API_BASE_URL } from "../../utils/api";
 import { buildHostedCheckoutPayload, startHostedCheckout, releasePendingCheckout } from "../../utils/hostedCheckout";
-import { CartTypes, loadCart, saveCart, clearCart, upsertServiceLine, getItemHoldRemainingMs } from "../../utils/cart";
+import { CartTypes, loadCart, saveCart, clearCart } from "../../utils/cart";
 
 import {
   Box,
@@ -348,6 +348,7 @@ function CheckoutFormCore({
   cardOnFileEnabled,
   displayCurrency,
   policy,
+  holdMinutes,
 }) {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -407,9 +408,7 @@ function CheckoutFormCore({
 
   const [client, setClient] = useState(null);
   const [guest, setGuest] = useState({ name: "", email: "" });
-const [cart, setCart] = useState([]);
-const prevCartRef = useRef(cart);
-const [holdCountdownLabel, setHoldCountdownLabel] = useState(null);
+  const [cart, setCart] = useState([]);
 
   const [dlgSvcOpen, setDlgSvcOpen] = useState(false);
   const [dlgAddonOpen, setDlgAddonOpen] = useState(false);
@@ -442,43 +441,19 @@ const [holdCountdownLabel, setHoldCountdownLabel] = useState(null);
     })();
   }, []);
 
-useEffect(() => {
-  setCart(loadCart());
-}, []);
-
-useEffect(() => {
-  prevCartRef.current = cart;
-  setHoldCountdownLabel(formatHoldCountdown(cart));
-}, [cart]);
-
   useEffect(() => {
-    const timer = setInterval(() => {
-      const next = loadCart();
-      const prev = prevCartRef.current || [];
-      const changed = !cartsEqual(next, prev);
-      if (changed) {
-        const nextIds = new Set(next.map((it) => it.id));
-        const expired = prev.filter(
-          (it) =>
-            !nextIds.has(it.id) &&
-            it.hold_expires_at &&
-            Date.parse(it.hold_expires_at) <= Date.now()
-        );
-        if (expired.length) {
-          setErr((prevErr) => prevErr || "Some held slots expired and were removed from your basket.");
-          if (slugLocal) {
-            releasePendingCheckout({ slug: slugLocal, reason: "hold_expired" }).catch(() => {});
-          }
-        }
-        prevCartRef.current = next;
-        setCart(next);
-      } else {
-        const label = formatHoldCountdown(next);
-        setHoldCountdownLabel((curr) => (curr !== label ? label : curr));
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [slugLocal]);
+    const saved = loadCart();
+    let mutated = false;
+    const normalized = saved.map((item) => {
+      if (isProduct(item) || item?.hold_started_at) return item;
+      mutated = true;
+      return { ...item, hold_started_at: new Date().toISOString() };
+    });
+    if (mutated) {
+      saveCart(normalized);
+    }
+    setCart(normalized);
+  }, []);
 
   useEffect(() => {
     if (!service || !slot) return;
@@ -490,11 +465,11 @@ useEffect(() => {
       return;
     }
 
-    const newItem = {
-      id: `${service.id}-${slot.date}-${slot.start_time}`,
-      type: CartTypes.SERVICE,
-      service_id: service.id,
-      service_name: service.name,
+  const newItem = {
+    id: `${service.id}-${slot.date}-${slot.start_time}`,
+    type: CartTypes.SERVICE,
+    service_id: service.id,
+    service_name: service.name,
       price: Number(service.base_price ?? 0),
       artist_name: artist?.full_name || artist?.name || "Provider",
       artist_id: artist?.id,
@@ -505,24 +480,49 @@ useEffect(() => {
       addons: slot.addons || [],
       couponApplied: false,
       coupon: null,
-      tip_mode: "percent",
-      tip_value: 0,
-      tip_amount: 0,
-      quantity: 1,
-    };
+    tip_mode: "percent",
+    tip_value: 0,
+    tip_amount: 0,
+    quantity: 1,
+    hold_started_at: new Date().toISOString(),
+  };
 
-    const merged = upsertServiceLine(newItem);
+    const merged = [...saved.filter((i) => i.id !== newItem.id), newItem];
+    saveCart(merged);
     setCart(merged);
   }, [service, artist, slot]);
 
   useEffect(() => {
     const svcIds = [...new Set(cart.map((c) => c.service_id))];
+    const base =
+      !API_BASE_URL || API_BASE_URL === "/"
+        ? ""
+        : String(API_BASE_URL).replace(/\/$/, "");
+    const buildAddonImageUrl = (img) => {
+      if (!img || typeof img !== "object") return null;
+      if (img.url_public) return img.url_public;
+      if (img.external_url) return img.external_url;
+      if (img.id == null) return null;
+      return `${base}/public/addon-images/${img.id}`;
+    };
+
     svcIds.forEach(async (sid) => {
       if (addonOpts[sid]) return;
       try {
         if (!slugLocal) return;
         const { data } = await apiClient.get(`/public/${slugLocal}/service/${sid}/addons`);
-        setAddonOpts((prev) => ({ ...prev, [sid]: data }));
+        const normalized = Array.isArray(data)
+          ? data.map((addon) => ({
+              ...addon,
+              images: Array.isArray(addon?.images)
+                ? addon.images.map((img) => ({
+                    ...img,
+                    url_public: buildAddonImageUrl(img),
+                  }))
+                : [],
+            }))
+          : [];
+        setAddonOpts((prev) => ({ ...prev, [sid]: normalized }));
       } catch { /* ignore */ }
     });
   }, [cart, slugLocal, addonOpts]);
@@ -531,38 +531,8 @@ useEffect(() => {
   const getAddons = (item) => ensureArray(item?.addons);
   const getAddonIds = (item) => ensureArray(item?.addon_ids);
 
-const getQuantity = (item) => Math.max(1, Number(item?.quantity || 1));
-const isProduct = (item) => (item?.type || CartTypes.SERVICE) === CartTypes.PRODUCT;
-
-const cartsEqual = (a, b) => {
-  if (!Array.isArray(a) || !Array.isArray(b)) return false;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
-    const ia = a[i];
-    const ib = b[i];
-    if (!ia || !ib) return false;
-    if (ia.id !== ib.id) return false;
-    if ((ia.type || CartTypes.SERVICE) !== (ib.type || CartTypes.SERVICE)) return false;
-    if ((ia.hold_expires_at || "") !== (ib.hold_expires_at || "")) return false;
-    if ((ia.quantity || 1) !== (ib.quantity || 1)) return false;
-  }
-  return true;
-};
-
-const formatHoldCountdown = (itemsList) => {
-  const serviceItems = itemsList.filter((it) => (it?.type || CartTypes.SERVICE) !== CartTypes.PRODUCT);
-  const remaining = serviceItems
-    .map((it) => getItemHoldRemainingMs(it))
-    .filter((ms) => ms != null && ms > 0);
-  if (!remaining.length) return null;
-  const minMs = Math.min(...remaining);
-  const totalSeconds = Math.ceil(minMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
-};
+  const getQuantity = (item) => Math.max(1, Number(item?.quantity || 1));
+  const isProduct = (item) => (item?.type || CartTypes.SERVICE) === CartTypes.PRODUCT;
 
   const lineSubtotal = (item) => {
     if (isProduct(item)) {
@@ -613,6 +583,84 @@ const formatHoldCountdown = (itemsList) => {
 
   const totalBeforeDiscount = serviceSubtotal + productSubtotal;
   const finalTotal = Math.max(0, serviceSubtotal - totalDiscount) + totalTip + productSubtotal;
+
+  const [holdState, setHoldState] = useState({ overall: null, perItem: {} });
+
+  useEffect(() => {
+    if (!holdMinutes || holdMinutes <= 0 || serviceItems.length === 0) {
+      setHoldState({ overall: null, perItem: {} });
+      return;
+    }
+
+    let cancelled = false;
+
+    const runTick = () => {
+      const now = Date.now();
+      const perItem = {};
+      const expiredIds = [];
+      let minPositive = null;
+
+      serviceItems.forEach((item) => {
+        const started = Date.parse(item?.hold_started_at);
+        if (!Number.isFinite(started)) return;
+        const remaining = started + holdMinutes * 60 * 1000 - now;
+        perItem[item.id] = remaining;
+        if (remaining <= 0) {
+          expiredIds.push(item.id);
+        } else {
+          minPositive = minPositive === null ? remaining : Math.min(minPositive, remaining);
+        }
+      });
+
+      if (expiredIds.length && !cancelled) {
+        const filtered = cart.filter((item) => !expiredIds.includes(item.id));
+        if (filtered.length !== cart.length) {
+          persist(filtered);
+          setErr("The hold window expired. Please reselect your service time before checking out.");
+          const hasRemainingServices = filtered.some((item) => !isProduct(item));
+          if (!hasRemainingServices && slugLocal) {
+            releasePendingCheckout({ slug: slugLocal }).catch(() => {});
+          }
+        }
+      }
+
+      if (!cancelled) {
+        const overall =
+          minPositive !== null
+            ? Math.max(0, minPositive)
+            : Object.keys(perItem).length
+            ? 0
+            : null;
+        setHoldState({ overall, perItem });
+      }
+
+      return expiredIds.length === 0 && minPositive !== null;
+    };
+
+    const keepRunning = runTick();
+    if (!keepRunning) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const active = runTick();
+      if (!active) {
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [holdMinutes, serviceItems, cart, slugLocal]);
+
+  const formatHoldCountdown = (ms) => {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
 
   const persist = (newCart) => {
     saveCart(newCart);
@@ -1188,14 +1236,19 @@ const formatHoldCountdown = (itemsList) => {
 
   return (
     <Box p={3} maxWidth={600} mx="auto">
-      {holdCountdownLabel && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          We’re holding your selected times for <strong>{holdCountdownLabel}</strong>. Complete checkout before the timer runs out or the slots will be released.
-        </Alert>
-      )}
       <Typography variant="h4" gutterBottom>
         Checkout
       </Typography>
+
+      {typeof holdMinutes === "number" && holdMinutes > 0 && serviceItems.length > 0 && holdState.overall !== null && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Typography variant="body2" sx={{ mt: 1.5 }}>
+            {holdState.overall > 0
+              ? `We're holding your selected times for ${formatHoldCountdown(holdState.overall)}. Complete checkout before the timer runs out or the slots will be released.`
+              : "The hold window has expired. If you continue, the selected times may no longer be available."}
+          </Typography>
+        </Paper>
+      )}
 
       {/* Cart */}
       <List
@@ -1591,21 +1644,44 @@ const formatHoldCountdown = (itemsList) => {
           {!activeItem ? (
             <CircularProgress />
           ) : addonOpts[activeItem.service_id]?.length ? (
-            addonOpts[activeItem.service_id].map((ad) => (
-              <ListItem key={ad.id} disablePadding>
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  <Checkbox
-                    edge="start"
-                    checked={getAddonIds(activeItem).includes(ad.id)}
-                    onChange={() => toggleAddon(ad)}
+            addonOpts[activeItem.service_id].map((ad, idx) => {
+              const img = Array.isArray(ad.images) && ad.images.length > 0
+                ? ad.images[0]?.url_public || ad.images[0]?.url || ad.images[0]?.source
+                : null;
+              return (
+                <ListItem key={`${ad.id ?? 'addon'}-${idx}`} disablePadding sx={{ alignItems: "flex-start", py: 1 }}>
+                  <ListItemIcon sx={{ minWidth: 40, mt: 0.5 }}>
+                    <Checkbox
+                      edge="start"
+                      checked={getAddonIds(activeItem).includes(ad.id)}
+                      onChange={() => toggleAddon(ad)}
+                    />
+                  </ListItemIcon>
+                  {img && (
+                    <Box
+                      component="img"
+                      src={img}
+                      alt={ad.name || "Add-on"}
+                      loading="lazy"
+                      sx={{
+                        width: 72,
+                        height: 72,
+                        objectFit: "cover",
+                        borderRadius: 1.5,
+                        mr: 2,
+                        mt: 0.5,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  <ListItemText
+                    primary={`${ad.name}     $${Number(ad.base_price).toFixed(2)}`}
+                    secondary={ad.description || undefined}
+                    primaryTypographyProps={{ fontWeight: 600 }}
                   />
-                </ListItemIcon>
-                <ListItemText
-                  primary={`${ad.name}     $${Number(ad.base_price).toFixed(2)}`}
-                  secondary={ad.description || undefined}
-                />
-              </ListItem>
-            ))
+                </ListItem>
+              );
+            })
           ) : (
             <Typography>No add-ons available for this service.</Typography>
           )}
@@ -1655,6 +1731,7 @@ export default function Checkout(props) {
   const [cardOnFileEnabled, setCardOnFileEnabled] = useState(false);
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const [policy, setPolicy] = useState(null);
+  const [holdMinutes, setHoldMinutes] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -1680,10 +1757,12 @@ export default function Checkout(props) {
         const policyMode = (policyData?.mode || '').toLowerCase();
         const allowCardFlag = Boolean(info?.allow_card_on_file);
         const cardOnFile = Boolean(hasPublishable && !payNow && (allowCardFlag || policyMode === 'capture'));
+        const hold = Number(info?.booking_hold_minutes ?? 0);
 
         setPaymentsEnabled(payNow);
         setCardOnFileEnabled(cardOnFile);
         setPolicy(policyData);
+        setHoldMinutes(Number.isFinite(hold) && hold > 0 ? hold : null);
 
         const rawCurrency = normalizeCurrency(info?.display_currency);
         const inferredCurrency = resolveCurrencyForCountry(info?.country_code || info?.tax_country_code || '');
@@ -1695,6 +1774,7 @@ export default function Checkout(props) {
         setPaymentsEnabled(false);
         setCardOnFileEnabled(false);
         setPolicy(null);
+        setHoldMinutes(null);
       } finally {
         if (mounted) setReady(true);
       }
@@ -1732,6 +1812,7 @@ export default function Checkout(props) {
       cardOnFileEnabled={cardOnFileEnabled}
       displayCurrency={displayCurrency}
       policy={policy}
+      holdMinutes={holdMinutes}
     />
   );
 }

@@ -21,7 +21,6 @@ import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import PricingTable from "../components/PricingTable";
 import platformMap from "../../assets/marketing/platform-map.svg";
-import JsonLd from "../../components/seo/JsonLd";
 
 const HERO_PRIMARY_CTA_TO = "/register";
 const HERO_SECONDARY_CTA_TO = "#plans";
@@ -37,20 +36,16 @@ const ASSURANCE_ICON_MAP = {
   globalPayments: PublicIcon,
 };
 
-const SITE_BASE_URL = "https://www.schedulaa.com";
-const BRAND_NAME = "Schedulaa";
-const DEFAULT_CURRENCY = "CAD";
-
 const DEFAULT_META = {
   title: "Schedulaa Pricing | Launch on your own domain with automatic SSL",
   description:
     "Compare Starter, Pro, and Business plans. Custom domains with automatic SSL are included on Pro and Business; Starter can add it for $5/month.",
-  canonical: `${SITE_BASE_URL}/pricing`,
+  canonical: "https://www.schedulaa.com/pricing",
   og: {
     title: "Schedulaa Pricing",
     description:
       "Plans for every stage. Launch on your own domain with automatic SSL included on Pro and Business.",
-    image: `${SITE_BASE_URL}/og/pricing.jpg`,
+    image: "https://www.schedulaa.com/og/pricing.jpg",
   },
 };
 
@@ -76,7 +71,6 @@ const DEFAULT_PLANS = [
     key: "starter",
     name: "Starter",
     price: "$9/mo",
-    currency: DEFAULT_CURRENCY,
     description:
       "Solo operators who need scheduling, payments, and branded booking pages.",
     features: [
@@ -93,7 +87,6 @@ const DEFAULT_PLANS = [
     key: "pro",
     name: "Pro",
     price: "$39/mo",
-    currency: DEFAULT_CURRENCY,
     description:
       "Growing teams that need multiple staff, branded communications, and analytics.",
     features: [
@@ -112,7 +105,6 @@ const DEFAULT_PLANS = [
     key: "business",
     name: "Business",
     price: "$99/mo",
-    currency: DEFAULT_CURRENCY,
     description:
       "Multi-location brands that need unlimited staff, audit trails, and enterprise controls.",
     features: [
@@ -194,28 +186,6 @@ const DEFAULT_RIBBON = {
 const DEFAULT_FOOTNOTE = {
   message:
     "<strong>Custom domain + automatic SSL:</strong> included on <strong>Pro</strong> and <strong>Business</strong>. Available on <strong>Starter</strong> as an add-on ($5 / month).",
-};
-
-const toAbsoluteUrl = (path = "") => {
-  if (!path) return SITE_BASE_URL;
-  if (/^https?:\/\//i.test(path)) return path;
-  const normalized = path.startsWith("/") ? path : `/${path}`;
-  return `${SITE_BASE_URL}${normalized}`;
-};
-
-const slugify = (value) =>
-  String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "") || undefined;
-
-const extractPriceValue = (value) => {
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value !== "string") return null;
-  const match = value.replace(/,/g, "").match(/(\d+(\.\d+)?)/);
-  if (!match) return null;
-  return Number.parseFloat(match[1]);
 };
 
 const PricingPage = () => {
@@ -319,7 +289,6 @@ const PricingPage = () => {
       key: plan.key || plan.name,
       name: plan.name,
       price: plan.price,
-      currency: plan.currency || plansContent?.currency || DEFAULT_CURRENCY,
       description: plan.description,
       features: Array.isArray(plan.features) ? plan.features : [],
       ctaLabel: plan.ctaLabel || heroContent?.primaryCta?.label || DEFAULT_HERO.primaryCta.label,
@@ -339,54 +308,6 @@ const PricingPage = () => {
     return DEFAULT_ADDONS;
   }, [plansContent]);
 
-  const productSchema = useMemo(() => {
-    if (!plans.length) return null;
-    const contentCurrency = plansContent?.currency;
-
-    const items = plans
-      .map((plan) => {
-        const amount = extractPriceValue(plan.price);
-        if (!Number.isFinite(amount)) return null;
-
-        const currency = plan.currency || contentCurrency || DEFAULT_CURRENCY;
-        const slug = slugify(plan.key || plan.name);
-        const planAnchor = slug ? `#${slug}` : "";
-        const productUrl = `${SITE_BASE_URL}/pricing${planAnchor}`;
-
-        const ctaTarget = plan.ctaTo || CTA_PRIMARY_TO;
-        const offerBase = toAbsoluteUrl(ctaTarget || CTA_PRIMARY_TO);
-        const offerUrl =
-          slug && offerBase
-            ? `${offerBase}${offerBase.includes("?") ? "&" : "?"}plan=${encodeURIComponent(slug)}`
-            : offerBase;
-
-        return {
-          "@type": "Product",
-          "@id": productUrl,
-          name: plan.name,
-          description: plan.description,
-          sku: slug || plan.key || plan.name,
-          brand: { "@type": "Brand", name: BRAND_NAME },
-          url: productUrl,
-          offers: {
-            "@type": "Offer",
-            price: amount.toFixed(2),
-            priceCurrency: currency,
-            availability: "https://schema.org/InStock",
-            url: offerUrl,
-          },
-        };
-      })
-      .filter(Boolean);
-
-    if (!items.length) return null;
-
-    return {
-      "@context": "https://schema.org",
-      "@graph": items,
-    };
-  }, [plans, plansContent]);
-
   const metaOg = metaContent?.og || DEFAULT_META.og;
 
   return (
@@ -401,7 +322,6 @@ const PricingPage = () => {
           image: metaOg.image || DEFAULT_META.og.image,
         }}
       />
-      <JsonLd data={productSchema} />
 
       <HeroShowcase
         eyebrow={heroContent?.eyebrow || DEFAULT_HERO.eyebrow}

@@ -1,5 +1,5 @@
 // src/pages/NewManagementDashboard.js
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Box,
@@ -15,7 +15,6 @@ import {
   AccordionDetails,
   Dialog,
   DialogTitle,
-  DialogContent,
   DialogActions,
   Select,
   InputLabel,
@@ -40,7 +39,6 @@ import {
   TableCell,
   TableBody,
   Collapse,
-  FormHelperText,
 } from "@mui/material";
 import ShiftSwapPanel from "./components/ShiftSwapPanel";
 
@@ -111,7 +109,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import { format, endOfMonth, startOfMonth, addDays } from "date-fns";
+import { format, endOfMonth } from "date-fns";
 
 // NEW — Toggle group for views/options
 import { ToggleButtonGroup, ToggleButton } from "@mui/material";
@@ -248,10 +246,10 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
   const [recruiters, setRecruiters] = useState([]);
   const [selectedRecruiters, setSelectedRecruiters] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
-  const [calendarRange, setCalendarRange] = useState(() => ({
-    start: format(startOfMonth(new Date()), "yyyy-MM-dd"),
+  const [dateRange, setDateRange] = useState({
+    start: format(new Date(), "yyyy-MM-01"),
     end: format(endOfMonth(new Date()), "yyyy-MM-dd"),
-  }));
+  });
 
   const [shifts, setShifts] = useState([]);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -266,146 +264,12 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
 
   // NEW — full-screen popup control
   const [fullScreenOpen, setFullScreenOpen] = useState(false);
-  const calendarRef = useRef(null);
-  const fullScreenCalRef = useRef(null);
-
-  // Edit modal state
-  const [editingShift, setEditingShift] = useState(null);
-  const [editForm, setEditForm] = useState({
-    date: "",
-    startTime: "",
-    endTime: "",
-    location: "",
-    note: "",
-  });
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editBusy, setEditBusy] = useState(false);
-  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     if (openFullScreenOnMount) setFullScreenOpen(true);
   }, [openFullScreenOnMount]);
 
   const auth = { Authorization: `Bearer ${token}` };
-  const refreshShifts = () => setCalendarRange((prev) => ({ ...prev }));
-
-  const handleDatesSet = (arg) => {
-    if (!arg?.start || !arg?.end) return;
-    const startStr = format(arg.start, "yyyy-MM-dd");
-    const endStr = format(addDays(arg.end, -1), "yyyy-MM-dd");
-    setCalendarRange((prev) =>
-      prev.start === startStr && prev.end === endStr ? prev : { start: startStr, end: endStr }
-    );
-  };
-
-  const focusCalendarOnDate = (isoDate) => {
-    if (!isoDate) return;
-    calendarRef.current?.getApi?.()?.gotoDate?.(isoDate);
-    fullScreenCalRef.current?.getApi?.()?.gotoDate?.(isoDate);
-  };
-
-  const hasConflict = (recruiterId, date, startTime, endTime, excludeId = null) => {
-    const nextStart = new Date(`${date}T${startTime}`);
-    const nextEnd = new Date(`${date}T${endTime}`);
-    return shifts.some((s) => {
-      if (s.recruiter_id !== recruiterId) return false;
-      if (excludeId && s.id === excludeId) return false;
-      const existingStart = new Date(s.clock_in);
-      const existingEnd = new Date(s.clock_out);
-      return nextStart < existingEnd && nextEnd > existingStart;
-    });
-  };
-
-  const openShiftEditor = (shift) => {
-    if (!shift) return;
-    const start = shift.clock_in ? new Date(shift.clock_in) : null;
-    const end = shift.clock_out ? new Date(shift.clock_out) : null;
-    setEditingShift(shift);
-    setEditForm({
-      date: shift.date || (start ? format(start, "yyyy-MM-dd") : ""),
-      startTime: start ? format(start, "HH:mm") : "",
-      endTime: end ? format(end, "HH:mm") : "",
-      location: shift.location || "",
-      note: shift.note || "",
-    });
-    setEditError("");
-    setEditModalOpen(true);
-  };
-
-  const closeEditModal = () => {
-    setEditModalOpen(false);
-    setEditingShift(null);
-    setEditError("");
-    setEditBusy(false);
-  };
-
-  const handleEditFieldChange = (field) => (e) => {
-    const value = e.target.value;
-    setEditForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const submitEditShift = async () => {
-    if (!editingShift) return;
-    if (!editForm.date || !editForm.startTime || !editForm.endTime) {
-      setEditError("Date, start time, and end time are required.");
-      return;
-    }
-    if (
-      hasConflict(
-        editingShift.recruiter_id,
-        editForm.date,
-        editForm.startTime,
-        editForm.endTime,
-        editingShift.id
-      )
-    ) {
-      setEditError("This update overlaps another shift.");
-      return;
-    }
-
-    setEditBusy(true);
-    setEditError("");
-    const payload = {
-      recruiter_id: editingShift.recruiter_id,
-      date: editForm.date,
-      clock_in: `${editForm.date}T${editForm.startTime}`,
-      clock_out: `${editForm.date}T${editForm.endTime}`,
-      location: editForm.location,
-      note: editForm.note,
-      status: editingShift.status || "assigned",
-    };
-
-    try {
-      await axios.put(
-        `${API_URL}/automation/shifts/update/${editingShift.id}`,
-        payload,
-        { headers: auth }
-      );
-      closeEditModal();
-      setSelectedDate(editForm.date);
-      focusCalendarOnDate(editForm.date);
-      refreshShifts();
-    } catch (err) {
-      setEditError(err.response?.data?.error || err.response?.data?.message || "Failed to update shift.");
-    } finally {
-      setEditBusy(false);
-    }
-  };
-
-  const handleDeleteShift = async () => {
-    if (!editingShift) return;
-    if (!window.confirm("Delete this shift?")) return;
-    setEditBusy(true);
-    setEditError("");
-    try {
-      await axios.delete(`${API_URL}/automation/shifts/delete/${editingShift.id}`, { headers: auth });
-      closeEditModal();
-      refreshShifts();
-    } catch (err) {
-      setEditError(err.response?.data?.error || err.response?.data?.message || "Failed to delete shift.");
-      setEditBusy(false);
-    }
-  };
 
   // Departments
   useEffect(() => {
@@ -444,12 +308,11 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
 
   // Shifts (manager-assigned)
   useEffect(() => {
-    if (!recruiters.length || !calendarRange.start || !calendarRange.end) return;
+    if (!recruiters.length) return;
     const run = async () => {
       try {
         const ids = (selectedRecruiters.length ? selectedRecruiters : recruiters.map((r) => r.id)).join(",");
-        if (!ids) return;
-        const url = `${API_URL}/automation/shifts/range?start_date=${calendarRange.start}&end_date=${calendarRange.end}&recruiter_ids=${ids}`;
+        const url = `${API_URL}/automation/shifts/range?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
         const res = await axios.get(url, { headers: auth });
         setShifts(res.data.shifts || []);
       } catch {
@@ -458,7 +321,7 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
     };
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, recruiters, selectedRecruiters, calendarRange]);
+  }, [token, recruiters, selectedRecruiters, dateRange]);
 
   // Compute unique statuses for filter
   const uniqueStatuses = Array.from(new Set((shifts || []).map((s) => (s.status || "").toString()))).filter(Boolean);
@@ -474,7 +337,6 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
       backgroundColor: getColorForRecruiter(s.recruiter_id),
       borderColor: getColorForRecruiter(s.recruiter_id),
       textColor: "#000",
-      extendedProps: { shiftId: s.id },
     }));
 
   // Chips for selected day
@@ -491,7 +353,6 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
         key: `${s.id}-${s.clock_in}`,
         label: `${startLabel}–${endLabel} • ${name} (${s.status})`,
         color: getColorForRecruiter(s.recruiter_id),
-        shift: s,
       };
     })
     .sort((a, b) => (a.label < b.label ? -1 : 1));
@@ -509,13 +370,9 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
     slotMinTime: workHoursOnly ? "08:00:00" : "00:00:00",
     slotMaxTime: workHoursOnly ? "20:00:00" : "24:00:00",
     eventTimeFormat: { hour: "2-digit", minute: "2-digit", meridiem: false },
-    datesSet: handleDatesSet,
     dateClick: (arg) => setSelectedDate(arg.dateStr),
     eventClick: (info) => {
       if (info.event.start) setSelectedDate(format(info.event.start, "yyyy-MM-dd"));
-      const shiftId = info.event.extendedProps?.shiftId || Number(info.event.id);
-      const match = shifts.find((s) => String(s.id) === String(shiftId));
-      if (match) openShiftEditor(match);
     },
     headerToolbar: {
       left: "prev,next today",
@@ -523,7 +380,6 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
       right: "dayGridMonth,timeGridWeek,timeGridDay",
     },
     initialView: "dayGridMonth",
-    initialDate: calendarRange.start,
   };
 
   return (
@@ -611,15 +467,13 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
               const month = e.target.value;
               setSelectedMonth(month);
               const first = `${month}-01`;
+              const last = format(endOfMonth(new Date(first)), "yyyy-MM-dd");
+              setDateRange({ start: first, end: last });
               setSelectedDate(first);
-              focusCalendarOnDate(first);
             }}
             InputLabelProps={{ shrink: true }}
             fullWidth
           />
-          <FormHelperText>
-            Use this when scheduling new shifts; the calendar navigation controls what is shown below.
-          </FormHelperText>
         </Grid>
 
         {/* NEW — View & options row */}
@@ -662,7 +516,7 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
 
             <Button
               variant="outlined"
-              onClick={refreshShifts}
+              onClick={() => setDateRange((dr) => ({ ...dr }))}
               sx={{ ml: "auto" }}
             >
               Refresh
@@ -682,12 +536,7 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
 
       {/* Calendar (Month/Week/Day) */}
       <Paper sx={{ p: compactDensity ? 1 : 2, mb: 2 }} elevation={1}>
-        <FullCalendar
-          ref={calendarRef}
-          {...calProps}
-          initialView={calendarView}
-          key={calendarView}
-        />
+        <FullCalendar {...calProps} initialView={calendarView} key={calendarView} />
       </Paper>
 
       {/* Legend */}
@@ -715,7 +564,7 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
           <Tooltip title="Each chip uses the employee color">
             <Chip size="small" label="Legend: color by employee" />
           </Tooltip>
-          <Button size="small" onClick={refreshShifts} sx={{ ml: "auto" }}>
+          <Button size="small" onClick={() => setDateRange((dr) => ({ ...dr }))} sx={{ ml: "auto" }}>
             Refresh
           </Button>
         </Stack>
@@ -728,81 +577,16 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
               <Chip
                 key={c.key}
                 label={c.label}
-                onClick={() => openShiftEditor(c.shift)}
                 sx={{
                   bgcolor: c.color,
                   border: "1px solid rgba(0,0,0,0.2)",
                   color: "#000",
-                  cursor: "pointer",
                 }}
               />
             ))}
           </Stack>
         )}
       </Paper>
-
-      <Dialog open={editModalOpen} onClose={closeEditModal} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Shift</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-          <TextField
-            type="date"
-            label="Date"
-            value={editForm.date}
-            onChange={handleEditFieldChange("date")}
-            InputLabelProps={{ shrink: true }}
-          />
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-            <TextField
-              fullWidth
-              type="time"
-              label="Start Time"
-              value={editForm.startTime}
-              onChange={handleEditFieldChange("startTime")}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              fullWidth
-              type="time"
-              label="End Time"
-              value={editForm.endTime}
-              onChange={handleEditFieldChange("endTime")}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Stack>
-          <TextField
-            label="Location"
-            value={editForm.location}
-            onChange={handleEditFieldChange("location")}
-            fullWidth
-          />
-          <TextField
-            label="Notes"
-            value={editForm.note}
-            onChange={handleEditFieldChange("note")}
-            fullWidth
-            multiline
-            minRows={3}
-          />
-          {editError && (
-            <Typography color="error" variant="body2">
-              {editError}
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          {editingShift && (
-            <Button color="error" onClick={handleDeleteShift} disabled={editBusy}>
-              Delete
-            </Button>
-          )}
-          <Button onClick={closeEditModal} disabled={editBusy}>
-            Cancel
-          </Button>
-          <Button onClick={submitEditShift} variant="contained" disabled={editBusy}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {error && (
         <Typography color="error" sx={{ mt: 2 }}>
@@ -845,7 +629,7 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
             <ToggleButton value="timeGridDay">Day</ToggleButton>
           </ToggleButtonGroup>
 
-          <Button variant="outlined" onClick={refreshShifts}>
+          <Button variant="outlined" onClick={() => setDateRange((dr) => ({ ...dr }))}>
             Refresh
           </Button>
         </Toolbar>
@@ -853,7 +637,6 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
         <Box sx={{ p: isSmall ? 1 : 2 }}>
           <Paper sx={{ p: isSmall ? 0 : 1 }}>
             <FullCalendar
-              ref={fullScreenCalRef}
               {...calProps}
               initialView={calendarView}
               key={`fs-${calendarView}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}

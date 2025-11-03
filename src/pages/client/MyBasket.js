@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import {
   Box,
@@ -20,8 +20,9 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import PublicPageShell from "./PublicPageShell";
-import { CartTypes, loadCart, removeCartItem, saveCart, getItemHoldRemainingMs } from "../../utils/cart";
+import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
+import { api as apiClient } from "../../utils/api";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
@@ -70,39 +71,113 @@ const MyBasket = () => {
 
   const [items, setItems] = useState(() => loadCart());
   const [snack, setSnack] = useState({ open: false, msg: "" });
-
+  const [holdMinutes, setHoldMinutes] = useState(null);
+  const [holdState, setHoldState] = useState({ overall: null, perItem: {} });
   const [cancelHandled, setCancelHandled] = useState(false);
-  const prevItemsRef = useRef(items);
+  const serviceItems = useMemo(
+    () => items.filter((item) => item.type !== CartTypes.PRODUCT),
+    [items]
+  );
 
   useEffect(() => {
-    setItems(loadCart());
+    const saved = loadCart();
+    let mutated = false;
+    const normalized = saved.map((item) => {
+      if (item.type === CartTypes.PRODUCT || item?.hold_started_at) return item;
+      mutated = true;
+      return { ...item, hold_started_at: new Date().toISOString() };
+    });
+    if (mutated) {
+      saveCart(normalized);
+    }
+    setItems(normalized);
   }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      const next = loadCart();
-      const prev = prevItemsRef.current || [];
-      if (next !== prev) {
-        const nextIds = new Set(next.map((it) => it.id));
-        const expired = prev.filter(
-          (it) =>
-            !nextIds.has(it.id) &&
-            it.hold_expires_at &&
-            Date.parse(it.hold_expires_at) <= Date.now()
-        );
-        if (expired.length) {
-          setSnack({ open: true, msg: "Some held slots expired and were removed from your basket." });
+    if (!slug) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await apiClient.get(`/public/${slug}/company-info`, { noCompanyHeader: true });
+        if (cancelled) return;
+        const hold = Number(data?.booking_hold_minutes ?? 0);
+        setHoldMinutes(Number.isFinite(hold) && hold > 0 ? hold : null);
+      } catch {
+        if (!cancelled) setHoldMinutes(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  useEffect(() => {
+    if (!holdMinutes || holdMinutes <= 0 || serviceItems.length === 0) {
+      setHoldState({ overall: null, perItem: {} });
+      return;
+    }
+
+    let cancelled = false;
+
+    const runTick = () => {
+      const now = Date.now();
+      const perItem = {};
+      const expiredIds = [];
+      let minPositive = null;
+
+      serviceItems.forEach((item) => {
+        const started = Date.parse(item?.hold_started_at);
+        if (!Number.isFinite(started)) return;
+        const remaining = started + holdMinutes * 60 * 1000 - now;
+        perItem[item.id] = remaining;
+        if (remaining <= 0) {
+          expiredIds.push(item.id);
+        } else {
+          minPositive = minPositive === null ? remaining : Math.min(minPositive, remaining);
         }
-        prevItemsRef.current = next;
-        setItems(next);
+      });
+
+      if (expiredIds.length && !cancelled) {
+        const filtered = items.filter((item) => !expiredIds.includes(item.id));
+        if (filtered.length !== items.length) {
+          saveCart(filtered);
+          setItems(filtered);
+          setSnack({ open: true, msg: "Service holds expired. Please reselect your appointment times." });
+          const hasRemainingServices = filtered.some((item) => item.type !== CartTypes.PRODUCT);
+          if (!hasRemainingServices && slug) {
+            releasePendingCheckout({ slug }).catch(() => {});
+          }
+        }
+      }
+
+      if (!cancelled) {
+        const overall =
+          minPositive !== null
+            ? Math.max(0, minPositive)
+            : Object.keys(perItem).length
+            ? 0
+            : null;
+        setHoldState({ overall, perItem });
+      }
+
+      return expiredIds.length === 0 && minPositive !== null;
+    };
+
+    const keepRunning = runTick();
+    if (!keepRunning) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const active = runTick();
+      if (!active) {
+        clearInterval(timer);
       }
     }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
-  useEffect(() => {
-    prevItemsRef.current = items;
-  }, [items]);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [holdMinutes, serviceItems, items, slug]);
 
   useEffect(() => {
     if (cancelHandled) return;
@@ -155,24 +230,16 @@ const MyBasket = () => {
     setItems(next);
     setSnack({ open: true, msg: "Item removed" });
   };
+  const formatHoldCountdown = (ms) => {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
 
   const hasServiceItems = items.some((it) => it.type !== CartTypes.PRODUCT);
   const hasProductItems = items.some((it) => it.type === CartTypes.PRODUCT);
   const mixedCart = hasServiceItems && hasProductItems;
-  const holdCountdownLabel = useMemo(() => {
-    const serviceItems = items.filter((it) => it.type !== CartTypes.PRODUCT);
-    const remaining = serviceItems
-      .map((it) => getItemHoldRemainingMs(it))
-      .filter((ms) => ms != null && ms > 0);
-    if (!remaining.length) return null;
-    const minMs = Math.min(...remaining);
-    const totalSeconds = Math.ceil(minMs / 1000);
-    const minutes = Math.floor(totalSeconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-    return `${minutes}:${seconds}`;
-  }, [items]);
 
   const proceed = () => {
     if (mixedCart) {
@@ -225,10 +292,14 @@ const MyBasket = () => {
           </Stack>
         </Stack>
 
-        {holdCountdownLabel && (
-          <Alert severity="info">
-            We’re holding your selected times for <strong>{holdCountdownLabel}</strong>. Complete checkout before the timer runs out or the slots will be released.
-          </Alert>
+        {typeof holdMinutes === "number" && holdMinutes > 0 && serviceItems.length > 0 && holdState.overall !== null && (
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="body2" sx={{ mt: 1.5 }}>
+              {holdState.overall > 0
+                ? `We're holding your selected times for ${formatHoldCountdown(holdState.overall)}. Complete checkout before the timer runs out or the slots will be released.`
+                : "The hold window has expired. If you continue, the selected times may no longer be available."}
+            </Typography>
+          </Card>
         )}
 
         {mixedCart && (

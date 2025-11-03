@@ -7,7 +7,7 @@ import {
 
 // ✅ correct relative paths (two ../, not three)
 import useCompanyId from "../../hooks/useCompanyId";
-import { wb } from "../../utils/api";
+import { navSettings } from "../../utils/api";
 
 export default function SettingsWebsiteNav() {
   const companyId = useCompanyId({ devDefault: null }); // consistent id
@@ -29,9 +29,7 @@ export default function SettingsWebsiteNav() {
       if (!companyId) return;
       try {
         setLoading(true);
-        const res = await wb.getSettings(companyId); // explicit id for load
-        const data = res?.data || {};
-        const nav  = data.nav_overrides || data.settings?.nav_overrides || {};
+        const nav  = await navSettings.getOverrides(companyId);
         if (cancel) return;
 
         setShowServices(nav.show_services_tab !== false);
@@ -58,19 +56,15 @@ export default function SettingsWebsiteNav() {
     }
     setSaving(true);
     try {
-      const payload = {
-        nav_overrides: {
-          show_services_tab: !!showServices,
-          services_tab_target: servicesTarget,
-          services_page_slug: (servicesSlug || "services").trim().toLowerCase(),
-          show_reviews_tab: !!showReviews,
-          reviews_tab_target: reviewsTarget,
-          reviews_page_slug: (reviewsSlug || "reviews").trim().toLowerCase(),
-        },
+      const overrides = {
+        show_services_tab: !!showServices,
+        services_tab_target: servicesTarget,
+        services_page_slug: (servicesSlug || "services").trim().toLowerCase(),
+        show_reviews_tab: !!showReviews,
+        reviews_tab_target: reviewsTarget,
+        reviews_page_slug: (reviewsSlug || "reviews").trim().toLowerCase(),
       };
-      const res = await wb.saveSettings(companyId, payload); // explicit id for save
-      const saved = res?.data || {};
-      const nav   = saved.nav_overrides || saved.settings?.nav_overrides || payload.nav_overrides;
+      const nav   = await navSettings.updateOverrides(companyId, overrides);
 
       // rehydrate from server
       setShowServices(nav.show_services_tab !== false);

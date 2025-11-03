@@ -590,10 +590,10 @@ export default function SectionInspector({
                 <TextField
                   label="Question"
                   size="small"
-                  value={it?.q || ""}
+                  value={it?.question || ""}
                   onChange={(e) => {
                     const next = [...(p.items || [])];
-                    next[idx] = { ...(next[idx] || {}), q: e.target.value };
+                    next[idx] = { ...(next[idx] || {}), question: e.target.value };
                     onChangeProp("items", next);
                   }}
                   fullWidth
@@ -602,10 +602,10 @@ export default function SectionInspector({
                 <TextField
                   label="Answer"
                   size="small"
-                  value={it?.a || ""}
+                  value={it?.answer || ""}
                   onChange={(e) => {
                     const next = [...(p.items || [])];
-                    next[idx] = { ...(next[idx] || {}), a: e.target.value };
+                    next[idx] = { ...(next[idx] || {}), answer: e.target.value };
                     onChangeProp("items", next);
                   }}
                   fullWidth
@@ -629,7 +629,9 @@ export default function SectionInspector({
             <Button
               size="small"
               variant="outlined"
-              onClick={() => onChangeProp("items", [...(p.items || []), { q: "", a: "" }])}
+              onClick={() =>
+                onChangeProp("items", [...(p.items || []), { question: "", answer: "" }])
+              }
             >
               Add item
             </Button>
@@ -967,6 +969,5 @@ export default function SectionInspector({
       );
   }
 }
-
 
 

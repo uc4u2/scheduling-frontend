@@ -5,8 +5,6 @@ import { CartTypes, CartErrorCodes } from "./cart";
 const CHECKOUT_SESSION_KEY = "checkout_stripe_session_id";
 const PENDING_CHECKOUT_KEY = "checkout_pending_checkout_id";
 const PRODUCT_ORDER_KEY = "checkout_product_order_id";
-const HOLD_TIMEOUT_KEY = "checkout_hold_timeout_minutes";
-const HOLD_EXPIRES_KEY = "checkout_hold_expires_at";
 
 const normalizePolicyMode = (mode) => {
   const value = (mode || "pay").toLowerCase();
@@ -159,7 +157,7 @@ export const buildHostedCheckoutPayload = ({
   return payload;
 };
 
-export const storeCheckoutContext = ({ sessionId, pendingCheckoutId, productOrderId, holdTimeoutMinutes, holdExpiresAt }) => {
+export const storeCheckoutContext = ({ sessionId, pendingCheckoutId, productOrderId }) => {
   try {
     if (sessionId) {
       sessionStorage.setItem(CHECKOUT_SESSION_KEY, sessionId);
@@ -169,12 +167,6 @@ export const storeCheckoutContext = ({ sessionId, pendingCheckoutId, productOrde
     }
     if (productOrderId) {
       sessionStorage.setItem(PRODUCT_ORDER_KEY, String(productOrderId));
-    }
-    if (holdTimeoutMinutes != null) {
-      sessionStorage.setItem(HOLD_TIMEOUT_KEY, String(holdTimeoutMinutes));
-    }
-    if (holdExpiresAt) {
-      sessionStorage.setItem(HOLD_EXPIRES_KEY, holdExpiresAt);
     }
   } catch {
     /* ignore storage errors */
@@ -186,8 +178,6 @@ export const clearCheckoutContext = () => {
     sessionStorage.removeItem(CHECKOUT_SESSION_KEY);
     sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
     sessionStorage.removeItem(PRODUCT_ORDER_KEY);
-    sessionStorage.removeItem(HOLD_TIMEOUT_KEY);
-    sessionStorage.removeItem(HOLD_EXPIRES_KEY);
   } catch {
     /* ignore storage errors */
   }
@@ -225,8 +215,6 @@ export const startHostedCheckout = async ({
     null;
   const checkoutUrl = data?.url || data?.session?.url || data?.checkout_url;
   const pendingCheckoutId = data?.pending_checkout_id || data?.pending?.id;
-  const holdTimeoutMinutes = data?.hold_timeout_minutes ?? data?.pending?.hold_timeout_minutes;
-  const holdExpiresAt = data?.hold_expires_at ?? data?.pending?.hold_expires_at;
   const productOrderId = data?.product_order_id || data?.order_id;
 
   if (!checkoutUrl || !sessionId) {
@@ -237,8 +225,6 @@ export const startHostedCheckout = async ({
     sessionId,
     pendingCheckoutId,
     productOrderId,
-    holdTimeoutMinutes,
-    holdExpiresAt,
   });
 
   const target = resolveTargetWindow();
@@ -248,8 +234,6 @@ export const startHostedCheckout = async ({
     sessionId,
     pendingCheckoutId,
     productOrderId,
-    holdTimeoutMinutes,
-    holdExpiresAt,
     url: checkoutUrl,
   };
 };
@@ -282,20 +266,6 @@ export const releasePendingCheckout = async ({ slug, reason = "user_cancelled", 
     return { ...data, pendingCheckoutId };
   } catch (error) {
     return { released: false, status: "error", error, pendingCheckoutId };
-  }
-};
-
-export const getCheckoutHoldInfo = () => {
-  try {
-    const expiresAt = sessionStorage.getItem(HOLD_EXPIRES_KEY);
-    const timeoutRaw = sessionStorage.getItem(HOLD_TIMEOUT_KEY);
-    const timeoutMinutes = timeoutRaw ? Number(timeoutRaw) : null;
-    return {
-      expiresAt: expiresAt || null,
-      timeoutMinutes: Number.isFinite(timeoutMinutes) ? timeoutMinutes : null,
-    };
-  } catch {
-    return { expiresAt: null, timeoutMinutes: null };
   }
 };
 
