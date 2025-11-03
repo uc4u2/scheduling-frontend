@@ -23,6 +23,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import FolderIcon from "@mui/icons-material/Folder";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 const STEP_CONFIG = [
   { key: "pickPage", Icon: GridViewIcon },
@@ -31,6 +32,8 @@ const STEP_CONFIG = [
   { key: "pageStyle", Icon: PaletteIcon },
   { key: "savePublish", Icon: SaveIcon },
   { key: "navigation", Icon: PublicIcon },
+  { key: "navStyle", Icon: PaletteIcon },
+  { key: "livePreview", Icon: VisibilityIcon },
   { key: "revisions", Icon: HistoryIcon },
   { key: "assets", Icon: FolderIcon, options: (translate) => ({ assetsLabel: translate("help.websiteBuilder.goToAssets") }) },
   { key: "optimization", Icon: CloudUploadIcon },
@@ -205,5 +208,4 @@ function ListBlock({ items }) {
     </ul>
   );
 }
-
 
