@@ -1,4 +1,4 @@
-// src/pages/sections/management/VisualSiteBuilder.js
+﻿// src/pages/sections/management/VisualSiteBuilder.js
 
 import React, {
   useEffect,
@@ -34,9 +34,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Card,               // NEW for PageStyleCard
-  CardContent,        // NEW for PageStyleCard
- Slider, InputAdornment } from "@mui/material";
+  Slider,
+} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -51,17 +50,20 @@ import BrushIcon from "@mui/icons-material/Brush";
 import ViewCarouselIcon from "@mui/icons-material/ViewCarousel";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline"; // NEW
 import PaletteIcon from "@mui/icons-material/Palette";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import { nanoid } from "nanoid";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import { useTranslation, Trans } from "react-i18next";
 
-import { wb } from "../../../utils/api";
+import { wb, navSettings } from "../../../utils/api";
+import { normalizeNavStyle } from "../../../utils/navStyle";
 import { RenderSections } from "../../../components/website/RenderSections";
 import useCompanyId from "../../../hooks/useCompanyId";
 import useHistory from "../../../hooks/useHistory";
- //import WebsiteNavSettingsCard from "../../../components/website/WebsiteNavSettingsCard";
+import WebsiteNavSettingsCard from "../../../components/website/WebsiteNavSettingsCard";
+import NavStyleHydrator from "../../../components/website/NavStyleHydrator";
 
 /** Floating + Inline inspectors and schema registry */
 import {
@@ -94,14 +96,75 @@ import TabShell from "../../../components/ui/TabShell";
 import WebsiteBuilderHelpDrawer from "./WebsiteBuilderHelpDrawer"; // NEW
 /** Local shims so the app renders even if helpers aren’t exported yet */
 const ThemeRuntimeProvider = ({ overrides, children }) => <>{children}</>;
-const ThemePalettePanel = ({
-  value,
+const CollapsibleSection = ({
+  id,
+  title,
+  description,
+  actions,
+  children,
+  defaultExpanded = false,
+  expanded,
   onChange,
-  onSave,
-  saving,
-  message,
-  error,
-}) => null;
+}) => {
+  const accordionProps =
+    typeof expanded === "boolean"
+      ? { expanded }
+      : { defaultExpanded };
+
+  return (
+  <Accordion
+    disableGutters
+    id={id}
+    {...accordionProps}
+    sx={{
+      borderRadius: 3,
+      border: (theme) => `1px solid ${theme.palette.divider}`,
+      boxShadow: "none",
+      overflow: "hidden",
+      "&:before": { display: "none" },
+    }}
+    onChange={(_, next) => onChange?.(next)}
+  >
+    <AccordionSummary
+      expandIcon={<ExpandMoreIcon />}
+      sx={{ px: 3, py: 2 }}
+    >
+      <Box sx={{ flexGrow: 1, pr: actions ? 2 : 0 }}>
+        {title ? (
+          typeof title === "string" ? (
+            <Typography variant="h6" fontWeight={700}>
+              {title}
+            </Typography>
+          ) : (
+            title
+          )
+        ) : null}
+        {description ? (
+          typeof description === "string" ? (
+            <Typography variant="body2" color="text.secondary">
+              {description}
+            </Typography>
+          ) : (
+            description
+          )
+        ) : null}
+      </Box>
+      {actions ? (
+        <Box
+          sx={{ ml: 2, display: "flex", alignItems: "center", gap: 1 }}
+          onClick={(event) => event.stopPropagation()}
+          onFocus={(event) => event.stopPropagation()}
+        >
+          {actions}
+        </Box>
+      ) : null}
+    </AccordionSummary>
+    <AccordionDetails sx={{ px: 3, py: 2 }}>
+      {children}
+    </AccordionDetails>
+  </Accordion>
+  );
+};
 
 /* ---------- Constants ---------- */
 const LAB_LS_KEY = "layout_tuning_lab_v1";
@@ -197,6 +260,27 @@ const defaultPageStyleBlock = () => ({
   },
   sx: { py: 0 },
 });
+
+/* ---------- Navigation settings helpers ---------- */
+const deriveNavDraft = (styleSource) => {
+  if (!styleSource) return null;
+  const style = normalizeNavStyle(styleSource);
+  return { nav_style: style };
+};
+
+const mergeNavIntoSettings = (current, draft) => {
+  if (!draft?.nav_style) return current;
+  const style = normalizeNavStyle(draft.nav_style);
+  const base = current ? { ...current } : {};
+  return {
+    ...base,
+    nav_style: style,
+    settings: {
+      ...(base.settings || {}),
+      nav_style: style,
+    },
+  };
+};
 
 /* ---------- CSS VARS helper for page-level style (NEW) ---------- */
 /* ---------- CSS VARS helper for page-level style (final) ---------- */
@@ -364,12 +448,7 @@ function PageStyleCard({
   };
 
   return (
-  <SectionCard
-    title={t("manager.visualBuilder.pageStyle.title")}
-    description={t("manager.visualBuilder.pageStyle.description")}
-    id="page-style-card"
-  >
-    <Stack spacing={1.25}>
+    <Stack id="page-style-card" spacing={1.25}>
       {/* Background */}
       <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.background.heading")}</Typography>
       <TextField
@@ -476,7 +555,7 @@ function PageStyleCard({
           fullWidth
         />
       </Stack>
-            <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={1}>
         <TextField
           size="small"
           label={t("manager.visualBuilder.pageStyle.card.radius")}
@@ -567,20 +646,19 @@ function PageStyleCard({
         >
           {t("manager.visualBuilder.pageStyle.applyNow")}
         </Button>
-        
+
       </Stack>
       {/* NEW — open the full, section-based editor */}
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<PaletteIcon />}
-          onClick={onOpenAdvanced}
-        >
-          {t("manager.visualBuilder.pageStyle.openAdvanced")}
-        </Button>
-      </Stack>
-  </SectionCard>
-);
+      <Button
+        size="small"
+        variant="contained"
+        startIcon={<PaletteIcon />}
+        onClick={onOpenAdvanced}
+      >
+        {t("manager.visualBuilder.pageStyle.openAdvanced")}
+      </Button>
+    </Stack>
+  );
 
 }
 
@@ -598,8 +676,14 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   );
 
   // local state the component already uses elsewhere
-  const [settings, setSettings] = useState(null);
+const [siteSettings, setSiteSettings] = useState(null);
+const [navStyleState, setNavStyleState] = useState(null);
+const [pageSettingsOpen, setPageSettingsOpen] = useState(true);
   const [pages, setPages] = useState([]);
+  const [navDraft, setNavDraft] = useState(null);
+  const [navSaving, setNavSaving] = useState(false);
+  const [navMsg, setNavMsg] = useState("");
+  const [navErr, setNavErr] = useState("");
 
   useEffect(() => {
     if (companyIdProp && companyIdProp !== companyId) {
@@ -614,6 +698,17 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
       setCompanyId(detectedCompanyId);
     }
   }, [detectedCompanyId, companyId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+useEffect(() => {
+    if (!navStyleState) return;
+    setNavDraft((prev) => {
+      const next = deriveNavDraft(navStyleState);
+      const prevHash = prev ? JSON.stringify(prev) : null;
+      const nextHash = JSON.stringify(next);
+      if (prevHash === nextHash) return prev;
+      return next;
+    });
+  }, [navStyleState]);
 
   const justImported = Boolean(location.state?.postImportReload);
   const [suppressEmptyState, setSuppressEmptyState] = useState(justImported);
@@ -675,7 +770,11 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
           Array.isArray(pagesRes?.data) ? pagesRes.data :
           (pagesRes?.data?.items || []);
 
-        setSettings(settingsRes?.data ?? settingsRes ?? null);
+        const settingsPayload = settingsRes?.data ?? settingsRes ?? null;
+        setSiteSettings(settingsPayload);
+        setNavDraft(deriveNavDraft(settingsPayload));
+        setNavMsg("");
+        setNavErr("");
 
         if (!pagesList.length) {
           try {
@@ -745,9 +844,55 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   } = useHistory(emptyPage());
   const [selectedBlock, setSelectedBlock] = useState(-1);
 
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
+const [busy, setBusy] = useState(false);
+const [msg, setMsg] = useState("");
+const [err, setErr] = useState("");
+
+const handleNavDraftChange = useCallback(
+  (draft) => {
+    if (!draft) return;
+    const normalized = normalizeNavStyle(draft?.nav_style || {});
+    setNavDraft({ nav_style: normalized });
+    setNavMsg("");
+    setNavErr("");
+    setNavStyleState(normalized);
+    setSiteSettings((prev) => mergeNavIntoSettings(prev, { nav_style: normalized }));
+  },
+  [setSiteSettings]
+);
+
+const saveNavSettings = useCallback(
+  async (draft) => {
+    if (!companyId) {
+      setNavErr("Company id missing");
+      return;
+    }
+
+    setNavSaving(true);
+    setNavMsg("");
+    setNavErr("");
+    try {
+      const full = normalizeNavStyle(draft?.nav_style || navStyleState || {});
+      const saved = await navSettings.updateStyle(companyId, full);
+      const normalizedSaved = normalizeNavStyle(saved || full);
+      setNavStyleState(normalizedSaved);
+      setNavDraft(deriveNavDraft(normalizedSaved));
+      setSiteSettings((prev) => mergeNavIntoSettings(prev, { nav_style: normalizedSaved }));
+      setNavMsg(t("manager.visualBuilder.messages.navSaved"));
+      setMsg(t("manager.visualBuilder.messages.navSaved"));
+    } catch (e) {
+      const message =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        "Failed to save navigation settings.";
+      setNavErr(message);
+    } finally {
+      setNavSaving(false);
+    }
+  },
+  [companyId, setSiteSettings, navStyleState, t]
+);
 
   // Simple / Advanced toggle
   const [mode, setMode] = useState("simple"); // "simple" | "advanced"
@@ -866,49 +1011,23 @@ const srcProps =
   // NEW — Help drawer state and jump helpers  (keep this below your new block)
   const [helpOpen, setHelpOpen] = useState(false);
   const jumpToById = (id) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      setTimeout(() => setHelpOpen(false), 250);
+    if (id === "builder-page-settings") {
+      setPageSettingsOpen(true);
     }
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    const summary = el.querySelector('[role="button"][aria-expanded]');
+    if (summary && summary.getAttribute("aria-expanded") === "false") {
+      summary.click();
+    }
+
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => setHelpOpen(false), 250);
   };
   const handleJumpToPageStyle = () => jumpToById("page-style-card");
   const handleJumpToNav = () => jumpToById("nav-settings-card");
   const handleJumpToAssets = () => jumpToById("assets-manager-card");
-
-  // --- Theme palette state (persisted with wb.saveSettings) ---
-  const [themeOverrides, setThemeOverrides] = useState({});
-  const [themeSaving, setThemeSaving] = useState(false);
-  const [themeMsg, setThemeMsg] = useState("");
-  const [themeErr, setThemeErr] = useState("");
-
-  // load once
-  useEffect(() => {
-    (async () => {
-      try {
-        const s = await wb.getSettings(companyId);
-        const root = s?.data || s || {};
-        setThemeOverrides(root.theme_overrides || {});
-      } catch {}
-    })();
-  }, [companyId]);
-
-  // save
-  const saveTheme = async () => {
-    setThemeMsg("");
-    setThemeErr("");
-    setThemeSaving(true);
-    try {
-      await wb.saveSettings(companyId, { theme_overrides: themeOverrides || {} });
-      setThemeMsg(t("manager.visualBuilder.messages.themeSaved"));
-    } catch (e) {
-      setThemeErr(
-        e?.response?.data?.message || e?.message || t("manager.visualBuilder.errors.saveTheme")
-      );
-    } finally {
-      setThemeSaving(false);
-    }
-  };
 
   const selectedPage = useMemo(
     () => pages.find((p) => p.id === selectedId) || null,
@@ -981,10 +1100,28 @@ const autoProvisionIfEmpty = useCallback(
     try {
       const s = await wb.getSettings(cid);
       settingsObj = s?.data || s || null;
-      setSettings(settingsObj);
     } catch (e) {
       console.warn("Settings load failed", e?.response?.data || e);
     }
+
+    try {
+      const styleRes = await navSettings.getStyle(cid);
+      if (styleRes) {
+        const normalizedStyle = normalizeNavStyle(styleRes);
+        setNavStyleState(normalizedStyle);
+        settingsObj = mergeNavIntoSettings(settingsObj, { nav_style: styleRes });
+      }
+    } catch (e) {
+      console.warn("Nav style load failed", e?.response?.data || e);
+    }
+
+    if (!navStyleState && (settingsObj?.nav_style || settingsObj?.settings?.nav_style)) {
+      setNavStyleState(
+        normalizeNavStyle(settingsObj.nav_style || settingsObj.settings?.nav_style || {})
+      );
+    }
+
+    setSiteSettings(settingsObj);
 
     // 2) pages
     let res = await wb.listPages(cid);
@@ -1016,9 +1153,11 @@ const autoProvisionIfEmpty = useCallback(
       const first = ensureSectionIds(withLiftedLayout(home));
       setSelectedId(first.id);
       setEditing(first);
+      setPageSettingsOpen(true);
     } else {
       setSelectedId(null);
       setEditing(ensureSectionIds(withLiftedLayout(emptyPage())));
+      setPageSettingsOpen(true);
     }
 
     setSelectedBlock(-1);
@@ -1831,291 +1970,284 @@ async function onPublish() {
     ) : null;
 
   const LeftColumn = (
-  <Stack spacing={2}>
-    <SectionCard title={t("manager.visualBuilder.pages.title")}>
-      <List dense sx={{ mb: 1 }}>
-        {pages.map((p) => (
-          <ListItem key={p.id} disablePadding>
-            <ListItemButton
-              selected={selectedId === p.id}
+    <Stack spacing={1.5}>
+      <CollapsibleSection
+        id="builder-pages-list"
+        title={t("manager.visualBuilder.pages.title")}
+        defaultExpanded
+      >
+        <List dense sx={{ mb: 1 }}>
+          {pages.map((p) => (
+            <ListItem key={p.id} disablePadding>
+              <ListItemButton
+                selected={selectedId === p.id}
               onClick={() => {
                 const lifted = withLiftedLayout(p);
                 setSelectedId(lifted.id);
                 setEditing(lifted);
                 setSelectedBlock(-1);
+                setPageSettingsOpen(true);
               }}
             >
               <ListItemText primary={p.title || p.slug} secondary={p.slug} />
             </ListItemButton>
           </ListItem>
-        ))}
-      </List>
-    </SectionCard>
+          ))}
+        </List>
+      </CollapsibleSection>
 
-    <SectionCard
-      title={t("manager.visualBuilder.pages.settings.title")}
-      actions={
-        <Stack direction="row" spacing={1}>
-          <Button
-            size="small"
-            variant="contained"
-            onClick={savePageMeta}
-            disabled={busy || !companyId}
-          >
-            {t("manager.visualBuilder.pages.settings.save")}
-          </Button>
-          <Button
-            size="small"
-            onClick={() => loadAll(companyId)}
-            disabled={busy || !companyId}
-          >
-            {t("manager.visualBuilder.pages.settings.reload")}
-          </Button>
-        </Stack>
-      }
-    >
-      <Stack spacing={1}>
-        <TextField
-          label={t("manager.visualBuilder.pages.settings.fields.slug")}
-          size="small"
-          value={editing.slug || ""}
-          onChange={(e) => updatePageMeta({ slug: e.target.value })}
-          helperText={t("manager.visualBuilder.pages.settings.fields.slugHint")}
-          fullWidth
-        />
-        <TextField
-          label={t("manager.visualBuilder.pages.settings.fields.pageTitle")}
-          size="small"
-          value={editing.title || ""}
-          onChange={(e) => updatePageMeta({ title: e.target.value })}
-          fullWidth
-        />
-        <TextField
-          label={t("manager.visualBuilder.pages.settings.fields.menuTitle")}
-          size="small"
-          value={editing.menu_title || ""}
-          onChange={(e) => updatePageMeta({ menu_title: e.target.value })}
-          fullWidth
-        />
-        <TextField
-          label={t("manager.visualBuilder.pages.settings.fields.sortOrder")}
-          size="small"
-          type="number"
-          value={Number(editing.sort_order ?? 0)}
-          onChange={(e) =>
-            updatePageMeta({ sort_order: Number(e.target.value || 0) })
-          }
-          fullWidth
-        />
-
-        {/* Layout selector (boxed vs full) */}
-        <Box>
-          <Typography variant="body2" sx={{ mb: 0.5 }}>
-            {t("manager.visualBuilder.pages.settings.layout.label")}
-          </Typography>
-          <Select
-            size="small"
-            fullWidth
-            value={editing.layout || "boxed"}
-            onChange={(e) => updatePageMeta({ layout: e.target.value })}
-          >
-            <MenuItem value="boxed">{t("manager.visualBuilder.pages.settings.layout.boxed")}</MenuItem>
-            <MenuItem value="full">{t("manager.visualBuilder.pages.settings.layout.full")}</MenuItem>
-          </Select>
-        </Box>
-
-        {/* Global section spacing (space between blocks) */}
-        
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="body2" sx={{ mb: 0.5 }}>
-            {t("manager.visualBuilder.pages.settings.sectionSpacing.label")}
-          </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Slider
-              size="small"
-              min={0}
-              max={12}
-              step={1}
-              value={Number(editing?.content?.meta?.sectionSpacing ?? 6)}
-              valueLabelDisplay="auto"
-              onChange={(_, v) =>
-                setEditing((cur) => {
-                  const content = cur.content || {};
-                  const meta = content.meta || {};
-                  return withLiftedLayout({
-                    ...cur,
-                    content: { ...content, meta: { ...meta, sectionSpacing: Number(v) } },
-                  });
-                })
-              }
-              sx={{ flex: 1 }}
-            />
-            <TextField
-              size="small"
-              type="number"
-              inputProps={{ min: 0, max: 12 }}
-              value={Number(editing?.content?.meta?.sectionSpacing ?? 6)}
-              onChange={(e) => {
-                const v = Math.max(0, Math.min(12, Number(e.target.value || 0)));
-                setEditing((cur) => {
-                  const content = cur.content || {};
-                  const meta = content.meta || {};
-                  return withLiftedLayout({
-                    ...cur,
-                    content: { ...content, meta: { ...meta, sectionSpacing: v } },
-                  });
-                });
-              }}
-              sx={{ width: 72 }}
-            />
-          </Stack>
-          <Typography variant="caption" color="text.secondary">
-            {t("manager.visualBuilder.pages.settings.sectionSpacing.hint")}
-          </Typography>
-        </Box>
-
-        <FormControlLabel
-          control={
-            <Switch
-              checked={Boolean(editing.show_in_menu ?? true)}
-              onChange={(_, v) => updatePageMeta({ show_in_menu: v })}
-            />
-          }
-          label={t("manager.visualBuilder.pages.settings.toggles.showInMenu")}
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={Boolean(editing.published ?? true)}
-              onChange={(_, v) => updatePageMeta({ published: v })}
-            />
-          }
-          label={t("manager.visualBuilder.pages.settings.toggles.published")}
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={Boolean(editing.is_homepage ?? false)}
-              onChange={(_, v) => updatePageMeta({ is_homepage: v })}
-            />
-          }
-          label={t("manager.visualBuilder.pages.settings.toggles.homepage")}
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={autosaveEnabled}
-              onChange={(_, v) => setAutosaveEnabled(v)}
-            />
-          }
-          label={t("manager.visualBuilder.pages.settings.toggles.autosave")}
-        />
-      </Stack>
-    </SectionCard>
-
-
-      {/* Simple enterprise controls for non-technical managers */}
-      {/*
-<SectionCard
-  title="Enterprise Controls (Easy)"
-  description="One-click width and polish for the selected block"
->
-  <EnterpriseEditorExtras
-    page={editing}
-    onUpdatePage={(patch) => updatePageMeta(patch)}
-    selectedBlock={safeSections(editing)[selectedBlock]}
-    onChangeProp={(k, v) => setBlockProp(selectedBlock, k, v)}
-    onChangeProps={(np) => setBlockPropsAll(selectedBlock, np)}
-  />
-</SectionCard>
-*/}
-
-
-      {/*
-{settings && (
-  <SectionCard id="nav-settings-card" title="Navigation (Services / Reviews)">
-    <WebsiteNavSettingsCard
-      companyId={companyId}
-      pages={pages}
-      initialSettings={settings}
-      onSaved={(data) => {
-        setSettings(data);
-        setMsg(t("manager.visualBuilder.messages.navSaved"));
-      }}
-    />
-  </SectionCard>
-)}
-*/}
-
-
-      <SectionCard 
-  title={t("manager.visualBuilder.sections.title")}
-  description={t("manager.visualBuilder.sections.description")}
->
-  {/* Section list (pageStyle hidden) */}
-  <Stack spacing={1}>
-    {(() => {
-      const all = safeSections(editing);
-      const visible = all.filter((s) => s.type !== "pageStyle"); // hide pageStyle from the list
-      return visible.map((blk, i) => {
-        // find its real index in the full sections array so selection stays correct
-        const realIndex = all.findIndex((s) => s.id === blk.id);
-        return (
-          <Tooltip
-            key={blk.id || i}
-            title={t("manager.visualBuilder.sections.tooltip")}
-            placement="right"
-          >
+      <CollapsibleSection
+        id="builder-page-settings"
+        title={t("manager.visualBuilder.pages.settings.title")}
+        expanded={pageSettingsOpen}
+        onChange={(next) => setPageSettingsOpen(next)}
+        actions={
+          <Stack direction="row" spacing={1}>
             <Button
               size="small"
-              variant={realIndex === selectedBlock ? "contained" : "outlined"}
-              onClick={() => setSelectedBlock(realIndex)}
-              sx={{ justifyContent: "flex-start" }}
-              fullWidth
+              variant="contained"
+              onClick={savePageMeta}
+              disabled={busy || !companyId}
             >
-              {i + 1}. {t(`manager.visualBuilder.sections.types.${blk.type}`, { defaultValue: blk.type })}
+              {t("manager.visualBuilder.pages.settings.save")}
             </Button>
-          </Tooltip>
-        );
-      });
-    })()}
-  </Stack>
+            <Button
+              size="small"
+              onClick={() => loadAll(companyId)}
+              disabled={busy || !companyId}
+            >
+              {t("manager.visualBuilder.pages.settings.reload")}
+            </Button>
+          </Stack>
+        }
+      >
+        <Stack spacing={1}>
+          <TextField
+            label={t("manager.visualBuilder.pages.settings.fields.slug")}
+            size="small"
+            value={editing.slug || ""}
+            onChange={(e) => updatePageMeta({ slug: e.target.value })}
+            helperText={t("manager.visualBuilder.pages.settings.fields.slugHint")}
+            fullWidth
+          />
+          <TextField
+            label={t("manager.visualBuilder.pages.settings.fields.pageTitle")}
+            size="small"
+            value={editing.title || ""}
+            onChange={(e) => updatePageMeta({ title: e.target.value })}
+            fullWidth
+          />
+          <TextField
+            label={t("manager.visualBuilder.pages.settings.fields.menuTitle")}
+            size="small"
+            value={editing.menu_title || ""}
+            onChange={(e) => updatePageMeta({ menu_title: e.target.value })}
+            fullWidth
+          />
+          <TextField
+            label={t("manager.visualBuilder.pages.settings.fields.sortOrder")}
+            size="small"
+            type="number"
+            value={Number(editing.sort_order ?? 0)}
+            onChange={(e) =>
+              updatePageMeta({ sort_order: Number(e.target.value || 0) })
+            }
+            fullWidth
+          />
 
-  <Divider sx={{ my: 2 }} />
+          {/* Layout selector (boxed vs full) */}
+          <Box>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              {t("manager.visualBuilder.pages.settings.layout.label")}
+            </Typography>
+            <Select
+              size="small"
+              fullWidth
+              value={editing.layout || "boxed"}
+              onChange={(e) => updatePageMeta({ layout: e.target.value })}
+            >
+              <MenuItem value="boxed">{t("manager.visualBuilder.pages.settings.layout.boxed")}</MenuItem>
+              <MenuItem value="full">{t("manager.visualBuilder.pages.settings.layout.full")}</MenuItem>
+            </Select>
+          </Box>
 
-  {/* Add new blocks */}
-  <Stack direction="row" spacing={1} flexWrap="wrap">
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("hero")}>
-      {t("manager.visualBuilder.sections.add.hero")}
-    </Button>
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("text")}>
-      {t("manager.visualBuilder.sections.add.text")}
-    </Button>
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("gallery")}>
-      {t("manager.visualBuilder.sections.add.gallery")}
-    </Button>
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("textFree")}>
-      {t("manager.visualBuilder.sections.add.textFree")}
-    </Button>
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("galleryCarousel")}>
-      {t("manager.visualBuilder.sections.add.carousel")}
-    </Button>
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("faq")}>
-      {t("manager.visualBuilder.sections.add.faq")}
-    </Button>
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("serviceGrid")}>
-      {t("manager.visualBuilder.sections.add.services")}
-    </Button>
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("contact")}>
-      {t("manager.visualBuilder.sections.add.contact")}
-    </Button>
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("contactForm")}>{t("manager.visualBuilder.sections.add.contactForm")}</Button>
-    <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("footer")}>
-      {t("manager.visualBuilder.sections.add.footer")}
-    </Button>
-  </Stack>
-</SectionCard>
+          {/* Global section spacing (space between blocks) */}
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              {t("manager.visualBuilder.pages.settings.sectionSpacing.label")}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Slider
+                size="small"
+                min={0}
+                max={12}
+                step={1}
+                value={Number(editing?.content?.meta?.sectionSpacing ?? 6)}
+                valueLabelDisplay="auto"
+                onChange={(_, v) =>
+                  setEditing((cur) => {
+                    const content = cur.content || {};
+                    const meta = content.meta || {};
+                    return withLiftedLayout({
+                      ...cur,
+                      content: { ...content, meta: { ...meta, sectionSpacing: Number(v) } },
+                    });
+                  })
+                }
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                size="small"
+                type="number"
+                inputProps={{ min: 0, max: 12 }}
+                value={Number(editing?.content?.meta?.sectionSpacing ?? 6)}
+                onChange={(e) => {
+                  const v = Math.max(0, Math.min(12, Number(e.target.value || 0)));
+                  setEditing((cur) => {
+                    const content = cur.content || {};
+                    const meta = content.meta || {};
+                    return withLiftedLayout({
+                      ...cur,
+                      content: { ...content, meta: { ...meta, sectionSpacing: v } },
+                    });
+                  });
+                }}
+                sx={{ width: 72 }}
+              />
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              {t("manager.visualBuilder.pages.settings.sectionSpacing.hint")}
+            </Typography>
+          </Box>
 
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(editing.show_in_menu ?? true)}
+                onChange={(_, v) => updatePageMeta({ show_in_menu: v })}
+              />
+            }
+            label={t("manager.visualBuilder.pages.settings.toggles.showInMenu")}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(editing.published ?? true)}
+                onChange={(_, v) => updatePageMeta({ published: v })}
+              />
+            }
+            label={t("manager.visualBuilder.pages.settings.toggles.published")}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(editing.is_homepage ?? false)}
+                onChange={(_, v) => updatePageMeta({ is_homepage: v })}
+              />
+            }
+            label={t("manager.visualBuilder.pages.settings.toggles.homepage")}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={autosaveEnabled}
+                onChange={(_, v) => setAutosaveEnabled(v)}
+              />
+            }
+            label={t("manager.visualBuilder.pages.settings.toggles.autosave")}
+          />
+        </Stack>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        id="nav-settings-card"
+        title={t("manager.visualBuilder.nav.title", "Navigation & Menu")}
+        description={t(
+          "manager.visualBuilder.nav.description",
+          "Control navigation details like site title and menu styling."
+        )}
+      >
+        <WebsiteNavSettingsCard
+          companyId={companyId}
+          value={navDraft || { nav_style: navStyleState }}
+          onChange={handleNavDraftChange}
+          onSave={saveNavSettings}
+          saving={navSaving}
+          message={navMsg}
+          error={navErr}
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        id="builder-sections-panel"
+        title={t("manager.visualBuilder.sections.title")}
+        description={t("manager.visualBuilder.sections.description")}
+      >
+        {/* Section list (pageStyle hidden) */}
+        <Stack spacing={1}>
+          {(() => {
+            const all = safeSections(editing);
+            const visible = all.filter((s) => s.type !== "pageStyle"); // hide pageStyle from the list
+            return visible.map((blk, i) => {
+              // find its real index in the full sections array so selection stays correct
+              const realIndex = all.findIndex((s) => s.id === blk.id);
+              return (
+                <Tooltip
+                  key={blk.id || i}
+                  title={t("manager.visualBuilder.sections.tooltip")}
+                  placement="right"
+                >
+                  <Button
+                    size="small"
+                    variant={realIndex === selectedBlock ? "contained" : "outlined"}
+                    onClick={() => setSelectedBlock(realIndex)}
+                    sx={{ justifyContent: "flex-start" }}
+                    fullWidth
+                  >
+                    {i + 1}. {t(`manager.visualBuilder.sections.types.${blk.type}`, { defaultValue: blk.type })}
+                  </Button>
+                </Tooltip>
+              );
+            });
+          })()}
+        </Stack>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* Add new blocks */}
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("hero")}>
+            {t("manager.visualBuilder.sections.add.hero")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("text")}>
+            {t("manager.visualBuilder.sections.add.text")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("gallery")}>
+            {t("manager.visualBuilder.sections.add.gallery")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("textFree")}>
+            {t("manager.visualBuilder.sections.add.textFree")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("galleryCarousel")}>
+            {t("manager.visualBuilder.sections.add.carousel")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("faq")}>
+            {t("manager.visualBuilder.sections.add.faq")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("serviceGrid")}>
+            {t("manager.visualBuilder.sections.add.services")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("contact")}>
+            {t("manager.visualBuilder.sections.add.contact")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("contactForm")}>
+            {t("manager.visualBuilder.sections.add.contactForm")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("footer")}>
+            {t("manager.visualBuilder.sections.add.footer")}
+          </Button>
+        </Stack>
+      </CollapsibleSection>
     </Stack>
   );
 
@@ -2224,7 +2356,8 @@ const CanvasColumn = (
     }
   >
 
-    <ThemeRuntimeProvider overrides={themeOverrides}>
+    <ThemeRuntimeProvider overrides={siteSettings?.theme_overrides || {}}>
+      <NavStyleHydrator website={siteSettings} scopeSelector=".page-scope .site-nav" />
   {/* height-limiter: keeps the canvas compact unless “Auto” */}
   <Box
     sx={{
@@ -2505,286 +2638,273 @@ onClickCapture={(e) => {
 
 
 const InspectorColumn = (
-  <SectionCard title={t("manager.visualBuilder.inspector.title")} description={t("manager.visualBuilder.inspector.description")}>
-    {/* Theme (Design) palette */}
-    <Accordion defaultExpanded>
-      <AccordionSummary>{t("manager.visualBuilder.inspector.design")}</AccordionSummary>
-      <AccordionDetails>
-        <ThemePalettePanel
-          value={themeOverrides || {}}
-          onChange={setThemeOverrides}
-          onSave={saveTheme}
-          saving={themeSaving}
-          message={themeMsg}
-          error={themeErr}
-        />
-      </AccordionDetails>
-    </Accordion>
-
-    {/* NEW — Page Style card always visible above per-section inspector */}
-    <PageStyleCard
-  value={
-    readPageStyleProps(editing) ||
-    editing?.content?.meta?.pageStyle ||
-    editing?.content?.style ||
-    {}
-  }
-  onChange={(next) => {
-    setEditing((cur) => {
-      // 1) keep meta.pageStyle
-      const content = { ...(cur.content || {}) };
-      content.meta  = { ...(content.meta || {}), pageStyle: next };
-      // 2) mirror into content.style
-      content.style = { ...(content.style || {}), ...next };
-      // 3) sync the SECTION so preview & public are consistent
-      let updated = { ...cur, content };
-      updated = writePageStyleProps(updated, next);
-      return withLiftedLayout(updated);
-    });
-  }}
-  onPickImage={(url) => {
-    const next = {
-      ...(readPageStyleProps(editing) ||
-        editing?.content?.meta?.pageStyle ||
-        editing?.content?.style ||
-        {}),
-      backgroundImage: url,
-    };
-    setEditing((cur) => {
-      const content = { ...(cur.content || {}) };
-      content.meta  = { ...(content.meta || {}), pageStyle: next };
-      content.style = { ...(content.style || {}), ...next };
-      let updated = { ...cur, content };
-      updated = writePageStyleProps(updated, next);
-      return withLiftedLayout(updated);
-    });
-  }}
-  applyToAll={applyPageStyleToAll}
-  onToggleApplyToAll={setApplyPageStyleToAll}
-  onApplyNow={applyStyleToAllPagesNow}
-  companyId={companyId}
-  onOpenAdvanced={() => {
-    addSection("pageStyle");
-    setTimeout(() => {
-      document.getElementById("page-style-card")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 0);
-  }}
-/>
-
-
-
-
-
-    {selectedBlock < 0 ? (
-      <Box sx={{ color: "text.secondary" }}>
-        <Typography variant="body2">
-          {t("manager.visualBuilder.sections.hint")}
-        </Typography>
-      </Box>
-    ) : fi.inspectorMode === "inline" ? (
-      <Alert severity="info" sx={{ mt: 2 }}>
-        Inline inspector is active — edit controls are shown directly below the
-        selected section on the canvas.
-      </Alert>
-    ) : (
-      <>
-        {/* Prefer the schema-based editor (TipTap) when a schema exists */}
-        {schemaForBlock ? (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1, opacity: 0.7 }}>
-              Content
-            </Typography>
-            <SchemaInspector
-              schema={schemaForBlock}
-              value={safeSections(editing)[selectedBlock]?.props || {}}
-              onChange={(props) => setBlockPropsAll(selectedBlock, props)}
-              companyId={companyId}
-            />
-          </Box>
-        ) : (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            This section type isn’t mapped to a visual inspector yet. You can
-            still edit its props below.
-          </Alert>
-        )}
-{/* Quick size & spacing for the selected section */}
-{/* Quick size & spacing for the selected section (enterprise-grade) */}
-<Box sx={{ mt: 2 }}>
-  <Stack direction="row" alignItems="center" spacing={1}>
-    <Typography variant="subtitle2" sx={{ opacity: 0.7 }}>
-      {t("manager.visualBuilder.inspector.sizeSpacing")}
-    </Typography>
-    <Tooltip title={t("manager.visualBuilder.inspector.resetTooltip")}>
-      <Button
-        size="small"
-        onClick={() => {
-          const all = safeSections(editing);
-          const blk = all[selectedBlock];
-          if (!blk) return;
-
-          // Default paddingY: heroes are usually tighter
-          const defaultPy = blk.type === "hero" ? 0 : 32;
-
+  <Stack spacing={1.5}>
+    <CollapsibleSection
+      id="page-style-card-wrapper"
+      title={t("manager.visualBuilder.pageStyle.title")}
+      description={t("manager.visualBuilder.pageStyle.description")}
+    >
+      <PageStyleCard
+        value={
+          readPageStyleProps(editing) ||
+          editing?.content?.meta?.pageStyle ||
+          editing?.content?.style ||
+          {}
+        }
+        onChange={(next) => {
           setEditing((cur) => {
-            const sections = [...safeSections(cur)];
-            const b = { ...sections[selectedBlock] };
-            b.sx = { ...(b.sx || {}), py: defaultPy };
-            // Optional: clear local overrides so page-wide spacing applies
-            b.props = { ...(b.props || {}) };
-            delete b.props.spaceAbove;
-            delete b.props.spaceBelow;
-            sections[selectedBlock] = b;
-            return withLiftedLayout({
-              ...cur,
-              content: { ...(cur.content || {}), sections },
-            });
+            const content = { ...(cur.content || {}) };
+            content.meta = { ...(content.meta || {}), pageStyle: next };
+            content.style = { ...(content.style || {}), ...next };
+            let updated = { ...cur, content };
+            updated = writePageStyleProps(updated, next);
+            return withLiftedLayout(updated);
           });
         }}
-      >
-        {t("manager.visualBuilder.inspector.reset")}
-      </Button>
-    </Tooltip>
-  </Stack>
+        onPickImage={(url) => {
+          const next = {
+            ...(readPageStyleProps(editing) ||
+              editing?.content?.meta?.pageStyle ||
+              editing?.content?.style ||
+              {}),
+            backgroundImage: url,
+          };
+          setEditing((cur) => {
+            const content = { ...(cur.content || {}) };
+            content.meta = { ...(content.meta || {}), pageStyle: next };
+            content.style = { ...(content.style || {}), ...next };
+            let updated = { ...cur, content };
+            updated = writePageStyleProps(updated, next);
+            return withLiftedLayout(updated);
+          });
+        }}
+        applyToAll={applyPageStyleToAll}
+        onToggleApplyToAll={setApplyPageStyleToAll}
+        onApplyNow={applyStyleToAllPagesNow}
+        companyId={companyId}
+        onOpenAdvanced={() => {
+          addSection("pageStyle");
+          setTimeout(() => {
+            document.getElementById("page-style-card")?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }, 0);
+        }}
+      />
+    </CollapsibleSection>
 
-  {(() => {
-    const blk = safeSections(editing)[selectedBlock] || {};
-    const currentPy =
-      Number(blk?.sx?.py ?? (blk?.type === "hero" ? 0 : 32));
-    const spaceAboveUnits =
-      Number.isFinite(blk?.props?.spaceAbove) ? Number(blk.props.spaceAbove) : 0;
-    const spaceBelowUnits =
-      Number.isFinite(blk?.props?.spaceBelow) ? Number(blk.props.spaceBelow) : 0;
-
-    return (
-      <Stack spacing={2} sx={{ mt: 1.5 }}>
-        {/* Internal padding (top+bottom) */}
-        <Box>
-          <Stack direction="row" justifyContent="space-between">
-            <Typography variant="body2">{t("manager.visualBuilder.inspector.sectionPadding")}</Typography>
-            <Typography variant="caption" sx={{ opacity: 0.7 }}>
-              {currentPy}px
-            </Typography>
-          </Stack>
-          <Slider
-            size="small"
-            min={0}
-            max={200}
-            step={4}
-            value={currentPy}
-            valueLabelDisplay="auto"
-            marks={[
-              { value: 0, label: "0" },
-              { value: 16, label: "16" },
-              { value: 32, label: "32" },
-              { value: 64, label: "64" },
-              { value: 96, label: "96" },
-              { value: 128, label: "128" },
-            ]}
-            onChange={(_, v) => {
-              const py = Number(v || 0);
-              setEditing((cur) => {
-                const sections = [...safeSections(cur)];
-                const b = { ...sections[selectedBlock] };
-                b.sx = { ...(b.sx || {}), py };
-                sections[selectedBlock] = b;
-                return withLiftedLayout({
-                  ...cur,
-                  content: { ...(cur.content || {}), sections },
-                });
-              });
-            }}
-          />
-        </Box>
-
-        {/* Gap ABOVE this section (theme units) */}
-        <Box>
-          <Stack direction="row" justifyContent="space-between">
-            <Typography variant="body2">
-              {t("manager.visualBuilder.inspector.spaceAbove")}
-            </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.7 }}>
-              {spaceAboveUnits}u
-            </Typography>
-          </Stack>
-          <Slider
-            size="small"
-            min={0}
-            max={12}
-            step={1}
-            value={spaceAboveUnits}
-            valueLabelDisplay="auto"
-            marks={[0,2,4,6,8,10,12].map(v => ({ value: v, label: String(v) }))}
-            onChange={(_, v) =>
-              setBlockProp(selectedBlock, "spaceAbove", Number(v))
-            }
-          />
-          <Typography variant="caption" sx={{ opacity: 0.7 }}>
-            Tip: {t("manager.visualBuilder.pages.settings.sectionSpacing.hint")}
+    <CollapsibleSection
+      id="inspector-block"
+      title={t("manager.visualBuilder.inspector.title")}
+      description={t("manager.visualBuilder.inspector.description")}
+      defaultExpanded
+      actions={
+        <Tooltip title={t("manager.visualBuilder.sections.hint")}>
+          <IconButton size="small" edge="end">
+            <HelpOutlineIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      }
+    >
+      {selectedBlock < 0 ? (
+        <Box sx={{ color: "text.secondary" }}>
+          <Typography variant="body2">
+            {t("manager.visualBuilder.sections.hint")}
           </Typography>
         </Box>
+      ) : fi.inspectorMode === "inline" ? (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Inline inspector is active — edit controls are shown directly below the
+          selected section on the canvas.
+        </Alert>
+      ) : (
+        <>
+          {schemaForBlock ? (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, opacity: 0.7 }}>
+                Content
+              </Typography>
+              <SchemaInspector
+                schema={schemaForBlock}
+                value={safeSections(editing)[selectedBlock]?.props || {}}
+                onChange={(props) => setBlockPropsAll(selectedBlock, props)}
+                companyId={companyId}
+              />
+            </Box>
+          ) : (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              This section type isn’t mapped to a visual inspector yet. You can
+              still edit its props below.
+            </Alert>
+          )}
 
-        {/* Gap BELOW (optional but handy) */}
-        <Box>
-          <Stack direction="row" justifyContent="space-between">
-            <Typography variant="body2">
-              {t("manager.visualBuilder.inspector.spaceBelow")}
-            </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.7 }}>
-              {spaceBelowUnits}u
-            </Typography>
-          </Stack>
-          <Slider
-            size="small"
-            min={0}
-            max={12}
-            step={1}
-            value={spaceBelowUnits}
-            valueLabelDisplay="auto"
-            marks={[0,2,4,6,8,10,12].map(v => ({ value: v, label: String(v) }))}
-            onChange={(_, v) =>
-              setBlockProp(selectedBlock, "spaceBelow", Number(v))
-            }
-          />
-        </Box>
-      </Stack>
-    );
-  })()}
-</Box>
-
-                {/* {t("manager.visualBuilder.inspector.advanced")} — visible inline in Advanced mode, collapsible in {t("manager.visualBuilder.controls.toggles.simpleMode")} */}
-        {mode === "advanced" ? (
-          
           <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1, opacity: 0.7 }}>
-              {t("manager.visualBuilder.inspector.advanced")}
-            </Typography>
-            <SectionInspector
-              block={safeSections(editing)[selectedBlock]}
-              onChangeProp={(k, v) => setBlockProp(selectedBlock, k, v)}
-              onChangeProps={(np) => setBlockPropsAll(selectedBlock, np)}
-              companyId={companyId}
-            />
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Typography variant="subtitle2" sx={{ opacity: 0.7 }}>
+                {t("manager.visualBuilder.inspector.sizeSpacing")}
+              </Typography>
+              <Tooltip title={t("manager.visualBuilder.inspector.resetTooltip")}>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    const all = safeSections(editing);
+                    const blk = all[selectedBlock];
+                    if (!blk) return;
+                    const defaultPy = blk.type === "hero" ? 0 : 32;
+                    setEditing((cur) => {
+                      const sections = [...safeSections(cur)];
+                      const b = { ...sections[selectedBlock] };
+                      b.sx = { ...(b.sx || {}), py: defaultPy };
+                      b.props = { ...(b.props || {}) };
+                      delete b.props.spaceAbove;
+                      delete b.props.spaceBelow;
+                      sections[selectedBlock] = b;
+                      return withLiftedLayout({
+                        ...cur,
+                        content: { ...(cur.content || {}), sections },
+                      });
+                    });
+                  }}
+                >
+                  {t("manager.visualBuilder.inspector.reset")}
+                </Button>
+              </Tooltip>
+            </Stack>
+
+            {(() => {
+              const blk = safeSections(editing)[selectedBlock] || {};
+              const currentPy =
+                Number(blk?.sx?.py ?? (blk?.type === "hero" ? 0 : 32));
+              const spaceAboveUnits =
+                Number.isFinite(blk?.props?.spaceAbove) ? Number(blk.props.spaceAbove) : 0;
+              const spaceBelowUnits =
+                Number.isFinite(blk?.props?.spaceBelow) ? Number(blk.props.spaceBelow) : 0;
+
+              return (
+                <Stack spacing={2} sx={{ mt: 1.5 }}>
+                  <Box>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="body2">{t("manager.visualBuilder.inspector.sectionPadding")}</Typography>
+                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                        {currentPy}px
+                      </Typography>
+                    </Stack>
+                    <Slider
+                      size="small"
+                      min={0}
+                      max={200}
+                      step={4}
+                      value={currentPy}
+                      valueLabelDisplay="auto"
+                      marks={[
+                        { value: 0, label: "0" },
+                        { value: 16, label: "16" },
+                        { value: 32, label: "32" },
+                        { value: 64, label: "64" },
+                        { value: 96, label: "96" },
+                        { value: 128, label: "128" },
+                      ]}
+                      onChange={(_, v) => {
+                        const py = Number(v || 0);
+                        setEditing((cur) => {
+                          const sections = [...safeSections(cur)];
+                          const b = { ...sections[selectedBlock] };
+                          b.sx = { ...(b.sx || {}), py };
+                          sections[selectedBlock] = b;
+                          return withLiftedLayout({
+                            ...cur,
+                            content: { ...(cur.content || {}), sections },
+                          });
+                        });
+                      }}
+                    />
+                  </Box>
+
+                  <Box>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="body2">
+                        {t("manager.visualBuilder.inspector.spaceAbove")}
+                      </Typography>
+                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                        {spaceAboveUnits}u
+                      </Typography>
+                    </Stack>
+                    <Slider
+                      size="small"
+                      min={0}
+                      max={12}
+                      step={1}
+                      value={spaceAboveUnits}
+                      valueLabelDisplay="auto"
+                      marks={[0, 2, 4, 6, 8, 10, 12].map((v) => ({ value: v, label: String(v) }))}
+                      onChange={(_, v) =>
+                        setBlockProp(selectedBlock, "spaceAbove", Number(v))
+                      }
+                    />
+                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                      Tip: {t("manager.visualBuilder.pages.settings.sectionSpacing.hint")}
+                    </Typography>
+                  </Box>
+
+                  <Box>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography variant="body2">
+                        {t("manager.visualBuilder.inspector.spaceBelow")}
+                      </Typography>
+                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                        {spaceBelowUnits}u
+                      </Typography>
+                    </Stack>
+                    <Slider
+                      size="small"
+                      min={0}
+                      max={12}
+                      step={1}
+                      value={spaceBelowUnits}
+                      valueLabelDisplay="auto"
+                      marks={[0, 2, 4, 6, 8, 10, 12].map((v) => ({ value: v, label: String(v) }))}
+                      onChange={(_, v) =>
+                        setBlockProp(selectedBlock, "spaceBelow", Number(v))
+                      }
+                    />
+                  </Box>
+                </Stack>
+              );
+            })()}
           </Box>
-        ) : (
-          <Accordion sx={{ mt: 2 }}>
-            <AccordionSummary>{t("manager.visualBuilder.inspector.advanced")}</AccordionSummary>
-            <AccordionDetails>
+
+          {mode === "advanced" ? (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, opacity: 0.7 }}>
+                {t("manager.visualBuilder.inspector.advanced")}
+              </Typography>
               <SectionInspector
                 block={safeSections(editing)[selectedBlock]}
                 onChangeProp={(k, v) => setBlockProp(selectedBlock, k, v)}
                 onChangeProps={(np) => setBlockPropsAll(selectedBlock, np)}
                 companyId={companyId}
               />
-            </AccordionDetails>
-          </Accordion>
-        )}
-      </>
-    )}
-  </SectionCard>
+            </Box>
+          ) : (
+            <Accordion sx={{ mt: 2 }}>
+              <AccordionSummary>{t("manager.visualBuilder.inspector.advanced")}</AccordionSummary>
+              <AccordionDetails>
+                <SectionInspector
+                  block={safeSections(editing)[selectedBlock]}
+                  onChangeProp={(k, v) => setBlockProp(selectedBlock, k, v)}
+                  onChangeProps={(np) => setBlockPropsAll(selectedBlock, np)}
+                  companyId={companyId}
+                />
+              </AccordionDetails>
+            </Accordion>
+          )}
+        </>
+      )}
+    </CollapsibleSection>
+  </Stack>
 );
+
 
 const tabs = [
   {
@@ -2878,7 +2998,7 @@ return (
           wb
             .getSettings(companyId)
             .then((s) => {
-              setSettings(s?.data || null);
+              setSiteSettings(s?.data || null);
             })
             .catch(() => {});
         }

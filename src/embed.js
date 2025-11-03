@@ -22,13 +22,16 @@ export function writeEmbedStore(cfg) {
 
 /** Extract embed config from current URL */
 export function readEmbedFromURL(searchParams) {
-  const embed = searchParams.get("embed") === "1";
-  const primary = (searchParams.get("primary") || "").replace("%23", "#");
-  const text = (searchParams.get("text") || "").toLowerCase();
+  const rawEmbed = searchParams.get("embed");
+  const hasEmbedParam = rawEmbed !== null;
+  const embed = hasEmbedParam ? rawEmbed === "1" : null;
+  const primaryParam = searchParams.get("primary");
+  const textParam = searchParams.get("text");
   return {
     isEmbed: embed,
-    primary: primary || null,
-    text: text || null,
+    hasEmbedParam,
+    primary: primaryParam ? primaryParam.replace("%23", "#") : null,
+    text: textParam ? textParam.toLowerCase() : null,
   };
 }
 
@@ -37,17 +40,24 @@ export function useEmbedConfig() {
   const [params] = useSearchParams();
   const urlCfg = readEmbedFromURL(params);
   const stored = readEmbedStore();
+  const isEmbed = urlCfg.hasEmbedParam ? Boolean(urlCfg.isEmbed) : false;
 
-  const merged = {
-    isEmbed: urlCfg.isEmbed || stored?.isEmbed || false,
-    primary: urlCfg.primary || stored?.primary || "#1976d2",
-    text: urlCfg.text || stored?.text || "light",
-  };
+  const primary = isEmbed
+    ? urlCfg.primary ?? stored?.primary ?? "#1976d2"
+    : "#1976d2";
+  const text = isEmbed
+    ? urlCfg.text ?? stored?.text ?? "light"
+    : "light";
 
-  // keep store in sync if URL provided anything
-  if (urlCfg.isEmbed) writeEmbedStore(merged);
+  if (isEmbed) {
+    writeEmbedStore({ isEmbed, primary, text });
+  } else if (stored) {
+    try {
+      sessionStorage.removeItem(STORE_KEY);
+    } catch {}
+  }
 
-  return merged;
+  return { isEmbed, primary, text };
 }
 
 /** Merge current embed params into a URLSearchParams */

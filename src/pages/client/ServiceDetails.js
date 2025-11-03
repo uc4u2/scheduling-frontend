@@ -112,13 +112,13 @@ export default function ServiceDetails() {
   const departmentId = searchParams.get("department_id") || "";
   const navigate = useNavWithEmbed();
   const theme = useTheme();
-  const primaryBgVar = `var(--page-btn-bg, ${theme.palette.primary.main})`;
-  const primaryTextVar = `var(--page-btn-color, ${theme.palette.getContrastText(theme.palette.primary.main)})`;
+  const primaryBgVar = "var(--page-btn-bg, var(--sched-primary))";
+  const primaryTextVar = "var(--page-btn-color, #ffffff)";
   const buttonRadiusVar = 'var(--page-btn-radius, 12px)';
   const buttonShadowVar = 'var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))';
   const buttonShadowHoverVar = 'var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))';
-  const buttonHoverBgVar = `var(--page-btn-bg-hover, ${theme.palette.primary.dark})`;
-  const buttonSoftBgVar = `var(--page-btn-bg-soft, ${alpha(theme.palette.primary.main, 0.12)})`;
+  const buttonHoverBgVar = "var(--page-btn-bg-hover, var(--sched-primary))";
+  const buttonSoftBgVar = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
 
   const bookingButtonSx = {
     backgroundColor: primaryBgVar,
