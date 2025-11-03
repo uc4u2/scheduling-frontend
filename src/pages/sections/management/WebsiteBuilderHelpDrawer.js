@@ -32,11 +32,11 @@ const STEP_CONFIG = [
   { key: "pageStyle", Icon: PaletteIcon },
   { key: "savePublish", Icon: SaveIcon },
   { key: "navigation", Icon: PublicIcon },
-  { key: "navStyle", Icon: PaletteIcon },
-  { key: "livePreview", Icon: VisibilityIcon },
   { key: "revisions", Icon: HistoryIcon },
   { key: "assets", Icon: FolderIcon, options: (translate) => ({ assetsLabel: translate("help.websiteBuilder.goToAssets") }) },
   { key: "optimization", Icon: CloudUploadIcon },
+  { key: "navStyle", Icon: PaletteIcon },
+  { key: "livePreview", Icon: VisibilityIcon },
 ];
 
 export default function WebsiteBuilderHelpDrawer({
@@ -208,4 +208,3 @@ function ListBlock({ items }) {
     </ul>
   );
 }
-
