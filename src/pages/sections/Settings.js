@@ -33,6 +33,7 @@ import { useLocation } from "react-router-dom";
 
 import SettingsReviewsTips from "./SettingsReviewsTips";
 import SettingsCheckoutPro from "./SettingsCheckoutPro";
+import SettingsStripeHub from "./SettingsStripeHub";
 import SettingsArtistVisibility from "./SettingsArtistVisibility";
 import SettingsClientVideo from "./SettingsClientVideo";
 import ProfessionSettings from "./ProfessionSetting";
@@ -75,9 +76,11 @@ const Settings = () => {
       artist: 4,
       'client-video': 5,
       client: 5,
-      checkout: 6,
-      payments: 6,
-      'checkout-pro': 6,
+      stripe: 6,
+      'stripe-hub': 6,
+      checkout: 7,
+      payments: 7,
+      'checkout-pro': 7,
     };
     return map[tabParam] ?? 0;
   }, [tabParam]);
@@ -523,6 +526,10 @@ const Settings = () => {
       content: <SettingsClientVideo />,
     },
     {
+      label: t("settings.tabs.stripeHub"),
+      content: <SettingsStripeHub />,
+    },
+    {
       label: t("settings.tabs.checkout"),
       content: <SettingsCheckoutPro />,
     },
@@ -548,7 +555,6 @@ const Settings = () => {
 };
 
 export default Settings;
-
 
 
 
