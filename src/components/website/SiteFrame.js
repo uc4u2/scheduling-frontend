@@ -44,7 +44,6 @@ export default function SiteFrame({ slug, activeKey, children }) {
   }, [site]);
 
   // Helpers to build hrefs (match your previous logic)
-  const servicesHref = () => `/${slug}/services`;
   const reviewsHref  = () => `/${slug}/reviews`;
   const loginHref    = () => `/login`;
   const myBookingsHref = () => `/dashboard`;
@@ -109,9 +108,6 @@ export default function SiteFrame({ slug, activeKey, children }) {
             })}
 
           {/* fixed “extra” tabs that every site has */}
-          <Button component={RouterLink} to={servicesHref()} color={pathname.includes("/services") ? "primary" : "inherit"}>
-            {nav.services_tab_label || "Services"}
-          </Button>
           <Button component={RouterLink} to={reviewsHref()} color={pathname.includes("/reviews") ? "primary" : "inherit"}>
             {nav.reviews_tab_label || "Reviews"}
           </Button>

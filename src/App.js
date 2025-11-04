@@ -199,7 +199,7 @@ const FeatureGate = ({ feature, children }) => {
         const nav = data?.nav_overrides || data?.settings?.nav_overrides || {};
         const allowed =
           feature === "services"
-            ? nav.show_services_tab !== false
+            ? false
             : feature === "reviews"
               ? nav.show_reviews_tab !== false
               : true;
@@ -213,7 +213,12 @@ const FeatureGate = ({ feature, children }) => {
   }, [slug, feature]);
 
   if (allow === null) return null; // or a spinner
-  if (!allow) return <Navigate to={`/${slug}`} replace />;
+  if (!allow) {
+    if (feature === "services") {
+      return <Navigate to={`/${slug}?page=services-classic`} replace />;
+    }
+    return <Navigate to={`/${slug}`} replace />;
+  }
   return <>{children}</>;
 };
 
@@ -374,9 +379,9 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/manager/website/editor" element={<WebsiteBuilder />} />
 
           {/* Marketing landing shortcuts to services */}
-          <Route path="/:slug/vip" element={<MarketingCouponBridge to="/services" />} />
-          <Route path="/:slug/anniversary" element={<MarketingCouponBridge to="/services" />} />
-          <Route path="/:slug/book" element={<MarketingCouponBridge to="/services" />} />
+          <Route path="/:slug/vip" element={<MarketingCouponBridge to="?page=services-classic" />} />
+          <Route path="/:slug/anniversary" element={<MarketingCouponBridge to="?page=services-classic" />} />
+          <Route path="/:slug/book" element={<MarketingCouponBridge to="?page=services-classic" />} />
 
           {/* Admin / Payroll */}
           <Route path="/admin/CompanyProfile" element={<CompanyProfile />} />
@@ -452,4 +457,3 @@ const App = () => {
 };
 
 export default App;
-

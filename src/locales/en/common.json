@@ -204,7 +204,7 @@
           ],
           "highlights": [
             "<strong>Subject / Heading / Intro / Subtext</strong> - your message (Intro/Subtext support multi-line).",
-            "<strong>Button text / link</strong> - optional CTA; relative (e.g., <code>/services</code>) or full URL.",
+            "<strong>Button text / link</strong> - optional CTA; relative (e.g., <code>?page=services-classic</code>) or full URL.",
             "<strong>Coupon / Expires on</strong> - optional; shown in the email and passed to the link.",
             "<strong>Limit</strong> - cap total recipients for safety."
           ],
@@ -461,7 +461,7 @@
       },
       "ctaUrl": {
         "label": "Button link",
-        "helper": "Use a relative path like /services or a full URL."
+        "helper": "Use a relative path like ?page=services-classic or a full URL."
       },
       "couponOverride": {
         "label": "Coupon override",

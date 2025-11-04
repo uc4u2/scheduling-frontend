@@ -11,6 +11,15 @@ export function resolveSiteHref(slug, href, pages = [], opts = { pretty: false }
   if (!href.startsWith("/")) href = `/${href}`;
   const clean = href.replace(/\/+$/, "");
 
+  if (clean.startsWith("/?page=")) {
+    const pageSlug = clean.slice(7);
+    if (!pageSlug) return `/${slug}`;
+    if (pageSlug.toLowerCase() === "services") {
+      return `/${slug}?page=services-classic`;
+    }
+    return `/${slug}?page=${pageSlug}`;
+  }
+
   // app-level routes that *must* be slug-prefixed
   const appRoots = ["/services", "/reviews", "/book", "/tip", "/review"];
   if (appRoots.some((r) => clean === r || clean.startsWith(`${r}/`))) {

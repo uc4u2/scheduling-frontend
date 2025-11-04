@@ -216,12 +216,20 @@ function ShellInner({
     }
   }, [search]);
 
-  const servicesHref = useMemo(() => {
-    if (navCfg?.services_tab_target === "page" && navCfg?.services_page_slug) {
-      return `/${slug}?page=${encodeURIComponent(navCfg.services_page_slug)}`;
+  const servicesPageSlug = useMemo(() => {
+    const overrideSlug = String(navCfg?.services_page_slug || "").trim();
+    if (overrideSlug) {
+      if (overrideSlug.toLowerCase() === "services") return "services-classic";
+      return overrideSlug;
     }
-    return `/${slug}/services`;
-  }, [slug, navCfg]);
+    const classicPage =
+      (pages || []).find(
+        (p) => String(p.slug || "").toLowerCase() === "services-classic"
+      ) || null;
+    if (classicPage?.slug) return classicPage.slug;
+    return "services-classic";
+  }, [navCfg, pages]);
+
 
   const reviewsHref = useMemo(() => {
     if (navCfg?.reviews_tab_target === "page" && navCfg?.reviews_page_slug) {
@@ -279,9 +287,6 @@ function ShellInner({
   // Extra tabs (avoid duplicates)
   const extraTabs = useMemo(() => {
     const items = [];
-    const hasServicesPage = (pages || []).some(
-      (p) => String(p.slug || '').toLowerCase() === 'services' && p.show_in_menu !== false
-    );
     const hasReviewsPage = (pages || []).some(
       (p) => String(p.slug || '').toLowerCase() === 'reviews' && p.show_in_menu !== false
     );
@@ -293,19 +298,10 @@ function ShellInner({
     const hasBasketPage = (pages || []).some(
       (p) => String(p.slug || '').toLowerCase() === basketSlug && p.show_in_menu !== false
     );
-    const servicesTarget = String(navCfg?.services_tab_target || 'builtin').toLowerCase();
     const reviewsTarget = String(navCfg?.reviews_tab_target || 'builtin').toLowerCase();
     const productsTarget = String(navCfg?.products_tab_target || 'builtin').toLowerCase();
     const basketTarget = String(navCfg?.basket_tab_target || 'builtin').toLowerCase();
 
-    if (navCfg?.show_services_tab !== false && servicesTarget === 'builtin' && !hasServicesPage) {
-      items.push({
-        key: "__services",
-        label: navCfg?.services_tab_label || "Services",
-        to: servicesHref,
-        active: pathname.startsWith(`/${slug}/services`) || activeKey === "__services",
-      });
-    }
     if (navCfg?.show_reviews_tab !== false && reviewsTarget === 'builtin' && !hasReviewsPage) {
       items.push({
         key: "__reviews",
@@ -331,7 +327,7 @@ function ShellInner({
       });
     }
     return items;
-  }, [navCfg, servicesHref, reviewsHref, productsHref, basketHref, pathname, slug, authed, pages]);
+  }, [navCfg, reviewsHref, productsHref, basketHref, pathname, slug, authed, pages]);
 
   const allNavItems = useMemo(
     () => [...mappedMenu, ...extraTabs],
@@ -705,13 +701,32 @@ export default function PublicPageShell({
     } catch { return themeOverrides; }
   }, [search, themeOverrides]);
 
-  const servicesPageStyle = useMemo(() => {
-    const slugs = [
-      (navCfg?.services_page_slug || "").toLowerCase(),
+  const servicesPageSlug = useMemo(() => {
+    const overrideSlug = String(navCfg?.services_page_slug || "").trim();
+    if (overrideSlug) {
+      if (overrideSlug.toLowerCase() === "services") return "services-classic";
+      return overrideSlug;
+    }
+    const classicPage =
+      pages.find(
+        (p) => String(p?.slug || "").toLowerCase() === "services-classic"
+      ) || null;
+    if (classicPage?.slug) return classicPage.slug;
+    return "services-classic";
+  }, [navCfg, pages]);
+
+  const servicesSlugCandidates = useMemo(() => {
+    const set = new Set([
+      String(servicesPageSlug || "").toLowerCase(),
       "services-classic",
       "services",
-    ].filter(Boolean);
-    for (const slugCandidate of slugs) {
+    ]);
+    set.delete("");
+    return Array.from(set);
+  }, [servicesPageSlug]);
+
+  const servicesPageStyle = useMemo(() => {
+    for (const slugCandidate of servicesSlugCandidates) {
       const match = pages.find(
         (p) => String(p?.slug || "").toLowerCase() === slugCandidate
       );
@@ -719,7 +734,7 @@ export default function PublicPageShell({
       if (style && Object.keys(style).length) return style;
     }
     return null;
-  }, [pages, navCfg]);
+  }, [pages, servicesSlugCandidates]);
 
   const derivedServiceCssVars = useMemo(
     () => (servicesPageStyle ? pageStyleToCssVars(servicesPageStyle) : null),
@@ -730,11 +745,17 @@ export default function PublicPageShell({
     [servicesPageStyle]
   );
 
+  const isServicesActive = useMemo(() => {
+    const activeLower = String(activeKey || "").toLowerCase();
+    if (activeLower === "__services") return true;
+    return servicesSlugCandidates.includes(activeLower);
+  }, [activeKey, servicesSlugCandidates]);
+
   const finalPageStyleOverride =
     pageStyleOverride ||
-    (activeKey === "__services" ? derivedServiceBackground : null);
+    (isServicesActive ? derivedServiceBackground : null);
   const finalPageCssVars =
-    pageCssVars || (activeKey === "__services" ? derivedServiceCssVars : null);
+    pageCssVars || (isServicesActive ? derivedServiceCssVars : null);
 
   return (
     <ThemeRuntimeProvider overrides={adjustedOverrides}>

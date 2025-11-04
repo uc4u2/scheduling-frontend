@@ -403,7 +403,7 @@ function CheckoutShell({
           <Typography variant="h5" sx={{ mb: 1 }}>Booking confirmed 🎉</Typography>
           <Typography>We’ve sent you a confirmation email.</Typography>
         </Alert>
-        <Button variant="contained" onClick={() => nav(`/${slug}/services`)}>Book Another</Button>
+        <Button variant="contained" onClick={() => nav({ pathname: `/${slug}`, search: '?page=services-classic' })}>Book Another</Button>
       </Box>
     );
   }
@@ -600,7 +600,7 @@ function CheckoutShell({
                   active === "capture" ? "Save Card & Book" :
                   "Book"}
               </Button>
-              <Button variant="text" onClick={() => nav(`/${slug}/services`)}>Add Another Service</Button>
+              <Button variant="text" onClick={() => nav({ pathname: `/${slug}`, search: '?page=services-classic' })}>Add Another Service</Button>
             </Stack>
           </Box>
         </Paper>

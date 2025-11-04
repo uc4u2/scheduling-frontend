@@ -837,7 +837,7 @@ return (
                 </Button>
                 <Button
                   variant="text"
-                  href={`/${form.slug}/services`}
+                  href={`/${form.slug}?page=services-classic`}
                 >
                   {t("manager.companyProfile.public.services")}
                 </Button>
@@ -969,6 +969,5 @@ return (
     </>
   );
 }
-
 
 

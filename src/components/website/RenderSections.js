@@ -1120,7 +1120,7 @@ const Footer = ({ text, maxWidth }) => (
 const BookingCtaBar = ({
   text = "Ready to book?",
   buttonText = "See availability",
-  buttonLink = "/services"
+  buttonLink = "?page=services-classic"
 }) => (
   <Box sx={{ position: "sticky", bottom: 16, zIndex: 1200 }}>
     <Container maxWidth="lg">

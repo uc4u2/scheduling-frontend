@@ -56,7 +56,7 @@ const AnniversaryLanding = () => {
             <Button
               variant="outlined"
               component={RouterLink}
-              to={`/${slug}/services?coupon=${encodeURIComponent(coupon || "")}`}
+              to={`/${slug}?page=services-classic&coupon=${encodeURIComponent(coupon || "")}`}
             >
               Explore services
             </Button>

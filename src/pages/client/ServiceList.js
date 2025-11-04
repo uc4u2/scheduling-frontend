@@ -175,15 +175,15 @@ const pageStyleToBackgroundSx = (style) => {
   return sx;
 };
 
-const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin }) => {
+const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, pageStyleOverride }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
   const embedCfg = useEmbedConfig();
   const siteContext = usePublicSite();
   const pageStyle = useMemo(
-    () => resolveServicePageStyle(siteContext),
-    [siteContext]
+    () => pageStyleOverride || resolveServicePageStyle(siteContext),
+    [pageStyleOverride, siteContext]
   );
   const cssVarStyle = useMemo(() => {
     const vars = pageStyleToCssVars(pageStyle);
@@ -350,7 +350,13 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin }
   if (loading && !services.length) {
     return (
       <Container
-        sx={{ textAlign: "center", mt: 6, color: "var(--page-btn-bg, var(--sched-primary))" }}
+        maxWidth={false}
+        sx={{
+          textAlign: "center",
+          mt: 6,
+          color: "var(--page-btn-bg, var(--sched-primary))",
+          px: { xs: 3, md: 6 },
+        }}
         style={cssVarStyle}
       >
         <CircularProgress sx={{ color: "currentColor" }} />
@@ -365,7 +371,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin }
         position: "relative",
         width: "100%",
         py: isModalView ? 0 : { xs: 4, md: 6 },
-        px: isModalView ? 0 : { xs: 3, md: 4 },
+        px: isModalView ? 0 : { xs: 2, md: 4, xl: 6 },
         ...backgroundSx,
       }}
       style={cssVarStyle}
@@ -374,7 +380,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin }
         sx={{
           position: "relative",
           zIndex: 1,
-          maxWidth: isModalView ? "100%" : 1200,
+          maxWidth: isModalView ? "100%" : 1600,
           mx: "auto",
         }}
       >
@@ -431,7 +437,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin }
                 ? service.images[0]?.url_public || service.images[0]?.url || service.images[0]?.source
                 : null;
               return (
-                <Grid item xs={12} md={6} lg={4} key={service.id}>
+                <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={service.id}>
                   <Card
                     variant="outlined"
                     sx={{
@@ -599,6 +605,13 @@ const ServiceList = () => {
   const isModalView = isEmbed && searchParams.get("mode") === "modal";
   const disableModal = searchParams.get("dialog") === "1";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isEmbed && effectiveSlug) {
+      navigate(`/${effectiveSlug}?page=services-classic`, { replace: true });
+    }
+  }, [isEmbed, effectiveSlug, navigate]);
 
   const content = (
     <ServiceListContent
@@ -617,3 +630,18 @@ const ServiceList = () => {
 };
 
 export default ServiceList;
+
+export function ServiceListEmbedded({ slug, pageStyle }) {
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  return (
+    <ServiceListContent
+      effectiveSlug={slug}
+      isModalView={false}
+      origin={origin}
+      pageStyleOverride={pageStyle}
+    />
+  );
+}
+
+export { ServiceListContent, pageStyleToCssVars, pageStyleToBackgroundSx };
