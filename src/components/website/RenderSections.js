@@ -193,13 +193,20 @@ function usePrefersReducedMotion() {
 
 function useAutoplay(len, interval = 4500, disabled = false) {
   const [index, setIndex] = React.useState(0);
-  const pauseRef = React.useRef(false);
+  const [paused, setPaused] = React.useState(false);
+
   React.useEffect(() => {
-    if (disabled || len <= 1 || pauseRef.current) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % len), interval);
+    setIndex(0);
+  }, [len]);
+
+  React.useEffect(() => {
+    if (disabled || len <= 1 || paused) return;
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % len);
+    }, interval);
     return () => clearInterval(id);
-  }, [len, interval, disabled, index]);
-  const setPaused = (v) => { pauseRef.current = v; };
+  }, [len, interval, disabled, paused]);
+
   return [index, setIndex, setPaused];
 }
 
@@ -241,8 +248,53 @@ const Hero = ({
   contentMaxWidth = "lg",
   gutterX,
   brightness = 1.0,          // NEW: 1.0 = original, >1 = brighter, <1 = darker
+  carousel = false,
+  slides = [],
+  slideInterval = 6000,
 }) => {
-  const bgUrl = backgroundUrl || image;
+  const slideList = toArray(slides);
+  const hasSlides = carousel && slideList.length > 0;
+  const reducedMotion = usePrefersReducedMotion();
+  const intervalMs = Number(slideInterval) > 0 ? Number(slideInterval) : 6000;
+  const [index, setIndex, setPaused] = useAutoplay(
+    hasSlides ? slideList.length : 1,
+    intervalMs,
+    !hasSlides || reducedMotion
+  );
+
+  const activeSlide = hasSlides ? slideList[index % slideList.length] || {} : {};
+  const bgUrl =
+    (hasSlides
+      ? activeSlide.image || activeSlide.backgroundUrl
+      : backgroundUrl || image) || backgroundUrl || image;
+  const activeOverlay = hasSlides && activeSlide.overlay != null ? activeSlide.overlay : overlay;
+  const activeOverlayColor =
+    hasSlides && activeSlide.overlayColor ? activeSlide.overlayColor : overlayColor;
+  const activeGradient =
+    hasSlides && activeSlide.overlayGradient ? activeSlide.overlayGradient : overlayGradient;
+  const activeBackgroundPosition =
+    hasSlides && activeSlide.backgroundPosition
+      ? activeSlide.backgroundPosition
+      : backgroundPosition;
+  const activeBrightness =
+    hasSlides && activeSlide.brightness != null ? activeSlide.brightness : brightness;
+  const activeEyebrow = hasSlides && activeSlide.eyebrow !== undefined ? activeSlide.eyebrow : eyebrow;
+  const activeHeading = hasSlides && activeSlide.heading !== undefined ? activeSlide.heading : heading;
+  const activeSubheading =
+    hasSlides && activeSlide.subheading !== undefined ? activeSlide.subheading : subheading;
+  const activeCtaText =
+    hasSlides && activeSlide.ctaText !== undefined ? activeSlide.ctaText : ctaText;
+  const activeCtaLink =
+    hasSlides && activeSlide.ctaLink !== undefined ? activeSlide.ctaLink : ctaLink;
+  const activeSecondaryCtaText =
+    hasSlides && activeSlide.secondaryCtaText !== undefined
+      ? activeSlide.secondaryCtaText
+      : secondaryCtaText;
+  const activeSecondaryCtaLink =
+    hasSlides && activeSlide.secondaryCtaLink !== undefined
+      ? activeSlide.secondaryCtaLink
+      : secondaryCtaLink;
+
   const textAlign =
     align === "right" ? "right" : align === "left" ? "left" : "center";
 
@@ -260,6 +312,8 @@ const Hero = ({
 
   return (
     <Box
+      onMouseEnter={() => hasSlides && setPaused(true)}
+      onMouseLeave={() => hasSlides && setPaused(false)}
       sx={{
         position: "relative",
         borderRadius: { xs: 0, md: 3 },
@@ -281,10 +335,10 @@ const Hero = ({
             inset: 0,
             backgroundImage: `url(${bgUrl})`,
             backgroundSize: "cover",
-            backgroundPosition,
+            backgroundPosition: activeBackgroundPosition,
             // REMOVED the hidden darkening; use explicit brightness instead
-            ...(brightness && brightness !== 1
-              ? { filter: `brightness(${brightness})` }
+            ...(activeBrightness && activeBrightness !== 1
+              ? { filter: `brightness(${activeBrightness})` }
               : {}),
           }}
         />
@@ -308,18 +362,18 @@ const Hero = ({
         sx={{
           position: "absolute",
           inset: 0,
-          background: colorWithOpacity(overlayColor, clamp(overlay, 0, 1)),
+          background: colorWithOpacity(activeOverlayColor, clamp(activeOverlay, 0, 1)),
           pointerEvents: "none",
         }}
       />
 
       {/* Optional gradient polish */}
-      {overlayGradient && (
+      {activeGradient && (
         <Box
           sx={{
             position: "absolute",
             inset: 0,
-            background: overlayGradient,
+            background: activeGradient,
             pointerEvents: "none",
           }}
         />
@@ -329,13 +383,13 @@ const Hero = ({
         <Box sx={{ position: "relative", zIndex: 2, width: "100%", px: gutterX != null ? `${gutterX}px` : 2 }}>
           <HeroInner
             textAlign={textAlign}
-            eyebrow={eyebrow}
-            heading={heading}
-            subheading={subheading}
-            ctaText={ctaText}
-            ctaLink={ctaLink}
-            secondaryCtaText={secondaryCtaText}
-            secondaryCtaLink={secondaryCtaLink}
+            eyebrow={activeEyebrow}
+            heading={activeHeading}
+            subheading={activeSubheading}
+            ctaText={activeCtaText}
+            ctaLink={activeCtaLink}
+            secondaryCtaText={activeSecondaryCtaText}
+            secondaryCtaLink={activeSecondaryCtaLink}
           />
         </Box>
       ) : (
@@ -343,16 +397,83 @@ const Hero = ({
           <Box sx={{ px: gutterX != null ? `${gutterX}px` : 0 }}>
             <HeroInner
               textAlign={textAlign}
-              eyebrow={eyebrow}
-              heading={heading}
-              subheading={subheading}
-              ctaText={ctaText}
-              ctaLink={ctaLink}
-              secondaryCtaText={secondaryCtaText}
-              secondaryCtaLink={secondaryCtaLink}
+              eyebrow={activeEyebrow}
+              heading={activeHeading}
+              subheading={activeSubheading}
+              ctaText={activeCtaText}
+              ctaLink={activeCtaLink}
+              secondaryCtaText={activeSecondaryCtaText}
+              secondaryCtaLink={activeSecondaryCtaLink}
             />
           </Box>
         </Container>
+      )}
+
+      {hasSlides && slideList.length > 1 && (
+        <>
+          <IconButton
+            aria-label="Previous slide"
+            onClick={() => setIndex((i) => (i - 1 + slideList.length) % slideList.length)}
+            sx={{
+              position: "absolute",
+              top: "50%",
+              left: 16,
+              transform: "translateY(-50%)",
+              bgcolor: "rgba(0,0,0,0.55)",
+              color: "#fff",
+              "&:hover": { bgcolor: "rgba(0,0,0,0.75)" }
+            }}
+            size="small"
+          >
+            <ArrowBackIosNewIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            aria-label="Next slide"
+            onClick={() => setIndex((i) => (i + 1) % slideList.length)}
+            sx={{
+              position: "absolute",
+              top: "50%",
+              right: 16,
+              transform: "translateY(-50%)",
+              bgcolor: "rgba(0,0,0,0.55)",
+              color: "#fff",
+              "&:hover": { bgcolor: "rgba(0,0,0,0.75)" }
+            }}
+            size="small"
+          >
+            <ArrowForwardIosIcon fontSize="small" />
+          </IconButton>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              position: "absolute",
+              bottom: 16,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 3
+            }}
+          >
+            {slideList.map((_, i) => (
+              <Box
+                key={i}
+                onClick={() => setIndex(i)}
+                tabIndex={0}
+                role="button"
+                aria-label={`Go to slide ${i + 1}`}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setIndex(i)}
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  bgcolor: i === index ? "#fff" : "rgba(255,255,255,0.4)",
+                  cursor: "pointer",
+                  outlineOffset: 2
+                }}
+              />
+            ))}
+          </Stack>
+        </>
       )}
     </Box>
   );
