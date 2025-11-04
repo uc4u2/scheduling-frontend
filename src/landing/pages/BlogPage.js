@@ -49,7 +49,7 @@ const highlightItems = [
   {
     title: "Client experience and reviews",
     description:
-      "Collect feedback automatically, monitor satisfaction, and surface public reviews that fuel retention and loyalty.",
+      "Track client feedback, monitor satisfaction, and prepare for automated review requests that keep retention and loyalty high.",
     icon: <SupportAgentIcon fontSize="small" />, 
   },
   {
@@ -73,7 +73,6 @@ const articleParagraphs = [
 
 const BlogPage = () => {
   const theme = useTheme();
-  const marketing = theme.marketing || {};
 
   const heroBadge = (
     <Stack direction="row" spacing={1.5} alignItems="center">
@@ -113,11 +112,12 @@ const BlogPage = () => {
     <Box sx={{ position: "relative", overflow: "hidden" }}>
       <Meta
         title="The Future of Business Automation | Schedulaa Blog"
-        description="How Schedulaa is redefining all-in-one management for modern teams with unified booking, payroll, HR, websites, and analytics."
+        description="How Schedulaa is redefining all-in-one management for modern teams with unified booking, payroll, websites, and analytics."
         canonical="https://www.schedulaa.com/blog"
+        keywords="Schedulaa blog, business automation insights, booking and payroll strategies, website builder tips"
         og={{
           title: "The Future of Business Automation",
-          description: "Schedulaa brings booking, payroll, HR, websites, and analytics together so teams can scale without the chaos of disconnected tools.",
+          description: "Schedulaa brings booking, payroll, websites, and analytics together so teams can scale without the chaos of disconnected tools.",
           image: "https://www.schedulaa.com/og/blog.jpg",
         }}
       />
@@ -125,7 +125,7 @@ const BlogPage = () => {
       <HeroShowcase
         eyebrow="Blog"
         title={["The future of", "business automation."]}
-        subtitle="How Schedulaa is redefining all-in-one management for modern teams with unified booking, payroll, HR, websites, and analytics."
+        subtitle="How Schedulaa is redefining all-in-one management for modern teams with unified booking, payroll, websites, and analytics."
         primaryCTA={{ label: "Start free", to: "/register" }}
         secondaryCTA={{ label: "Talk to sales", to: "/contact", variant: "outlined" }}
         media={{ src: heroShowcaseMedia, alt: "Schedulaa product hero" }}
@@ -135,6 +135,14 @@ const BlogPage = () => {
           { key: "blog-accent", color: theme.palette.secondary.main, size: 920, opacity: 0.18, sx: { bottom: -260, right: -220 } },
         ]}
       />
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ px: { xs: 2, md: 6 }, pt: { xs: 4, md: 6 } }}>
+        <Button component={Link} to="/blog/category/automation" variant="contained" color="secondary" sx={{ textTransform: "none", borderRadius: 999 }}>
+          Automation insights
+        </Button>
+        <Button component={Link} to="/blog/category/payroll" variant="outlined" color="primary" sx={{ textTransform: "none", borderRadius: 999 }}>
+          Payroll operations
+        </Button>
+      </Stack>
 
       <FeatureCardShowcase
         eyebrow="What's inside"
@@ -156,10 +164,10 @@ const BlogPage = () => {
 
           <Stack spacing={2}>
             <Typography variant="h5" component="h2" fontWeight={700}>
-              Join the future of smart business management
+              Ready to simplify your business operations?
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Try Schedulaa free today. Your business, elevated.
+              Start free today and run booking, payroll, marketing, and websites from a single platform.
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="flex-start">
               <Button component={Link} to="/register" variant="contained" color="primary" sx={{ textTransform: "none", borderRadius: 999, px: 4 }}>

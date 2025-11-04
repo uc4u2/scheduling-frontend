@@ -18,6 +18,7 @@ import {
   TableRow,
   Divider,
   Link as MuiLink,
+  Button,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
@@ -113,6 +114,7 @@ const DocsPage = () => {
   const onboardingCards = useMemo(() => gettingStartedContent?.cards || [], [gettingStartedContent]);
   const guideSections = useMemo(() => productGuidesContent?.cards || [], [productGuidesContent]);
   const apiEndpoints = useMemo(() => apiReferenceContent?.endpoints || [], [apiReferenceContent]);
+  const hasApiEndpoints = apiEndpoints.length > 0;
   const integrationItems = useMemo(() => integrationsContent?.items || [], [integrationsContent]);
   const integrationStatusLabels = useMemo(() => integrationsContent?.statusLabels || {}, [integrationsContent]);
   const faqItems = useMemo(() => faqContent?.items || [], [faqContent]);
@@ -199,6 +201,7 @@ const DocsPage = () => {
         title={metaContent?.title || ""}
         description={metaContent?.description || ""}
         canonical={metaContent?.canonical || ""}
+        keywords="Schedulaa documentation, website builder docs, booking setup guide, payroll exports, marketing automation docs"
         og={{
           title: metaOg.title || "",
           description: metaOg.description || "",
@@ -220,6 +223,22 @@ const DocsPage = () => {
         ]}
       />
 
+      <Box sx={{ px: { xs: 2, md: 6 }, py: { xs: 4, md: 6 } }}>
+        <Stack spacing={2} maxWidth={840}>
+          <Typography variant="body1" color="text.secondary">
+            Schedulaa documentation covers everything from website setup and Stripe payments to payroll exports and analytics. It also outlines the upcoming public API and SSO integrations so you know what's on the roadmap.
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+            <Button component={Link} to="/features" variant="contained" color="primary" sx={{ textTransform: "none", borderRadius: 999 }}>
+              Explore features
+            </Button>
+            <Button component={Link} to="/marketing/analytics-dashboard" variant="outlined" color="primary" sx={{ textTransform: "none", borderRadius: 999 }}>
+              View analytics suite
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
+
       <FeatureCardShowcase
         eyebrow={quickLinksContent?.eyebrow || ""}
         title={quickLinksContent?.title || ""}
@@ -229,7 +248,226 @@ const DocsPage = () => {
       />
 
       <Box sx={{ px: { xs: 2, md: 6 }, pb: { xs: 10, md: 14 } }}>
-        <Stack spacing={8}>
+          <Stack spacing={8}>
+            <Stack id="payroll-coverage" spacing={3}>
+              <Typography variant="h4" component="h2" fontWeight={700}>
+                Payroll coverage (2025)
+              </Typography>
+
+              <Paper
+                elevation={0}
+                sx={{
+                  px: { xs: 4, md: 6 },
+                  py: { xs: 4, md: 6 },
+                  borderRadius: marketing.radius?.lg || 24,
+                  border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}`,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: { xs: 2.5, md: 3 },
+                  ml: { xs: 0, md: 3, lg: 5 },
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontSize: { xs: "1.4rem", md: "1.6rem" },
+                    fontWeight: 700,
+                    textAlign: "center",
+                  }}
+                  gutterBottom
+                >
+                  🇺🇸 U.S. payroll coverage
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  gutterBottom
+                  sx={{ textAlign: "center" }}
+                >
+                  Our payroll engine calculates core federal and state payroll items for most U.S. states.
+                </Typography>
+                <Typography variant="subtitle2" gutterBottom>Supported</Typography>
+                <List
+                  dense
+                  sx={{
+                    pl: 0,
+                    ml: { xs: 0, md: 1.5 },
+                    "& .MuiListItem-root": { alignItems: "flex-start", py: 0.75 },
+                    "& .MuiListItemText-root": { m: 0, "& .MuiTypography-root": { lineHeight: 1.6 } },
+                  }}
+                >
+                  {[
+                    "Federal income tax (IRS brackets)",
+                    "State income tax (where applicable)",
+                    "FICA (Social Security & Medicare)",
+                    "Employer unemployment: FUTA & SUI/SUTA",
+                    "PTO & basic leave tracking",
+                    "Payroll exports (PDF / CSV / XLSX)",
+                    "Year-end forms: W-2 generation / export",
+                  ].map((item) => (
+                    <ListItem key={item} sx={{ pl: 0 }}>
+                      <ListItemText primaryTypographyProps={{ variant: "body2", color: "text.secondary" }} primary={`✅ ${item}`} />
+                    </ListItem>
+                  ))}
+                </List>
+                <Typography variant="subtitle2" gutterBottom>Not supported / not automated</Typography>
+                <List
+                  dense
+                  sx={{
+                    pl: 0,
+                    mb: 1,
+                    "& .MuiListItem-root": { alignItems: "flex-start", py: 0.75 },
+                    "& .MuiListItemText-root": { m: 0, "& .MuiTypography-root": { lineHeight: 1.6 } },
+                  }}
+                >
+                  {[
+                    "Local or city income taxes",
+                    "State disability / paid family programs",
+                    "Wage garnishments & legal holds",
+                  ].map((item) => (
+                    <ListItem key={item} sx={{ pl: 0 }}>
+                      <ListItemText primaryTypographyProps={{ variant: "body2", color: "text.secondary" }} primary={`❌ ${item}`} />
+                    </ListItem>
+                  ))}
+                </List>
+                <Typography variant="body2" color="text.secondary">
+                  Fully supported states (2025): Alabama, Arizona, Arkansas, California***, Colorado, Connecticut, Delaware, District of Columbia (DC), Florida, Georgia, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland**, Massachusetts, Michigan, Minnesota, Mississippi, Missouri**, Montana, Nebraska, Nevada, New Hampshire*, New Jersey**, New Mexico, North Carolina, North Dakota, Ohio**, Oklahoma, Oregon**, Pennsylvania**, South Carolina, South Dakota, Tennessee*, Texas, Utah, Vermont, Virginia, Washington**, West Virginia, Wisconsin, Wyoming.
+                </Typography>
+
+                <Typography variant="caption" color="text.secondary" component="div"
+                  sx={{ mt: 2, textAlign: 'left', ml: { xs: 0, md: 1.5 } }}
+                >
+                  * TN & NH: No earned income tax (only dividend/interest).<br />
+                  ** Local/city levies may apply and are not automated.<br />
+                  *** CA SDI must be handled externally when required.
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  component="div"
+                  sx={{ mt: 1.5, pb: 1, pl: { xs: 0, md: 2 } }}
+                >
+                  
+                </Typography>
+              </Paper>
+
+              <Paper
+                elevation={0}
+                sx={{
+                  px: { xs: 4, md: 6 },
+                  py: { xs: 4, md: 6 },
+                  borderRadius: marketing.radius?.lg || 24,
+                  border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}`,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: { xs: 2.5, md: 3 },
+                  ml: { xs: 0, md: 3, lg: 5 },
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontSize: { xs: "1.4rem", md: "1.6rem" },
+                    fontWeight: 700,
+                    textAlign: "center",
+                  }}
+                  gutterBottom
+                >
+                  🇨🇦 Canadian payroll coverage
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  gutterBottom
+                  sx={{ textAlign: "center" }}
+                >
+                  Schedulaa’s CRA-compliant engine covers all provinces except Québec.
+                </Typography>
+                <Typography variant="subtitle2" gutterBottom>Supported</Typography>
+                <List
+                  dense
+                  sx={{
+                    pl: 0,
+                    ml: { xs: 0, md: 1.5 },
+                    "& .MuiListItem-root": { alignItems: "flex-start", py: 0.75 },
+                    "& .MuiListItemText-root": { m: 0, "& .MuiTypography-root": { lineHeight: 1.6 } },
+                  }}
+                >
+                  {[
+                    "Federal & provincial income tax (outside QC)",
+                    "CPP (Canada Pension Plan)",
+                    "EI (Employment Insurance)",
+                    "Vacation pay & accrual logic",
+                    "Automated stat holiday pay calculation",
+                    "Paid vs unpaid leave tracking",
+                    "BPA (Basic Personal Amount) with pro-rata and YTD",
+                    "T4 generation / export",
+                    "ROE (Record of Employment) creation / export",
+                  ].map((item) => (
+                    <ListItem key={item} sx={{ pl: 0 }}>
+                      <ListItemText primaryTypographyProps={{ variant: "body2", color: "text.secondary" }} primary={`✅ ${item}`} />
+                    </ListItem>
+                  ))}
+                </List>
+                <Typography variant="subtitle2" gutterBottom>Not supported / not automated</Typography>
+                <List
+                  dense
+                  sx={{
+                    pl: 0,
+                    mb: 1,
+                    "& .MuiListItem-root": { alignItems: "flex-start", py: 0.75 },
+                    "& .MuiListItemText-root": { m: 0, "& .MuiTypography-root": { lineHeight: 1.6 } },
+                  }}
+                >
+                  {[
+                    "Québec payroll (QPP, RQAP/QPIP)",
+                  ].map((item) => (
+                    <ListItem key={item} sx={{ pl: 0 }}>
+                      <ListItemText primaryTypographyProps={{ variant: "body2", color: "text.secondary" }} primary={`❌ ${item}`} />
+                    </ListItem>
+                  ))}
+                </List>
+              </Paper>
+
+              <Paper
+                elevation={0}
+                sx={{
+                  px: { xs: 4, md: 5 },
+                  py: { xs: 3.5, md: 5 },
+                  borderRadius: marketing.radius?.lg || 24,
+                  border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}`,
+                  ml: { xs: 0, md: 3, lg: 5 },
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{ fontSize: { xs: "1.2rem", md: "1.4rem" }, fontWeight: 700 }}
+                  gutterBottom
+                >
+                  ⚠️ Known limitations
+                </Typography>
+                <List
+                  dense
+                  sx={{
+                    pl: 0,
+                    ml: { xs: 0, md: 1.5 },
+                    "& .MuiListItem-root": { alignItems: "flex-start", py: 0.75 },
+                    "& .MuiListItemText-root": { m: 0, "& .MuiTypography-root": { lineHeight: 1.6 } },
+                  }}
+                >
+                  {[
+                    "Local / city taxes (U.S.)",
+                    "Garnishments & legal holds",
+                    "Fringe benefit taxation",
+                    "Québec payroll",
+                  ].map((item) => (
+                    <ListItem key={item} sx={{ pl: 0 }}>
+                      <ListItemText primaryTypographyProps={{ variant: "body2", color: "text.secondary" }} primary={`❌ ${item}`} />
+                    </ListItem>
+                  ))}
+                </List>
+              </Paper>
+            </Stack>
           <Paper id="search" elevation={0} sx={{ p: { xs: 3, md: 5 }, borderRadius: marketing.radius?.lg || 24, border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}` }}>
             <Stack spacing={2}>
               <Typography variant="h5" component="h2" fontWeight={700}>
@@ -333,43 +571,61 @@ const DocsPage = () => {
             <Typography variant="h4" component="h2" fontWeight={700}>
               {apiReferenceContent?.title || ""}
             </Typography>
-            <TableContainer
-              component={Paper}
-              sx={{
-                borderRadius: marketing.radius?.lg || 24,
-                border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}`,
-                overflowX: 'auto',
-                px: { xs: 3, md: 9 },
-                py: { xs: 3.5, md: 5 },
-                ml: { xs: 1.5, md: 2.5 },
-              }}
-            >
-              <Table sx={{ minWidth: 860, '& th': { pl: 3 }, '& td': { pl: 3 }, '& th:first-of-type, & td:first-of-type': { pl: { xs: 6, md: 9 } } }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 140 }}>{apiReferenceContent?.tableHeaders?.category || ""}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 120 }}>{apiReferenceContent?.tableHeaders?.method || ""}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 200 }}>{apiReferenceContent?.tableHeaders?.path || ""}</TableCell>
-                    <TableCell>{apiReferenceContent?.tableHeaders?.summary || ""}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {apiEndpoints.map((row, index) => (
-                    <TableRow key={`${row.key || row.path}-${index}`}>
-                      <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{row.category}</TableCell>
-                      <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.method}</TableCell>
-                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                        <code>{row.path}</code>
-                      </TableCell>
-                      <TableCell>{row.summary}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <Typography variant="body2" color="text.secondary">
-              {apiReferenceContent?.tip || ""}
-            </Typography>
+            {hasApiEndpoints ? (
+              <>
+                <TableContainer
+                  component={Paper}
+                  sx={{
+                    borderRadius: marketing.radius?.lg || 24,
+                    border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}`,
+                    overflowX: 'auto',
+                    px: { xs: 3, md: 9 },
+                    py: { xs: 3.5, md: 5 },
+                    ml: { xs: 1.5, md: 2.5 },
+                  }}
+                >
+                  <Table sx={{ minWidth: 860, '& th': { pl: 3 }, '& td': { pl: 3 }, '& th:first-of-type, & td:first-of-type': { pl: { xs: 6, md: 9 } } }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 140 }}>{apiReferenceContent?.tableHeaders?.category || ""}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 120 }}>{apiReferenceContent?.tableHeaders?.method || ""}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 200 }}>{apiReferenceContent?.tableHeaders?.path || ""}</TableCell>
+                        <TableCell>{apiReferenceContent?.tableHeaders?.summary || ""}</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {apiEndpoints.map((row, index) => (
+                        <TableRow key={`${row.key || row.path}-${index}`}>
+                          <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{row.category}</TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.method}</TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                            <code>{row.path}</code>
+                          </TableCell>
+                          <TableCell>{row.summary}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                <Typography variant="body2" color="text.secondary">
+                  {apiReferenceContent?.tip || ""}
+                </Typography>
+              </>
+            ) : (
+              <Paper
+                elevation={0}
+                sx={{
+                  borderRadius: marketing.radius?.lg || 24,
+                  border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}`,
+                  px: { xs: 3, md: 6 },
+                  py: { xs: 3.5, md: 4 },
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  {apiReferenceContent?.comingSoon || "Public API and SSO documentation will be published closer to launch."}
+                </Typography>
+              </Paper>
+            )}
           </Stack>
 
           <Stack id="integrations" spacing={3}>
@@ -383,7 +639,7 @@ const DocsPage = () => {
               {integrationItems.map((integration) => (
                 <Grid item xs={12} md={4} key={integration.name}>
                   <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, borderRadius: marketing.radius?.lg || 24, border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}` }}>
-                    <Stack spacing={1} sx={{ ml: { xs: 0, md: 2, lg: 4 } }}>
+                    <Stack spacing={1} sx={{ ml: { xs: 0, md: 3, lg: 5 } }}>
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Typography variant="subtitle1" fontWeight={700}>
                           {integration.name}
@@ -429,7 +685,7 @@ const DocsPage = () => {
             <Stack spacing={3}>
               {changelogReleases.map((release) => (
                 <Paper key={release.version} elevation={0} sx={{ p: { xs: 3, md: 4 }, borderRadius: marketing.radius?.lg || 24, border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}` }}>
-                  <Stack spacing={1} sx={{ ml: { xs: 0, md: 2, lg: 4 } }}>
+                  <Stack spacing={1} sx={{ ml: { xs: 0, md: 3, lg: 5 } }}>
                     <Stack direction="row" spacing={2} alignItems="center">
                       <Typography variant="subtitle1" fontWeight={700}>
                         {release.version}

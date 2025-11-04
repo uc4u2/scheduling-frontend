@@ -11,10 +11,20 @@ import {
   TableRow,
   TableCell,
   Box,
+  Chip,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 
-const PricingCard = ({ name, price, description, features = [], ctaLabel, ctaTo, highlight }) => (
+const PricingCard = ({
+  name,
+  price,
+  description,
+  features = [],
+  ctaLabel,
+  ctaTo,
+  highlight,
+  badge,
+}) => (
   <Paper
     elevation={highlight ? 8 : 2}
     sx={{
@@ -28,6 +38,14 @@ const PricingCard = ({ name, price, description, features = [], ctaLabel, ctaTo,
     }}
   >
     <Stack spacing={2}>
+      {badge && (
+        <Chip
+          label={badge}
+          color={highlight ? "primary" : "default"}
+          size="small"
+          sx={{ alignSelf: "flex-start", fontWeight: 600 }}
+        />
+      )}
       <Box>
         <Typography variant="h6" component="h3" fontWeight={700}>
           {name}
@@ -62,11 +80,21 @@ const PricingCard = ({ name, price, description, features = [], ctaLabel, ctaTo,
 const PricingTable = ({ plans = [], addons = [], addonsTitle, addonHeaders = {} }) => (
   <Stack spacing={6}>
     <Grid container spacing={3}>
-      {plans.map((plan) => (
-        <Grid item xs={12} md={4} key={plan.key || plan.name}>
-          <PricingCard {...plan} />
-        </Grid>
-      ))}
+      {plans.map((plan) => {
+        const card = <PricingCard {...plan} />;
+        return (
+          <Grid
+            item
+            xs={12}
+            md={4}
+            key={plan.key || plan.name}
+            id={plan.anchorId || plan.key || undefined}
+            component="section"
+          >
+            {card}
+          </Grid>
+        );
+      })}
     </Grid>
     {addons.length > 0 && (
       <Box>
