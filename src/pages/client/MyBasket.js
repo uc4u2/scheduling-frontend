@@ -23,6 +23,7 @@ import PublicPageShell from "./PublicPageShell";
 import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
 import { api as apiClient } from "../../utils/api";
+import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./ServiceList";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
@@ -37,12 +38,13 @@ const lineSubtotal = (item) => {
   return base + addonTotal;
 };
 
-const MyBasket = () => {
+const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = null }) => {
   const { slug: routeSlug } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const slug = useMemo(() => {
+    if (slugOverride) return slugOverride;
     const qs = searchParams.get("site");
     if (qs) return qs;
     if (routeSlug) return routeSlug;
@@ -264,10 +266,25 @@ const MyBasket = () => {
     };
   }, [items]);
 
+  const styleVars = useMemo(
+    () => (pageStyleOverride ? pageStyleToCssVars(pageStyleOverride) : null),
+    [pageStyleOverride]
+  );
+  const backgroundSx = useMemo(
+    () => (pageStyleOverride ? pageStyleToBackgroundSx(pageStyleOverride) : null),
+    [pageStyleOverride]
+  );
+
 
   const content = (
-    <Container sx={{ py: { xs: 4, md: 6 } }}>
-      <Stack spacing={3}>
+    <Box
+      sx={{
+        ...(backgroundSx || {}),
+        ...(styleVars || {}),
+      }}
+    >
+      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+        <Stack spacing={3}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }}>
           <Box>
             <Typography variant="h3" fontWeight={800}>
@@ -427,10 +444,21 @@ const MyBasket = () => {
         onClose={() => setSnack({ open: false, msg: "" })}
         message={snack.msg}
       />
-    </Container>
+      </Container>
+    </Box>
   );
+
+  if (disableShell) {
+    return content;
+  }
 
   return <PublicPageShell activeKey="__basket">{content}</PublicPageShell>;
 };
 
+const MyBasket = (props) => <MyBasketBase {...props} />;
+
 export default MyBasket;
+
+export function MyBasketEmbedded({ slug, pageStyle }) {
+  return <MyBasketBase slugOverride={slug} disableShell pageStyleOverride={pageStyle} />;
+}

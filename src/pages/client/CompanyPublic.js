@@ -20,6 +20,9 @@ import { resolveSiteHref, transformLinksDeep } from "../../components/website/li
 import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../../utils/navStyle";
 import { navSettings } from "../../utils/api";
 import NavStyleHydrator from "../../components/website/NavStyleHydrator";
+import { ServiceListEmbedded } from "./ServiceList";
+import { ProductListEmbedded } from "./ProductList";
+import { MyBasketEmbedded } from "./MyBasket";
 
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
 const cloneStyle = (val) => {
@@ -205,9 +208,16 @@ export default function CompanyPublic() {
   const currentPage = useMemo(() => {
     if (!pages.length) return null;
     if (pageFromQuery) {
-      const q = String(pageFromQuery).toLowerCase();
+      const qRaw = String(pageFromQuery).toLowerCase();
+      const q = qRaw === "services" ? "services-classic" : qRaw;
       if (q === "reviews") return { slug: "reviews", title: "Reviews", content: { sections: [] } };
-      if (q === "services") return { slug: "services", title: "Services", content: { sections: [] } };
+      if (q === "services-classic") {
+        const existing = pages.find(
+          (p) => String(p.slug || "").toLowerCase() === "services-classic"
+        );
+        if (existing) return existing;
+        return { slug: "services-classic", title: "Services", content: { sections: [] } };
+      }
       if (q === "my-bookings" || q === "mybookings") return { slug: "my-bookings", title: "My Bookings", content: { sections: [] } };
       const byQuery = pages.find((p) => String(p.slug || '').toLowerCase() === q || String(p.menu_title || '').toLowerCase() === q || String(p.title || '').toLowerCase() === q);
       if (byQuery) return byQuery;
@@ -245,7 +255,10 @@ export default function CompanyPublic() {
         const normalized = Array.isArray(data?.pages)
           ? data.pages.map((p) => ({ ...p, content: Array.isArray(p?.content?.sections) ? p.content : { sections: [] } }))
           : [];
-        setPages(normalized);
+        const cleaned = normalized.filter(
+          (p) => String(p.slug || "").toLowerCase() !== "services"
+        );
+        setPages(cleaned);
       } catch {
         setErr("Failed to load the public website for this company.");
         setCompany(null); setPages([]); setSitePayload(null);
@@ -331,22 +344,10 @@ export default function CompanyPublic() {
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
     [pages]
   );
-
-  const hasServicesPage = useMemo(
-    () => (menuPages || []).some((p) => String(p.slug || '').toLowerCase() === 'services'),
-    [menuPages]
-  );
   const hasReviewsPage = useMemo(
     () => (menuPages || []).some((p) => String(p.slug || '').toLowerCase() === 'reviews'),
     [menuPages]
   );
-
-  const servicesHref = useCallback(() => {
-    if (hasServicesPage) {
-      return `/${slug}?page=services`;
-    }
-    return `/${slug}/services`;
-  }, [hasServicesPage, slug]);
 
   const reviewsHref = useCallback(() => {
     if (hasReviewsPage) {
@@ -384,19 +385,46 @@ export default function CompanyPublic() {
     window.location.assign("/login");
   };
 
+  const servicesPageSlug = useMemo(() => {
+    const overrideSlug = String(nav?.services_page_slug || "").trim();
+    if (overrideSlug) {
+      // Treat legacy "services" override as classic
+      if (overrideSlug.toLowerCase() === "services") return "services-classic";
+      return overrideSlug;
+    }
+    const classicPage =
+      (pages || []).find(
+        (p) => String(p.slug || "").toLowerCase() === "services-classic"
+      ) || null;
+    if (classicPage?.slug) return classicPage.slug;
+    return "services-classic";
+  }, [nav, pages]);
+
+  const hasServicesClassicPage = useMemo(
+    () =>
+      (pages || []).some(
+        (p) =>
+          String(p.slug || "").toLowerCase() ===
+          servicesPageSlug.toLowerCase()
+      ),
+    [pages, servicesPageSlug]
+  );
+
+  const servicesHref = useCallback(
+    () => `/${slug}?page=${encodeURIComponent(servicesPageSlug)}`,
+    [slug, servicesPageSlug]
+  );
+
   // ---- nav builder: respects manager settings or public payload ----
   function buildNavItems(sitePayloadArg, settingsArg) {
     const navOvr = (settingsArg && settingsArg.nav_overrides)
       || (sitePayloadArg && sitePayloadArg.nav_overrides)
       || {};
 
-    const showServices = navOvr.show_services_tab !== false; // default true
     const showReviews  = navOvr.show_reviews_tab  !== false; // default true
 
     const items = [
       { key: "home",     label: "Home",     href: `/${sitePayloadArg?.slug || slug || ""}` },
-      // Always include core Services/Reviews; servicesHref/reviewsHref resolve to either builtin route or template page
-      showServices && { key: "services", label: "Services", href: servicesHref() },
       showReviews  && { key: "reviews",  label: "Reviews",  href: reviewsHref()  },
     ].filter(Boolean);
 
@@ -409,7 +437,7 @@ export default function CompanyPublic() {
     const others = menuPages
       .filter((p) => !(p.slug === "login" && clientLoggedIn))
       .filter((p) => !(p.slug === "my-bookings" && !clientLoggedIn))
-      .filter((p) => !["home", "services", "reviews"].includes(p.slug))
+      .filter((p) => !["home", "reviews"].includes(p.slug))
       .map((p) => {
         let href = `/${slug}?page=${encodeURIComponent(p.slug)}`;
         if (p.slug === "login") href = `/login?site=${encodeURIComponent(slug)}`;
@@ -424,7 +452,7 @@ export default function CompanyPublic() {
     }
 
     return [...core, ...others, ...shortcuts];
-  }, [sitePayload, settings, menuPages, nav, slug, servicesHref, reviewsHref, clientLoggedIn]);
+  }, [sitePayload, settings, menuPages, nav, slug, reviewsHref, clientLoggedIn]);
   // ─────────────────────────────────────────────────────────────────────────────
 
   const rawNavStyle =
@@ -458,16 +486,16 @@ export default function CompanyPublic() {
     [navStyle]
   );
 
-  const { sections: patchedSections, styleProps: specialPageStyle } = useMemo(() => {
+  const { sections: patchedSections, styleProps: specialPageStyle, renderOverride } = useMemo(() => {
     if (!currentPage) {
-      return { sections: [], styleProps: null };
+      return { sections: [], styleProps: null, renderOverride: null };
     }
 
     const slugLower = String(currentPage?.slug || "").toLowerCase();
     const currentSections = Array.isArray(currentPage?.content?.sections) ? currentPage.content.sections : [];
     const home = (pages || []).find((p) => p.is_homepage) || (pages || [])[0];
     const homeSections = Array.isArray(home?.content?.sections) ? home.content.sections : [];
-    const homePageStyleSection = homeSections.find((s) => s?.type === 'pageStyle');
+    const homePageStyleSection = homeSections.find((s) => s?.type === "pageStyle");
 
     const pickStyle = (...candidates) => {
       for (const cand of candidates) {
@@ -477,8 +505,21 @@ export default function CompanyPublic() {
       return {};
     };
 
-    if ([ 'services', 'reviews', 'my-bookings', 'products', 'basket', 'checkout' ].includes(slugLower)) {
-      const existingPageStyleSection = currentSections.find((s) => s?.type === 'pageStyle');
+    if (["services", "services-classic", "products", "basket"].includes(slugLower)) {
+      const existingPageStyleSection = currentSections.find((s) => s?.type === "pageStyle");
+      const styleProps = pickStyle(
+        existingPageStyleSection?.props,
+        currentPage?.content?.meta?.pageStyle,
+        homePageStyleSection?.props,
+        home?.content?.meta?.pageStyle,
+        siteDefaultPageStyle
+      );
+      const overrideType = slugLower === "services" ? "services-classic" : slugLower;
+      return { sections: [], styleProps, renderOverride: { type: overrideType, styleProps } };
+    }
+
+    if (["reviews", "my-bookings", "checkout"].includes(slugLower)) {
+      const existingPageStyleSection = currentSections.find((s) => s?.type === "pageStyle");
       const styleProps = pickStyle(
         existingPageStyleSection?.props,
         currentPage?.content?.meta?.pageStyle,
@@ -487,72 +528,87 @@ export default function CompanyPublic() {
         siteDefaultPageStyle
       );
 
-      const primary = styleProps.linkColor || styleProps.primaryColor || styleProps.brandColor || '';
-      const bg = styleProps.backgroundColor || '';
-      const head = styleProps.headingColor || '';
-      const body = styleProps.bodyColor || '';
+      const primary = styleProps.linkColor || styleProps.primaryColor || styleProps.brandColor || "";
+      const bg = styleProps.backgroundColor || "";
+      const head = styleProps.headingColor || "";
+      const body = styleProps.bodyColor || "";
       const toRGB = (hex) => {
-        const s = String(hex || '').trim();
-        if (!s.startsWith('#')) return null;
+        const s = String(hex || "").trim();
+        if (!s.startsWith("#")) return null;
         const h = s.length === 4 ? `#${s[1]}${s[1]}${s[2]}${s[2]}${s[3]}${s[3]}` : s;
-        const r = parseInt(h.slice(1,3), 16), g = parseInt(h.slice(3,5), 16), b = parseInt(h.slice(5,7), 16);
-        return [r,g,b];
+        const r = parseInt(h.slice(1, 3), 16);
+        const g = parseInt(h.slice(3, 5), 16);
+        const b = parseInt(h.slice(5, 7), 16);
+        return [r, g, b];
       };
-      const lum = (rgb) => !rgb ? 1 : (0.2126*rgb[0]/255 + 0.7152*rgb[1]/255 + 0.0722*rgb[2]/255);
-      let tone = 'dark';
+      const lum = (rgb) => !rgb ? 1 : (0.2126 * rgb[0] / 255 + 0.7152 * rgb[1] / 255 + 0.0722 * rgb[2] / 255);
+      let tone = "dark";
       const Lbg = lum(toRGB(bg)), Lh = lum(toRGB(head)), Lb = lum(toRGB(body));
-      if (Lbg < 0.4) tone = 'light';
-      if (Lh !== 1) tone = Lh < 0.5 ? 'light' : 'dark'; else if (Lb !== 1) tone = Lb < 0.5 ? 'light' : 'dark';
+      if (Lbg < 0.4) tone = "light";
+      if (Lh !== 1) tone = Lh < 0.5 ? "light" : "dark"; else if (Lb !== 1) tone = Lb < 0.5 ? "light" : "dark";
 
       const qp = new URLSearchParams();
-      qp.set('embed', '1');
-      qp.set('site', slug);
-      if (primary) qp.set('primary', primary);
-      if (tone) qp.set('text', tone);
-      if (head) qp.set('h', head);
-      if (body) qp.set('b', body);
-      if (styleProps.linkColor) qp.set('link', styleProps.linkColor);
-      if (styleProps.headingFont) qp.set('hfont', styleProps.headingFont);
-      if (styleProps.bodyFont) qp.set('bfont', styleProps.bodyFont);
+      qp.set("embed", "1");
+      qp.set("site", slug);
+      if (primary) qp.set("primary", primary);
+      if (tone) qp.set("text", tone);
+      if (head) qp.set("h", head);
+      if (body) qp.set("b", body);
+      if (styleProps.linkColor) qp.set("link", styleProps.linkColor);
+      if (styleProps.headingFont) qp.set("hfont", styleProps.headingFont);
+      if (styleProps.bodyFont) qp.set("bfont", styleProps.bodyFont);
       const embedCardBg = cssColorWithOpacity(
         styleProps.cardBg || styleProps.cardColor,
         Number.isFinite(styleProps.cardOpacity) ? styleProps.cardOpacity : undefined
       );
-      if (embedCardBg) qp.set('cardbg', embedCardBg);
-      const targetPath = slugLower === 'my-bookings' ? 'my-bookings' : slugLower;
-      const src = `/${slug}/${targetPath}?${qp.toString()}`;
+      if (embedCardBg) qp.set("cardbg", embedCardBg);
+      const targetPath = slugLower === "my-bookings" ? "my-bookings" : slugLower;
+      const basePath = targetPath ? `/${slug}/${targetPath}` : `/${slug}`;
+      const src = `${basePath}?${qp.toString()}`;
 
       const basePageStyleSection = existingPageStyleSection || homePageStyleSection || null;
       let pageStyleBlock = null;
       if (Object.keys(styleProps).length) {
         pageStyleBlock = {
           id: basePageStyleSection?.id || `page-style-${slugLower}`,
-          type: 'pageStyle',
+          type: "pageStyle",
           props: styleProps,
           ...(basePageStyleSection?.sx ? { sx: basePageStyleSection.sx } : {}),
         };
       }
 
       const embedBlock = {
-        id: 'embed-'+slugLower,
-        type: 'richText',
+        id: `embed-${slugLower}`,
+        type: "richText",
         props: {
-          title: '',
+          title: "",
           body: `<iframe src="${src}" style="width:100%;min-height:900px;border:none;display:block;"></iframe>`
         }
       };
 
       const sections = pageStyleBlock ? [pageStyleBlock, embedBlock] : [embedBlock];
-      return { sections, styleProps };
+      return { sections, styleProps, renderOverride: null };
     }
 
     const sections = currentPage?.content?.sections || [];
-    const servicesLink = `/${slug}?page=services`;
+    const servicesLink = servicesHref();
     const reviewsLink = `/${slug}?page=reviews`;
+    const servicesAliases = [
+      "services",
+      "/services",
+      "services-classic",
+      "/services-classic",
+      "?page=services",
+      "/?page=services",
+      "?page=services-classic",
+      "/?page=services-classic",
+      "book",
+      "/book",
+    ];
     const resolver = (href) => {
       const base = resolveSiteHref(slug, href, pages);
       const clean = String(href || "").trim().toLowerCase();
-      if (["services", "/services", "book", "/book"].includes(clean)) return servicesLink;
+      if (servicesAliases.includes(clean)) return servicesLink;
       if (["reviews", "/reviews"].includes(clean)) return reviewsLink;
       return base;
     };
@@ -562,7 +618,7 @@ export default function CompanyPublic() {
         out = out.replace(/\{\{\s*slug\s*\}\}/gi, slug);
         out = out.replace(/%7b%7b\s*slug\s*%7d%7d/gi, slug);
         out = out.replace(new RegExp(`/${'{'}{'}'}slug${'{'}{'}'}/`, 'gi'), `/${slug}/`);
-        out = out.replace(/(<iframe[^>]*src=\")(.*?)(\"[^>]*>)/gi, (m, p1, url, p3) => {
+        out = out.replace(/(<iframe[^>]*src=")(.*?)("[^>]*>)/gi, (m, p1, url, p3) => {
           try {
             const u = new URL(url, window.location.origin);
             if (u.pathname.startsWith('/dashboard')) {
@@ -575,12 +631,14 @@ export default function CompanyPublic() {
           } catch {
             const join = url.includes('?') ? '&' : '?';
             let final = `${url}${join}embed=1&site=${encodeURIComponent(slug)}`;
-            final = final.replace(/^\/?dashboard\b/i, `/${slug}/my-bookings`);
+            final = final.replace(/^\/?dashboard/i, `/${slug}/my-bookings`);
             return `${p1}${final}${p3}`;
           }
         });
         return out;
-      } catch { return html; }
+      } catch {
+        return html;
+      }
     };
 
     const mapped = sections.map((s) => {
@@ -592,10 +650,15 @@ export default function CompanyPublic() {
       return { ...s, props };
     });
 
-    return { sections: mapped, styleProps: extractPageStyleProps(currentPage) };
-  }, [currentPage, slug, pages, nav, siteDefaultPageStyle]);
+    return { sections: mapped, styleProps: extractPageStyleProps(currentPage), renderOverride: null };
+  }, [currentPage, slug, pages, nav, siteDefaultPageStyle, servicesHref]);
 
-  const pageLayout = useMemo(() => currentPage?.layout ?? currentPage?.content?.meta?.layout ?? "boxed", [currentPage]);
+  const pageLayout = useMemo(() => {
+    if (renderOverride?.type === "services-classic" || renderOverride?.type === "products" || renderOverride?.type === "basket") {
+      return "full";
+    }
+    return currentPage?.layout ?? currentPage?.content?.meta?.layout ?? "boxed";
+  }, [currentPage, renderOverride]);
   const isReviewsPage = currentPage && String(currentPage.slug || '').toLowerCase() === 'reviews';
   const reviewPageStyle = isReviewsPage
     ? (specialPageStyle || extractPageStyleProps(currentPage) || siteDefaultPageStyle || null)
@@ -636,6 +699,21 @@ export default function CompanyPublic() {
     }
     return candidate;
   }, [rawSiteTitle, company?.name, slug]);
+
+  const overrideContent = useMemo(() => {
+    if (!renderOverride) return null;
+    const styleProps = renderOverride.styleProps || null;
+    switch (renderOverride.type) {
+      case "services-classic":
+        return <ServiceListEmbedded slug={slug} pageStyle={styleProps} />;
+      case "products":
+        return <ProductListEmbedded slug={slug} pageStyle={styleProps} />;
+      case "basket":
+        return <MyBasketEmbedded slug={slug} pageStyle={styleProps} />;
+      default:
+        return null;
+    }
+  }, [renderOverride, slug]);
 
   if (loading) {
     return <Box sx={{ p: 6, textAlign: "center" }}><CircularProgress /></Box>;
@@ -707,17 +785,17 @@ export default function CompanyPublic() {
               ))}
             </Menu>
 
-            {isOn(nav.show_services_tab ?? true) && (
-  <Button
-    variant="outlined"
-    startIcon={<StorefrontIcon />}
-    component={RouterLink}
-    to={servicesHref()}
-    sx={{ ml: 1 }}
-  >
-    View Services
-  </Button>
-)}
+            {hasServicesClassicPage && (
+              <Button
+                variant="outlined"
+                startIcon={<StorefrontIcon />}
+                component={RouterLink}
+                to={servicesHref()}
+                sx={{ ml: 1 }}
+              >
+                View Services
+              </Button>
+            )}
 
            
 
@@ -803,64 +881,68 @@ export default function CompanyPublic() {
 
       {/* PAGE CONTENT */}
       <Box sx={{ py: 2 }}>
-        <Container maxWidth={pageLayout === "full" ? false : "lg"}>
-          {isReviewsPage ? (
-            <Box
-              sx={{
-                p: { xs: 3, md: 6 },
-                borderRadius: 2,
-                position: "relative",
-                ...(reviewPageStyle?.backgroundColor
-                  ? { backgroundColor: reviewPageStyle.backgroundColor }
-                  : { bgcolor: "background.paper" }),
-                ...(reviewPageStyle?.backgroundImage
-                  ? {
-                      backgroundImage: `url(${reviewPageStyle.backgroundImage})`,
-                      backgroundSize: reviewPageStyle.backgroundSize || "cover",
-                      backgroundPosition: reviewPageStyle.backgroundPosition || "center",
-                      backgroundRepeat: reviewPageStyle.backgroundRepeat || "no-repeat",
-                      backgroundAttachment: reviewPageStyle.backgroundAttachment || "scroll",
-                    }
-                  : {}),
-                color: reviewPageStyle?.bodyColor || undefined,
-                '--page-heading-color': reviewPageStyle?.headingColor,
-                '--page-body-color': reviewPageStyle?.bodyColor,
-                '--page-link-color': reviewPageStyle?.linkColor,
-                '--page-heading-font': reviewPageStyle?.headingFont,
-                '--page-body-font': reviewPageStyle?.bodyFont,
-                '--page-card-bg': reviewCardBg || undefined,
-                '--page-card-radius': reviewPageStyle?.cardRadius != null ? `${reviewPageStyle.cardRadius}px` : undefined,
-                '--page-card-shadow': reviewPageStyle?.cardShadow,
-                '--page-card-blur': reviewPageStyle?.cardBlur ? `${reviewPageStyle.cardBlur}px` : undefined,
-                boxShadow: reviewPageStyle?.cardShadow || undefined,
-                backdropFilter: reviewPageStyle?.cardBlur ? `blur(${reviewPageStyle.cardBlur}px)` : undefined,
-              }}
-            >
-              <Typography
-                variant="h5"
-                fontWeight={700}
-                gutterBottom
+        {overrideContent ? (
+          overrideContent
+        ) : (
+          <Container maxWidth={pageLayout === "full" ? false : "lg"}>
+            {isReviewsPage ? (
+              <Box
                 sx={{
-                  color: reviewPageStyle?.headingColor || undefined,
-                  fontFamily: reviewPageStyle?.headingFont || undefined,
+                  p: { xs: 3, md: 6 },
+                  borderRadius: 2,
+                  position: "relative",
+                  ...(reviewPageStyle?.backgroundColor
+                    ? { backgroundColor: reviewPageStyle.backgroundColor }
+                    : { bgcolor: "background.paper" }),
+                  ...(reviewPageStyle?.backgroundImage
+                    ? {
+                        backgroundImage: `url(${reviewPageStyle.backgroundImage})`,
+                        backgroundSize: reviewPageStyle.backgroundSize || "cover",
+                        backgroundPosition: reviewPageStyle.backgroundPosition || "center",
+                        backgroundRepeat: reviewPageStyle.backgroundRepeat || "no-repeat",
+                        backgroundAttachment: reviewPageStyle.backgroundAttachment || "scroll",
+                      }
+                    : {}),
+                  color: reviewPageStyle?.bodyColor || undefined,
+                  '--page-heading-color': reviewPageStyle?.headingColor,
+                  '--page-body-color': reviewPageStyle?.bodyColor,
+                  '--page-link-color': reviewPageStyle?.linkColor,
+                  '--page-heading-font': reviewPageStyle?.headingFont,
+                  '--page-body-font': reviewPageStyle?.bodyFont,
+                  '--page-card-bg': reviewCardBg || undefined,
+                  '--page-card-radius': reviewPageStyle?.cardRadius != null ? `${reviewPageStyle.cardRadius}px` : undefined,
+                  '--page-card-shadow': reviewPageStyle?.cardShadow,
+                  '--page-card-blur': reviewPageStyle?.cardBlur ? `${reviewPageStyle.cardBlur}px` : undefined,
+                  boxShadow: reviewPageStyle?.cardShadow || undefined,
+                  backdropFilter: reviewPageStyle?.cardBlur ? `blur(${reviewPageStyle.cardBlur}px)` : undefined,
                 }}
               >
-                What clients are saying
-              </Typography>
-              <PublicReviewList slug={slug} disableShell />
-            </Box>
-          ) : currentPage ? (
-            <RenderSections sections={patchedSections} layout={pageLayout} />
-          ) : (
-            <Box sx={{ p: { xs: 3, md: 6 }, borderRadius: 2, bgcolor: "background.paper", border: "1px solid rgba(0,0,0,0.06)", textAlign: "center" }}>
-              <Typography variant="h3" fontWeight={800} gutterBottom>Welcome to {company?.name ?? "our business"}</Typography>
-              <Typography variant="body1" color="text.secondary">We’re getting our site ready. In the meantime, you can browse and book services.</Typography>
-              <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 3 }}>
-                <Button size="large" variant="contained" component={RouterLink} to={`/${slug}/services`}>Book now</Button>
-              </Stack>
-            </Box>
-          )}
-        </Container>
+                <Typography
+                  variant="h5"
+                  fontWeight={700}
+                  gutterBottom
+                  sx={{
+                    color: reviewPageStyle?.headingColor || undefined,
+                    fontFamily: reviewPageStyle?.headingFont || undefined,
+                  }}
+                >
+                  What clients are saying
+                </Typography>
+                <PublicReviewList slug={slug} disableShell />
+              </Box>
+            ) : currentPage ? (
+              <RenderSections sections={patchedSections} layout={pageLayout} />
+            ) : (
+              <Box sx={{ p: { xs: 3, md: 6 }, borderRadius: 2, bgcolor: "background.paper", border: "1px solid rgba(0,0,0,0.06)", textAlign: "center" }}>
+                <Typography variant="h3" fontWeight={800} gutterBottom>Welcome to {company?.name ?? "our business"}</Typography>
+                <Typography variant="body1" color="text.secondary">We’re getting our site ready. In the meantime, you can browse and book services.</Typography>
+                <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 3 }}>
+                  <Button size="large" variant="contained" component={RouterLink} to={servicesHref()}>Book now</Button>
+                </Stack>
+              </Box>
+            )}
+          </Container>
+        )}
       </Box>
 
       {/* Full-screen editor (still rendered only for managers) */}
