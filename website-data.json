@@ -14,10 +14,10 @@
   "nav_overrides": {
     "reviews_page_slug": "reviews",
     "reviews_tab_target": "builtin",
-    "services_page_slug": "services",
-    "services_tab_target": "builtin",
+    "services_page_slug": "services-classic",
+    "services_tab_target": "page",
     "show_reviews_tab": true,
-    "show_services_tab": true
+    "show_services_tab": false
   },
   "pages": [
     {
@@ -75,7 +75,7 @@
           {
             "id": "f0mj8hb357imgv2nmgk",
             "props": {
-              "ctaLink": "/services",
+              "ctaLink": "?page=services-classic",
               "ctaText": "See complete menu",
               "items": [
                 {
@@ -248,136 +248,6 @@
       "sort_order": 0,
       "title": "Pro-grade auto service with real-time booking.",
       "updated_at": "2025-10-18T19:11:56.626648"
-    },
-    {
-      "company_id": 1,
-      "content": {
-        "meta": {
-          "layout": "full"
-        },
-        "sections": [
-          {
-            "id": "O0wLY-CK",
-            "props": {
-              "backgroundColor": "#a21584",
-              "bodyColor": "#cbd5e1",
-              "bodyFont": "Inter",
-              "btnBg": "#4f07d5",
-              "btnColor": "#0b1220",
-              "btnRadius": 12,
-              "cardBg": "rgba(15,23,42,.88)",
-              "cardRadius": 16,
-              "cardShadow": "0 18px 52px rgba(0,0,0,.40)",
-              "headingColor": "#e2e8f0",
-              "headingFont": "Montserrat",
-              "linkColor": "#22d3ee",
-              "overlayOpacity": 0
-            },
-            "sx": {
-              "py": 0
-            },
-            "type": "pageStyle"
-          },
-          {
-            "props": {
-              "ctaLink": "/services#schedule",
-              "ctaText": "Book now",
-              "heading": "Everything from oil to overhauls",
-              "image": "https://images.unsplash.com/photo-1571601035763-9a631f0a90ad?q=80&w=1400&auto=format&fit=crop",
-              "maxWidth": "lg",
-              "subheading": "Clear line items and ETAs up front."
-            },
-            "type": "heroSplit"
-          },
-          {
-            "props": {
-              "plans": [
-                {
-                  "ctaLink": "/services#schedule",
-                  "ctaText": "Book basic",
-                  "features": [
-                    "Oil + filter",
-                    "20-point inspection"
-                  ],
-                  "name": "Basic Service",
-                  "price": "From $59"
-                },
-                {
-                  "ctaLink": "/services#schedule",
-                  "ctaText": "Request quote",
-                  "featured": true,
-                  "features": [
-                    "Pads/rotors",
-                    "Road test"
-                  ],
-                  "name": "Brake Refresh",
-                  "price": "Quote",
-                  "ribbon": "Popular"
-                },
-                {
-                  "ctaLink": "/services#schedule",
-                  "ctaText": "Book tire service",
-                  "features": [
-                    "Mount & balance",
-                    "4-wheel alignment"
-                  ],
-                  "name": "Tire & Align",
-                  "price": "From $129"
-                }
-              ],
-              "title": "Packages"
-            },
-            "type": "pricingTable"
-          },
-          {
-            "props": {
-              "items": [
-                {
-                  "answer": "<p>We follow OEM torque and fluid specifications; parts warranties honored.</p>",
-                  "question": "Warranty & OEM specs"
-                },
-                {
-                  "answer": "<p>Available at select locations; ask when booking.</p>",
-                  "question": "Loaners & shuttles"
-                }
-              ],
-              "title": "Common questions"
-            },
-            "type": "faq"
-          },
-          {
-            "props": {
-              "text": "\u00a9 2025 AutoCare Nexus"
-            },
-            "type": "footer"
-          },
-          {
-            "id": null,
-            "props": {
-              "align": "left",
-              "body": "<iframe src=\"/{{slug}}/services?dialog=1&embed=1&mode=modal\" style=\"width:100%;min-height:900px;border:none;display:block;\"></iframe>",
-              "maxWidth": "full",
-              "title": "Services"
-            },
-            "type": "richText"
-          }
-        ]
-      },
-      "created_at": "2025-10-16T01:24:03.781690",
-      "id": 169,
-      "is_homepage": false,
-      "locale": "en",
-      "menu_title": "Services",
-      "og_image_url": null,
-      "path": null,
-      "published": true,
-      "seo_description": null,
-      "seo_title": null,
-      "show_in_menu": true,
-      "slug": "services",
-      "sort_order": 1,
-      "title": "Services & Pricing",
-      "updated_at": "2025-10-18T19:11:56.630636"
     },
     {
       "company_id": 1,
@@ -1090,7 +960,7 @@
       "id": 179,
       "is_homepage": false,
       "locale": "en",
-      "menu_title": "Services (Classic)",
+      "menu_title": "Services",
       "og_image_url": null,
       "path": null,
       "published": true,
@@ -1099,7 +969,7 @@
       "show_in_menu": true,
       "slug": "services-classic",
       "sort_order": 11,
-      "title": "Services Classic",
+      "title": "Services",
       "updated_at": "2025-10-18T19:11:56.630636"
     },
     {

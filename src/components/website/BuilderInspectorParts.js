@@ -392,7 +392,7 @@ export default function SectionInspector({
             value={p.ctaLink || ""}
             onChange={(e) => onChangeProp("ctaLink", e.target.value)}
             fullWidth
-            helperText="Use /services, /reviews or full https:// link"
+            helperText="Use ?page=services-classic, /reviews or full https:// link"
           />
           
            
@@ -969,5 +969,4 @@ export default function SectionInspector({
       );
   }
 }
-
 

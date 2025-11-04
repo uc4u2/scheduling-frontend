@@ -15,12 +15,8 @@ export default function SettingsWebsiteNav() {
   const [saving, setSaving]   = useState(false);
   const [msg, setMsg]         = useState(null);
 
-  const [showServices, setShowServices] = useState(true);
   const [showReviews,  setShowReviews]  = useState(true);
-  const [servicesTarget, setServicesTarget] = useState("builtin");
-  const [reviewsTarget,  setReviewsTarget]  = useState("builtin");
-  const [servicesSlug,   setServicesSlug]   = useState("services");
-  const [reviewsSlug,    setReviewsSlug]    = useState("reviews");
+  const [reviewsSlug,  setReviewsSlug] = useState("reviews");
 
   // LOAD
   useEffect(() => {
@@ -32,11 +28,7 @@ export default function SettingsWebsiteNav() {
         const nav  = await navSettings.getOverrides(companyId);
         if (cancel) return;
 
-        setShowServices(nav.show_services_tab !== false);
         setShowReviews (nav.show_reviews_tab  !== false);
-        setServicesTarget(nav.services_tab_target || "builtin");
-        setReviewsTarget (nav.reviews_tab_target  || "builtin");
-        setServicesSlug  (nav.services_page_slug  || "services");
         setReviewsSlug   (nav.reviews_page_slug   || "reviews");
       } catch (e) {
         console.error("Load navigation settings failed", e);
@@ -57,21 +49,17 @@ export default function SettingsWebsiteNav() {
     setSaving(true);
     try {
       const overrides = {
-        show_services_tab: !!showServices,
-        services_tab_target: servicesTarget,
-        services_page_slug: (servicesSlug || "services").trim().toLowerCase(),
+        show_services_tab: false,
+        services_tab_target: "page",
+        services_page_slug: "services-classic",
         show_reviews_tab: !!showReviews,
-        reviews_tab_target: reviewsTarget,
+        reviews_tab_target: "builtin",
         reviews_page_slug: (reviewsSlug || "reviews").trim().toLowerCase(),
       };
       const nav   = await navSettings.updateOverrides(companyId, overrides);
 
       // rehydrate from server
-      setShowServices(nav.show_services_tab !== false);
       setShowReviews (nav.show_reviews_tab  !== false);
-      setServicesTarget(nav.services_tab_target || "builtin");
-      setReviewsTarget (nav.reviews_tab_target  || "builtin");
-      setServicesSlug  (nav.services_page_slug  || "services");
       setReviewsSlug   (nav.reviews_page_slug   || "reviews");
 
       setMsg("Website navigation saved");
@@ -89,20 +77,10 @@ export default function SettingsWebsiteNav() {
         <CardHeader title="Website Navigation" subheader="Show or hide built-in tabs on your public site" />
         <Divider />
         <CardContent>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <FormControlLabel
-                control={<Switch checked={!!showServices} onChange={(e) => setShowServices(e.target.checked)} />}
-                label="Show Services tab"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControlLabel
-                control={<Switch checked={!!showReviews} onChange={(e) => setShowReviews(e.target.checked)} />}
-                label="Show Reviews tab"
-              />
-            </Grid>
-          </Grid>
+          <FormControlLabel
+            control={<Switch checked={!!showReviews} onChange={(e) => setShowReviews(e.target.checked)} />}
+            label="Show Reviews tab"
+          />
 
           <Button sx={{ mt: 2 }} variant="contained" onClick={onSave} disabled={saving || loading || !companyId}>
             {saving ? "Saving..." : "Save"}
@@ -120,7 +98,7 @@ export default function SettingsWebsiteNav() {
                 label="Services iframe"
                 fullWidth
                 size="small"
-                value={`<iframe src=\"/${(window.location.pathname.split('/')[1] || '').trim()}/services?embed=1&primary=%23191fd2&text=dark\" style=\"width:100%;min-height:900px;border:none;display:block;\"></iframe>`}
+                value={`<iframe src=\"/${(window.location.pathname.split('/')[1] || '').trim()}?page=services-classic&embed=1&primary=%23191fd2&text=dark\" style=\"width:100%;min-height:900px;border:none;display:block;\"></iframe>`}
                 InputProps={{ readOnly: true }}
               />
             </Grid>

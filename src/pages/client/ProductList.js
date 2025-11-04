@@ -22,16 +22,18 @@ import {
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import InfoIcon from "@mui/icons-material/Info";
 import PublicPageShell from "./PublicPageShell";
+import { pageStyleToCssVars, pageStyleToBackgroundSx } from "./ServiceList";
 import { addProductToCart, loadCart, CartErrorCodes } from "../../utils/cart";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
-const ProductList = () => {
+const ProductListBase = ({ slugOverride, disableShell = false, pageStyleOverride = null }) => {
   const { slug: routeSlug } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const slug = useMemo(() => {
+    if (slugOverride) return slugOverride;
     const qs = searchParams.get("site");
     if (qs) return qs;
     if (routeSlug) return routeSlug;
@@ -40,9 +42,10 @@ const ProductList = () => {
     } catch (err) {
       return routeSlug || "";
     }
-  }, [routeSlug, searchParams]);
+  }, [slugOverride, routeSlug, searchParams]);
 
   const embedSuffix = useMemo(() => {
+    if (disableShell) return "";
     const keys = ["embed", "mode", "dialog", "primary", "text"];
     const pairs = keys
       .map((key) => {
@@ -54,7 +57,7 @@ const ProductList = () => {
     const qs = new URLSearchParams();
     pairs.forEach(([key, val]) => qs.set(key, val));
     return `?${qs.toString()}`;
-  }, [searchParams]);
+  }, [disableShell, searchParams]);
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,8 +139,21 @@ const ProductList = () => {
 
   const hasCartItems = loadCart().length > 0;
 
+  const pageStyleCssVars = useMemo(() => (pageStyleOverride ? pageStyleToCssVars(pageStyleOverride) : undefined), [pageStyleOverride]);
+  const pageStyleBackground = useMemo(() => (pageStyleOverride ? pageStyleToBackgroundSx(pageStyleOverride) : {}), [pageStyleOverride]);
+
   const content = (
-    <Container sx={{ py: { xs: 4, md: 6 } }}>
+    <Container
+      maxWidth={false}
+      sx={{
+        py: { xs: 4, md: 6 },
+        px: { xs: 2, md: 4, xl: 6 },
+        maxWidth: 1600,
+        mx: "auto",
+        ...pageStyleBackground,
+      }}
+      style={pageStyleCssVars}
+    >
       <Box sx={{ mb: 4, textAlign: "center" }}>
         <Typography variant="h3" fontWeight={800} gutterBottom>
           Products
@@ -211,7 +227,7 @@ const ProductList = () => {
             const lowStock = Boolean(product.track_stock) && quantity > 0 && quantity <= 3;
 
             return (
-              <Grid item xs={12} sm={6} md={4} key={product.id}>
+              <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={product.id}>
                 <Card sx={{ height: "100%", display: "flex", flexDirection: "column", borderRadius: 3 }}>
                   <Box sx={{ position: "relative" }}>
                     {product.images && product.images.length > 0 ? (
@@ -316,7 +332,23 @@ const ProductList = () => {
     </Container>
   );
 
+  if (disableShell) {
+    return content;
+  }
+
   return <PublicPageShell activeKey="__products">{content}</PublicPageShell>;
 };
 
+const ProductList = (props) => <ProductListBase {...props} />;
+
 export default ProductList;
+
+export function ProductListEmbedded({ slug, pageStyle }) {
+  return (
+    <ProductListBase
+      slugOverride={slug}
+      disableShell
+      pageStyleOverride={pageStyle}
+    />
+  );
+}

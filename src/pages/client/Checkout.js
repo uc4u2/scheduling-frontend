@@ -1612,7 +1612,15 @@ function CheckoutFormCore({
           onClick={() => {
             const target = slugLocal || companySlug;
             if (!target) return;
-            navigate(`/${target}/services${embedSuffix}`);
+            const params = new URLSearchParams();
+            params.set('page', 'services-classic');
+            if (embedSuffix) {
+              try {
+                const extra = new URLSearchParams(embedSuffix.slice(1));
+                extra.forEach((value, key) => params.set(key, value));
+              } catch {}
+            }
+            navigate({ pathname: `/${target}`, search: `?${params.toString()}` });
           }}
         >
           Add Another Service

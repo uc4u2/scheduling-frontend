@@ -7,7 +7,7 @@ export const NEW_BLOCKS = {
       heading: "Relax. Recharge. Renew.",
       subheading: "Personalized spa treatments for body and mind.",
       ctaText: "Book now",
-      ctaLink: "/services",
+      ctaLink: "?page=services-classic",
       backgroundUrl:
        "https://images.unsplash.com/photo-1556229010-aa3f7ff66c6e?q=80&w=1200&auto=format&fit=crop",
        backgroundPosition: "center",
