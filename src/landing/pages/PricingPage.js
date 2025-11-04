@@ -21,6 +21,7 @@ import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import PricingTable from "../components/PricingTable";
 import platformMap from "../../assets/marketing/platform-map.svg";
+import JsonLd from "../../components/seo/JsonLd";
 
 const HERO_PRIMARY_CTA_TO = "/register";
 const HERO_SECONDARY_CTA_TO = "#plans";
@@ -41,6 +42,7 @@ const DEFAULT_META = {
   description:
     "Compare Starter, Pro, and Business plans. Custom domains with automatic SSL are included on Pro and Business; Starter can add it for $5/month.",
   canonical: "https://www.schedulaa.com/pricing",
+  keywords: "Schedulaa pricing, booking software pricing, payroll SaaS pricing, website builder plans",
   og: {
     title: "Schedulaa Pricing",
     description:
@@ -70,14 +72,15 @@ const DEFAULT_PLANS = [
   {
     key: "starter",
     name: "Starter",
-    price: "$9/mo",
+    price: "$19.99/mo",
     description:
-      "Solo operators who need scheduling, payments, and branded booking pages.",
+      "Launch your website and start taking bookings and payments — perfect for solo professionals.",
     features: [
-      "Scheduling with reminders and SMS add-ons.",
-      "Stripe Checkout for payments and refunds.",
-      "One staff seat and one location included.",
-      "Email confirmations and client portal.",
+      "Website builder with branded pages and templates.",
+      "Online booking, confirmations, and client portal.",
+      "Stripe Checkout with Automatic Tax compliance.",
+      "1 staff seat and 1 location included.",
+      "CSV and PDF reports for revenue and appointments.",
       "Custom domain + automatic SSL (add-on $5/mo).",
     ],
     ctaLabel: "Start free trial",
@@ -86,39 +89,46 @@ const DEFAULT_PLANS = [
   {
     key: "pro",
     name: "Pro",
-    price: "$39/mo",
+    price: "$49.99/mo",
     description:
-      "Growing teams that need multiple staff, branded communications, and analytics.",
+      "For small teams that need staff scheduling, marketing automation, and analytics.",
     features: [
       "Everything in Starter.",
       "Custom domain + automatic SSL included.",
-      "Up to five staff seats and five locations.",
-      "Branded email and SMS templates.",
-      "Reports and revenue analytics.",
+      "Up to 5 staff seats and 1 location included.",
+      "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
+      "Advanced Analytics (bookings, revenue, client segments).",
+      "Employee Payslip Portal (self-serve PDF downloads).",
+      "Automated Canadian stat holiday pay and accruals.",
       "Priority support (business hours).",
     ],
     ctaLabel: "Start Pro",
     ctaTo: HERO_PRIMARY_CTA_TO,
     highlight: true,
+    badge: "Most popular",
   },
   {
     key: "business",
     name: "Business",
-    price: "$99/mo",
+    price: "$119.99/mo",
     description:
-      "Multi-location brands that need unlimited staff, audit trails, and enterprise controls.",
+      "For established teams managing advanced payroll, compliance, and analytics.",
     features: [
       "Everything in Pro.",
-      "Multiple custom domains (one included, $5 per additional).",
-      "Unlimited staff seats and locations.",
-      "Advanced payroll exports and tax reports.",
-      "Role-based access with audit logging.",
+      "10 staff seats and up to 2 locations included.",
+      "Add additional staff seats for $10/mo each.",
+      "Compliance Documents Pack: W-2 (US), T4 (CA), ROE (CA) creation & export (PDF/XML).",
+      "Advanced payroll exports, audits, and tax reports.",
+      "Role-based access (managers / staff / finance).",
+      "Team scheduling controls (bulk close / keep windows).",
       "24/7 priority support.",
+      "Free branded website included when using Payroll + Scheduling.",
     ],
     ctaLabel: "Start Business",
     ctaTo: HERO_PRIMARY_CTA_TO,
   },
 ];
+
 
 const DEFAULT_ADDONS = {
   title: "Popular add-ons",
@@ -126,8 +136,15 @@ const DEFAULT_ADDONS = {
   items: [
     { key: "customDomain", name: "Custom domain + automatic SSL", price: "$5/mo" },
     { key: "extraSeat", name: "Additional staff seat", price: "$10/mo" },
+    { key: "smsPack", name: "SMS reminder pack (100 msgs)", price: "$5/mo" },
+    { key: "whiteGlove", name: "Dedicated onboarding (one-time)", price: "$99" },
   ],
 };
+
+const VALUE_NOTE = `
+<strong>Bundle value:</strong> Subscribe to <strong>Payroll + Scheduling</strong> and your branded website is included for free.
+If you only need Website or Booking, <strong>Starter</strong> covers it; <strong>Pro</strong> adds marketing and analytics, and <strong>Business</strong> adds full payroll compliance documents.
+`;
 
 const DEFAULT_CTA = {
   eyebrow: "Launch today",
@@ -201,6 +218,53 @@ const PricingPage = () => {
   const ribbonContent = content?.ribbon || DEFAULT_RIBBON;
   const footnoteContent = content?.footnote || DEFAULT_FOOTNOTE;
   const ctaContent = content?.ctaBanner || DEFAULT_CTA;
+  const pricingSchemas = useMemo(
+    () => [
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: "Schedulaa Starter",
+        brand: { "@type": "Brand", name: "Schedulaa" },
+        description: "Website + booking + payments for solo professionals.",
+        offers: {
+          "@type": "Offer",
+          price: "19.99",
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          url: "https://www.schedulaa.com/pricing#starter",
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: "Schedulaa Pro",
+        brand: { "@type": "Brand", name: "Schedulaa" },
+        description: "Scheduling, marketing campaigns, advanced analytics; up to 5 staff, 1 location.",
+        offers: {
+          "@type": "Offer",
+          price: "49.99",
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          url: "https://www.schedulaa.com/pricing#pro",
+        },
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: "Schedulaa Business",
+        brand: { "@type": "Brand", name: "Schedulaa" },
+        description: "Advanced payroll exports, audits, compliance docs; 10 staff, 2 locations included.",
+        offers: {
+          "@type": "Offer",
+          price: "119.99",
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          url: "https://www.schedulaa.com/pricing#business",
+        },
+      },
+    ],
+    []
+  );
 
   const heroTitle = useMemo(() => {
     const title = heroContent?.title;
@@ -294,6 +358,8 @@ const PricingPage = () => {
       ctaLabel: plan.ctaLabel || heroContent?.primaryCta?.label || DEFAULT_HERO.primaryCta.label,
       ctaTo: plan.ctaTo || HERO_PRIMARY_CTA_TO,
       highlight: Boolean(plan.highlight),
+      badge: plan.badge,
+      anchorId: plan.anchorId || plan.key || plan.name,
     }));
   }, [plansContent, heroContent]);
 
@@ -316,12 +382,16 @@ const PricingPage = () => {
         title={metaContent?.title || DEFAULT_META.title}
         description={metaContent?.description || DEFAULT_META.description}
         canonical={metaContent?.canonical || DEFAULT_META.canonical}
+        keywords={metaContent?.keywords || DEFAULT_META.keywords}
         og={{
           title: metaOg.title || DEFAULT_META.og.title,
           description: metaOg.description || DEFAULT_META.og.description,
           image: metaOg.image || DEFAULT_META.og.image,
         }}
       />
+      {pricingSchemas.map((schema) => (
+        <JsonLd key={schema.name} data={schema} />
+      ))}
 
       <HeroShowcase
         eyebrow={heroContent?.eyebrow || DEFAULT_HERO.eyebrow}
@@ -403,6 +473,12 @@ const PricingPage = () => {
           addonsTitle={addons.title}
           addonHeaders={addons.headers}
         />
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 1.5, textAlign: { xs: "left", md: "center" } }}
+          dangerouslySetInnerHTML={{ __html: VALUE_NOTE }}
+        />
         {footnoteContent?.message && (
           <Typography
             variant="body2"
@@ -416,6 +492,25 @@ const PricingPage = () => {
             />
           </Typography>
         )}
+      </Box>
+
+      <Box sx={{ px: { xs: 2, md: 6 }, pb: { xs: 8, md: 10 }, textAlign: "center" }}>
+        <Typography variant="h5" fontWeight={700} gutterBottom>
+          Need more scale?
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, mx: "auto", mb: 3 }}>
+          We support larger organizations with increased seat and location limits, premium support, and tailored onboarding.
+          Example configurations: <strong>Enterprise</strong> (25 staff, up to 3 locations) and <strong>Corporate</strong> (50 staff, up to 4 locations).
+          Tell us what you need and we&apos;ll tailor a quote.
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center">
+          <Button component={Link} to="/contact" variant="contained" size="large">
+            Contact Sales
+          </Button>
+          <Button component={Link} to="/pricing#plans" variant="text" size="large">
+            Compare plans
+          </Button>
+        </Stack>
       </Box>
 
       <FeatureCardShowcase

@@ -4,7 +4,6 @@ import {
   AppBar,
   Toolbar,
   Button,
-  Typography,
   Box,
   Stack,
   Drawer,
@@ -14,14 +13,16 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Tooltip,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";
+import CampaignIcon from "@mui/icons-material/Campaign";
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+import LanguageIcon from "@mui/icons-material/Language";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import ContactSupportIcon from "@mui/icons-material/ContactSupport";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonIcon from "@mui/icons-material/Person";
 import WorkspacesIcon from "@mui/icons-material/Workspaces";
@@ -33,11 +34,19 @@ import LanguageSelector from "./components/LanguageSelector";
 import LogoImage from "./logo/logo.png";
 
 const marketingLinks = [
-  { label: "Features", to: "/features", icon: <AutoAwesomeIcon fontSize="small" /> },
-  { label: "Docs", to: "/docs", icon: <MenuBookIcon fontSize="small" /> },
-  { label: "Pricing", to: "/pricing", icon: <MonetizationOnIcon fontSize="small" /> },
-  { label: "About", to: "/about", icon: <InfoOutlinedIcon fontSize="small" /> },
-  { label: "Contact", to: "/contact", icon: <ContactSupportIcon fontSize="small" /> },
+  { label: "Features", translationKey: "nav.features", to: "/features", icon: <AutoAwesomeIcon fontSize="small" /> },
+  { label: "Booking", translationKey: "nav.booking", to: "/booking", icon: <EventAvailableIcon fontSize="small" /> },
+  { label: "Marketing", translationKey: "nav.marketing", to: "/marketing", icon: <CampaignIcon fontSize="small" /> },
+  { label: "Payroll", translationKey: "nav.payroll", to: "/payroll/canada", icon: <PaymentsOutlinedIcon fontSize="small" /> },
+  {
+    label: "Sites",
+    translationKey: "nav.sites",
+    tooltip: "Website Builder",
+    tooltipKey: "nav.websiteBuilder",
+    to: "/website-builder",
+    icon: <LanguageIcon fontSize="small" />,
+  },
+  { label: "Pricing", translationKey: "nav.pricing", to: "/pricing", icon: <MonetizationOnIcon fontSize="small" /> },
 ];
 
 const authenticatedLinks = [
@@ -145,7 +154,11 @@ const NavBar = ({ token, setToken }) => {
     <Stack direction="row" spacing={1.25} alignItems="center" sx={{ display: { xs: "none", md: "flex" } }}>
       {marketingLinks.map((link) => {
         const active = isActive(link.to);
-        return (
+        const label = translateNav(link.translationKey, link.label);
+        const tooltipLabel = link.tooltipKey
+          ? translateNav(link.tooltipKey, link.tooltip || link.label)
+          : link.tooltip || "";
+        const button = (
           <Button
             key={link.to}
             component={Link}
@@ -153,9 +166,19 @@ const NavBar = ({ token, setToken }) => {
             startIcon={link.icon}
             sx={marketingButtonSx(active)}
           >
-            {link.label}
+            {label}
           </Button>
         );
+        if (link.tooltip || link.tooltipKey) {
+          return (
+            <Tooltip key={link.to} title={tooltipLabel} enterDelay={200} arrow>
+              <Box component="span" sx={{ display: "inline-flex" }}>
+                {button}
+              </Box>
+            </Tooltip>
+          );
+        }
+        return button;
       })}
     </Stack>
   );
@@ -228,18 +251,23 @@ const NavBar = ({ token, setToken }) => {
           </Box>
 
           <List sx={{ flex: 1 }}>
-            {marketingLinks.map((link) => (
-              <ListItemButton
-                key={link.to}
-                component={Link}
-                to={link.to}
-                selected={isActive(link.to)}
-                onClick={toggleMobile}
-              >
-                <ListItemIcon>{link.icon}</ListItemIcon>
-                <ListItemText primary={link.label} />
-              </ListItemButton>
-            ))}
+            {marketingLinks.map((link) => {
+              const drawerLabel = link.tooltipKey
+                ? translateNav(link.tooltipKey, link.tooltip || link.label)
+                : translateNav(link.translationKey, link.label);
+              return (
+                <ListItemButton
+                  key={link.to}
+                  component={Link}
+                  to={link.to}
+                  selected={isActive(link.to)}
+                  onClick={toggleMobile}
+                >
+                  <ListItemIcon>{link.icon}</ListItemIcon>
+                  <ListItemText primary={drawerLabel} />
+                </ListItemButton>
+              );
+            })}
 
             <Divider sx={{ my: 1.5 }} />
 
@@ -334,4 +362,3 @@ const NavBar = ({ token, setToken }) => {
 };
 
 export default NavBar;
-

@@ -16,6 +16,16 @@
     "visualSiteBuilder": "Visual Site Builder",
     "marketingCampaigns": "Marketing Campaigns",
     "home": "Home",
+    "features": "Features",
+    "booking": "Booking",
+    "marketing": "Marketing",
+    "payroll": "Payroll",
+    "sites": "Sites",
+    "websiteBuilder": "Website Builder",
+    "pricing": "Pricing",
+    "blog": "Blog",
+    "about": "About",
+    "contact": "Contact",
     "recruiterDashboard": "Employee Dashboard",
     "myCandidates": "My Candidates",
     "managerDashboard": "Manager Dashboard",
@@ -681,7 +691,7 @@
       "description": "Configure services, staff, and schedules. Review bookings, handle charges & refunds, and open analytics in place.",
       "quickActions": {
         "payments": "Open Payments Hub",
-        "analytics": "Enterprise Analytics (pop-up)"
+        "analytics": "Advanced Analytics (pop-up)"
       },
       "stripe": {
         "title": "Stripe Connect",
@@ -725,13 +735,13 @@
       },
       "analyticsCard": {
         "title": "Analytics Overview",
-        "description": "Open the full Enterprise Analytics without leaving this page.",
-        "launch": "Open Enterprise Analytics (pop-up)",
+        "description": "Open the full Advanced Analytics without leaving this page.",
+        "launch": "Open Advanced Analytics (pop-up)",
         "openFullPage": "Open full page"
       },
       "tabsHint": "Select any tab above to open a focused workspace in a modal. Analytics also opens in a pop-up.",
       "dialog": {
-        "analyticsTitle": "Enterprise Analytics",
+        "analyticsTitle": "Advanced Analytics",
         "close": "Close"
       }
     },
@@ -2851,9 +2861,9 @@
             "icon": "02",
             "title": "Powerful Payroll & HR",
             "description": [
-              "Canada + 45 U.S. states supported (EI, CPP, W-2, T4, ROE, 401(k)).",
-              "Pay-rate assignment per employee, overtime tiers, holiday pay, and deductions.",
-              "Export payroll or plug into remittance APIs for hands-free filing.",
+              "Canada + 45 U.S. states supported (EI, CPP, automated stat holiday pay, W-2, T4, ROE).",
+              "Pay-rate assignment per employee, overtime tiers, province/state holiday rules, and deductions.",
+              "Export payroll journals or plug into remittance APIs for hands-free filing.",
               "Employee onboarding, time tracking, and performance workflows in one place."
             ]
           },
@@ -3000,11 +3010,11 @@
     "docsPage": {
       "meta": {
         "title": "Schedulaa Documentation | Scheduling, Payroll, and Commerce Guides",
-        "description": "Set up booking flows, payroll, analytics, and Stripe-powered commerce with Schedulaa. Guides, APIs, integrations, and FAQs for service businesses.",
+        "description": "Set up booking flows, payroll, analytics, and Stripe-powered commerce with Schedulaa. Explore guides today and preview the roadmap for upcoming API and SSO integrations.",
         "canonical": "https://www.schedulaa.com/docs",
         "og": {
           "title": "Schedulaa Documentation | Scheduling, Payroll, and Commerce Guides",
-          "description": "Guides, APIs, onboarding steps, integrations, and FAQs for scheduling, payroll, and online sales.",
+          "description": "Guides, onboarding steps, integrations, and FAQs for scheduling, payroll, and online sales — plus the roadmap for public APIs.",
           "image": "https://www.schedulaa.com/og/docs.jpg"
         }
       },
@@ -3014,23 +3024,23 @@
           "Docs for scheduling,",
           "payroll, analytics, and online sales."
         ],
-        "subtitle": "Configure scheduling, payroll, analytics, and Stripe checkout with step-by-step docs, APIs, and automation guides.",
+        "subtitle": "Configure scheduling, payroll, analytics, and Stripe checkout with step-by-step docs, automation guides, and upcoming API milestones.",
         "primaryCta": {
           "label": "Search docs"
         },
         "secondaryCta": {
-          "label": "Explore API"
+          "label": "View roadmap"
         },
         "badge": {
           "overline": "Documentation hub",
-          "title": "Guides, APIs, and integrations in one place"
+          "title": "Guides and integration roadmap in one place"
         },
         "mediaAlt": "Schedulaa documentation overview"
       },
       "quickLinks": {
         "eyebrow": "Quick links",
         "title": "Start with the section that fits your goal",
-        "subtitle": "Jump straight to setup guides, API calls, integrations, and support content for your team.",
+        "subtitle": "Jump straight to setup guides, integration steps, and support content. Public API access is coming soon.",
         "ctaLabel": "Open",
         "items": {
           "gettingStarted": {
@@ -3043,7 +3053,7 @@
           },
           "apiReference": {
             "label": "API Reference",
-            "description": "Bookings, payroll, commerce, marketing, and webhook APIs."
+            "description": "Public API access (coming soon)."
           },
           "integrations": {
             "label": "Integrations",
@@ -3061,7 +3071,7 @@
       },
       "search": {
         "title": "Search the docs",
-        "placeholder": "Search guides, APIs, or FAQs",
+        "placeholder": "Search guides or FAQs",
         "commonTopicsLabel": "Common topics:"
       },
       "gettingStarted": {
@@ -3158,118 +3168,20 @@
         ]
       },
       "apiReference": {
-        "title": "API reference",
+        "title": "API reference (coming soon)",
         "tableHeaders": {
           "category": "Category",
           "method": "Method",
           "path": "Path",
           "summary": "Summary"
         },
-        "tip": "Tip: Use the API Console in the manager dashboard (Settings > Developers) to try these endpoints with your sandbox data.",
-        "endpoints": [
-          {
-            "key": "authToken",
-            "category": "Auth",
-            "method": "POST",
-            "path": "/oauth/token",
-            "summary": "Exchange credentials or refresh token for access."
-          },
-          {
-            "key": "bookingsList",
-            "category": "Bookings",
-            "method": "GET",
-            "path": "/bookings",
-            "summary": "List bookings with filters for status, team, or date."
-          },
-          {
-            "key": "bookingsCreate",
-            "category": "Bookings",
-            "method": "POST",
-            "path": "/bookings",
-            "summary": "Create a booking with services, staff, and client details."
-          },
-          {
-            "key": "availability",
-            "category": "Availability",
-            "method": "GET",
-            "path": "/availability",
-            "summary": "Retrieve provider availability by service, department, or date."
-          },
-          {
-            "key": "customersList",
-            "category": "Customers",
-            "method": "GET",
-            "path": "/customers",
-            "summary": "Retrieve clients with pagination, tags, and search."
-          },
-          {
-            "key": "customersUpsert",
-            "category": "Customers",
-            "method": "POST",
-            "path": "/customers",
-            "summary": "Create or update a client profile."
-          },
-          {
-            "key": "payrollCalculate",
-            "category": "Payroll",
-            "method": "POST",
-            "path": "/payroll/calculate",
-            "summary": "Generate payroll runs with overtime, tips, and YTD totals."
-          },
-          {
-            "key": "payrollRuns",
-            "category": "Payroll",
-            "method": "GET",
-            "path": "/payroll/runs",
-            "summary": "Fetch saved payroll runs and export statuses."
-          },
-          {
-            "key": "checkoutSession",
-            "category": "Commerce",
-            "method": "POST",
-            "path": "/checkout/session",
-            "summary": "Create a Stripe Checkout session for services or products."
-          },
-          {
-            "key": "ordersList",
-            "category": "Orders",
-            "method": "GET",
-            "path": "/orders",
-            "summary": "List customer orders, refunds, and fulfillment state."
-          },
-          {
-            "key": "campaignsSend",
-            "category": "Campaigns",
-            "method": "POST",
-            "path": "/campaigns/winback/send",
-            "summary": "Trigger automated win-back or no-show recovery campaigns."
-          },
-          {
-            "key": "analyticsSummary",
-            "category": "Analytics",
-            "method": "GET",
-            "path": "/analytics/summary",
-            "summary": "Fetch revenue, utilization, and retention metrics."
-          },
-          {
-            "key": "webhooksCreate",
-            "category": "Webhooks",
-            "method": "POST",
-            "path": "/webhooks",
-            "summary": "Register webhook endpoints for bookings, payroll, and payments."
-          },
-          {
-            "key": "webhooksTest",
-            "category": "Webhooks",
-            "method": "POST",
-            "path": "/webhooks/test",
-            "summary": "Send a test payload to validate signatures."
-          }
-        ]
+        "tip": "Tip: Use the API Console in the manager dashboard (Settings > Developers) to try endpoints once access opens.",
+        "comingSoon": "Public API access and SSO integrations are planned. Documentation will be published closer to launch.",
+        "endpoints": []
       },
       "integrations": {
         "title": "Integrations",
-        "description": "Stripe, QuickBooks/Xero, Jitsi, and automation workflows already live today. Zapier, Slack, and domain purchase integrations are on the roadmap.",
+        "description": "Stripe is live today; the rest are marked Beta or Coming Soon so you know what's next on the roadmap.",
         "statusLabels": {
           "available": "Available",
           "beta": "Beta",
@@ -3420,13 +3332,14 @@
             {
               "key": "starter",
               "name": "Starter",
-              "price": "$9/mo",
-              "description": "Solo operators who need scheduling, payments, and branded booking pages.",
+              "price": "$19.99/mo",
+              "description": "Launch your website and start taking bookings and payments — perfect for solo professionals.",
               "features": [
-                "Scheduling with reminders and SMS add-ons.",
-                "Stripe Checkout for payments and refunds.",
-                "One staff seat and one location included.",
-                "Email confirmations and client portal.",
+                "Website builder with branded pages and templates.",
+                "Online booking, confirmations, and client portal.",
+                "Stripe Checkout with Automatic Tax compliance.",
+                "1 staff seat and 1 location included.",
+                "CSV and PDF reports for revenue and appointments.",
                 "Custom domain + automatic SSL (add-on $5/mo)."
               ],
               "ctaLabel": "Start free trial",
@@ -3435,32 +3348,38 @@
             {
               "key": "pro",
               "name": "Pro",
-              "price": "$39/mo",
-              "description": "Growing teams that need multiple staff, branded communications, and analytics.",
+              "price": "$49.99/mo",
+              "description": "For small teams that need staff scheduling, marketing automation, and analytics.",
               "features": [
                 "Everything in Starter.",
                 "Custom domain + automatic SSL included.",
-                "Up to five staff seats and five locations.",
-                "Branded email and SMS templates.",
-                "Reports and revenue analytics.",
+                "Up to 5 staff seats and 1 location included.",
+                "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
+                "Advanced Analytics (bookings, revenue, client segments).",
+                "Employee Payslip Portal (self-serve PDF downloads).",
+                "Automated Canadian stat holiday pay and accruals.",
                 "Priority support (business hours)."
               ],
               "ctaLabel": "Start Pro",
               "ctaTo": "/register",
-              "highlight": true
+              "highlight": true,
+              "badge": "Most popular"
             },
             {
               "key": "business",
               "name": "Business",
-              "price": "$99/mo",
-              "description": "Multi-location brands that need unlimited staff, audit trails, and enterprise controls.",
+              "price": "$119.99/mo",
+              "description": "For established teams managing advanced payroll, compliance, and analytics.",
               "features": [
                 "Everything in Pro.",
-                "Multiple custom domains (one included, $5 per additional).",
-                "Unlimited staff seats and locations.",
-                "Advanced payroll exports and tax reports.",
-                "Role-based access with audit logging.",
-                "24/7 priority support."
+                "10 staff seats and up to 2 locations included.",
+                "Add additional staff seats for $10/mo each.",
+                "Compliance Documents Pack: W-2 (US), T4 (CA), ROE (CA) creation & export (PDF/XML).",
+                "Advanced payroll exports, audits, and tax reports.",
+                "Role-based access (managers / staff / finance).",
+                "Team scheduling controls (bulk close / keep windows).",
+                "24/7 priority support.",
+                "Free branded website included when using Payroll + Scheduling."
               ],
               "ctaLabel": "Start Business",
               "ctaTo": "/register"
@@ -3482,6 +3401,16 @@
                 "key": "extraSeat",
                 "name": "Additional staff seat",
                 "price": "$10/mo"
+              },
+              {
+                "key": "smsPack",
+                "name": "SMS reminder pack (100 msgs)",
+                "price": "$5/mo"
+              },
+              {
+                "key": "whiteGlove",
+                "name": "Dedicated onboarding (one-time)",
+                "price": "$99"
               }
             ]
           }
