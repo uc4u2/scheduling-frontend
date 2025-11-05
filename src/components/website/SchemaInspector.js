@@ -17,9 +17,15 @@ import {
   Slider,
   InputLabel,
   FormControl,
+  ToggleButton,
+  ToggleButtonGroup,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
+import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
+import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
+import FormatAlignJustifyIcon from "@mui/icons-material/FormatAlignJustify";
 import { ImageField } from "./BuilderInspectorParts";
 import EnterpriseRichTextEditor from "./EnterpriseRichTextEditor";
 
@@ -42,6 +48,11 @@ const clampNum = (n, f) => {
   if (typeof f?.min === "number") n = Math.max(f.min, n);
   if (typeof f?.max === "number") n = Math.min(f.max, n);
   return n;
+};
+
+const extractTextAlign = (html = "", fallback = "left") => {
+  const match = /text-align\s*:\s*(left|center|right|justify)/i.exec(html || "");
+  return match ? match[1].toLowerCase() : fallback;
 };
 
 /** Heuristic: does this field represent an array of images? */
@@ -267,11 +278,42 @@ const FieldImageArray = ({ label, value = [], onCommit, companyId }) => {
 
 // Rich editor wrapper: inline vs block, with HTML normalization on save
 const FieldRich = ({ label, value, onCommit, inline, align }) => {
+  const editorRef = React.useRef(null);
   const { local, setLocal, setDebounced, onBlur } = useDebouncedField(
     String(value || ""),
     (html) => onCommit(inline ? normalizeInlineHtml(html) : normalizeBlockHtml(html)),
     500
   );
+
+  const [currentAlign, setCurrentAlign] = React.useState(() =>
+    extractTextAlign(value, align || "left")
+  );
+
+  React.useEffect(() => {
+    setCurrentAlign(extractTextAlign(local, align || "left"));
+  }, [local, align]);
+
+  const handleEditorReady = React.useCallback((instance) => {
+    editorRef.current = instance;
+  }, []);
+
+  const applyAlign = React.useCallback(
+    (nextAlign) => {
+      setCurrentAlign(nextAlign);
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.chain().focus().setTextAlign(nextAlign).run();
+      const html = editor.getHTML();
+      setLocal(html);
+      setDebounced(html);
+    },
+    [setLocal, setDebounced]
+  );
+
+  const handleAlignChange = (_, next) => {
+    if (!next) return;
+    applyAlign(next);
+  };
   return (
     <Stack spacing={0.5}>
       {label && (
@@ -281,14 +323,14 @@ const FieldRich = ({ label, value, onCommit, inline, align }) => {
       )}
       <EnterpriseRichTextEditor
         value={local || ""}
-        inline={inline}
-        align={align || "left"}
+        align={currentAlign}
+        onReady={handleEditorReady}
         onChange={(html) => {
           setLocal(html);
           setDebounced(html);
         }}
+        alignEnabled={!inline}
         onBlur={() => {
-          // ensure final normalization on blur
           const normalized = inline
             ? normalizeInlineHtml(local)
             : normalizeBlockHtml(local);
@@ -297,6 +339,28 @@ const FieldRich = ({ label, value, onCommit, inline, align }) => {
         }}
         onKeyDown={stopBubble}
       />
+      {!inline && (
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={currentAlign}
+          onChange={handleAlignChange}
+          sx={{ alignSelf: "flex-start", mt: 1 }}
+        >
+          <ToggleButton value="left">
+            <FormatAlignLeftIcon fontSize="small" />
+          </ToggleButton>
+          <ToggleButton value="center">
+            <FormatAlignCenterIcon fontSize="small" />
+          </ToggleButton>
+          <ToggleButton value="right">
+            <FormatAlignRightIcon fontSize="small" />
+          </ToggleButton>
+          <ToggleButton value="justify">
+            <FormatAlignJustifyIcon fontSize="small" />
+          </ToggleButton>
+        </ToggleButtonGroup>
+      )}
     </Stack>
   );
 };
