@@ -38,6 +38,7 @@ import SpaBookingPage from "./landing/pages/booking/SpaBookingPage";
 import TutorBookingPage from "./landing/pages/booking/TutorBookingPage";
 import DoctorBookingPage from "./landing/pages/booking/DoctorBookingPage";
 import BlogCategoryPage from "./landing/pages/blog/BlogCategoryPage";
+import ClientJourneyPage from "./landing/pages/blog/ClientJourneyPage";
 import MarketingHubPage from "./landing/pages/marketing/MarketingHubPage";
 import MarketingCampaignsPage from "./landing/pages/marketing/MarketingCampaignsPage";
 import MarketingAnalyticsPage from "./landing/pages/marketing/MarketingAnalyticsPage";
@@ -338,6 +339,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/payslips" element={<PayslipPortalPage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/blog" element={<BlogPage />} />
+            <Route path="/blog/client-journey" element={<ClientJourneyPage />} />
             <Route path="/blog/category/:slug" element={<BlogCategoryPage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/about" element={<AboutPage />} />
