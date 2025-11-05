@@ -64,10 +64,10 @@ const features = [
   },
   {
     icon: <VerifiedUserIcon sx={{ fontSize: 50, color: "primary.main" }} />,
-    title: "Direct Deposit & Compliance",
+    title: "Stat Holiday & Compliance",
     text: (
       <>
-        Export payroll for <span style={{ color: "#00bfa5", fontWeight: 500 }}>direct deposit</span> and stay compliant with every pay run.
+        Automated statutory holiday pay, W-2/T4 year-end forms, and <span style={{ color: "#00bfa5", fontWeight: 500 }}>ROE exports</span> keep payroll compliant.
       </>
     ),
     blobs: [

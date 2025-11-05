@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Box,
@@ -156,6 +156,45 @@ const FeaturePage = () => {
     [t]
   );
 
+  useEffect(() => {
+    const scriptId = "schedulaa-platform-software-jsonld";
+    const existing = document.getElementById(scriptId);
+    if (existing) {
+      existing.remove();
+    }
+
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Schedulaa Platform",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "Schedulaa is an all-in-one SaaS for booking, payroll, websites, marketing, and analytics for service businesses in the US and Canada.",
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "CAD",
+      },
+      url: "https://www.schedulaa.com/features",
+      provider: {
+        "@type": "Organization",
+        name: "Schedulaa",
+        url: "https://www.schedulaa.com",
+      },
+    };
+
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.id = scriptId;
+    script.text = JSON.stringify(jsonLd);
+    document.head.appendChild(script);
+
+    return () => {
+      document.getElementById(scriptId)?.remove();
+    };
+  }, []);
+
   const handleFeatureAccent = useCallback((_, index, accentOverride) => {
     if (accentOverride) {
       setActiveAccent(accentOverride);
@@ -208,6 +247,7 @@ const FeaturePage = () => {
         title={metaCopy.title}
         description={metaCopy.description}
         canonical="https://www.schedulaa.com/features"
+        keywords="booking software, payroll SaaS, website builder, small business platform, scheduling software"
         og={{
           title: metaCopy.ogTitle || metaCopy.title,
           description: metaCopy.ogDescription || metaCopy.description,
@@ -304,6 +344,33 @@ const FeaturePage = () => {
           features={featuresList}
           onActiveChange={handleFeatureAccent}
         />
+        <Box sx={{ px: { xs: 2, md: 6 }, mt: { xs: 4, md: 6 } }}>
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: { xs: "left", md: "center" } }}>
+            Stripe checkout includes Automatic Tax guidance so every invoice respects the regions you register.
+          </Typography>
+        </Box>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          justifyContent="center"
+          sx={{ px: { xs: 2, md: 6 }, pb: { xs: 6, md: 8 } }}
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: { xs: "left", sm: "center" }, pb: { xs: 2, sm: 0 } }}>
+            Stripe checkout includes Automatic Tax guidance so every invoice respects the regions you register.
+          </Typography>
+          <Button component={Link} to="/website-builder" variant="contained" color="secondary" endIcon={<BoltIcon />}>
+            Explore website builder
+          </Button>
+          <Button component={Link} to="/payroll/canada" variant="outlined" color="primary">
+            See payroll coverage
+          </Button>
+          <Button component={Link} to="/marketing" variant="text" color="primary">
+            Discover marketing tools
+          </Button>
+          <Button component={Link} to="/docs" variant="text" color="primary">
+            Read the docs
+          </Button>
+        </Stack>
       </Box>
 
       <Box

@@ -8,7 +8,7 @@ import Bubble from "../ui/Bubble";
 const features = [
   "Shift Scheduling",
   "Automated Payroll",
-  "Direct Deposit",
+  "Stat Holiday Automation",
   "Employee Onboarding",
   "ROE/T4/W-2 Generation",
   "Team Management",

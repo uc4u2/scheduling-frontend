@@ -17,13 +17,13 @@ import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import LogoutIcon from "@mui/icons-material/Logout";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import PersonIcon from "@mui/icons-material/Person";
 import WorkspacesIcon from "@mui/icons-material/Workspaces";
 import { Link, useLocation } from "react-router-dom";
 import { useTheme, alpha } from "@mui/material/styles";
 
 const marketingLinks = [
   { label: "Features", to: "/features" },
+  { label: "Marketing", to: "/marketing" },
   { label: "Docs", to: "/docs" },
   { label: "Pricing", to: "/pricing" },
   { label: "About", to: "/about" },
@@ -33,7 +33,6 @@ const marketingLinks = [
 const loggedInLinks = [
   { label: "Employee Dashboard", to: "/recruiter?tab=calendar", icon: <DashboardIcon fontSize="small" /> },
   { label: "Management Dashboard", to: "/manager/dashboard", icon: <WorkspacesIcon fontSize="small" /> },
-  { label: "Candidate Profile", to: "/client/profile", icon: <PersonIcon fontSize="small" /> },
 ];
 
 const loggedOutLinks = [
@@ -231,5 +230,3 @@ const MainNav = ({ token, setToken }) => {
 };
 
 export default MainNav;
-
-

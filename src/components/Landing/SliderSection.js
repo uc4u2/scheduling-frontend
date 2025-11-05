@@ -21,7 +21,7 @@ const slides = [
   },
   {
     title: "Government-Ready Compliance",
-    description: "Create ROE, T4, W-2, and direct deposit exports in seconds. Stay audit-ready without extra work.",
+    description: "Generate ROE, T4, W-2, and statutory holiday reports in seconds. Stay audit-ready without extra work.",
     icon: ReceiptLongIcon,
   },
   {

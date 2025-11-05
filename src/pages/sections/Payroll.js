@@ -509,7 +509,8 @@ return (
       <li>✅ FUTA: Federal Unemployment Tax (employer portion)</li>
       <li>✅ SUI/SUTA: State Unemployment Insurance (employer-paid)</li>
       <li>✅ PTO & Time Tracking support</li>
-      <li>✅ Direct Deposit-ready reports</li>
+      <li>✅ Payroll exports (PDF / CSV / XLSX)</li>
+      <li>✅ Year-end forms: W-2 generation / export</li>
       <li>❌ Local/City Income Taxes (e.g., NYC, STL, CO local): Not supported</li>
       <li>❌ Special Payroll Taxes (e.g., OR Transit, WA Paid Family): Not supported</li>
       <li>❌ Wage Garnishments: Not automated (must be handled externally)</li>
@@ -533,18 +534,24 @@ return (
 
     <Typography variant="h5" gutterBottom>🇨🇦 Canadian Payroll Coverage (2025)</Typography>
     <Typography variant="body1" gutterBottom>
-      Our CRA-compliant payroll engine handles payroll across all provinces <strong>except Québec</strong>:
+      Schedulaa’s CRA-compliant engine covers all provinces <strong>except Québec</strong>.
     </Typography>
+    <Typography variant="subtitle1" gutterBottom>Supported</Typography>
     <ul>
-      <li>✅ Federal Income Tax (CRA brackets)</li>
-      <li>✅ Provincial Income Tax (all provinces outside QC)</li>
+      <li>✅ Federal & provincial income tax (outside QC)</li>
       <li>✅ CPP (Canada Pension Plan)</li>
       <li>✅ EI (Employment Insurance)</li>
-      <li>✅ Vacation Pay and accrual logic</li>
-      <li>✅ Statutory Holiday Pay (automatically detected)</li>
-      <li>✅ Paid vs. Unpaid Leave Tracking</li>
-      <li>✅ BPA: Basic Personal Amount (with pro-rata and YTD tracking)</li>
-      <li>❌ Québec support deprecated (QPP, RQAP, QPIP not included)</li>
+      <li>✅ Vacation pay & accrual logic</li>
+      <li>✅ Automated statutory holiday pay calculation</li>
+      <li>✅ Paid vs unpaid leave tracking</li>
+      <li>✅ BPA (Basic Personal Amount) with pro-rata and YTD tracking</li>
+      <li>✅ T4 generation / export</li>
+      <li>✅ ROE (Record of Employment) creation / review / export (PDF & XML)</li>
+    </ul>
+    <Typography variant="subtitle1" gutterBottom>Not supported / not automated</Typography>
+    <ul>
+      <li>❌ Québec payroll (QPP, RQAP/QPIP programs)</li>
+      <li>❌ Fringe benefit taxation that requires bureau-specific handling</li>
     </ul>
 
     <Divider sx={{ my: 3 }} />
@@ -557,8 +564,7 @@ return (
       <li>❌ Local/city taxes in U.S. jurisdictions</li>
       <li>❌ Wage garnishments and legal holds</li>
       <li>❌ Fringe benefit taxation</li>
-      <li>❌ Record of Employment (ROE) generation for Canada</li>
-      <li>⚠️ Maternity and parental leave support is basic (via leave tracking), but without ROE</li>
+      <li>❌ Québec payroll (QPP, RQAP/QPIP)</li>
     </ul>
 
     <Box textAlign="center" sx={{ mt: 4 }}>
@@ -697,4 +703,3 @@ return (
 );
 
 }
-
