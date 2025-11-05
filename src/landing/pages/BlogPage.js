@@ -142,6 +142,9 @@ const BlogPage = () => {
         <Button component={Link} to="/blog/category/payroll" variant="outlined" color="primary" sx={{ textTransform: "none", borderRadius: 999 }}>
           Payroll operations
         </Button>
+        <Button component={Link} to="/blog/client-journey" variant="text" color="primary" sx={{ textTransform: "none", borderRadius: 999 }}>
+          Client journey guide
+        </Button>
       </Stack>
 
       <FeatureCardShowcase
