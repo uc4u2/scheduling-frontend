@@ -1,6 +1,7 @@
 // src/landing/pages/HomePage.js
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -521,6 +522,7 @@ const HomePage = () => {
         title={metaCopy.title}
         description={metaCopy.description}
         canonical="https://www.schedulaa.com/"
+        keywords="Schedulaa, booking software, payroll platform, website builder, scheduling software, service business SaaS"
         og={{
           title: metaCopy.ogTitle || metaCopy.title,
           description: metaCopy.ogDescription || metaCopy.description,
@@ -571,6 +573,16 @@ const HomePage = () => {
             >
               {heroCopy.body}
             </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                lineHeight: 1.8,
+                maxWidth: 520,
+                color: alpha(theme.palette.common.white, 0.78),
+              }}
+            >
+              Schedulaa combines booking, payroll, marketing, and website building into a single SaaS platform for service businesses across the US and Canada.
+            </Typography>
 
             <Stack
               direction={{ xs: "column", sm: "row" }}
@@ -593,6 +605,52 @@ const HomePage = () => {
                   </Button>
                 );
               })}
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
+              <Button
+                component={Link}
+                to="/features"
+                variant="contained"
+                color="secondary"
+                sx={{ textTransform: "none", borderRadius: 999, px: 3.5 }}
+              >
+                Explore features
+              </Button>
+              <Button
+                component={Link}
+                to="/pricing"
+                variant="outlined"
+                color="inherit"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 999,
+                  px: 3.5,
+                  borderColor: alpha(theme.palette.common.white, 0.65),
+                  "&:hover": {
+                    borderColor: theme.palette.common.white,
+                    backgroundColor: alpha(theme.palette.common.white, 0.08),
+                  },
+                }}
+              >
+                Compare plans
+              </Button>
+              <Button
+                component={Link}
+                to="/docs"
+                variant="text"
+                color="inherit"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: 999,
+                  px: 3.5,
+                  color: alpha(theme.palette.common.white, 0.85),
+                  "&:hover": {
+                    backgroundColor: alpha(theme.palette.common.white, 0.08),
+                  },
+                }}
+              >
+                Read the docs
+              </Button>
             </Stack>
           </Stack>
 
@@ -774,6 +832,4 @@ const HomePage = () => {
 };
 
 export default HomePage;
-
-
 

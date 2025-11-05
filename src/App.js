@@ -30,12 +30,30 @@ import BlogPage from "./landing/pages/BlogPage";
 import AboutPage from "./landing/pages/AboutPage";
 import ContactPage from "./landing/pages/ContactPage";
 import FAQPage from "./landing/pages/FAQPage";
+import WebsiteBuilderPage from "./landing/pages/WebsiteBuilderPage";
+import PlatformPage from "./landing/pages/PlatformPage";
+import BookingHubPage from "./landing/pages/booking/BookingHubPage";
+import SalonBookingPage from "./landing/pages/booking/SalonBookingPage";
+import SpaBookingPage from "./landing/pages/booking/SpaBookingPage";
+import TutorBookingPage from "./landing/pages/booking/TutorBookingPage";
+import DoctorBookingPage from "./landing/pages/booking/DoctorBookingPage";
+import BlogCategoryPage from "./landing/pages/blog/BlogCategoryPage";
+import MarketingHubPage from "./landing/pages/marketing/MarketingHubPage";
+import MarketingCampaignsPage from "./landing/pages/marketing/MarketingCampaignsPage";
+import MarketingAnalyticsPage from "./landing/pages/marketing/MarketingAnalyticsPage";
+import MarketingClientsPage from "./landing/pages/marketing/MarketingClientsPage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
 import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
 import AcceptableUsePage from "./landing/pages/legal/AcceptableUsePage";
 import DataProcessingAddendumPage from "./landing/pages/legal/DataProcessingAddendumPage";
 import SecurityPage from "./landing/pages/legal/SecurityPage";
+import CanadaPayrollPage from "./landing/pages/payroll/CanadaPayrollPage";
+import USPayrollPage from "./landing/pages/payroll/USPayrollPage";
+import ROEToolPage from "./landing/pages/payroll/ROEToolPage";
+import T4ToolPage from "./landing/pages/payroll/T4ToolPage";
+import W2ToolPage from "./landing/pages/payroll/W2ToolPage";
+import PayslipPortalPage from "./landing/pages/payroll/PayslipPortalPage";
 import Login from "./Login";
 import Register from "./Register";
 import ForgotPassword from "./ForgotPassword";
@@ -126,12 +144,31 @@ const themeMap = {
 const MARKETING_PATHS = [
   '/',
   '/features',
+  '/platform',
   '/pricing',
+  '/website-builder',
+  '/booking',
+  '/booking/salon',
+  '/booking/spa',
+  '/booking/tutor',
+  '/booking/doctor',
+  '/marketing',
+  '/marketing/email-campaigns',
+  '/marketing/analytics-dashboard',
+  '/marketing/clients-360',
+  '/payroll/canada',
+  '/payroll/usa',
+  '/payroll/tools/roe',
+  '/payroll/tools/t4',
+  '/payroll/tools/w2',
+  '/payslips',
   '/about',
   '/contact',
   '/faq',
   '/docs',
   '/blog',
+  '/blog/category/automation',
+  '/blog/category/payroll',
   '/status',
   '/terms',
   '/privacy',
@@ -160,8 +197,11 @@ const RESERVED_SLUG_PREFIXES = new Set([
   'login',
   'manage',
   'manager',
+  'booking',
   'payroll',
+  'payslips',
   'pricing',
+  'website-builder',
   'privacy',
   'recruiter',
   'recruiter-stats',
@@ -279,8 +319,26 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/" element={<HomePage />} />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/features" element={<FeaturePage />} />
+            <Route path="/platform" element={<PlatformPage />} />
+            <Route path="/website-builder" element={<WebsiteBuilderPage />} />
+            <Route path="/booking" element={<BookingHubPage />} />
+            <Route path="/booking/salon" element={<SalonBookingPage />} />
+            <Route path="/booking/spa" element={<SpaBookingPage />} />
+            <Route path="/booking/tutor" element={<TutorBookingPage />} />
+            <Route path="/booking/doctor" element={<DoctorBookingPage />} />
+            <Route path="/marketing" element={<MarketingHubPage />} />
+            <Route path="/marketing/email-campaigns" element={<MarketingCampaignsPage />} />
+            <Route path="/marketing/analytics-dashboard" element={<MarketingAnalyticsPage />} />
+            <Route path="/marketing/clients-360" element={<MarketingClientsPage />} />
+            <Route path="/payroll/canada" element={<CanadaPayrollPage />} />
+            <Route path="/payroll/usa" element={<USPayrollPage />} />
+            <Route path="/payroll/tools/roe" element={<ROEToolPage />} />
+            <Route path="/payroll/tools/t4" element={<T4ToolPage />} />
+            <Route path="/payroll/tools/w2" element={<W2ToolPage />} />
+            <Route path="/payslips" element={<PayslipPortalPage />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/blog" element={<BlogPage />} />
+            <Route path="/blog/category/:slug" element={<BlogCategoryPage />} />
             <Route path="/status" element={<StatusPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />

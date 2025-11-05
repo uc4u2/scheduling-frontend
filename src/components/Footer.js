@@ -30,6 +30,10 @@ const sections = [
     title: "Product",
     links: [
       { label: "Features", to: "/features" },
+      { label: "Booking", to: "/booking" },
+      { label: "Marketing", to: "/marketing" },
+      { label: "Payroll", to: "/payroll/canada" },
+      { label: "Website Builder", to: "/website-builder" },
       { label: "Pricing", to: "/pricing" },
       { label: "Status", to: "/status", external: true },
       { label: "Roadmap", to: "mailto:admin@schedulaa.com", external: true },
@@ -202,8 +206,4 @@ const Footer = () => {
 };
 
 export default Footer;
-
-
-
-
 

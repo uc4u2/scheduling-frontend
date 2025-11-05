@@ -12,6 +12,8 @@ import {
   CircularProgress
 } from "@mui/material";
 import axios from "axios";
+import LaunchIcon from "@mui/icons-material/Launch";
+import { Link as RouterLink } from "react-router-dom";
 
 const EmployeeProfileForm = ({ token }) => {
   const [recruiters, setRecruiters] = useState([]);
@@ -81,6 +83,18 @@ const EmployeeProfileForm = ({ token }) => {
       <Typography variant="h5" gutterBottom>
         Employee Profile Editor
       </Typography>
+
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+        <Button
+          component={RouterLink}
+          to="/client/profile"
+          variant="outlined"
+          endIcon={<LaunchIcon fontSize="small" />}
+          sx={{ textTransform: "none" }}
+        >
+          Open Candidate Profile
+        </Button>
+      </Box>
 
       <TextField
         select

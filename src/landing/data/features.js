@@ -13,9 +13,9 @@ export const featurePillars = [
     icon: "02",
     title: "Powerful Payroll & HR",
     description: [
-      "Canada + 45 U.S. states supported (EI, CPP, W-2, T4, ROE, 401(k)).",
-      "Pay-rate assignment per employee, overtime tiers, holiday pay, and deductions.",
-      "Export payroll or plug into remittance APIs for hands-free filing.",
+      "Canada + 45 U.S. states supported, with EI, CPP, automated stat holiday pay, and year-end forms (W-2 / T4) plus ROE export.",
+      "Pay-rate assignment per employee, overtime tiers, province/state holiday rules, and smart deductions.",
+      "Export payroll journals or plug into remittance APIs for hands-free filing.",
       "Employee onboarding, time tracking, and performance workflows in one place.",
     ],
   },
@@ -112,4 +112,3 @@ export const homeFeatureSections = [
     imageUrl: "https://images.unsplash.com/photo-1523475472560-d2df97ec485c?auto=format&fit=crop&w=1200&q=80",
   },
 ];
-

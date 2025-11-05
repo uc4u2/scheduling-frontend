@@ -5,6 +5,7 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
+  Button,
   Chip,
   Container,
   Divider,
@@ -20,6 +21,8 @@ import PaletteIcon from "@mui/icons-material/Palette";
 import RequestQuoteIcon from "@mui/icons-material/RequestQuote";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { Link } from "react-router-dom";
 
 import Meta from "../../components/Meta";
 
@@ -28,6 +31,7 @@ const HERO_META = {
   description:
     "Answers to the most common Schedulaa questions covering the website builder, domains, marketing automation, Stripe tax, and payroll coverage.",
   canonical: "https://www.schedulaa.com/faq",
+  keywords: "Schedulaa FAQ, website builder help, DNS setup, payroll coverage, Stripe tax automation",
 };
 
 const FAQ_SECTIONS = [
@@ -37,6 +41,7 @@ const FAQ_SECTIONS = [
     icon: PaletteIcon,
     description:
       "Everything you need to know about updating content, media, and styles inside the Website Builder.",
+    cta: { label: "Learn more about Website Builder", to: "/website-builder" },
     items: [
       {
         question: "How do I edit different pages or sections of my site?",
@@ -66,6 +71,7 @@ const FAQ_SECTIONS = [
     icon: CampaignIcon,
     description:
       "Guidance for creating, previewing, and sending email campaigns to your clients.",
+    cta: { label: "See marketing tools", to: "/marketing/email-campaigns" },
     items: [
       {
         question: "What's the quickest way to send a campaign?",
@@ -95,6 +101,7 @@ const FAQ_SECTIONS = [
     icon: PublicIcon,
     description:
       "Steps for connecting your marketing site or booking experience to a custom domain.",
+    cta: { label: "View domain setup guide", to: "/website-builder/domain" },
     items: [
       {
         question: "What are the steps to connect a custom domain?",
@@ -128,9 +135,9 @@ const FAQ_SECTIONS = [
           "No. After verification we automatically issue and renew the TLS certificate. You will briefly see SSL Pending followed by SSL Active - no manual install or renewals required.",
       },
       {
-        question: "Does Schedulaa support automatic GoDaddy Domain Connect?",
+        question: "Can I connect my GoDaddy domain automatically?",
         answer:
-          "Not yet. Follow the manual steps: add the TXT _schedulaa record and the CNAME for www inside GoDaddy, then return to Schedulaa and click Verify DNS.",
+          "Yes. Choose Connect automatically to authorise Domain Connect so Schedulaa can add the TXT _schedulaa and CNAME www → schedulaa.com entries. If it fails, fall back to manual entries and click Verify DNS again.",
       },
       {
         question: "What are the manual steps if I need to add records myself?",
@@ -139,6 +146,11 @@ const FAQ_SECTIONS = [
           "Namecheap: Domain List > Manage > Advanced DNS. Add the TXT and CNAME with TTL Automatic, save, and verify.",
           "Cloudflare: add the TXT and CNAME in DNS > Records. Turn the orange cloud off while verifying, then re-enable after SSL is active."
         ].join("\n\n"),
+      },
+      {
+        question: "Using Cloudflare orange-cloud proxy?",
+        answer:
+          "Temporarily switch the orange cloud off for the www CNAME so DNS verification succeeds. Once SSL shows Active inside Schedulaa you can turn the proxy back on.",
       },
       {
         question: "Troubleshooting tips for verification errors?",
@@ -167,6 +179,7 @@ const FAQ_SECTIONS = [
     icon: RequestQuoteIcon,
     description:
       "Configure Stripe Automatic Tax and understand how Schedulaa handles regional pricing.",
+    cta: { label: "Review checkout settings", to: "/marketing/analytics-dashboard" },
     items: [
       {
         question: "How do I enable Automatic Tax for Stripe payments?",
@@ -200,11 +213,17 @@ const FAQ_SECTIONS = [
     icon: PaymentsIcon,
     description:
       "Clarity on which regions we support today and the items you still need to process manually.",
+    cta: { label: "Check payroll coverage", to: "/payroll/canada" },
     items: [
       {
         question: "Which regions are fully supported?",
         answer:
-          "We cover US federal plus most states (see guide for the full list) and Canadian provinces outside Quebec. Local city levies, special transit taxes, and Quebec's QPP/RQAP currently require external handling.",
+          "Schedulaa covers US federal tax plus most states, and Canadian provinces outside Québec. Local/city levies and Québec programs (QPP, RQAP/QPIP) still require external handling; see the Docs for the full state list.",
+      },
+      {
+        question: "What payroll features are automated?",
+        answer:
+          "We calculate federal/state taxes, FICA, FUTA/SUI, vacation accruals, automated statutory holiday pay (Canada), PTO tracking, and provide payroll exports. Year-end forms (W-2 / T4) and Canadian ROE creation/export are included.",
       },
       {
         question: "Are local or city taxes calculated automatically?",
@@ -214,7 +233,7 @@ const FAQ_SECTIONS = [
       {
         question: "Can Schedulaa manage wage garnishments or ROEs?",
         answer:
-          "Garnishments and Canadian Records of Employment aren't automated yet. Track them manually or through your payroll bureau while we finish those modules.",
+          "Garnishments and legal holds still require external handling. Canadian ROE creation, review, and export (PDF / XML) are fully supported.",
       },
       {
         question: "What should I do if my province or state isn't listed?",
@@ -304,6 +323,19 @@ const FAQPage = () => {
                     </Accordion>
                   ))}
                 </Stack>
+                {section.cta && (
+                  <Box sx={{ mt: 2 }}>
+                    <Button
+                      component={Link}
+                      to={section.cta.to}
+                      variant="text"
+                      endIcon={<ArrowForwardIcon fontSize="small" />}
+                      sx={{ textTransform: "none", fontWeight: 600 }}
+                    >
+                      {section.cta.label}
+                    </Button>
+                  </Box>
+                )}
               </Box>
             );
           })}
