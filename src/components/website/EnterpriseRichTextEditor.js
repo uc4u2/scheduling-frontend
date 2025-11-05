@@ -36,6 +36,9 @@ export default function EnterpriseRichTextEditor({
   onChange,
   placeholder = "Type here…",
   align = "left",
+  alignEnabled = true,
+  onReady,
+  onKeyDown,
 }) {
   const editor = useEditor({
     extensions: [
@@ -97,6 +100,12 @@ export default function EnterpriseRichTextEditor({
       editor.commands.setContent(value || "<p></p>", false);
     }
   }, [value, editor]);
+
+  useEffect(() => {
+    if (!editor || !onReady) return undefined;
+    onReady(editor);
+    return () => onReady(null);
+  }, [editor, onReady]);
 
   if (!editor) return null;
 
@@ -196,47 +205,51 @@ export default function EnterpriseRichTextEditor({
         <Divider flexItem orientation="vertical" sx={{ mx: 0.5 }} />
 
         {/* Alignment */}
-        <Tooltip title="Align left">
-          <IconButton
-            size="small"
-            onClick={() => editor.chain().focus().setTextAlign("left").run()}
-            color={editor.isActive({ textAlign: "left" }) ? "primary" : "default"}
-          >
-            <FormatAlignLeftIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        {alignEnabled && (
+          <>
+            <Tooltip title="Align left">
+              <IconButton
+                size="small"
+                onClick={() => editor.chain().focus().setTextAlign("left").run()}
+                color={editor.isActive({ textAlign: "left" }) ? "primary" : "default"}
+              >
+                <FormatAlignLeftIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-        <Tooltip title="Align center">
-          <IconButton
-            size="small"
-            onClick={() => editor.chain().focus().setTextAlign("center").run()}
-            color={editor.isActive({ textAlign: "center" }) ? "primary" : "default"}
-          >
-            <FormatAlignCenterIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+            <Tooltip title="Align center">
+              <IconButton
+                size="small"
+                onClick={() => editor.chain().focus().setTextAlign("center").run()}
+                color={editor.isActive({ textAlign: "center" }) ? "primary" : "default"}
+              >
+                <FormatAlignCenterIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-        <Tooltip title="Align right">
-          <IconButton
-            size="small"
-            onClick={() => editor.chain().focus().setTextAlign("right").run()}
-            color={editor.isActive({ textAlign: "right" }) ? "primary" : "default"}
-          >
-            <FormatAlignRightIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+            <Tooltip title="Align right">
+              <IconButton
+                size="small"
+                onClick={() => editor.chain().focus().setTextAlign("right").run()}
+                color={editor.isActive({ textAlign: "right" }) ? "primary" : "default"}
+              >
+                <FormatAlignRightIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-        <Tooltip title="Justify">
-          <IconButton
-            size="small"
-            onClick={() => editor.chain().focus().setTextAlign("justify").run()}
-            color={editor.isActive({ textAlign: "justify" }) ? "primary" : "default"}
-          >
-            <FormatAlignJustifyIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+            <Tooltip title="Justify">
+              <IconButton
+                size="small"
+                onClick={() => editor.chain().focus().setTextAlign("justify").run()}
+                color={editor.isActive({ textAlign: "justify" }) ? "primary" : "default"}
+              >
+                <FormatAlignJustifyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-        <Divider flexItem orientation="vertical" sx={{ mx: 0.5 }} />
+            <Divider flexItem orientation="vertical" sx={{ mx: 0.5 }} />
+          </>
+        )}
 
         {/* Links */}
         <Tooltip title="Add/Update link">
@@ -299,7 +312,7 @@ export default function EnterpriseRichTextEditor({
           },
         }}
       >
-        <EditorContent editor={editor} />
+        <EditorContent editor={editor} onKeyDown={onKeyDown} />
       </Box>
     </Box>
   );
