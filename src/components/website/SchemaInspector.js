@@ -339,28 +339,26 @@ const FieldRich = ({ label, value, onCommit, inline, align }) => {
         }}
         onKeyDown={stopBubble}
       />
-      {!inline && (
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={currentAlign}
-          onChange={handleAlignChange}
-          sx={{ alignSelf: "flex-start", mt: 1 }}
-        >
-          <ToggleButton value="left">
-            <FormatAlignLeftIcon fontSize="small" />
-          </ToggleButton>
-          <ToggleButton value="center">
-            <FormatAlignCenterIcon fontSize="small" />
-          </ToggleButton>
-          <ToggleButton value="right">
-            <FormatAlignRightIcon fontSize="small" />
-          </ToggleButton>
-          <ToggleButton value="justify">
-            <FormatAlignJustifyIcon fontSize="small" />
-          </ToggleButton>
-        </ToggleButtonGroup>
-      )}
+      <ToggleButtonGroup
+        size="small"
+        exclusive
+        value={currentAlign}
+        onChange={handleAlignChange}
+        sx={{ alignSelf: "flex-start", mt: 1 }}
+      >
+        <ToggleButton value="left">
+          <FormatAlignLeftIcon fontSize="small" />
+        </ToggleButton>
+        <ToggleButton value="center">
+          <FormatAlignCenterIcon fontSize="small" />
+        </ToggleButton>
+        <ToggleButton value="right">
+          <FormatAlignRightIcon fontSize="small" />
+        </ToggleButton>
+        <ToggleButton value="justify">
+          <FormatAlignJustifyIcon fontSize="small" />
+        </ToggleButton>
+      </ToggleButtonGroup>
     </Stack>
   );
 };

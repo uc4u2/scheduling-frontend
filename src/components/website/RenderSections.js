@@ -36,12 +36,23 @@ function toArray(val) {
 }
 
 /** Render sanitized (inline) HTML in Typography */
+const ALIGN_RE = /text-align\s*:\s*(left|center|right|justify)/i;
+
 function HtmlTypo({ variant = "body1", sx, children, ...rest }) {
-  const html = normalizeInlineHtml(String(children ?? ""));
+  const raw = String(children ?? "");
+  const inferredAlign = (() => {
+    const match = ALIGN_RE.exec(raw);
+    return match ? match[1].toLowerCase() : undefined;
+  })();
+  const html = normalizeInlineHtml(raw);
+  const mergedSx =
+    inferredAlign && (!sx || sx.textAlign === undefined)
+      ? { ...(sx || {}), textAlign: inferredAlign }
+      : sx;
   return (
     <Typography
       variant={variant}
-      sx={sx}
+      sx={mergedSx}
       {...rest}
       dangerouslySetInnerHTML={{ __html: safeHtml(html) }}
     />
