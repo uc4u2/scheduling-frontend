@@ -157,11 +157,16 @@ export const SCHEMA_REGISTRY = {
         label: "Logos",
         fields: [
           { name: "src", type: "image",  label: "Logo image" },
-          { name: "alt", type: "text",   label: "Alt text" }
+          { name: "alt", type: "text",   label: "Alt text" },
+          { name: "label", type: "text", label: "Label (display name)" },
+          { name: "caption", type: "text", label: "Caption (optional)" }
         ]
       },
+      { name: "supportingText", type: "richinline", label: "Supporting text" },
+      { name: "supportingTextAlign", type: "select", label: "Supporting text alignment", options: ["left","center","right"], default: "left" },
       { name: "showLabels", type: "boolean",    label: "Show labels under logos" },
       { name: "monochrome", type: "boolean",    label: "Monochrome (grayscale) logos" },
+      { name: "variant", type: "select", label: "Display style", options: ["grid","badges"], default: "grid" },
 
       { name: "titleAlign", type: "select",     label: "Title alignment", options: ["left","center","right"], default: "left" },
       { name: "maxWidth",   type: "select",     label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },

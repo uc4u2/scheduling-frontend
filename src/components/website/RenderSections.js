@@ -1191,48 +1191,189 @@ const LogoCloud = ({
   showLabels = false,
   monochrome = false,
   maxWidth,
-  titleAlign
+  titleAlign,
+  supportingText,
+  supportingTextAlign,
+  variant = "grid",
+  badgeStyle = {},
 }) => {
-  const list = toArray(logos);
-  return (
-    <Container maxWidth={toContainerMax(maxWidth)}>
-      {title && (
-        <HtmlTypo
-          variant="h6"
-          sx={{ mb: 0.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".06em", textAlign: titleAlign || "left" }}
-        >
-          {title}
-        </HtmlTypo>
-      )}
-      {caption && (
-        <HtmlTypo variant="body2" sx={{ mb: 2, color: "text.secondary", textAlign: titleAlign || "left" }}>
-          {caption}
-        </HtmlTypo>
-      )}
-      <Grid container spacing={3} alignItems="center" justifyContent="center">
-        {list.map((l, i) => (
-          <Grid item xs={6} sm={4} md={2} key={i}>
-            <Box sx={{ opacity: 0.9, "&:hover": { opacity: 1 }, textAlign: "center" }}>
+  const entries = toArray(logos).map((logo) => {
+    const isObj = logo && typeof logo === "object";
+    const rawLabel = isObj ? logo.label || logo.alt || "" : logo || "";
+    const label = toPlain(rawLabel);
+    const captionText = toPlain(isObj ? logo.caption || "" : "");
+    const src = isObj && typeof logo.src === "string" ? logo.src : "";
+    const alt = toPlain(isObj ? logo.alt || rawLabel : rawLabel);
+    return { label, caption: captionText, src, alt };
+  });
+
+  const normalizedVariant = typeof variant === "string" ? variant.toLowerCase() : "grid";
+  const hasEntries = entries.length > 0;
+  const resolvedTitleAlign = titleAlign || "left";
+  const resolvedSupportingAlign = supportingTextAlign || resolvedTitleAlign;
+
+  const renderGrid = () => (
+    <Grid container spacing={3} alignItems="center" justifyContent="center">
+      {entries.map((item, idx) => (
+        <Grid item xs={6} sm={4} md={2} key={idx}>
+          <Box
+            sx={{
+              opacity: 0.9,
+              "&:hover": { opacity: 1 },
+              textAlign: "center",
+              minHeight: 48,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {item.src ? (
               <img
-                src={l.src}
-                alt={toPlain(l.alt || "")}
+                src={item.src}
+                alt={item.alt}
                 loading="lazy"
                 style={{
                   maxWidth: "100%",
                   height: 36,
                   objectFit: "contain",
-                  filter: monochrome ? "grayscale(1)" : "none"
+                  filter: monochrome ? "grayscale(1)" : "none",
                 }}
               />
-              {showLabels && l.alt && (
-                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                  {toPlain(l.alt)}
-                </Typography>
-              )}
-            </Box>
-          </Grid>
+            ) : (
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 700,
+                  letterSpacing: ".08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {item.label}
+              </Typography>
+            )}
+            {showLabels && item.label && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mt: 0.5 }}
+              >
+                {item.label}
+              </Typography>
+            )}
+          </Box>
+        </Grid>
+      ))}
+    </Grid>
+  );
+
+  const alignSx = (align) => {
+    switch (align) {
+      case "center":
+        return { textAlign: "center", mx: "auto" };
+      case "right":
+        return { textAlign: "right", ml: "auto" };
+      default:
+        return { textAlign: "left" };
+    }
+  };
+
+  const renderBadges = () => {
+    const labelStyle = {
+      fontWeight: 700,
+      letterSpacing: ".12em",
+      textTransform: "uppercase",
+      color: "#e0f2fe",
+      ...badgeStyle,
+    };
+
+    return (
+      <Stack
+        direction="row"
+        spacing={2}
+        flexWrap="wrap"
+        justifyContent="center"
+        rowGap={2}
+      >
+        {entries.map((item, idx) => (
+          <Card
+            key={idx}
+            elevation={0}
+            sx={{
+              background: "rgba(5,17,37,0.65)",
+              border: "1px solid rgba(148,163,184,0.28)",
+              boxShadow: "0 24px 44px rgba(8,23,53,0.32)",
+              color: "#f8fafc",
+              borderRadius: 14,
+              px: 3,
+              py: 3,
+              minWidth: 220,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 1.25,
+              textAlign: "center",
+            }}
+          >
+            <Typography variant="subtitle2" sx={labelStyle}>
+              {item.label}
+            </Typography>
+            {(showLabels || item.caption) && (
+              <Typography
+                variant="caption"
+                sx={{ opacity: 0.85, letterSpacing: ".05em" }}
+              >
+                {item.caption || item.label}
+              </Typography>
+            )}
+          </Card>
         ))}
-      </Grid>
+      </Stack>
+    );
+  };
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      {title && (
+        <HtmlTypo
+          variant="h6"
+          sx={{
+            mb: caption || supportingText ? 0.5 : 2,
+            fontWeight: 800,
+            textTransform: "uppercase",
+            letterSpacing: ".06em",
+            ...alignSx(resolvedTitleAlign),
+          }}
+        >
+          {title}
+        </HtmlTypo>
+      )}
+      {caption && (
+        <HtmlTypo
+          variant="body2"
+          sx={{
+            mb: supportingText ? 1 : 2,
+            color: "text.secondary",
+            ...alignSx(resolvedTitleAlign),
+          }}
+        >
+          {caption}
+        </HtmlTypo>
+      )}
+      {supportingText && (
+        <HtmlTypo
+          variant="body1"
+          sx={{
+            mb: 3,
+            color: "text.secondary",
+            maxWidth: 720,
+            ...alignSx(resolvedSupportingAlign),
+          }}
+        >
+          {supportingText}
+        </HtmlTypo>
+      )}
+      {hasEntries && (normalizedVariant === "badges" ? renderBadges() : renderGrid())}
     </Container>
   );
 };

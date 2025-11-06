@@ -20,12 +20,15 @@ export const SCHEMA_REGISTRY = {
         name: "logos", type: "objectArray", label: "Logos", fields: [
           { name: "src", type: "image", label: "Image" },
           { name: "alt", type: "string", label: "Alt text" },
+          { name: "label", type: "string", label: "Label (display name)" },
+          { name: "caption", type: "string", label: "Caption (optional)" },
         ]
       },
       { name: "caption", type: "text", label: "Caption" },
+      { name: "supportingText", type: "text", label: "Supporting text", minRows: 2 },
+      { name: "supportingTextAlign", type: "select", label: "Supporting text alignment", options: ["left","center","right"], default: "left" },
       { name: "showLabels", type: "boolean", label: "Show names under logos", default: false },
-   { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | 1200px" },
-      // NEW: optional width control to match suggested schema
+      { name: "variant", type: "select", label: "Display style", options: ["grid", "badges"], default: "grid" },
       { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | 1200px" },
     ],
   },
