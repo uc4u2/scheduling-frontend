@@ -11,7 +11,10 @@ import {
   Typography,
 } from "@mui/material";
 import { useDataSource } from "../../hooks/useDataSource";
-import { toPlain } from "../../utils/html";
+import { toPlain, normalizeInlineHtml } from "../../utils/html";
+import { safeHtml } from "../../utils/safeHtml";
+
+const ALIGN_RE = /text-align\s*:\s*(left|center|right|justify)/i;
 
 export default function SmartServiceGrid({
   title,
@@ -19,16 +22,27 @@ export default function SmartServiceGrid({
   ctaText,
   ctaLink,
   dataSource,
+  titleAlign,
 }) {
   const data = useDataSource(dataSource);
   const svcs = Array.isArray(data) && data?.length ? data : items;
 
+  const resolvedAlign = (() => {
+    if (!title) return titleAlign || "left";
+    const match = ALIGN_RE.exec(title);
+    return (match ? match[1] : titleAlign || "left").toLowerCase();
+  })();
+
+  const normalizedTitle = title ? safeHtml(normalizeInlineHtml(title)) : "";
+
   return (
     <Container maxWidth="lg">
       {title && (
-        <Typography variant="h4" fontWeight={800} sx={{ mb: 2 }}>
-          {toPlain(title)}
-        </Typography>
+        <Typography
+          variant="h4"
+          sx={{ mb: 2, fontWeight: 800, textAlign: resolvedAlign }}
+          dangerouslySetInnerHTML={{ __html: normalizedTitle }}
+        />
       )}
 
       <Grid container spacing={2}>
@@ -70,7 +84,7 @@ export default function SmartServiceGrid({
       {ctaText && (
         <Stack alignItems="center" sx={{ mt: 3 }}>
           <Button href={ctaLink || "#"} variant="contained">
-            {ctaText}
+            {toPlain(ctaText)}
           </Button>
         </Stack>
       )}

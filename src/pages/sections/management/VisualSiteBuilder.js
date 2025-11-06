@@ -248,6 +248,7 @@ const defaultPageStyleBlock = () => ({
   type: "pageStyle",
   props: {
     backgroundColor: "#f6f7fb",
+    secondaryBackground: "",
     backgroundImage: "",
     backgroundRepeat: "no-repeat",
     backgroundSize: "cover",
@@ -330,6 +331,12 @@ function styleToCssVars(style = {}) {
         ? 1
         : style.backgroundImageOpacity
     ),
+
+    // secondary background accent
+    "--page-secondary-bg":
+      style.secondaryBackground ||
+      style.secondaryBackgroundColor ||
+      "",
   };
 }
 
@@ -426,6 +433,34 @@ function PageStyleCard({
   const cardColorInput = normalizeHexColor(v.cardColor || initialCard.hex) || "#ffffff";
   const cardOpacityInput =
     v.cardOpacity != null ? clamp01(v.cardOpacity) : initialCard.opacity;
+  const fallbackSecondaryHex = "#1d4ed8";
+  const isAdvancedSecondaryValue = (val) => {
+    if (!val || typeof val !== "string") return false;
+    const s = val.trim().toLowerCase();
+    if (!s) return false;
+    if (s.startsWith("#")) return false;
+    if (s.startsWith("rgb")) return false;
+    return true;
+  };
+  const secondaryColorHex = (() => {
+    const raw = v.secondaryBackground;
+    if (!raw || typeof raw !== "string") return fallbackSecondaryHex;
+    const trimmed = raw.trim();
+    if (!trimmed) return fallbackSecondaryHex;
+    if (trimmed.startsWith("#")) {
+      return normalizeHexColor(trimmed) || fallbackSecondaryHex;
+    }
+    if (/^rgba?\(/i.test(trimmed)) {
+      return parseCssColor(trimmed, 1).hex || fallbackSecondaryHex;
+    }
+    return fallbackSecondaryHex;
+  })();
+  const [secondaryAdvanced, setSecondaryAdvanced] = useState(
+    isAdvancedSecondaryValue(v.secondaryBackground)
+  );
+  useEffect(() => {
+    setSecondaryAdvanced(isAdvancedSecondaryValue(v.secondaryBackground));
+  }, [v.secondaryBackground]);
   const set = (patch) => onChange?.({ ...(v || {}), ...patch });
   const applyCardValues = (color, opacity) => {
     if (!onChange) return;
@@ -457,6 +492,70 @@ function PageStyleCard({
         label={t("manager.visualBuilder.pageStyle.background.color")}
         value={v.backgroundColor || "#ffffff"}
         onChange={(e) => set({ backgroundColor: e.target.value })}
+        fullWidth
+      />
+      <Stack direction="row" spacing={1}>
+        <TextField
+          size="small"
+          type="color"
+          label={t("manager.visualBuilder.pageStyle.background.secondaryColor", {
+            defaultValue: "Secondary background",
+          })}
+          value={secondaryAdvanced ? fallbackSecondaryHex : secondaryColorHex}
+          onChange={(e) => {
+            const nextColor = normalizeHexColor(e.target.value || fallbackSecondaryHex);
+            set({ secondaryBackground: nextColor });
+            if (secondaryAdvanced) setSecondaryAdvanced(false);
+          }}
+          disabled={secondaryAdvanced}
+          fullWidth
+        />
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => {
+            setSecondaryAdvanced((prev) => {
+              const next = !prev;
+              if (!next) {
+                const hex =
+                  normalizeHexColor(secondaryColorHex || fallbackSecondaryHex) ||
+                  fallbackSecondaryHex;
+                set({ secondaryBackground: hex });
+              }
+              return next;
+            });
+          }}
+        >
+          {secondaryAdvanced
+            ? t("manager.visualBuilder.pageStyle.background.useColorPicker", {
+                defaultValue: "Use color picker",
+              })
+            : t("manager.visualBuilder.pageStyle.background.customCss", {
+                defaultValue: "Custom CSS",
+              })}
+        </Button>
+      </Stack>
+      {secondaryAdvanced && (
+        <TextField
+          size="small"
+          label={t("manager.visualBuilder.pageStyle.background.secondaryAdvanced", {
+            defaultValue: "Secondary background (CSS or gradient)",
+          })}
+          value={v.secondaryBackground || ""}
+          onChange={(e) => set({ secondaryBackground: e.target.value })}
+          placeholder="linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)"
+          fullWidth
+          sx={{ mt: 1 }}
+        />
+      )}
+      <TextField
+        size="small"
+        label={t("manager.visualBuilder.pageStyle.background.secondaryColor", {
+          defaultValue: "Secondary background (CSS or gradient)",
+        })}
+        value={v.secondaryBackground || ""}
+        onChange={(e) => set({ secondaryBackground: e.target.value })}
+        placeholder="linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)"
         fullWidth
       />
 

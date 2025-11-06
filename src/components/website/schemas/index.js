@@ -30,6 +30,131 @@ export const SCHEMA_REGISTRY = {
     ],
   },
 
+  logoCarousel: {
+    fields: [
+      { name: "title", type: "string", label: "Title" },
+      { name: "caption", type: "string", label: "Caption" },
+      {
+        name: "logos",
+        type: "objectArray",
+        label: "Entries",
+        fields: [
+          { name: "label", type: "string", label: "Label" },
+          { name: "src", type: "image", label: "Image (optional)" },
+        ],
+      },
+      { name: "intervalMs", type: "number", label: "Interval (ms)", default: 4000 },
+      { name: "showDots", type: "boolean", label: "Show dots", default: true },
+      { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | 1200px" },
+    ],
+  },
+
+  featurePillars: {
+    fields: [
+      { name: "title", type: "string", label: "Title" },
+      { name: "badge", type: "string", label: "Badge" },
+      { name: "caption", type: "text", label: "Caption", minRows: 3 },
+      {
+        name: "pillars",
+        type: "objectArray",
+        label: "Pillars",
+        fields: [
+          { name: "icon", type: "string", label: "Badge letter" },
+          { name: "label", type: "string", label: "Label" },
+          { name: "heading", type: "string", label: "Heading" },
+          { name: "summary", type: "text", label: "Summary", minRows: 3 },
+          { name: "bullets", type: "arrayOfStrings", label: "Bullets" },
+          {
+            name: "metrics",
+            type: "objectArray",
+            label: "Metrics",
+            fields: [
+              { name: "label", type: "string", label: "Label" },
+              { name: "value", type: "string", label: "Value" },
+            ],
+          },
+        ],
+      },
+      { name: "layout", type: "select", label: "Layout", options: ["dense", "carousel"], default: "dense" },
+      { name: "intervalMs", type: "number", label: "Carousel interval (ms)", default: 4000 },
+    ],
+  },
+
+featureStories: {
+  fields: [
+    { name: "title", type: "string", label: "Title" },
+    { name: "caption", type: "text", label: "Caption", minRows: 3 },
+    { name: "badge", type: "string", label: "Badge" },
+    { name: "legend", type: "arrayOfStrings", label: "Legend items" },
+    { name: "legendAlign", type: "select", label: "Legend alignment", options: ["left","center","right"], default: "center" },
+    {
+      name: "stories",
+      type: "objectArray",
+      label: "Stories",
+      fields: [
+        { name: "icon", type: "string", label: "Icon / graphic" },
+        { name: "title", type: "string", label: "Story title" },
+        { name: "subtitle", type: "string", label: "Subtitle" },
+        { name: "statLabel", type: "string", label: "Stat label" },
+        { name: "statValue", type: "string", label: "Stat value" },
+        { name: "description", type: "text", label: "Description", minRows: 3 },
+        { name: "feature", type: "string", label: "Feature tag" },
+        { name: "bullets", type: "arrayOfStrings", label: "Bullets" },
+        { name: "ctaText", type: "string", label: "CTA text" },
+        { name: "ctaLink", type: "string", label: "CTA link" },
+        { name: "background", type: "string", label: "Background (CSS)" },
+      ],
+    },
+    { name: "metrics", type: "arrayOfStrings", label: "Footer metrics" },
+    {
+      name: "card",
+      type: "object",
+      label: "Card styling",
+      fields: [
+        { name: "padding", type: "number", label: "Padding (px)" },
+        { name: "radius", type: "number", label: "Corner radius (px)" },
+        { name: "gap", type: "number", label: "Grid gap (px)" },
+        { name: "maxWidth", type: "number", label: "Max width (px)" },
+        { name: "sectionBackground", type: "string", label: "Section background" },
+        { name: "surface", type: "string", label: "Card surface" },
+        { name: "borderColor", type: "string", label: "Border color" },
+        { name: "shadow", type: "string", label: "Shadow" },
+        { name: "headingColor", type: "string", label: "Heading color" },
+        { name: "bodyColor", type: "string", label: "Body color" },
+        { name: "badgeColor", type: "string", label: "Badge color" },
+        { name: "statColor", type: "string", label: "Stat color" },
+        { name: "chipBg", type: "string", label: "Chip background" },
+        { name: "chipColor", type: "string", label: "Chip text" },
+        { name: "chipBorder", type: "string", label: "Chip border" },
+      ],
+    },
+    { name: "titleAlign", type: "select", label: "Title alignment", options: ["left","center","right"], default: "left" },
+    { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | full" },
+  ],
+},
+  testimonialTiles: {
+    fields: [
+      { name: "title", type: "string", label: "Title" },
+      { name: "caption", type: "text", label: "Caption", minRows: 3 },
+      {
+        name: "testimonials",
+        type: "objectArray",
+        label: "Testimonials",
+        fields: [
+          { name: "brand", type: "string", label: "Brand" },
+          { name: "badge", type: "string", label: "Badge" },
+          { name: "quote", type: "text", label: "Quote", minRows: 3 },
+          { name: "author", type: "string", label: "Author" },
+          { name: "role", type: "string", label: "Role" },
+          { name: "avatar", type: "image", label: "Avatar" },
+        ],
+      },
+      { name: "style", type: "select", label: "Layout", options: ["grid", "slider"], default: "grid" },
+      { name: "intervalMs", type: "number", label: "Slider interval (ms)", default: 4000 },
+      { name: "showDots", type: "boolean", label: "Show dots", default: true },
+    ],
+  },
+
   heroSplit: {
     fields: [
       { name: "heading", type: "string", label: "Heading" },

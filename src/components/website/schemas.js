@@ -101,7 +101,7 @@ export const SCHEMA_REGISTRY = {
   serviceGrid: {
     title: "Service Grid",
     fields: [
-      { name: "title",     type: "string",     label: "Section title" },
+      { name: "title",     type: "richinline", label: "Section title" },
       { name: "subtitle",  type: "richtext",   label: "Subtitle" },
       {
         name: "items",
@@ -130,7 +130,7 @@ export const SCHEMA_REGISTRY = {
   serviceGridSmart: {
     title: "Service Grid (Smart / Data-bound)",
     fields: [
-      { name: "title",       type: "string",     label: "Section title" },
+      { name: "title",       type: "richinline", label: "Section title" },
       { name: "subtitle",    type: "richtext",   label: "Subtitle" },
       { name: "dataSource",  type: "text",       label: "Data source (JSON: { url, pick })", minRows: 4 },
 
@@ -168,6 +168,153 @@ export const SCHEMA_REGISTRY = {
       { name: "gutterX",    type: "number",     label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
       { name: "bleedLeft",  type: "boolean",    label: "Bleed left" },
       { name: "bleedRight", type: "boolean",    label: "Bleed right" }
+    ]
+  },
+
+  /* ----------------------- LOGO CAROUSEL -------------------- */
+  logoCarousel: {
+    title: "Logo Carousel",
+    fields: [
+      { name: "title",      type: "richinline", label: "Title", labelKey: "manager.visualBuilder.schemas.testimonials.fields.title" },
+      { name: "caption",    type: "richinline", label: "Caption" },
+      {
+        name: "logos",
+        type: "objectArray",
+        label: "Brand items",
+        fields: [
+          { name: "label", type: "text",   label: "Label" },
+          { name: "src",   type: "image",  label: "Logo image (optional)" }
+        ]
+      },
+      { name: "showDots",   type: "boolean",    label: "Show dots / controls", default: true },
+      { name: "intervalMs", type: "number",     label: "Slide interval (ms)", min: 1500, max: 12000, default: 4000 },
+      { name: "titleAlign", type: "select",     label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth",   type: "select",     label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",    type: "number",     label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",  type: "boolean",    label: "Bleed left" },
+      { name: "bleedRight", type: "boolean",    label: "Bleed right" }
+    ]
+  },
+
+  /* -------------------- FEATURE PILLARS --------------------- */
+  featurePillars: {
+    title: "Feature Pillars",
+    fields: [
+      { name: "title",       type: "richinline", label: "Title" },
+      { name: "badge",       type: "richinline", label: "Badge / eyebrow" },
+      { name: "caption",     type: "richtext",   label: "Caption", minRows: 3 },
+      {
+        name: "pillars",
+        type: "objectArray",
+        label: "Pillars",
+        fields: [
+          { name: "icon",    type: "richinline",    label: "Badge letter (optional)" },
+          { name: "label",   type: "richinline",    label: "Label / category" },
+          { name: "heading", type: "richinline",    label: "Heading" },
+          { name: "summary", type: "richtext",      label: "Summary", minRows: 3 },
+          {
+            name: "bullets",
+            type: "arrayOfStrings",
+            label: "Bullet points"
+          },
+          {
+            name: "metrics",
+            type: "objectArray",
+            label: "Metrics",
+            fields: [
+              { name: "label", type: "richinline", label: "Label" },
+              { name: "value", type: "richinline", label: "Value" }
+            ]
+          }
+        ]
+      },
+
+      { name: "layout",     type: "select",   label: "Layout", options: ["dense", "carousel"], default: "dense" },
+      { name: "intervalMs", type: "number",   label: "Carousel interval (ms)", min: 1500, max: 12000, default: 4000 },
+
+      { name: "titleAlign", type: "select",   label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth",   type: "select",   label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",    type: "number",   label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",  type: "boolean",  label: "Bleed left" },
+      { name: "bleedRight", type: "boolean",  label: "Bleed right" }
+    ]
+  },
+
+  /* -------------------- TESTIMONIAL TILES ------------------- */
+  featureStories: {
+    title: "Feature Stories",
+    fields: [
+      { name: "title",        type: "richinline", label: "Title" },
+      { name: "caption",      type: "richtext",   label: "Caption", minRows: 3 },
+      { name: "badge",        type: "richinline", label: "Badge / eyebrow" },
+      {
+        name: "legend",
+        type: "arrayOfStrings",
+        label: "Legend items (chips)",
+      },
+      { name: "legendAlign",  type: "select",     label: "Legend alignment", options: ["left","center","right"], default: "center" },
+      {
+        name: "stories",
+        type: "objectArray",
+        label: "Stories",
+        fields: [
+          { name: "icon",       type: "string",     label: "Icon (emoji, letter, or image URL)" },
+          { name: "title",      type: "richinline", label: "Story title" },
+          { name: "subtitle",   type: "string",     label: "Subtitle / secondary line" },
+          { name: "statLabel",  type: "richinline", label: "Stat label" },
+          { name: "statValue",  type: "richinline", label: "Stat value" },
+          { name: "feature",    type: "richinline", label: "Feature tag" },
+          { name: "description",type: "richtext",   label: "Description", minRows: 3 },
+          { name: "bullets",     type: "arrayOfStrings", label: "Bullets" },
+          { name: "ctaText",    type: "richinline", label: "CTA text" },
+          { name: "ctaLink",    type: "string",     label: "CTA link (URL)" },
+          { name: "background", type: "string",     label: "Card background (CSS gradient/color)" },
+        ]
+      },
+      {
+        name: "metrics",
+        type: "arrayOfStrings",
+        label: "Footer metrics (chips)",
+      },
+{
+  name: "card",
+  type: "object",
+  label: "Card styling",
+  fields: [
+    { name: "padding",      type: "number", label: "Padding (px)", min: 12, max: 48, step: 2 },
+    { name: "radius",       type: "number", label: "Corner radius (px)", min: 0, max: 48, step: 2 },
+    { name: "gap",          type: "number", label: "Grid gap (px)", min: 16, max: 64, step: 2 },
+    { name: "maxWidth",     type: "number", label: "Max width (px)", min: 720, max: 1440, step: 10 },
+    { name: "sectionBackground", type: "string", label: "Section background (CSS gradient/color)" },
+    { name: "surface",      type: "string", label: "Card surface (CSS color)" },
+    { name: "borderColor",  type: "string", label: "Border color" },
+    { name: "shadow",       type: "string", label: "Shadow" },
+    { name: "headingColor", type: "color",  label: "Heading color" },
+    { name: "bodyColor",    type: "color",  label: "Body text color" },
+    { name: "badgeColor",   type: "color",  label: "Badge color" },
+    { name: "statColor",    type: "color",  label: "Stat color" },
+    { name: "chipBg",       type: "color",  label: "Chip background" },
+    { name: "chipColor",    type: "color",  label: "Chip text" },
+    { name: "chipBorder",   type: "color",  label: "Chip border" },
+    { name: "iconBg",       type: "color",  label: "Icon background" },
+    { name: "iconColor",    type: "color",  label: "Icon color" },
+    { name: "ctaColor",     type: "color",  label: "CTA color" },
+    { name: "legendBg",     type: "color",  label: "Legend chip background" },
+    { name: "legendColor",  type: "color",  label: "Legend chip text" },
+    { name: "metricBg",     type: "color",  label: "Metric chip background" },
+    { name: "metricColor",  type: "color",  label: "Metric chip text" }
+  ]
+},
+
+      { name: "style",      type: "select",   label: "Layout", options: ["grid", "slider"], default: "grid" },
+      { name: "showDots",   type: "boolean",  label: "Show dots (slider)", default: true },
+      { name: "intervalMs", type: "number",   label: "Slider interval (ms)", min: 1500, max: 12000, default: 4000 },
+
+      { name: "titleAlign", type: "select",   label: "Title alignment", options: ["left","center","right"], default: "left" },
+      { name: "maxWidth",   type: "select",   label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",    type: "number",   label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",  type: "boolean",  label: "Bleed left" },
+      { name: "bleedRight", type: "boolean",  label: "Bleed right" }
     ]
   },
 

@@ -55,6 +55,21 @@ const extractTextAlign = (html = "", fallback = "left") => {
   return match ? match[1].toLowerCase() : fallback;
 };
 
+const INLINE_ALIGN_SPAN_RE =
+  /^\s*<span\b[^>]*text-align\s*:\s*(left|center|right|justify)[^>]*>([\s\S]*?)<\/span>\s*$/i;
+
+const stripInlineAlignWrapper = (html = "") =>
+  String(html || "").replace(INLINE_ALIGN_SPAN_RE, (_, __, inner) => inner);
+
+const applyInlineAlignWrapper = (html = "", align = "left") => {
+  const trimmed = stripInlineAlignWrapper(html);
+  const effective = (align || "left").toLowerCase();
+  if (!trimmed.trim() || effective === "left") {
+    return trimmed.trim() ? trimmed : "";
+  }
+  return `<span style="display:block;text-align:${effective};">${trimmed}</span>`;
+};
+
 /** Heuristic: does this field represent an array of images? */
 const looksLikeImageArray = (f) =>
   f?.render === "imageArray" ||
@@ -279,19 +294,39 @@ const FieldImageArray = ({ label, value = [], onCommit, companyId }) => {
 // Rich editor wrapper: inline vs block, with HTML normalization on save
 const FieldRich = ({ label, value, onCommit, inline, align }) => {
   const editorRef = React.useRef(null);
-  const { local, setLocal, setDebounced, onBlur } = useDebouncedField(
-    String(value || ""),
-    (html) => onCommit(inline ? normalizeInlineHtml(html) : normalizeBlockHtml(html)),
-    500
+
+  const initialAlign = React.useMemo(
+    () => extractTextAlign(value, align || "left"),
+    [value, align]
   );
 
-  const [currentAlign, setCurrentAlign] = React.useState(() =>
-    extractTextAlign(value, align || "left")
+  const [currentAlign, setCurrentAlign] = React.useState(initialAlign);
+
+  const commitRichHtml = React.useCallback(
+    (html) => {
+      if (inline) {
+        const normalized = normalizeInlineHtml(html);
+        onCommit(applyInlineAlignWrapper(normalized, currentAlign || align || "left"));
+      } else {
+        onCommit(normalizeBlockHtml(html));
+      }
+    },
+    [inline, currentAlign, align, onCommit]
+  );
+
+  const { local, setLocal, setDebounced, onBlur } = useDebouncedField(
+    String(value || ""),
+    commitRichHtml,
+    500
   );
 
   React.useEffect(() => {
     setCurrentAlign(extractTextAlign(local, align || "left"));
   }, [local, align]);
+
+  React.useEffect(() => {
+    setCurrentAlign(extractTextAlign(value, align || "left"));
+  }, [value, align]);
 
   const handleEditorReady = React.useCallback((instance) => {
     editorRef.current = instance;
@@ -314,6 +349,7 @@ const FieldRich = ({ label, value, onCommit, inline, align }) => {
     if (!next) return;
     applyAlign(next);
   };
+
   return (
     <Stack spacing={0.5}>
       {label && (
@@ -329,12 +365,8 @@ const FieldRich = ({ label, value, onCommit, inline, align }) => {
           setLocal(html);
           setDebounced(html);
         }}
-        alignEnabled={!inline}
+        alignEnabled
         onBlur={() => {
-          const normalized = inline
-            ? normalizeInlineHtml(local)
-            : normalizeBlockHtml(local);
-          onCommit(normalized);
           onBlur();
         }}
         onKeyDown={stopBubble}
