@@ -26,8 +26,8 @@ const marketingLinks = [
   { label: "Marketing", to: "/marketing" },
   { label: "Docs", to: "/docs" },
   { label: "Pricing", to: "/pricing" },
-  { label: "About", to: "/about" },
   { label: "Contact", to: "/contact" },
+  { label: "About", to: "/about" },
 ];
 
 const loggedInLinks = [
