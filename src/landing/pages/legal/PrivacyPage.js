@@ -15,7 +15,7 @@ const PrivacyPage = () => (
           Privacy Policy
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: October 2025
+          Last updated: November 2025
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -63,7 +63,7 @@ const PrivacyPage = () => (
       <Stack spacing={2}>
         <Typography variant="h5">8. Your rights</Typography>
         <Typography variant="body1" color="text.secondary">
-          Access, correct, export, or delete personal data; object to processing or withdraw consent; contact privacy@schedulaa.com. EU/UK users can lodge complaints with a supervisory authority.
+          Access, correct, export, or delete personal data; object to processing or withdraw consent; contact admin@schedulaa.com. EU/UK users can lodge complaints with a supervisory authority.
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -90,7 +90,7 @@ const PrivacyPage = () => (
           We may update this policy and will notify you of significant changes.
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Contact: Photo Artisto Corp., 1080 Market Street, Suite 500, San Francisco, CA 94103 USA | privacy@schedulaa.com
+          Contact: Photo Artisto Corp., 171 Harbord Street, Toronto, Ontario M5S 1H3 Canada | admin@schedulaa.com
         </Typography>
       </Stack>
     </Stack>

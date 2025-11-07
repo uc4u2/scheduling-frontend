@@ -15,7 +15,7 @@ const TermsPage = () => (
           Terms of Service
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: October 2025
+          Last updated: November 2025
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -93,13 +93,13 @@ const TermsPage = () => (
       <Stack spacing={2}>
         <Typography variant="h5" component="h2">13. Governing law</Typography>
         <Typography variant="body1" color="text.secondary">
-          These Terms are governed by the laws of California, USA. Disputes will be handled in San Francisco County courts unless otherwise required by law.
+          These Terms are governed by the laws of the Province of Ontario and the federal laws of Canada. Disputes will be handled exclusively in the courts of Toronto, Ontario unless otherwise required by law.
         </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5" component="h2">14. Contact</Typography>
         <Typography variant="body1" color="text.secondary">
-          Photo Artisto Corp., 1080 Market Street, Suite 500, San Francisco, CA 94103 USA | legal@schedulaa.com
+          Photo Artisto Corp., 171 Harbord Street, Toronto, Ontario M5S 1H3 Canada | admin@schedulaa.com
         </Typography>
       </Stack>
     </Stack>
@@ -107,4 +107,3 @@ const TermsPage = () => (
 );
 
 export default TermsPage;
-

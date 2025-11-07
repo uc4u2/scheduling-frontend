@@ -1,5 +1,5 @@
 ﻿// src/Login.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Container,
   Typography,
@@ -9,6 +9,8 @@ import {
   Box,
   Alert,
   Stack,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import axios from "axios";
@@ -88,8 +90,9 @@ const Login = ({ setToken }) => {
   const [selectedRole, setSelectedRole] = useState("employee");
   const [timezone, setTimezone] = useState(detectedTz);
   const [forceChange, setForceChange] = useState(false);
-
-  const selectedRoleMeta = getRoleMeta(selectedRole);
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const resendTimerRef = useRef(null);
 
   // Read optional redirect + site from query
   const qs = new URLSearchParams(location.search);
@@ -199,6 +202,7 @@ const Login = ({ setToken }) => {
         password,
         role: targetRole,
         timezone,
+        remember_device: rememberDevice,
       });
 
       if (targetRole === "client" && res.data?.access_token) {
@@ -220,6 +224,7 @@ const Login = ({ setToken }) => {
 
       setMessage(res.data?.message || "Check your email for the OTP.");
       setStep(2);
+      setResendCooldown(45);
       if (res.data?.force_password_change) setForceChange(true);
     } catch (err) {
       setError(err?.response?.data?.error || "Login failed.");
@@ -287,9 +292,43 @@ const Login = ({ setToken }) => {
     }
   };
 
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || !email) return;
+    setError("");
+    setMessage("Sending a new code...");
+    try {
+      await axios.post(`${API_URL}/login/resend-otp`, { email });
+      setMessage("We just sent a new code. It may take a moment to arrive.");
+      setResendCooldown(45);
+    } catch (err) {
+      setError(err?.response?.data?.error || "Unable to resend the code right now.");
+    }
+  };
+
   const tzOptions = STATIC_TIMEZONES.includes(timezone)
     ? STATIC_TIMEZONES
     : [timezone, ...STATIC_TIMEZONES];
+
+  useEffect(() => {
+    if (resendCooldown <= 0) {
+      if (resendTimerRef.current) {
+        clearTimeout(resendTimerRef.current);
+        resendTimerRef.current = null;
+      }
+      return;
+    }
+
+    resendTimerRef.current = setTimeout(() => {
+      setResendCooldown((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+
+    return () => {
+      if (resendTimerRef.current) {
+        clearTimeout(resendTimerRef.current);
+        resendTimerRef.current = null;
+      }
+    };
+  }, [resendCooldown]);
 
   return (
     <Box
@@ -343,6 +382,8 @@ const Login = ({ setToken }) => {
                   fullWidth
                   required
                   autoComplete="email"
+                  autoFocus
+                  inputProps={{ inputMode: "email", autoCapitalize: "none" }}
                 />
 
                 <PasswordField
@@ -354,7 +395,16 @@ const Login = ({ setToken }) => {
                   autoComplete="current-password"
                 />
 
-                <Box textAlign="right">
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={rememberDevice}
+                        onChange={(e) => setRememberDevice(e.target.checked)}
+                      />
+                    }
+                    label="Remember this device for 30 days"
+                  />
                   <Button
                     size="small"
                     variant="text"
@@ -362,7 +412,7 @@ const Login = ({ setToken }) => {
                   >
                     Forgot password?
                   </Button>
-                </Box>
+                </Stack>
 
                 <TextField
                   select
@@ -407,6 +457,7 @@ const Login = ({ setToken }) => {
                 <Button type="submit" variant="contained" fullWidth sx={{ py: 1.25 }}>
                   Sign In
                 </Button>
+
               </Stack>
             </Box>
           ) : (
@@ -421,10 +472,25 @@ const Login = ({ setToken }) => {
                   onChange={(e) => setOtp(e.target.value)}
                   fullWidth
                   required
+                  inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                 />
                 <Button type="submit" variant="contained" fullWidth sx={{ py: 1.25 }}>
                   Verify OTP
                 </Button>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+                  <Typography variant="caption" color="text.secondary">
+                    Didn't get a code?
+                  </Typography>
+                  <Button
+                    size="small"
+                    onClick={handleResendOtp}
+                    disabled={resendCooldown > 0}
+                  >
+                    {resendCooldown > 0
+                      ? `Resend available in ${resendCooldown}s`
+                      : "Resend code"}
+                  </Button>
+                </Stack>
               </Stack>
             </Box>
           )}

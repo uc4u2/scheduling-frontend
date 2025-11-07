@@ -50,13 +50,13 @@ const DataProcessingAddendumPage = () => (
         </Typography>
       </Stack>
       <Typography variant="body1" color="text.secondary">
-        Full signed DPA available on request: privacy@schedulaa.com.
+        Full signed DPA available on request: admin@schedulaa.com.
       </Typography>
       <Button
         variant="outlined"
         color="primary"
         component="a"
-        href="mailto:privacy@schedulaa.com?subject=Schedulaa%20DPA%20Request"
+        href="mailto:admin@schedulaa.com?subject=Schedulaa%20DPA%20Request"
         sx={{ alignSelf: { xs: "stretch", sm: "flex-start" }, textTransform: "none", borderRadius: 999, px: 4 }}
       >
         Request Full DPA

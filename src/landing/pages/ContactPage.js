@@ -34,6 +34,8 @@ const DEFAULT_DIRECT_LINES = [
   `Admin: ${DEFAULT_CONTACT_EMAIL}`,
 ];
 
+const FALLBACK_CONTACT_SLUGS = ["photo-artisto", "photo-artisto-corp", "schedulaa"];
+
 const DEFAULT_CONTENT = {
   meta: {
     title: "Contact Schedulaa",
@@ -152,12 +154,23 @@ const ContactPage = () => {
     process.env.REACT_APP_CONTACT_SLUGS ||
     (typeof window !== "undefined" && window.__ENV__?.CONTACT_SLUGS) ||
     "";
-  const marketingContactSlugs = rawSlugEnv
-    ? rawSlugEnv
-        .split(",")
-        .map((slug) => slug.trim())
-        .filter(Boolean)
-    : ["photo-artisto-corp"];
+
+  const marketingContactSlugs = React.useMemo(() => {
+    const envList = rawSlugEnv
+      ? rawSlugEnv
+          .split(",")
+          .map((slug) => slug.trim())
+          .filter(Boolean)
+      : [];
+    const combined = [...envList, ...FALLBACK_CONTACT_SLUGS];
+    const seen = new Set();
+    return combined.filter((slug) => {
+      const key = slug.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [rawSlugEnv]);
 
   const heroTitle = getArray(heroContent.title, DEFAULT_CONTENT.hero.title);
   const highlightItems = getArray(
@@ -507,7 +520,6 @@ const ContactPage = () => {
 };
 
 export default ContactPage;
-
 
 
 

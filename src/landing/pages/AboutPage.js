@@ -138,9 +138,8 @@ const DEFAULT_CONTENT = {
   contact: {
     title: "Contact",
     company:
-      "Photo Artisto Corp., 1080 Market Street, Suite 500, San Francisco, CA 94103, USA.",
-    details:
-      "Email: hello@schedulaa.com | Support: support@schedulaa.com | Press: press@schedulaa.com",
+      "Photo Artisto Corp., 171 Harbord Street, Toronto, Ontario M5S 1H3, Canada.",
+    details: "Email: admin@schedulaa.com",
   },
 };
 
