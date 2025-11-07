@@ -159,14 +159,30 @@ export const SCHEMA_REGISTRY = {
           { name: "src", type: "image",  label: "Logo image" },
           { name: "alt", type: "text",   label: "Alt text" },
           { name: "label", type: "text", label: "Label (display name)" },
-          { name: "caption", type: "text", label: "Caption (optional)" }
+          { name: "caption", type: "text", label: "Caption (optional)" },
+          { name: "meta", type: "text", label: "Meta (price/stat)" },
+          { name: "description", type: "text", label: "Description", minRows: 2 },
+          { name: "features", type: "arrayOfStrings", label: "Feature bullets" },
+          { name: "ctaText", type: "text", label: "CTA text" },
+          { name: "ctaLink", type: "string", label: "CTA link (URL)" },
+          { name: "highlight", type: "boolean", label: "Highlight card" }
         ]
       },
+      {
+        name: "tabs",
+        type: "objectArray",
+        label: "Tabs",
+        fields: [
+          { name: "label", type: "text", label: "Tab label" },
+          { name: "href", type: "string", label: "Tab link (URL)" }
+        ]
+      },
+      { name: "tabsAlign", type: "select", label: "Tabs alignment", options: ["left","center","right"], default: "center" },
       { name: "supportingText", type: "richinline", label: "Supporting text" },
       { name: "supportingTextAlign", type: "select", label: "Supporting text alignment", options: ["left","center","right"], default: "left" },
       { name: "showLabels", type: "boolean",    label: "Show labels under logos" },
       { name: "monochrome", type: "boolean",    label: "Monochrome (grayscale) logos" },
-      { name: "variant", type: "select", label: "Display style", options: ["grid","badges"], default: "grid" },
+      { name: "variant", type: "select", label: "Display style", options: ["grid","badges","cards"], default: "grid" },
 
       { name: "titleAlign", type: "select",     label: "Title alignment", options: ["left","center","right"], default: "left" },
       { name: "maxWidth",   type: "select",     label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },

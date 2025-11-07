@@ -3,7 +3,17 @@ import React, { useState } from "react";
 import { TextField, IconButton, InputAdornment } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 
-const PasswordField = ({ label, value, onChange, ...props }) => {
+const PasswordField = ({
+  label,
+  value,
+  onChange,
+  autoComplete = "current-password",
+  helperText,
+  InputProps,
+  inputProps,
+  autoFocus,
+  ...rest
+}) => {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -13,17 +23,25 @@ const PasswordField = ({ label, value, onChange, ...props }) => {
       value={value}
       onChange={onChange}
       fullWidth
-      margin="normal"
+      autoComplete={autoComplete}
+      helperText={helperText}
+      autoFocus={autoFocus}
       InputProps={{
+        ...InputProps,
         endAdornment: (
           <InputAdornment position="end">
-            <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+            <IconButton
+              onClick={() => setShowPassword((prev) => !prev)}
+              edge="end"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
               {showPassword ? <VisibilityOff /> : <Visibility />}
             </IconButton>
           </InputAdornment>
         ),
       }}
-      {...props}
+      inputProps={{ autoCapitalize: "none", ...inputProps }}
+      {...rest}
     />
   );
 };

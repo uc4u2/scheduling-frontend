@@ -52,6 +52,7 @@ const sections = [
     title: "Legal",
     links: [
       { label: "Terms of Service", to: "/terms" },
+      { label: "User Agreement", to: "/user-agreement" },
       { label: "Privacy Policy", to: "/privacy" },
       { label: "Cookie Policy", to: "/cookie" },
       { label: "Acceptable Use Policy", to: "/acceptable-use" },
@@ -167,7 +168,7 @@ const Footer = () => {
               {"\u00A9"} {new Date().getFullYear()} Photo Artisto Corp. All rights reserved.
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              1080 Market Street, Suite 500, San Francisco, CA 94103 USA
+              171 Harbord Street, Toronto, Ontario M5S 1H3 Canada
             </Typography>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
@@ -206,4 +207,3 @@ const Footer = () => {
 };
 
 export default Footer;
-

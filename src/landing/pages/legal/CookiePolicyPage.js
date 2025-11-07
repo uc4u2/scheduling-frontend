@@ -39,7 +39,7 @@ const CookiePolicyPage = () => (
       <Stack spacing={2}>
         <Typography variant="h5">4. Updates</Typography>
         <Typography variant="body1" color="text.secondary">
-          We may revise this policy as cookie usage evolves. Contact privacy@schedulaa.com with questions.
+          We may revise this policy as cookie usage evolves. Contact admin@schedulaa.com with questions.
         </Typography>
       </Stack>
     </Stack>

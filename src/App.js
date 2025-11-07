@@ -49,6 +49,7 @@ import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
 import AcceptableUsePage from "./landing/pages/legal/AcceptableUsePage";
 import DataProcessingAddendumPage from "./landing/pages/legal/DataProcessingAddendumPage";
 import SecurityPage from "./landing/pages/legal/SecurityPage";
+import UserAgreementPage from "./landing/pages/legal/UserAgreementPage";
 import CanadaPayrollPage from "./landing/pages/payroll/CanadaPayrollPage";
 import USPayrollPage from "./landing/pages/payroll/USPayrollPage";
 import ROEToolPage from "./landing/pages/payroll/ROEToolPage";
@@ -177,6 +178,7 @@ const MARKETING_PATHS = [
   '/acceptable-use',
   '/data-processing',
   '/security',
+  '/user-agreement',
 ];
 
 const RESERVED_SLUG_PREFIXES = new Set([
@@ -346,6 +348,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/terms" element={<TermsPage />} />
+            <Route path="/user-agreement" element={<UserAgreementPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/cookie" element={<CookiePolicyPage />} />
             <Route path="/acceptable-use" element={<AcceptableUsePage />} />

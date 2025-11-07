@@ -37,21 +37,15 @@ function toArray(val) {
 
 /** Render sanitized (inline) HTML in Typography */
 function HtmlTypo({ variant = "body1", sx, children, ...rest }) {
-  const raw = String(children ?? "");
-  const inferredAlign = (() => {
-    const match = /text-align\s*:\s*(left|center|right|justify)/i.exec(raw);
-    return match ? match[1].toLowerCase() : undefined;
-  })();
-  const html = normalizeInlineHtml(raw);
-  const mergedSx = inferredAlign ? { ...(sx || {}), textAlign: inferredAlign } : sx;
+  const HtmlTypo = ({ children, ...rest }) => {
+  const html = normalizeInlineHtml(String(children ?? ""));
   return (
     <Typography
-      variant={variant}
-      sx={mergedSx}
       {...rest}
       dangerouslySetInnerHTML={{ __html: safeHtml(html) }}
     />
   );
+};
 }
 
 /** Convert schema maxWidth ("full" => false) to MUI Container prop */
@@ -134,7 +128,7 @@ function pageStyleToVars(ps = {}) {
     "--page-btn-color":     has(ps.btnColor)     ? ps.btnColor     : undefined,
     "--page-btn-radius":    ps.btnRadius != null ? `${ps.btnRadius}px` : undefined,
 
-    // secondary accent background
+    // secondary background (accent band)
     "--page-secondary-bg":  has(ps.secondaryBackground) ? ps.secondaryBackground : undefined,
   };
 }
@@ -202,20 +196,13 @@ function usePrefersReducedMotion() {
 
 function useAutoplay(len, interval = 4500, disabled = false) {
   const [index, setIndex] = React.useState(0);
-  const [paused, setPaused] = React.useState(false);
-
+  const pauseRef = React.useRef(false);
   React.useEffect(() => {
-    setIndex(0);
-  }, [len]);
-
-  React.useEffect(() => {
-    if (disabled || len <= 1 || paused) return;
-    const id = setInterval(() => {
-      setIndex((i) => (i + 1) % len);
-    }, interval);
+    if (disabled || len <= 1 || pauseRef.current) return;
+    const id = setInterval(() => setIndex((i) => (i + 1) % len), interval);
     return () => clearInterval(id);
-  }, [len, interval, disabled, paused]);
-
+  }, [len, interval, disabled, index]);
+  const setPaused = (v) => { pauseRef.current = v; };
   return [index, setIndex, setPaused];
 }
 
@@ -257,53 +244,8 @@ const Hero = ({
   contentMaxWidth = "lg",
   gutterX,
   brightness = 1.0,          // NEW: 1.0 = original, >1 = brighter, <1 = darker
-  carousel = false,
-  slides = [],
-  slideInterval = 6000,
 }) => {
-  const slideList = toArray(slides);
-  const hasSlides = carousel && slideList.length > 0;
-  const reducedMotion = usePrefersReducedMotion();
-  const intervalMs = Number(slideInterval) > 0 ? Number(slideInterval) : 6000;
-  const [index, setIndex, setPaused] = useAutoplay(
-    hasSlides ? slideList.length : 1,
-    intervalMs,
-    !hasSlides || reducedMotion
-  );
-
-  const activeSlide = hasSlides ? slideList[index % slideList.length] || {} : {};
-  const bgUrl =
-    (hasSlides
-      ? activeSlide.image || activeSlide.backgroundUrl
-      : backgroundUrl || image) || backgroundUrl || image;
-  const activeOverlay = hasSlides && activeSlide.overlay != null ? activeSlide.overlay : overlay;
-  const activeOverlayColor =
-    hasSlides && activeSlide.overlayColor ? activeSlide.overlayColor : overlayColor;
-  const activeGradient =
-    hasSlides && activeSlide.overlayGradient ? activeSlide.overlayGradient : overlayGradient;
-  const activeBackgroundPosition =
-    hasSlides && activeSlide.backgroundPosition
-      ? activeSlide.backgroundPosition
-      : backgroundPosition;
-  const activeBrightness =
-    hasSlides && activeSlide.brightness != null ? activeSlide.brightness : brightness;
-  const activeEyebrow = hasSlides && activeSlide.eyebrow !== undefined ? activeSlide.eyebrow : eyebrow;
-  const activeHeading = hasSlides && activeSlide.heading !== undefined ? activeSlide.heading : heading;
-  const activeSubheading =
-    hasSlides && activeSlide.subheading !== undefined ? activeSlide.subheading : subheading;
-  const activeCtaText =
-    hasSlides && activeSlide.ctaText !== undefined ? activeSlide.ctaText : ctaText;
-  const activeCtaLink =
-    hasSlides && activeSlide.ctaLink !== undefined ? activeSlide.ctaLink : ctaLink;
-  const activeSecondaryCtaText =
-    hasSlides && activeSlide.secondaryCtaText !== undefined
-      ? activeSlide.secondaryCtaText
-      : secondaryCtaText;
-  const activeSecondaryCtaLink =
-    hasSlides && activeSlide.secondaryCtaLink !== undefined
-      ? activeSlide.secondaryCtaLink
-      : secondaryCtaLink;
-
+  const bgUrl = backgroundUrl || image;
   const textAlign =
     align === "right" ? "right" : align === "left" ? "left" : "center";
 
@@ -321,8 +263,6 @@ const Hero = ({
 
   return (
     <Box
-      onMouseEnter={() => hasSlides && setPaused(true)}
-      onMouseLeave={() => hasSlides && setPaused(false)}
       sx={{
         position: "relative",
         borderRadius: { xs: 0, md: 3 },
@@ -344,10 +284,10 @@ const Hero = ({
             inset: 0,
             backgroundImage: `url(${bgUrl})`,
             backgroundSize: "cover",
-            backgroundPosition: activeBackgroundPosition,
+            backgroundPosition,
             // REMOVED the hidden darkening; use explicit brightness instead
-            ...(activeBrightness && activeBrightness !== 1
-              ? { filter: `brightness(${activeBrightness})` }
+            ...(brightness && brightness !== 1
+              ? { filter: `brightness(${brightness})` }
               : {}),
           }}
         />
@@ -371,18 +311,18 @@ const Hero = ({
         sx={{
           position: "absolute",
           inset: 0,
-          background: colorWithOpacity(activeOverlayColor, clamp(activeOverlay, 0, 1)),
+          background: colorWithOpacity(overlayColor, clamp(overlay, 0, 1)),
           pointerEvents: "none",
         }}
       />
 
       {/* Optional gradient polish */}
-      {activeGradient && (
+      {overlayGradient && (
         <Box
           sx={{
             position: "absolute",
             inset: 0,
-            background: activeGradient,
+            background: overlayGradient,
             pointerEvents: "none",
           }}
         />
@@ -392,13 +332,13 @@ const Hero = ({
         <Box sx={{ position: "relative", zIndex: 2, width: "100%", px: gutterX != null ? `${gutterX}px` : 2 }}>
           <HeroInner
             textAlign={textAlign}
-            eyebrow={activeEyebrow}
-            heading={activeHeading}
-            subheading={activeSubheading}
-            ctaText={activeCtaText}
-            ctaLink={activeCtaLink}
-            secondaryCtaText={activeSecondaryCtaText}
-            secondaryCtaLink={activeSecondaryCtaLink}
+            eyebrow={eyebrow}
+            heading={heading}
+            subheading={subheading}
+            ctaText={ctaText}
+            ctaLink={ctaLink}
+            secondaryCtaText={secondaryCtaText}
+            secondaryCtaLink={secondaryCtaLink}
           />
         </Box>
       ) : (
@@ -406,83 +346,16 @@ const Hero = ({
           <Box sx={{ px: gutterX != null ? `${gutterX}px` : 0 }}>
             <HeroInner
               textAlign={textAlign}
-              eyebrow={activeEyebrow}
-              heading={activeHeading}
-              subheading={activeSubheading}
-              ctaText={activeCtaText}
-              ctaLink={activeCtaLink}
-              secondaryCtaText={activeSecondaryCtaText}
-              secondaryCtaLink={activeSecondaryCtaLink}
+              eyebrow={eyebrow}
+              heading={heading}
+              subheading={subheading}
+              ctaText={ctaText}
+              ctaLink={ctaLink}
+              secondaryCtaText={secondaryCtaText}
+              secondaryCtaLink={secondaryCtaLink}
             />
           </Box>
         </Container>
-      )}
-
-      {hasSlides && slideList.length > 1 && (
-        <>
-          <IconButton
-            aria-label="Previous slide"
-            onClick={() => setIndex((i) => (i - 1 + slideList.length) % slideList.length)}
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: 16,
-              transform: "translateY(-50%)",
-              bgcolor: "rgba(0,0,0,0.55)",
-              color: "#fff",
-              "&:hover": { bgcolor: "rgba(0,0,0,0.75)" }
-            }}
-            size="small"
-          >
-            <ArrowBackIosNewIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            aria-label="Next slide"
-            onClick={() => setIndex((i) => (i + 1) % slideList.length)}
-            sx={{
-              position: "absolute",
-              top: "50%",
-              right: 16,
-              transform: "translateY(-50%)",
-              bgcolor: "rgba(0,0,0,0.55)",
-              color: "#fff",
-              "&:hover": { bgcolor: "rgba(0,0,0,0.75)" }
-            }}
-            size="small"
-          >
-            <ArrowForwardIosIcon fontSize="small" />
-          </IconButton>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              position: "absolute",
-              bottom: 16,
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 3
-            }}
-          >
-            {slideList.map((_, i) => (
-              <Box
-                key={i}
-                onClick={() => setIndex(i)}
-                tabIndex={0}
-                role="button"
-                aria-label={`Go to slide ${i + 1}`}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setIndex(i)}
-                sx={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  bgcolor: i === index ? "#fff" : "rgba(255,255,255,0.4)",
-                  cursor: "pointer",
-                  outlineOffset: 2
-                }}
-              />
-            ))}
-          </Stack>
-        </>
       )}
     </Box>
   );
@@ -622,17 +495,7 @@ const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, m
   </Container>
 );
 
-const ServiceGrid = ({
-  title,
-  subtitle,
-  items = [],
-  ctaText,
-  ctaLink,
-  titleAlign,
-  maxWidth,
-  titleColor,
-  subtitleColor,
-}) => {
+const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign, maxWidth, titleColor, subtitleColor }) => {
   const list = toArray(items);
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
@@ -680,11 +543,7 @@ const ServiceGrid = ({
                 <CardContent>
                   <Typography fontWeight={700}>{toPlain(s.name)}</Typography>
                   {s.description && (
-                    <Typography
-                      color="text.secondary"
-                      variant="body2"
-                      sx={{ mt: 0.5, whiteSpace: "pre-line" }}
-                    >
+                    <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-line" }}>
                       {toPlain(s.description)}
                     </Typography>
                   )}
@@ -921,20 +780,270 @@ const Testimonials = ({ title, items = [], titleAlign, maxWidth }) => {
   );
 };
 
-const PricingTable = ({ title, intro, plans = [], titleAlign, maxWidth }) => {
+const PricingTable = ({
+  title,
+  intro,
+  plans = [],
+  titleAlign,
+  maxWidth,
+  layout,
+  notes,
+  sideImage,
+  sideImageAlt,
+  sideImagePosition = "right",
+  ctaStyle,
+}) => {
   const list = toArray(plans);
+  const align = titleAlign || "left";
+  const normalizedLayout =
+    typeof layout === "string" ? layout.toLowerCase() : "grid";
+
+  const header =
+    title || intro || notes ? (
+      <Stack spacing={1.5} sx={{ mb: 4, textAlign: align }}>
+        {title && (
+          <HtmlTypo variant="h4" sx={{ fontWeight: 800, textAlign: align }}>
+            {title}
+          </HtmlTypo>
+        )}
+        {intro && (
+          <HtmlTypo
+            variant="body1"
+            sx={{ color: "text.secondary", textAlign: align }}
+          >
+            {intro}
+          </HtmlTypo>
+        )}
+        {notes && (
+          <HtmlTypo
+            variant="body2"
+            sx={{ color: "text.secondary", textAlign: align }}
+          >
+            {notes}
+          </HtmlTypo>
+        )}
+      </Stack>
+    ) : null;
+
+  if (normalizedLayout === "frost-grid") {
+    const hasImage = Boolean(sideImage);
+    const placement = (sideImagePosition || "right").toLowerCase();
+    const showLeftImage = hasImage && placement === "left";
+    const showRightImage = hasImage && !showLeftImage;
+
+    const sideImg = hasImage ? (
+      <Box
+        className="pricing-side"
+        sx={{
+          borderRadius: 3,
+          overflow: "hidden",
+          height: "100%",
+          position: "relative",
+        }}
+      >
+        <Box
+          component="img"
+          src={sideImage}
+          alt={toPlain(sideImageAlt) || ""}
+          loading="lazy"
+          sx={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+      </Box>
+    ) : null;
+
+    const plansGrid = (
+      <Box className="pricing-frost">
+        {list.map((p, i) => {
+          const features = toArray(p.features);
+          return (
+            <Box
+              key={i}
+              className={`plan${p.featured ? " featured" : ""}`}
+            >
+              {p.ribbon && (
+                <Typography
+                  className="ribbon"
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 700,
+                    letterSpacing: ".12em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {toPlain(p.ribbon)}
+                </Typography>
+              )}
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                {toPlain(p.name)}
+              </Typography>
+              <Typography className="price" variant="h3">
+                {toPlain(p.price)}
+              </Typography>
+              {features.length > 0 && (
+                <Box className="features">
+                  {features.map((f, idx) => (
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="flex-start"
+                      key={idx}
+                    >
+                      <CheckIcon fontSize="small" />
+                      <Typography variant="body2">
+                        {toPlain(f)}
+                      </Typography>
+                    </Stack>
+                  ))}
+                </Box>
+              )}
+              {p.ctaText && (
+                <Button
+                  href={p.ctaLink || "#"}
+                  className="cta"
+                  variant={
+                    ctaStyle === "pill" || p.featured ? "contained" : "outlined"
+                  }
+                  color={p.featured ? "secondary" : "primary"}
+                >
+                  {toPlain(p.ctaText)}
+                </Button>
+              )}
+            </Box>
+          );
+        })}
+      </Box>
+    );
+
+    return (
+      <Container maxWidth={toContainerMax(maxWidth)}>
+        {header}
+        {hasImage ? (
+          <Grid container spacing={4} alignItems="stretch">
+            {showLeftImage && (
+              <Grid item xs={12} md={4}>
+                {sideImg}
+              </Grid>
+            )}
+            <Grid item xs={12} md={hasImage ? 8 : 12}>
+              {plansGrid}
+            </Grid>
+            {showRightImage && (
+              <Grid item xs={12} md={4}>
+                {sideImg}
+              </Grid>
+            )}
+          </Grid>
+        ) : (
+          plansGrid
+        )}
+      </Container>
+    );
+  }
+
+  if (normalizedLayout === "logo-cards") {
+    return (
+      <Container maxWidth={toContainerMax(maxWidth)}>
+        {header}
+        <Grid
+          container
+          spacing={3}
+          className="pricing-logo-grid"
+          alignItems="stretch"
+        >
+          {list.map((p, i) => (
+            <Grid item xs={12} sm={6} md={4} key={i}>
+              <Card
+                className={`pricing-logo-card${
+                  p.featured ? " featured" : ""
+                }`}
+                sx={{
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  textAlign: "center",
+                  borderRadius: 4,
+                  p: 3,
+                  background: "rgba(6,10,22,0.78)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#f5f7ff",
+                  boxShadow: "0 30px 60px rgba(5,6,20,0.45)",
+                }}
+              >
+                {p.ribbon && (
+                  <Typography
+                    variant="caption"
+                    className="pricing-logo-ribbon"
+                    sx={{
+                      letterSpacing: ".18em",
+                      textTransform: "uppercase",
+                      color: "rgba(196,181,253,0.9)",
+                    }}
+                  >
+                    {toPlain(p.ribbon)}
+                  </Typography>
+                )}
+                <Typography
+                  variant="h6"
+                  className="pricing-logo-name"
+                  sx={{ fontWeight: 800 }}
+                >
+                  {toPlain(p.name)}
+                </Typography>
+                <Typography
+                  variant="h4"
+                  className="pricing-logo-price"
+                  sx={{ fontWeight: 800 }}
+                >
+                  {toPlain(p.price)}
+                </Typography>
+                <Stack
+                  spacing={0.75}
+                  className="pricing-logo-features"
+                  sx={{
+                    textAlign: "left",
+                    mx: "auto",
+                    width: "100%",
+                  }}
+                >
+                  {toArray(p.features).map((f, idx) => (
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      key={idx}
+                    >
+                      <CheckIcon fontSize="small" />
+                      <Typography variant="body2">{toPlain(f)}</Typography>
+                    </Stack>
+                  ))}
+                </Stack>
+                {p.ctaText && (
+                  <Button
+                    href={p.ctaLink || "#"}
+                    className="pricing-logo-cta"
+                    variant="contained"
+                    sx={{ mt: "auto" }}
+                  >
+                    {toPlain(p.ctaText)}
+                  </Button>
+                )}
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
-      {title && (
-        <HtmlTypo variant="h4" sx={{ mb: 1, fontWeight: 800, textAlign: titleAlign || "left" }}>
-          {title}
-        </HtmlTypo>
-      )}
-      {intro && (
-        <HtmlTypo variant="body1" sx={{ mb: 2, color: "text.secondary", textAlign: titleAlign || "left" }}>
-          {intro}
-        </HtmlTypo>
-      )}
+      {header}
       <Grid container spacing={2}>
         {list.map((p, i) => (
           <Grid item xs={12} md={4} key={i}>
@@ -944,7 +1053,7 @@ const PricingTable = ({ title, intro, plans = [], titleAlign, maxWidth }) => {
                 borderWidth: p.featured ? 2 : 1,
                 borderStyle: "solid",
                 borderColor: p.featured ? "primary.main" : "divider",
-                boxShadow: p.featured ? 6 : 1
+                boxShadow: p.featured ? 6 : 1,
               }}
             >
               <CardContent>
@@ -1004,15 +1113,15 @@ const FAQ = ({ title, items = [], titleAlign, maxWidth }) => {
           </AccordionSummary>
           <AccordionDetails>
             {q.answer ? (
-              <HtmlTypo variant="body2" sx={{ color: "text.secondary" }}>
+              <HtmlTypo variant="body2" sx={{ color: "inherit" }}>
                 {q.answer}
               </HtmlTypo>
             ) : null}
           </AccordionDetails>
-        </Accordion>
-      ))}
-    </Container>
-  );
+       </Accordion>
+     ))}
+   </Container>
+ );
 };
 
 const CTA = ({ title, subtitle, buttonText, buttonLink, titleAlign, maxWidth }) => (
@@ -1179,6 +1288,13 @@ const normalizeLogoItem = (item) => {
     return {
       src: item.src || null,
       label,
+      caption: item.caption ?? item.subtitle ?? "",
+      meta: item.meta ?? item.price ?? "",
+      description: item.description ?? "",
+      ctaText: item.ctaText ?? item.cta ?? "",
+      ctaLink: item.ctaLink ?? item.href ?? "",
+      highlight: Boolean(item.highlight ?? item.featured),
+      features: toArray(item.features),
     };
   }
   return null;
@@ -1196,16 +1312,26 @@ const LogoCloud = ({
   supportingTextAlign,
   variant = "grid",
   badgeStyle = {},
+  tabs = [],
+  tabsAlign = "center",
 }) => {
-  const entries = toArray(logos).map((logo) => {
-    const isObj = logo && typeof logo === "object";
-    const rawLabel = isObj ? logo.label || logo.alt || "" : logo || "";
-    const label = toPlain(rawLabel);
-    const captionText = toPlain(isObj ? logo.caption || "" : "");
-    const src = isObj && typeof logo.src === "string" ? logo.src : "";
-    const alt = toPlain(isObj ? logo.alt || rawLabel : rawLabel);
-    return { label, caption: captionText, src, alt };
-  });
+  const entries = toArray(logos)
+    .map(normalizeLogoItem)
+    .filter((item) => item && (item?.src || item?.label || item?.caption));
+
+  const tabEntries = toArray(tabs)
+    .map((tab) => {
+      if (!tab) return null;
+      if (typeof tab === "string") return { label: tab, href: "#" };
+      if (typeof tab === "object") {
+        return {
+          label: tab.label || tab.name || tab.title || "",
+          href: tab.href || tab.link || tab.to || "#",
+        };
+      }
+      return null;
+    })
+    .filter((tab) => tab && tab.label);
 
   const normalizedVariant = typeof variant === "string" ? variant.toLowerCase() : "grid";
   const hasEntries = entries.length > 0;
@@ -1228,10 +1354,10 @@ const LogoCloud = ({
               justifyContent: "center",
             }}
           >
-            {item.src ? (
+            {item?.src ? (
               <img
                 src={item.src}
-                alt={item.alt}
+                alt={item.alt || item.label || ""}
                 loading="lazy"
                 style={{
                   maxWidth: "100%",
@@ -1275,6 +1401,17 @@ const LogoCloud = ({
         return { textAlign: "right", ml: "auto" };
       default:
         return { textAlign: "left" };
+    }
+  };
+
+  const justifyFromAlign = (align) => {
+    switch (align) {
+      case "center":
+        return "center";
+      case "right":
+        return "flex-end";
+      default:
+        return "flex-start";
     }
   };
 
@@ -1332,6 +1469,116 @@ const LogoCloud = ({
     );
   };
 
+  const renderCards = () => (
+    <Grid
+      container
+      spacing={3}
+      className="logo-cloud-card-grid"
+      alignItems="stretch"
+    >
+      {entries.map((item, idx) => {
+        const features = toArray(item.features);
+        return (
+          <Grid item xs={12} sm={6} md={3} key={idx}>
+            <Card
+              elevation={0}
+              className={`logo-cloud-card${item.highlight ? " featured" : ""}`}
+              sx={{
+                height: "100%",
+                borderRadius: 4,
+                p: 3,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                textAlign: "center",
+                "& .logo-cloud-card-label": {
+                  fontSize: ".95rem",
+                  fontWeight: 800,
+                  letterSpacing: ".22em",
+                },
+                "& .logo-cloud-card-meta": {
+                  fontSize: "2.5rem",
+                  fontWeight: 800,
+                  letterSpacing: "-0.02em",
+                },
+                "& .logo-cloud-card-caption": {
+                  fontSize: "1rem",
+                  fontWeight: 600,
+                },
+              }}
+            >
+              {item.label && (
+                <Typography
+                  variant="subtitle2"
+                  className="logo-cloud-card-label"
+                  sx={{ letterSpacing: ".12em", textTransform: "uppercase" }}
+                >
+                  {item.label}
+                </Typography>
+              )}
+              {item.meta && (
+                <Typography
+                  variant="h4"
+                  className="logo-cloud-card-meta"
+                  sx={{ fontWeight: 800 }}
+                >
+                  {item.meta}
+                </Typography>
+              )}
+              {item.caption && (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  className="logo-cloud-card-caption"
+                >
+                  {item.caption}
+                </Typography>
+              )}
+              {item.description && (
+                <Typography
+                  variant="body2"
+                  className="logo-cloud-card-description"
+                  sx={{ color: "text.primary", opacity: 0.85 }}
+                >
+                  {item.description}
+                </Typography>
+              )}
+              {features.length > 0 && (
+                <Stack
+                  spacing={0.75}
+                  className="logo-cloud-card-features"
+                  sx={{ textAlign: "left", mx: "auto" }}
+                >
+                  {features.map((f, i) => (
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      key={i}
+                    >
+                      <CheckIcon fontSize="small" />
+                      <Typography variant="body2">{toPlain(f)}</Typography>
+                    </Stack>
+                  ))}
+                </Stack>
+              )}
+              {item.ctaText && (
+                <Button
+                  href={item.ctaLink || "#"}
+                  className="logo-cloud-card-cta"
+                  variant="contained"
+                  sx={{ mt: "auto" }}
+                >
+                  {item.ctaText}
+                </Button>
+              )}
+            </Card>
+          </Grid>
+        );
+      })}
+    </Grid>
+  );
+
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
@@ -1373,7 +1620,39 @@ const LogoCloud = ({
           {supportingText}
         </HtmlTypo>
       )}
-      {hasEntries && (normalizedVariant === "badges" ? renderBadges() : renderGrid())}
+      {tabEntries.length > 0 && (
+        <Stack
+          direction="row"
+          spacing={1.5}
+          flexWrap="wrap"
+          justifyContent={justifyFromAlign(tabsAlign || resolvedTitleAlign)}
+          sx={{ mb: 3 }}
+        >
+          {tabEntries.map((tab, idx) => (
+            <Button
+              key={idx}
+              href={tab.href || "#"}
+              variant="outlined"
+              className="logo-cloud-tabs-button"
+              size="small"
+              sx={{
+                textTransform: "uppercase",
+                letterSpacing: ".2em",
+                fontWeight: 700,
+                borderRadius: 999,
+              }}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </Stack>
+      )}
+      {hasEntries &&
+        (normalizedVariant === "badges"
+          ? renderBadges()
+          : normalizedVariant === "cards"
+          ? renderCards()
+          : renderGrid())}
     </Container>
   );
 };
@@ -1840,15 +2119,21 @@ const FeatureStories = ({
 
   if (!entries.length) return null;
 
-  const padding = Number(card?.padding ?? 26);
-  const radius = Number(card?.radius ?? 16);
-  const gap = Number(card?.gap ?? 32);
-  const maxContainer = Number(card?.maxWidth ?? 1160);
+  const rawPadding = card?.padding ?? 26;
+  const padding = typeof rawPadding === "number" ? `${rawPadding}px` : rawPadding;
+  const rawRadius = card?.radius ?? 16;
+  const radius = typeof rawRadius === "number" ? `${rawRadius}px` : rawRadius;
+  const rawGap = card?.gap ?? 32;
+  const gap = typeof rawGap === "number" ? Number(rawGap) : rawGap;
+  const gapXs = card?.gapXs ?? (typeof gap === "number" ? Math.min(gap, 28) : gap);
+  const rawMaxContainer = card?.maxWidth ?? 1160;
+  const maxContainer = typeof rawMaxContainer === "number" ? `${rawMaxContainer}px` : rawMaxContainer;
   const sectionBackground = card?.sectionBackground || "linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)";
 
   const cardSurface = card?.surface || "#ffffff";
   const cardBorder = card?.borderColor || "rgba(15,23,42,0.08)";
   const cardShadow = card?.shadow || "0 10px 24px rgba(15,23,42,0.12)";
+  const cardShadowHover = card?.shadowHover || "0 20px 42px rgba(15,23,42,0.18)";
   const headingColor = card?.headingColor || "#0f172a";
   const bodyColor = card?.bodyColor || "rgba(51,65,85,0.88)";
   const badgeBg = card?.badgeBg || "rgba(37,99,235,0.16)";
@@ -1860,6 +2145,19 @@ const FeatureStories = ({
   const legendColor = card?.legendColor || "rgba(15,23,42,0.7)";
   const metricBg = card?.metricBg || "rgba(255,255,255,0.18)";
   const metricColor = card?.metricColor || "#0f172a";
+  const blur = Number(card?.blur ?? 0);
+  const columnMinWidth = Number(card?.columnMinWidth ?? 320);
+  const columnCount = Number.isFinite(Number(card?.columns)) && Number(card?.columns) > 0 ? Number(card?.columns) : 3;
+  const gridTemplateMd = card?.gridTemplateMd || `repeat(auto-fit, minmax(${columnMinWidth}px, 1fr))`;
+  const gridTemplateLg =
+    card?.gridTemplateLg || (Number.isFinite(columnCount) && columnCount > 0 ? `repeat(${columnCount}, minmax(${columnMinWidth}px, 1fr))` : `repeat(auto-fit, minmax(${columnMinWidth}px, 1fr))`);
+  const headingSize = card?.headingSize || "1.25rem";
+  const bodyFontSize = card?.bodyFontSize || "1rem";
+  const bodyLineHeight = Number(card?.bodyLineHeight ?? 1.6);
+  const bulletFontSize = card?.bulletFontSize || bodyFontSize;
+  const bulletLineHeight = Number(card?.bulletLineHeight ?? 1.6);
+  const bulletGap = Number(card?.bulletGap ?? 10);
+  const chipFontSize = card?.chipFontSize || 12;
 
   const Legend = () =>
     legend.length ? (
@@ -1906,11 +2204,11 @@ const FeatureStories = ({
       <Container
         maxWidth={false}
         sx={{
-          maxWidth: maxContainer,
-          mx: "auto",
-          px: { xs: 2, md: 4 },
-          py: { xs: 8, md: 12 },
-        }}
+        maxWidth: maxContainer,
+        mx: "auto",
+        px: { xs: 2, md: 4 },
+        py: { xs: 8, md: 12 },
+      }}
       >
         {title && (
           <HtmlTypo
@@ -1946,11 +2244,14 @@ const FeatureStories = ({
         <Box
           sx={{
             display: "grid",
-            gap: { xs: 3, md: `${gap}px` },
+            gap: {
+              xs: typeof gapXs === "number" ? `${gapXs}px` : gapXs,
+              md: typeof gap === "number" ? `${gap}px` : gap,
+            },
             gridTemplateColumns: {
               xs: "repeat(1, minmax(0, 1fr))",
-              sm: "repeat(2, minmax(0, 1fr))",
-              lg: "repeat(3, minmax(320px, 1fr))",
+              md: gridTemplateMd,
+              lg: gridTemplateLg,
             },
           }}
         >
@@ -1978,8 +2279,14 @@ const FeatureStories = ({
                   transition: "transform 0.25s ease, box-shadow 0.25s ease",
                   '&:hover': {
                     transform: 'translateY(-6px)',
-                    boxShadow: '0 20px 42px rgba(15,23,42,0.18)',
+                    boxShadow: cardShadowHover,
                   },
+                  ...(blur
+                    ? {
+                        backdropFilter: `blur(${blur}px)`,
+                        WebkitBackdropFilter: `blur(${blur}px)`,
+                      }
+                    : {}),
                 }}
               >
                 <Stack direction="row" spacing={1.5} alignItems="center">
@@ -2005,12 +2312,12 @@ const FeatureStories = ({
                   </Typography>
                 </Stack>
                 {story.title && (
-                  <Typography variant="h5" sx={{ fontSize: "1.2rem", fontWeight: 700, color: headingColor, letterSpacing: "-0.01em" }}>
+                  <Typography variant="h5" sx={{ fontSize: headingSize, fontWeight: 700, color: headingColor, letterSpacing: "-0.01em" }}>
                     {toPlain(story.title)}
                   </Typography>
                 )}
                 {story.description && (
-                  <Typography variant="body1" sx={{ color: bodyColor, lineHeight: 1.6 }}>
+                  <Typography variant="body1" sx={{ color: bodyColor, fontSize: bodyFontSize, lineHeight: bodyLineHeight }}>
                     {toPlain(story.description)}
                   </Typography>
                 )}
@@ -2019,14 +2326,14 @@ const FeatureStories = ({
                     component="ul"
                     sx={{
                       m: 0,
-                      mt: 2,
+                      mt: "16px",
                       p: 0,
                       listStyle: "none",
                       display: "flex",
                       flexDirection: "column",
-                      gap: 1,
+                      gap: `${bulletGap}px`,
                       color: bodyColor,
-                      fontSize: "0.95rem",
+                      fontSize: bulletFontSize,
                     }}
                   >
                     {story.bullets.map((bullet, bulletIdx) => (
@@ -2036,6 +2343,7 @@ const FeatureStories = ({
                         sx={{
                           position: "relative",
                           pl: 2,
+                          lineHeight: bulletLineHeight,
                           '&::before': {
                             content: '""',
                             position: "absolute",
@@ -2068,7 +2376,7 @@ const FeatureStories = ({
                           backgroundColor: chipBgDefault,
                           color: chipColorDefault,
                           border: `1px solid ${chipBorderDefault}`,
-                          fontSize: 12,
+                          fontSize: chipFontSize,
                           fontWeight: 600,
                         }}
                       >
@@ -2440,7 +2748,7 @@ const Footer = ({ text, maxWidth }) => (
 const BookingCtaBar = ({
   text = "Ready to book?",
   buttonText = "See availability",
-  buttonLink = "?page=services-classic"
+  buttonLink = "/services"
 }) => (
   <Box sx={{ position: "sticky", bottom: 16, zIndex: 1200 }}>
     <Container maxWidth="lg">
