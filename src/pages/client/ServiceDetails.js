@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../utils/api";
 import { formatCurrency } from "../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, resolveActiveCurrencyFromCompany, getActiveCurrency } from "../../utils/currency";
@@ -17,6 +17,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   IconButton,
   Paper,
   Chip,
@@ -25,6 +26,8 @@ import {
   CardContent,
   Avatar,
   Collapse,
+  useMediaQuery,
+  SwipeableDrawer,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useTheme, alpha } from "@mui/material/styles";
@@ -111,6 +114,8 @@ export default function ServiceDetails() {
   const departmentId = searchParams.get("department_id") || "";
   const navigate = useNavWithEmbed();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTabletDown = useMediaQuery(theme.breakpoints.down("md"));
   const buttonPalette = {
     bg: "var(--page-btn-bg, var(--sched-primary))",
     text: "var(--page-btn-color, #ffffff)",
@@ -121,6 +126,16 @@ export default function ServiceDetails() {
   const buttonShadowVar = "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))";
   const buttonShadowHoverVar = "var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))";
   const buttonSoftBg = buttonPalette.soft;
+  const calendarAccent = "var(--page-calendar-accent, var(--page-btn-bg, var(--sched-primary)))";
+  const calendarAccentContrast = "var(--page-calendar-accent-contrast, var(--page-btn-color, #ffffff))";
+  const calendarSurface = "var(--page-calendar-surface, var(--page-card-bg, var(--page-secondary-bg, var(--page-surface-bg, #ffffff))))";
+  const calendarBorder = "var(--page-border-color, rgba(15,23,42,0.12))";
+  const calendarFocus = "var(--page-focus-ring, var(--page-btn-bg, var(--sched-primary)))";
+  const calendarText = "var(--page-body-color, inherit)";
+  const focusRingStyles = {
+    outline: `2px solid ${calendarFocus}`,
+    outlineOffset: 2,
+  };
 
   const bookingButtonSx = {
     backgroundColor: buttonPalette.bg,
@@ -135,6 +150,7 @@ export default function ServiceDetails() {
       color: buttonPalette.text,
       boxShadow: buttonShadowHoverVar,
     },
+    '&:focus-visible': focusRingStyles,
   };
 
   const bookingButtonOutlinedSx = {
@@ -148,9 +164,20 @@ export default function ServiceDetails() {
       borderColor: buttonPalette.hover,
       color: buttonPalette.text,
     },
+    '&:focus-visible': focusRingStyles,
   };
 
-
+  const dialogContentRef = useRef(null);
+  const timesRef = useRef(null);
+  const providersRef = useRef(null);
+  const actionsRef = useRef(null);
+  const focusTimeoutRef = useRef(null);
+  const [providerSheetOpen, setProviderSheetOpen] = useState(false);
+  const [timeSheetOpen, setTimeSheetOpen] = useState(false);
+  const [providerAnnounce, setProviderAnnounce] = useState("");
+  const [timeAnnounce, setTimeAnnounce] = useState("");
+  const AUTO_SELECT_FIRST_TIME = true;
+  const [actionsHeight, setActionsHeight] = useState(120);
   /* base data */
   const [service, setService] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -185,6 +212,70 @@ export default function ServiceDetails() {
 
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const money = (value, currencyCode) => formatCurrency(value, currencyCode || displayCurrency);
+  const scrollSectionIntoView = useCallback(
+    (target) => {
+      if (isMobile || typeof window === "undefined") return;
+      const scroller = dialogContentRef.current;
+      if (!target || !scroller) return;
+      window.requestAnimationFrame(() => {
+        const scrollerRect = scroller.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const footerH = actionsRef.current?.offsetHeight || 0;
+        const offset =
+          targetRect.top - scrollerRect.top + scroller.scrollTop - 16 - footerH;
+        scroller.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
+      });
+    },
+    [isMobile]
+  );
+
+  const scrollProvidersIntoView = useCallback(() => {
+    if (typeof window === "undefined" || isMobile) return;
+    const target = providersRef.current;
+    if (!target) return;
+    scrollSectionIntoView(target);
+
+    if (focusTimeoutRef.current) {
+      clearTimeout(focusTimeoutRef.current);
+    }
+    focusTimeoutRef.current = window.setTimeout(() => {
+      target.focus({ preventScroll: true });
+      const firstFocusable = target.querySelector(
+        "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
+      );
+      firstFocusable?.focus({ preventScroll: true });
+    }, 250);
+  }, [isMobile, scrollSectionIntoView]);
+
+  useEffect(() => {
+    return () => {
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!calendarOpen) {
+      setTimeSheetOpen(false);
+      setProviderSheetOpen(false);
+    }
+  }, [calendarOpen]);
+
+  useEffect(() => {
+    if (!calendarOpen) return;
+    const measure = () => {
+      if (actionsRef.current) {
+        setActionsHeight(actionsRef.current.offsetHeight || 0);
+      }
+    };
+    measure();
+    if (typeof ResizeObserver !== "undefined" && actionsRef.current) {
+      const observer = new ResizeObserver(measure);
+      observer.observe(actionsRef.current);
+      return () => observer.disconnect();
+    }
+  }, [calendarOpen]);
 
   /* ───────── load service + employees ───────── */
   useEffect(() => {
@@ -212,6 +303,9 @@ export default function ServiceDetails() {
     const today = ymd(new Date());
     setMonthView(new Date());
     setSelectedDate(today);
+    setSelectedTimeKey("");
+    setProviderSheetOpen(false);
+    setTimeSheetOpen(false);
   }, [calendarOpen]);
 
   /* helper: fetch availability for one employee + one date (canonical route, with safe fallback) */
@@ -409,13 +503,32 @@ export default function ServiceDetails() {
   }, [calendarOpen, selectedDate, employees, slug, serviceId, departmentId]);
 
   /* time click → open/close inline provider picker */
-  const handleTimeClick = (slot) => {
-    const key = slot.key; // start_utc key
-    setSelectedTimeKey((prev) => (prev === key ? "" : key));
-  };
+  const selectTimeSlot = useCallback(
+    (slot, { force = false } = {}) => {
+      if (!slot) return;
+      const key = slot.key;
+      setSelectedTimeKey((prev) => {
+        const same = prev === key;
+        if (!force && same) {
+          if (isMobile) {
+            setProviderSheetOpen(false);
+            setTimeSheetOpen(false);
+          }
+          return "";
+        }
+        if (isMobile) {
+          setTimeSheetOpen(false);
+          setProviderSheetOpen(true);
+        }
+        return key;
+      });
+    },
+    [isMobile]
+  );
 
   const handleArtistSelect = (artist) => {
     if (!selectedSlot) return;
+    setProviderSheetOpen(false);
 
     // Compute provider-local date/time from start_utc (explicit slot TZ)
     const provTz = artist.timezone || "UTC";
@@ -435,12 +548,217 @@ export default function ServiceDetails() {
     setCalendarOpen(false);
   };
 
+  const handleJumpToProviders = () => {
+    if (!selectedSlot) return;
+    if (isMobile) {
+      setProviderSheetOpen(true);
+      return;
+    }
+    scrollProvidersIntoView();
+  };
+
+  const timeDrawerOpen = Boolean(isMobile && timeSheetOpen && calendarOpen);
+  const providerDrawerOpen = Boolean(isMobile && providerSheetOpen && selectedSlot);
+  const handleTimeSheetClose = () => setTimeSheetOpen(false);
+  const handleProviderSheetClose = () => setProviderSheetOpen(false);
+
+  const buildTimeChipSx = (selected, variant = "inline") => ({
+    borderRadius: 999,
+    textTransform: "none",
+    fontWeight: 700,
+    border: `1px solid ${selected ? calendarAccent : calendarBorder}`,
+    backgroundColor: selected ? calendarAccent : "transparent",
+    color: selected ? calendarAccentContrast : calendarText,
+    px: 2,
+    boxShadow: selected ? buttonShadowVar : "none",
+    transition: "all .2s ease",
+    width: variant === "drawer" ? "100%" : "auto",
+    "&:hover": {
+      backgroundColor: selected ? calendarAccent : buttonSoftBg,
+      borderColor: calendarAccent,
+      color: selected ? calendarAccentContrast : calendarText,
+    },
+    "&:focus-visible": focusRingStyles,
+  });
+
+  const ProviderListContent = ({ variant = "inline" }) => {
+    if (!selectedSlot) {
+      return (
+        <Typography color="text.secondary" sx={{ p: 1 }}>
+          Choose a time to see available providers.
+        </Typography>
+      );
+    }
+
+    const providerCount = selectedSlot.providers?.length || 0;
+    const list = selectedSlot.providers || [];
+    const headerBg = "var(--page-card-bg, var(--page-surface-bg, #ffffff))";
+
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          borderRadius: 2,
+          width: "100%",
+          border: variant === "inline" ? `1px solid ${calendarBorder}` : "none",
+          backgroundColor:
+            variant === "inline"
+              ? "var(--page-secondary-bg, var(--page-card-bg, var(--page-surface-bg, #ffffff)))"
+              : calendarSurface,
+          maxHeight: variant === "drawer" ? "60vh" : "none",
+          overflowY: variant === "drawer" ? "auto" : "visible",
+          overflowX: "hidden",
+        }}
+      >
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          spacing={1.5}
+          sx={{
+            mb: 1.5,
+            borderRadius: 2,
+            border: `1px solid ${calendarBorder}`,
+            backgroundColor: headerBg,
+            px: 1.5,
+            py: 1,
+          }}
+        >
+          <Typography variant="subtitle1" fontWeight={700} color={calendarText}>
+            Choose a Provider — {prettyDate(selectedSlot?.date)} · {timeFromUTCForViewer(selectedSlot?.start_utc)}
+          </Typography>
+          <Chip
+            size="small"
+            label={
+              providerCount === 1
+                ? "1 provider available"
+                : `${providerCount} providers available`
+            }
+            sx={{
+              borderRadius: 999,
+              fontWeight: 600,
+              backgroundColor: "var(--page-btn-bg-soft, rgba(15,23,42,0.12))",
+              color: calendarText,
+            }}
+          />
+        </Stack>
+
+        {providerCount === 0 ? (
+          <Alert severity="info">No providers available at this time. Please choose another slot.</Alert>
+        ) : (
+          <Stack spacing={1.25}>
+            {list.map((p) => (
+              <Stack
+                key={p.id}
+                direction="row"
+                spacing={1.25}
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
+                  <Avatar sx={{ width: 40, height: 40 }}>
+                    {p.full_name?.[0] || "•"}
+                  </Avatar>
+                  <Box minWidth={0}>
+                    <Typography noWrap fontWeight={700} title={p.full_name}>
+                      {p.full_name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap>
+                      {p.start_time_local} • {service?.name}
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => handleArtistSelect(p)}
+                  sx={{
+                    ...bookingButtonSx,
+                    px: 1.75,
+                    py: 0.75,
+                    minWidth: 0,
+                    width: "auto",
+                  }}
+                >
+                  Select
+                </Button>
+              </Stack>
+            ))}
+          </Stack>
+        )}
+      </Paper>
+    );
+  };
+
+  const TimeListContent = ({ variant = "inline" }) => {
+    if (!selectedDate) {
+      return (
+        <Typography color="text.secondary" sx={{ p: 1 }}>
+          Select a date to view available times.
+        </Typography>
+      );
+    }
+
+    if (daySlots.length === 0) {
+      return (
+        <Alert severity="info" sx={{ mb: variant === "drawer" ? 2 : 0 }}>
+          No available times for this date. Choose another day.
+        </Alert>
+      );
+    }
+
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 1.2,
+          pb: variant === "drawer" ? 1 : 0,
+          width: "100%",
+          overflowX: "hidden",
+        }}
+      >
+        {daySlots.map((s) => {
+          const selected = s.key === selectedTimeKey;
+          return (
+            <Button
+              key={s.key}
+              size="small"
+              onClick={() => selectTimeSlot(s)}
+              sx={buildTimeChipSx(selected, variant)}
+              title={
+                s.count > 1
+                  ? `${s.count} providers available at this time`
+                  : "1 provider available at this time"
+              }
+            >
+              {timeFromUTCForViewer(s.start_utc)}
+              {s.count > 1 ? ` • ${s.count}` : ""}
+            </Button>
+          );
+        })}
+      </Box>
+    );
+  };
+
   /* month grid helpers */
   const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
   const daysInMonth = (view) =>
     new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
   const firstWeekday = (view) =>
     new Date(view.getFullYear(), view.getMonth(), 1).getDay();
+
+  const handleDateSelect = useCallback(
+    (newDate) => {
+      if (!newDate) return;
+      setSelectedDate((prev) => (prev === newDate ? prev : newDate));
+      setSelectedTimeKey("");
+      setProviderSheetOpen(false);
+      setTimeSheetOpen(false);
+    },
+    []
+  );
 
   const dayCell = (dNum) => {
     const d = new Date(monthView.getFullYear(), monthView.getMonth(), dNum);
@@ -452,15 +770,14 @@ export default function ServiceDetails() {
     const hasAvail = availableMap[ymdStr] === true;
 
     const slotBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
-    const dotColor = buttonPalette.bg || theme.palette.success.main;
+    const dotColor = calendarAccent;
 
     return (
       <Box
         key={dNum}
         onClick={() => {
           if (!isPast) {
-            setSelectedDate(ymdStr); // triggers fetch for that day
-            setSelectedTimeKey(""); // collapse picker on date change
+            handleDateSelect(ymdStr); // triggers fetch for that day
           }
         }}
         sx={{
@@ -471,14 +788,15 @@ export default function ServiceDetails() {
           justifyContent: "center",
           borderRadius: 1.2,
           cursor: isPast ? "default" : "pointer",
-          border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
-          bgcolor: isSelected ? slotBg : "transparent",
-          color: isPast ? "text.disabled" : "text.primary",
+          border: `1px solid ${calendarBorder}`,
+          bgcolor: isSelected ? calendarAccent : "transparent",
+          color: isSelected ? calendarAccentContrast : isPast ? "text.disabled" : calendarText,
           "&:hover": {
             bgcolor: isPast
               ? "transparent"
-              : alpha(theme.palette.action.hover, 0.6),
+              : slotBg,
           },
+          transition: "background-color .15s ease, color .15s ease, border-color .15s ease",
         }}
       >
         <Typography variant="body2" sx={{ fontWeight: isSelected ? 700 : 500 }}>
@@ -503,6 +821,70 @@ export default function ServiceDetails() {
       </Box>
     );
   };
+
+  useEffect(() => {
+    if (!selectedSlot || !calendarOpen) {
+      setProviderSheetOpen(false);
+      setProviderAnnounce("");
+      return;
+    }
+    const count = selectedSlot.providers?.length || 0;
+    if (!count) {
+      setProviderAnnounce("No providers available for this time.");
+    } else {
+      setProviderAnnounce(count === 1 ? "1 provider available" : `${count} providers available`);
+    }
+  }, [selectedSlot, calendarOpen]);
+
+  useEffect(() => {
+    if (!calendarOpen || isMobile) return;
+    if (selectedSlot?.providers?.length) {
+      scrollProvidersIntoView();
+    }
+  }, [selectedSlot, calendarOpen, isMobile, scrollProvidersIntoView]);
+
+  useEffect(() => {
+    if (!calendarOpen || !selectedDate) {
+      setTimeAnnounce("");
+      return;
+    }
+    const count = daySlots.length;
+    setTimeAnnounce(
+      count ? `${count} time${count === 1 ? "" : "s"} available` : "No times available for this date"
+    );
+
+    if (!count) {
+      if (isMobile) {
+        setTimeSheetOpen(false);
+      }
+      return;
+    }
+
+    if (isMobile) {
+      setTimeSheetOpen(true);
+      return;
+    }
+
+    const target = timesRef.current;
+    if (!target) return;
+    scrollSectionIntoView(target);
+
+    let focusTimer = typeof window !== "undefined" ? window.setTimeout(() => {
+      const firstChip = target.querySelector(
+        'button[role="radio"],button,[tabindex]:not([tabindex="-1"])'
+      );
+      firstChip?.focus({ preventScroll: true });
+      if (AUTO_SELECT_FIRST_TIME && !selectedTimeKey && daySlots[0]) {
+        selectTimeSlot(daySlots[0], { force: true });
+      }
+    }, 220) : null;
+
+    return () => {
+      if (focusTimer && typeof window !== "undefined") {
+        window.clearTimeout(focusTimer);
+      }
+    };
+  }, [daySlots, calendarOpen, selectedDate, isMobile, selectTimeSlot, selectedTimeKey, scrollSectionIntoView]);
 
   /* guards */
   if (loading) {
@@ -537,33 +919,47 @@ export default function ServiceDetails() {
 
   /* UI */
   const page = (
-    <Container sx={{ my: { xs: 3, md: 6 } }}>
+    <Container maxWidth="md" sx={{ my: { xs: 3, md: 6 } }}>
       {/* Service header */}
       <Paper
         elevation={0}
         sx={{
           borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+          border: `1px solid ${calendarBorder}`,
           overflow: "hidden",
           mb: 3,
+          backgroundColor: calendarSurface,
         }}
       >
         <Box
           sx={{
             px: 3,
             py: 2.25,
-            background: `linear-gradient(90deg, ${alpha(
-              theme.palette.primary.main,
-              0.12
-            )} 0%, ${alpha(theme.palette.primary.light, 0.08)} 100%)`,
+            backgroundColor: "var(--page-secondary-bg, var(--page-card-bg, var(--page-surface-bg, #ffffff)))",
           }}
         >
           <Typography variant="h4" fontWeight={800}>
             {service.name}
           </Typography>
           <Stack direction="row" spacing={1} sx={{ mt: 1.25, flexWrap: "wrap" }}>
-            <Chip label={`Duration: ${service.duration} min`} />
-            <Chip label={`Price: ${money(service.base_price)}`} />
+            <Chip
+              label={`Duration: ${service.duration} min`}
+              sx={{
+                borderRadius: 999,
+                fontWeight: 600,
+                backgroundColor: "var(--page-btn-bg-soft, rgba(15,23,42,0.12))",
+                color: calendarText,
+              }}
+            />
+            <Chip
+              label={`Price: ${money(service.base_price)}`}
+              sx={{
+                borderRadius: 999,
+                fontWeight: 600,
+                backgroundColor: calendarAccent,
+                color: calendarAccentContrast,
+              }}
+            />
           </Stack>
         </Box>
         <Box sx={{ px: 3, py: 2 }}>
@@ -584,20 +980,34 @@ export default function ServiceDetails() {
         {employees.length === 0 ? (
           <Typography>No providers available for this service.</Typography>
         ) : (
-          <List>
+          <List disablePadding>
             {employees.map((emp) => (
               <ListItem
                 key={emp.id}
                 sx={{
                   borderRadius: 2,
-                  border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+                  border: `1px solid ${calendarBorder}`,
                   mb: 1.5,
+                  alignItems: "flex-start",
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: { xs: 1.5, sm: 0 },
+                  backgroundColor: "var(--page-card-bg, transparent)",
+                  transition: "background-color .2s ease, border-color .2s ease",
                   "&:hover": {
-                    backgroundColor: alpha(theme.palette.action.hover, 0.6),
+                    backgroundColor: "var(--page-btn-bg-soft, rgba(15,23,42,0.08))",
+                    borderColor: calendarAccent,
                   },
                 }}
-                secondaryAction={
+              >
+                <ListItemText
+                  primaryTypographyProps={{ fontWeight: 600 }}
+                  primary={emp.full_name}
+                  secondary={emp.bio || "No bio available."}
+                />
+                <Box sx={{ width: { xs: "100%", sm: "auto" } }}>
                   <Button
+                    fullWidth={isMobile}
                     variant="outlined"
                     sx={bookingButtonOutlinedSx}
                     onClick={() =>
@@ -609,13 +1019,7 @@ export default function ServiceDetails() {
                   >
                     View & Book
                   </Button>
-                }
-              >
-                <ListItemText
-                  primaryTypographyProps={{ fontWeight: 600 }}
-                  primary={emp.full_name}
-                  secondary={emp.bio || "No bio available."}
-                />
+                </Box>
               </ListItem>
             ))}
           </List>
@@ -639,27 +1043,71 @@ export default function ServiceDetails() {
       <Dialog
         fullWidth
         maxWidth="md"
+        scroll="paper"
+        fullScreen={isTabletDown}
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: isTabletDown ? 0 : 3,
+            backgroundColor: calendarSurface,
+            backgroundImage: "none",
+          },
+        }}
+        BackdropProps={{
+          sx: { backgroundColor: alpha(theme.palette.common.black, 0.6) },
+        }}
       >
-        <DialogTitle sx={{ fontWeight: 800 }}>
+        <DialogTitle
+          sx={{
+            fontWeight: 800,
+            pr: 6,
+            backgroundColor: calendarSurface,
+          }}
+        >
           Select a Time Slot
           <IconButton
             onClick={() => setCalendarOpen(false)}
-            sx={{ position: "absolute", right: 8, top: 8 }}
+            sx={{ position: "absolute", right: 8, top: 8, color: calendarAccent }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers>
+        <DialogContent
+          ref={dialogContentRef}
+          dividers
+          sx={{
+            backgroundColor: calendarSurface,
+            px: 0,
+            pb: `calc(env(safe-area-inset-bottom) + ${Math.max(actionsHeight, 96)}px)`,
+            overflowX: "hidden",
+            overflowY: "auto",
+            maxHeight: "min(82vh, 880px)",
+            boxSizing: "border-box",
+            "&&": {
+              width: "100%",
+            },
+            "& *": { boxSizing: "border-box", maxWidth: "100%" },
+          }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2, md: 3 },
+              borderRadius: 0,
+              border: "none",
+              backgroundColor: calendarSurface,
+            }}
+          >
           {/* Month navigator */}
           <Paper
             sx={{
               p: 2,
               mb: 3,
               borderRadius: 2,
-              border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+              border: `1px solid ${calendarBorder}`,
+              backgroundColor: calendarSurface,
             }}
           >
             <Box
@@ -678,6 +1126,12 @@ export default function ServiceDetails() {
                     )
                   )
                 }
+                sx={{
+                  color: calendarAccent,
+                  textTransform: "none",
+                  fontWeight: 600,
+                  "&:focus-visible": focusRingStyles,
+                }}
               >
                 ◀
               </Button>
@@ -697,6 +1151,12 @@ export default function ServiceDetails() {
                     )
                   )
                 }
+                sx={{
+                  color: calendarAccent,
+                  textTransform: "none",
+                  fontWeight: 600,
+                  "&:focus-visible": focusRingStyles,
+                }}
               >
                 ▶
               </Button>
@@ -738,147 +1198,238 @@ export default function ServiceDetails() {
             </Box>
           </Paper>
 
-          {/* Selected day header */}
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ mb: 2, flexWrap: "wrap" }}
+          <Box
+            ref={timesRef}
+            id="times-section"
+            role="region"
+            aria-label="Available times"
+            sx={{
+              position: "relative",
+              mb: 2,
+              width: "100%",
+              scrollMarginBottom: "140px",
+            }}
           >
-            <Chip
-              color="primary"
-              variant="outlined"
-              label={`Showing: ${prettyDate(selectedDate) || "—"}`}
-            />
-            <Chip
-              label={
-                isFetchingSlots
-                  ? "Loading…"
-                  : `${daySlots.length} time${
-                      daySlots.length === 1 ? "" : "s"
-                    } available`
-              }
-            />
-          </Stack>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                mb: 2,
+                flexWrap: "wrap",
+                gap: 1,
+                backgroundColor: calendarSurface,
+                border: `1px solid ${calendarBorder}`,
+                borderRadius: 2,
+                px: 1.5,
+                py: 1,
+              }}
+              className="section-header"
+            >
+              <Chip
+                label={`Showing: ${prettyDate(selectedDate) || "—"}`}
+                sx={{
+                  borderRadius: 999,
+                  fontWeight: 600,
+                  border: `1px solid ${calendarBorder}`,
+                  backgroundColor: "transparent",
+                  color: calendarText,
+                }}
+              />
+              <Chip
+                label={
+                  isFetchingSlots
+                    ? "Loading…"
+                    : `${daySlots.length} time${
+                        daySlots.length === 1 ? "" : "s"
+                      } available`
+                }
+                sx={{
+                  borderRadius: 999,
+                  fontWeight: 600,
+                  backgroundColor: calendarAccent,
+                  color: calendarAccentContrast,
+                }}
+              />
+            </Stack>
 
-          {/* Slots (grouped by UTC, displayed in viewer's local time) */}
-          {!selectedDate && (
-            <Alert severity="info">Pick a date to see available times.</Alert>
-          )}
-          {selectedDate && !isFetchingSlots && daySlots.length === 0 && (
-            <Alert severity="info">No free slots for this day.</Alert>
-          )}
+            <TimeListContent />
 
-          <Box display="flex" flexWrap="wrap" gap={1.2} mb={2}>
-            {daySlots.map((s) => {
-              const selected = s.key === selectedTimeKey;
-              return (
-                <Button
-                  key={s.key}
-                  variant={selected ? "contained" : "outlined"}
-                  color="primary"
-                  size="small"
-                  onClick={() => handleTimeClick(s)}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 700,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                  }}
-                  title={
-                    s.count > 1
-                      ? `${s.count} providers available at this time`
-                      : "1 provider available at this time"
-                  }
-                >
-                  {timeFromUTCForViewer(s.start_utc)}
-                  {s.count > 1 ? ` • ${s.count}` : ""}
-                </Button>
-              );
-            })}
+            <Box
+              sx={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                margin: -1,
+                padding: 0,
+                overflow: "hidden",
+                clip: "rect(0 0 0 0)",
+                border: 0,
+              }}
+              aria-live="polite"
+            >
+              {timeAnnounce}
+            </Box>
           </Box>
 
-          {/* Inline provider picker */}
-          <Collapse in={!!selectedSlot} unmountOnExit>
-            <Paper
-              elevation={0}
+          <Box
+            sx={{
+              position: "absolute",
+              width: 1,
+              height: 1,
+              margin: -1,
+              padding: 0,
+              overflow: "hidden",
+              clip: "rect(0 0 0 0)",
+              border: 0,
+            }}
+            aria-live="polite"
+          >
+            {providerAnnounce}
+          </Box>
+
+          {selectedSlot && (
+            <Button
+              size="small"
+              variant="text"
+              onClick={handleJumpToProviders}
               sx={{
-                p: 2,
-                borderRadius: 2,
-                border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-                background:
-                  theme.palette.mode === "dark"
-                    ? alpha(theme.palette.primary.main, 0.08)
-                    : alpha(theme.palette.primary.main, 0.06),
+                textTransform: "none",
+                fontWeight: 700,
+                mb: 2,
+                color: calendarAccent,
+                "&:focus-visible": focusRingStyles,
               }}
             >
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                justifyContent="space-between"
-                alignItems={{ xs: "flex-start", sm: "center" }}
-                spacing={1.5}
-                sx={{ mb: 1.5 }}
-              >
-                <Typography variant="subtitle1" fontWeight={700}>
-                  Choose a Provider — {prettyDate(selectedSlot?.date)} ·{" "}
-                  {timeFromUTCForViewer(selectedSlot?.start_utc)} (your time)
-                </Typography>
-                <Chip
-                  size="small"
-                  label={`${selectedSlot?.providers?.length || 0} provider${
-                    (selectedSlot?.providers?.length || 0) === 1 ? "" : "s"
-                  } available`}
-                />
-              </Stack>
+              Jump to providers
+            </Button>
+          )}
 
-              <Stack spacing={1.25}>
-                {selectedSlot?.providers?.map((p) => (
-                  <Stack
-                    key={p.id}
-                    direction="row"
-                    spacing={1.25}
-                    alignItems="center"
-                    justifyContent="space-between"
-                  >
-                    <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
-                      <Avatar sx={{ width: 40, height: 40 }}>
-                        {p.full_name?.[0] || "•"}
-                      </Avatar>
-                      <Box minWidth={0}>
-                        <Typography noWrap fontWeight={700} title={p.full_name}>
-                          {p.full_name}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          noWrap
-                        >
-                          {p.start_time_local} • {service?.name}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      onClick={() => handleArtistSelect(p)}
-                      sx={{
-                        ...bookingButtonSx,
-                        px: 1.75,
-                        py: 0.75,
-                        minWidth: 0,
-                        width: "auto",
-                      }}
-                    >
-                      Select
-                    </Button>
-                  </Stack>
-                ))}
+          <SwipeableDrawer
+            anchor="bottom"
+            open={timeDrawerOpen}
+            onOpen={() => setTimeSheetOpen(true)}
+            onClose={handleTimeSheetClose}
+            disableSwipeToOpen={false}
+            keepMounted
+            PaperProps={{
+              sx: {
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                maxHeight: "70vh",
+              },
+            }}
+          >
+            <Box sx={{ p: 2 }} role="dialog" aria-label="Choose a time">
+              <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
+                <Typography variant="h6" fontWeight={800}>
+                  Available times
+                </Typography>
+                <IconButton onClick={handleTimeSheetClose} sx={{ color: calendarAccent }}>
+                  <CloseIcon />
+                </IconButton>
               </Stack>
-            </Paper>
+              <TimeListContent variant="drawer" />
+            </Box>
+          </SwipeableDrawer>
+
+          {/* Inline provider picker */}
+          <Collapse in={!!selectedSlot && !isMobile} unmountOnExit>
+            <Box
+              ref={providersRef}
+              tabIndex={-1}
+              id="providers-section"
+              sx={{
+                outline: "none",
+                scrollMarginBottom: "140px",
+              }}
+            >
+              <ProviderListContent />
+            </Box>
           </Collapse>
+
+          <SwipeableDrawer
+            anchor="bottom"
+            open={providerDrawerOpen}
+            onOpen={() => setProviderSheetOpen(true)}
+            onClose={handleProviderSheetClose}
+            disableSwipeToOpen={false}
+            keepMounted
+            PaperProps={{
+              sx: {
+                borderTopLeftRadius: 16,
+                borderTopRightRadius: 16,
+                maxHeight: "80vh",
+              },
+            }}
+          >
+            <Box
+              sx={{ p: 2 }}
+              role="dialog"
+              aria-label="Choose a provider"
+            >
+              <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
+                <Typography variant="h6" fontWeight={800}>
+                  Choose a provider
+                </Typography>
+                <IconButton onClick={handleProviderSheetClose} sx={{ color: calendarAccent }}>
+                  <CloseIcon />
+                </IconButton>
+              </Stack>
+              <ProviderListContent variant="drawer" />
+            </Box>
+          </SwipeableDrawer>
+          </Paper>
         </DialogContent>
+        <DialogActions
+          ref={actionsRef}
+          sx={{
+            position: "sticky",
+            bottom: 0,
+            zIndex: 10,
+            backgroundColor: calendarSurface,
+            borderTop: `1px solid ${calendarBorder}`,
+            py: 2,
+            px: { xs: 2, md: 3 },
+            gap: 1,
+            flexWrap: { xs: "wrap", sm: "nowrap" },
+          }}
+        >
+          <Button
+            variant="outlined"
+            onClick={() => setCalendarOpen(false)}
+            fullWidth={isMobile}
+            sx={{
+              ...bookingButtonOutlinedSx,
+              width: isMobile ? "100%" : "auto",
+            }}
+          >
+            Close
+          </Button>
+          <Button
+            variant="contained"
+            fullWidth={isMobile}
+            onClick={() => {
+              if (selectedSlot) {
+                handleJumpToProviders();
+              } else if (isMobile) {
+                setTimeSheetOpen(true);
+              } else {
+                const target = timesRef.current;
+                if (target) {
+                  scrollSectionIntoView(target);
+                }
+              }
+            }}
+            color="primary"
+            sx={{
+              ...bookingButtonSx,
+              width: isMobile ? "100%" : "auto",
+            }}
+          >
+            {selectedSlot ? "Continue to providers" : "Select a time"}
+          </Button>
+        </DialogActions>
       </Dialog>
     </Container>
   );

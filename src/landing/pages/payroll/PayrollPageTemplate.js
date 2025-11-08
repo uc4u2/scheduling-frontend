@@ -106,7 +106,12 @@ const PayrollPageTemplate = ({ config }) => {
                 ))}
               </Stack>
             )}
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "stretch", sm: "center" }}
+              sx={{ width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+            >
               <Button
                 component={Link}
                 to={hero.primaryCta.href}
@@ -241,7 +246,11 @@ const PayrollPageTemplate = ({ config }) => {
                       </Stack>
                     )}
                     {row.links && (
-                      <Stack direction="row" spacing={1.5}>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1.5}
+                        sx={{ width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+                      >
                         {row.links.map((link) => (
                           <Button
                             key={link.href}
@@ -345,7 +354,7 @@ const PayrollPageTemplate = ({ config }) => {
         <Container maxWidth="lg" sx={{ mt: { xs: 9, md: 12 } }}>
           <Grid container spacing={3}>
             {callouts.map((callout) => (
-              <Grid item xs={12} md={6} key={callout.title}>
+              <Grid item xs={12} sm={6} md={6} key={callout.title}>
                 <Card
                   sx={{
                     height: "100%",
@@ -374,7 +383,11 @@ const PayrollPageTemplate = ({ config }) => {
                       {callout.body}
                     </Typography>
                     {callout.links && (
-                      <Stack direction="row" spacing={2}>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={2}
+                        sx={{ width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+                      >
                         {callout.links.map((link) => (
                           <Button
                             key={link.href}
@@ -454,7 +467,12 @@ const PayrollPageTemplate = ({ config }) => {
               <Typography variant="body1" sx={{ maxWidth: 640, opacity: 0.9 }}>
                 {cta.body}
               </Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center" sx={{ mt: 1 }}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                alignItems="center"
+                sx={{ mt: 1, width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+              >
                 <Button
                   component={Link}
                   to={cta.primary.href}
@@ -510,4 +528,3 @@ const PayrollPageTemplate = ({ config }) => {
 };
 
 export default PayrollPageTemplate;
-

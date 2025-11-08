@@ -443,12 +443,129 @@ function ShellInner({
             mergedBackground.backgroundAttachment;
           if (bgAttach) bodyStyles.backgroundAttachment = bgAttach;
 
+          const accentBg = "var(--page-btn-bg, var(--sched-primary))";
+          const accentText = "var(--page-btn-color, #ffffff)";
+          const accentHover = "var(--page-btn-bg-hover, var(--page-btn-bg, var(--sched-primary)))";
+          const focusRing = `2px solid var(--page-focus-ring, var(--page-btn-bg, var(--sched-primary)))`;
+          const accentBorder = "var(--page-border-color, rgba(15,23,42,0.16))";
+          const softBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
+          const infoBg = "var(--page-alert-info-bg, rgba(15,23,42,0.04))";
+          const warnBg = "var(--page-alert-warn-bg, rgba(255,193,7,0.12))";
+          const infoColor = "var(--page-body-color, inherit)";
+          const warnColor = "var(--page-body-color, inherit)";
+
+          const surfaceColor =
+            bodyStyles.backgroundColor ||
+            mergedBackground.backgroundColor ||
+            cssVars["--sched-bg"] ||
+            muiTheme.palette.background.default;
+          const rootVars = {
+            ...cssVars,
+            "--page-surface-bg": surfaceColor,
+          };
+
           return {
             body: bodyStyles,
-            ":root": cssVars,
+            ":root": rootVars,
             a: {
               color:
                 cssVars["--page-link-color"] || muiTheme.palette.primary.main,
+            },
+            ".MuiButton-containedPrimary": {
+              backgroundColor: accentBg,
+              color: accentText,
+              borderRadius: "var(--page-btn-radius, 12px)",
+              boxShadow: "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))",
+              textTransform: "none",
+              fontWeight: 600,
+            },
+            ".MuiButton-containedPrimary:hover": {
+              backgroundColor: accentHover,
+            },
+            ".MuiButton-containedPrimary.Mui-disabled": {
+              opacity: 0.6,
+              color: accentText,
+              backgroundColor: accentBg,
+            },
+            ".MuiButton-containedPrimary:focus-visible": {
+              outline: focusRing,
+              outlineOffset: 2,
+            },
+            ".MuiButton-outlinedPrimary": {
+              borderColor: accentBg,
+              color: accentBg,
+              borderRadius: "var(--page-btn-radius, 12px)",
+              textTransform: "none",
+              fontWeight: 600,
+            },
+            ".MuiButton-outlinedPrimary:hover": {
+              borderColor: accentHover,
+              backgroundColor: softBg,
+            },
+            ".MuiButton-outlinedPrimary:focus-visible": {
+              outline: focusRing,
+              outlineOffset: 2,
+            },
+            ".MuiButton-textPrimary": {
+              color: accentBg,
+              textTransform: "none",
+              fontWeight: 600,
+            },
+            ".MuiButton-textPrimary:focus-visible": {
+              outline: focusRing,
+              outlineOffset: 2,
+            },
+            ".MuiChip-root.MuiChip-colorPrimary": {
+              backgroundColor: accentBg,
+              color: accentText,
+            },
+            ".MuiChip-root.MuiChip-outlinedPrimary": {
+              borderColor: accentBg,
+              color: accentBg,
+            },
+            ".MuiChip-root": {
+              borderRadius: 999,
+            },
+            ".MuiChip-root.MuiChip-outlined": {
+              borderColor: accentBorder,
+              color: "var(--page-body-color, inherit)",
+            },
+            ".MuiTabs-indicator": {
+              backgroundColor: accentBg,
+            },
+            ".MuiTab-root": {
+              textTransform: "none",
+              fontWeight: 600,
+              color: "var(--page-body-color, inherit)",
+            },
+            ".MuiTab-root.Mui-selected": {
+              color: accentBg,
+            },
+            ".MuiTab-root:focus-visible": {
+              outline: focusRing,
+              outlineOffset: 2,
+            },
+            ".MuiAlert-standardInfo": {
+              backgroundColor: infoBg,
+              color: infoColor,
+              borderRadius: "var(--page-card-radius, 12px)",
+              border: `1px solid ${accentBorder}`,
+            },
+            ".MuiAlert-standardInfo .MuiAlert-icon": {
+              color: accentBg,
+            },
+            ".MuiAlert-standardWarning": {
+              backgroundColor: warnBg,
+              color: warnColor,
+              borderRadius: "var(--page-card-radius, 12px)",
+              border: `1px solid ${accentBorder}`,
+            },
+            ".MuiAlert-standardWarning .MuiAlert-icon": {
+              color: accentBg,
+            },
+            ".MuiAlert-standardInfo a, .MuiAlert-standardWarning a": {
+              color: accentBg,
+              textDecoration: "underline",
             },
           };
         }}

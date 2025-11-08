@@ -701,6 +701,11 @@ const HomePage = () => {
                         sx={{
                           p: 1.75,
                           borderRadius: 2,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0.5,
+                          minHeight: 136,
+                          justifyContent: "space-between",
                           backgroundColor: alpha(
                             theme.palette.background.default,
                             theme.palette.mode === "dark" ? 0.76 : 0.92
@@ -721,6 +726,15 @@ const HomePage = () => {
                         <Typography variant="subtitle1" fontWeight={700}>
                           {stat.value}
                         </Typography>
+                        {stat.helper && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block", mt: 0.35 }}
+                          >
+                            {stat.helper}
+                          </Typography>
+                        )}
                       </Paper>
                     </Grid>
                   ))}
@@ -832,4 +846,3 @@ const HomePage = () => {
 };
 
 export default HomePage;
-

@@ -412,7 +412,16 @@ const FeaturePage = () => {
               >
                 {platformMapCopy.subtitle}
               </Typography>
-              <List dense sx={{ p: 0 }}>
+              <List
+                dense
+                sx={{
+                  p: 0,
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr", sm: "1fr", md: "repeat(2, minmax(0, 1fr))" },
+                  columnGap: 2,
+                  rowGap: 1.25,
+                }}
+              >
                 {platformHighlights.map((item) => (
                   <ListItem key={item} sx={{ px: 0 }}>
                     <ListItemIcon sx={{ minWidth: 36, color: activeAccent }}>
@@ -428,7 +437,10 @@ const FeaturePage = () => {
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={2}
-                sx={{ ml: { xs: 0, md: 2, lg: 4 } }}
+                sx={{
+                  ml: { xs: 0, md: 2, lg: 4 },
+                  width: "100%",
+                }}
               >
                 <Button
                   component={Link}
@@ -536,7 +548,11 @@ const FeaturePage = () => {
                   </Stack>
                 ))}
               </Stack>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                sx={{ width: "100%" }}
+              >
                 <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, flex: 1 }}>
                   <Stack spacing={1}>
                     <Typography variant="subtitle2" fontWeight={700}>

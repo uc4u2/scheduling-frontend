@@ -107,7 +107,12 @@ const BookingPageTemplate = ({ config }) => {
                 ))}
               </Stack>
             )}
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "stretch", sm: "center" }}
+              sx={{ width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+            >
               <Button
                 component={Link}
                 to={hero.primaryCta.href}
@@ -235,7 +240,12 @@ const BookingPageTemplate = ({ config }) => {
                       </Stack>
                     )}
                     {section.links && (
-                      <Stack direction="row" spacing={1.5} flexWrap="wrap">
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1.5}
+                        flexWrap="wrap"
+                        sx={{ width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+                      >
                         {section.links.map((link) => (
                           <Button
                             key={link.href}
@@ -297,7 +307,7 @@ const BookingPageTemplate = ({ config }) => {
             </Stack>
             <Grid container spacing={3} sx={{ mt: { xs: 4, md: 6 } }}>
               {howItWorks.steps.map((step, index) => (
-                <Grid item xs={12} md={4} key={step.title}>
+                <Grid item xs={12} sm={6} md={4} key={step.title}>
                   <Card
                     variant="outlined"
                     sx={{
@@ -513,7 +523,12 @@ const BookingPageTemplate = ({ config }) => {
               <Typography variant="body1" sx={{ maxWidth: 640, opacity: 0.9 }}>
                 {cta.body}
               </Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center" sx={{ mt: 1 }}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                alignItems="center"
+                sx={{ mt: 1, width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+              >
                 <Button
                   component={Link}
                   to={cta.primary.href}
@@ -569,4 +584,3 @@ const BookingPageTemplate = ({ config }) => {
 };
 
 export default BookingPageTemplate;
-

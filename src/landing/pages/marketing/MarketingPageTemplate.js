@@ -113,7 +113,12 @@ const MarketingPageTemplate = ({ config }) => {
                 ))}
               </Stack>
             )}
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "stretch", sm: "center" }}
+              sx={{ width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+            >
               {hero.primaryCta && (
                 <Button
                   component={Link}
@@ -187,7 +192,12 @@ const MarketingPageTemplate = ({ config }) => {
                   </Stack>
                 )}
                 {section.buttons && (
-                  <Stack direction="row" spacing={1.5} flexWrap="wrap">
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    flexWrap="wrap"
+                    sx={{ width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+                  >
                     {section.buttons.map((btn) => (
                       <Button
                         key={btn.href}
@@ -240,7 +250,13 @@ const MarketingPageTemplate = ({ config }) => {
 
           <Grid container spacing={3} sx={{ mt: { xs: 4, md: 6 } }}>
             {block.items.map((item) => (
-              <Grid item xs={12} md={block.columns === 2 ? 6 : 4} key={item.title}>
+              <Grid
+                item
+                xs={12}
+                sm={block.columns === 2 ? 6 : 6}
+                md={block.columns === 2 ? 6 : 4}
+                key={item.title}
+              >
                 <Card
                   variant="outlined"
                   sx={{
@@ -328,7 +344,12 @@ const MarketingPageTemplate = ({ config }) => {
                   </Typography>
                 </Stack>
                 {highlight.actions && (
-                  <Stack direction="row" spacing={1.5} flexWrap="wrap">
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    flexWrap="wrap"
+                    sx={{ width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+                  >
                     {highlight.actions.map((action) => (
                       <Button
                         key={action.href}
@@ -351,7 +372,13 @@ const MarketingPageTemplate = ({ config }) => {
                 </Typography>
               )}
               {highlight.list && (
-                <List>
+                <List
+                  dense
+                  sx={{
+                    pl: { xs: 0, sm: 2 },
+                    "& .MuiListItem-root": { alignItems: "flex-start" },
+                  }}
+                >
                   {highlight.list.map((item) => (
                     <ListItem key={item} sx={{ pl: 0 }}>
                       <ListItemIcon sx={{ minWidth: 28 }}>
@@ -426,7 +453,12 @@ const MarketingPageTemplate = ({ config }) => {
               <Typography variant="body1" sx={{ maxWidth: 640, opacity: 0.9 }}>
                 {cta.body}
               </Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center" sx={{ mt: 1 }}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                alignItems="center"
+                sx={{ mt: 1, width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
+              >
                 {cta.primary && (
                   <Button
                     component={Link}

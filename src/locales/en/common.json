@@ -2610,20 +2610,22 @@
           "payroll": {
             "label": "Payroll",
             "summary": "Automate cross-region pay, overtime, and tax calculations for U.S. and Canada (excluding QC).",
-            "stats": [
-              {
-                "label": "Regions supported",
-                "value": "45 U.S. states + CA"
-              },
-              {
-                "label": "Payroll accuracy",
-                "value": "99.8%"
-              },
-              {
-                "label": "Time saved / run",
-                "value": "-72%"
-              }
-            ],
+        "stats": [
+          {
+            "label": "Regions supported",
+            "value": "45 U.S. states + CA"
+          },
+          {
+            "label": "Payroll accuracy",
+            "value": "99.8%",
+            "helper": "Audited every run"
+          },
+          {
+            "label": "Time saved / run",
+            "value": "-72%",
+            "helper": "Compared to spreadsheets"
+          }
+        ],
             "bullets": [
               "CRA + IRS-ready exports (T4, W-2, ROE).",
               "Auto-recalc for YTD totals and overrides.",
@@ -2633,14 +2635,15 @@
           "commerce": {
             "label": "Commerce",
             "summary": "Sell services, products, or add-ons with a unified basket and secure Stripe checkout.",
-            "stats": [
-              {
-                "label": "Products live",
-                "value": "Full catalog"
-              },
-              {
-                "label": "Refund automation",
-                "value": "Enabled"
+        "stats": [
+          {
+            "label": "Products live",
+            "value": "Full catalog",
+            "helper": "Site + POS"
+          },
+          {
+            "label": "Refund automation",
+            "value": "Enabled"
               },
               {
                 "label": "Stripe checkout uptime",
