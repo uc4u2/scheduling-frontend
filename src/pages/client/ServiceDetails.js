@@ -171,7 +171,6 @@ export default function ServiceDetails() {
   const dialogContentRef = useRef(null);
   const timesRef = useRef(null);
   const providersRef = useRef(null);
-  const actionsRef = useRef(null);
   const focusTimeoutRef = useRef(null);
   const closeGuardTimerRef = useRef(null);
   const fetchVersionRef = useRef(0);
@@ -180,7 +179,6 @@ export default function ServiceDetails() {
   const [providerAnnounce, setProviderAnnounce] = useState("");
   const [timeAnnounce, setTimeAnnounce] = useState("");
   const AUTO_SELECT_FIRST_TIME = true;
-  const [actionsHeight, setActionsHeight] = useState(120);
   const [selectionLock, setSelectionLock] = useState(null); // 'auto' | 'user' | null
   const [flowStage, setFlowStage] = useState("idle");
   const [closeGuardActive, setCloseGuardActive] = useState(false);
@@ -218,26 +216,9 @@ export default function ServiceDetails() {
 
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const money = (value, currencyCode) => formatCurrency(value, currencyCode || displayCurrency);
-  const stickyFooterHeight = Math.max(actionsHeight, 96);
   const scrollMarginValue = useMemo(
-    () => `calc(${stickyFooterHeight + 32}px + env(safe-area-inset-bottom))`,
-    [stickyFooterHeight]
-  );
-  const scrollSectionIntoView = useCallback(
-    (target) => {
-      if (isMobile || typeof window === "undefined") return;
-      const scroller = dialogContentRef.current;
-      if (!target || !scroller) return;
-      window.requestAnimationFrame(() => {
-        const scrollerRect = scroller.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        const footerH = actionsRef.current?.offsetHeight || 0;
-        const offset =
-          targetRect.top - scrollerRect.top + scroller.scrollTop - 16 - footerH;
-        scroller.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
-      });
-    },
-    [isMobile]
+    () => `calc(16px + env(safe-area-inset-bottom))`,
+    []
   );
 
   const armCloseGuard = useCallback(() => {
@@ -252,12 +233,20 @@ export default function ServiceDetails() {
     }, 600);
   }, []);
 
+  const scrollSectionIntoView = useCallback(
+    (target) => {
+      if (isMobile || typeof window === "undefined") return;
+      if (!target) return;
+      armCloseGuard();
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [armCloseGuard, isMobile]
+  );
+
   const scrollProvidersIntoView = useCallback(() => {
     if (typeof window === "undefined" || isMobile) return;
     const target = providersRef.current;
     if (!target) return;
-    armCloseGuard();
-    armCloseGuard();
     scrollSectionIntoView(target);
 
     if (focusTimeoutRef.current) {
@@ -296,21 +285,6 @@ export default function ServiceDetails() {
       }
     } else {
       setFlowStage("date-select");
-    }
-  }, [calendarOpen]);
-
-  useEffect(() => {
-    if (!calendarOpen) return;
-    const measure = () => {
-      if (actionsRef.current) {
-        setActionsHeight(actionsRef.current.offsetHeight || 0);
-      }
-    };
-    measure();
-    if (typeof ResizeObserver !== "undefined" && actionsRef.current) {
-      const observer = new ResizeObserver(measure);
-      observer.observe(actionsRef.current);
-      return () => observer.disconnect();
     }
   }, [calendarOpen]);
 
@@ -678,7 +652,9 @@ export default function ServiceDetails() {
               : calendarSurface,
           maxHeight: variant === "drawer" ? "60vh" : "none",
           overflowY: variant === "drawer" ? "auto" : "visible",
-          overflowX: "hidden",
+          overflowX: "visible",
+          boxSizing: "border-box",
+          maxWidth: "100%",
         }}
       >
         <Stack
@@ -786,7 +762,9 @@ export default function ServiceDetails() {
           gap: 1.2,
           pb: variant === "drawer" ? 1 : 0,
           width: "100%",
-          overflowX: "hidden",
+          overflowX: "visible",
+          maxWidth: "100%",
+          boxSizing: "border-box",
         }}
       >
         {daySlots.map((s) => {
@@ -1147,6 +1125,9 @@ export default function ServiceDetails() {
             borderRadius: isTabletDown ? 0 : 3,
             backgroundColor: pageSurface,
             backgroundImage: "none",
+            display: "flex",
+            flexDirection: "column",
+            maxHeight: "100dvh",
           },
         }}
         BackdropProps={{
@@ -1175,12 +1156,15 @@ export default function ServiceDetails() {
           sx={{
             backgroundColor: pageSurface,
             px: 0,
-            pb: `calc(env(safe-area-inset-bottom) + ${stickyFooterHeight + 24}px)`,
+            pb: scrollMarginValue,
             overflowX: "hidden",
             overflowY: "auto",
-            maxHeight: "min(82vh, 880px)",
+            maxHeight: "min(82dvh, 880px)",
             boxSizing: "border-box",
             position: "relative",
+            flex: "1 1 auto",
+            minHeight: 0,
+            scrollPaddingTop: "16px",
             "&&": {
               width: "100%",
             },
@@ -1199,6 +1183,7 @@ export default function ServiceDetails() {
               boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.08))",
               width: "100%",
               overflow: "hidden",
+              boxSizing: "border-box",
             }}
           >
             <Stack
@@ -1256,6 +1241,7 @@ export default function ServiceDetails() {
               backgroundColor: calendarSurface,
               width: "100%",
               overflow: "hidden",
+              boxSizing: "border-box",
             }}
           >
           {/* Month navigator */}
@@ -1465,12 +1451,26 @@ export default function ServiceDetails() {
               sx: {
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
-                maxHeight: "70vh",
+                maxHeight: "80dvh",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                backgroundColor: pageSurface,
               },
             }}
           >
-            <Box sx={{ p: 2 }} role="dialog" aria-label="Choose a time">
-              <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
+            <Box
+              sx={{
+                p: 2,
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+                boxSizing: "border-box",
+              }}
+              role="dialog"
+              aria-label="Choose a time"
+            >
+              <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5} flexShrink={0}>
                 <Typography variant="h6" fontWeight={800}>
                   Available times
                 </Typography>
@@ -1478,7 +1478,17 @@ export default function ServiceDetails() {
                   <CloseIcon />
                 </IconButton>
               </Stack>
-              <TimeListContent variant="drawer" />
+              <Box
+                sx={{
+                  flex: 1,
+                  overflowY: "auto",
+                  minHeight: 0,
+                  overscrollBehavior: "contain",
+                  pb: scrollMarginValue,
+                }}
+              >
+                <TimeListContent variant="drawer" />
+              </Box>
             </Box>
           </SwipeableDrawer>
 
@@ -1508,16 +1518,26 @@ export default function ServiceDetails() {
               sx: {
                 borderTopLeftRadius: 16,
                 borderTopRightRadius: 16,
-                maxHeight: "80vh",
+                maxHeight: "85dvh",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                backgroundColor: pageSurface,
               },
             }}
           >
             <Box
-              sx={{ p: 2 }}
+              sx={{
+                p: 2,
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+                boxSizing: "border-box",
+              }}
               role="dialog"
               aria-label="Choose a provider"
             >
-              <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5} flexShrink={0}>
                 <Typography variant="h6" fontWeight={800}>
                   Choose a provider
                 </Typography>
@@ -1525,33 +1545,30 @@ export default function ServiceDetails() {
                   <CloseIcon />
                 </IconButton>
               </Stack>
-              <ProviderListContent variant="drawer" />
+              <Box
+                sx={{
+                  flex: 1,
+                  overflowY: "auto",
+                  minHeight: 0,
+                  overscrollBehavior: "contain",
+                  pb: scrollMarginValue,
+                }}
+              >
+                <ProviderListContent variant="drawer" />
+              </Box>
             </Box>
           </SwipeableDrawer>
           </Box>
         </DialogContent>
         <DialogActions
-          ref={actionsRef}
           sx={{
-            position: "sticky",
-            bottom: 0,
-            zIndex: 10,
             backgroundColor: pageSurface,
             borderTop: `1px solid ${calendarBorder}`,
             py: 2,
             px: { xs: 2, md: 3 },
             gap: 1,
             flexWrap: { xs: "wrap", sm: "nowrap" },
-            "&::before": {
-              content: '""',
-              position: "absolute",
-              top: -24,
-              left: 0,
-              right: 0,
-              height: 24,
-              background: `linear-gradient(180deg, rgba(255,255,255,0) 0%, ${pageSurface} 100%)`,
-              pointerEvents: "none",
-            },
+            flex: "0 0 auto",
           }}
         >
           <Button
