@@ -82,7 +82,7 @@ export default function EmployeeAvailabilityCalendar({
   const focusColor = "var(--page-focus-ring, var(--page-btn-bg, var(--sched-primary)))";
   const softBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
   const bodyColor = "var(--page-body-color, inherit)";
-  const surfaceColor = "var(--page-calendar-surface, var(--page-card-bg, var(--page-secondary-bg, var(--page-surface-bg, #ffffff))))";
+  const surfaceColor = "var(--page-calendar-surface, var(--page-surface-bg, var(--page-card-bg, var(--page-secondary-bg, #ffffff))))";
   const buttonShadow = "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))";
   const buttonShadowHover = "var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))";
   const focusRing = {
