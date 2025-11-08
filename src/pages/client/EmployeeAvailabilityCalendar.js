@@ -32,6 +32,7 @@ const ymd = (d) =>
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 const AUTO_SELECT_FIRST_TIME = true;
+const sheetSafePadding = "calc(env(safe-area-inset-bottom) + 16px)";
 
 /**
  * Build display date/time using backend-prepared local fields when available.
@@ -562,24 +563,52 @@ export default function EmployeeAvailabilityCalendar({
             sx: {
               borderTopLeftRadius: 16,
               borderTopRightRadius: 16,
-              maxHeight: "70vh",
-              p: 2,
+              maxHeight: "80dvh",
+              height: "100%",
               backgroundColor: surfaceColor,
+              display: "flex",
+              flexDirection: "column",
             },
           }}
         >
-          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
-            <Typography variant="h6" fontWeight={800}>
-              Available times
-            </Typography>
-            <IconButton
-              onClick={handleTimeSheetClose}
-              sx={{ color: accentColor, "&:focus-visible": focusRing }}
+          <Box
+            sx={{
+              p: 2,
+              display: "flex",
+              flexDirection: "column",
+              height: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              mb={1.5}
+              flexShrink={0}
             >
-              <CloseIcon />
-            </IconButton>
-          </Stack>
-          {renderTimeButtons("drawer")}
+              <Typography variant="h6" fontWeight={800}>
+                Select a time
+              </Typography>
+              <IconButton
+                onClick={handleTimeSheetClose}
+                sx={{ color: accentColor, "&:focus-visible": focusRing }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </Stack>
+            <Box
+              sx={{
+                flex: 1,
+                overflowY: "auto",
+                minHeight: 0,
+                overscrollBehavior: "contain",
+                pb: sheetSafePadding,
+              }}
+            >
+              {renderTimeButtons("drawer")}
+            </Box>
+          </Box>
         </SwipeableDrawer>
 
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">

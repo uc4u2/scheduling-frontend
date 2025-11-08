@@ -521,6 +521,39 @@ export default function ServiceDetails() {
     };
   }, [calendarOpen, selectedDate, employees, slug, serviceId, departmentId, selectedTimeKey, selectionLock]);
 
+  const navigateToSlot = useCallback(
+    (slot, artist) => {
+      if (!slot || !artist) return false;
+      const provTz = artist.timezone || "UTC";
+      const provDate = dateYMDInTZ(slot.start_utc, provTz);
+      const provTime = timeHMInTZ(slot.start_utc, provTz);
+
+      setProviderSheetOpen(false);
+      navigate({
+        pathname: `/${slug}/book`,
+        search:
+          `?employee_id=${artist.id}` +
+          `&service_id=${serviceId}` +
+          `&date=${provDate}` +
+          `&start_time=${provTime}` +
+          `&timezone=${encodeURIComponent(provTz)}` +
+          (departmentId ? `&department_id=${departmentId}` : ""),
+      });
+      setCalendarOpen(false);
+      return true;
+    },
+    [departmentId, navigate, serviceId, slug]
+  );
+
+  const handleArtistSelect = useCallback(
+    (artist, slotOverride = null) => {
+      const slot = slotOverride || selectedSlot;
+      if (!slot) return;
+      navigateToSlot(slot, artist);
+    },
+    [navigateToSlot, selectedSlot]
+  );
+
   /* time click → open/close inline provider picker */
   const selectTimeSlot = useCallback(
     (slot, { force = false, source = "user" } = {}) => {
@@ -549,35 +582,18 @@ export default function ServiceDetails() {
       if (source === "user") {
         setSelectionLock("user");
         setFlowStage("time-user-picked");
+
+        if (slot.providers?.length === 1) {
+          navigateToSlot(slot, slot.providers[0]);
+          return;
+        }
       } else if (source === "auto") {
         setSelectionLock("auto");
         setFlowStage("time-auto-picked");
       }
     },
-    [isMobile, selectionLock, scrollProvidersIntoView]
+    [isMobile, navigateToSlot, scrollProvidersIntoView, selectionLock]
   );
-
-  const handleArtistSelect = (artist) => {
-    if (!selectedSlot) return;
-    setProviderSheetOpen(false);
-
-    // Compute provider-local date/time from start_utc (explicit slot TZ)
-    const provTz = artist.timezone || "UTC";
-    const provDate = dateYMDInTZ(selectedSlot.start_utc, provTz);
-    const provTime = timeHMInTZ(selectedSlot.start_utc, provTz);
-
-    navigate({
-      pathname: `/${slug}/book`,
-      search:
-        `?employee_id=${artist.id}` +
-        `&service_id=${serviceId}` +
-        `&date=${provDate}` +
-        `&start_time=${provTime}` +
-        `&timezone=${encodeURIComponent(provTz)}` +
-        (departmentId ? `&department_id=${departmentId}` : ""),
-    });
-    setCalendarOpen(false);
-  };
 
   const handleJumpToProviders = () => {
     if (!selectedSlot) return;
@@ -623,6 +639,7 @@ export default function ServiceDetails() {
       color: selected ? calendarAccentContrast : calendarText,
     },
     "&:focus-visible": focusRingStyles,
+    pointerEvents: "auto",
   });
 
   const ProviderListContent = ({ variant = "inline" }) => {
@@ -1580,7 +1597,7 @@ export default function ServiceDetails() {
               width: isMobile ? "100%" : "auto",
             }}
           >
-            Close
+            Cancel
           </Button>
           <Button
             variant="contained"
@@ -1603,7 +1620,7 @@ export default function ServiceDetails() {
               width: isMobile ? "100%" : "auto",
             }}
           >
-            {selectedSlot ? "Continue to providers" : "Select a time"}
+            {selectedSlot ? "Go to providers" : "Select a time"}
           </Button>
         </DialogActions>
       </Dialog>
