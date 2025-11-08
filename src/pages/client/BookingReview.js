@@ -15,6 +15,41 @@ export default function BookingReview({
   onConfirm,
 }) {
   const userTimezone = getUserTimezone();
+  const accent = "var(--page-btn-bg, var(--sched-primary))";
+  const accentContrast = "var(--page-btn-color, #ffffff)";
+  const focusRing = {
+    outline: `2px solid var(--page-focus-ring, var(--page-btn-bg, var(--sched-primary)))`,
+    outlineOffset: 2,
+  };
+  const softBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
+  const borderColor = "var(--page-border-color, rgba(15,23,42,0.16))";
+  const bodyColor = "var(--page-body-color, inherit)";
+  const actionButtonSx = {
+    backgroundColor: accent,
+    color: accentContrast,
+    fontWeight: 700,
+    textTransform: "none",
+    borderRadius: "var(--page-btn-radius, 12px)",
+    boxShadow: "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))",
+    "&:hover": {
+      backgroundColor: "var(--page-btn-bg-hover, var(--page-btn-bg, var(--sched-primary)))",
+      color: accentContrast,
+    },
+    "&:focus-visible": focusRing,
+  };
+  const textButtonSx = {
+    textTransform: "none",
+    fontWeight: 600,
+    color: accent,
+    "&:focus-visible": focusRing,
+  };
+  const chipSx = {
+    backgroundColor: softBg,
+    borderRadius: 999,
+    fontWeight: 600,
+    border: `1px solid ${borderColor}`,
+    color: bodyColor,
+  };
 
   const tz = useMemo(() => slot?.timezone || userTimezone, [slot, userTimezone]);
 
@@ -65,7 +100,7 @@ export default function BookingReview({
         <Typography variant="subtitle1">
           <strong>Service:</strong> {service?.name || "N/A"}
         </Typography>
-        <Button onClick={onEditService} size="small" sx={{ mt: 1 }}>
+        <Button onClick={onEditService} size="small" sx={{ mt: 1, ...textButtonSx }}>
           Edit
         </Button>
       </Box>
@@ -75,7 +110,7 @@ export default function BookingReview({
         <Typography variant="subtitle1">
           <strong>Employee:</strong> {artist?.full_name || artist?.name || "N/A"}
         </Typography>
-        <Button onClick={onEditArtist} size="small" sx={{ mt: 1 }}>
+        <Button onClick={onEditArtist} size="small" sx={{ mt: 1, ...textButtonSx }}>
           Edit
         </Button>
       </Box>
@@ -91,7 +126,7 @@ export default function BookingReview({
         <Typography variant="caption" color="text.secondary">
           (Local time: {tz})
         </Typography>
-        <Button onClick={onEditSlot} size="small" sx={{ mt: 1 }}>
+        <Button onClick={onEditSlot} size="small" sx={{ mt: 1, ...textButtonSx }}>
           Edit
         </Button>
       </Box>
@@ -104,7 +139,7 @@ export default function BookingReview({
             <Chip
               key={ad.id}
               label={`${ad.name} (+${ad.duration} min $${Number(ad.base_price).toFixed(2)})`}
-              sx={{ mr: 1, mb: 1 }}
+              sx={{ mr: 1, mb: 1, ...chipSx }}
             />
           ))}
         </Box>
@@ -120,7 +155,7 @@ export default function BookingReview({
         variant="contained"
         color="primary"
         fullWidth
-        sx={{ mt: 3, py: 1.5, fontSize: "18px", fontWeight: 600 }}
+        sx={{ mt: 3, py: 1.5, fontSize: "18px", ...actionButtonSx }}
         onClick={() => {
           const slotWithAddons = {
             ...slot,

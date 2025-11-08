@@ -1235,19 +1235,26 @@ function CheckoutFormCore({
   }
 
   return (
-    <Box p={3} maxWidth={600} mx="auto">
-      <Typography variant="h4" gutterBottom>
-        Checkout
-      </Typography>
+    <Box
+      sx={{
+        px: { xs: 2, md: 0 },
+        py: { xs: 3, md: 4 },
+        maxWidth: 720,
+        mx: "auto",
+      }}
+    >
+      <Paper elevation={4} sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 4 }}>
+        <Stack spacing={3}>
+        <Typography variant="h4" gutterBottom fontWeight={800}>
+          Checkout
+        </Typography>
 
       {typeof holdMinutes === "number" && holdMinutes > 0 && serviceItems.length > 0 && holdState.overall !== null && (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-          <Typography variant="body2" sx={{ mt: 1.5 }}>
-            {holdState.overall > 0
-              ? `We're holding your selected times for ${formatHoldCountdown(holdState.overall)}. Complete checkout before the timer runs out or the slots will be released.`
-              : "The hold window has expired. If you continue, the selected times may no longer be available."}
-          </Typography>
-        </Paper>
+        <Alert severity={holdState.overall > 0 ? "info" : "warning"} sx={{ mb: 2 }}>
+          {holdState.overall > 0
+            ? `We're holding your selected times for ${formatHoldCountdown(holdState.overall)}. Complete checkout before the timer runs out or the slots will be released.`
+            : "The hold window has expired. If you continue, the selected times may no longer be available."}
+        </Alert>
       )}
 
       {/* Cart */}
@@ -1256,7 +1263,8 @@ function CheckoutFormCore({
           mb: 2,
           border: 1,
           borderColor: "divider",
-          borderRadius: theme.shape.borderRadius,
+          borderRadius: 3,
+          overflow: "hidden",
         }}
       >
         {cart.map((it) => {
@@ -1377,26 +1385,34 @@ function CheckoutFormCore({
                           </Stack>
 
                           {it.tip_mode === "percent" ? (
-                            <TextField
-                              label="Custom %"
-                              type="number"
-                              size="small"
-                              value={it.tip_value || ""}
-                              onChange={(e) => setTipCustomPercent(it.id, Number(e.target.value || 0))}
-                              inputProps={{ min: 0, max: 100 }}
-                              sx={{ width: 140, mr: 2 }}
-                            />
-                          ) : (
-                            <TextField
-                              label="Custom tip ($)"
-                              type="number"
-                              size="small"
-                              value={it.tip_amount || ""}
-                              onChange={(e) => setTipAmount(it.id, Number(e.target.value || 0))}
-                              inputProps={{ min: 0, step: "0.01" }}
-                              sx={{ width: 160, mr: 2 }}
-                            />
-                          )}
+                          <TextField
+                            label="Custom %"
+                            type="number"
+                            size="small"
+                            value={it.tip_value || ""}
+                            onChange={(e) => setTipCustomPercent(it.id, Number(e.target.value || 0))}
+                            inputProps={{ min: 0, max: 100 }}
+                            sx={{
+                              width: { xs: "100%", sm: 140 },
+                              mr: { sm: 2 },
+                              mb: { xs: 1, sm: 0 },
+                            }}
+                          />
+                        ) : (
+                          <TextField
+                            label="Custom tip ($)"
+                            type="number"
+                            size="small"
+                            value={it.tip_amount || ""}
+                            onChange={(e) => setTipAmount(it.id, Number(e.target.value || 0))}
+                            inputProps={{ min: 0, step: "0.01" }}
+                            sx={{
+                              width: { xs: "100%", sm: 160 },
+                              mr: { sm: 2 },
+                              mb: { xs: 1, sm: 0 },
+                            }}
+                          />
+                        )}
                         </>
                       )}
 
@@ -1430,17 +1446,28 @@ function CheckoutFormCore({
         </ListItem>
 
         {/* Coupon input */}
-        <ListItem>
+        <ListItem
+          sx={{
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: { xs: "stretch", sm: "center" },
+            gap: { xs: 1, sm: 2 },
+          }}
+        >
           <TextField
             label="Coupon code"
             value={couponCode}
             onChange={(e) => setCouponCode(e.target.value)}
             size="small"
-            sx={{ mr: 1, maxWidth: 220 }}
+            fullWidth
             error={!!couponError}
             helperText={couponError}
           />
-          <Button variant="outlined" onClick={applyCoupon} disabled={loading || !couponCode.trim()}>
+          <Button
+            variant="outlined"
+            onClick={applyCoupon}
+            disabled={loading || !couponCode.trim()}
+            sx={{ width: { xs: "100%", sm: "auto" } }}
+          >
             Apply
           </Button>
         </ListItem>
@@ -1544,23 +1571,25 @@ function CheckoutFormCore({
               onChange={handleGuest}
             />
 
-            <Button
-              variant="text"
-              size="small"
-              onClick={() => setLoginDialogOpen(true)}
-              sx={{ mb: 1, textTransform: "none" }}
-            >
-              Already have an account? Log in
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setLoginDialogOpen(true)}
+                sx={{ textTransform: "none", width: { xs: "100%", sm: "auto" } }}
+              >
+                Already have an account? Log in
+              </Button>
 
-            <Button
-              variant="text"
-              size="small"
-              onClick={() => setRegisterDialogOpen(true)}
-              sx={{ mb: 2, textTransform: "none" }}
-            >
-              Don't have an account? Sign up
-            </Button>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => setRegisterDialogOpen(true)}
+                sx={{ textTransform: "none", width: { xs: "100%", sm: "auto" } }}
+              >
+                Don't have an account? Sign up
+              </Button>
+            </Stack>
 
             {/* Guest buttons mirror the client section */}
             {showOnlinePayment ? (
@@ -1632,6 +1661,8 @@ function CheckoutFormCore({
           Back
         </Button>
       </Stack>
+        </Stack>
+      </Paper>
 
       {/* Dialog ?   choose service when multiple */}
       <Dialog open={dlgSvcOpen} onClose={() => setDlgSvcOpen(false)} maxWidth="sm" fullWidth>

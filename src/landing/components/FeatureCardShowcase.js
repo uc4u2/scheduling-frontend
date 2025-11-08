@@ -94,7 +94,7 @@ const FeatureCardShowcase = ({
           const textColor = palette.text || (invert ? theme.palette.text.primary : theme.palette.common.white);
 
           return (
-            <Grid item xs={12} md={4} key={card.title || index}>
+            <Grid item xs={12} sm={6} md={4} key={card.title || index}>
               <motion.div
                 {...cardMotionProps}
                 transition={{ ...cardMotionProps.transition, delay: motionDelay }}

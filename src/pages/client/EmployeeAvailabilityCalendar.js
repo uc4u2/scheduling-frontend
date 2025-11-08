@@ -1,6 +1,6 @@
 // src/pages/sections/management/EmployeeAvailabilityCalendar.js
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -13,8 +13,11 @@ import {
   Stack,
   Chip,
   Tooltip,
+  SwipeableDrawer,
+  useMediaQuery,
 } from "@mui/material";
-import { ArrowBackIos, ArrowForwardIos } from "@mui/icons-material";
+import { useTheme } from "@mui/material/styles";
+import { ArrowBackIos, ArrowForwardIos, Close as CloseIcon } from "@mui/icons-material";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { api } from "../../utils/api";
@@ -28,6 +31,7 @@ const ymd = (d) =>
   ).padStart(2, "0")}`;
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
+const AUTO_SELECT_FIRST_TIME = true;
 
 /**
  * Build display date/time using backend-prepared local fields when available.
@@ -67,6 +71,41 @@ export default function EmployeeAvailabilityCalendar({
   const [selectedTime, setSelectedTime] = useState(""); // "HH:MM"
   const [saving, setSaving] = useState(false);
   const [priceInfo, setPriceInfo] = useState(null); // optional: fetched price
+  const [timeSheetOpen, setTimeSheetOpen] = useState(false);
+  const [timeAnnounce, setTimeAnnounce] = useState("");
+  const timesRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const accentColor = "var(--page-calendar-accent, var(--page-btn-bg, var(--sched-primary)))";
+  const accentContrast = "var(--page-calendar-accent-contrast, var(--page-btn-color, #ffffff))";
+  const borderColor = "var(--page-border-color, rgba(15,23,42,0.12))";
+  const focusColor = "var(--page-focus-ring, var(--page-btn-bg, var(--sched-primary)))";
+  const softBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
+  const bodyColor = "var(--page-body-color, inherit)";
+  const surfaceColor = "var(--page-calendar-surface, var(--page-card-bg, var(--page-secondary-bg, var(--page-surface-bg, #ffffff))))";
+  const focusRing = {
+    outline: `2px solid ${focusColor}`,
+    outlineOffset: 2,
+  };
+  const primaryButtonSx = {
+    backgroundColor: accentColor,
+    color: accentContrast,
+    textTransform: "none",
+    fontWeight: 700,
+    borderRadius: "var(--page-btn-radius, 12px)",
+    boxShadow: "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))",
+    "&:hover": {
+      backgroundColor: `var(--page-btn-bg-hover, ${accentColor})`,
+      color: accentContrast,
+    },
+    "&:focus-visible": focusRing,
+  };
+  const linkButtonSx = {
+    color: accentColor,
+    textTransform: "none",
+    fontWeight: 600,
+    "&:focus-visible": focusRing,
+  };
 
   /* ------------ load day slots when selection changes ------------ */
   useEffect(() => {
@@ -83,16 +122,16 @@ export default function EmployeeAvailabilityCalendar({
             artist_id: artistId,
             service_id: serviceId,
             date: selectedDate,
-            explicit_only: 1,   // ← only explicit availability rows
-            respect_rows: 1,    // ← do NOT subdivide; one slot per manager row
-            timezone: userTz,   // ← just for correct client labels
+            timezone: userTz,
           },
         });
 
-        // (Optional but safe) keep only explicit availability in the UI
-        const daySlots = (data.slots || [])
-          .filter(s => s.type === "available" && s.origin !== "shift");
+        const sourceSlots = Array.isArray(data?.slots) ? data.slots : [];
+        const daySlots = sourceSlots.filter((slot) => (slot.type || slot.status) === "available");
         setSlots(daySlots);
+        setSelectedTime((prev) =>
+          daySlots.some((s) => s.start_time === prev) ? prev : ""
+        );
 
         // Optional: pull simple pricing from your public service endpoint if you have it
         // (safe no-op if you don't)
@@ -114,11 +153,62 @@ export default function EmployeeAvailabilityCalendar({
     run();
   }, [companySlug, artistId, serviceId, selectedDate]);
 
+  useEffect(() => {
+    const iso = isoFromParts(
+      selectedDate,
+      slots[0]?.start_time || "00:00",
+      slots[0]?.timezone || userTz
+    );
+    const label = buildDisplayFromISO(iso).date;
+    setTimeAnnounce(
+      slots.length
+        ? `${slots.length} slot${slots.length === 1 ? "" : "s"} available${
+            label && label !== "—" ? ` on ${label}` : ""
+          }`
+        : "No slots for this day"
+    );
+
+    if (!slots.length) {
+      setTimeSheetOpen(false);
+      return;
+    }
+
+    if (AUTO_SELECT_FIRST_TIME && !selectedTime) {
+      setSelectedTime(slots[0].start_time);
+    }
+
+    if (isMobile) {
+      setTimeSheetOpen(true);
+      return;
+    }
+
+    if (timesRef.current) {
+      window.requestAnimationFrame(() => {
+        timesRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        const firstBtn = timesRef.current.querySelector(
+          "button[data-time-chip='1']"
+        );
+        firstBtn?.focus({ preventScroll: true });
+      });
+    }
+  }, [slots, selectedDate, userTz, isMobile, selectedTime]);
+
   /* ------------ handlers ------------ */
   const goPrevMonth = () =>
     setMonthView(new Date(monthView.getFullYear(), monthView.getMonth() - 1, 1));
   const goNextMonth = () =>
     setMonthView(new Date(monthView.getFullYear(), monthView.getMonth() + 1, 1));
+
+  const handleDateSelect = useCallback(
+    (ymdValue) => {
+      setSelectedDate(ymdValue);
+      setSelectedTime("");
+      if (isMobile) {
+        setTimeSheetOpen(true);
+      }
+    },
+    [isMobile]
+  );
 
   const daysInMonth = (view) =>
     new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
@@ -142,18 +232,18 @@ export default function EmployeeAvailabilityCalendar({
           cursor: isPast ? "default" : "pointer",
           borderRadius: 1.25,
           border: "1px solid",
-          borderColor: isSelected ? "primary.main" : "divider",
-          bgcolor: isSelected ? "primary.main" : hasAvail ? "success.light" : "background.paper",
-          color: isSelected ? "primary.contrastText" : isPast ? "text.disabled" : "text.primary",
+          borderColor: isSelected ? accentColor : borderColor,
+          bgcolor: isSelected ? accentColor : hasAvail ? softBg : "transparent",
+          color: isSelected ? accentContrast : isPast ? "text.disabled" : bodyColor,
           transition: "all .15s ease",
           "&:hover": {
-            bgcolor: isPast ? "background.paper" : isSelected ? "primary.main" : "action.hover",
+            bgcolor: isPast ? "transparent" : isSelected ? accentColor : softBg,
           },
+          "&:focus-visible": focusRing,
         }}
         onClick={() => {
           if (!isPast) {
-            setSelectedDate(ymdStr);
-            setSelectedTime(""); // reset time selection
+            handleDateSelect(ymdStr);
           }
         }}
       >
@@ -206,6 +296,58 @@ export default function EmployeeAvailabilityCalendar({
     );
 
   /* ------------ header / context ------------ */
+
+  const handleTimeSheetClose = () => setTimeSheetOpen(false);
+
+  const renderTimeButtons = (variant = "inline") => (
+    <Box
+      sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 1,
+        mb: variant === "inline" ? 3 : 0,
+      }}
+    >
+      {slots.map((s, idx) => {
+        const iso = isoFromParts(selectedDate, s.start_time, s.timezone || userTz);
+        const { time } = buildDisplayFromISO(iso);
+        const label = time || s.start_time;
+
+        return (
+          <Button
+            key={s.start_time}
+            variant={selectedTime === s.start_time ? "contained" : "outlined"}
+            size="small"
+            onClick={() => {
+              setSelectedTime(s.start_time);
+              if (isMobile) {
+                setTimeSheetOpen(false);
+              }
+            }}
+            data-time-chip={idx === 0 ? "1" : undefined}
+            fullWidth={variant === "drawer"}
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              borderRadius: 999,
+              border: `1px solid ${selectedTime === s.start_time ? accentColor : borderColor}`,
+              backgroundColor: selectedTime === s.start_time ? accentColor : "transparent",
+              color: selectedTime === s.start_time ? accentContrast : bodyColor,
+              px: 2,
+              "&:hover": {
+                backgroundColor: selectedTime === s.start_time ? accentColor : softBg,
+                borderColor: accentColor,
+              },
+              "&:focus-visible": focusRing,
+            }}
+          >
+            {label}
+          </Button>
+        );
+      })}
+    </Box>
+  );
+
   const contextISO = isoFromParts(selectedDate, (slots[0]?.start_time || "00:00"), (slots[0]?.timezone || userTz));
   const disp = buildDisplayFromISO(contextISO);
   const svcName = serviceName || priceInfo?.name || "Selected Service";
@@ -225,33 +367,86 @@ export default function EmployeeAvailabilityCalendar({
             Choose a time — {svcName}
           </Typography>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <Chip size="small" label={`TZ: ${userTz}`} />
+            <Chip
+              size="small"
+              label={`TZ: ${userTz}`}
+              sx={{
+                borderRadius: 999,
+                fontWeight: 600,
+                backgroundColor: softBg,
+                color: bodyColor,
+              }}
+            />
             {priceInfo?.base_price != null && (
-              <Chip size="small" color="primary" variant="outlined" label={`Base ${money(priceInfo.base_price)}`} />
+              <Chip
+                size="small"
+                label={`Base ${money(priceInfo.base_price)}`}
+                sx={{
+                  borderRadius: 999,
+                  fontWeight: 600,
+                  backgroundColor: accentColor,
+                  color: accentContrast,
+                }}
+              />
             )}
             {slots.length > 0 ? (
-              <Chip size="small" color="success" label={`${slots.length} slot(s) today`} />
+              <Chip
+                size="small"
+                label={`${slots.length} slot(s) today`}
+                sx={{
+                  borderRadius: 999,
+                  fontWeight: 600,
+                  backgroundColor: accentColor,
+                  color: accentContrast,
+                }}
+              />
             ) : (
-              <Chip size="small" color="warning" label="No slots for selected day" />
+              <Chip
+                size="small"
+                label="No slots for selected day"
+                sx={{
+                  borderRadius: 999,
+                  fontWeight: 600,
+                  backgroundColor: softBg,
+                  color: bodyColor,
+                }}
+              />
             )}
           </Stack>
         </Box>
 
         <Tooltip title="This component uses the same month-grid + time chips pattern as the reschedule UI">
-          <Chip size="small" variant="outlined" label="Setmore-style" />
+          <Chip
+            size="small"
+            variant="outlined"
+            label="Setmore-style"
+            sx={{
+              borderRadius: 999,
+              border: `1px solid ${borderColor}`,
+              color: bodyColor,
+            }}
+          />
         </Tooltip>
       </Stack>
 
       {/* ── Month navigation & grid ─────────────────────────── */}
-      <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+      <Paper
+        sx={{
+          p: 2,
+          mb: 3,
+          borderRadius: 2,
+          border: `1px solid ${borderColor}`,
+          backgroundColor: surfaceColor,
+        }}
+      >
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          <IconButton onClick={goPrevMonth}>
+          <IconButton onClick={goPrevMonth} sx={{ color: accentColor }}>
             <ArrowBackIos fontSize="small" />
           </IconButton>
           <Typography variant="subtitle1" fontWeight={700}>
             {monthView.toLocaleString("default", { month: "long", year: "numeric" })}
           </Typography>
-          <IconButton onClick={goNextMonth}>
+          <IconButton onClick={goNextMonth} sx={{ color: accentColor }}>
             <ArrowForwardIos fontSize="small" />
           </IconButton>
         </Box>
@@ -290,35 +485,69 @@ export default function EmployeeAvailabilityCalendar({
         </Alert>
       )}
 
-      <Box display="flex" flexWrap="wrap" gap={1} mb={3}>
-        {slots.map((s) => {
-          // show local label using timezone from slot (fallback to userTz)
-          const iso = isoFromParts(selectedDate, s.start_time, s.timezone || userTz);
-          const { time } = buildDisplayFromISO(iso);
-          const label = time || s.start_time;
-
-          return (
-            <Button
-              key={s.start_time}
-              variant={selectedTime === s.start_time ? "contained" : "outlined"}
-              size="small"
-              onClick={() => setSelectedTime(s.start_time)}
-            >
-              {label}
-            </Button>
-          );
-        })}
+      <Box ref={timesRef}>
+        {renderTimeButtons()}
       </Box>
 
-      <Stack direction="row" spacing={1.5} alignItems="center">
+      <Box
+        sx={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          margin: -1,
+          padding: 0,
+          overflow: "hidden",
+          clip: "rect(0 0 0 0)",
+          border: 0,
+        }}
+        aria-live="polite"
+      >
+        {timeAnnounce}
+      </Box>
+
+      <SwipeableDrawer
+        anchor="bottom"
+        open={timeSheetOpen}
+        onOpen={() => setTimeSheetOpen(true)}
+        onClose={handleTimeSheetClose}
+        disableSwipeToOpen={false}
+        keepMounted
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            maxHeight: "70vh",
+            p: 2,
+          },
+        }}
+      >
+        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
+          <Typography variant="h6" fontWeight={800}>
+            Available times
+          </Typography>
+          <IconButton onClick={handleTimeSheetClose}>
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+        {renderTimeButtons("drawer")}
+      </SwipeableDrawer>
+
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
         <Button
           variant="contained"
           disabled={saving || !selectedTime}
           onClick={confirmSelection}
+          fullWidth={isMobile}
+          sx={primaryButtonSx}
         >
           {saving ? "Opening…" : "Continue"}
         </Button>
-        <Button onClick={() => navigate(-1)} variant="text">
+        <Button
+          onClick={() => navigate(-1)}
+          variant="text"
+          fullWidth={isMobile}
+          sx={linkButtonSx}
+        >
           Back
         </Button>
       </Stack>

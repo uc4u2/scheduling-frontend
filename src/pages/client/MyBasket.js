@@ -285,7 +285,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     >
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
         <Stack spacing={3}>
-        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }}>
+        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }} spacing={2}>
           <Box>
             <Typography variant="h3" fontWeight={800}>
               Your Basket
@@ -294,8 +294,8 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
               Review services and products before completing your purchase.
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1}>
-            <Button variant="outlined" onClick={continueShopping}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
+            <Button variant="outlined" onClick={continueShopping} sx={{ width: { xs: "100%", sm: "auto" } }}>
               Continue shopping
             </Button>
             <Button
@@ -303,6 +303,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
               startIcon={<ShoppingCartCheckoutIcon />}
               onClick={proceed}
               disabled={items.length === 0 || mixedCart}
+              sx={{ width: { xs: "100%", sm: "auto" } }}
             >
               Proceed to checkout
             </Button>
@@ -333,7 +334,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             </Button>
           </Box>
         ) : (
-          <Grid container spacing={4}>
+          <Grid container spacing={{ xs: 3, md: 4 }}>
             <Grid item xs={12} md={7}>
               <Stack spacing={2}>
                 {items.map((item) => (
@@ -380,7 +381,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                               value={item.quantity || 1}
                               onChange={(event) => updateQuantity(item, event.target.value)}
                               inputProps={{ min: 1 }}
-                              sx={{ width: 100 }}
+                              sx={{ width: { xs: "100%", sm: 100 } }}
                             />
                           ) : (
                             <Typography variant="caption" color="text.secondary">
