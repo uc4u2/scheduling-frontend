@@ -5,8 +5,9 @@ import {
   Divider, Stack, Button, TextField, Card, CardContent,
   Dialog, DialogTitle, DialogContent, DialogActions,
   List, ListItemButton, ListItemText, ListItemAvatar, Avatar,
-  IconButton, Tooltip
+  IconButton, Tooltip, Container, Grid, Chip
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PersonIcon from "@mui/icons-material/Person";
 import axios from "axios";
@@ -15,7 +16,7 @@ import PublicPageShell from "./PublicPageShell";
 
 const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-export default function PublicReviewList({ slug, limit = 20, disableShell = false }) {
+export default function PublicReviewList({ slug, limit = 20, disableShell = false, compact = false }) {
   // slug can come from props or the route
   const params = useParams();
   const effectiveSlug = useMemo(() => {
@@ -165,116 +166,235 @@ export default function PublicReviewList({ slug, limit = 20, disableShell = fals
   };
 
   // --------- UI ----------
-  const page = (
-    <Box>
-      {/* Summary */}
-      <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-        <Rating name="avg-rating" value={avg} precision={0.5} readOnly />
-        <Typography variant="body2" color="text.secondary">
-          {avg ? avg.toFixed(1) : "0.0"} / 5 · {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
-        </Typography>
-      </Stack>
+  const theme = useTheme();
 
-      {/* Public list */}
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-        {loading ? (
-          <Box sx={{ py: 2, textAlign: "center" }}>
-            <CircularProgress size={22} />
-          </Box>
-        ) : err ? (
-          <Alert severity="error">{err}</Alert>
-        ) : !reviews.length ? (
-          <Typography variant="body2">No reviews yet.</Typography>
-        ) : (
-          <Stack spacing={2}>
-            {reviews.map((r, i) => (
-              <Box key={r.id || i}>
-                <Rating value={Number(r.rating) || 0} precision={0.5} readOnly />
-                {r.comment && <Typography sx={{ mt: 0.5 }}>{r.comment}</Typography>}
-                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                  {r.client_first ? `— ${r.client_first}` : ""} {r.service ? `• ${r.service}` : ""} {r.provider ? `• ${r.provider}` : ""}
-                </Typography>
-                {i < reviews.length - 1 && <Divider sx={{ mt: 2 }} />}
-              </Box>
-            ))}
-          </Stack>
-        )}
-      </Paper>
+  const renderReviews = () => {
+    if (loading) {
+      return (
+        <Box sx={{ py: 4, textAlign: "center" }}>
+          <CircularProgress size={22} />
+        </Box>
+      );
+    }
+    if (err) {
+      return <Alert severity="error">{err}</Alert>;
+    }
+    if (!reviews.length) {
+      return <Alert severity="info">No reviews yet.</Alert>;
+    }
 
-      {/* Inline client review (compact by default) */}
-      {clientToken && (
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-            Share feedback from a recent visit
-          </Typography>
+    const cardBgLight = "linear-gradient(140deg, rgba(255,249,245,0.95) 0%, rgba(253,239,226,0.9) 100%)";
+    const cardBgDark = "linear-gradient(140deg, rgba(15,23,42,0.85) 0%, rgba(30,41,59,0.92) 100%)";
+    const cardBorder = alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.4 : 0.08);
 
-          {eligLoading ? (
-            <Box sx={{ py: 1, textAlign: "center" }}>
-              <CircularProgress size={20} />
-            </Box>
-          ) : elig.eligible.length ? (
-            <Card variant="outlined">
-              <CardContent>
-                {/* Compact review box defaults to the most recent appointment */}
-                <Stack spacing={1}>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Typography variant="body2" color="text.secondary">
-                      {form.apptId
-                        ? `Reviewing appointment #${form.apptId}`
-                        : `You're eligible to review a recent visit`}
-                    </Typography>
-                    <Tooltip title="Pick a different visit">
-                      <IconButton size="small" onClick={openPicker} aria-label="Choose another appointment">
-                        <PersonIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-
-                  {/* Rating + comment */}
-                  <Rating
-                    value={form.rating}
-                    onChange={(_, v) => setForm((f) => ({ ...f, rating: v || 5 }))}
-                  />
-                  <TextField
-                    fullWidth
-                    multiline
-                    minRows={3}
-                    placeholder="Tell us about your experience (optional)"
-                    value={form.comment}
-                    onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))}
-                  />
-
-                  {form.error && <Alert severity="error">{form.error}</Alert>}
-                  {form.done && <Alert severity="success">Thanks! Your review was submitted.</Alert>}
-
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                    <Button
-                      variant="contained"
-                      disabled={form.submitting || !form.apptId}
-                      onClick={submitReview}
-                    >
-                      {form.submitting ? "Submitting…" : "Submit review"}
-                    </Button>
-                    <Button variant="text" onClick={openPicker}>
-                      Choose another appointment
-                    </Button>
-                  </Stack>
-
-                  <Typography variant="caption" color="text.secondary">
-                    Review window: last {elig.window_days} days.
+    return (
+      <Grid container spacing={3}>
+        {reviews.map((r, i) => (
+          <Grid key={r.id || i} item xs={12} sm={6} md={4}>
+            <Card
+              className="review-plan-card"
+              sx={{
+                height: "100%",
+                borderRadius: 3,
+                p: 3,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                background: theme.palette.mode === "dark" ? cardBgDark : cardBgLight,
+                border: `1px solid ${cardBorder}`,
+                boxShadow: "0 18px 32px rgba(15,23,42,0.12)",
+              }}
+            >
+              <Stack spacing={2}>
+                <Stack direction="row" alignItems="center" spacing={1} justifyContent="space-between">
+                  <Rating value={Number(r.rating) || 0} precision={0.5} readOnly size="small" />
+                  <Typography variant="body2" color="text.secondary">
+                    {Number(r.rating || 0).toFixed(1)} / 5
                   </Typography>
                 </Stack>
-              </CardContent>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    fontWeight: 600,
+                    lineHeight: 1.6,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 5,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  {r.comment || "Client left a rating without a written comment."}
+                </Typography>
+                <Divider flexItem sx={{ borderColor: alpha(theme.palette.common.black, 0.12) }} />
+                <Stack spacing={0.5}>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    {r.client_first || "Client"}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {[r.service, r.provider].filter(Boolean).join(" • ")}
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
+                    {r.source && <Chip size="small" label={r.source} />}
+                    {r.ago && (
+                      <Chip
+                        size="small"
+                        label={r.ago}
+                        variant="outlined"
+                        sx={{ borderColor: alpha(theme.palette.common.black, 0.2) }}
+                      />
+                    )}
+                  </Stack>
+                </Stack>
+              </Stack>
             </Card>
-          ) : (
-            <Alert severity="info">
-              {elig.message || `No eligible visits in the last ${elig.window_days} days.`}
-            </Alert>
-          )}
-        </Box>
-      )}
+          </Grid>
+        ))}
+      </Grid>
+    );
+  };
 
-      {/* Stylish picker (modal) */}
+  const pagePadding = compact ? { xs: 0, md: 0 } : { xs: 0, md: 0 };
+
+  const page = (
+    <Box sx={{ py: pagePadding }}>
+      <Container maxWidth="lg">
+        <Stack spacing={5}>
+          <Stack spacing={1} textAlign="center">
+            <Typography variant="overline" sx={{ letterSpacing: ".3em" }}>
+              Verified Reviews
+            </Typography>
+            <Typography variant="h3" fontWeight={800}>
+              What clients are saying
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Flexible, transparent service experiences built on {reviews.length || 0} live reviews.
+            </Typography>
+          </Stack>
+
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            justifyContent="center"
+            alignItems={{ xs: "stretch", sm: "center" }}
+          >
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                border: `1px solid ${alpha(theme.palette.common.black, 0.08)}`,
+                minWidth: 220,
+              }}
+            >
+              <Typography variant="caption" sx={{ letterSpacing: ".2em", textTransform: "uppercase" }}>
+                Average Rating
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="h4" fontWeight={800}>
+                  {avg ? avg.toFixed(1) : "0.0"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  / 5
+                </Typography>
+              </Stack>
+              <Rating value={avg} precision={0.5} readOnly />
+            </Paper>
+
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                border: `1px solid ${alpha(theme.palette.common.black, 0.08)}`,
+                minWidth: 220,
+              }}
+            >
+              <Typography variant="caption" sx={{ letterSpacing: ".2em", textTransform: "uppercase" }}>
+                Total Reviews
+              </Typography>
+              <Typography variant="h4" fontWeight={800}>
+                {reviews.length}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Real customers sharing real feedback.
+              </Typography>
+            </Paper>
+          </Stack>
+
+          {renderReviews()}
+
+          {clientToken && (
+            <Box>
+              <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
+                Share feedback from a recent visit
+              </Typography>
+
+              {eligLoading ? (
+                <Box sx={{ py: 2, textAlign: "center" }}>
+                  <CircularProgress size={20} />
+                </Box>
+              ) : elig.eligible.length ? (
+                <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Typography variant="body2" color="text.secondary">
+                          {form.apptId
+                            ? `Reviewing appointment #${form.apptId}`
+                            : `You're eligible to review a recent visit`}
+                        </Typography>
+                        <Tooltip title="Pick a different visit">
+                          <IconButton size="small" onClick={openPicker} aria-label="Choose another appointment">
+                            <PersonIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+
+                      <Rating
+                        value={form.rating}
+                        onChange={(_, v) => setForm((f) => ({ ...f, rating: v || 5 }))}
+                      />
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        placeholder="Tell us about your experience (optional)"
+                        value={form.comment}
+                        onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))}
+                      />
+
+                      {form.error && <Alert severity="error">{form.error}</Alert>}
+                      {form.done && <Alert severity="success">Thanks! Your review was submitted.</Alert>}
+
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                        <Button
+                          variant="contained"
+                          disabled={form.submitting || !form.apptId}
+                          onClick={submitReview}
+                        >
+                          {form.submitting ? "Submitting…" : "Submit review"}
+                        </Button>
+                        <Button variant="text" onClick={openPicker}>
+                          Choose another appointment
+                        </Button>
+                      </Stack>
+
+                      <Typography variant="caption" color="text.secondary">
+                        Review window: last {elig.window_days} days.
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Alert severity="info">
+                  {elig.message || `No eligible visits in the last ${elig.window_days} days.`}
+                </Alert>
+              )}
+            </Box>
+          )}
+        </Stack>
+      </Container>
+
       <Dialog open={pickerOpen} onClose={closePicker} fullWidth maxWidth="sm">
         <DialogTitle>Pick a recent visit</DialogTitle>
         <DialogContent dividers sx={{ p: 0 }}>

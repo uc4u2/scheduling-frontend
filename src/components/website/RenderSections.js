@@ -37,15 +37,15 @@ function toArray(val) {
 
 /** Render sanitized (inline) HTML in Typography */
 function HtmlTypo({ variant = "body1", sx, children, ...rest }) {
-  const HtmlTypo = ({ children, ...rest }) => {
   const html = normalizeInlineHtml(String(children ?? ""));
   return (
     <Typography
+      variant={variant}
+      sx={sx}
       {...rest}
       dangerouslySetInnerHTML={{ __html: safeHtml(html) }}
     />
   );
-};
 }
 
 /** Convert schema maxWidth ("full" => false) to MUI Container prop */
@@ -451,6 +451,68 @@ const HeroInner = ({
   </Stack>
 );
 
+function useTimedIndex(length, intervalMs = 5000, autoplay = true) {
+  const [i, setI] = React.useState(0);
+  React.useEffect(() => {
+    if (!autoplay || !length) return;
+    const id = setInterval(() => setI((x) => (x + 1) % length), Math.max(1000, intervalMs));
+    return () => clearInterval(id);
+  }, [length, intervalMs, autoplay]);
+  return [i, setI];
+}
+
+const HeroCarousel = ({
+  slides = [],
+  autoplay = true,
+  intervalMs = 5000,
+  align = "center",
+  contentMaxWidth = "lg",
+  heroHeight = 0,
+  safeTop = true,
+  overlay = 0.35,
+  overlayGradient,
+  overlayColor = "#000000",
+  brightness = 1.0,
+}) => {
+  const list = toArray(slides);
+  const [index, setIndex] = useTimedIndex(list.length, intervalMs, autoplay);
+  const textAlign = align === "right" ? "right" : align === "left" ? "left" : "center";
+  const minH = typeof heroHeight === "number" && heroHeight > 0 ? `${heroHeight}vh` : undefined;
+  const innerMax = typeof contentMaxWidth === "number" ? contentMaxWidth : (contentMaxWidth === false || contentMaxWidth === "full" ? false : contentMaxWidth || "lg");
+
+  const current = list[index] || {};
+  return (
+    <Box sx={{ position: "relative", borderRadius: { xs: 0, md: 3 }, overflow: "hidden", minHeight: minH || { xs: 380, md: 560 }, color: "var(--page-hero-text-color, var(--page-body-color, inherit))", pt: safeTop ? "env(safe-area-inset-top)" : 0 }}>
+      {list.map((s, i) => (
+        <Box key={i} aria-hidden={i !== index} sx={{ position: "absolute", inset: 0, opacity: i === index ? 1 : 0, transition: "opacity .6s ease", willChange: "opacity", backfaceVisibility: "hidden", transform: "translateZ(0)" }}>
+          {!!s.image && (
+            <Box aria-hidden sx={{ position: "absolute", inset: 0, backgroundImage: `url(${s.image})`, backgroundSize: "cover", backgroundPosition: s.backgroundPosition || "center", pointerEvents: "none", ...(brightness && brightness !== 1 ? { filter: `brightness(${brightness})` } : {}) }} />
+          )}
+          <Box sx={{ position: "absolute", inset: 0, background: colorWithOpacity(overlayColor, clamp(overlay, 0, 1)), pointerEvents: "none" }} />
+          {overlayGradient && <Box sx={{ position: "absolute", inset: 0, background: overlayGradient, pointerEvents: "none" }} />}
+        </Box>
+      ))}
+
+      {innerMax === false ? (
+        <Box sx={{ position: "absolute", inset: 0, zIndex: 2, width: "100%", px: 2, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <HeroInner textAlign={textAlign} eyebrow={current.eyebrow} heading={current.heading} subheading={current.subheading} ctaText={current.ctaText} ctaLink={current.ctaLink} secondaryCtaText={current.secondaryCtaText} secondaryCtaLink={current.secondaryCtaLink} />
+        </Box>
+      ) : (
+        <Container maxWidth={innerMax} sx={{ position: "absolute", inset: 0, zIndex: 2, display: "flex", alignItems: "center" }}>
+          <HeroInner textAlign={textAlign} eyebrow={current.eyebrow} heading={current.heading} subheading={current.subheading} ctaText={current.ctaText} ctaLink={current.ctaLink} secondaryCtaText={current.secondaryCtaText} secondaryCtaLink={current.secondaryCtaLink} />
+        </Container>
+      )}
+
+      {list.length > 1 && (
+        <Stack direction="row" spacing={1} justifyContent="center" sx={{ position: "absolute", bottom: 16, left: 0, right: 0, zIndex: 3 }}>
+          {list.map((_, i) => (
+            <Box key={i} role="button" aria-label={`Go to slide ${i + 1}`} aria-current={i === index} tabIndex={0} onClick={() => setIndex(i)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setIndex(i)} sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: i === index ? "text.primary" : "divider", cursor: "pointer", outlineOffset: 2 }} />
+          ))}
+        </Stack>
+      )}
+    </Box>
+  );
+};
 
 const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, maxWidth }) => (
   <Container maxWidth={toContainerMax(maxWidth)}>
@@ -540,15 +602,15 @@ const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign
                     loading="lazy"
                   />
                 )}
-                <CardContent>
-                  <Typography fontWeight={700}>{toPlain(s.name)}</Typography>
+                <CardContent sx={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <Typography fontWeight={700} sx={{ width: "100%", textAlign: "center" }}>{toPlain(s.name)}</Typography>
                   {s.description && (
-                    <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-line" }}>
+                    <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-line", width: "100%", textAlign: "center" }}>
                       {toPlain(s.description)}
                     </Typography>
                   )}
                   {(s.price || s.meta) && (
-                    <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
+                    <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap", justifyContent: "center" }}>
                       {s.price && <Chip label={toPlain(s.price)} />}
                       {s.meta && <Chip variant="outlined" label={toPlain(s.meta)} />}
                     </Stack>
@@ -566,6 +628,8 @@ const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign
                         gap: 1,
                         color: "text.secondary",
                         fontSize: "0.95rem",
+                        alignItems: "center",
+                        textAlign: "center",
                       }}
                     >
                       {bullets.map((bullet, idx) => (
@@ -595,7 +659,7 @@ const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign
                     </Box>
                   )}
                   {!!chips.length && (
-                    <Stack direction="row" spacing={0.75} flexWrap="wrap" rowGap={1} sx={{ mt: 2 }}>
+                    <Stack direction="row" spacing={0.75} flexWrap="wrap" rowGap={1} sx={{ mt: 2, justifyContent: "center" }}>
                       {chips.map((chip, idx) => (
                         <Chip key={idx} variant="outlined" size="small" label={toPlain(chip)} />
                       ))}
@@ -1788,6 +1852,188 @@ const LogoCarousel = ({
   );
 };
 
+const TestimonialCarousel = ({
+  title,
+  reviews = [],
+  autoplay = true,
+  intervalMs = 4000,
+  showDots = true,
+  showArrows = true,
+  perView = {},
+  maxWidth = "lg",
+}) => {
+  const entries = toArray(reviews)
+    .map((item) => ({
+      name: item?.name ?? "",
+      rating: Number(item?.rating ?? 0),
+      source: item?.source ?? "",
+      ago: item?.ago ?? "",
+      text: item?.text ?? "",
+    }))
+    .filter((item) => item.text);
+
+  const theme = useTheme();
+  const mdUp = useMediaQuery(theme.breakpoints.up("md"));
+  const smUp = useMediaQuery(theme.breakpoints.up("sm"));
+
+  const perDesktop = clamp(Number(perView?.desktop) || 3, 1, 5);
+  const perTablet = clamp(Number(perView?.tablet) || 2, 1, perDesktop);
+  const perMobile = clamp(Number(perView?.mobile) || 1, 1, perTablet);
+  const cardsPerView = mdUp ? perDesktop : smUp ? perTablet : perMobile;
+
+  const slideCount = Math.max(1, entries.length - cardsPerView + 1);
+  const reduced = usePrefersReducedMotion();
+  const autoplayDisabled = reduced || !autoplay || slideCount <= 1;
+  const interval = clamp(intervalMs || 4000, 1500, 15000);
+  const [index, setIndex, setPaused] = useAutoplay(slideCount, interval, autoplayDisabled);
+
+  React.useEffect(() => {
+    setIndex((prev) => {
+      if (prev >= slideCount) return Math.max(0, slideCount - 1);
+      return prev;
+    });
+  }, [slideCount, setIndex]);
+
+  if (!entries.length) return null;
+
+  const translate = `translate3d(-${(index * 100) / cardsPerView}%, 0, 0)`;
+  const cardWidth = {
+    xs: `${100 / perMobile}%`,
+    sm: `${100 / perTablet}%`,
+    md: `${100 / perDesktop}%`,
+  };
+
+  const goTo = (next) => {
+    if (slideCount <= 1) return;
+    setIndex(next);
+  };
+  const handlePrev = () => goTo((index - 1 + slideCount) % slideCount);
+  const handleNext = () => goTo((index + 1) % slideCount);
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      {title && (
+        <HtmlTypo variant="h4" sx={{ textAlign: "left", fontWeight: 800, mb: 3 }}>
+          {title}
+        </HtmlTypo>
+      )}
+      <Stack spacing={2}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          {showArrows && slideCount > 1 && (
+            <IconButton
+              aria-label="Show previous testimonials"
+              onClick={handlePrev}
+              className="carousel-arrow carousel-arrow-prev"
+            >
+              <ArrowBackIosNewIcon fontSize="small" />
+            </IconButton>
+          )}
+          <Box
+            sx={{ overflow: "hidden", width: "100%" }}
+            onMouseEnter={() => !autoplayDisabled && setPaused(true)}
+            onMouseLeave={() => !autoplayDisabled && setPaused(false)}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                transition: "transform .6s ease",
+                transform: translate,
+                gap: { xs: 2, md: 3 },
+              }}
+              className="testimonial-carousel-track"
+            >
+              {entries.map((item, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    flex: {
+                      xs: `0 0 ${cardWidth.xs}`,
+                      sm: `0 0 ${cardWidth.sm}`,
+                      md: `0 0 ${cardWidth.md}`,
+                    },
+                    minWidth: { xs: cardWidth.xs, sm: cardWidth.sm, md: cardWidth.md },
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <Box
+                    className="testimonial-card"
+                    sx={{
+                      backgroundColor: "background.paper",
+                      borderRadius: 2,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      boxShadow: "0 10px 24px rgba(15,23,42,0.08)",
+                      p: { xs: 2.5, md: 3 },
+                      display: "grid",
+                      gridTemplateRows: "auto 1fr auto",
+                      rowGap: 1.5,
+                      minHeight: 220,
+                    }}
+                  >
+                    <Box className="testimonial-card-top" sx={{ display: "grid", rowGap: 0.5 }}>
+                      <Box
+                        className="stars"
+                        aria-label={`${Math.round(clamp(item.rating, 0, 5)) || 5} out of 5 stars`}
+                        sx={{ fontSize: 18, color: "#f59e0b", letterSpacing: "2px" }}
+                      >
+                        {"★".repeat(Math.round(clamp(item.rating, 0, 5)) || 5)}
+                      </Box>
+                      <Typography className="testimonial-name" variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        {toPlain(item.name) || "Client"}
+                      </Typography>
+                    </Box>
+                    <Typography className="testimonial-text" variant="body2" sx={{ color: "text.primary", lineHeight: 1.5 }}>
+                      {toPlain(item.text)}
+                    </Typography>
+                    <Typography className="testimonial-meta" variant="body2" sx={{ color: "text.secondary" }}>
+                      {[item.source, item.ago].filter(Boolean).join(" • ")}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+          {showArrows && slideCount > 1 && (
+            <IconButton
+              aria-label="Show next testimonials"
+              onClick={handleNext}
+              className="carousel-arrow carousel-arrow-next"
+            >
+              <ArrowForwardIosIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Stack>
+        {showDots && slideCount > 1 && (
+          <Stack direction="row" spacing={1} justifyContent="center" className="carousel-dots">
+            {Array.from({ length: slideCount }).map((_, dotIdx) => (
+              <Box
+                key={dotIdx}
+                component="button"
+                role="button"
+                tabIndex={0}
+                aria-label={`Go to testimonials slide ${dotIdx + 1}`}
+                aria-current={dotIdx === index}
+                onClick={() => goTo(dotIdx)}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && goTo(dotIdx)}
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  bgcolor: dotIdx === index ? "text.primary" : "divider",
+                  cursor: "pointer",
+                  outlineOffset: 2,
+                  border: 0,
+                  padding: 0,
+                }}
+              />
+            ))}
+          </Stack>
+        )}
+      </Stack>
+    </Container>
+  );
+};
+
 
 
 const FeaturePillars = ({
@@ -2646,18 +2892,24 @@ const Stats = ({
           {subtitle}
         </HtmlTypo>
       )}
-      <Grid container spacing={2}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" },
+          gap: 3,
+          maxWidth: 1200,
+          mx: "auto",
+        }}
+      >
         {list.map((s, i) => (
-          <Grid item xs={12} sm={6} md={3} key={i}>
-            <Card sx={{ textAlign: "center", p: 2 }}>
-              <Typography variant="h4" fontWeight={900}>{toPlain(s.value)}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {toPlain(s.label)}
-              </Typography>
-            </Card>
-          </Grid>
+          <Card key={i} sx={{ textAlign: "center", p: 2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 120 }}>
+            <Typography variant="h4" fontWeight={900}>{toPlain(s.value)}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {toPlain(s.label)}
+            </Typography>
+          </Card>
         ))}
-      </Grid>
+      </Box>
       {disclaimer && (
         <HtmlTypo variant="caption" sx={{ display: "block", mt: 1, color: "text.secondary" }}>
           {disclaimer}
@@ -2820,7 +3072,9 @@ const PageStyle = () => null;
 const registry = {
   pageStyle: PageStyle,
   hero: Hero,
+  heroCarousel: HeroCarousel,
   heroSplit: HeroSplit,
+  testimonialCarousel: TestimonialCarousel,
   serviceGrid: ServiceGrid,
   serviceGridSmart: SmartServiceGrid,
   gallery: Gallery,
