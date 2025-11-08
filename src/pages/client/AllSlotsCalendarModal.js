@@ -70,6 +70,7 @@ const AllSlotsCalendarModal = ({
   const calRef = useRef(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const surfaceBg = "var(--page-surface-bg, #ffffff)";
   const userTz = getUserTimezone();
 
   const [loading, setLoading] = useState(false);
@@ -296,8 +297,24 @@ const countTxt = s._count > 1 ? ` (${s._count})` : "";
   return (
     <>
       {/* Main calendar modal */}
-      <Dialog fullWidth maxWidth="lg" open={open} onClose={onClose} aria-labelledby="all-slots-calendar-title">
-        <DialogTitle id="all-slots-calendar-title" sx={{ fontWeight: 800 }}>
+      <Dialog
+        fullScreen={isMobile}
+        fullWidth
+        maxWidth="lg"
+        open={open}
+        onClose={onClose}
+        aria-labelledby="all-slots-calendar-title"
+        PaperProps={{
+          sx: {
+            backgroundColor: surfaceBg,
+            backgroundImage: "none",
+          },
+        }}
+      >
+        <DialogTitle
+          id="all-slots-calendar-title"
+          sx={{ fontWeight: 800, pr: 6, backgroundColor: surfaceBg }}
+        >
           📅 Select an Available Slot
           <IconButton onClick={onClose} sx={{ position: "absolute", right: 8, top: 8 }}>
             <CloseIcon />
@@ -307,6 +324,7 @@ const countTxt = s._count > 1 ? ` (${s._count})` : "";
         <DialogContent
           dividers
           sx={{
+            backgroundColor: surfaceBg,
             "& .fc-theme-standard .fc-scrollgrid": {
               borderRadius: 12,
               border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
@@ -386,21 +404,32 @@ const countTxt = s._count > 1 ? ` (${s._count})` : "";
           )}
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ backgroundColor: surfaceBg }}>
           <Button onClick={onClose}>Close</Button>
         </DialogActions>
       </Dialog>
 
       {/* Artist selection modal */}
-      <Dialog fullWidth maxWidth="sm" open={artistPickerOpen} onClose={() => setArtistPickerOpen(false)}>
-        <DialogTitle sx={{ fontWeight: 800 }}>
+      <Dialog
+        fullWidth
+        maxWidth="sm"
+        open={artistPickerOpen}
+        onClose={() => setArtistPickerOpen(false)}
+        PaperProps={{
+          sx: {
+            backgroundColor: surfaceBg,
+            backgroundImage: "none",
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, pr: 6, backgroundColor: surfaceBg }}>
           Choose a Provider for {selectedSlot?.date} at {selectedSlot?.start_time}
           <IconButton onClick={() => setArtistPickerOpen(false)} sx={{ position: "absolute", right: 8, top: 8 }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ backgroundColor: surfaceBg }}>
           {availableArtists.length === 0 ? (
             <Typography>No providers available for this time.</Typography>
           ) : (
@@ -424,7 +453,7 @@ const countTxt = s._count > 1 ? ` (${s._count})` : "";
           )}
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ backgroundColor: surfaceBg }}>
           <Button onClick={() => setArtistPickerOpen(false)}>Cancel</Button>
         </DialogActions>
       </Dialog>

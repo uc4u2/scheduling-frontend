@@ -128,7 +128,8 @@ export default function ServiceDetails() {
   const buttonSoftBg = buttonPalette.soft;
   const calendarAccent = "var(--page-calendar-accent, var(--page-btn-bg, var(--sched-primary)))";
   const calendarAccentContrast = "var(--page-calendar-accent-contrast, var(--page-btn-color, #ffffff))";
-  const calendarSurface = "var(--page-calendar-surface, var(--page-card-bg, var(--page-secondary-bg, var(--page-surface-bg, #ffffff))))";
+  const pageSurface = "var(--page-surface-bg, #ffffff)";
+  const calendarSurface = "var(--page-calendar-surface, var(--page-surface-bg, var(--page-card-bg, var(--page-secondary-bg, #ffffff))))";
   const calendarBorder = "var(--page-border-color, rgba(15,23,42,0.12))";
   const calendarFocus = "var(--page-focus-ring, var(--page-btn-bg, var(--sched-primary)))";
   const calendarText = "var(--page-body-color, inherit)";
@@ -172,12 +173,17 @@ export default function ServiceDetails() {
   const providersRef = useRef(null);
   const actionsRef = useRef(null);
   const focusTimeoutRef = useRef(null);
+  const closeGuardTimerRef = useRef(null);
+  const fetchVersionRef = useRef(0);
   const [providerSheetOpen, setProviderSheetOpen] = useState(false);
   const [timeSheetOpen, setTimeSheetOpen] = useState(false);
   const [providerAnnounce, setProviderAnnounce] = useState("");
   const [timeAnnounce, setTimeAnnounce] = useState("");
   const AUTO_SELECT_FIRST_TIME = true;
   const [actionsHeight, setActionsHeight] = useState(120);
+  const [selectionLock, setSelectionLock] = useState(null); // 'auto' | 'user' | null
+  const [flowStage, setFlowStage] = useState("idle");
+  const [closeGuardActive, setCloseGuardActive] = useState(false);
   /* base data */
   const [service, setService] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -214,7 +220,7 @@ export default function ServiceDetails() {
   const money = (value, currencyCode) => formatCurrency(value, currencyCode || displayCurrency);
   const stickyFooterHeight = Math.max(actionsHeight, 96);
   const scrollMarginValue = useMemo(
-    () => `calc(${stickyFooterHeight + 48}px + env(safe-area-inset-bottom))`,
+    () => `calc(${stickyFooterHeight + 32}px + env(safe-area-inset-bottom))`,
     [stickyFooterHeight]
   );
   const scrollSectionIntoView = useCallback(
@@ -234,10 +240,24 @@ export default function ServiceDetails() {
     [isMobile]
   );
 
+  const armCloseGuard = useCallback(() => {
+    if (typeof window === "undefined") return;
+    setCloseGuardActive(true);
+    if (closeGuardTimerRef.current) {
+      clearTimeout(closeGuardTimerRef.current);
+    }
+    closeGuardTimerRef.current = window.setTimeout(() => {
+      setCloseGuardActive(false);
+      closeGuardTimerRef.current = null;
+    }, 600);
+  }, []);
+
   const scrollProvidersIntoView = useCallback(() => {
     if (typeof window === "undefined" || isMobile) return;
     const target = providersRef.current;
     if (!target) return;
+    armCloseGuard();
+    armCloseGuard();
     scrollSectionIntoView(target);
 
     if (focusTimeoutRef.current) {
@@ -250,12 +270,15 @@ export default function ServiceDetails() {
       );
       firstFocusable?.focus({ preventScroll: true });
     }, 250);
-  }, [isMobile, scrollSectionIntoView]);
+  }, [armCloseGuard, isMobile, scrollSectionIntoView]);
 
   useEffect(() => {
     return () => {
       if (focusTimeoutRef.current) {
         clearTimeout(focusTimeoutRef.current);
+      }
+      if (closeGuardTimerRef.current) {
+        clearTimeout(closeGuardTimerRef.current);
       }
     };
   }, []);
@@ -264,6 +287,15 @@ export default function ServiceDetails() {
     if (!calendarOpen) {
       setTimeSheetOpen(false);
       setProviderSheetOpen(false);
+      setSelectionLock(null);
+      setFlowStage("idle");
+      setCloseGuardActive(false);
+      if (closeGuardTimerRef.current) {
+        clearTimeout(closeGuardTimerRef.current);
+        closeGuardTimerRef.current = null;
+      }
+    } else {
+      setFlowStage("date-select");
     }
   }, [calendarOpen]);
 
@@ -475,6 +507,8 @@ export default function ServiceDetails() {
     }
 
     let cancelled = false;
+    const version = ++fetchVersionRef.current;
+    setFlowStage("slots-loading");
     (async () => {
       setIsFetchingSlots(true);
       try {
@@ -487,7 +521,7 @@ export default function ServiceDetails() {
 
         const unique = aggregateByUTC(selectedDate, results);
 
-        if (!cancelled) {
+        if (!cancelled && fetchVersionRef.current === version) {
           setDaySlots(unique || []);
           setAvailableMap((prev) => ({
             ...prev,
@@ -495,40 +529,58 @@ export default function ServiceDetails() {
           }));
           if (selectedTimeKey && !unique?.some((s) => s.key === selectedTimeKey)) {
             setSelectedTimeKey("");
+            if (selectionLock !== "user") {
+              setSelectionLock(null);
+            }
           }
+          setFlowStage((unique?.length || 0) > 0 ? "slots-ready" : "slots-empty");
         }
       } finally {
-        if (!cancelled) setIsFetchingSlots(false);
+        if (!cancelled && fetchVersionRef.current === version) {
+          setIsFetchingSlots(false);
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [calendarOpen, selectedDate, employees, slug, serviceId, departmentId]);
+  }, [calendarOpen, selectedDate, employees, slug, serviceId, departmentId, selectedTimeKey, selectionLock]);
 
   /* time click → open/close inline provider picker */
   const selectTimeSlot = useCallback(
-    (slot, { force = false } = {}) => {
+    (slot, { force = false, source = "user" } = {}) => {
       if (!slot) return;
+      if (source === "auto" && selectionLock === "user") return;
       const key = slot.key;
       setSelectedTimeKey((prev) => {
         const same = prev === key;
         if (!force && same) {
           if (isMobile) {
-            setProviderSheetOpen(false);
             setTimeSheetOpen(false);
+            setProviderSheetOpen(true);
+          } else {
+            scrollProvidersIntoView();
           }
-          return "";
+          return prev;
         }
         if (isMobile) {
           setTimeSheetOpen(false);
           setProviderSheetOpen(true);
+        } else {
+          scrollProvidersIntoView();
         }
         return key;
       });
+      if (source === "user") {
+        setSelectionLock("user");
+        setFlowStage("time-user-picked");
+      } else if (source === "auto") {
+        setSelectionLock("auto");
+        setFlowStage("time-auto-picked");
+      }
     },
-    [isMobile]
+    [isMobile, selectionLock, scrollProvidersIntoView]
   );
 
   const handleArtistSelect = (artist) => {
@@ -566,6 +618,19 @@ export default function ServiceDetails() {
   const providerDrawerOpen = Boolean(isMobile && providerSheetOpen && selectedSlot);
   const handleTimeSheetClose = () => setTimeSheetOpen(false);
   const handleProviderSheetClose = () => setProviderSheetOpen(false);
+  const handleCalendarClose = useCallback(
+    (event, reason) => {
+      if (
+        closeGuardActive &&
+        (reason === "backdropClick" || reason === "escapeKeyDown")
+      ) {
+        event?.preventDefault?.();
+        return;
+      }
+      setCalendarOpen(false);
+    },
+    [closeGuardActive]
+  );
 
   const buildTimeChipSx = (selected, variant = "inline") => ({
     borderRadius: 999,
@@ -759,8 +824,10 @@ export default function ServiceDetails() {
       if (!newDate) return;
       setSelectedDate((prev) => (prev === newDate ? prev : newDate));
       setSelectedTimeKey("");
+      setSelectionLock(null);
       setProviderSheetOpen(false);
       setTimeSheetOpen(false);
+      setFlowStage("date-select");
     },
     []
   );
@@ -849,6 +916,28 @@ export default function ServiceDetails() {
   }, [selectedSlot, calendarOpen, isMobile, scrollProvidersIntoView]);
 
   useEffect(() => {
+    if (!calendarOpen || flowStage === "slots-loading") return;
+    if (!daySlots.length) {
+      if (selectionLock !== null) setSelectionLock(null);
+      return;
+    }
+    if (selectionLock === "user") {
+      const stillExists = daySlots.some((s) => s.key === selectedTimeKey);
+      if (!stillExists) {
+        setSelectionLock(null);
+        setSelectedTimeKey("");
+      }
+      return;
+    }
+    if (!selectedTimeKey || !daySlots.some((s) => s.key === selectedTimeKey)) {
+      const first = daySlots[0];
+      if (first) {
+        selectTimeSlot(first, { force: true, source: "auto" });
+      }
+    }
+  }, [calendarOpen, daySlots, selectedTimeKey, selectionLock, selectTimeSlot, flowStage]);
+
+  useEffect(() => {
     if (!calendarOpen || !selectedDate) {
       setTimeAnnounce("");
       return;
@@ -889,7 +978,7 @@ export default function ServiceDetails() {
         window.clearTimeout(focusTimer);
       }
     };
-  }, [daySlots, calendarOpen, selectedDate, isMobile, selectTimeSlot, selectedTimeKey, scrollSectionIntoView]);
+  }, [daySlots, calendarOpen, selectedDate, isMobile, selectTimeSlot, selectedTimeKey, scrollSectionIntoView, armCloseGuard]);
 
   /* guards */
   if (loading) {
@@ -1051,11 +1140,12 @@ export default function ServiceDetails() {
         scroll="paper"
         fullScreen={isTabletDown}
         open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
+        onClose={handleCalendarClose}
+        disableEscapeKeyDown={closeGuardActive}
         PaperProps={{
           sx: {
             borderRadius: isTabletDown ? 0 : 3,
-            backgroundColor: calendarSurface,
+            backgroundColor: pageSurface,
             backgroundImage: "none",
           },
         }}
@@ -1067,7 +1157,7 @@ export default function ServiceDetails() {
           sx={{
             fontWeight: 800,
             pr: 6,
-            backgroundColor: calendarSurface,
+            backgroundColor: pageSurface,
           }}
         >
           Select a Time Slot
@@ -1083,13 +1173,14 @@ export default function ServiceDetails() {
           ref={dialogContentRef}
           dividers
           sx={{
-            backgroundColor: calendarSurface,
+            backgroundColor: pageSurface,
             px: 0,
-            pb: `calc(env(safe-area-inset-bottom) + ${stickyFooterHeight}px)`,
+            pb: `calc(env(safe-area-inset-bottom) + ${stickyFooterHeight + 24}px)`,
             overflowX: "hidden",
             overflowY: "auto",
             maxHeight: "min(82vh, 880px)",
             boxSizing: "border-box",
+            position: "relative",
             "&&": {
               width: "100%",
             },
@@ -1102,10 +1193,11 @@ export default function ServiceDetails() {
               mx: "auto",
               px: { xs: 2, md: 3 },
               py: 2,
-              backgroundColor: calendarSurface,
+              backgroundColor: pageSurface,
               borderRadius: { xs: 0, sm: 2.5 },
               border: `1px solid ${calendarBorder}`,
               boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.08))",
+              width: "100%",
               overflow: "hidden",
             }}
           >
@@ -1162,6 +1254,8 @@ export default function ServiceDetails() {
               borderRadius: 2,
               border: `1px solid ${calendarBorder}`,
               backgroundColor: calendarSurface,
+              width: "100%",
+              overflow: "hidden",
             }}
           >
           {/* Month navigator */}
@@ -1442,12 +1536,22 @@ export default function ServiceDetails() {
             position: "sticky",
             bottom: 0,
             zIndex: 10,
-            backgroundColor: calendarSurface,
+            backgroundColor: pageSurface,
             borderTop: `1px solid ${calendarBorder}`,
             py: 2,
             px: { xs: 2, md: 3 },
             gap: 1,
             flexWrap: { xs: "wrap", sm: "nowrap" },
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: -24,
+              left: 0,
+              right: 0,
+              height: 24,
+              background: `linear-gradient(180deg, rgba(255,255,255,0) 0%, ${pageSurface} 100%)`,
+              pointerEvents: "none",
+            },
           }}
         >
           <Button
