@@ -83,6 +83,8 @@ export default function EmployeeAvailabilityCalendar({
   const softBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
   const bodyColor = "var(--page-body-color, inherit)";
   const surfaceColor = "var(--page-calendar-surface, var(--page-card-bg, var(--page-secondary-bg, var(--page-surface-bg, #ffffff))))";
+  const buttonShadow = "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))";
+  const buttonShadowHover = "var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))";
   const focusRing = {
     outline: `2px solid ${focusColor}`,
     outlineOffset: 2,
@@ -93,10 +95,11 @@ export default function EmployeeAvailabilityCalendar({
     textTransform: "none",
     fontWeight: 700,
     borderRadius: "var(--page-btn-radius, 12px)",
-    boxShadow: "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))",
+    boxShadow: buttonShadow,
     "&:hover": {
       backgroundColor: `var(--page-btn-bg-hover, ${accentColor})`,
       color: accentContrast,
+      boxShadow: buttonShadowHover,
     },
     "&:focus-visible": focusRing,
   };
@@ -106,6 +109,30 @@ export default function EmployeeAvailabilityCalendar({
     fontWeight: 600,
     "&:focus-visible": focusRing,
   };
+  const infoAlertSx = {
+    backgroundColor: surfaceColor,
+    color: bodyColor,
+    border: `1px solid ${borderColor}`,
+    "& .MuiAlert-icon": { color: accentColor },
+  };
+  const timeChipSx = (selected, variant = "inline") => ({
+    borderRadius: 999,
+    textTransform: "none",
+    fontWeight: 700,
+    border: `1px solid ${selected ? accentColor : borderColor}`,
+    backgroundColor: selected ? accentColor : "transparent",
+    color: selected ? accentContrast : bodyColor,
+    px: 2,
+    width: variant === "drawer" ? "100%" : "auto",
+    justifyContent: variant === "drawer" ? "center" : "flex-start",
+    boxShadow: selected ? buttonShadow : "none",
+    transition: "all .2s ease",
+    "&:hover": {
+      backgroundColor: selected ? accentColor : softBg,
+      borderColor: accentColor,
+    },
+    "&:focus-visible": focusRing,
+  });
 
   /* ------------ load day slots when selection changes ------------ */
   useEffect(() => {
@@ -334,6 +361,9 @@ export default function EmployeeAvailabilityCalendar({
               backgroundColor: selectedTime === s.start_time ? accentColor : "transparent",
               color: selectedTime === s.start_time ? accentContrast : bodyColor,
               px: 2,
+              justifyContent: variant === "drawer" ? "center" : "flex-start",
+              boxShadow: selectedTime === s.start_time ? buttonShadow : "none",
+              transition: "all .2s ease",
               "&:hover": {
                 backgroundColor: selectedTime === s.start_time ? accentColor : softBg,
                 borderColor: accentColor,
@@ -354,56 +384,32 @@ export default function EmployeeAvailabilityCalendar({
 
   /* ------------ JSX ------------ */
   return (
-    <Box p={2} maxWidth="820px" mx="auto">
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        alignItems={{ xs: "flex-start", sm: "center" }}
-        justifyContent="space-between"
-        spacing={1.5}
-        sx={{ mb: 2 }}
+    <Box p={{ xs: 2, md: 3 }} maxWidth="820px" mx="auto">
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2, md: 3 },
+          borderRadius: 3,
+          border: `1px solid ${borderColor}`,
+          backgroundColor: surfaceColor,
+          boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.08))",
+        }}
       >
-        <Box>
-          <Typography variant="h5" fontWeight={800} gutterBottom>
-            Choose a time — {svcName}
-          </Typography>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-            <Chip
-              size="small"
-              label={`TZ: ${userTz}`}
-              sx={{
-                borderRadius: 999,
-                fontWeight: 600,
-                backgroundColor: softBg,
-                color: bodyColor,
-              }}
-            />
-            {priceInfo?.base_price != null && (
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent="space-between"
+          spacing={1.5}
+          sx={{ mb: 2 }}
+        >
+          <Box>
+            <Typography variant="h5" fontWeight={800} gutterBottom>
+              Choose a time — {svcName}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
               <Chip
                 size="small"
-                label={`Base ${money(priceInfo.base_price)}`}
-                sx={{
-                  borderRadius: 999,
-                  fontWeight: 600,
-                  backgroundColor: accentColor,
-                  color: accentContrast,
-                }}
-              />
-            )}
-            {slots.length > 0 ? (
-              <Chip
-                size="small"
-                label={`${slots.length} slot(s) today`}
-                sx={{
-                  borderRadius: 999,
-                  fontWeight: 600,
-                  backgroundColor: accentColor,
-                  color: accentContrast,
-                }}
-              />
-            ) : (
-              <Chip
-                size="small"
-                label="No slots for selected day"
+                label={`TZ: ${userTz}`}
                 sx={{
                   borderRadius: 999,
                   fontWeight: 600,
@@ -411,23 +417,57 @@ export default function EmployeeAvailabilityCalendar({
                   color: bodyColor,
                 }}
               />
-            )}
-          </Stack>
-        </Box>
+              {priceInfo?.base_price != null && (
+                <Chip
+                  size="small"
+                  label={`Base ${money(priceInfo.base_price)}`}
+                  sx={{
+                    borderRadius: 999,
+                    fontWeight: 600,
+                    backgroundColor: accentColor,
+                    color: accentContrast,
+                  }}
+                />
+              )}
+              {slots.length > 0 ? (
+                <Chip
+                  size="small"
+                  label={`${slots.length} slot(s) today`}
+                  sx={{
+                    borderRadius: 999,
+                    fontWeight: 600,
+                    backgroundColor: accentColor,
+                    color: accentContrast,
+                  }}
+                />
+              ) : (
+                <Chip
+                  size="small"
+                  label="No slots for selected day"
+                  sx={{
+                    borderRadius: 999,
+                    fontWeight: 600,
+                    backgroundColor: softBg,
+                    color: bodyColor,
+                  }}
+                />
+              )}
+            </Stack>
+          </Box>
 
-        <Tooltip title="This component uses the same month-grid + time chips pattern as the reschedule UI">
-          <Chip
-            size="small"
-            variant="outlined"
-            label="Setmore-style"
-            sx={{
-              borderRadius: 999,
-              border: `1px solid ${borderColor}`,
-              color: bodyColor,
-            }}
-          />
-        </Tooltip>
-      </Stack>
+          <Tooltip title="This component uses the same month-grid + time chips pattern as the reschedule UI">
+            <Chip
+              size="small"
+              variant="outlined"
+              label="Setmore-style"
+              sx={{
+                borderRadius: 999,
+                border: `1px solid ${borderColor}`,
+                color: bodyColor,
+              }}
+            />
+          </Tooltip>
+        </Stack>
 
       {/* ── Month navigation & grid ─────────────────────────── */}
       <Paper
@@ -440,13 +480,19 @@ export default function EmployeeAvailabilityCalendar({
         }}
       >
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          <IconButton onClick={goPrevMonth} sx={{ color: accentColor }}>
+          <IconButton
+            onClick={goPrevMonth}
+            sx={{ color: accentColor, "&:focus-visible": focusRing }}
+          >
             <ArrowBackIos fontSize="small" />
           </IconButton>
           <Typography variant="subtitle1" fontWeight={700}>
             {monthView.toLocaleString("default", { month: "long", year: "numeric" })}
           </Typography>
-          <IconButton onClick={goNextMonth} sx={{ color: accentColor }}>
+          <IconButton
+            onClick={goNextMonth}
+            sx={{ color: accentColor, "&:focus-visible": focusRing }}
+          >
             <ArrowForwardIos fontSize="small" />
           </IconButton>
         </Box>
@@ -480,7 +526,7 @@ export default function EmployeeAvailabilityCalendar({
       </Typography>
 
       {slots.length === 0 && (
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <Alert severity="info" sx={{ mb: 2, ...infoAlertSx }}>
           No free slots for this day.
         </Alert>
       )}
@@ -505,52 +551,57 @@ export default function EmployeeAvailabilityCalendar({
         {timeAnnounce}
       </Box>
 
-      <SwipeableDrawer
-        anchor="bottom"
-        open={timeSheetOpen}
-        onOpen={() => setTimeSheetOpen(true)}
-        onClose={handleTimeSheetClose}
-        disableSwipeToOpen={false}
-        keepMounted
-        PaperProps={{
-          sx: {
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            maxHeight: "70vh",
-            p: 2,
-          },
-        }}
-      >
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
-          <Typography variant="h6" fontWeight={800}>
-            Available times
-          </Typography>
-          <IconButton onClick={handleTimeSheetClose}>
-            <CloseIcon />
-          </IconButton>
-        </Stack>
-        {renderTimeButtons("drawer")}
-      </SwipeableDrawer>
+        <SwipeableDrawer
+          anchor="bottom"
+          open={timeSheetOpen}
+          onOpen={() => setTimeSheetOpen(true)}
+          onClose={handleTimeSheetClose}
+          disableSwipeToOpen={false}
+          keepMounted
+          PaperProps={{
+            sx: {
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              maxHeight: "70vh",
+              p: 2,
+              backgroundColor: surfaceColor,
+            },
+          }}
+        >
+          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
+            <Typography variant="h6" fontWeight={800}>
+              Available times
+            </Typography>
+            <IconButton
+              onClick={handleTimeSheetClose}
+              sx={{ color: accentColor, "&:focus-visible": focusRing }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          {renderTimeButtons("drawer")}
+        </SwipeableDrawer>
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
-        <Button
-          variant="contained"
-          disabled={saving || !selectedTime}
-          onClick={confirmSelection}
-          fullWidth={isMobile}
-          sx={primaryButtonSx}
-        >
-          {saving ? "Opening…" : "Continue"}
-        </Button>
-        <Button
-          onClick={() => navigate(-1)}
-          variant="text"
-          fullWidth={isMobile}
-          sx={linkButtonSx}
-        >
-          Back
-        </Button>
-      </Stack>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
+          <Button
+            variant="contained"
+            disabled={saving || !selectedTime}
+            onClick={confirmSelection}
+            fullWidth={isMobile}
+            sx={primaryButtonSx}
+          >
+            {saving ? "Opening…" : "Continue"}
+          </Button>
+          <Button
+            onClick={() => navigate(-1)}
+            variant="text"
+            fullWidth={isMobile}
+            sx={linkButtonSx}
+          >
+            Back
+          </Button>
+        </Stack>
+      </Paper>
     </Box>
   );
 }

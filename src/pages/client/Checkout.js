@@ -351,6 +351,56 @@ function CheckoutFormCore({
   holdMinutes,
 }) {
   const theme = useTheme();
+  const accentColor = "var(--page-btn-bg, var(--sched-primary))";
+  const accentContrast = "var(--page-btn-color, #ffffff)";
+  const borderColor = "var(--page-border-color, rgba(15,23,42,0.12))";
+  const softBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
+  const buttonShadow = "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))";
+  const buttonShadowHover = "var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))";
+  const focusRingColor = "var(--page-focus-ring, var(--page-btn-bg, var(--sched-primary)))";
+  const focusRing = {
+    outline: `2px solid ${focusRingColor}`,
+    outlineOffset: 2,
+  };
+  const primaryButtonSx = {
+    backgroundColor: accentColor,
+    color: accentContrast,
+    textTransform: "none",
+    fontWeight: 700,
+    borderRadius: "var(--page-btn-radius, 12px)",
+    boxShadow: buttonShadow,
+    "&:hover": {
+      backgroundColor: `var(--page-btn-bg-hover, ${accentColor})`,
+      color: accentContrast,
+      boxShadow: buttonShadowHover,
+    },
+    "&:focus-visible": focusRing,
+  };
+  const outlineButtonSx = {
+    borderColor: accentColor,
+    color: accentColor,
+    textTransform: "none",
+    fontWeight: 600,
+    borderRadius: "var(--page-btn-radius, 12px)",
+    "&:hover": {
+      backgroundColor: softBg,
+      borderColor: accentColor,
+      color: accentColor,
+    },
+    "&:focus-visible": focusRing,
+  };
+  const textButtonSx = {
+    color: accentColor,
+    textTransform: "none",
+    fontWeight: 600,
+    "&:focus-visible": focusRing,
+  };
+  const infoAlertSx = {
+    backgroundColor: softBg,
+    color: "var(--page-body-color, inherit)",
+    border: `1px solid ${borderColor}`,
+    "& .MuiAlert-icon": { color: accentColor },
+  };
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -1216,15 +1266,30 @@ function CheckoutFormCore({
             </Typography>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              <Button variant="contained" onClick={goProducts} disabled={disableNav}>
+              <Button
+                variant="contained"
+                onClick={goProducts}
+                disabled={disableNav}
+                sx={primaryButtonSx}
+              >
                 Continue shopping
               </Button>
               {serviceResults.length > 0 && (
-                <Button variant="outlined" onClick={goBookings} disabled={disableNav}>
+                <Button
+                  variant="outlined"
+                  onClick={goBookings}
+                  disabled={disableNav}
+                  sx={outlineButtonSx}
+                >
                   View my bookings
                 </Button>
               )}
-              <Button variant="text" onClick={goHome} disabled={disableNav}>
+              <Button
+                variant="text"
+                onClick={goHome}
+                disabled={disableNav}
+                sx={textButtonSx}
+              >
                 Back to home
               </Button>
             </Stack>
@@ -1250,7 +1315,13 @@ function CheckoutFormCore({
         </Typography>
 
       {typeof holdMinutes === "number" && holdMinutes > 0 && serviceItems.length > 0 && holdState.overall !== null && (
-        <Alert severity={holdState.overall > 0 ? "info" : "warning"} sx={{ mb: 2 }}>
+        <Alert
+          severity={holdState.overall > 0 ? "info" : "warning"}
+          sx={{
+            mb: 2,
+            ...(holdState.overall > 0 ? infoAlertSx : {}),
+          }}
+        >
           {holdState.overall > 0
             ? `We're holding your selected times for ${formatHoldCountdown(holdState.overall)}. Complete checkout before the timer runs out or the slots will be released.`
             : "The hold window has expired. If you continue, the selected times may no longer be available."}
@@ -1462,14 +1533,14 @@ function CheckoutFormCore({
             error={!!couponError}
             helperText={couponError}
           />
-          <Button
-            variant="outlined"
-            onClick={applyCoupon}
-            disabled={loading || !couponCode.trim()}
-            sx={{ width: { xs: "100%", sm: "auto" } }}
-          >
-            Apply
-          </Button>
+      <Button
+        variant="outlined"
+        onClick={applyCoupon}
+        disabled={loading || !couponCode.trim()}
+        sx={{ ...outlineButtonSx, width: { xs: "100%", sm: "auto" } }}
+      >
+        Apply
+      </Button>
         </ListItem>
 
         <Divider />
@@ -1505,13 +1576,13 @@ function CheckoutFormCore({
 
       {/* Card   show when either pay-now or card-on-file is enabled */}
       {activePaymentMode !== "off" ? (
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <Alert severity="info" sx={{ mb: 2, ...infoAlertSx }}>
           {activePaymentMode === "capture"
             ? "We'll save your card securely with Stripe. You'll be charged later by the manager."
             : "You'll enter your payment details on Stripe's secure checkout page."}
         </Alert>
       ) : (
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <Alert severity="info" sx={{ mb: 2, ...infoAlertSx }}>
           Online payments are currently disabled for this company. Your booking will be created as <strong>unpaid</strong>.
         </Alert>
       )}
@@ -1532,18 +1603,36 @@ function CheckoutFormCore({
           {showOnlinePayment ? (
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1 }}>
               {showPayOption && (
-                <Button fullWidth variant="contained" disabled={loading} onClick={payAndBook}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  disabled={loading}
+                  onClick={payAndBook}
+                  sx={primaryButtonSx}
+                >
                   {loading ? <CircularProgress size={24} /> : payButtonLabel}
                 </Button>
               )}
               {showCaptureOption && (
-                <Button fullWidth variant="outlined" disabled={loading} onClick={saveCardAndBook}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  disabled={loading}
+                  onClick={saveCardAndBook}
+                  sx={outlineButtonSx}
+                >
                   {loading ? <CircularProgress size={24} /> : "Save Card & Book"}
                 </Button>
               )}
             </Stack>
           ) : (
-            <Button fullWidth variant="contained" disabled={loading} onClick={bookWithoutPayment}>
+            <Button
+              fullWidth
+              variant="contained"
+              disabled={loading}
+              onClick={bookWithoutPayment}
+              sx={primaryButtonSx}
+            >
               {loading ? <CircularProgress size={24} /> : "Book"}
             </Button>
           )}
@@ -1576,7 +1665,7 @@ function CheckoutFormCore({
                 variant="outlined"
                 size="small"
                 onClick={() => setLoginDialogOpen(true)}
-                sx={{ textTransform: "none", width: { xs: "100%", sm: "auto" } }}
+                sx={{ ...outlineButtonSx, width: { xs: "100%", sm: "auto" } }}
               >
                 Already have an account? Log in
               </Button>
@@ -1585,7 +1674,7 @@ function CheckoutFormCore({
                 variant="text"
                 size="small"
                 onClick={() => setRegisterDialogOpen(true)}
-                sx={{ textTransform: "none", width: { xs: "100%", sm: "auto" } }}
+                sx={{ ...textButtonSx, width: { xs: "100%", sm: "auto" } }}
               >
                 Don't have an account? Sign up
               </Button>
@@ -1601,6 +1690,7 @@ function CheckoutFormCore({
                     type="button"
                     disabled={loading || !guestOk}
                     onClick={payAndBook}
+                    sx={primaryButtonSx}
                   >
                     {loading ? <CircularProgress size={24} /> : payButtonLabel}
                   </Button>
@@ -1612,6 +1702,7 @@ function CheckoutFormCore({
                     type="button"
                     disabled={loading || !guestOk}
                     onClick={saveCardAndBook}
+                    sx={outlineButtonSx}
                   >
                     {loading ? <CircularProgress size={24} /> : "Save Card & Book"}
                   </Button>
@@ -1624,6 +1715,7 @@ function CheckoutFormCore({
                 type="button"
                 disabled={loading || !guestOk}
                 onClick={bookWithoutPayment}
+                sx={primaryButtonSx}
               >
                 {loading ? <CircularProgress size={24} /> : "Book"}
               </Button>
@@ -1651,13 +1743,20 @@ function CheckoutFormCore({
             }
             navigate({ pathname: `/${target}`, search: `?${params.toString()}` });
           }}
+          sx={outlineButtonSx}
         >
           Add Another Service
         </Button>
-        <Button fullWidth variant="outlined" startIcon={<AddIcon />} onClick={openAddons}>
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<AddIcon />}
+          onClick={openAddons}
+          sx={outlineButtonSx}
+        >
           Add-on(s)
         </Button>
-        <Button fullWidth variant="text" onClick={onBack}>
+        <Button fullWidth variant="text" onClick={onBack} sx={textButtonSx}>
           Back
         </Button>
       </Stack>
@@ -1726,7 +1825,9 @@ function CheckoutFormCore({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDlgAddonOpen(false)}>Done</Button>
+          <Button onClick={() => setDlgAddonOpen(false)} sx={primaryButtonSx}>
+            Done
+          </Button>
         </DialogActions>
       </Dialog>
 
