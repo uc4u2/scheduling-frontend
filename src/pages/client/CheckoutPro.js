@@ -66,6 +66,84 @@ function CheckoutShell({
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const formatMoney = useCallback((value, currencyCode) => formatCurrency(value, currencyCode || displayCurrency), [displayCurrency]);
   const currencyFmt = useCallback((value, currencyCode) => formatMoney(value, currencyCode), [formatMoney]);
+  const accentColor = "var(--page-btn-bg, var(--sched-primary))";
+  const accentContrast = "var(--page-btn-color, #ffffff)";
+  const softBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
+  const borderColor = "var(--page-border-color, rgba(15,23,42,0.12))";
+  const surfaceColor = "var(--page-card-bg, var(--page-secondary-bg, var(--page-surface-bg, #ffffff)))";
+  const bodyColor = "var(--page-body-color, inherit)";
+  const buttonShadow = "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))";
+  const buttonShadowHover = "var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))";
+  const focusRingColor = "var(--page-focus-ring, var(--page-btn-bg, var(--sched-primary)))";
+  const focusRing = {
+    outline: `2px solid ${focusRingColor}`,
+    outlineOffset: 2,
+  };
+  const primaryButtonSx = {
+    backgroundColor: accentColor,
+    color: accentContrast,
+    textTransform: "none",
+    fontWeight: 700,
+    borderRadius: "var(--page-btn-radius, 12px)",
+    boxShadow: buttonShadow,
+    "&:hover": {
+      backgroundColor: `var(--page-btn-bg-hover, ${accentColor})`,
+      color: accentContrast,
+      boxShadow: buttonShadowHover,
+    },
+    "&:focus-visible": focusRing,
+  };
+  const outlineButtonSx = {
+    borderColor: accentColor,
+    color: accentColor,
+    borderRadius: "var(--page-btn-radius, 12px)",
+    textTransform: "none",
+    fontWeight: 600,
+    "&:hover": {
+      backgroundColor: softBg,
+      borderColor: accentColor,
+      color: accentColor,
+    },
+    "&:focus-visible": focusRing,
+  };
+  const textButtonSx = {
+    color: accentColor,
+    textTransform: "none",
+    fontWeight: 600,
+    "&:focus-visible": focusRing,
+  };
+  const tabsSx = {
+    minHeight: 48,
+    borderRadius: 3,
+    backgroundColor: "var(--page-btn-bg-soft, rgba(15,23,42,0.08))",
+    px: 1,
+    "& .MuiTabs-indicator": { display: "none" },
+    "& .MuiTab-root": {
+      minHeight: 40,
+      textTransform: "none",
+      fontWeight: 600,
+      borderRadius: 999,
+      mr: 1,
+      color: bodyColor,
+      opacity: 1,
+      border: `1px solid ${borderColor}`,
+      transition: "all .2s ease",
+      "&.Mui-selected": {
+        backgroundColor: accentColor,
+        color: accentContrast,
+        borderColor: accentColor,
+        boxShadow: buttonShadow,
+      },
+      "&.Mui-focusVisible": focusRing,
+      "&:focus-visible": focusRing,
+    },
+  };
+  const infoBannerSx = {
+    backgroundColor: softBg,
+    color: bodyColor,
+    border: `1px solid ${borderColor}`,
+    "& .MuiAlert-icon": { color: accentColor },
+  };
 
   const defaultActive = useMemo(() => {
     const mode = (policy?.mode || "pay").toLowerCase();
@@ -403,7 +481,13 @@ function CheckoutShell({
           <Typography variant="h5" sx={{ mb: 1 }}>Booking confirmed 🎉</Typography>
           <Typography>We’ve sent you a confirmation email.</Typography>
         </Alert>
-        <Button variant="contained" onClick={() => nav({ pathname: `/${slug}`, search: '?page=services-classic' })}>Book Another</Button>
+        <Button
+          variant="contained"
+          onClick={() => nav({ pathname: `/${slug}`, search: '?page=services-classic' })}
+          sx={primaryButtonSx}
+        >
+          Book Another
+        </Button>
       </Box>
     );
   }
@@ -452,7 +536,16 @@ function CheckoutShell({
         <Typography variant="h4" gutterBottom>Checkout (Pro)</Typography>
         {policyBadge}
 
-        <Paper sx={{ mt: 2, p: 2 }}>
+        <Paper
+          sx={{
+            mt: 2,
+            p: { xs: 2, md: 3 },
+            borderRadius: 3,
+            border: `1px solid ${borderColor}`,
+            backgroundColor: surfaceColor,
+            boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.08))",
+          }}
+        >
           <Tabs
             value={active}
             onChange={(_, v) => {
@@ -461,6 +554,8 @@ function CheckoutShell({
             }}
             variant="scrollable"
             scrollButtons="auto"
+            sx={tabsSx}
+            TabIndicatorProps={{ sx: { display: "none" } }}
           >
             {tabs.map(t => <Tab key={t.key} value={t.key} label={t.label} />)}
           </Tabs>
@@ -511,7 +606,14 @@ function CheckoutShell({
 
                   {/* Row actions: Add-ons + Tip */}
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
-                    <Button size="small" variant="outlined" onClick={() => openAddons(it)}>Edit add-ons</Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => openAddons(it)}
+                      sx={{ ...outlineButtonSx, px: 1.5, py: 0.5 }}
+                    >
+                      Edit add-ons
+                    </Button>
                     <TipChips item={it} />
                   </Stack>
                 </ListItem>
@@ -527,8 +629,12 @@ function CheckoutShell({
               onChange={(e) => setCouponInput(e.target.value)}
               sx={{ maxWidth: 260 }}
             />
-            <Button variant="outlined" onClick={applyCouponAll}>Apply to all lines</Button>
-            <Button variant="text" onClick={clearCouponAll}>Clear coupon</Button>
+            <Button variant="outlined" onClick={applyCouponAll} sx={outlineButtonSx}>
+              Apply to all lines
+            </Button>
+            <Button variant="text" onClick={clearCouponAll} sx={textButtonSx}>
+              Clear coupon
+            </Button>
             {couponMsg && <Typography variant="body2" sx={{ alignSelf: "center" }}>{couponMsg}</Typography>}
           </Stack>
 
@@ -551,11 +657,11 @@ function CheckoutShell({
           {/* payment area */}
           <Box sx={{ mt: 2 }}>
             {activeUsesStripe ? (
-              <Alert severity="info" sx={{ mb: 2 }}>
+              <Alert severity="info" sx={{ mb: 2, ...infoBannerSx }}>
                 {stripeAlertCopy}
               </Alert>
             ) : (
-              <Alert sx={{ my: 1 }} severity="info">
+              <Alert sx={{ my: 1, ...infoBannerSx }} severity="info">
                 No online payment&mdash;your booking will be created as <b>unpaid</b>.
               </Alert>
             )}
@@ -593,6 +699,7 @@ function CheckoutShell({
                 variant="contained"
                 onClick={onSubmit}
                 disabled={busy || mixedCart}
+                sx={primaryButtonSx}
               >
                 {busy ? <CircularProgress size={22} /> :
                   active === "pay" ? `Pay Now & Book (${currencyFmt(grandTotalCents/100)})` :
@@ -600,13 +707,28 @@ function CheckoutShell({
                   active === "capture" ? "Save Card & Book" :
                   "Book"}
               </Button>
-              <Button variant="text" onClick={() => nav({ pathname: `/${slug}`, search: '?page=services-classic' })}>Add Another Service</Button>
+              <Button
+                variant="text"
+                onClick={() => nav({ pathname: `/${slug}`, search: '?page=services-classic' })}
+                sx={textButtonSx}
+              >
+                Add Another Service
+              </Button>
             </Stack>
           </Box>
         </Paper>
 
         {policy?.cancellation_policy && (
-          <Paper sx={{ mt: 2, p: 2 }}>
+          <Paper
+            sx={{
+              mt: 2,
+              p: { xs: 2, md: 3 },
+              borderRadius: 3,
+              border: `1px solid ${borderColor}`,
+              backgroundColor: surfaceColor,
+              boxShadow: "var(--page-card-shadow, 0 12px 32px rgba(15,23,42,0.05))",
+            }}
+          >
             <Typography variant="subtitle2">Cancellation policy</Typography>
             <Typography variant="body2" color="text.secondary">{policy.cancellation_policy}</Typography>
           </Paper>
@@ -634,7 +756,9 @@ function CheckoutShell({
           {!addonOptions?.length && <Typography variant="body2">No add-ons for this service.</Typography>}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddonsOpen(false)}>Done</Button>
+          <Button onClick={() => setAddonsOpen(false)} sx={primaryButtonSx}>
+            Done
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

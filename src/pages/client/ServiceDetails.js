@@ -212,6 +212,11 @@ export default function ServiceDetails() {
 
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const money = (value, currencyCode) => formatCurrency(value, currencyCode || displayCurrency);
+  const stickyFooterHeight = Math.max(actionsHeight, 96);
+  const scrollMarginValue = useMemo(
+    () => `calc(${stickyFooterHeight + 48}px + env(safe-area-inset-bottom))`,
+    [stickyFooterHeight]
+  );
   const scrollSectionIntoView = useCallback(
     (target) => {
       if (isMobile || typeof window === "undefined") return;
@@ -1080,7 +1085,7 @@ export default function ServiceDetails() {
           sx={{
             backgroundColor: calendarSurface,
             px: 0,
-            pb: `calc(env(safe-area-inset-bottom) + ${Math.max(actionsHeight, 96)}px)`,
+            pb: `calc(env(safe-area-inset-bottom) + ${stickyFooterHeight}px)`,
             overflowX: "hidden",
             overflowY: "auto",
             maxHeight: "min(82vh, 880px)",
@@ -1091,16 +1096,65 @@ export default function ServiceDetails() {
             "& *": { boxSizing: "border-box", maxWidth: "100%" },
           }}
         >
-          <Paper
-            elevation={0}
+          <Box
             sx={{
-              p: { xs: 2, md: 3 },
-              borderRadius: 0,
-              border: "none",
+              maxWidth: 960,
+              mx: "auto",
+              px: { xs: 2, md: 3 },
+              py: 2,
               backgroundColor: calendarSurface,
+              borderRadius: { xs: 0, sm: 2.5 },
+              border: `1px solid ${calendarBorder}`,
+              boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.08))",
+              overflow: "hidden",
             }}
           >
-          {/* Month navigator */}
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+              spacing={1.5}
+              sx={{ mb: 2 }}
+            >
+              <Box>
+                <Typography variant="h5" fontWeight={800}>
+                  Choose a time — {service?.name || "Selected service"}
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mt: 0.5 }}>
+                  <Chip
+                    size="small"
+                    label={`TZ: ${Intl.DateTimeFormat().resolvedOptions().timeZone || "Local"}`}
+                    sx={{
+                      borderRadius: 999,
+                      fontWeight: 600,
+                      backgroundColor: "var(--page-btn-bg-soft, rgba(15,23,42,0.12))",
+                      color: calendarText,
+                    }}
+                  />
+                  <Chip
+                    size="small"
+                    label={`${employees.length} provider${employees.length === 1 ? "" : "s"}`}
+                    sx={{
+                      borderRadius: 999,
+                      fontWeight: 600,
+                      backgroundColor: calendarAccent,
+                      color: calendarAccentContrast,
+                    }}
+                  />
+                </Stack>
+              </Box>
+              <Chip
+                size="small"
+                variant="outlined"
+                label="Setmore-style"
+                sx={{
+                  borderRadius: 999,
+                  borderColor: calendarBorder,
+                  color: calendarText,
+                }}
+              />
+            </Stack>
+
           <Paper
             sx={{
               p: 2,
@@ -1110,6 +1164,7 @@ export default function ServiceDetails() {
               backgroundColor: calendarSurface,
             }}
           >
+          {/* Month navigator */}
             <Box
               display="flex"
               justifyContent="space-between"
@@ -1207,7 +1262,7 @@ export default function ServiceDetails() {
               position: "relative",
               mb: 2,
               width: "100%",
-              scrollMarginBottom: "140px",
+              scrollMarginBottom: scrollMarginValue,
             }}
           >
             <Stack
@@ -1341,7 +1396,7 @@ export default function ServiceDetails() {
               id="providers-section"
               sx={{
                 outline: "none",
-                scrollMarginBottom: "140px",
+                scrollMarginBottom: scrollMarginValue,
               }}
             >
               <ProviderListContent />
@@ -1379,7 +1434,7 @@ export default function ServiceDetails() {
               <ProviderListContent variant="drawer" />
             </Box>
           </SwipeableDrawer>
-          </Paper>
+          </Box>
         </DialogContent>
         <DialogActions
           ref={actionsRef}
