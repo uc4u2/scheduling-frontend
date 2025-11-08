@@ -59,6 +59,41 @@ export const NEW_BLOCKS = {
       showDots: true,
     },
   }),
+  testimonialCarousel: () => ({
+    type: "testimonialCarousel",
+    props: {
+      title: "What clients are saying",
+      autoplay: true,
+      intervalMs: 4000,
+      showDots: true,
+      showArrows: true,
+      maxWidth: "xl",
+      perView: { desktop: 3, tablet: 2, mobile: 1 },
+      reviews: [
+        {
+          name: "Albi Berisha",
+          rating: 5,
+          source: "Google",
+          ago: "a year ago",
+          text: "My neighbor and I both booked the crew — clean edges, punctual, and they even swept the driveway before leaving. Highly recommend.",
+        },
+        {
+          name: "Antonios Abou Eid",
+          rating: 5,
+          source: "Google",
+          ago: "a year ago",
+          text: "Amazing work! Always maintaining high quality and communication through every milestone.",
+        },
+        {
+          name: "Maria S.",
+          rating: 5,
+          source: "Google",
+          ago: "2 months ago",
+          text: "Fast, fair, and super professional. They squeezed us in for an urgent repair and handled everything same-day.",
+        },
+      ],
+    },
+  }),
   featurePillars: () => ({
     type: "featurePillars",
     props: {
@@ -272,6 +307,32 @@ featureStories: () => ({
         { name: "Color", price: "$95", duration: "90m", description: "Single process color." },
       ],
     },
+  }),
+  heroCarousel: () => ({
+    type: "heroCarousel",
+    props: {
+      autoplay: true,
+      intervalMs: 6000,
+      align: "center",
+      contentMaxWidth: "lg",
+      heroHeight: 60,
+      safeTop: true,
+      overlay: 0.35,
+      overlayColor: "#000000",
+      brightness: 1.0,
+      slides: [
+        {
+          image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2000&auto=format&fit=crop",
+          backgroundPosition: "center",
+          eyebrow: "Welcome",
+          heading: "Tell your story with a carousel",
+          subheading: "Each slide can have its own headline, description, and CTAs.",
+          ctaText: "Get started",
+          ctaLink: "/register"
+        }
+      ]
+    },
+    sx: { py: 0 }
   }),
   contact: () => ({
     type: "contact",

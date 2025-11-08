@@ -217,6 +217,40 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  testimonialCarousel: {
+    title: "Testimonial Carousel",
+    fields: [
+      { name: "title",       type: "richinline", label: "Title" },
+      { name: "autoplay",    type: "boolean",    label: "Autoplay" },
+      { name: "intervalMs",  type: "number",     label: "Interval (ms)", min: 2000, max: 20000, step: 250 },
+      { name: "showDots",    type: "boolean",    label: "Show dots" },
+      { name: "showArrows",  type: "boolean",    label: "Show arrows" },
+      {
+        name: "perView",
+        type: "object",
+        label: "Cards per view",
+        fields: [
+          { name: "desktop", type: "number", label: "Desktop cards", min: 1, max: 5 },
+          { name: "tablet",  type: "number", label: "Tablet cards", min: 1, max: 4 },
+          { name: "mobile",  type: "number", label: "Mobile cards", min: 1, max: 3 },
+        ],
+      },
+      { name: "maxWidth",    type: "select",     label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
+      {
+        name: "reviews",
+        type: "objectArray",
+        label: "Reviews",
+        fields: [
+          { name: "name",   type: "richinline", label: "Name" },
+          { name: "rating", type: "number",     label: "Rating (1-5)", min: 1, max: 5, step: 1 },
+          { name: "source", type: "string",     label: "Source" },
+          { name: "ago",    type: "string",     label: "When (\"2 months ago\")" },
+          { name: "text",   type: "text",       label: "Review text", minRows: 3 },
+        ],
+      },
+    ],
+  },
+
   /* -------------------- FEATURE PILLARS --------------------- */
   featurePillars: {
     title: "Feature Pillars",
@@ -361,6 +395,36 @@ export const SCHEMA_REGISTRY = {
       { name: "gutterX",     type: "number", label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
       { name: "bleedLeft",   type: "boolean", label: "Bleed left" },
       { name: "bleedRight",  type: "boolean", label: "Bleed right" }
+    ]
+  },
+
+  /* ---------------------- HERO CAROUSEL --------------------- */
+  heroCarousel: {
+    title: "Hero (Carousel)",
+    fields: [
+      { name: "autoplay",       type: "boolean",    label: "Autoplay" },
+      { name: "intervalMs",     type: "number",     label: "Interval (ms)", min: 2000, max: 20000, step: 500 },
+      { name: "align",          type: "select",     label: "Text alignment", options: ["left","center","right"], default: "center" },
+      { name: "contentMaxWidth",type: "select",     label: "Content max width", options: ["xs","sm","md","lg","xl","full"], default: "lg" },
+      { name: "heroHeight",     type: "number",     label: "Hero height (vh)", min: 36, max: 100, step: 2 },
+      { name: "safeTop",        type: "boolean",    label: "Respect safe area top" },
+      { name: "overlay",        type: "number",     label: "Overlay opacity (0–1)", min: 0, max: 1, step: 0.05 },
+      { name: "overlayColor",   type: "color",      label: "Overlay color" },
+      { name: "overlayGradient",type: "text",       label: "Overlay gradient CSS" },
+      { name: "brightness",     type: "number",     label: "Background brightness", min: 0.2, max: 1.8, step: 0.05 },
+      { name: "slides",         type: "objectArray", label: "Slides",
+        fields: [
+          { name: "image",              type: "image",   label: "Background image" },
+          { name: "backgroundPosition", type: "text",    label: "Background position", placeholder: "center" },
+          { name: "eyebrow",            type: "richinline", label: "Eyebrow" },
+          { name: "heading",            type: "richinline", label: "Heading" },
+          { name: "subheading",         type: "richtext",   label: "Subheading" },
+          { name: "ctaText",            type: "richinline", label: "Primary CTA" },
+          { name: "ctaLink",            type: "string",     label: "Primary CTA link" },
+          { name: "secondaryCtaText",   type: "richinline", label: "Secondary CTA" },
+          { name: "secondaryCtaLink",   type: "string",     label: "Secondary CTA link" }
+        ]
+      }
     ]
   },
 

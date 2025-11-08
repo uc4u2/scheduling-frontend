@@ -210,6 +210,15 @@ export default function CompanyPublic() {
     if (pageFromQuery) {
       const qRaw = String(pageFromQuery).toLowerCase();
       const q = qRaw === "services" ? "services-classic" : qRaw;
+
+      const directMatch = pages.find(
+        (p) =>
+          String(p.slug || "").toLowerCase() === q ||
+          String(p.menu_title || "").toLowerCase() === q ||
+          String(p.title || "").toLowerCase() === q
+      );
+      if (directMatch) return directMatch;
+
       if (q === "reviews") return { slug: "reviews", title: "Reviews", content: { sections: [] } };
       if (q === "services-classic") {
         const existing = pages.find(
@@ -218,9 +227,8 @@ export default function CompanyPublic() {
         if (existing) return existing;
         return { slug: "services-classic", title: "Services", content: { sections: [] } };
       }
-      if (q === "my-bookings" || q === "mybookings") return { slug: "my-bookings", title: "My Bookings", content: { sections: [] } };
-      const byQuery = pages.find((p) => String(p.slug || '').toLowerCase() === q || String(p.menu_title || '').toLowerCase() === q || String(p.title || '').toLowerCase() === q);
-      if (byQuery) return byQuery;
+      if (q === "my-bookings" || q === "mybookings")
+        return { slug: "my-bookings", title: "My Bookings", content: { sections: [] } };
     }
     return pages.find((p) => p.is_homepage) || pages[0];
   }, [pages, pageFromQuery]);
@@ -493,6 +501,7 @@ export default function CompanyPublic() {
 
     const slugLower = String(currentPage?.slug || "").toLowerCase();
     const currentSections = Array.isArray(currentPage?.content?.sections) ? currentPage.content.sections : [];
+    const existingPageStyleSection = currentSections.find((s) => s?.type === "pageStyle");
     const home = (pages || []).find((p) => p.is_homepage) || (pages || [])[0];
     const homeSections = Array.isArray(home?.content?.sections) ? home.content.sections : [];
     const homePageStyleSection = homeSections.find((s) => s?.type === "pageStyle");
@@ -505,28 +514,25 @@ export default function CompanyPublic() {
       return {};
     };
 
-    if (["services", "services-classic", "products", "basket"].includes(slugLower)) {
-      const existingPageStyleSection = currentSections.find((s) => s?.type === "pageStyle");
-      const styleProps = pickStyle(
+    const resolveStyleProps = () =>
+      pickStyle(
         existingPageStyleSection?.props,
         currentPage?.content?.meta?.pageStyle,
         homePageStyleSection?.props,
         home?.content?.meta?.pageStyle,
         siteDefaultPageStyle
       );
+
+    if (["services", "services-classic", "products", "basket"].includes(slugLower)) {
+      const styleProps = resolveStyleProps();
       const overrideType = slugLower === "services" ? "services-classic" : slugLower;
       return { sections: [], styleProps, renderOverride: { type: overrideType, styleProps } };
     }
 
-    if (["reviews", "my-bookings", "checkout"].includes(slugLower)) {
-      const existingPageStyleSection = currentSections.find((s) => s?.type === "pageStyle");
-      const styleProps = pickStyle(
-        existingPageStyleSection?.props,
-        currentPage?.content?.meta?.pageStyle,
-        homePageStyleSection?.props,
-        home?.content?.meta?.pageStyle,
-        siteDefaultPageStyle
-      );
+    const shouldEmbedSpecial = ["my-bookings", "checkout"].includes(slugLower);
+
+    if (shouldEmbedSpecial) {
+      const styleProps = resolveStyleProps();
 
       const primary = styleProps.linkColor || styleProps.primaryColor || styleProps.brandColor || "";
       const bg = styleProps.backgroundColor || "";
@@ -567,15 +573,14 @@ export default function CompanyPublic() {
       const src = `${basePath}?${qp.toString()}`;
 
       const basePageStyleSection = existingPageStyleSection || homePageStyleSection || null;
-      let pageStyleBlock = null;
-      if (Object.keys(styleProps).length) {
-        pageStyleBlock = {
-          id: basePageStyleSection?.id || `page-style-${slugLower}`,
-          type: "pageStyle",
-          props: styleProps,
-          ...(basePageStyleSection?.sx ? { sx: basePageStyleSection.sx } : {}),
-        };
-      }
+      const pageStyleBlock = basePageStyleSection
+        ? {
+            id: basePageStyleSection.id || `page-style-${slugLower}`,
+            type: "pageStyle",
+            props: styleProps,
+            ...(basePageStyleSection.sx ? { sx: basePageStyleSection.sx } : {}),
+          }
+        : null;
 
       const embedBlock = {
         id: `embed-${slugLower}`,
@@ -587,7 +592,11 @@ export default function CompanyPublic() {
       };
 
       const sections = pageStyleBlock ? [pageStyleBlock, embedBlock] : [embedBlock];
-      return { sections, styleProps, renderOverride: null };
+      return {
+        sections,
+        styleProps,
+        renderOverride: null,
+      };
     }
 
     const sections = currentPage?.content?.sections || [];
@@ -650,7 +659,11 @@ export default function CompanyPublic() {
       return { ...s, props };
     });
 
-    return { sections: mapped, styleProps: extractPageStyleProps(currentPage), renderOverride: null };
+    return {
+      sections: mapped,
+      styleProps: extractPageStyleProps(currentPage),
+      renderOverride: null,
+    };
   }, [currentPage, slug, pages, nav, siteDefaultPageStyle, servicesHref]);
 
   const pageLayout = useMemo(() => {
@@ -660,20 +673,42 @@ export default function CompanyPublic() {
     return currentPage?.layout ?? currentPage?.content?.meta?.layout ?? "boxed";
   }, [currentPage, renderOverride]);
   const isReviewsPage = currentPage && String(currentPage.slug || '').toLowerCase() === 'reviews';
-  const reviewPageStyle = isReviewsPage
-    ? (specialPageStyle || extractPageStyleProps(currentPage) || siteDefaultPageStyle || null)
-    : null;
-  const reviewCardBg = reviewPageStyle
-    ? cssColorWithOpacity(
-        reviewPageStyle.cardBg || reviewPageStyle.cardColor,
-        Number.isFinite(reviewPageStyle?.cardOpacity) ? reviewPageStyle.cardOpacity : undefined
-      )
-    : null;
+  const shouldRenderPublicReviews = Boolean(isReviewsPage);
+
+  const { bodySections, postReviewSections, footerSections } = useMemo(() => {
+    if (!Array.isArray(patchedSections) || patchedSections.length === 0) {
+      return { bodySections: [], postReviewSections: [], footerSections: [] };
+    }
+    const firstFooterIdx = patchedSections.findIndex(
+      (sec) => typeof sec?.type === "string" && sec.type.toLowerCase() === "footer"
+    );
+
+    const splitIndex = firstFooterIdx === -1 ? patchedSections.length : firstFooterIdx;
+    const head = patchedSections.slice(0, splitIndex);
+    const tail = firstFooterIdx === -1 ? [] : patchedSections.slice(splitIndex);
+
+    const isGuideSection = (sec) =>
+      typeof sec?.type === "string" &&
+      sec.type === "serviceGrid" &&
+      typeof sec?.props?.title === "string" &&
+      sec.props.title.trim().toLowerCase() === "guides to level up your team";
+
+    const body = [];
+    const post = [];
+    head.forEach((sec) => {
+      if (isGuideSection(sec)) {
+        post.push(sec);
+      } else {
+        body.push(sec);
+      }
+    });
+
+    return { bodySections: body, postReviewSections: post, footerSections: tail };
+  }, [patchedSections]);
 
   const activePageStyle = useMemo(() => {
-    if (isReviewsPage && reviewPageStyle) return reviewPageStyle;
     return specialPageStyle || extractPageStyleProps(currentPage) || siteDefaultPageStyle || null;
-  }, [isReviewsPage, reviewPageStyle, specialPageStyle, currentPage, siteDefaultPageStyle]);
+  }, [specialPageStyle, currentPage, siteDefaultPageStyle]);
 
   const activePageCssVars = useMemo(
     () => pageStyleToCssVars(activePageStyle),
@@ -880,58 +915,30 @@ export default function CompanyPublic() {
       </Box>
 
       {/* PAGE CONTENT */}
-      <Box sx={{ py: 2 }}>
+      <Box sx={{ py: shouldRenderPublicReviews ? 0 : 2 }}>
         {overrideContent ? (
           overrideContent
         ) : (
           <Container maxWidth={pageLayout === "full" ? false : "lg"}>
-            {isReviewsPage ? (
-              <Box
-                sx={{
-                  p: { xs: 3, md: 6 },
-                  borderRadius: 2,
-                  position: "relative",
-                  ...(reviewPageStyle?.backgroundColor
-                    ? { backgroundColor: reviewPageStyle.backgroundColor }
-                    : { bgcolor: "background.paper" }),
-                  ...(reviewPageStyle?.backgroundImage
-                    ? {
-                        backgroundImage: `url(${reviewPageStyle.backgroundImage})`,
-                        backgroundSize: reviewPageStyle.backgroundSize || "cover",
-                        backgroundPosition: reviewPageStyle.backgroundPosition || "center",
-                        backgroundRepeat: reviewPageStyle.backgroundRepeat || "no-repeat",
-                        backgroundAttachment: reviewPageStyle.backgroundAttachment || "scroll",
-                      }
-                    : {}),
-                  color: reviewPageStyle?.bodyColor || undefined,
-                  '--page-heading-color': reviewPageStyle?.headingColor,
-                  '--page-body-color': reviewPageStyle?.bodyColor,
-                  '--page-link-color': reviewPageStyle?.linkColor,
-                  '--page-heading-font': reviewPageStyle?.headingFont,
-                  '--page-body-font': reviewPageStyle?.bodyFont,
-                  '--page-card-bg': reviewCardBg || undefined,
-                  '--page-card-radius': reviewPageStyle?.cardRadius != null ? `${reviewPageStyle.cardRadius}px` : undefined,
-                  '--page-card-shadow': reviewPageStyle?.cardShadow,
-                  '--page-card-blur': reviewPageStyle?.cardBlur ? `${reviewPageStyle.cardBlur}px` : undefined,
-                  boxShadow: reviewPageStyle?.cardShadow || undefined,
-                  backdropFilter: reviewPageStyle?.cardBlur ? `blur(${reviewPageStyle.cardBlur}px)` : undefined,
-                }}
-              >
-                <Typography
-                  variant="h5"
-                  fontWeight={700}
-                  gutterBottom
-                  sx={{
-                    color: reviewPageStyle?.headingColor || undefined,
-                    fontFamily: reviewPageStyle?.headingFont || undefined,
-                  }}
-                >
-                  What clients are saying
-                </Typography>
-                <PublicReviewList slug={slug} disableShell />
-              </Box>
-            ) : currentPage ? (
-              <RenderSections sections={patchedSections} layout={pageLayout} />
+            {currentPage ? (
+              <>
+                {bodySections.length > 0 && (
+                  <RenderSections sections={bodySections} layout={pageLayout} />
+                )}
+                {shouldRenderPublicReviews && (
+                  <Box sx={{ mt: 0 }}>
+                    <PublicReviewList slug={slug} disableShell compact />
+                  </Box>
+                )}
+                {postReviewSections.length > 0 && (
+                  <Box sx={{ mt: 0 }}>
+                    <RenderSections sections={postReviewSections} layout={pageLayout} />
+                  </Box>
+                )}
+                {footerSections.length > 0 && (
+                  <RenderSections sections={footerSections} layout={pageLayout} />
+                )}
+              </>
             ) : (
               <Box sx={{ p: { xs: 3, md: 6 }, borderRadius: 2, bgcolor: "background.paper", border: "1px solid rgba(0,0,0,0.06)", textAlign: "center" }}>
                 <Typography variant="h3" fontWeight={800} gutterBottom>Welcome to {company?.name ?? "our business"}</Typography>
