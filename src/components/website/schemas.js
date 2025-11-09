@@ -373,6 +373,43 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  featureZigzag: {
+    title: "Feature Zigzag",
+    fields: [
+      { name: "eyebrow",        type: "richinline", label: "Eyebrow label" },
+      { name: "title",          type: "richinline", label: "Heading" },
+      { name: "supportingText", type: "richtext",   label: "Supporting text", minRows: 4 },
+      { name: "titleAlign",     type: "select",     label: "Heading alignment", options: ["left","center","right"], default: "left" },
+      { name: "maxWidth",       type: "select",     label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",        type: "number",     label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",      type: "boolean",    label: "Bleed left" },
+      { name: "bleedRight",     type: "boolean",    label: "Bleed right" },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Rows",
+        minItems: 1,
+        fields: [
+          { name: "eyebrow", type: "richinline", label: "Eyebrow" },
+          { name: "title",   type: "richinline", label: "Row title" },
+          { name: "body",    type: "richtext",   label: "Body copy", minRows: 4 },
+          { name: "ctaText", type: "richinline", label: "CTA text" },
+          { name: "ctaLink", type: "string",     label: "CTA link (URL)" },
+          { name: "imageUrl",type: "image",      label: "Image" },
+          { name: "imageAlt",type: "text",       label: "Image alt text" },
+          {
+            name: "align",
+            type: "select",
+            label: "Text column side",
+            options: ["left","right"],
+            default: "left",
+            help: "Left = text first (image right); Right = text second (image left)"
+          }
+        ]
+      }
+    ]
+  },
+
   /* -------------------------- STATS ------------------------- */
   stats: {
     title: "Stats",

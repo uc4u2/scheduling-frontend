@@ -536,8 +536,9 @@ const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, m
       </Grid>
       <Grid item xs={12} md={6}>
         <Box
+          className="split-image"
           sx={{
-            borderRadius: 3,
+            borderRadius: 4,
             overflow: "hidden",
             boxShadow: (t) => t.shadows[4],
             lineHeight: 0
@@ -556,6 +557,142 @@ const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, m
     </Grid>
   </Container>
 );
+
+const FeatureZigzag = ({
+  eyebrow,
+  title,
+  supportingText,
+  titleAlign = "left",
+  maxWidth,
+  items = []
+}) => {
+  const list = toArray(items);
+  const cardRadius = 4;
+  const hasHeader = eyebrow || title || supportingText;
+  if (!hasHeader && list.length === 0) return null;
+
+  const renderRow = (item, idx) => {
+    if (!item) return null;
+    const align = item.align === "right" ? "right" : "left";
+    const rowClass = `zig-row${align === "right" ? " right" : ""}`;
+    const imageSrc = item.imageUrl || item.image;
+    const imageAlt = item.imageAlt || "";
+
+    const textBlock = (
+      <Box
+        key="text"
+        className="zig-text"
+        sx={{
+          maxWidth: { xs: "100%", md: 560 }
+        }}
+      >
+        {item.eyebrow && (
+          <HtmlTypo
+            variant="overline"
+            sx={{ letterSpacing: ".2em", textTransform: "uppercase", mb: 1, fontWeight: 600 }}
+          >
+            {item.eyebrow}
+          </HtmlTypo>
+        )}
+        {item.title && (
+          <HtmlTypo variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+            {item.title}
+          </HtmlTypo>
+        )}
+        {item.body && (
+          <HtmlTypo variant="body1" sx={{ color: "var(--page-body-color, text.secondary)" }}>
+            {item.body}
+          </HtmlTypo>
+        )}
+        {item.ctaText && (
+          <Button
+            className="zig-cta"
+            href={item.ctaLink || "#"}
+            variant="contained"
+            size="large"
+            sx={{ mt: 2 }}
+          >
+            {toPlain(item.ctaText)}
+          </Button>
+        )}
+      </Box>
+    );
+
+    const imageBlock = (
+      <Box
+        key="image"
+        className="zig-img"
+        sx={{
+          borderRadius: cardRadius,
+          overflow: "hidden",
+          boxShadow: (t) => t.shadows[6],
+          minHeight: { xs: 260, md: 360 },
+          aspectRatio: { xs: "4 / 3", md: "16 / 9" },
+          display: "flex"
+        }}
+      >
+        {imageSrc && (
+          <img
+            src={imageSrc}
+            alt={imageAlt}
+            loading="lazy"
+            style={{
+              display: "block",
+              width: "100%",
+              height: "100%",
+              objectFit: "cover"
+            }}
+          />
+        )}
+      </Box>
+    );
+
+    return (
+      <Box key={idx} className={rowClass}>
+        {textBlock}
+        {imageBlock}
+      </Box>
+    );
+  };
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      <Stack spacing={{ xs: 5, md: 8 }}>
+        {hasHeader && (
+          <Stack spacing={1} sx={{ textAlign: titleAlign }}>
+            {eyebrow && (
+              <HtmlTypo
+                variant="overline"
+                sx={{
+                  letterSpacing: ".25em",
+                  textTransform: "uppercase",
+                  fontWeight: 600,
+                  color: "var(--page-body-color, currentColor)"
+                }}
+              >
+                {eyebrow}
+              </HtmlTypo>
+            )}
+            {title && (
+              <HtmlTypo variant="h3" sx={{ fontWeight: 800 }}>
+                {title}
+              </HtmlTypo>
+            )}
+            {supportingText && (
+              <HtmlTypo
+                variant="body1"
+                sx={{ color: "var(--page-body-color, text.secondary)" }}
+              >
+                {supportingText}
+              </HtmlTypo>
+            )}
+          </Stack>
+        )}
+        {list.map((item, idx) => renderRow(item, idx))}
+      </Stack>
+    </Container>
+  );
+};
 
 const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign, maxWidth, titleColor, subtitleColor }) => {
   const list = toArray(items);
@@ -3074,6 +3211,7 @@ const registry = {
   hero: Hero,
   heroCarousel: HeroCarousel,
   heroSplit: HeroSplit,
+  featureZigzag: FeatureZigzag,
   testimonialCarousel: TestimonialCarousel,
   serviceGrid: ServiceGrid,
   serviceGridSmart: SmartServiceGrid,
