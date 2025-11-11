@@ -49,6 +49,15 @@ const sections = [
     ],
   },
   {
+    title: "Compare",
+    links: [
+      { label: "Schedulaa vs Vagaro", to: "/compare/vagaro" },
+      { label: "Schedulaa vs QuickBooks", to: "/compare/quickbooks" },
+      { label: "Schedulaa vs Humi", to: "/compare/humi" },
+      { label: "Schedulaa vs Square Appointments", to: "/compare/square-appointments" },
+    ],
+  },
+  {
     title: "Legal",
     links: [
       { label: "Terms of Service", to: "/terms" },
