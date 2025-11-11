@@ -28,7 +28,7 @@ const FeatureCardShowcase = ({
       ? "linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(22,78,99,0.78) 100%)"
       : "linear-gradient(135deg, #0ea5e9 0%, #34d399 100%)");
 
-  const cardRadius = marketing.radius?.lg || 24;
+  const cardRadius = Number.isFinite(marketing.radius?.sm) ? marketing.radius.sm : 8;
 
   if (!Array.isArray(cards) || cards.length === 0) return null;
 
@@ -145,22 +145,37 @@ const FeatureCardShowcase = ({
                     </Typography>
                   )}
                   {card.description && (
-                    <Typography variant="body1" sx={{ color: alpha(textColor, 0.8), textAlign: cardContentAlign }}>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: alpha(textColor, 0.8),
+                        textAlign: cardContentAlign,
+                        wordBreak: "break-word",
+                      }}
+                    >
                       {card.description}
                     </Typography>
                   )}
                   {Array.isArray(card.points) && card.points.length > 0 && (
-                    <Stack component="ul" spacing={1.25} sx={{
-                      pl: cardContentAlign === "center" ? 0 : 2,
-                      m: 0,
-                      color: alpha(textColor, 0.85),
-                      listStylePosition: cardContentAlign === "center" ? "inside" : "outside",
-                      alignItems: cardContentAlign === "center" ? "center" : "flex-start",
-                      width: "100%",
-                    }}
+                    <Stack
+                      component="ul"
+                      spacing={1.25}
+                      sx={{
+                        pl: cardContentAlign === "center" ? 0 : 2,
+                        m: 0,
+                        color: alpha(textColor, 0.85),
+                        listStylePosition: cardContentAlign === "center" ? "inside" : "outside",
+                        alignItems: cardContentAlign === "center" ? "center" : "flex-start",
+                        width: "100%",
+                      }}
                     >
                       {card.points.map((point) => (
-                        <Typography component="li" key={point} variant="body2" sx={{ textAlign: cardContentAlign, width: "100%" }}>
+                        <Typography
+                          component="li"
+                          key={point}
+                          variant="body2"
+                          sx={{ textAlign: cardContentAlign, width: "100%", wordBreak: "break-word" }}
+                        >
                           {point}
                         </Typography>
                       ))}

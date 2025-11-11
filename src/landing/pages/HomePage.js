@@ -693,52 +693,64 @@ const HomePage = () => {
                   </Typography>
                 </Stack>
 
-                <Grid container spacing={2}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "repeat(auto-fit, minmax(220px, 1fr))",
+                      sm: "repeat(3, minmax(0, 1fr))",
+                    },
+                    gap: 2,
+                    width: "100%",
+                  }}
+                >
                   {activeModule.stats.map((stat) => (
-                    <Grid item xs={12} sm={4} key={`${stat.label}-${stat.value}`}>
-                      <Paper
-                        elevation={0}
+                    <Paper
+                      key={`${stat.label}-${stat.value}`}
+                      elevation={0}
+                      sx={{
+                        p: 1.75,
+                        borderRadius: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 0.5,
+                        minHeight: 136,
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        textAlign: "left",
+                        backgroundColor: alpha(
+                          theme.palette.background.default,
+                          theme.palette.mode === "dark" ? 0.76 : 0.92
+                        ),
+                        border: `1px solid ${alpha(activeModule.accent, 0.22)}`,
+                        width: "100%",
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
                         sx={{
-                          p: 1.75,
-                          borderRadius: 2,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 0.5,
-                          minHeight: 136,
-                          justifyContent: "space-between",
-                          backgroundColor: alpha(
-                            theme.palette.background.default,
-                            theme.palette.mode === "dark" ? 0.76 : 0.92
-                          ),
-                          border: `1px solid ${alpha(activeModule.accent, 0.22)}`,
+                          letterSpacing: 0.45,
+                          textTransform: "uppercase",
                         }}
                       >
+                        {stat.label}
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        {stat.value}
+                      </Typography>
+                      {stat.helper && (
                         <Typography
                           variant="caption"
                           color="text.secondary"
-                          sx={{
-                            letterSpacing: 0.45,
-                            textTransform: "uppercase",
-                          }}
+                          sx={{ display: "block", mt: 0.35 }}
                         >
-                          {stat.label}
+                          {stat.helper}
                         </Typography>
-                        <Typography variant="subtitle1" fontWeight={700}>
-                          {stat.value}
-                        </Typography>
-                        {stat.helper && (
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: "block", mt: 0.35 }}
-                          >
-                            {stat.helper}
-                          </Typography>
-                        )}
-                      </Paper>
-                    </Grid>
+                      )}
+                    </Paper>
                   ))}
-                </Grid>
+                </Box>
 
                 <Divider
                   sx={{

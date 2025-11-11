@@ -66,7 +66,7 @@ export default function MediaLibraryDialog({ open, onClose, onPick, companyId })
                   overflow: "hidden",
                   cursor: "pointer",
                 }}
-                onClick={() => onPick?.(m.url)}
+                onClick={() => onPick?.(m)}
               >
                 <Box component="img" src={m.url} alt="" sx={{ width: "100%", display: "block" }} />
               </Box>
