@@ -171,9 +171,9 @@ export function ImageField({ label, value, onChange, companyId }) {
 
       // Prefer a CDN/variant URL, then item.url, then build from stored_name
       const raw =
-        item?.variants?.find((v) => v.w === 1200)?.url ||
-        item?.variants?.find((v) => v.w === 800)?.url ||
         item?.url ||
+        item?.url_public ||
+        (item?.variants?.find((v) => v?.url)?.url) ||
         (item?.stored_name
           ? website.mediaFileUrl(companyId, item.stored_name)
           : "");
@@ -969,4 +969,3 @@ export default function SectionInspector({
       );
   }
 }
-

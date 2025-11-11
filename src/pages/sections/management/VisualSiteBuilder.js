@@ -60,9 +60,11 @@ import { useTranslation, Trans } from "react-i18next";
 import { wb, navSettings } from "../../../utils/api";
 import { normalizeNavStyle } from "../../../utils/navStyle";
 import { RenderSections } from "../../../components/website/RenderSections";
+import SiteFrame from "../../../components/website/SiteFrame";
 import useCompanyId from "../../../hooks/useCompanyId";
 import useHistory from "../../../hooks/useHistory";
 import WebsiteNavSettingsCard from "../../../components/website/WebsiteNavSettingsCard";
+import WebsiteBrandingCard from "../../../components/website/WebsiteBrandingCard";
 import NavStyleHydrator from "../../../components/website/NavStyleHydrator";
 
 /** Floating + Inline inspectors and schema registry */
@@ -82,6 +84,12 @@ import {
   normalizePage,
   safeSections,
 } from "../../../components/website/BuilderPageUtils";
+import {
+  defaultHeaderConfig,
+  defaultFooterConfig,
+  normalizeHeaderConfig,
+  normalizeFooterConfig,
+} from "../../../utils/headerFooter";
 
 /** Theme designer (drawer content) */
 import ThemeDesigner from "../../../components/website/ThemeDesigner";
@@ -770,7 +778,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const { t } = useTranslation();
   const location = useLocation();                 // ✅ use the hook, not window.location
   const detectedCompanyId = useCompanyId();       // ✅ get it from the hook
-  const [companyId, setCompanyId] = useState(     // ✅ local state
+const [companyId, setCompanyId] = useState(     // ✅ local state
     companyIdProp ?? detectedCompanyId ?? ""
   );
 
@@ -783,6 +791,11 @@ const [pageSettingsOpen, setPageSettingsOpen] = useState(true);
   const [navSaving, setNavSaving] = useState(false);
   const [navMsg, setNavMsg] = useState("");
   const [navErr, setNavErr] = useState("");
+  const [headerDraft, setHeaderDraft] = useState(() => defaultHeaderConfig());
+  const [footerDraft, setFooterDraft] = useState(() => defaultFooterConfig());
+  const [brandingSaving, setBrandingSaving] = useState(false);
+  const [brandingMsg, setBrandingMsg] = useState("");
+const [brandingErr, setBrandingErr] = useState("");
 
   useEffect(() => {
     if (companyIdProp && companyIdProp !== companyId) {
@@ -960,6 +973,44 @@ const handleNavDraftChange = useCallback(
   [setSiteSettings]
 );
 
+const handleHeaderDraftChange = useCallback(
+  (draft) => {
+    if (!draft) return;
+    const normalized = normalizeHeaderConfig(draft);
+    setHeaderDraft(normalized);
+    setBrandingMsg("");
+    setBrandingErr("");
+    setSiteSettings((prev) => ({
+      ...(prev || {}),
+      header: normalized,
+      settings: {
+        ...(prev?.settings || {}),
+        header: normalized,
+      },
+    }));
+  },
+  [setSiteSettings]
+);
+
+const handleFooterDraftChange = useCallback(
+  (draft) => {
+    if (!draft) return;
+    const normalized = normalizeFooterConfig(draft);
+    setFooterDraft(normalized);
+    setBrandingMsg("");
+    setBrandingErr("");
+    setSiteSettings((prev) => ({
+      ...(prev || {}),
+      footer: normalized,
+      settings: {
+        ...(prev?.settings || {}),
+        footer: normalized,
+      },
+    }));
+  },
+  [setSiteSettings]
+);
+
 const saveNavSettings = useCallback(
   async (draft) => {
     if (!companyId) {
@@ -991,6 +1042,57 @@ const saveNavSettings = useCallback(
     }
   },
   [companyId, setSiteSettings, navStyleState, t]
+);
+
+const saveBrandingSettings = useCallback(
+  async (payload) => {
+    if (!companyId) {
+      setBrandingErr("Company id missing");
+      return;
+    }
+    const headerPayload = normalizeHeaderConfig(
+      payload?.header || headerDraft || defaultHeaderConfig()
+    );
+    const footerPayload = normalizeFooterConfig(
+      payload?.footer || footerDraft || defaultFooterConfig()
+    );
+    setBrandingSaving(true);
+    setBrandingMsg("");
+    setBrandingErr("");
+    try {
+      await wb.saveSettings(companyId, {
+        header: headerPayload,
+        footer: footerPayload,
+      });
+      const refreshed = await wb.getSettings(companyId).catch(() => null);
+      const root = refreshed?.data || refreshed || {};
+      const headerFromServer = normalizeHeaderConfig(
+        root.header || root.settings?.header || headerPayload
+      );
+      const footerFromServer = normalizeFooterConfig(
+        root.footer || root.settings?.footer || footerPayload
+      );
+      setHeaderDraft(headerFromServer);
+      setFooterDraft(footerFromServer);
+      setSiteSettings(root);
+      setBrandingMsg(
+        t("manager.visualBuilder.messages.brandingSaved", "Header & footer saved.")
+      );
+      setMsg(
+        t("manager.visualBuilder.messages.brandingSaved", "Header & footer saved.")
+      );
+    } catch (e) {
+      const message =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        "Failed to save branding.";
+      setBrandingErr(message);
+    } finally {
+      setBrandingSaving(false);
+    }
+  },
+  [companyId, headerDraft, footerDraft, t]
 );
 
   // Simple / Advanced toggle
@@ -1133,6 +1235,88 @@ const srcProps =
     [pages, selectedId]
   );
 
+  const previewSlug = useMemo(() => {
+    const slugFromSettings =
+      siteSettings?.company?.slug ||
+      siteSettings?.slug ||
+      siteSettings?.settings?.slug;
+    if (slugFromSettings) return slugFromSettings;
+    if (companyId) return `preview-${companyId}`;
+    return "preview";
+  }, [siteSettings, companyId]);
+
+  const previewPagesMeta = useMemo(() => {
+    if (!Array.isArray(pages) || !pages.length) {
+      return [];
+    }
+    return pages.map((p) => ({
+      slug: p.slug,
+      menu_title: p.menu_title || p.title || p.slug,
+      title: p.title || p.slug,
+      show_in_menu: p.show_in_menu !== false,
+      sort_order: p.sort_order ?? 0,
+      is_homepage: Boolean(p.is_homepage),
+    }));
+  }, [pages]);
+
+  const previewSite = useMemo(() => {
+    const navOverrides =
+      siteSettings?.nav_overrides ||
+      siteSettings?.settings?.nav_overrides ||
+      {};
+    const navStyle =
+      siteSettings?.nav_style || siteSettings?.settings?.nav_style || {};
+    const themeOverrides =
+      siteSettings?.theme_overrides ||
+      siteSettings?.settings?.theme_overrides ||
+      {};
+    const companyName =
+      siteSettings?.site_title ||
+      siteSettings?.company?.name ||
+      headerDraft?.text ||
+      "Preview Company";
+    const fallbackPage = {
+      slug: editing?.slug || "preview",
+      menu_title: editing?.menu_title || editing?.title || "Preview",
+      title: editing?.title || "Preview",
+      show_in_menu: true,
+      sort_order: 0,
+      is_homepage: true,
+    };
+    return {
+      slug: previewSlug,
+      nav_overrides: navOverrides,
+      nav_style: navStyle,
+      theme_overrides: themeOverrides,
+      header: headerDraft,
+      footer: footerDraft,
+      pages: previewPagesMeta.length ? previewPagesMeta : [fallbackPage],
+      company: {
+        id:
+          siteSettings?.company?.id ||
+          siteSettings?.company_id ||
+          companyId ||
+          0,
+        name: companyName,
+        slug: previewSlug,
+        logo_url:
+          headerDraft?.logo_asset?.url ||
+          siteSettings?.company?.logo_url ||
+          null,
+        contact_email: siteSettings?.company?.contact_email || null,
+      },
+    };
+  }, [
+    siteSettings,
+    companyId,
+    headerDraft,
+    footerDraft,
+    previewPagesMeta,
+    previewSlug,
+    editing,
+  ]);
+
+
 // choose a template and import it for this company (MUST send X-Company-Id)
 
 
@@ -1220,6 +1404,18 @@ const autoProvisionIfEmpty = useCallback(
       );
     }
 
+    const headerFromServer = normalizeHeaderConfig(
+      (settingsObj?.header ||
+        settingsObj?.settings?.header ||
+        defaultHeaderConfig())
+    );
+    const footerFromServer = normalizeFooterConfig(
+      (settingsObj?.footer ||
+        settingsObj?.settings?.footer ||
+        defaultFooterConfig())
+    );
+    setHeaderDraft(headerFromServer);
+    setFooterDraft(footerFromServer);
     setSiteSettings(settingsObj);
 
     // 2) pages
@@ -2278,6 +2474,27 @@ async function onPublish() {
       </CollapsibleSection>
 
       <CollapsibleSection
+        id="branding-settings-card"
+        title={t("manager.visualBuilder.branding.title", "Header & Footer")}
+        description={t(
+          "manager.visualBuilder.branding.description",
+          "Upload logos, configure sticky header links, and add footer columns."
+        )}
+      >
+        <WebsiteBrandingCard
+          companyId={companyId}
+          headerValue={headerDraft}
+          footerValue={footerDraft}
+          onChangeHeader={handleHeaderDraftChange}
+          onChangeFooter={handleFooterDraftChange}
+          onSave={saveBrandingSettings}
+          saving={brandingSaving}
+          message={brandingMsg}
+          error={brandingErr}
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection
         id="builder-sections-panel"
         title={t("manager.visualBuilder.sections.title")}
         description={t("manager.visualBuilder.sections.description")}
@@ -2422,11 +2639,18 @@ function startSectionDrag(e, i, kind) {
   document.addEventListener("mouseup", onUp);
 }
 
+const renderableSections = safeSections(editing)
+  .map((section, idx) => ({ section, idx }))
+  .filter(({ section }) => section.type !== "pageStyle");
 
 const CanvasColumn = (
   <SectionCard
     title={t("manager.visualBuilder.canvas.title")}
-    description={fullPreview ? t("manager.visualBuilder.canvas.description.full") : t("manager.visualBuilder.canvas.description.block")}
+    description={
+      fullPreview
+        ? t("manager.visualBuilder.canvas.description.full")
+        : t("manager.visualBuilder.canvas.description.block")
+    }
     actions={
       <Stack direction="row" spacing={1} alignItems="center">
         <FormControlLabel
@@ -2446,272 +2670,289 @@ const CanvasColumn = (
           value={canvasHeightMode}
           onChange={(_, v) => v && setCanvasHeightMode(v)}
         >
-          <ToggleButton value="short" title={t("manager.visualBuilder.canvas.toggles.titles.short")}>{t("manager.visualBuilder.canvas.toggles.height.short")}</ToggleButton>
-          <ToggleButton value="medium" title={t("manager.visualBuilder.canvas.toggles.titles.medium")}>{t("manager.visualBuilder.canvas.toggles.height.medium")}</ToggleButton>
-          <ToggleButton value="tall" title={t("manager.visualBuilder.canvas.toggles.titles.tall")}>{t("manager.visualBuilder.canvas.toggles.height.tall")}</ToggleButton>
-          <ToggleButton value="auto" title={t("manager.visualBuilder.canvas.toggles.titles.auto")}>{t("manager.visualBuilder.canvas.toggles.height.auto")}</ToggleButton>
+          <ToggleButton value="short" title={t("manager.visualBuilder.canvas.toggles.titles.short")}>
+            {t("manager.visualBuilder.canvas.toggles.height.short")}
+          </ToggleButton>
+          <ToggleButton value="medium" title={t("manager.visualBuilder.canvas.toggles.titles.medium")}>
+            {t("manager.visualBuilder.canvas.toggles.height.medium")}
+          </ToggleButton>
+          <ToggleButton value="tall" title={t("manager.visualBuilder.canvas.toggles.titles.tall")}>
+            {t("manager.visualBuilder.canvas.toggles.height.tall")}
+          </ToggleButton>
+          <ToggleButton value="auto" title={t("manager.visualBuilder.canvas.toggles.titles.auto")}>
+            {t("manager.visualBuilder.canvas.toggles.height.auto")}
+          </ToggleButton>
         </ToggleButtonGroup>
       </Stack>
     }
   >
-
-    <ThemeRuntimeProvider overrides={siteSettings?.theme_overrides || {}}>
-      <NavStyleHydrator website={siteSettings} scopeSelector=".page-scope .site-nav" />
-  {/* height-limiter: keeps the canvas compact unless “Auto” */}
-  <Box
-    sx={{
-      maxHeight: fullPreview ? "none" : "60vh",
-      overflow: fullPreview ? "visible" : "auto",
-      borderRadius: 1,
-      border: "1px solid",
-      borderColor: "divider",
-    }}
-  >
-    {/* one wrapper for both modes so CSS vars + button rules apply consistently */}
-    <Box
-      className="page-scope"
-      // CSS variables (colors, fonts, buttons, cards, etc.)
-      style={pageVars}
-      sx={{
-        // page background
-        position: "relative",
-        backgroundColor: bgColor,
-        backgroundImage: bgImage
-          ? `linear-gradient(rgba(0,0,0,${1 - bgOpacity}), rgba(0,0,0,${1 - bgOpacity})), url(${bgImage})`
-          : "none",
-        backgroundRepeat: livePageStyle.backgroundRepeat || "no-repeat",
-        backgroundSize: livePageStyle.backgroundSize || "cover",
-        backgroundPosition: livePageStyle.backgroundPosition || "center",
-        backgroundAttachment: livePageStyle.backgroundAttachment || "fixed",
-
-        // overlay on top of background image
-        "&::before": bgImage
-          ? {
-              content: '""',
-              position: "absolute",
-              inset: 0,
-              pointerEvents: "none",
-              backgroundColor: ovColor || "transparent",
-              opacity: ovOpacity,
-            }
-          : undefined,
-
-        // Text uses the CSS vars
-        color: "var(--page-body-color)",
-        "& .page-scope, &": {
-          "--heading-color": "var(--page-heading-color)",
-          "--body-color": "var(--page-body-color)",
-          "--link-color": "var(--page-link-color)",
-          fontFamily: "var(--page-body-font)",
-        },
-
-        // Cards read the CSS vars too
-        "& .MuiPaper-root": {
-          backgroundColor: "var(--page-card-bg)",
-          borderRadius: "var(--page-card-radius)",
-        },
-
-        /* Buttons (builder + runtime) read our CSS vars */
-        "& .MuiButton-root": {
-          borderRadius: "var(--page-btn-radius)",
-          textTransform: "none",
-        },
-        "& .MuiButton-contained": {
-          backgroundColor: "var(--page-btn-bg)",
-          color: "var(--page-btn-color)",
-          "&:hover": { filter: "brightness(0.95)" },
-        },
-        "& .MuiButton-outlined": {
-          borderColor: "var(--page-btn-bg)",
-          color: "var(--page-btn-bg)",
-          backgroundColor: "transparent",
-          "&:hover": {
-            backgroundColor: "rgba(0,0,0,0.03)",
-            borderColor: "var(--page-btn-bg)",
-            color: "var(--page-btn-bg)",
-          },
-        },
-        "& .MuiButton-text": { color: "var(--page-btn-bg)" },
-      }}
+    <SiteFrame
+      slug={previewSite.slug}
+      activeKey={editing?.slug}
+      initialSite={previewSite}
+      disableFetch
+      wrapChildrenInContainer={fullPreview}
     >
-      {/* Full page (single pass) vs block-by-block */}
-      {fullPreview ? (
-        <RenderSections
-          sections={safeSections(editing)}
-          layout={editingPreview.layout || "boxed"}
-          sectionSpacing={editingPreview?.content?.meta?.sectionSpacing ?? 6}
-          defaultGutterX={editingPreview?.content?.meta?.defaultGutterX}
-        />
-      ) : (
+      <Box
+        sx={{
+          maxHeight: fullPreview ? "none" : "60vh",
+          overflow: fullPreview ? "visible" : "auto",
+          borderRadius: 1,
+          border: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        <NavStyleHydrator website={siteSettings} scopeSelector=".page-scope .site-nav" />
+
         <Box
+          className="page-scope"
+          style={pageVars}
           sx={{
             position: "relative",
-            // Avoid page-wide gutter so section cards can preview true widths
-            px: 0,
+            backgroundColor: bgColor,
+            backgroundImage: bgImage
+              ? `linear-gradient(rgba(0,0,0,${1 - bgOpacity}), rgba(0,0,0,${1 - bgOpacity})), url(${bgImage})`
+              : "none",
+            backgroundRepeat: livePageStyle.backgroundRepeat || "no-repeat",
+            backgroundSize: livePageStyle.backgroundSize || "cover",
+            backgroundPosition: livePageStyle.backgroundPosition || "center",
+            backgroundAttachment: livePageStyle.backgroundAttachment || "fixed",
+            "&::before": bgImage
+              ? {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  pointerEvents: "none",
+                  backgroundColor: ovColor || "transparent",
+                  opacity: ovOpacity,
+                }
+              : undefined,
+            color: "var(--page-body-color)",
+            "& .page-scope, &": {
+              "--heading-color": "var(--page-heading-color)",
+              "--body-color": "var(--page-body-color)",
+              "--link-color": "var(--page-link-color)",
+              fontFamily: "var(--page-body-font)",
+            },
+            "& .MuiPaper-root": {
+              backgroundColor: "var(--page-card-bg)",
+              borderRadius: "var(--page-card-radius)",
+            },
+            "& .MuiButton-root": {
+              borderRadius: "var(--page-btn-radius)",
+              textTransform: "none",
+            },
+            "& .MuiButton-contained": {
+              backgroundColor: "var(--page-btn-bg)",
+              color: "var(--page-btn-color)",
+              "&:hover": { filter: "brightness(0.95)" },
+            },
+            "& .MuiButton-outlined": {
+              borderColor: "var(--page-btn-bg)",
+              color: "var(--page-btn-bg)",
+              backgroundColor: "transparent",
+              "&:hover": {
+                backgroundColor: "rgba(0,0,0,0.03)",
+                borderColor: "var(--page-btn-bg)",
+                color: "var(--page-btn-bg)",
+              },
+            },
+            "& .MuiButton-text": { color: "var(--page-btn-bg)" },
           }}
         >
-          {/* Drag overlay for section spacing, selection rings, etc. */}
-          {safeSections(editing).map((blk, i) => (
-            <React.Fragment key={i}>
-              {/* Per-section wrapper with selection ring */}
-              <Box
-                id={`blk-${i}`}
-                sx={{
-                  position: "relative",
-                  outline:
-                    selectedBlock === i ? "2px solid rgba(25, 118, 210, 0.8)" : "2px dashed transparent",
-                  outlineOffset: 2,
-                  borderRadius: 1,
-                  transition: "outline-color 120ms ease",
-                  mt:
-                    blk?.props?.spaceAbove ??
-                    (editingPreview?.content?.meta?.sectionSpacing ?? 6),
-                  mb:
-                    blk?.props?.spaceBelow ??
-                    (editingPreview?.content?.meta?.sectionSpacing ?? 6),
-                  p: 1,
-                  "&:hover": {
-                    outline: "2px solid",
-                    outlineColor: "primary.light",
-                  },
-                }}
-                
-                role="button"
-   tabIndex={0}
-   onMouseDownCapture={() => {
-   // Select in capture phase so inner elements can't swallow the event.
-   setSelectedBlock(i);
- }}
-onClickCapture={(e) => {
-   // If user clicks a real link inside the canvas, don’t leave the builder.
-   const anchor = e.target.closest?.("a[href]");
-   if (anchor && anchor.getAttribute("href") && !anchor.getAttribute("target")) {
-     e.preventDefault();
-   }
- }}
-              >
-                {/* Render the section content */}
-                <RenderSections
-                  sections={[blk]}
-                  layout={editingPreview.layout || "boxed"}
-                  sectionSpacing={editingPreview?.content?.meta?.sectionSpacing ?? 6}
-                  defaultGutterX={editingPreview?.content?.meta?.defaultGutterX}
-                />
+          {fullPreview ? (
+            <RenderSections
+              sections={safeSections(editing)}
+              layout={editingPreview.layout || "boxed"}
+              sectionSpacing={editingPreview?.content?.meta?.sectionSpacing ?? 6}
+              defaultGutterX={editingPreview?.content?.meta?.defaultGutterX}
+            />
+          ) : (
+            <Box
+              sx={{
+                position: "relative",
+                px: { xs: 0, md: 1 },
+                py: 2,
+              }}
+            >
+              <Stack spacing={2}>
+                {renderableSections.map(({ section: blk, idx }) => {
+                  const key = blk.id || `${blk.type}-${idx}`;
+                  const isSelected = selectedBlock === idx;
+                  return (
+                    <React.Fragment key={key}>
+                      <Box
+                        sx={{
+                          position: "relative",
+                          borderRadius: 2,
+                          border: "1px dashed",
+                          borderColor: isSelected ? "primary.main" : "divider",
+                          backgroundColor: "rgba(0,0,0,0.02)",
+                          overflow: "hidden",
+                          transition: "border-color 0.2s, box-shadow 0.2s",
+                          boxShadow: isSelected
+                            ? "0 0 0 2px rgba(25,118,210,0.18)"
+                            : "none",
+                        }}
+                        onClick={() => setSelectedBlock(idx)}
+                      >
+                        <Box
+                          title={t(
+                            "manager.visualBuilder.canvas.drag.spaceAbove",
+                            "Adjust space above"
+                          )}
+                          onMouseDown={(e) => startSectionDrag(e, idx, "spaceAbove")}
+                          sx={{
+                            position: "absolute",
+                            top: -8,
+                            left: 12,
+                            right: 12,
+                            height: 8,
+                            borderTop: "2px dashed",
+                            borderColor: "primary.light",
+                            cursor: "ns-resize",
+                            opacity: 0.4,
+                            "&:hover": { opacity: 1 },
+                            pointerEvents: "auto",
+                          }}
+                        />
+                        <Box
+                          title={t(
+                            "manager.visualBuilder.canvas.drag.gutter",
+                            "Adjust horizontal padding"
+                          )}
+                          onMouseDown={(e) => startSectionDrag(e, idx, "gutterX")}
+                          sx={{
+                            position: "absolute",
+                            top: "25%",
+                            bottom: "25%",
+                            right: 4,
+                            width: 8,
+                            borderRight: "2px dashed",
+                            borderColor: "primary.light",
+                            cursor: "ew-resize",
+                            opacity: 0.3,
+                            "&:hover": { opacity: 1 },
+                            pointerEvents: "auto",
+                          }}
+                        />
 
-                {/* Resizer bars — only when not in full preview and not for the pageStyle block */}
-                {!fullPreview && blk?.type !== "pageStyle" && (
-                  <>
-                    {/* TOP: drag to set spaceAbove (theme units) */}
-                    <Box
-                      title={t("manager.visualBuilder.canvas.drag.spaceAbove")}
-                      onMouseDown={(e) => startSectionDrag(e, i, "spaceAbove")}
-                      sx={{
-                        position: "absolute",
-                        top: -6,
-                        left: 12,
-                        right: 12,
-                        height: 6,
-                        borderTop: "2px dashed",
-                        borderColor: "primary.light",
-                        cursor: "ns-resize",
-                        opacity: 0.6,
-                        "&:hover": { opacity: 1 },
-                        pointerEvents: "auto",
-                      }}
-                    />
-                    {/* BOTTOM: drag to set spaceBelow (theme units) */}
-                    <Box
-                      title={t("manager.visualBuilder.canvas.drag.spaceBelow")}
-                      onMouseDown={(e) => startSectionDrag(e, i, "spaceBelow")}
-                      sx={{
-                        position: "absolute",
-                        bottom: -6,
-                        left: 12,
-                        right: 12,
-                        height: 6,
-                        borderBottom: "2px dashed",
-                        borderColor: "primary.light",
-                        cursor: "ns-resize",
-                        opacity: 0.6,
-                        "&:hover": { opacity: 1 },
-                        pointerEvents: "auto",
-                      }}
-                    />
-                  </>
-                )}
+                        <Box
+                          sx={{
+                            pointerEvents: "none",
+                            "& *": { pointerEvents: "none" },
+                          }}
+                        >
+                          <RenderSections
+                            sections={[blk]}
+                            layout={editingPreview.layout || "boxed"}
+                            sectionSpacing={
+                              editingPreview?.content?.meta?.sectionSpacing ?? 6
+                            }
+                            defaultGutterX={
+                              editingPreview?.content?.meta?.defaultGutterX
+                            }
+                          />
+                        </Box>
 
-                {/* Floating block controls (duplicate / delete) */}
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: 4,
-                    right: 6,
-                    display: "flex",
-                    gap: 0.5,
-                    zIndex: 2,
-                  }}
-                >
-                  <Stack direction="row" spacing={0.5} alignItems="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => moveBlock(i, "up")}
-                      sx={{ color: "white" }}
-                      title={t("manager.visualBuilder.canvas.controls.moveUp")}
-                    >
-                      <ArrowUpwardIcon fontSize="inherit" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => moveBlock(i, "down")}
-                      sx={{ color: "white" }}
-                      title={t("manager.visualBuilder.canvas.controls.moveDown")}
-                    >
-                      <ArrowDownwardIcon fontSize="inherit" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => duplicateBlock(i)}
-                      sx={{ color: "white" }}
-                      title={t("manager.visualBuilder.canvas.controls.duplicate")}
-                    >
-                      <ContentCopyIcon fontSize="inherit" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => deleteBlock(i)}
-                      sx={{ color: "white" }}
-                      title={t("manager.visualBuilder.canvas.controls.delete")}
-                    >
-                      <DeleteIcon fontSize="inherit" />
-                    </IconButton>
-                  </Stack>
-                </Box>
+                        <Box
+                          title={t(
+                            "manager.visualBuilder.canvas.drag.spaceBelow",
+                            "Adjust space below"
+                          )}
+                          onMouseDown={(e) => startSectionDrag(e, idx, "spaceBelow")}
+                          sx={{
+                            position: "absolute",
+                            bottom: -8,
+                            left: 12,
+                            right: 12,
+                            height: 8,
+                            borderBottom: "2px dashed",
+                            borderColor: "primary.light",
+                            cursor: "ns-resize",
+                            opacity: 0.4,
+                            "&:hover": { opacity: 1 },
+                            pointerEvents: "auto",
+                          }}
+                        />
 
-                {/* Inline sticky inspector slot between blocks */}
-                <InlineStickyInspector.Slot
-                  index={i}
-                  selectedIndex={selectedBlock}
-                  block={blk}
-                  fi={fi}
-                  mode={mode}
-                  companyId={companyId}
-                  onChangeProps={(np) => setBlockPropsAll(i, np)}
-                  onChangeProp={(k, v) => setBlockProp(i, k, v)}
-                  renderAdvancedEditor={({ block, onChangeProps, onChangeProp }) => (
-                    <SectionInspector
-                      block={block}
-                      onChangeProp={onChangeProp}
-                      onChangeProps={onChangeProps}
-                      companyId={companyId}
-                    />
-                  )}
-                />
-              </Box>
-            </React.Fragment>
-          ))}
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: 4,
+                            right: 6,
+                            display: "flex",
+                            gap: 0.5,
+                            zIndex: 2,
+                          }}
+                        >
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            <IconButton
+                              size="small"
+                              onClick={() => moveBlock(idx, "up")}
+                              sx={{ color: "white" }}
+                              title={t("manager.visualBuilder.canvas.controls.moveUp")}
+                            >
+                              <ArrowUpwardIcon fontSize="inherit" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => moveBlock(idx, "down")}
+                              sx={{ color: "white" }}
+                              title={t("manager.visualBuilder.canvas.controls.moveDown")}
+                            >
+                              <ArrowDownwardIcon fontSize="inherit" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => duplicateBlock(idx)}
+                              sx={{ color: "white" }}
+                              title={t("manager.visualBuilder.canvas.controls.duplicate")}
+                            >
+                              <ContentCopyIcon fontSize="inherit" />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => deleteBlock(idx)}
+                              sx={{ color: "white" }}
+                              title={t("manager.visualBuilder.canvas.controls.delete")}
+                            >
+                              <DeleteIcon fontSize="inherit" />
+                            </IconButton>
+                          </Stack>
+                        </Box>
+                      </Box>
+
+                      <InlineStickyInspector.Slot
+                        index={idx}
+                        selectedIndex={selectedBlock}
+                        block={blk}
+                        fi={fi}
+                        mode={mode}
+                        companyId={companyId}
+                        onChangeProps={(np) => setBlockPropsAll(idx, np)}
+                        onChangeProp={(k, v) => setBlockProp(idx, k, v)}
+                        renderAdvancedEditor={({ block, onChangeProps, onChangeProp }) => (
+                          <SectionInspector
+                            block={block}
+                            onChangeProp={onChangeProp}
+                            onChangeProps={onChangeProps}
+                            companyId={companyId}
+                          />
+                        )}
+                      />
+                    </React.Fragment>
+                  );
+                })}
+              </Stack>
+            </Box>
+          )}
 
           {!safeSections(editing).length && !suppressEmptyState && (
-            <SectionCard title={t("manager.visualBuilder.canvas.empty.title")} description={t("manager.visualBuilder.canvas.empty.description")}>
+            <SectionCard
+              title={t("manager.visualBuilder.canvas.empty.title")}
+              description={t("manager.visualBuilder.canvas.empty.description")}
+            >
               <Typography variant="body1" color="text.secondary">
                 {t("manager.visualBuilder.canvas.empty.body")}
               </Typography>
@@ -2726,12 +2967,9 @@ onClickCapture={(e) => {
             </SectionCard>
           )}
         </Box>
-      )}
-    </Box>
-  </Box>
-</ThemeRuntimeProvider>
-
-</SectionCard>
+      </Box>
+    </SiteFrame>
+  </SectionCard>
 );
 
 
@@ -3059,67 +3297,67 @@ if (authError) {
   );
 }
 
-return (
-  <>
-    <TabShell
-      title={t("manager.visualBuilder.shell.title")}
-      description={t("manager.visualBuilder.shell.description")}
-      tabs={tabs}
-      defaultIndex={0}
-    />
+  return (
+    <>
+      <TabShell
+        title={t("manager.visualBuilder.shell.title")}
+        description={t("manager.visualBuilder.shell.description")}
+        tabs={tabs}
+        defaultIndex={0}
+      />
 
-    {/* Floating panel (single instance) */}
-    <FloatingInspector.Panel
-      fi={fi}
-      selectedIndex={selectedBlock}
-      selectedBlockObj={selectedBlockObj}
-      schemaForBlock={schemaForBlock}
-      companyId={companyId}
-      onChangeProps={(np) => setBlockPropsAll(selectedBlock, np)}
-      onChangeProp={(k, v) => setBlockProp(selectedBlock, k, v)}
-      renderAdvancedEditor={({ block, onChangeProps, onChangeProp }) => (
-        <SectionInspector
-          block={block}
-          onChangeProp={onChangeProp}
-          onChangeProps={onChangeProps}
-          companyId={companyId}
-        />
-      )}
-    />
+      {/* Floating panel (single instance) */}
+      <FloatingInspector.Panel
+        fi={fi}
+        selectedIndex={selectedBlock}
+        selectedBlockObj={selectedBlockObj}
+        schemaForBlock={schemaForBlock}
+        companyId={companyId}
+        onChangeProps={(np) => setBlockPropsAll(selectedBlock, np)}
+        onChangeProp={(k, v) => setBlockProp(selectedBlock, k, v)}
+        renderAdvancedEditor={({ block, onChangeProps, onChangeProp }) => (
+          <SectionInspector
+            block={block}
+            onChangeProp={onChangeProp}
+            onChangeProps={onChangeProps}
+            companyId={companyId}
+          />
+        )}
+      />
 
-    {/* THEME DRAWER */}
-    <Drawer
-      anchor="right"
-      open={themeOpen}
-      onClose={() => {
-        setThemeOpen(false);
-        if (companyId) {
-          wb
-            .getSettings(companyId)
-            .then((s) => {
-              setSiteSettings(s?.data || null);
-            })
-            .catch(() => {});
-        }
-      }}
-    >
-      <Box sx={{ width: { xs: 360, md: 420 }, p: 2 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-          {t("manager.visualBuilder.drawer.themeDesignerTitle")}
-        </Typography>
-        <ThemeDesigner companyId={companyId} page="home" />
-      </Box>
-    </Drawer>
+      {/* THEME DRAWER */}
+      <Drawer
+        anchor="right"
+        open={themeOpen}
+        onClose={() => {
+          setThemeOpen(false);
+          if (companyId) {
+            wb
+              .getSettings(companyId)
+              .then((s) => {
+                setSiteSettings(s?.data || null);
+              })
+              .catch(() => {});
+          }
+        }}
+      >
+        <Box sx={{ width: { xs: 360, md: 420 }, p: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+            {t("manager.visualBuilder.drawer.themeDesignerTitle")}
+          </Typography>
+          <ThemeDesigner companyId={companyId} page="home" />
+        </Box>
+      </Drawer>
 
-    {/* HELP DRAWER (left) — NEW */}
-    <WebsiteBuilderHelpDrawer
-      open={helpOpen}
-      onClose={() => setHelpOpen(false)}
-      anchor="left" // keep right side free for the inspector
-      onJumpToPageStyle={handleJumpToPageStyle}
-      onJumpToNavSettings={handleJumpToNav}
-      onJumpToAssets={handleJumpToAssets}
-    />
-  </>
-);
+      {/* HELP DRAWER (left) — NEW */}
+      <WebsiteBuilderHelpDrawer
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        anchor="left" // keep right side free for the inspector
+        onJumpToPageStyle={handleJumpToPageStyle}
+        onJumpToNavSettings={handleJumpToNav}
+        onJumpToAssets={handleJumpToAssets}
+      />
+    </>
+  );
 }

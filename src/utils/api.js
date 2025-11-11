@@ -48,6 +48,32 @@ const inferBase = () => {
 
 export const API_BASE_URL = envBase || inferBase();
 
+const normalizeMediaAsset = (asset, companyId) => {
+  if (!asset) return null;
+  const stored =
+    asset.stored_name ||
+    (asset.key ? String(asset.key).split("/").slice(-1)[0] : undefined);
+  const variantList = Array.isArray(asset.variants)
+    ? asset.variants
+    : Array.isArray(asset.variant_urls)
+    ? asset.variant_urls
+    : [];
+  const variantUrl =
+    variantList.find((v) => v?.url)?.url ||
+    variantList.find((v) => v?.href)?.href ||
+    null;
+  const finalUrl =
+    asset.url ||
+    asset.url_public ||
+    variantUrl ||
+    (stored ? `${String(API_BASE_URL).replace(/\/$/, "")}/uploads/${companyId || "company"}/${stored}` : undefined);
+  return {
+    ...asset,
+    stored_name: stored,
+    url: finalUrl,
+  };
+};
+
 /* ------------------------------ Axios ------------------------------ */
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -293,75 +319,45 @@ export const website = {
       )
       .then((r) => r.data),
 
-  // Media library
+  // Media library (MediaAsset-backed)
   listMedia: ({ offset = 0, limit = 30, companyId } = {}) =>
     api
-      .get("/api/website/media", {
+      .get("/api/media", {
         params: { offset, limit },
         ...withCompany(companyId),
       })
-      .then((r) => r.data),
+      .then((r) => {
+        const items = Array.isArray(r?.data?.items) ? r.data.items : [];
+        return {
+          ...(r?.data || {}),
+          items: items.map((item) => normalizeMediaAsset(item, companyId)),
+        };
+      }),
 
   uploadMedia: async (files, { companyId } = {}) => {
     const fd = new FormData();
-    (Array.isArray(files) ? files : [files])
-      .filter(Boolean)
-      .forEach((f) => fd.append("files", f));
-
-    // Try primary route
-    const tryUpload = async (url) =>
-      api.post(url, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-        ...withCompany(companyId),
-      });
-
-    let data;
-    try {
-      const res = await tryUpload("/api/website/media");
-      data = res.data;
-    } catch {
-      // Fallback alias
-      const res2 = await tryUpload("/api/website/media/upload");
-      data = res2.data;
+    const list = Array.isArray(files) ? files : [files];
+    if (!list.length) {
+      return { items: [] };
     }
-
-    // Normalize to { items: [...] } with .url present
-    let items = [];
-    if (Array.isArray(data)) {
-      items = data;
-    } else if (Array.isArray(data?.items)) {
-      items = data.items;
-    } else if (Array.isArray(data?.uploaded)) {
-      items = data.uploaded;
-    } else if (data?.item) {
-      items = [data.item];
-    }
-
-    const norm = (it) => {
-      const fileUrl = it?.url || it?.file_url;
-      const stored = it?.stored_name || (fileUrl ? String(fileUrl).split("/").slice(-1)[0] : undefined);
-      const finalUrl =
-        it?.url ||
-        it?.file_url ||
-        (stored ? website.mediaFileUrl(companyId, stored) : undefined);
-      return {
-        ...it,
-        url: finalUrl,
-        stored_name: stored,
-        variants: Array.isArray(it?.variants) ? it.variants : [],
-      };
-    };
-
-    return { items: items.map(norm) };
+    fd.append("file", list[0]);
+    const res = await api.post("/api/media/upload", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+      ...withCompany(companyId),
+    });
+    const item = res?.data?.item || res?.data;
+    const normalized = item ? normalizeMediaAsset(item, companyId) : null;
+    return { items: normalized ? [normalized] : [] };
   },
 
   deleteMedia: (mediaId, { companyId } = {}) =>
-    api
-      .delete(`/api/website/media/${mediaId}`, withCompany(companyId))
-      .then((r) => r.data),
+    api.delete(`/api/media/${mediaId}`, withCompany(companyId)).then((r) => r.data),
 
-  mediaFileUrl: (companyId, storedName) =>
-    `${String(API_BASE_URL).replace(/\/$/, "")}/api/website/media/file/${companyId}/${storedName}`,
+  mediaFileUrl: (companyId, storedNameOrUrl) => {
+    if (!storedNameOrUrl) return "";
+    if (/^https?:\/\//i.test(storedNameOrUrl)) return storedNameOrUrl;
+    return `${String(API_BASE_URL).replace(/\/$/, "")}/uploads/${companyId}/${storedNameOrUrl}`;
+  },
 
   // Server-side preview
   preview: ({ page, theme_overrides, companyId } = {}) =>
@@ -563,6 +559,8 @@ export const wb = {
       'theme_overrides',
       'is_live',
       'theme_id',
+      'header',
+      'footer',
     ];
     const settingsBag = merged.settings || {};
     hoistKeys.forEach((key) => {
