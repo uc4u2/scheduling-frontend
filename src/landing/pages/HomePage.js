@@ -463,6 +463,10 @@ const HomePage = () => {
   const trustedTitle = t("landing.home.trustedBy");
   const comingSoon = t("landing.home.comingSoon");
   const testimonialsTitle = t("landing.home.testimonials.title");
+  const seoSection = useMemo(
+    () => t("landing.home.seoSection", { returnObjects: true }) || {},
+    [t]
+  );
 
   const [accent, setAccent] = useState(heroModules[0]?.accent || theme.palette.primary.main);
 
@@ -786,6 +790,78 @@ const HomePage = () => {
 
       <HighlightsSlider items={highlightSliderItems} />
       <TrustedSlider accent={accent} title={trustedTitle} />
+
+      <Box
+        component="section"
+        sx={{
+          px: { xs: 3, md: 6 },
+          py: { xs: 8, md: 10 },
+          backgroundColor: (theme) => alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.6 : 0.85),
+        }}
+      >
+        <Stack spacing={3} maxWidth={960} mx="auto" textAlign="center">
+          {seoSection.eyebrow && (
+            <Typography variant="overline" fontWeight={700} letterSpacing={0.4} color="primary">
+              {seoSection.eyebrow}
+            </Typography>
+          )}
+          {seoSection.title && (
+            <Typography variant="h3" fontWeight={800}>
+              {seoSection.title}
+            </Typography>
+          )}
+          {seoSection.description && (
+            <Typography variant="body1" color="text.secondary">
+              {seoSection.description}
+            </Typography>
+          )}
+        </Stack>
+
+        <Grid container spacing={4} mt={{ xs: 4, md: 6 }}>
+          {(Array.isArray(seoSection.cards) ? seoSection.cards : []).map((item) => {
+            const linkProps = item.link || {};
+            const buttonRoutingProps = linkProps.to
+              ? { component: Link, to: linkProps.to }
+              : linkProps.href
+                ? { component: "a", href: linkProps.href, target: linkProps.target, rel: linkProps.rel }
+                : null;
+            return (
+              <Grid item xs={12} md={4} key={item.heading}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    height: "100%",
+                    borderRadius: 3,
+                    p: { xs: 3, md: 4 },
+                    border: (theme) => `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                    backgroundColor: (theme) => alpha(theme.palette.background.default, theme.palette.mode === "dark" ? 0.7 : 1),
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1.5,
+                  }}
+                >
+                  <Typography variant="h5" fontWeight={700}>
+                    {item.heading}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {item.body}
+                  </Typography>
+                  {linkProps.label && buttonRoutingProps && (
+                    <Button
+                      {...buttonRoutingProps}
+                      variant="text"
+                      color="primary"
+                      sx={{ mt: "auto", alignSelf: "flex-start", textTransform: "none", fontWeight: 600 }}
+                    >
+                      {linkProps.label}
+                    </Button>
+                  )}
+                </Paper>
+              </Grid>
+            );
+          })}
+        </Grid>
+      </Box>
 
       <FeatureCardShowcase
         eyebrow={featureCardCopy.eyebrow}

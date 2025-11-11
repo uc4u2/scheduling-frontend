@@ -43,6 +43,7 @@ import MarketingHubPage from "./landing/pages/marketing/MarketingHubPage";
 import MarketingCampaignsPage from "./landing/pages/marketing/MarketingCampaignsPage";
 import MarketingAnalyticsPage from "./landing/pages/marketing/MarketingAnalyticsPage";
 import MarketingClientsPage from "./landing/pages/marketing/MarketingClientsPage";
+import ComparisonPage from "./landing/pages/compare/ComparisonPage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
 import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
@@ -321,6 +322,7 @@ const AppContent = ({ token, setToken }) => {
           <Route element={<PublicLayout token={token} setToken={setToken} />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/compare/:vendor" element={<ComparisonPage />} />
             <Route path="/features" element={<FeaturePage />} />
             <Route path="/platform" element={<PlatformPage />} />
             <Route path="/website-builder" element={<WebsiteBuilderPage />} />
