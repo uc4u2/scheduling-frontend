@@ -25,6 +25,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { Link } from "react-router-dom";
 
 import Meta from "../../components/Meta";
+import JsonLd from "../../components/seo/JsonLd";
 
 const HERO_META = {
   title: "Schedulaa FAQ",
@@ -213,7 +214,7 @@ const FAQ_SECTIONS = [
     icon: PaymentsIcon,
     description:
       "Clarity on which regions we support today and the items you still need to process manually.",
-    cta: { label: "Check payroll coverage", to: "/payroll/canada" },
+    cta: { label: "Check payroll coverage", to: "/payroll" },
     items: [
       {
         question: "Which regions are fully supported?",
@@ -247,10 +248,28 @@ const FAQ_SECTIONS = [
 const FAQPage = () => {
   const theme = useTheme();
   const meta = useMemo(() => HERO_META, []);
+  const faqSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: FAQ_SECTIONS.flatMap((section) =>
+        section.items.map((item) => ({
+          "@type": "Question",
+          name: item.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: item.answer,
+          },
+        }))
+      ),
+    }),
+    []
+  );
 
   return (
     <>
       <Meta {...meta} />
+      <JsonLd data={faqSchema} />
       <Box
         sx={{
           position: "relative",

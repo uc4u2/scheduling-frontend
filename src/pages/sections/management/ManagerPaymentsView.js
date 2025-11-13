@@ -1,4 +1,4 @@
-﻿// src/pages/sections/management/ManagerPaymentsView.js
+// src/pages/sections/management/ManagerPaymentsView.js
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import { getUserTimezone } from "../../../utils/timezone";

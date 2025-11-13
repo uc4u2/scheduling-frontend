@@ -1,4 +1,4 @@
-﻿// src/hooks/useHistory.js
+// src/hooks/useHistory.js
 import { useCallback, useState } from "react";
 
 export default function useHistory(initial, { maxDepth = 100 } = {}) {

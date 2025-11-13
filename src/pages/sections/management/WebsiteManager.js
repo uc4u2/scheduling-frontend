@@ -42,6 +42,14 @@ const EMPTY_FORM = {
   sort_order: 0,
   published: true,
   is_homepage: false,
+  seo_title: "",
+  seo_description: "",
+  seo_keywords: "",
+  og_title: "",
+  og_description: "",
+  og_image_url: "",
+  canonical_path: "",
+  noindex: false,
 };
 
 const WebsiteManager = ({ companyId: companyIdProp }) => {
@@ -64,11 +72,32 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
+  const [publishing, setPublishing] = useState(false);
 
   // Theme Designer dialog state
   const [openTheme, setOpenTheme] = useState(false);
 
   const [domainSnapshot, setDomainSnapshot] = useState({ status: "none", domain: "", verifiedAt: null });
+
+  const applySettingsPayload = useCallback((payload) => {
+    if (!payload) return;
+    const data = payload?.data ?? payload;
+    setSettings(data);
+    if (data) {
+      setDomainSnapshot((prev) => ({
+        ...prev,
+        status:
+          data.domain_status ||
+          (data.custom_domain
+            ? data.domain_verified_at
+              ? "verified"
+              : "pending_dns"
+            : "none"),
+        domain: data.custom_domain || prev.domain || "",
+        verifiedAt: data.domain_verified_at || prev.verifiedAt || null,
+      }));
+    }
+  }, []);
 
   const handleDomainSnapshotUpdate = useCallback((snapshot) => {
     if (!snapshot) return;
@@ -87,14 +116,11 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   const handleSeoSave = useCallback(
     async (seoPayload) => {
       if (!companyId) throw new Error(t("management.website.errors.missingCompany"));
-      const res = await wb.saveSettings(companyId, { seo: seoPayload });
-      setSettings((prev) => ({
-        ...(prev || {}),
-        seo: { ...(prev?.seo || {}), ...seoPayload },
-      }));
+      const res = await wb.saveSettings(companyId, { seo: seoPayload }, { publish: false });
+      applySettingsPayload(res);
       return res;
     },
-    [companyId, t]
+    [companyId, t, applySettingsPayload]
   );
 
   // computed
@@ -143,6 +169,18 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   );
 
   const canPublish = useMemo(() => !!settings?.theme || !!settings?.theme_id, [settings]);
+  const hasDraftChanges = Boolean(settings?.has_unpublished_changes);
+  const lastPublishedLabel = useMemo(() => {
+    const ts = settings?.branding_published_at;
+    if (!ts) return null;
+    try {
+      const date = new Date(ts);
+      if (Number.isNaN(date.getTime())) return null;
+      return `${t("management.website.labels.publishedAt", "Published")} ${date.toLocaleString()}`;
+    } catch {
+      return null;
+    }
+  }, [settings?.branding_published_at, t]);
 
   const loadPages = useCallback(
     async (slug) => {
@@ -218,23 +256,7 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
 
         if (settingsRes.status === "fulfilled") {
           settingsData = settingsRes.value?.data || null;
-          if (alive) {
-            setSettings(settingsData);
-            if (settingsData) {
-              setDomainSnapshot((prev) => ({
-                ...prev,
-                status:
-                  settingsData.domain_status ||
-                  (settingsData.custom_domain
-                    ? settingsData.domain_verified_at
-                      ? "verified"
-                      : "pending_dns"
-                    : "none"),
-                domain: settingsData.custom_domain || "",
-                verifiedAt: settingsData.domain_verified_at || null,
-              }));
-            }
-          }
+          if (alive) applySettingsPayload(settingsData);
         } else if (alive) {
           setSettings(null);
           setErr((prev) => prev || t("management.website.errors.settingsLoad"));
@@ -256,7 +278,7 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
     return () => {
       alive = false;
     };
-  }, [companyId, loadPages, t]);
+  }, [companyId, loadPages, t, applySettingsPayload]);
 
   const refreshPages = async () => {
     if (!companyId) return;
@@ -294,8 +316,8 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
         theme_id: settings?.theme?.id || settings?.theme_id || null,
         is_live: !!settings?.is_live,
       };
-      const res = await wb.saveSettings(companyId, payload);
-      setSettings(res.data);
+      const res = await wb.saveSettings(companyId, payload, { publish: false });
+      applySettingsPayload(res);
       setMsg(t("management.website.messages.settingsSaved"));
     } catch {
       setErr(t("management.website.errors.settingsSave"));
@@ -327,6 +349,14 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
       sort_order: Number(p.sort_order || 0),
       published: !!p.published,
       is_homepage: !!p.is_homepage,
+      seo_title: p.seo_title || "",
+      seo_description: p.seo_description || "",
+      seo_keywords: p.seo_keywords || "",
+      og_title: p.og_title || "",
+      og_description: p.og_description || "",
+      og_image_url: p.og_image_url || "",
+      canonical_path: p.canonical_path || "",
+      noindex: !!p.noindex,
     });
   };
 
@@ -433,6 +463,12 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
           color={domainStatusMeta.color === "default" ? "default" : domainStatusMeta.color}
           variant={domainStatusMeta.color === "default" ? "outlined" : "filled"}
         />
+        {hasDraftChanges && (
+          <Chip size="small" color="warning" label={t("management.website.labels.draftPending", "Draft changes pending")} />
+        )}
+        {lastPublishedLabel && (
+          <Chip size="small" variant="outlined" label={lastPublishedLabel} />
+        )}
 
         {/* Public viewer link (auto from slug) */}
         <Stack direction="row" spacing={1} alignItems="center">
@@ -532,8 +568,12 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
             {t("management.website.buttons.saveTheme")}
           </Button>
           <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", sm: "block" } }} />
-          <Button variant="contained" onClick={publishSite} disabled={!canPublish}>
-            {settings?.is_live ? t("management.website.buttons.republish") : t("management.website.buttons.publish")}
+          <Button variant="contained" onClick={publishSite} disabled={!canPublish || publishing}>
+            {publishing
+              ? t("management.website.buttons.publishing", "Publishing…")
+              : settings?.is_live
+              ? t("management.website.buttons.republish")
+              : t("management.website.buttons.publish")}
           </Button>
 
           <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
@@ -665,6 +705,69 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
                   />
                 }
                 label={t("management.website.fields.homepage")}
+              />
+
+              <Divider sx={{ my: 1 }} />
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                {t("management.website.sections.seo", "SEO & Sharing")}
+              </Typography>
+              <TextField
+                size="small"
+                label={t("management.website.fields.seoTitle", "SEO Title")}
+                value={form.seo_title}
+                onChange={(e) => setForm({ ...form, seo_title: e.target.value })}
+              />
+              <TextField
+                size="small"
+                label={t("management.website.fields.seoDescription", "SEO Description")}
+                value={form.seo_description}
+                onChange={(e) => setForm({ ...form, seo_description: e.target.value })}
+                multiline
+                minRows={2}
+              />
+              <TextField
+                size="small"
+                label={t("management.website.fields.seoKeywords", "SEO Keywords")}
+                value={form.seo_keywords}
+                onChange={(e) => setForm({ ...form, seo_keywords: e.target.value })}
+                helperText={t("management.website.helpers.seoKeywords", "Comma separated")}
+              />
+              <TextField
+                size="small"
+                label={t("management.website.fields.ogTitle", "Open Graph Title")}
+                value={form.og_title}
+                onChange={(e) => setForm({ ...form, og_title: e.target.value })}
+              />
+              <TextField
+                size="small"
+                label={t("management.website.fields.ogDescription", "Open Graph Description")}
+                value={form.og_description}
+                onChange={(e) => setForm({ ...form, og_description: e.target.value })}
+              />
+              <TextField
+                size="small"
+                label={t("management.website.fields.ogImage", "Open Graph Image URL")}
+                value={form.og_image_url}
+                onChange={(e) => setForm({ ...form, og_image_url: e.target.value })}
+              />
+              <TextField
+                size="small"
+                label={t("management.website.fields.canonicalPath", "Canonical Path or Override")}
+                value={form.canonical_path}
+                onChange={(e) => setForm({ ...form, canonical_path: e.target.value })}
+                helperText={t(
+                  "management.website.helpers.canonicalPath",
+                  "Start with /contact or ?page=contact"
+                )}
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={form.noindex}
+                    onChange={(_, v) => setForm({ ...form, noindex: v })}
+                  />
+                }
+                label={t("management.website.fields.noindex", "Hide from search (noindex)")}
               />
 
               <TextField

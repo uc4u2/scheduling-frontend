@@ -1,4 +1,4 @@
-﻿// src/components/website/SchemaInspector.js
+// src/components/website/SchemaInspector.js
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 

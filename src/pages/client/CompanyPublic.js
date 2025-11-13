@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AppBar, Box, Button, Chip, Container, Dialog, DialogContent, IconButton,
-  Menu, MenuItem, Stack, Toolbar, Tooltip, Typography, Alert, CircularProgress, Divider, GlobalStyles,
+  Menu, MenuItem, Stack, Toolbar, Tooltip, Typography, Alert, CircularProgress, GlobalStyles, Snackbar,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import BrushIcon from "@mui/icons-material/Brush";
@@ -23,7 +23,178 @@ import NavStyleHydrator from "../../components/website/NavStyleHydrator";
 import { ServiceListEmbedded } from "./ServiceList";
 import { ProductListEmbedded } from "./ProductList";
 import { MyBasketEmbedded } from "./MyBasket";
+import {
+  cloneFooterColumns,
+  cloneLegalLinks,
+  formatCopyrightText,
+} from "../../utils/footerDefaults";
+import { SOCIAL_ICON_MAP, DEFAULT_SOCIAL_ICON } from "../../utils/socialIcons";
+import Meta from "../../components/Meta";
+import JsonLd from "../../components/seo/JsonLd";
 
+const LEGAL_FALLBACK_CONTENT = {
+  privacy: {
+    title: "Privacy Policy",
+    intro: "How we collect, protect, and use customer information across appointments, payments, and communications.",
+    sections: [
+      {
+        heading: "Information we collect",
+        paragraphs: [
+          "We gather only the information required to deliver scheduling, payments, and support. This includes contact details provided during booking, appointment history, messages you send through embedded forms, and payment confirmations processed by our PCI-compliant partners.",
+          "You may request a copy or deletion of your data at any time by contacting the studio or emailing privacy@schedulaa.com with your booking ID." ,
+        ],
+      },
+      {
+        heading: "How we use your data",
+        paragraphs: [
+          "Data stays inside our scheduling platform and is used for confirmations, reminders, receipts, and service follow-ups. We never sell lists or share personally identifiable information with outside vendors, with the exception of payment processors or insurers that you authorize.",
+          "Access to internal dashboards is restricted to trained staff using MFA-protected logins. All activity is logged for auditing." ,
+        ],
+      },
+      {
+        heading: "Your choices",
+        paragraphs: [
+          "You can opt out of marketing emails at any time from the footer of any campaign. Transactional messages (receipts, reminders) are required to complete bookings but can be redirected to an alternate address upon request.",
+          "Questions about privacy or data handling? Email privacy@schedulaa.com or contact the studio directly and we’ll respond within two business days." ,
+        ],
+      },
+    ],
+  },
+  terms: {
+    title: "Terms of Service",
+    intro: "The conditions for using our online booking, payments, and communication tools.",
+    sections: [
+      {
+        heading: "Appointment commitments",
+        paragraphs: [
+          "Bookings are secured with the payment method you provide. Late cancellations and no-shows may be charged according to the studio’s policy, which is disclosed during checkout.",
+          "By booking, you authorize us to send confirmations, reminders, and service updates via email or SMS." ,
+        ],
+      },
+      {
+        heading: "Acceptable use",
+        paragraphs: [
+          "You agree not to misuse the booking tools, attempt to access another customer’s information, or copy proprietary content from this site.",
+          "Studios reserve the right to refuse service if policies are repeatedly violated or abusive language is used in messages." ,
+        ],
+      },
+      {
+        heading: "Liability",
+        paragraphs: [
+          "Our platform provides scheduling and communication tools, but each studio remains responsible for the services delivered. If you have a dispute about a service, contact the studio directly so they can address or escalate it through the proper channels.",
+          "Questions about these terms? Email legal@schedulaa.com and we’ll route the request to the correct team." ,
+        ],
+      },
+    ],
+  },
+  policies: {
+    title: "Studio Policies",
+    intro: "General policies around cancellations, arrivals, communication, and on-site etiquette.",
+    sections: [
+      {
+        heading: "Cancellations",
+        paragraphs: [
+          "Please provide at least 24 hours notice for cancellations so we can offer the slot to another client. Late cancellations may incur the fee disclosed during checkout.",
+        ],
+      },
+      {
+        heading: "Arrival",
+        paragraphs: [
+          "Arrive 5–10 minutes early to check in, review paperwork, and discuss any updates to your goals or health profile.",
+        ],
+      },
+      {
+        heading: "Payment",
+        paragraphs: [
+          "We accept debit, credit, and digital wallets through our PCI-compliant processor. Cash payments can be coordinated with the studio directly.",
+        ],
+      },
+    ],
+  },
+  cookies: {
+    title: "Cookie Policy",
+    intro: "We use strictly necessary cookies to keep your session secure and remember booking preferences.",
+    sections: [
+      {
+        heading: "Required cookies",
+        paragraphs: [
+          "Session cookies keep you logged in between pages and expire immediately after checkout or logout.",
+        ],
+      },
+      {
+        heading: "Analytics",
+        paragraphs: [
+          "Anonymous visit data helps us understand which services customers browse most so we can improve the experience. You can block analytics cookies in your browser without disrupting booking.",
+        ],
+      },
+    ],
+  },
+};
+
+const buildCanonicalUrl = (page, base, fallback) => {
+  const safeBase = (base || fallback || "").replace(/\/$/, "");
+  if (!safeBase) return "";
+  const override = (page?.canonical_path || "").trim();
+  if (override.startsWith("http://") || override.startsWith("https://")) return override;
+  if (override.startsWith("/") || override.startsWith("?")) return `${safeBase}${override}`;
+  if (override) return `${safeBase}/${override.replace(/^\/+/, "")}`;
+  const slug = (page?.slug || "").trim();
+  if (page?.is_homepage || slug.toLowerCase() === "home") return safeBase;
+  if (page?.path) {
+    const path = page.path.startsWith("/") ? page.path : `/${page.path}`;
+    return `${safeBase}${path}`;
+  }
+  if (!slug) return safeBase;
+  const sep = safeBase.includes("?") ? "&" : "?";
+  return `${safeBase}${sep}page=${encodeURIComponent(slug)}`;
+};
+
+const extractDescription = (sections = []) => {
+  for (const section of sections) {
+    const props = section?.props || {};
+    const candidates = [props.subheading, props.description, props.body, props.copy];
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      }
+    }
+  }
+  return "";
+};
+
+function buildLegalFallbackPage(slug) {
+  const key = String(slug || "").toLowerCase();
+  const config = LEGAL_FALLBACK_CONTENT[key];
+  if (!config) return null;
+  const sections = [
+    {
+      type: "heroSplit",
+      props: {
+        heading: config.title,
+        subheading: config.intro,
+        ctaText: "Contact support",
+        ctaLink: "/contact",
+        image: "https://images.unsplash.com/photo-1521540216272-a50305cd4421?auto=format&fit=crop&w=1400&q=80",
+        titleAlign: "left",
+        maxWidth: "lg",
+      },
+    },
+    ...config.sections.map((sec) => ({
+      type: "richText",
+      props: {
+        title: sec.heading,
+        body: sec.paragraphs.map((p) => `<p>${p}</p>`).join(""),
+        maxWidth: "md",
+      },
+    })),
+  ];
+  return {
+    slug: key,
+    title: config.title,
+    layout: "full",
+    content: { sections },
+  };
+}
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
 const cloneStyle = (val) => {
   if (!isPlainObject(val)) return null;
@@ -49,6 +220,44 @@ const clamp01 = (n) => {
   const num = Number(n);
   if (!Number.isFinite(num)) return 0;
   return Math.max(0, Math.min(1, num));
+};
+const clampNumber = (value, min, max, fallback) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  let clamped = num;
+  if (typeof min === "number") clamped = Math.max(min, clamped);
+  if (typeof max === "number") clamped = Math.min(max, clamped);
+  return clamped;
+};
+const alignToFlex = (val, fallback = "flex-start") => {
+  switch ((val || "").toLowerCase()) {
+    case "center":
+      return "center";
+    case "right":
+    case "far-right":
+      return "flex-end";
+    case "space-between":
+      return "space-between";
+    case "space-around":
+      return "space-around";
+    default:
+      return fallback;
+  }
+};
+
+const inlinePlacementFromAlign = (val, forced) => {
+  if (forced) return forced;
+  const raw = (val || "").toLowerCase();
+  if (raw === "far-left" || raw === "left") return "before";
+  if (raw === "center") return "center";
+  return "after";
+};
+const edgePlacement = (val) => {
+  const raw = (val || "").toLowerCase();
+  if (raw === "center") return { marginLeft: "auto", marginRight: "auto" };
+  if (raw === "right" || raw === "far-right") return { marginLeft: "auto" };
+  if (raw === "far-left") return { marginRight: "auto" };
+  return {};
 };
 const toHexByte = (n) => Math.max(0, Math.min(255, Math.round(Number(n) || 0))).toString(16).padStart(2, '0');
 const normalizeHexColor = (hex) => {
@@ -229,6 +438,9 @@ export default function CompanyPublic() {
       }
       if (q === "my-bookings" || q === "mybookings")
         return { slug: "my-bookings", title: "My Bookings", content: { sections: [] } };
+
+      const legalFallback = buildLegalFallbackPage(q);
+      if (legalFallback) return legalFallback;
     }
     return pages.find((p) => p.is_homepage) || pages[0];
   }, [pages, pageFromQuery]);
@@ -245,11 +457,45 @@ export default function CompanyPublic() {
   const [themeAnchor, setThemeAnchor] = useState(null);
   const [themes, setThemes] = useState([]);
   const [settings, setSettings] = useState(null);
-  const themeMenuOpen = Boolean(themeAnchor);
+
+  const headerConfig = useMemo(() => {
+    if (settings?.header) return settings.header;
+    if (sitePayload?.settings?.header) return sitePayload.settings.header;
+    return sitePayload?.header || null;
+  }, [settings, sitePayload]);
+
+  const footerConfig = useMemo(() => {
+    if (settings?.footer) return settings.footer;
+    if (sitePayload?.settings?.footer) return sitePayload.settings.footer;
+    return sitePayload?.footer || null;
+  }, [settings, sitePayload]);
+
+  const themeOverrides = useMemo(() => {
+    return (
+      settings?.theme_overrides ||
+      settings?.settings?.theme_overrides ||
+      sitePayload?.theme_overrides ||
+      sitePayload?.settings?.theme_overrides ||
+      {}
+    );
+  }, [settings, sitePayload]);
 
   const [editorOpen, setEditorOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [toolbarMsg, setToolbarMsg] = useState("");
+  const [publishSnack, setPublishSnack] = useState("");
+  const hasDraftChanges = Boolean(settings?.has_unpublished_changes);
+  const lastPublishedLabel = useMemo(() => {
+    const ts = settings?.branding_published_at;
+    if (!ts) return null;
+    try {
+      const date = new Date(ts);
+      if (Number.isNaN(date.getTime())) return null;
+      return `Published ${date.toLocaleString()}`;
+    } catch {
+      return null;
+    }
+  }, [settings?.branding_published_at]);
 
   useEffect(() => {
     let alive = true;
@@ -333,10 +579,14 @@ export default function CompanyPublic() {
     if (!isManagerForCompany || !company?.id) return;
     setPublishing(true);
     try {
-      await wb.publish(company.id, true);
+      const res = await wb.publish(company.id, true);
+      const payload = res?.data || res || null;
+      if (payload) setSettings(payload);
       setToolbarMsg("Published");
+      setPublishSnack("Site published");
     } catch {
       setToolbarMsg("Publish failed");
+      setPublishSnack("Publish failed");
     } finally {
       setPublishing(false);
       setTimeout(() => setToolbarMsg(""), 2000);
@@ -719,21 +969,286 @@ export default function CompanyPublic() {
     [activePageStyle]
   );
 
-  const rawSiteTitle =
+const rawSiteTitle =
     settings?.site_title ??
     sitePayload?.settings?.site_title ??
     sitePayload?.site_title ??
     company?.name ??
+    company?.slug ??
     slug ??
     "";
 
   const siteTitle = useMemo(() => {
     const candidate = String(rawSiteTitle || "").trim();
     if (!candidate || PLACEHOLDER_SITE_TITLES.has(candidate)) {
-      return company?.name || slug || "Our Business";
+      const fallback = company?.name || slug || "Our Business";
+      return fallback.replace(/-/g, " ");
     }
-    return candidate;
-  }, [rawSiteTitle, company?.name, slug]);
+    const clean = candidate === (company?.slug || slug)
+      ? candidate.replace(/-/g, " ")
+      : candidate;
+    return clean;
+  }, [rawSiteTitle, company?.name, company?.slug, slug]);
+
+  const headerLogoUrl = useMemo(() => {
+    const asset = headerConfig?.logo_asset;
+    if (asset && typeof asset === "object") {
+      if (asset.url) return asset.url;
+      if (asset.url_public) return asset.url_public;
+      const firstVariant =
+        Array.isArray(asset.variants) && asset.variants.find((v) => v?.url || v?.href);
+      if (firstVariant) return firstVariant.url || firstVariant.href;
+    }
+    if (typeof headerConfig?.logo_url === "string" && headerConfig.logo_url.trim()) {
+      return headerConfig.logo_url.trim();
+    }
+    if (typeof headerConfig?.logo_asset_url === "string" && headerConfig.logo_asset_url.trim()) {
+      return headerConfig.logo_asset_url.trim();
+    }
+    if (typeof headerConfig?.logo === "string" && headerConfig.logo.trim()) {
+      return headerConfig.logo.trim();
+    }
+    return company?.logo_url || null;
+  }, [headerConfig, company]);
+
+  const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
+  const headerTextColor = headerConfig?.text || themeOverrides?.header?.text || "inherit";
+  const navButtonStyling = useMemo(
+    () => (active) => ({
+      ...navButtonSx(active),
+      color: headerTextColor,
+    }),
+    [navButtonSx, headerTextColor]
+  );
+
+  const showBrandText = headerConfig?.show_brand_text !== false;
+  const navBrandName = useMemo(() => {
+    if (!showBrandText) return "";
+    const text = (headerConfig?.text || "").trim();
+    return (
+      text ||
+      company?.slug ||
+      company?.name ||
+      siteTitle ||
+      slug ||
+      "Brand"
+    );
+  }, [headerConfig, siteTitle, company?.slug, company?.name, slug, showBrandText]);
+  const headerSocialLinks = Array.isArray(headerConfig?.social_links) ? headerConfig.social_links : [];
+  const footerSocialLinks = Array.isArray(footerConfig?.social_links) ? footerConfig.social_links : [];
+  const footerColumns =
+    (Array.isArray(footerConfig?.columns) && footerConfig.columns.length
+      ? footerConfig.columns
+      : cloneFooterColumns()) || [];
+  const footerLegalLinks =
+    (Array.isArray(footerConfig?.legal_links) && footerConfig.legal_links.length
+      ? footerConfig.legal_links
+      : cloneLegalLinks()) || [];
+  const showCopyright = footerConfig?.show_copyright !== false;
+  const copyrightText = formatCopyrightText(
+    footerConfig?.copyright_text,
+    { company: siteTitle, slug }
+  );
+  const footerSummary = (footerConfig?.text || "").trim();
+  const footerBg = footerConfig?.bg || themeOverrides?.footer?.background || "var(--page-secondary-bg, #0f172a)";
+  const footerTextColor = footerConfig?.text || themeOverrides?.footer?.text || "rgba(255,255,255,0.92)";
+  const footerLogoUrl =
+    footerConfig?.logo_asset?.url ||
+    footerConfig?.logo_asset?.url_public ||
+    footerConfig?.logo_url ||
+    footerConfig?.logo_asset_url ||
+    null;
+
+  const globalSeo = useMemo(() => {
+    if (settings?.seo) return settings.seo;
+    if (sitePayload?.seo) return sitePayload.seo;
+    if (sitePayload?.settings?.seo) return sitePayload.settings.seo;
+    return {};
+  }, [settings, sitePayload]);
+
+  const canonicalBase = useMemo(() => {
+    if (globalSeo.canonicalUrl) return globalSeo.canonicalUrl;
+    if (globalSeo.slugBaseUrl) return globalSeo.slugBaseUrl;
+    if (typeof window !== "undefined") {
+      const origin = window.location.origin || "";
+      return slug ? `${origin.replace(/\/$/, "")}/${slug}` : origin;
+    }
+    return "";
+  }, [globalSeo, slug]);
+
+  const slugBaseUrl = useMemo(() => globalSeo.slugBaseUrl || canonicalBase, [globalSeo, canonicalBase]);
+
+  const pageCanonicalUrl = useMemo(
+    () => buildCanonicalUrl(currentPage || { slug }, canonicalBase, slugBaseUrl),
+    [currentPage, canonicalBase, slugBaseUrl, slug]
+  );
+
+  const descriptionFallback = useMemo(() => {
+    if (bodySections.length) return extractDescription(bodySections);
+    if (patchedSections?.length) return extractDescription(patchedSections);
+    return extractDescription(currentPage?.content?.sections) || "";
+  }, [bodySections, patchedSections, currentPage]);
+
+  const metaDescription = useMemo(() => {
+    return (
+      currentPage?.seo_description ||
+      globalSeo.metaDescription ||
+      descriptionFallback ||
+      `Explore services from ${siteTitle}.`
+    );
+  }, [currentPage, globalSeo, descriptionFallback, siteTitle]);
+
+  const metaTitle = useMemo(() => {
+    const base =
+      currentPage?.seo_title ||
+      globalSeo.metaTitle ||
+      (currentPage?.title ? `${currentPage.title} — ${siteTitle}` : siteTitle);
+    return base?.replace(/\s+/g, " ").trim();
+  }, [currentPage, globalSeo, siteTitle]);
+
+  const metaKeywords = currentPage?.seo_keywords || globalSeo.metaKeywords || "";
+  const ogTitle = currentPage?.og_title || globalSeo.ogTitle || metaTitle;
+  const ogDescription = currentPage?.og_description || globalSeo.ogDescription || metaDescription;
+  const ogImage = currentPage?.og_image_url || globalSeo.ogImage || headerLogoUrl || null;
+  const robots = currentPage?.noindex ? "noindex, nofollow" : undefined;
+
+  const structuredDataPayload = useMemo(() => {
+    if (!globalSeo.structuredDataEnabled) return null;
+    const raw = globalSeo.structuredData;
+    if (!raw) return null;
+    try {
+      return typeof raw === "string" ? JSON.parse(raw) : raw;
+    } catch {
+      return null;
+    }
+  }, [globalSeo]);
+
+  const isExternalHref = (href) => {
+    const trimmed = (href || "").trim();
+    return /^https?:/i.test(trimmed) || trimmed.startsWith("mailto:") || trimmed.startsWith("tel:");
+  };
+
+  const normalizeHref = useCallback(
+    (href) => {
+      const trimmed = (href || "").trim();
+      if (!trimmed) return `/${slug}`;
+      if (isExternalHref(trimmed)) {
+        return trimmed;
+      }
+      if (trimmed.startsWith("?") || trimmed.startsWith("/")) {
+        return resolveSiteHref(slug, trimmed, pages);
+      }
+      return resolveSiteHref(slug, `?page=${trimmed}`, pages);
+    },
+    [slug, pages]
+  );
+
+  const headerNavItems = Array.isArray(headerConfig?.nav_items) ? headerConfig.nav_items : [];
+  const currentSlugSafe = String(currentPage?.slug || "").toLowerCase();
+
+  const headerNavItemsResolved = useMemo(() => {
+    if (!headerNavItems.length) return [];
+    return headerNavItems.map((item, idx) => {
+      const href = normalizeHref(item.href || "");
+      const normalized = String(href || "").toLowerCase();
+      let active = false;
+      if (normalized === `/${slug}` || normalized === "/" || normalized === `/${slug}/`) {
+        active = !currentSlugSafe || currentSlugSafe === "home";
+      } else if (normalized.includes("?page=")) {
+        const params = new URLSearchParams(normalized.split("?")[1]);
+        const pageSlug = params.get("page");
+        if (pageSlug) active = pageSlug.toLowerCase() === currentSlugSafe;
+      }
+      return {
+        key: item.key || `${idx}-${item.label || item.href || "nav"}`,
+        label: item.label || item.href || `Link ${idx + 1}`,
+        href,
+        active,
+      };
+    });
+  }, [headerNavItems, normalizeHref, slug, currentSlugSafe]);
+
+  const navItemsToRender = headerNavItemsResolved.length ? headerNavItemsResolved : navItemsWithActive;
+  const hasNavItems = navItemsToRender.length > 0;
+  const headerPadding = clampNumber(headerConfig?.padding_y ?? 20, 4, 160, 20);
+  const headerLogoWidth = clampNumber(headerConfig?.logo_width ?? 140, 40, 360, 140);
+  const headerLogoHeight = headerConfig?.logo_height
+    ? clampNumber(headerConfig.logo_height, 24, 200, null)
+    : null;
+  const headerLogoAlign = alignToFlex(headerConfig?.logo_alignment, "flex-start");
+  const headerNavAlign = alignToFlex(
+    headerConfig?.nav_alignment,
+    headerConfig?.layout === "center" ? "center" : "flex-end"
+  );
+  const headerFullWidth = headerConfig?.full_width !== false;
+  const logoEdgePlacement = edgePlacement(headerConfig?.logo_alignment);
+  const navEdgePlacement = edgePlacement(headerConfig?.nav_alignment);
+  const headerSocialAlignRaw = (headerConfig?.social_alignment || "right").toLowerCase();
+  const headerSocialAlign = alignToFlex(headerSocialAlignRaw, "flex-end");
+  const headerSocialPosition = (headerConfig?.social_position || "inline").toLowerCase();
+  const headerSocialInline = ["inline", "after"].includes(headerSocialPosition);
+  const headerSocialInlinePlacement = headerSocialInline
+    ? inlinePlacementFromAlign(
+        headerSocialAlignRaw,
+        headerSocialPosition === "after" ? "after" : null
+      )
+    : null;
+
+  const renderHeaderSocialIcons = useCallback(
+    ({ inline = false, placement = "after" } = {}) => {
+      if (!headerSocialLinks.length) return null;
+      const gap = Math.max(Number(navStyle?.item_spacing) || 12, 8);
+      return (
+        <Stack
+          direction="row"
+          spacing={0.75}
+          flexWrap={inline ? "nowrap" : "wrap"}
+          alignItems="center"
+          justifyContent={inline ? "flex-start" : headerSocialAlign}
+          sx={{
+            width: inline ? "auto" : "100%",
+            mt: inline ? 0 : 1,
+            flexShrink: inline ? 0 : undefined,
+            ml: inline && placement === "after" ? `${gap}px` : 0,
+            mr: inline && placement === "before" ? `${gap}px` : 0,
+            ...(inline && placement === "center"
+              ? { marginLeft: "auto", marginRight: "auto" }
+              : {}),
+          }}
+        >
+          {headerSocialLinks.map((item, idx) => {
+            const Icon = SOCIAL_ICON_MAP[item?.icon?.toLowerCase()] || DEFAULT_SOCIAL_ICON;
+            const href = normalizeHref(item.href || item.url || "");
+            const isExternal = isExternalHref(href);
+            return (
+              <IconButton
+                key={`header-social-${idx}`}
+                component={isExternal ? "a" : RouterLink}
+                to={isExternal ? undefined : href}
+                href={isExternal ? href : undefined}
+                target={isExternal ? "_blank" : undefined}
+                rel={isExternal ? "noreferrer noopener" : undefined}
+                size="small"
+                sx={{
+                  color: headerTextColor,
+                  border: "1px solid rgba(255,255,255,0.25)",
+                }}
+              >
+                <Icon fontSize="small" />
+              </IconButton>
+            );
+          })}
+        </Stack>
+      );
+    },
+    [
+      headerSocialLinks,
+      headerSocialAlign,
+      headerTextColor,
+      normalizeHref,
+      navStyle?.item_spacing,
+    ]
+  );
 
   const overrideContent = useMemo(() => {
     if (!renderOverride) return null;
@@ -759,8 +1274,19 @@ export default function CompanyPublic() {
 
   return (
     <ThemeRuntimeProvider overrides={runtimeOverrides}>
-      <GlobalStyles
-        styles={(theme) => {
+      <>
+        <Meta
+          title={metaTitle}
+          description={metaDescription}
+          keywords={metaKeywords || undefined}
+          canonical={pageCanonicalUrl}
+          robots={robots}
+          og={{ title: ogTitle, description: ogDescription, image: ogImage, url: pageCanonicalUrl }}
+          twitter={{ title: ogTitle, description: ogDescription, image: ogImage }}
+        />
+        {structuredDataPayload && <JsonLd data={structuredDataPayload} />}
+        <GlobalStyles
+          styles={(theme) => {
           const bodyStyles = {
             backgroundColor: activePageSurface?.backgroundColor || theme.palette.background.default,
             color:
@@ -797,16 +1323,27 @@ export default function CompanyPublic() {
                 theme.palette.primary.main,
             },
           };
-        }}
-      />
+          }}
+        />
       <NavStyleHydrator website={sitePayload || settings || {}} scopeSelector=".site-nav" />
       {/* Manager toolbar — only if role === 'manager' (and matches company if both ids exist) */}
       {isManagerForCompany && (
         <AppBar position="sticky" color="transparent" elevation={0} sx={{ borderBottom: "1px solid rgba(0,0,0,0.08)", backdropFilter: "blur(6px)" }}>
           <Toolbar>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexGrow: 1, minWidth: 0, flexWrap: "wrap" }}>
               <Chip label={`Editing: ${company?.name ?? "Company"}`} size="small" />
               {toolbarMsg && <Chip label={toolbarMsg} color="success" size="small" />}
+              {hasDraftChanges && (
+                <Chip label="Draft changes pending" color="warning" size="small" />
+              )}
+              {lastPublishedLabel && (
+                <Chip label={lastPublishedLabel} size="small" variant="outlined" />
+              )}
+              {toolbarMsg && (
+                <Alert severity="success" variant="outlined" sx={{ px: 1, py: 0.5 }}>
+                  {toolbarMsg}
+                </Alert>
+              )}
             </Stack>
 
             <Tooltip title="Pick theme">
@@ -846,80 +1383,151 @@ export default function CompanyPublic() {
       )}
 
       {/* PUBLIC NAV */}
-      <Box className="site-nav" sx={{ py: 1.25 }}>
-        <Container maxWidth="lg">
-          <Stack
-            direction="row"
-            spacing={0}
-            alignItems="center"
+      <Box className="site-nav" sx={{ py: `${headerPadding}px`, background: headerBg, color: headerTextColor }}>
+        <Container
+          maxWidth={headerFullWidth ? false : "lg"}
+          disableGutters={headerFullWidth}
+        >
+          {headerSocialPosition === "above" && renderHeaderSocialIcons()}
+          <Box
             sx={{
-              gap: `${navStyle.item_spacing}px`,
-              flexWrap: "wrap",
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              gap: { xs: 1.5, md: 3 },
+              alignItems: { xs: "flex-start", md: "center" },
+              width: "100%",
             }}
           >
-            <Typography
-              variant="h6"
-              sx={{
-                mr: 1.5,
-                color: "var(--nav-btn-text, inherit)",
-                fontWeight: navStyle.font_weight ?? 600,
-                textTransform: navStyle.text_transform ?? "none",
-                fontFamily: "var(--nav-brand-font-family, inherit)",
-                fontSize: `var(--nav-brand-font-size, ${navStyle.brand_font_size || 20}px)`
-              }}
-            >
-              {siteTitle}
-            </Typography>
-            <Divider flexItem orientation="vertical" />
             <Stack
               direction="row"
-              spacing={0}
-              flexWrap="wrap"
+              spacing={1.25}
+              alignItems="center"
+              justifyContent={headerLogoAlign}
               sx={{
-                gap: `${navStyle.item_spacing}px`,
-                alignItems: "center",
+                width: { xs: "100%", md: "auto" },
+                flexShrink: 0,
+                ...logoEdgePlacement,
               }}
             >
-              {navItemsWithActive.map((item) =>
-                item.onClick ? (
-                  <Button
-                    key={item.key}
-                    size="small"
-                    className="nav-btn"
-                    variant="text"
-                    color="inherit"
-                    disableElevation
-                    onClick={item.onClick}
-                    sx={navButtonSx(item.active)}
-                  >
-                    {item.label}
-                  </Button>
-                ) : (
-                  <Button
-                    key={item.key}
-                    size="small"
-                    variant="text"
-                    color="inherit"
-                    disableElevation
-                    component={RouterLink}
-                    to={item.href}
-                    sx={navButtonSx(item.active)}
-                  >
-                    {item.label}
-                  </Button>
-                )
+              {headerLogoUrl && (
+                <Box
+                  component={RouterLink}
+                  to={`/${slug}`}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    textDecoration: "none",
+                    color: headerTextColor,
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={headerLogoUrl}
+                    alt={navBrandName}
+                    sx={{
+                      width: `${headerLogoWidth}px`,
+                      height: headerLogoHeight ? `${headerLogoHeight}px` : "auto",
+                      maxWidth: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                </Box>
+              )}
+              {showBrandText && (
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: headerTextColor,
+                    fontWeight: navStyle.font_weight ?? 600,
+                    textTransform: navStyle.text_transform ?? "none",
+                    fontFamily: "var(--nav-brand-font-family, inherit)",
+                    fontSize: `var(--nav-brand-font-size, ${navStyle.brand_font_size || 20}px)`
+                  }}
+                >
+                  {navBrandName}
+                </Typography>
               )}
             </Stack>
-          </Stack>
+            <Box
+              sx={{
+                flex: 1,
+                width: "100%",
+                display: "flex",
+                ...navEdgePlacement,
+              }}
+            >
+              <Stack
+                direction="row"
+                spacing={0}
+                flexWrap="wrap"
+                sx={{
+                  gap: `${navStyle.item_spacing}px`,
+                  alignItems: "center",
+                  justifyContent: headerNavAlign,
+                  flex: 1,
+                }}
+              >
+                {headerSocialInline && headerSocialInlinePlacement === "before" &&
+                  renderHeaderSocialIcons({ inline: true, placement: "before" })}
+                {navItemsToRender.map((item) => {
+                  if (item.onClick) {
+                    return (
+                      <Button
+                        key={item.key}
+                        size="small"
+                        className="nav-btn"
+                        variant="text"
+                        disableElevation
+                        onClick={item.onClick}
+                        sx={navButtonStyling(item.active)}
+                      >
+                        {item.label}
+                      </Button>
+                    );
+                  }
+                  const external = isExternalHref(item.href);
+                  const commonProps = external
+                    ? { component: "a", href: item.href, target: "_blank", rel: "noreferrer" }
+                    : { component: RouterLink, to: item.href };
+                  return (
+                    <Button
+                      key={item.key}
+                      size="small"
+                      variant="text"
+                      disableElevation
+                      sx={navButtonStyling(item.active)}
+                      {...commonProps}
+                    >
+                      {item.label}
+                    </Button>
+                  );
+                })}
+                {headerSocialInline && headerSocialInlinePlacement !== "before" &&
+                  renderHeaderSocialIcons({
+                    inline: true,
+                    placement: headerSocialInlinePlacement || "after",
+                  })}
+              </Stack>
+            </Box>
+          </Box>
+          {headerSocialPosition === "below" && renderHeaderSocialIcons()}
         </Container>
       </Box>
 
       {/* PAGE CONTENT */}
-      <Box sx={{ py: shouldRenderPublicReviews ? 0 : 2 }}>
+      <Box
+        sx={{
+          pt: shouldRenderPublicReviews ? 0 : { xs: 1, md: 1.25 },
+          pb: 0,
+        }}
+      >
         {overrideContent ? (
           overrideContent
         ) : (
-          <Container maxWidth={pageLayout === "full" ? false : "lg"}>
+          <Container
+            maxWidth={pageLayout === "full" ? false : "lg"}
+            sx={{ pt: 0, pb: 0 }}
+          >
             {currentPage ? (
               <>
                 {bodySections.length > 0 && (
@@ -964,6 +1572,141 @@ export default function CompanyPublic() {
           </DialogContent>
         </Dialog>
       )}
+
+      {footerConfig && (
+        <Box
+          component="footer"
+          sx={{
+            backgroundColor: footerBg,
+            color: footerTextColor,
+            mt: 1,
+            pt: 3,
+            pb: 3,
+          }}
+        >
+          <Container maxWidth="lg">
+            <Stack spacing={3}>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={3} alignItems="flex-start">
+                <Stack spacing={1} flex={1}>
+                  {footerLogoUrl && (
+                    <Box
+                      component="img"
+                      src={footerLogoUrl}
+                      alt={siteTitle}
+                      sx={{ height: 40, width: "auto", maxWidth: 160, objectFit: "contain" }}
+                    />
+                  )}
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    {siteTitle}
+                  </Typography>
+                  {footerSummary && (
+                    <Typography variant="body2" sx={{ maxWidth: 560 }}>
+                      {footerSummary}
+                    </Typography>
+                  )}
+                </Stack>
+                {footerSocialLinks.length > 0 && (
+                  <Stack direction="row" spacing={1}>
+                    {footerSocialLinks.map((link, idx) => {
+                      const Icon = SOCIAL_ICON_MAP[link.icon?.toLowerCase()] || DEFAULT_SOCIAL_ICON;
+                      const href = normalizeHref(link.href || "");
+                      return (
+                        <IconButton
+                          key={`footer-social-${idx}`}
+                          component="a"
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          sx={{ color: footerTextColor, backgroundColor: "rgba(255,255,255,0.08)" }}
+                        >
+                          <Icon />
+                        </IconButton>
+                      );
+                    })}
+                  </Stack>
+                )}
+              </Stack>
+
+              {footerColumns.length > 0 && (
+                <Stack
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={4}
+                  sx={{ mt: 2 }}
+                  flexWrap="wrap"
+                >
+                  {footerColumns.map((col, idx) => (
+                    <Box key={`footer-col-${idx}`} sx={{ flex: 1, minWidth: 160 }}>
+                      {col.title && (
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                          {col.title}
+                        </Typography>
+                      )}
+                      <Stack spacing={0.5}>
+                        {(col.links || []).map((link, linkIdx) => {
+                          const href = normalizeHref(link.href || "");
+                          const external = isExternalHref(href);
+                          const commonProps = external
+                            ? { component: "a", href, target: "_blank", rel: "noreferrer" }
+                            : { component: RouterLink, to: href };
+                          return (
+                            <Button
+                              key={`footer-link-${idx}-${linkIdx}`}
+                              sx={{ justifyContent: "flex-start", color: footerTextColor, textTransform: "none" }}
+                              {...commonProps}
+                            >
+                              {link.label || link.href}
+                            </Button>
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+
+              {footerLegalLinks.length > 0 && (
+                <Stack
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={2}
+                  sx={{ borderTop: "1px solid rgba(255,255,255,0.12)", pt: 2, mt: 2, flexWrap: "wrap" }}
+                >
+                  {footerLegalLinks.map((link, idx) => {
+                    const href = normalizeHref(link.href || "");
+                    const external = isExternalHref(href);
+                    const commonProps = external
+                      ? { component: "a", href, target: "_blank", rel: "noreferrer" }
+                      : { component: RouterLink, to: href };
+                    return (
+                      <Button
+                        key={`footer-legal-${idx}`}
+                        sx={{ color: footerTextColor, textTransform: "none", padding: 0, minWidth: "auto" }}
+                        {...commonProps}
+                      >
+                        {link.label || link.href}
+                      </Button>
+                    );
+                  })}
+                </Stack>
+              )}
+              {showCopyright && (
+                <Typography
+                  variant="caption"
+                  sx={{ mt: 2, opacity: 0.8, color: footerTextColor }}
+                >
+                  {copyrightText}
+                </Typography>
+              )}
+            </Stack>
+          </Container>
+        </Box>
+      )}
+      <Snackbar
+        open={Boolean(publishSnack)}
+        autoHideDuration={4000}
+        onClose={() => setPublishSnack("")}
+        message={publishSnack}
+      />
+      </>
     </ThemeRuntimeProvider>
   );
 }

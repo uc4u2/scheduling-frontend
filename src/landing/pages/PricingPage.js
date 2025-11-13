@@ -265,6 +265,30 @@ const PricingPage = () => {
     ],
     []
   );
+  const platformSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Schedulaa Platform",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: "https://www.schedulaa.com/pricing",
+      description:
+        metaContent?.description ||
+        DEFAULT_META.description,
+      provider: {
+        "@type": "Organization",
+        name: "Schedulaa",
+        url: "https://www.schedulaa.com",
+      },
+      offers: {
+        "@type": "Offer",
+        price: "0.00",
+        priceCurrency: "USD",
+      },
+    }),
+    [metaContent]
+  );
 
   const heroTitle = useMemo(() => {
     const title = heroContent?.title;
@@ -389,6 +413,7 @@ const PricingPage = () => {
           image: metaOg.image || DEFAULT_META.og.image,
         }}
       />
+      <JsonLd data={platformSchema} />
       {pricingSchemas.map((schema) => (
         <JsonLd key={schema.name} data={schema} />
       ))}

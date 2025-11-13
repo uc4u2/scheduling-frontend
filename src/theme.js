@@ -1,4 +1,4 @@
-﻿// src/theme.js
+// src/theme.js
 import { createTheme } from "@mui/material/styles";
 
 const PRIMARY_COLOR = "#4f7dff";

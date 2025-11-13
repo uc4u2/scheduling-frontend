@@ -8,6 +8,14 @@ export const emptyPage = () => ({
   sort_order: 0,
   published: true,
   is_homepage: false,
+  seo_title: "",
+  seo_description: "",
+  seo_keywords: "",
+  og_title: "",
+  og_description: "",
+  og_image_url: "",
+  canonical_path: "",
+  noindex: false,
   content: { sections: [] },
 });
 
@@ -28,6 +36,12 @@ export function normalizePage(p = {}) {
     is_homepage: Boolean(p.is_homepage ?? false),
     seo_title: p.seo_title || "",
     seo_description: p.seo_description || "",
+    seo_keywords: p.seo_keywords || "",
+    og_title: p.og_title || "",
+    og_description: p.og_description || "",
+    og_image_url: p.og_image_url || "",
+    canonical_path: p.canonical_path || "",
+    noindex: Boolean(p.noindex ?? false),
     content:
       p.content && typeof p.content === "object" ? p.content : { sections: [] },
   };

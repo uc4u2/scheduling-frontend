@@ -70,7 +70,10 @@ function useSectionFrame({ layout = "boxed", sectionSpacing = 6, defaultGutterX 
   };
 
   const sectionBaseSx = {
-    py: { xs: 5, md: 8 },
+    py: { xs: 4, md: 6 },
+    '& + &' : {
+      mt: { xs: 4, md: 6 },
+    },
   };
 
   const frame = (children, { bleedLeft, bleedRight, gutterX, layoutOverride } = {}) => {
@@ -567,7 +570,7 @@ const FeatureZigzag = ({
   items = []
 }) => {
   const list = toArray(items);
-  const cardRadius = 4;
+const cardRadius = 8;
   const hasHeader = eyebrow || title || supportingText;
   if (!hasHeader && list.length === 0) return null;
 
@@ -657,7 +660,7 @@ const FeatureZigzag = ({
 
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
-      <Stack spacing={{ xs: 5, md: 8 }}>
+      <Stack spacing={{ xs: 4, md: 5 }}>
         {hasHeader && (
           <Stack spacing={1} sx={{ textAlign: titleAlign }}>
             {eyebrow && (
@@ -1515,6 +1518,7 @@ const LogoCloud = ({
   badgeStyle = {},
   tabs = [],
   tabsAlign = "center",
+  cardRadius = 12,
 }) => {
   const entries = toArray(logos)
     .map(normalizeLogoItem)
@@ -1670,6 +1674,8 @@ const LogoCloud = ({
     );
   };
 
+  const resolvedCardRadius = Number(cardRadius) || 12;
+
   const renderCards = () => (
     <Grid
       container
@@ -1681,14 +1687,14 @@ const LogoCloud = ({
         const features = toArray(item.features);
         return (
           <Grid item xs={12} sm={6} md={3} key={idx}>
-            <Card
-              elevation={0}
-              className={`logo-cloud-card${item.highlight ? " featured" : ""}`}
-              sx={{
-                height: "100%",
-                borderRadius: 4,
-                p: 3,
-                display: "flex",
+          <Card
+            elevation={0}
+            className={`logo-cloud-card${item.highlight ? " featured" : ""}`}
+            sx={{
+              height: "100%",
+              borderRadius: resolvedCardRadius,
+              p: 3,
+              display: "flex",
                 flexDirection: "column",
                 gap: 2,
                 textAlign: "center",
@@ -3251,13 +3257,17 @@ function RenderSectionsInner({
     [safeSections]
   );
   const defGX = defaultGutterX ?? pageStyle.gutterX;
+  const bottomSpacing = clamp(
+    Number(pageStyle.pageBottomSpacing) || 0,
+    0,
+    240
+  );
   const { sectionBaseSx, frame } = useSectionFrame({ layout, sectionSpacing, defaultGutterX: defGX });
 
   // Build page-level background CSS (sx) + CSS variables (style)
   // Build page-level background CSS (sx) + CSS variables (style)
 const pageWrapSx = {
   position: "relative",
-  minHeight: "100vh",
   ...(pageStyle.backgroundColor ? { backgroundColor: pageStyle.backgroundColor } : {}),
   ...(pageStyle.backgroundImage ? { backgroundImage: `url(${pageStyle.backgroundImage})` } : {}),
   backgroundRepeat: pageStyle.backgroundRepeat || "no-repeat",
@@ -3344,7 +3354,7 @@ return (
         }}
       />
     )}
-    <Stack spacing={{ xs: 0, md: 0 }} sx={{ position: "relative", zIndex: 1 }}>
+    <Stack spacing={{ xs: 2.5, md: 4 }} sx={{ position: "relative", zIndex: 1 }}>
       {contentSections.map((s, i) => {
         const Cmp = registry[s?.type];
         if (!Cmp) return null;
@@ -3372,6 +3382,10 @@ return (
             ? { mb: s.props.spaceBelow } // optional gap BELOW (theme units)
             : {}),
         };
+        if (i === contentSections.length - 1) {
+          perSectionSx.pb = `${bottomSpacing}px`;
+          perSectionSx.mb = 0;
+        }
 
         return (
           <Section key={s?.id || i} id={s?.id} sx={perSectionSx}>

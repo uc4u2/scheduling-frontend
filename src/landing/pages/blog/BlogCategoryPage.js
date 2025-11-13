@@ -5,6 +5,8 @@ import {
   Stack,
   Button,
   Divider,
+  Grid,
+  Paper,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -94,6 +96,29 @@ const CATEGORY_CONTENT = {
     ],
   },
 };
+
+const CATEGORY_NEXT_STEPS = [
+  {
+    label: "Review pricing",
+    description: "See which plan unlocks marketing, payroll, and automation features.",
+    to: "/pricing",
+  },
+  {
+    label: "Dive into payroll tools",
+    description: "Jump to T4, ROE, and W-2 generators straight from the marketing site.",
+    to: "/payroll/tools/t4",
+  },
+  {
+    label: "Read the product docs",
+    description: "Follow step-by-step guides for scheduling, marketing, and payroll.",
+    to: "/docs",
+  },
+  {
+    label: "Create your account",
+    description: "Start free and connect booking, websites, and payroll in one hub.",
+    to: "/register",
+  },
+];
 
 const BlogCategoryPage = () => {
   const { slug = "automation" } = useParams();
@@ -195,6 +220,47 @@ const BlogCategoryPage = () => {
                 Compare plans
               </Button>
             </Stack>
+          </Stack>
+          <Divider />
+          <Stack spacing={2}>
+            <Typography variant="h6" component="h3" fontWeight={700}>
+              Next steps
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Pick where to continue: pricing, documentation, or the payroll tools highlighted throughout this category.
+            </Typography>
+            <Grid container spacing={2}>
+              {CATEGORY_NEXT_STEPS.map((link) => (
+                <Grid item xs={12} sm={6} key={link.to}>
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 2,
+                      height: "100%",
+                    }}
+                  >
+                    <Stack spacing={1.25}>
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        {link.label}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {link.description}
+                      </Typography>
+                      <Button
+                        component={Link}
+                        to={link.to}
+                        size="small"
+                        endIcon={<TrendingUpIcon fontSize="small" />}
+                        sx={{ alignSelf: "flex-start", textTransform: "none", fontWeight: 600 }}
+                      >
+                        Continue
+                      </Button>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
           </Stack>
         </Stack>
       </Box>

@@ -1,4 +1,4 @@
-﻿export const pricingPlans = [
+export const pricingPlans = [
   { key: "starter" },
   { key: "pro" },
   { key: "business" },

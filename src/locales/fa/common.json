@@ -1096,6 +1096,28 @@
             "homepage": "\u0635\u0641\u062d\u0647\u0654 \u0627\u0635\u0644\u06cc",
             "autosave": "\u0630\u062e\u06cc\u0631\u0647\u200c \u062e\u0648\u062f\u06a9\u0627\u0631"
           }
+        },
+        "seoPrompt": "Need page-level SEO? Visit <seoLink>Website Manager \u2192 SEO</seoLink> to set site defaults.",
+        "seo": {
+          "cardTitle": "Page SEO & sharing",
+          "cardDescription": "Override how this page appears in search results and on social media.",
+          "fields": {
+            "title": "Meta title",
+            "description": "Meta description",
+            "keywords": "Keywords",
+            "ogTitle": "Open Graph title",
+            "ogDescription": "Open Graph description",
+            "ogImage": "Open Graph image URL",
+            "canonicalPath": "Canonical path or override",
+            "noindex": "Hide from search (noindex)"
+          },
+          "helpers": {
+            "title": "Recommended under 60 characters",
+            "description": "Recommended under 155 characters",
+            "canonicalPath": "Start with /contact, ?page=contact, or paste a full URL",
+            "keywords": "Comma separated keywords (optional)"
+          },
+          "descriptionFallback": "Add a short summary so search engines understand this page."
         }
       },
       "sections": {
@@ -2047,7 +2069,15 @@
         "showInMenu": "\u0646\u0645\u0627\u06cc\u0634 \u062f\u0631 \u0645\u0646\u0648",
         "published": "\u0645\u0646\u062a\u0634\u0631 \u0634\u0648\u062f",
         "homepage": "\u0635\u0641\u062d\u0647 \u0627\u0635\u0644\u06cc",
-        "contentJson": "\u0645\u062d\u062a\u0648\u0627 (JSON)"
+        "contentJson": "\u0645\u062d\u062a\u0648\u0627 (JSON)",
+        "seoTitle": "SEO Title",
+        "seoDescription": "SEO Description",
+        "seoKeywords": "SEO Keywords",
+        "ogTitle": "Open Graph Title",
+        "ogDescription": "Open Graph Description",
+        "ogImage": "Open Graph Image URL",
+        "canonicalPath": "Canonical Path / Override",
+        "noindex": "Hide from search (noindex)"
       },
       "tooltips": {
         "openPublic": "\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0648\u0628\u200c\u0633\u0627\u06cc\u062a \u0639\u0645\u0648\u0645\u06cc",
@@ -2076,7 +2106,8 @@
         "form": {
           "editTitle": "\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0635\u0641\u062d\u0647",
           "newTitle": "\u0635\u0641\u062d\u0647 \u062c\u062f\u06cc\u062f"
-        }
+        },
+        "seo": "SEO & Sharing"
       },
       "messages": {
         "publicSnapshot": "\u0646\u0645\u0627\u06cc \u0639\u0645\u0648\u0645\u06cc \u0635\u0641\u062d\u0627\u062a (\u0641\u0642\u0637 \u062e\u0648\u0627\u0646\u062f\u0646\u06cc) \u0646\u0645\u0627\u06cc\u0634 \u062f\u0627\u062f\u0647 \u0645\u06cc\u200c\u0634\u0648\u062f. \u0628\u0631\u0627\u06cc \u0648\u06cc\u0631\u0627\u06cc\u0634 \u0627\u0632 \u0633\u0627\u0632\u0646\u062f\u0647 \u0628\u0635\u0631\u06cc \u0627\u0633\u062a\u0641\u0627\u062f\u0647 \u06a9\u0646\u06cc\u062f.",
@@ -2110,7 +2141,11 @@
       "placeholders": {
         "slug": "home, about, contact"
       },
-      "pageSecondary": "{{slug}} \u2014 \u062a\u0631\u062a\u06cc\u0628 {{order}} \u2014 {{status}}"
+      "pageSecondary": "{{slug}} \u2014 \u062a\u0631\u062a\u06cc\u0628 {{order}} \u2014 {{status}}",
+      "helpers": {
+        "seoKeywords": "Comma separated keywords (optional)",
+        "canonicalPath": "Start with /contact or ?page=contact"
+      }
     },
     "domainSettings": {
       "title": "\u062f\u0627\u0645\u0646\u0647 \u0633\u0641\u0627\u0631\u0634\u06cc",
@@ -2276,6 +2311,30 @@
         "switchManual": "\u062a\u063a\u06cc\u06cc\u0631 \u0628\u0647 \u062a\u0646\u0638\u06cc\u0645 \u062f\u0633\u062a\u06cc",
         "popup": "\u067e\u0646\u062c\u0631\u0647 \u0645\u0633\u062f\u0648\u062f \u0634\u062f\u0647 \u0627\u0633\u062a\u061f <Link>\u062f\u0639\u0648\u062a GoDaddy \u0631\u0627 \u0628\u0627\u0632 \u06a9\u0646\u06cc\u062f</Link>.",
         "recordsConfirmed": "GoDaddy \u0631\u06a9\u0648\u0631\u062f\u0647\u0627 \u0631\u0627 \u062a\u0623\u06cc\u06cc\u062f \u06a9\u0631\u062f. \u062f\u0631 \u0635\u0648\u0631\u062a \u0646\u06cc\u0627\u0632 \u062f\u0633\u062a\u0648\u0631\u0627\u0644\u0639\u0645\u0644 \u062f\u0633\u062a\u06cc \u062f\u0631 \u0632\u06cc\u0631 \u0645\u0648\u062c\u0648\u062f \u0627\u0633\u062a."
+      },
+      "seo": {
+        "fields": {
+          "metaKeywords": "Meta Keywords",
+          "ogTitle": "Open Graph Title",
+          "ogDescription": "Open Graph Description",
+          "customHost": "Custom canonical host"
+        },
+        "helpers": {
+          "keywords": "Comma separated (e.g., tattoo, piercing, studio)",
+          "customHost": "Enter your verified domain, e.g., studio.example.com",
+          "structuredData": "Paste valid JSON-LD to include business schema"
+        },
+        "sections": {
+          "search": "Search result listing",
+          "searchHint": "Set the title and description Google shows most often.",
+          "social": "Social sharing",
+          "socialHint": "Customize the preview cards shown in chat, SMS, and social media.",
+          "advanced": "Advanced settings",
+          "advancedHint": "Control canonical hosts and structured data for better indexing."
+        },
+        "errors": {
+          "invalidStructuredData": "Structured data must be valid JSON."
+        }
       }
     },
     "domainHelp": {
@@ -3894,8 +3953,8 @@
             },
             {
               "label": "\u06cc\u0627\u062f\u0622\u0648\u0631\u06cc\u200c\u0647\u0627",
-              "schedulaa": "\u0627\u06cc\u0645\u06cc\u0644 + \u0647\u0634\u062f\u0627\u0631 \u06f1\u06f0 \u062f\u0642\u06cc\u0642\u0647\u200c\u0627\u06cc.",
-              "competitor": "SMS \u0627\u0632 \u0637\u0631\u06cc\u0642 \u0627\u067e."
+              "schedulaa": "\u0627\u06cc\u0645\u06cc\u0644/\u0627\u0633 \u0627\u0645 \u0627\u0633 \u0647\u0627\u06cc \u062e\u0648\u062f\u06a9\u0627\u0631 \u0628\u0627 \u062f\u0631\u062e\u0648\u0627\u0633\u062a \u0646\u0638\u0631\u0633\u0646\u062c\u06cc \u0648 \u0628\u062e\u0634\u0634 \u0627\u0632 \u0637\u0631\u0641 \u0645\u0634\u062a\u0631\u06cc \u067e\u0633 \u0627\u0632 \u0633\u0631\u0648\u06cc\u0633.",
+              "competitor": "\u067e\u06cc\u0627\u0645\u06a9 \u0627\u0632 \u0637\u0631\u06cc\u0642 \u0627\u067e Vagaro \u0628\u0627 \u0641\u0631\u0635\u062a \u0647\u0627\u06cc \u0645\u062d\u062f\u0648\u062f \u0628\u0639\u062f \u0627\u0632 \u062e\u062f\u0645\u0627\u062a."
             },
             {
               "label": "\u062a\u062d\u0644\u06cc\u0644",

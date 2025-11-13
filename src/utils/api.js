@@ -412,8 +412,13 @@ export const websiteAdmin = {
   saveSettings: (payload, { companyId } = {}) =>
     putWithFallback(`/api/website/settings`, payload, withCompany(companyId)),
 
-  publish: (is_live, { companyId } = {}) =>
-    putWithFallback(`/api/website/settings`, { is_live }, withCompany(companyId)),
+  publish: (is_live = true, { companyId } = {}) => {
+    if (is_live) {
+      return api.post(`/admin/website/publish`, {}, withCompany(companyId));
+    }
+    const body = { is_live: false, _draft_only: true, _publish_now: false };
+    return api.put(`/api/website/settings`, body, withCompany(companyId));
+  },
 
   connectDomain: (custom_domain, { companyId } = {}) =>
     api.post(`/admin/website/connect-domain`, { custom_domain }, withCompany(companyId)),
@@ -521,13 +526,19 @@ export const wb = {
     }
   },
 
-  async saveSettings(companyId, payload) {
+  async saveSettings(companyId, payload, options = {}) {
     const fallback = getAuthedCompanyId?.();
     const cid = companyId ?? fallback;
     const headers = {
       "Content-Type": "application/json",
       ...(cid ? { "X-Company-Id": String(cid) } : {}),
     };
+    const publishFlag = options.publish ?? true;
+    const draftOnly =
+      options.draftOnly !== undefined
+        ? Boolean(options.draftOnly)
+        : !publishFlag;
+    const schemaVersion = options.schemaVersion;
 
     // 🔧 Polyfill common shapes so backends with different schemas accept it
     const flatPayload = Object.fromEntries(
@@ -575,17 +586,24 @@ export const wb = {
     });
 
 
+    const requestPayload = {
+      ...merged,
+      _publish_now: Boolean(publishFlag),
+      _draft_only: Boolean(draftOnly),
+      ...(schemaVersion != null ? { _schema_version: schemaVersion } : {}),
+    };
+
     try {
-      return await api.put("/admin/website/settings", merged, { headers });
+      return await api.put("/admin/website/settings", requestPayload, { headers });
     } catch (e) {
       if (e?.response?.status === 404 || e?.response?.status === 405) {
-        return await api.put("/api/website/settings", merged, { headers });
+        return await api.put("/api/website/settings", requestPayload, { headers });
       }
       throw e;
     }
   },
 
-  publish: (companyId, is_live) =>
+  publish: (companyId, is_live = true) =>
     websiteAdmin.publish(is_live, { companyId }),
 
   // PAGES (CRUD)

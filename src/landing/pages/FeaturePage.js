@@ -26,6 +26,7 @@ import CheckIcon from "@mui/icons-material/CheckCircleOutline";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 
 import Meta from "../../components/Meta";
+import JsonLd from "../../components/seo/JsonLd";
 import FeatureShowcase from "../components/FeatureShowcase";
 import Testimonials from "../components/Testimonials";
 import HeroShowcase from "../components/HeroShowcase";
@@ -117,6 +118,32 @@ const FeaturePage = () => {
     () => t("landing.features.platformMap", { returnObjects: true }) || {},
     [t]
   );
+
+  const softwareSchema = useMemo(() => {
+    const description =
+      metaCopy?.schemaDescription ||
+      metaCopy?.description ||
+      "Schedulaa unifies booking, scheduling, payroll, and marketing workflows for service teams.";
+    return {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Schedulaa Platform",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: "https://www.schedulaa.com/features",
+      description,
+      offers: {
+        "@type": "Offer",
+        price: "0.00",
+        priceCurrency: "USD",
+      },
+      provider: {
+        "@type": "Organization",
+        name: "Schedulaa",
+        url: "https://www.schedulaa.com",
+      },
+    };
+  }, [metaCopy]);
 
   const platformHighlights = useMemo(
     () => platformMapKeys.map((key) => t(`landing.features.platformMap.points.${key}`)),
@@ -254,6 +281,7 @@ const FeaturePage = () => {
           image: "https://www.schedulaa.com/og/features.jpg",
         }}
       />
+      <JsonLd data={softwareSchema} />
 
       <HeroShowcase
         eyebrow={heroCopy.eyebrow}
@@ -361,7 +389,7 @@ const FeaturePage = () => {
           <Button component={Link} to="/website-builder" variant="contained" color="secondary" endIcon={<BoltIcon />}>
             Explore website builder
           </Button>
-          <Button component={Link} to="/payroll/canada" variant="outlined" color="primary">
+          <Button component={Link} to="/payroll" variant="outlined" color="primary">
             See payroll coverage
           </Button>
           <Button component={Link} to="/marketing" variant="text" color="primary">

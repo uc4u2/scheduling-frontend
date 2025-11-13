@@ -15,34 +15,57 @@ import {
   Link as MuiLink,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import InstagramIcon from "@mui/icons-material/Instagram";
-import FacebookIcon from "@mui/icons-material/Facebook";
-import LinkedInIcon from "@mui/icons-material/LinkedIn";
-import YouTubeIcon from "@mui/icons-material/YouTube";
-import TwitterIcon from "@mui/icons-material/Twitter";
-import MusicNoteIcon from "@mui/icons-material/MusicNote";
-import AllInclusiveIcon from "@mui/icons-material/AllInclusive";
-import PinterestIcon from "@mui/icons-material/Pinterest";
-import LinkIcon from "@mui/icons-material/Link";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import { alpha, useTheme } from "@mui/material/styles";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import ThemeRuntimeProvider from "./ThemeRuntimeProvider";
+import { SOCIAL_ICON_MAP, DEFAULT_SOCIAL_ICON } from "../../utils/socialIcons";
+import {
+  cloneFooterColumns,
+  cloneLegalLinks,
+  formatCopyrightText,
+} from "../../utils/footerDefaults";
 
 const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-const SOCIAL_ICON_MAP = {
-  instagram: InstagramIcon,
-  facebook: FacebookIcon,
-  linkedin: LinkedInIcon,
-  youtube: YouTubeIcon,
-  twitter: TwitterIcon,
-  x: TwitterIcon,
-  tiktok: MusicNoteIcon,
-  threads: AllInclusiveIcon,
-  pinterest: PinterestIcon,
-  whatsapp: WhatsAppIcon,
-  snapchat: LinkIcon,
+const clampNumber = (value, min, max, fallback) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  let clamped = num;
+  if (typeof min === "number") clamped = Math.max(min, clamped);
+  if (typeof max === "number") clamped = Math.min(max, clamped);
+  return clamped;
+};
+
+const alignToFlex = (value, fallback = "flex-start") => {
+  switch ((value || "").toLowerCase()) {
+    case "center":
+      return "center";
+    case "right":
+    case "far-right":
+      return "flex-end";
+    case "space-between":
+      return "space-between";
+    case "space-around":
+      return "space-around";
+    default:
+      return fallback;
+  }
+};
+
+const inlinePlacementFromAlign = (value, forced) => {
+  if (forced) return forced;
+  const raw = (value || "").toLowerCase();
+  if (raw === "far-left" || raw === "left") return "before";
+  if (raw === "center") return "center";
+  return "after";
+};
+
+const edgePlacement = (value) => {
+  const raw = (value || "").toLowerCase();
+  if (raw === "center") return { marginLeft: "auto", marginRight: "auto" };
+  if (raw === "right" || raw === "far-right") return { marginLeft: "auto" };
+  if (raw === "far-left") return { marginRight: "auto" };
+  return {};
 };
 
 export default function SiteFrame({
@@ -59,6 +82,7 @@ export default function SiteFrame({
   const [loading, setLoading] = useState(!initialSite && !disableFetch);
   const [err, setErr] = useState("");
   const nav = useMemo(() => site?.nav_overrides || {}, [site]);
+  const menuSource = nav?.menu_source || "pages";
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const headerConfig = useMemo(
@@ -142,14 +166,14 @@ export default function SiteFrame({
     };
   };
 
-  const defaultNavLinks = useMemo(
+  const pageNavLinks = useMemo(
     () =>
       pages
         .filter((p) => !(p.slug === "login" && clientLoggedIn))
         .filter((p) => !(p.slug === "my-bookings" && !clientLoggedIn))
         .map((p) => ({
           label: p.menu_title || p.title || p.slug,
-          href: `/${slug}?page=${encodeURIComponent(p.slug)}`,
+          href: `?page=${encodeURIComponent(p.slug)}`,
         })),
     [pages, slug, clientLoggedIn]
   );
@@ -158,15 +182,46 @@ export default function SiteFrame({
     const custom = Array.isArray(headerConfig?.nav_items)
       ? headerConfig.nav_items
       : [];
-    return custom.length ? custom : defaultNavLinks;
-  }, [headerConfig, defaultNavLinks]);
+    if (menuSource === "manual" && custom.length) {
+      return custom;
+    }
+    return pageNavLinks;
+  }, [headerConfig, pageNavLinks, menuSource]);
 
   const headerLogo =
     headerConfig?.logo_asset?.url || site?.company?.logo_url || null;
   const headerSocial = Array.isArray(headerConfig?.social_links)
     ? headerConfig.social_links
     : [];
-  const brandName = headerConfig?.text || site?.company?.name || slug;
+  const showBrandText = headerConfig?.show_brand_text !== false;
+  const brandName =
+    headerConfig?.text ||
+    site?.company?.slug ||
+    site?.company?.name ||
+    slug;
+  const headerPadding = clampNumber(headerConfig?.padding_y ?? 20, 4, 160, 20);
+  const logoWidth = clampNumber(headerConfig?.logo_width ?? 140, 40, 360, 140);
+  const logoHeight = headerConfig?.logo_height
+    ? clampNumber(headerConfig.logo_height, 24, 200, null)
+    : null;
+  const logoAlign = alignToFlex(headerConfig?.logo_alignment, "flex-start");
+  const navAlign = alignToFlex(
+    headerConfig?.nav_alignment,
+    headerConfig?.layout === "center" ? "center" : "flex-end"
+  );
+  const socialAlignRaw = (headerConfig?.social_alignment || "right").toLowerCase();
+  const socialAlign = alignToFlex(socialAlignRaw, "flex-end");
+  const socialPosition = (headerConfig?.social_position || "inline").toLowerCase();
+  const socialInline = ["inline", "after"].includes(socialPosition);
+  const socialInlinePlacement = socialInline
+    ? inlinePlacementFromAlign(
+        socialAlignRaw,
+        socialPosition === "after" ? "after" : null
+      )
+    : null;
+  const headerFullWidth = headerConfig?.full_width !== false;
+  const logoEdgePlacement = edgePlacement(headerConfig?.logo_alignment);
+  const navEdgePlacement = edgePlacement(headerConfig?.nav_alignment);
 
   const renderSessionButtons = (color = "inherit") =>
     clientLoggedIn ? (
@@ -258,12 +313,79 @@ export default function SiteFrame({
   );
 
   const headerHasContent = Boolean(
-    headerConfig && (
-      headerLogo ||
-      headerConfig.text ||
-      (Array.isArray(headerConfig?.nav_items) && headerConfig.nav_items.length) ||
-      headerSocial.length
-    )
+    headerConfig &&
+      (headerLogo ||
+        headerConfig.text ||
+        (Array.isArray(headerConfig?.nav_items) &&
+          headerConfig.nav_items.length) ||
+        headerSocial.length)
+  );
+
+  const renderSocialIcons = ({ inline = false, placement = "after" } = {}) => {
+    if (!headerSocial.length) return null;
+    return (
+      <Stack
+        direction="row"
+        spacing={0.5}
+        flexWrap={inline ? "nowrap" : "wrap"}
+        alignItems="center"
+        justifyContent={inline ? "flex-start" : socialAlign}
+        sx={{
+          width: inline ? "auto" : "100%",
+          flexShrink: inline ? 0 : undefined,
+          mt: inline ? 0 : 1,
+          ml: inline && placement === "after" ? 1.5 : 0,
+          mr: inline && placement === "before" ? 1.5 : 0,
+          ...(inline && placement === "center"
+            ? { marginLeft: "auto", marginRight: "auto" }
+            : {}),
+        }}
+      >
+        {headerSocial.map((item, idx) => {
+          const Icon =
+            SOCIAL_ICON_MAP[item?.icon?.toLowerCase()] || DEFAULT_SOCIAL_ICON;
+          return (
+            <IconButton
+              key={`social-${idx}`}
+              component="a"
+              href={item?.href}
+              target="_blank"
+              rel="noreferrer noopener"
+              size="small"
+            >
+              <Icon fontSize="small" />
+            </IconButton>
+          );
+        })}
+      </Stack>
+    );
+  };
+
+  const navButtons = (
+    <>
+      {navLinks.map((item, idx) => {
+        const props = resolveLinkProps(item.href);
+        return (
+          <Button
+            key={`${item.label}-${idx}`}
+            {...props}
+            color="inherit"
+            size="small"
+          >
+            {item.label || "Link"}
+          </Button>
+        );
+      })}
+      <Button
+        component={RouterLink}
+        to={reviewsHref()}
+        color={pathname.includes("/reviews") ? "primary" : "inherit"}
+        size="small"
+      >
+        {nav.reviews_tab_label || "Reviews"}
+      </Button>
+      {renderSessionButtons("inherit")}
+    </>
   );
 
   const headerNode = headerConfig ? (
@@ -278,87 +400,84 @@ export default function SiteFrame({
         color: headerConfig.text || theme.palette.text.primary,
       }}
     >
-      <Container sx={{ py: { xs: 1.5, md: 2 } }}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          alignItems={{ xs: "flex-start", md: "center" }}
-          spacing={2}
+      <Container
+        sx={{ py: `${headerPadding}px` }}
+        maxWidth={headerFullWidth ? false : "lg"}
+        disableGutters={headerFullWidth}
+      >
+        {socialPosition === "above" && renderSocialIcons()}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            gap: { xs: 1.5, md: 3 },
+            alignItems: { xs: "flex-start", md: "center" },
+          }}
         >
-          <Stack direction="row" spacing={1.5} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1.25}
+            alignItems="center"
+            justifyContent={logoAlign}
+            sx={{
+              width: { xs: "100%", md: "auto" },
+              flexShrink: 0,
+              ...logoEdgePlacement,
+            }}
+          >
             {headerLogo && (
               <Box
                 component="img"
                 src={headerLogo}
                 alt={brandName}
-                sx={{ height: 42, width: "auto" }}
+                sx={{
+                  width: `${logoWidth}px`,
+                  height: logoHeight ? `${logoHeight}px` : "auto",
+                  objectFit: "contain",
+                }}
               />
             )}
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              {brandName}
-            </Typography>
+            {showBrandText && (
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                {brandName}
+              </Typography>
+            )}
             {!headerHasContent && isPreview && (
               <Typography
                 variant="caption"
-                sx={{ ml: 1, opacity: 0.7, fontWeight: 500 }}
+                sx={{ opacity: 0.7, fontWeight: 500 }}
               >
                 Add header text/logo in Branding → Header
               </Typography>
             )}
           </Stack>
-          <Box sx={{ flexGrow: 1 }} />
-          <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-            alignItems="center"
-            justifyContent={
-              headerConfig.layout === "center" ? "center" : "flex-end"
-            }
+          <Box
+            sx={{
+              flex: 1,
+              width: "100%",
+              display: "flex",
+              ...navEdgePlacement,
+            }}
           >
-            {navLinks.map((item, idx) => {
-              const props = resolveLinkProps(item.href);
-              return (
-                <Button
-                  key={`${item.label}-${idx}`}
-                  {...props}
-                  color="inherit"
-                  size="small"
-                >
-                  {item.label || "Link"}
-                </Button>
-              );
-            })}
-            <Button
-              component={RouterLink}
-              to={reviewsHref()}
-              color={pathname.includes("/reviews") ? "primary" : "inherit"}
-              size="small"
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              justifyContent={navAlign}
+              sx={{ flex: 1 }}
             >
-              {nav.reviews_tab_label || "Reviews"}
-            </Button>
-            {renderSessionButtons("inherit")}
-          </Stack>
-          {headerSocial.length > 0 && (
-            <Stack direction="row" spacing={0.5}>
-              {headerSocial.map((item, idx) => {
-                const Icon =
-                  SOCIAL_ICON_MAP[item?.icon?.toLowerCase()] || LinkIcon;
-                return (
-                  <IconButton
-                    key={`social-${idx}`}
-                    component="a"
-                    href={item?.href}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    size="small"
-                  >
-                    <Icon fontSize="small" />
-                  </IconButton>
-                );
-              })}
+              {socialInline && socialInlinePlacement === "before" &&
+                renderSocialIcons({ inline: true, placement: "before" })}
+              {navButtons}
+              {socialInline && socialInlinePlacement !== "before" &&
+                renderSocialIcons({
+                  inline: true,
+                  placement: socialInlinePlacement || "after",
+                })}
             </Stack>
-          )}
-        </Stack>
+          </Box>
+        </Box>
+        {socialPosition === "below" && renderSocialIcons()}
       </Container>
     </Box>
   ) : (
@@ -367,15 +486,22 @@ export default function SiteFrame({
 
   const footerLogo =
     footerConfig?.logo_asset?.url || site?.company?.logo_url || null;
-  const footerColumns = Array.isArray(footerConfig?.columns)
-    ? footerConfig.columns
-    : [];
+  const footerColumns =
+    (Array.isArray(footerConfig?.columns) && footerConfig.columns.length
+      ? footerConfig.columns
+      : cloneFooterColumns()) || [];
   const footerSocial = Array.isArray(footerConfig?.social_links)
     ? footerConfig.social_links
     : [];
-  const footerLegal = Array.isArray(footerConfig?.legal_links)
-    ? footerConfig.legal_links
-    : [];
+  const footerLegal =
+    (Array.isArray(footerConfig?.legal_links) && footerConfig.legal_links.length
+      ? footerConfig.legal_links
+      : cloneLegalLinks()) || [];
+  const showCopyright = footerConfig?.show_copyright !== false;
+  const copyrightText = formatCopyrightText(footerConfig?.copyright_text, {
+    company: site?.company?.name,
+    slug,
+  });
   const footerHasContent =
     footerConfig &&
     (footerConfig.text ||
@@ -399,7 +525,7 @@ export default function SiteFrame({
             component="img"
             src={footerLogo}
             alt={site?.company?.name || slug}
-            sx={{ height: 48, mb: 2 }}
+            sx={{ height: 48, width: "auto", maxWidth: 200, objectFit: "contain", mb: 2 }}
           />
         )}
         {(footerConfig.text || (isPreview && !footerHasContent)) && (
@@ -442,7 +568,7 @@ export default function SiteFrame({
           <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
             {footerSocial.map((item, idx) => {
               const Icon =
-                SOCIAL_ICON_MAP[item?.icon?.toLowerCase()] || LinkIcon;
+                SOCIAL_ICON_MAP[item?.icon?.toLowerCase()] || DEFAULT_SOCIAL_ICON;
               return (
                 <IconButton
                   key={`footer-social-${idx}`}
@@ -488,6 +614,14 @@ export default function SiteFrame({
                 );
               })}
             </Stack>
+            {showCopyright && (
+              <Typography
+                variant="caption"
+                sx={{ mt: 2, display: "block", opacity: 0.8 }}
+              >
+                {copyrightText}
+              </Typography>
+            )}
           </>
         )}
       </Container>

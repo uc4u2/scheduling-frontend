@@ -1096,6 +1096,28 @@
             "homepage": "\u8bbe\u4e3a\u9996\u9875",
             "autosave": "\u81ea\u52a8\u4fdd\u5b58"
           }
+        },
+        "seoPrompt": "Need page-level SEO? Visit <seoLink>Website Manager \u2192 SEO</seoLink> to set site defaults.",
+        "seo": {
+          "cardTitle": "Page SEO & sharing",
+          "cardDescription": "Override how this page appears in search results and on social media.",
+          "fields": {
+            "title": "Meta title",
+            "description": "Meta description",
+            "keywords": "Keywords",
+            "ogTitle": "Open Graph title",
+            "ogDescription": "Open Graph description",
+            "ogImage": "Open Graph image URL",
+            "canonicalPath": "Canonical path or override",
+            "noindex": "Hide from search (noindex)"
+          },
+          "helpers": {
+            "title": "Recommended under 60 characters",
+            "description": "Recommended under 155 characters",
+            "canonicalPath": "Start with /contact, ?page=contact, or paste a full URL",
+            "keywords": "Comma separated keywords (optional)"
+          },
+          "descriptionFallback": "Add a short summary so search engines understand this page."
         }
       },
       "sections": {
@@ -2047,7 +2069,15 @@
         "showInMenu": "Show in menu",
         "published": "Published",
         "homepage": "Homepage",
-        "contentJson": "Content JSON"
+        "contentJson": "Content JSON",
+        "seoTitle": "SEO Title",
+        "seoDescription": "SEO Description",
+        "seoKeywords": "SEO Keywords",
+        "ogTitle": "Open Graph Title",
+        "ogDescription": "Open Graph Description",
+        "ogImage": "Open Graph Image URL",
+        "canonicalPath": "Canonical Path / Override",
+        "noindex": "Hide from search (noindex)"
       },
       "tooltips": {
         "openPublic": "Open public site",
@@ -2076,7 +2106,8 @@
         "form": {
           "editTitle": "Edit Page",
           "newTitle": "New Page"
-        }
+        },
+        "seo": "SEO & Sharing"
       },
       "messages": {
         "publicSnapshot": "Showing public snapshot of pages (read-only). Use Visual Site Builder to edit.",
@@ -2110,7 +2141,11 @@
       "placeholders": {
         "slug": "home, about, contact"
       },
-      "pageSecondary": "{{slug}} - order {{order}} - {{status}}"
+      "pageSecondary": "{{slug}} - order {{order}} - {{status}}",
+      "helpers": {
+        "seoKeywords": "Comma separated keywords (optional)",
+        "canonicalPath": "Start with /contact or ?page=contact"
+      }
     },
     "domainSettings": {
       "title": "Custom Domain",
@@ -2276,6 +2311,30 @@
         "switchManual": "Switch to manual setup",
         "popup": "Popup blocked? <Link>Open the GoDaddy prompt</Link>.",
         "recordsConfirmed": "GoDaddy confirmed DNS records. Manual instructions remain available below if you need them."
+      },
+      "seo": {
+        "fields": {
+          "metaKeywords": "Meta Keywords",
+          "ogTitle": "Open Graph Title",
+          "ogDescription": "Open Graph Description",
+          "customHost": "Custom canonical host"
+        },
+        "helpers": {
+          "keywords": "Comma separated (e.g., tattoo, piercing, studio)",
+          "customHost": "Enter your verified domain, e.g., studio.example.com",
+          "structuredData": "Paste valid JSON-LD to include business schema"
+        },
+        "sections": {
+          "search": "Search result listing",
+          "searchHint": "Set the title and description Google shows most often.",
+          "social": "Social sharing",
+          "socialHint": "Customize the preview cards shown in chat, SMS, and social media.",
+          "advanced": "Advanced settings",
+          "advancedHint": "Control canonical hosts and structured data for better indexing."
+        },
+        "errors": {
+          "invalidStructuredData": "Structured data must be valid JSON."
+        }
       }
     },
     "domainHelp": {
@@ -3894,8 +3953,8 @@
             },
             {
               "label": "\u63d0\u9192\u901a\u77e5",
-              "schedulaa": "\u90ae\u4ef6 + 10 \u5206\u949f\u63d0\u9192\u3002",
-              "competitor": "SMS/App \u63d0\u9192\u3002"
+              "schedulaa": "\u96fb\u5b50\u90f5\u4ef6/SMS \u81ea\u52d5\u63d0\u9192\uff0c\u4e26\u5728\u670d\u52d9\u5f8c\u767c\u9001\u8a55\u50f9\u8207\u5c0f\u8cbb\u9080\u8acb\u3002",
+              "competitor": "\u4e3b\u8981\u662f App/SMS \u63d0\u9192\uff0c\u5f8c\u7e8c\u8ddf\u9032\u80fd\u529b\u6709\u9650\u3002"
             },
             {
               "label": "\u5206\u6790\u6d1e\u5bdf",
