@@ -4394,6 +4394,171 @@
           "attribution": "Beauty Collective Studio, Toronto"
         },
         "conclusion": "Square Appointments is a strong choice for independent professionals needing quick checkout. Schedulaa is built for growing teams that require a unified system for clients, staff, shifts, and payroll across regions."
+      },
+      "xero": {
+        "competitor": "Xero",
+        "metaTitle": "Schedulaa vs Xero | Operations OS vs Cloud Accounting",
+        "metaDescription": "Compare Schedulaa’s booking, scheduling, payroll, and website tools with Xero’s cloud accounting platform. See why service teams run operations in Schedulaa and sync the numbers to Xero.",
+        "heroTitle": "Schedulaa vs Xero — Run Operations + Keep the Books",
+        "heroSubtitle": "Xero is a world-class accounting ledger. Schedulaa is the operations OS that generates the hours, bookings, and payroll data Xero needs. They complement each other, not replace each other.",
+        "intro": [
+          "Schedulaa and Xero both serve modern service businesses but at different layers of the stack.",
+          "Schedulaa runs day-to-day operations — client booking, shift scheduling, payroll prep, and branded websites. Xero records those results in the general ledger, runs direct deposit, and files taxes."
+        ],
+        "executiveOverview": {
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "Xero"
+          ],
+          "rows": [
+            {
+              "label": "Core Purpose",
+              "schedulaa": "Operations OS: booking, scheduling, shift-aware payroll, websites, analytics.",
+              "competitor": "Cloud accounting & bookkeeping: general ledger, invoices, bank feeds, tax filings."
+            },
+            {
+              "label": "Primary Audience",
+              "schedulaa": "Service businesses managing clients, teams, and multi-location workflows.",
+              "competitor": "Accountants, bookkeepers, and finance-first business owners."
+            },
+            {
+              "label": "Client Booking",
+              "schedulaa": "Built-in booking website, intake forms, deposits, and reminders on your domain.",
+              "competitor": "Not included; requires external booking or scheduling tools."
+            },
+            {
+              "label": "Payroll & Compliance",
+              "schedulaa": "Integrated CA + US workflows with W-2, T4, ROE exports tied to real shifts.",
+              "competitor": "Payroll modules in select regions; handles remittance and direct deposit but depends on external hour tracking."
+            },
+            {
+              "label": "Shift Scheduling & Leave",
+              "schedulaa": "Native staff scheduling, leave approvals, swap workflows, overtime detection.",
+              "competitor": "Not available; relies on third-party time-tracking/HR apps."
+            },
+            {
+              "label": "Websites & Domains",
+              "schedulaa": "Website builder, custom domains, client/staff portals, Stripe checkout.",
+              "competitor": "No website tools; focuses purely on accounting."
+            },
+            {
+              "label": "Automation Scope",
+              "schedulaa": "Client + staff workflows: confirmations, reminders, leave approvals, payroll exports.",
+              "competitor": "Accounting automation: bank feeds, invoicing rules, recurring bills, tax filings."
+            },
+            {
+              "label": "Analytics",
+              "schedulaa": "Operational analytics across bookings, shifts, payroll, revenue, and departments.",
+              "competitor": "Financial statements: P&L, balance sheet, cash flow, tax summaries."
+            },
+            {
+              "label": "Role in the Stack",
+              "schedulaa": "Runs the business — where hours, bookings, and payroll data are created.",
+              "competitor": "Keeps the books — where revenue, expenses, and payroll payments are reconciled."
+            },
+            {
+              "label": "Integrations",
+              "schedulaa": "Exports clean payroll and revenue data to accounting systems like Xero/QuickBooks.",
+              "competitor": "Connects to POS, expense, and payroll apps; still requires an operations system for service teams."
+            },
+            {
+              "label": "Pricing Structure",
+              "schedulaa": "Flat monthly tiers starting at $19.99 with staff/location bundles.",
+              "competitor": "Per-organization plans plus payroll add-ons by region."
+            }
+          ]
+        },
+        "differentiators": [
+          {
+            "title": "Front-of-house vs. back-office",
+            "body": "Schedulaa orchestrates bookings, shifts, payroll prep, and branded experiences. Xero records the money movement and files taxes. Together they cover the full lifecycle."
+          },
+          {
+            "title": "Shift-aware payroll vs. ledger payroll",
+            "body": "Schedulaa knows who worked, tips, overtime, and leave policies. Xero’s payroll module focuses on direct deposit and remittance after an external system supplies the hours."
+          },
+          {
+            "title": "Website + booking vs. accounting UI",
+            "body": "Schedulaa ships a site builder, booking portals, and Stripe checkout under your domain. Xero assumes you already have client-facing tools and concentrates on finance."
+          },
+          {
+            "title": "Service-business focus",
+            "body": "Schedulaa was designed for salons, studios, clinics, agencies, tutors, and recruiters. Xero is industry-agnostic accounting; it doesn’t replace an operations platform."
+          },
+          {
+            "title": "Designed to work together",
+            "body": "Schedulaa can export payroll and revenue data to Xero so accountants reconcile and run direct deposit. You run the business in Schedulaa and close the books in Xero."
+          }
+        ],
+        "summaryTable": {
+          "headers": [
+            "Feature Group",
+            "Schedulaa",
+            "Xero"
+          ],
+          "rows": [
+            {
+              "label": "Booking & Scheduling",
+              "schedulaa": "Included: client booking pages, staff availability, shift management, leave, and reminders.",
+              "competitor": "Not included; requires external booking/scheduling tools."
+            },
+            {
+              "label": "Payroll & Compliance",
+              "schedulaa": "Shift-aware payroll with W-2, T4, ROE exports tied to schedules, tips, commissions.",
+              "competitor": "Payroll add-on handles direct deposit/remittance once hours are provided."
+            },
+            {
+              "label": "HR & Leave Management",
+              "schedulaa": "Integrated leave approvals, overtime rules, swap workflows, branch policies.",
+              "competitor": "Relies on third-party HR/time-tracking tools."
+            },
+            {
+              "label": "Websites & Domains",
+              "schedulaa": "Website builder, custom domain, booking & Stripe Checkout on your brand.",
+              "competitor": "No website or portal capabilities."
+            },
+            {
+              "label": "Automation Scope",
+              "schedulaa": "Client/staff workflows: confirmations, reminders, swaps, leave, payroll exports.",
+              "competitor": "Accounting workflows: bank feeds, invoicing rules, recurring bills, tax filings."
+            },
+            {
+              "label": "Analytics",
+              "schedulaa": "Operational dashboards across bookings, shifts, payroll, revenue, departments.",
+              "competitor": "Financial statements: P&L, balance sheet, cash flow, GST/VAT returns."
+            },
+            {
+              "label": "Branding & Domain",
+              "schedulaa": "White-label portals on your own domain for clients and staff.",
+              "competitor": "Xero-branded accounting environment."
+            },
+            {
+              "label": "Role in the Stack",
+              "schedulaa": "Runs daily operations — generates the data accountants need.",
+              "competitor": "Keeps the books — reconciles, files, and moves money."
+            }
+          ]
+        },
+        "fitMatrix": [
+          {
+            "scenario": "You need client booking, shift scheduling, payroll prep, and branded portals.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "You only need a general ledger, invoicing, and tax filings.",
+            "recommendation": "Xero"
+          },
+          {
+            "scenario": "You want operations + clean books without double entry.",
+            "recommendation": "Schedulaa + Xero"
+          }
+        ],
+        "testimonial": {
+          "quote": "Schedulaa tells us what happened — who worked, which services ran, and what was earned. Xero tells our accountant how it rolls up into the books. Together they finally match.",
+          "attribution": "Multi-location service team, North America"
+        },
+        "conclusion": "Xero remains a leading choice for cloud accounting and payroll remittance. Schedulaa focuses on the operational reality of service businesses — from booking and staffing to payroll-ready data and branded portals. Most service brands run daily operations in Schedulaa and sync the results to Xero (or QuickBooks) to keep the books clean."
       }
     }
   }
