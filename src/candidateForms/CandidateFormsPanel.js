@@ -1,4 +1,4 @@
-﻿// src/candidateForms/CandidateFormsPanel.js
+// src/candidateForms/CandidateFormsPanel.js
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,

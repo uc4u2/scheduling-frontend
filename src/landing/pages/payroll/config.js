@@ -19,6 +19,236 @@ const sharedSecondaryLinks = [
   { label: "Employee payslips", href: "/payslips" },
 ];
 
+const buildBreadcrumbList = (items) => ({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: items.map((item, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name: item.name,
+    item: item.href,
+  })),
+});
+
+const payrollBreadcrumb = (name, href) =>
+  buildBreadcrumbList([
+    { name: "Home", href: BASE_URL },
+    { name: "Payroll", href: `${BASE_URL}/payroll` },
+    ...(name && href ? [{ name, href }] : []),
+  ]);
+
+const overviewConfig = {
+  meta: {
+    title: "Payroll Software & Payslip Automation | Schedulaa",
+    description:
+      "Tie scheduling data, regional tax engines, and employee self-serve portals into one payroll workspace. Support Canada, USA, and statement exports from day one.",
+    canonical: `${BASE_URL}/payroll`,
+    og: {
+      title: "Unified Payroll & Scheduling Platform | Schedulaa",
+      description:
+        "Run payroll for Canada and the USA, generate ROE/T4/W-2 files, and publish payslips through the employee portal.",
+      image: `${BASE_URL}/images/payroll-overview.png`,
+      url: `${BASE_URL}/payroll`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Schedulaa Payroll Overview",
+      description: "Preview deductions, finalize slips, and keep employees informed across every region you support.",
+      image: `${BASE_URL}/images/payroll-overview.png`,
+    },
+  },
+  schema: [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      name: "Schedulaa Payroll",
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "Web",
+      url: `${BASE_URL}/payroll`,
+      description:
+        "Schedulaa unifies scheduling, HR, and payroll automation. Switch between Canadian and US compliance engines and share payslips instantly.",
+      provider: {
+        "@type": "Organization",
+        name: "Schedulaa",
+        url: BASE_URL,
+      },
+      offers: {
+        "@type": "Offer",
+        price: "0.00",
+        priceCurrency: "USD",
+      },
+      areaServed: ["CA", "US"],
+    },
+    buildBreadcrumbList([
+      { name: "Home", href: BASE_URL },
+      { name: "Payroll", href: `${BASE_URL}/payroll` },
+    ]),
+  ],
+  hero: {
+    badge: "Scheduling + payroll + docs",
+    title: "Payroll that stays in sync with operations",
+    subtitle:
+      "Pull real-time hours from scheduling, apply CRA or IRS logic, and ship payslips plus ROE/T4/W-2 documents without leaving Schedulaa.",
+    bullets: [
+      "Regional engines for Canada (CPP, EI, BPA) and the USA (FICA, FUTA).",
+      "ROE, T4, W-2, and payslip exports backed by our public docs.",
+      "Employee self-serve portal plus automated notifications.",
+    ],
+    primaryCta: { label: "See payroll workspace", href: REGISTER_URL },
+    secondaryCta: { label: "Read the docs", href: "/docs#payroll" },
+    notice: "Includes calculators, payslip portals, and compliance exports for Canada and the United States.",
+  },
+  featuresHeading: "Platform",
+  featuresTitle: "One place for calculations, slips, and employee updates",
+  featuresIntro:
+    "Content used here is pulled from our Features, Docs, and region-specific payroll pages so prospects see everything Google expects on /payroll.",
+  features: [
+    {
+      icon: "timeline",
+      label: "Workflow",
+      title: "Ops-connected pay runs",
+      description:
+        "Import actual hours, overtime, and tips from the scheduling suite before calculating deductions. Every step is logged for finance and HR audits.",
+      link: "/features",
+      linkLabel: "Tour the platform",
+    },
+    {
+      icon: "compliance",
+      label: "Compliance",
+      title: "Canada & USA tax engines",
+      description:
+        "Switch between Canadian CPP/EI/BPA logic or U.S. FICA, FUTA, and state tax rules. Both engines pull the same UI but respect regional settings.",
+      link: "/payroll/canada",
+      linkLabel: "See regional calculators",
+    },
+    {
+      icon: "document",
+      label: "Documents",
+      title: "ROE, T4, W-2, and payslips",
+      description:
+        "Finalize payroll, email slips, post them in the payslip portal, and export ROE/T4/W-2 files that align with CRA and IRS specs.",
+      link: "/payslips",
+      linkLabel: "Open the payslip portal",
+    },
+  ],
+  highlights: [
+    {
+      overline: "Documented flows",
+      title: "Guided payroll that mirrors our Docs",
+      body:
+        "The same workflow steps shown in the public documentation live inside the app: preview, adjust, finalize, publish. Nothing is hidden behind engineering-only tooling, so onboarding teams can trust it.",
+      points: [
+        "Docs include screenshots for every step in the payroll preview.",
+        "Marketing site links to ROE/T4/W-2 tool guides for additional depth.",
+        "Managers can reference help articles directly from the interface.",
+      ],
+    },
+    {
+      overline: "Employee experience",
+      title: "Self-serve slips and notifications",
+      body:
+        "Employees log in via the payslip portal, download historical slips, and confirm delivery. Finance teams choose between email, SMS, or in-app alerts.",
+      points: [
+        "Portal inherits your brand colors from the website builder.",
+        "Access is scoped at the employee level for security.",
+        "Internal links route to /payroll/tools for region-specific exports.",
+      ],
+    },
+  ],
+  stepsHeading: "How payroll runs inside Schedulaa",
+  stepsTitle: "From schedule to finalized slips in four steps",
+  steps: [
+    {
+      title: "Import hours & review context",
+      description:
+        "Pull hours from scheduling, sync bonuses or commissions, and compare to historic pay runs before doing any math.",
+    },
+    {
+      title: "Apply deductions with the right engine",
+      description:
+        "Choose Canada or USA in the preview panel. CRA and IRS rules, plus vacation pay and benefits, are applied instantly.",
+    },
+    {
+      title: "Finalize and export",
+      description:
+        "Generate payslips, CSV, or Excel summaries and push ROE/T4/W-2 files to the tools section for auditor review.",
+    },
+    {
+      title: "Publish to the portal",
+      description:
+        "Notify employees, post slips in the portal, and keep everything searchable for future audits.",
+    },
+  ],
+  callouts: [
+    {
+      icon: "analytics",
+      label: "Insights",
+      title: "Finance and HR see the same truth",
+      body:
+        "Payroll history, deduction logic, and document exports are visible in analytics dashboards so leadership sees trends without another BI tool.",
+      links: [
+        { label: "Open analytics tour", href: "/marketing/analytics-dashboard" },
+        { label: "Read payroll help guides", href: "/docs#payroll" },
+      ],
+    },
+  ],
+  faqHeading: "FAQ",
+  faqTitle: "Payroll overview questions",
+  faq: [
+    {
+      question: "Is /payroll different from the Canada or USA pages?",
+      answer:
+        "The overview introduces everything on one page for crawlers and prospects. It links directly to the Canada and USA calculators plus ROE/T4/W-2 tools for deeper regulation details.",
+    },
+    {
+      question: "Does Google get blocked from payroll content?",
+      answer:
+        "No. robots.txt now allows /payroll and the sitemap lists every regional URL so crawlers reach them through HTML links.",
+    },
+    {
+      question: "Do I need separate logins for the payslip portal?",
+      answer:
+        "Employees reuse their Schedulaa credentials. Access is gated by role, and managers can revoke permissions at any time.",
+    },
+  ],
+  cta: sharedCta,
+  secondaryLinks: [
+    { label: "Docs: payroll preview", href: "/docs#payroll" },
+    ...sharedSecondaryLinks,
+  ],
+  nextSteps: {
+    overline: "Next steps",
+    title: "Choose where to go next",
+    description: "Keep exploring payroll—from pricing to calculators and customer-facing documentation.",
+    links: [
+      {
+        label: "Compare pricing plans",
+        description: "See how payroll, scheduling, and marketing features line up.",
+        href: "/pricing",
+        cta: "See pricing",
+      },
+      {
+        label: "Start a Canadian payroll run",
+        description: "Review CPP, EI, and provincial coverage in detail.",
+        href: "/payroll/canada",
+        cta: "Canada payroll",
+      },
+      {
+        label: "Open the docs",
+        description: "Follow the payroll preview flow step by step in the documentation.",
+        href: "/docs#payroll",
+        cta: "Read docs",
+      },
+      {
+        label: "Download ROE/T4/W-2 templates",
+        description: "Jump straight into the payroll tools and final form exports.",
+        href: "/payroll/tools/t4",
+        cta: "See tools",
+      },
+    ],
+  },
+};
+
 const canadaConfig = {
   meta: {
     title: "Canada Payroll Calculator & Software (CPP, EI, BPA) | Schedulaa",
@@ -40,32 +270,35 @@ const canadaConfig = {
       image: `${BASE_URL}/images/payroll-canada-preview.png`,
     },
   },
-  schema: {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Schedulaa Canada Payroll",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    offers: {
-      "@type": "Offer",
-      price: "0.00",
-      priceCurrency: "CAD",
+  schema: [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Schedulaa Canada Payroll",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      offers: {
+        "@type": "Offer",
+        price: "0.00",
+        priceCurrency: "CAD",
+      },
+      featureList: [
+        "CPP and EI calculations",
+        "Federal and provincial income tax deductions",
+        "Vacation pay automation",
+        "Bonuses, tips, and commissions support",
+        "Payslip PDF, CSV, and Excel export",
+        "Employee self-service payslip portal",
+      ],
+      url: `${BASE_URL}/payroll/canada`,
+      provider: {
+        "@type": "Organization",
+        name: "Schedulaa",
+        url: BASE_URL,
+      },
     },
-    featureList: [
-      "CPP and EI calculations",
-      "Federal and provincial income tax deductions",
-      "Vacation pay automation",
-      "Bonuses, tips, and commissions support",
-      "Payslip PDF, CSV, and Excel export",
-      "Employee self-service payslip portal",
-    ],
-    url: `${BASE_URL}/payroll/canada`,
-    provider: {
-      "@type": "Organization",
-      name: "Schedulaa",
-      url: BASE_URL,
-    },
-  },
+    payrollBreadcrumb("Canada payroll", `${BASE_URL}/payroll/canada`),
+  ],
   hero: {
     badge: "CPP, EI, BPA tracking",
     title: "Canada Payroll Calculator for Small Businesses",
@@ -235,32 +468,35 @@ const usaConfig = {
       image: `${BASE_URL}/images/payroll-usa-preview.png`,
     },
   },
-  schema: {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Schedulaa USA Payroll",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    offers: {
-      "@type": "Offer",
-      price: "0.00",
-      priceCurrency: "USD",
+  schema: [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Schedulaa USA Payroll",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      offers: {
+        "@type": "Offer",
+        price: "0.00",
+        priceCurrency: "USD",
+      },
+      featureList: [
+        "Federal income tax withholding",
+        "State income tax calculations",
+        "FICA and Medicare deductions",
+        "Bonuses, tips, and commissions support",
+        "Payslip PDF, CSV, and Excel export",
+        "Employee self-service portal",
+      ],
+      url: `${BASE_URL}/payroll/usa`,
+      provider: {
+        "@type": "Organization",
+        name: "Schedulaa",
+        url: BASE_URL,
+      },
     },
-    featureList: [
-      "Federal income tax withholding",
-      "State income tax calculations",
-      "FICA and Medicare deductions",
-      "Bonuses, tips, and commissions support",
-      "Payslip PDF, CSV, and Excel export",
-      "Employee self-service portal",
-    ],
-    url: `${BASE_URL}/payroll/usa`,
-    provider: {
-      "@type": "Organization",
-      name: "Schedulaa",
-      url: BASE_URL,
-    },
-  },
+    payrollBreadcrumb("USA payroll", `${BASE_URL}/payroll/usa`),
+  ],
   hero: {
     badge: "Federal + state + FICA",
     title: "USA Payroll Calculator with FICA and Medicare built in",
@@ -420,21 +656,24 @@ const roeConfig = {
       image: `${BASE_URL}/images/payroll-roe-preview.png`,
     },
   },
-  schema: {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Schedulaa ROE Generator",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    offers: { "@type": "Offer", price: "0.00", priceCurrency: "CAD" },
-    featureList: [
-      "Prefill insurable hours and earnings from payroll",
-      "Approval workflow with audit trail",
-      "PDF and XML export for Service Canada",
-      "Department and employee filters",
-    ],
-    url: `${BASE_URL}/payroll/tools/roe`,
-  },
+  schema: [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Schedulaa ROE Generator",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      offers: { "@type": "Offer", price: "0.00", priceCurrency: "CAD" },
+      featureList: [
+        "Prefill insurable hours and earnings from payroll",
+        "Approval workflow with audit trail",
+        "PDF and XML export for Service Canada",
+        "Department and employee filters",
+      ],
+      url: `${BASE_URL}/payroll/tools/roe`,
+    },
+    payrollBreadcrumb("ROE generator", `${BASE_URL}/payroll/tools/roe`),
+  ],
   hero: {
     badge: "Record of Employment",
     title: "ROE Generator with PDF and XML export",
@@ -554,22 +793,25 @@ const t4Config = {
       image: `${BASE_URL}/images/payroll-t4-preview.png`,
     },
   },
-  schema: {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Schedulaa T4 Generator",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    offers: { "@type": "Offer", price: "0.00", priceCurrency: "CAD" },
-    featureList: [
-      "Prefill CRA boxes from payroll",
-      "Render PDF copies",
-      "Generate CRA XML",
-      "Batch ZIP download",
-      "Delivery-ready slip packages",
-    ],
-    url: `${BASE_URL}/payroll/tools/t4`,
-  },
+  schema: [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Schedulaa T4 Generator",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      offers: { "@type": "Offer", price: "0.00", priceCurrency: "CAD" },
+      featureList: [
+        "Prefill CRA boxes from payroll",
+        "Render PDF copies",
+        "Generate CRA XML",
+        "Batch ZIP download",
+        "Delivery-ready slip packages",
+      ],
+      url: `${BASE_URL}/payroll/tools/t4`,
+    },
+    payrollBreadcrumb("T4 generator", `${BASE_URL}/payroll/tools/t4`),
+  ],
   hero: {
     badge: "Year-end payroll",
     title: "T4 Generator with PDF and CRA XML exports",
@@ -687,22 +929,25 @@ const w2Config = {
       image: `${BASE_URL}/images/payroll-w2-preview.png`,
     },
   },
-  schema: {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Schedulaa W-2 Generator",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    offers: { "@type": "Offer", price: "0.00", priceCurrency: "USD" },
-    featureList: [
-      "Prefill IRS W-2 boxes from payroll",
-      "Render six-copy IRS PDF",
-      "Flatten employee copies",
-      "Generate EFW2 text files",
-      "Support for multi-state wages",
-    ],
-    url: `${BASE_URL}/payroll/tools/w2`,
-  },
+  schema: [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Schedulaa W-2 Generator",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      offers: { "@type": "Offer", price: "0.00", priceCurrency: "USD" },
+      featureList: [
+        "Prefill IRS W-2 boxes from payroll",
+        "Render six-copy IRS PDF",
+        "Flatten employee copies",
+        "Generate EFW2 text files",
+        "Support for multi-state wages",
+      ],
+      url: `${BASE_URL}/payroll/tools/w2`,
+    },
+    payrollBreadcrumb("W-2 generator", `${BASE_URL}/payroll/tools/w2`),
+  ],
   hero: {
     badge: "Year-end payroll",
     title: "W-2 Generator with IRS PDF and EFW2 export",
@@ -821,21 +1066,24 @@ const payslipConfig = {
       image: `${BASE_URL}/images/payroll-payslip-portal.png`,
     },
   },
-  schema: {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Schedulaa Payslip Portal",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    offers: { "@type": "Offer", price: "0.00", priceCurrency: "USD" },
-    featureList: [
-      "Employee self-service payslip access",
-      "PDF downloads with date filters",
-      "Email notifications on new slips",
-      "Manager controls and auditing",
-    ],
-    url: `${BASE_URL}/payslips`,
-  },
+  schema: [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Schedulaa Payslip Portal",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      offers: { "@type": "Offer", price: "0.00", priceCurrency: "USD" },
+      featureList: [
+        "Employee self-service payslip access",
+        "PDF downloads with date filters",
+        "Email notifications on new slips",
+        "Manager controls and auditing",
+      ],
+      url: `${BASE_URL}/payslips`,
+    },
+    payrollBreadcrumb("Payslip portal", `${BASE_URL}/payslips`),
+  ],
   hero: {
     badge: "Employee experience",
     title: "Employee payslip portal with instant downloads",
@@ -934,6 +1182,7 @@ const payslipConfig = {
 };
 
 export const payrollPages = {
+  overview: overviewConfig,
   canada: canadaConfig,
   usa: usaConfig,
   roe: roeConfig,

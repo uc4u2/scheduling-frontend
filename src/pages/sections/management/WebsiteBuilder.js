@@ -49,6 +49,14 @@ const emptyPage = () => ({
   sort_order: 0,
   published: false,
   is_homepage: false,
+  seo_title: "",
+  seo_description: "",
+  seo_keywords: "",
+  og_title: "",
+  og_description: "",
+  og_image_url: "",
+  canonical_path: "",
+  noindex: false,
   content: { sections: [] },
 });
 
@@ -71,6 +79,12 @@ const normalizePage = (p = {}) => ({
   is_homepage: Boolean(p.is_homepage ?? false),
   seo_title: field(p, "seo_title", ""),
   seo_description: field(p, "seo_description", ""),
+  seo_keywords: field(p, "seo_keywords", ""),
+  og_title: field(p, "og_title", ""),
+  og_description: field(p, "og_description", ""),
+  og_image_url: field(p, "og_image_url", ""),
+  canonical_path: field(p, "canonical_path", ""),
+  noindex: Boolean(p.noindex ?? false),
   content: p.content && typeof p.content === "object" ? p.content : { sections: [] },
 });
 
@@ -682,6 +696,66 @@ const t = Array.isArray(rawThemes)
                   onChange={(e) =>
                     setEditing((s) => ({ ...s, seo_description: e.target.value }))
                   }
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="SEO Keywords"
+                  size="small"
+                  fullWidth
+                  value={editing.seo_keywords || ""}
+                  onChange={(e) => setEditing((s) => ({ ...s, seo_keywords: e.target.value }))}
+                  helperText="Comma separated keywords for this page."
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Open Graph Title"
+                  size="small"
+                  fullWidth
+                  value={editing.og_title || ""}
+                  onChange={(e) => setEditing((s) => ({ ...s, og_title: e.target.value }))}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Open Graph Description"
+                  size="small"
+                  fullWidth
+                  value={editing.og_description || ""}
+                  onChange={(e) => setEditing((s) => ({ ...s, og_description: e.target.value }))}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  label="Open Graph Image URL"
+                  size="small"
+                  fullWidth
+                  value={editing.og_image_url || ""}
+                  onChange={(e) => setEditing((s) => ({ ...s, og_image_url: e.target.value }))}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Canonical Path / Override"
+                  size="small"
+                  fullWidth
+                  value={editing.canonical_path || ""}
+                  onChange={(e) => setEditing((s) => ({ ...s, canonical_path: e.target.value }))}
+                  helperText="Begin with /contact or ?page=slug"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={Boolean(editing.noindex)}
+                      onChange={(e) =>
+                        setEditing((s) => ({ ...s, noindex: Boolean(e.target.checked) }))
+                      }
+                    />
+                  }
+                  label="Hide from search (noindex)"
                 />
               </Grid>
 

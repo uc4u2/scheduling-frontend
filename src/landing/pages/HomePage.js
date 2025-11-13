@@ -19,6 +19,7 @@ import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import LanguageIcon from "@mui/icons-material/Language";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import Meta from "../../components/Meta";
+import JsonLd from "../../components/seo/JsonLd";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import FeatureShowcase from "../components/FeatureShowcase";
 import InsightHighlight from "../components/InsightHighlight";
@@ -96,6 +97,18 @@ const HIGHLIGHT_SLIDER_CONFIG = [
     logo: "https://upload.wikimedia.org/wikipedia/commons/4/4f/Material_UI_logo.svg",
   },
 ];
+
+const ORGANIZATION_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Schedulaa",
+  url: "https://www.schedulaa.com/",
+  logo: "https://www.schedulaa.com/og/logo.png",
+  sameAs: [
+    "https://www.linkedin.com/company/schedulaa",
+    "https://twitter.com/schedulaa",
+  ],
+};
 
 const SPOTLIGHT_CONFIG = [
   { key: "workspace", imageIndex: 1 },
@@ -480,35 +493,6 @@ const HomePage = () => {
     }
   }, [activeModule]);
 
-  useEffect(() => {
-    const scriptId = "schedulaa-organization-jsonld";
-    const data = {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      name: "Schedulaa",
-      url: "https://www.schedulaa.com/",
-      logo: "https://www.schedulaa.com/og/logo.png",
-      sameAs: [
-        "https://www.linkedin.com/company/schedulaa",
-        "https://twitter.com/schedulaa",
-      ],
-    };
-
-    document.getElementById(scriptId)?.remove();
-
-    const script = document.createElement("script");
-    script.type = "application/ld+json";
-    script.id = scriptId;
-    script.text = JSON.stringify(data);
-    document.head.appendChild(script);
-
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
-  }, []);
-
   const handleAccentChange = useCallback((_, index, nextAccent) => {
     if (nextAccent) {
       setAccent(nextAccent);
@@ -533,6 +517,7 @@ const HomePage = () => {
           image: HERO_META_IMAGE,
         }}
       />
+      <JsonLd data={ORGANIZATION_SCHEMA} />
 
       <Box
         component="section"

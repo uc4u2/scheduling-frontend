@@ -1,4 +1,4 @@
-﻿// src/pages/sections/management/VisualSiteBuilder.js
+// src/pages/sections/management/VisualSiteBuilder.js
 
 import React, {
   useEffect,
@@ -16,6 +16,7 @@ import {
   Drawer,
   Grid,
   IconButton,
+  Link,
   List,
   ListItem,
   ListItemButton,
@@ -93,6 +94,7 @@ import {
 
 /** Theme designer (drawer content) */
 import ThemeDesigner from "../../../components/website/ThemeDesigner";
+import { SearchSnippetPreview, SocialCardPreview } from "../../../components/seo/SeoPreview";
 
 /** UI wrappers per design system */
 import SectionCard from "../../../components/ui/SectionCard";
@@ -219,6 +221,24 @@ const serializePage = (p) => {
   const meta = content.meta || {};
   const layout = p?.layout ?? meta.layout ?? "boxed";
   return { ...p, layout, content: { ...content, meta: { ...meta, layout } } };
+};
+
+const buildCanonicalUrl = (page, canonicalBase, fallbackBase) => {
+  const base = (canonicalBase || fallbackBase || "").replace(/\/$/, "");
+  if (!base) return "";
+  const override = (page?.canonical_path || "").trim();
+  if (override.startsWith("http://") || override.startsWith("https://")) return override;
+  if (override.startsWith("/") || override.startsWith("?")) return `${base}${override}`;
+  if (override) return `${base}/${override.replace(/^\/+/, "")}`;
+  const slug = (page?.slug || "").trim();
+  if (page?.is_homepage || slug.toLowerCase() === "home") return base;
+  if (page?.path) {
+    const path = page.path.startsWith("/") ? page.path : `/${page.path}`;
+    return `${base}${path}`;
+  }
+  if (!slug) return base;
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}page=${encodeURIComponent(slug)}`;
 };
 
 const ensureSectionIds = (page) => {
@@ -732,6 +752,24 @@ function PageStyleCard({
         placeholder={t("manager.visualBuilder.pageStyle.buttons.radiusPlaceholder")}
         fullWidth
       />
+      <Divider sx={{ my: 1 }} />
+      <Stack spacing={1}>
+        <Typography variant="subtitle2">
+          {t("manager.visualBuilder.pageStyle.layout.bottomSpacing", {
+            defaultValue: "Page bottom spacing",
+          })}
+        </Typography>
+        <Slider
+          size="small"
+          min={0}
+          max={200}
+          value={v.pageBottomSpacing ?? 0}
+          valueLabelDisplay="auto"
+          onChange={(_, val) =>
+            typeof val === "number" && set({ pageBottomSpacing: val })
+          }
+        />
+      </Stack>
 
       {/* Apply-to-all */}
       <Divider sx={{ my: 1 }} />
@@ -778,14 +816,42 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const { t } = useTranslation();
   const location = useLocation();                 // ✅ use the hook, not window.location
   const detectedCompanyId = useCompanyId();       // ✅ get it from the hook
-const [companyId, setCompanyId] = useState(     // ✅ local state
+  const [companyId, setCompanyId] = useState(     // ✅ local state
     companyIdProp ?? detectedCompanyId ?? ""
   );
 
   // local state the component already uses elsewhere
-const [siteSettings, setSiteSettings] = useState(null);
-const [navStyleState, setNavStyleState] = useState(null);
-const [pageSettingsOpen, setPageSettingsOpen] = useState(true);
+  const defaultThemeOverrides = useMemo(
+    () => ({
+      brandColor: "#6366F1",
+      surface: "light",
+      header: { background: "#111827", text: "#ffffff" },
+      footer: { background: "#0f172a", text: "#e2e8f0" },
+      radius: 20,
+      shadow: "md",
+    }),
+    []
+  );
+
+  const [siteSettings, setSiteSettings] = useState(null);
+  const rawNavOverrides = useMemo(
+    () =>
+      siteSettings?.nav_overrides ||
+      siteSettings?.settings?.nav_overrides ||
+      {},
+    [siteSettings]
+  );
+
+  const navOverridesWithDefault = useMemo(() => {
+    const base = { ...(rawNavOverrides || {}) };
+    if (!base.menu_source) {
+      base.menu_source = "pages";
+    }
+    return base;
+  }, [rawNavOverrides]);
+  const [navStyleState, setNavStyleState] = useState(null);
+  const [themeOverridesDraft, setThemeOverridesDraft] = useState(defaultThemeOverrides);
+  const [pageSettingsOpen, setPageSettingsOpen] = useState(true);
   const [pages, setPages] = useState([]);
   const [navDraft, setNavDraft] = useState(null);
   const [navSaving, setNavSaving] = useState(false);
@@ -796,6 +862,39 @@ const [pageSettingsOpen, setPageSettingsOpen] = useState(true);
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingMsg, setBrandingMsg] = useState("");
 const [brandingErr, setBrandingErr] = useState("");
+
+  const applyBrandingFromServer = useCallback(
+    (settingsObj) => {
+      if (!settingsObj) return;
+      const headerFromServer = normalizeHeaderConfig(
+        settingsObj.header || settingsObj.settings?.header || defaultHeaderConfig()
+      );
+      const footerFromServer = normalizeFooterConfig(
+        settingsObj.footer || settingsObj.settings?.footer || defaultFooterConfig()
+      );
+      const themeOverrides =
+        settingsObj.theme_overrides ||
+        settingsObj.settings?.theme_overrides ||
+        defaultThemeOverrides;
+      setHeaderDraft(headerFromServer);
+      setFooterDraft(footerFromServer);
+      setThemeOverridesDraft(themeOverrides || defaultThemeOverrides);
+    },
+    [defaultThemeOverrides]
+  );
+
+  const hasDraftChanges = Boolean(siteSettings?.has_unpublished_changes);
+  const lastPublishedLabel = useMemo(() => {
+    const ts = siteSettings?.branding_published_at;
+    if (!ts) return null;
+    try {
+      const date = new Date(ts);
+      if (Number.isNaN(date.getTime())) return null;
+      return `Published ${date.toLocaleString()}`;
+    } catch {
+      return null;
+    }
+  }, [siteSettings?.branding_published_at]);
 
   useEffect(() => {
     if (companyIdProp && companyIdProp !== companyId) {
@@ -884,6 +983,7 @@ useEffect(() => {
 
         const settingsPayload = settingsRes?.data ?? settingsRes ?? null;
         setSiteSettings(settingsPayload);
+        applyBrandingFromServer(settingsPayload);
         setNavDraft(deriveNavDraft(settingsPayload));
         setNavMsg("");
         setNavErr("");
@@ -934,7 +1034,7 @@ useEffect(() => {
 
     boot();
     return () => { alive = false; };
-  }, [companyId, slug, location?.key]);
+  }, [companyId, slug, location?.key, applyBrandingFromServer]);
 
 
   // ---------- NEW (Step 3: preflight/auth guard needs these) ----------
@@ -1011,6 +1111,23 @@ const handleFooterDraftChange = useCallback(
   [setSiteSettings]
 );
 
+const handleNavOverridesChange = useCallback(
+  (nextOverrides) => {
+    if (!nextOverrides) return;
+    setBrandingMsg("");
+    setBrandingErr("");
+    setSiteSettings((prev) => ({
+      ...(prev || {}),
+      nav_overrides: nextOverrides,
+      settings: {
+        ...(prev?.settings || {}),
+        nav_overrides: nextOverrides,
+      },
+    }));
+  },
+  [setSiteSettings]
+);
+
 const saveNavSettings = useCallback(
   async (draft) => {
     if (!companyId) {
@@ -1044,7 +1161,7 @@ const saveNavSettings = useCallback(
   [companyId, setSiteSettings, navStyleState, t]
 );
 
-const saveBrandingSettings = useCallback(
+  const saveBrandingSettings = useCallback(
   async (payload) => {
     if (!companyId) {
       setBrandingErr("Company id missing");
@@ -1056,31 +1173,32 @@ const saveBrandingSettings = useCallback(
     const footerPayload = normalizeFooterConfig(
       payload?.footer || footerDraft || defaultFooterConfig()
     );
+    const themePayload = payload?.theme_overrides || themeOverridesDraft || defaultThemeOverrides;
+    const navOverridesPayload = payload?.nav_overrides || navOverridesWithDefault || {};
     setBrandingSaving(true);
     setBrandingMsg("");
     setBrandingErr("");
     try {
-      await wb.saveSettings(companyId, {
-        header: headerPayload,
-        footer: footerPayload,
-      });
+      await wb.saveSettings(
+        companyId,
+        {
+          header: headerPayload,
+          footer: footerPayload,
+          theme_overrides: themePayload,
+          nav_overrides: navOverridesPayload,
+        },
+        { publish: false }
+      );
       const refreshed = await wb.getSettings(companyId).catch(() => null);
       const root = refreshed?.data || refreshed || {};
-      const headerFromServer = normalizeHeaderConfig(
-        root.header || root.settings?.header || headerPayload
-      );
-      const footerFromServer = normalizeFooterConfig(
-        root.footer || root.settings?.footer || footerPayload
-      );
-      setHeaderDraft(headerFromServer);
-      setFooterDraft(footerFromServer);
+      applyBrandingFromServer(root);
       setSiteSettings(root);
-      setBrandingMsg(
-        t("manager.visualBuilder.messages.brandingSaved", "Header & footer saved.")
+      const draftSavedMsg = t(
+        "manager.visualBuilder.messages.brandingDraftSaved",
+        "Branding draft saved. Publish to go live."
       );
-      setMsg(
-        t("manager.visualBuilder.messages.brandingSaved", "Header & footer saved.")
-      );
+      setBrandingMsg(draftSavedMsg);
+      setMsg(draftSavedMsg);
     } catch (e) {
       const message =
         e?.response?.data?.message ||
@@ -1092,7 +1210,16 @@ const saveBrandingSettings = useCallback(
       setBrandingSaving(false);
     }
   },
-  [companyId, headerDraft, footerDraft, t]
+  [
+    companyId,
+    headerDraft,
+    footerDraft,
+    themeOverridesDraft,
+    defaultThemeOverrides,
+    t,
+    applyBrandingFromServer,
+    navOverridesWithDefault,
+  ]
 );
 
   // Simple / Advanced toggle
@@ -1229,12 +1356,27 @@ const srcProps =
   const handleJumpToPageStyle = () => jumpToById("page-style-card");
   const handleJumpToNav = () => jumpToById("nav-settings-card");
   const handleJumpToAssets = () => jumpToById("assets-manager-card");
+  const handleJumpToPageSettings = () => jumpToById("builder-page-settings");
 
   const selectedPage = useMemo(
     () => pages.find((p) => p.id === selectedId) || null,
     [pages, selectedId]
   );
 
+  const siteSeoDefaults = useMemo(() => {
+    if (siteSettings?.seo) return siteSettings.seo;
+    if (siteSettings?.settings?.seo) return siteSettings.settings.seo;
+    return {};
+  }, [siteSettings]);
+
+  const canonicalBase = useMemo(
+    () => siteSeoDefaults.canonicalUrl || siteSeoDefaults.slugBaseUrl || "",
+    [siteSeoDefaults]
+  );
+  const slugBase = useMemo(
+    () => siteSeoDefaults.slugBaseUrl || canonicalBase,
+    [siteSeoDefaults, canonicalBase]
+  );
   const previewSlug = useMemo(() => {
     const slugFromSettings =
       siteSettings?.company?.slug ||
@@ -1244,6 +1386,42 @@ const srcProps =
     if (companyId) return `preview-${companyId}`;
     return "preview";
   }, [siteSettings, companyId]);
+
+  const seoPreviewTitle = useMemo(() => {
+    return (
+      editing?.seo_title ||
+      editing?.title ||
+      siteSeoDefaults.metaTitle ||
+      (editing?.slug ? editing.slug.replace(/-/g, " ") : previewSlug)
+    );
+  }, [editing, siteSeoDefaults, previewSlug]);
+  const seoPreviewDescription = useMemo(() => {
+    return (
+      editing?.seo_description ||
+      siteSeoDefaults.metaDescription ||
+      t("manager.visualBuilder.pages.seo.descriptionFallback")
+    );
+  }, [editing, siteSeoDefaults, t]);
+  const socialPreviewTitle = useMemo(() => {
+    return editing?.og_title || seoPreviewTitle;
+  }, [editing, seoPreviewTitle]);
+  const socialPreviewDescription = useMemo(() => {
+    return (
+      editing?.og_description ||
+      editing?.seo_description ||
+      siteSeoDefaults.ogDescription ||
+      siteSeoDefaults.metaDescription ||
+      seoPreviewDescription
+    );
+  }, [editing, siteSeoDefaults, seoPreviewDescription]);
+  const socialPreviewImage = useMemo(() => {
+    return editing?.og_image_url || siteSeoDefaults.ogImage || "";
+  }, [editing, siteSeoDefaults]);
+
+  const pageCanonicalPreview = useMemo(
+    () => buildCanonicalUrl(editing, canonicalBase, slugBase),
+    [editing, canonicalBase, slugBase]
+  );
 
   const previewPagesMeta = useMemo(() => {
     if (!Array.isArray(pages) || !pages.length) {
@@ -1260,10 +1438,6 @@ const srcProps =
   }, [pages]);
 
   const previewSite = useMemo(() => {
-    const navOverrides =
-      siteSettings?.nav_overrides ||
-      siteSettings?.settings?.nav_overrides ||
-      {};
     const navStyle =
       siteSettings?.nav_style || siteSettings?.settings?.nav_style || {};
     const themeOverrides =
@@ -1285,7 +1459,7 @@ const srcProps =
     };
     return {
       slug: previewSlug,
-      nav_overrides: navOverrides,
+      nav_overrides: navOverridesWithDefault,
       nav_style: navStyle,
       theme_overrides: themeOverrides,
       header: headerDraft,
@@ -1314,6 +1488,7 @@ const srcProps =
     previewPagesMeta,
     previewSlug,
     editing,
+    navOverridesWithDefault,
   ]);
 
 
@@ -1404,18 +1579,7 @@ const autoProvisionIfEmpty = useCallback(
       );
     }
 
-    const headerFromServer = normalizeHeaderConfig(
-      (settingsObj?.header ||
-        settingsObj?.settings?.header ||
-        defaultHeaderConfig())
-    );
-    const footerFromServer = normalizeFooterConfig(
-      (settingsObj?.footer ||
-        settingsObj?.settings?.footer ||
-        defaultFooterConfig())
-    );
-    setHeaderDraft(headerFromServer);
-    setFooterDraft(footerFromServer);
+    applyBrandingFromServer(settingsObj);
     setSiteSettings(settingsObj);
 
     // 2) pages
@@ -1713,8 +1877,12 @@ async function onPublish() {
     }
 
     // Publish the whole site (force)
-    await wb.publish(companyId, true);
-    setMsg(`${t("manager.visualBuilder.messages.sitePublished")} ✔`);
+    const publishRes = await wb.publish(companyId, true);
+    const publishPayload = publishRes?.data || publishRes || {};
+    applyBrandingFromServer(publishPayload);
+    setSiteSettings(publishPayload);
+    const publishedMsg = `${t("manager.visualBuilder.messages.sitePublished") || "Site published"} ✔`;
+    setMsg(publishedMsg);
   } catch (e) {
     setErr(t("manager.visualBuilder.errors.publishFailed", { reason: e?.response?.data?.message || e.message || t("manager.visualBuilder.errors.unknown") }));
   } finally {
@@ -1956,6 +2124,9 @@ async function onPublish() {
           content: { ...content, meta: { ...meta, layout: patch.layout } },
         };
       }
+      if ("canonical_path" in patch && typeof patch.canonical_path === "string") {
+        next.canonical_path = patch.canonical_path.trim();
+      }
       return withLiftedLayout(next);
     });
   };
@@ -2116,7 +2287,17 @@ async function onPublish() {
       title={t("manager.visualBuilder.controls.title")}
       description={t("manager.visualBuilder.controls.description")}
       actions={
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          {hasDraftChanges && (
+            <Chip
+              size="small"
+              color="warning"
+              label={t("manager.visualBuilder.draftChip", "Draft changes pending")}
+            />
+          )}
+          {lastPublishedLabel && (
+            <Chip size="small" variant="outlined" label={lastPublishedLabel} />
+          )}
           {/* NEW — Help button in the header actions */}
           <Tooltip title={t("manager.visualBuilder.controls.tooltips.guide")}>
             <IconButton onClick={() => setHelpOpen(true)} size="small">
@@ -2287,9 +2468,26 @@ async function onPublish() {
               <ListItemText primary={p.title || p.slug} secondary={p.slug} />
             </ListItemButton>
           </ListItem>
-          ))}
-        </List>
-      </CollapsibleSection>
+        ))}
+      </List>
+      <Alert severity="info" sx={{ mt: 1 }}>
+        Need another page? Visit the {" "}
+        <Link component={RouterLink} to="/manager/website" underline="hover">
+          Website Manager
+        </Link>{" "}
+        to create pages, then return here to design them.
+      </Alert>
+      <Alert severity="info" sx={{ mt: 1 }}>
+        <Trans
+          i18nKey="manager.visualBuilder.pages.seoPrompt"
+          components={{
+            seoLink: (
+              <Link component={RouterLink} to="/manager/website#seo" underline="hover" />
+            ),
+          }}
+        />
+      </Alert>
+    </CollapsibleSection>
 
       <CollapsibleSection
         id="builder-page-settings"
@@ -2455,6 +2653,92 @@ async function onPublish() {
       </CollapsibleSection>
 
       <CollapsibleSection
+        id="builder-page-seo"
+        title={t("manager.visualBuilder.pages.seo.cardTitle")}
+        description={t("manager.visualBuilder.pages.seo.cardDescription")}
+        defaultExpanded
+      >
+        <Stack spacing={1.5}>
+          <TextField
+            label={t("manager.visualBuilder.pages.seo.fields.title")}
+            size="small"
+            fullWidth
+            value={editing.seo_title || ""}
+            onChange={(e) => setEditing((s) => ({ ...s, seo_title: e.target.value }))}
+            helperText={t("manager.visualBuilder.pages.seo.helpers.title")}
+          />
+          <TextField
+            label={t("manager.visualBuilder.pages.seo.fields.description")}
+            size="small"
+            fullWidth
+            multiline
+            minRows={2}
+            value={editing.seo_description || ""}
+            onChange={(e) => setEditing((s) => ({ ...s, seo_description: e.target.value }))}
+            helperText={t("manager.visualBuilder.pages.seo.helpers.description")}
+          />
+          <TextField
+            label={t("manager.visualBuilder.pages.seo.fields.keywords")}
+            size="small"
+            fullWidth
+            value={editing.seo_keywords || ""}
+            onChange={(e) => setEditing((s) => ({ ...s, seo_keywords: e.target.value }))}
+            helperText={t("manager.visualBuilder.pages.seo.helpers.keywords")}
+          />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <TextField
+              label={t("manager.visualBuilder.pages.seo.fields.ogTitle")}
+              size="small"
+              fullWidth
+              value={editing.og_title || ""}
+              onChange={(e) => setEditing((s) => ({ ...s, og_title: e.target.value }))}
+            />
+            <TextField
+              label={t("manager.visualBuilder.pages.seo.fields.ogDescription")}
+              size="small"
+              fullWidth
+              value={editing.og_description || ""}
+              onChange={(e) => setEditing((s) => ({ ...s, og_description: e.target.value }))}
+            />
+          </Stack>
+          <TextField
+            label={t("manager.visualBuilder.pages.seo.fields.ogImage")}
+            size="small"
+            fullWidth
+            value={editing.og_image_url || ""}
+            onChange={(e) => setEditing((s) => ({ ...s, og_image_url: e.target.value }))}
+          />
+          <TextField
+            label={t("manager.visualBuilder.pages.seo.fields.canonicalPath")}
+            size="small"
+            fullWidth
+            value={editing.canonical_path || ""}
+            onChange={(e) => updatePageMeta({ canonical_path: e.target.value })}
+            helperText={slugBase ? t("manager.visualBuilder.pages.seo.helpers.canonicalPath", { base: slugBase }) : undefined}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(editing.noindex)}
+                onChange={(_, v) => setEditing((s) => ({ ...s, noindex: v }))}
+              />
+            }
+            label={t("manager.visualBuilder.pages.seo.fields.noindex")}
+          />
+          <SearchSnippetPreview
+            title={seoPreviewTitle}
+            url={pageCanonicalPreview || slugBase || canonicalBase || "https://example.com"}
+            description={seoPreviewDescription}
+          />
+          <SocialCardPreview
+            title={socialPreviewTitle}
+            description={socialPreviewDescription}
+            image={socialPreviewImage}
+          />
+        </Stack>
+      </CollapsibleSection>
+
+      <CollapsibleSection
         id="nav-settings-card"
         title={t("manager.visualBuilder.nav.title", "Navigation & Menu")}
         description={t(
@@ -2483,14 +2767,26 @@ async function onPublish() {
       >
         <WebsiteBrandingCard
           companyId={companyId}
+          companySlug={
+            siteSettings?.company?.slug ||
+            siteSettings?.company?.name ||
+            previewSlug
+          }
           headerValue={headerDraft}
           footerValue={footerDraft}
+          themeOverridesValue={themeOverridesDraft}
+          defaultThemeOverrides={defaultThemeOverrides}
           onChangeHeader={handleHeaderDraftChange}
           onChangeFooter={handleFooterDraftChange}
+          onChangeThemeOverrides={setThemeOverridesDraft}
           onSave={saveBrandingSettings}
           saving={brandingSaving}
           message={brandingMsg}
           error={brandingErr}
+          navOverridesValue={navOverridesWithDefault}
+          onChangeNavOverrides={handleNavOverridesChange}
+          pagesMeta={previewPagesMeta}
+          onRequestPagesJump={handleJumpToPageSettings}
         />
       </CollapsibleSection>
 

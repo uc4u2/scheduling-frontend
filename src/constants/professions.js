@@ -1,4 +1,4 @@
-﻿// src/constants/professions.js
+// src/constants/professions.js
 export const PROFESSION_OPTIONS = [
   { value: "recruiter", label: "Recruiter / Job Interview" },
   { value: "teacher", label: "Teacher / Parent Meeting" },

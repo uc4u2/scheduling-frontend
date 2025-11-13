@@ -34,6 +34,7 @@ const Meta = ({
   description,
   canonical,
   keywords,
+  robots,
   og = {},
   twitter = {},
 }) => {
@@ -47,6 +48,7 @@ const Meta = ({
     if (title) document.title = title;
     if (resolvedDescription) setMetaTag("name", "description", resolvedDescription);
     if (keywords) setMetaTag("name", "keywords", keywords);
+    if (robots) setMetaTag("name", "robots", robots);
 
     let previousCanonicalHref = null;
     let canonicalLinkCreated = false;
@@ -89,6 +91,7 @@ const Meta = ({
       document.title = previousTitle;
       if (resolvedDescription) removeMetaTag("name", "description");
       if (keywords) removeMetaTag("name", "keywords");
+      if (robots) removeMetaTag("name", "robots");
 
       if (resolvedCanonical) {
         const link = document.head.querySelector("link[rel='canonical']");
@@ -106,7 +109,7 @@ const Meta = ({
       ogEntries.forEach(([key]) => removeMetaTag("property", `og:${key}`));
       twitterEntries.forEach(([key]) => removeMetaTag("name", `twitter:${key}`));
     };
-  }, [title, description, canonical, keywords, og, twitter]);
+  }, [title, description, canonical, keywords, robots, og, twitter]);
 
   return null;
 };

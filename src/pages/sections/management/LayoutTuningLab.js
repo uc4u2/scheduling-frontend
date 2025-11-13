@@ -193,7 +193,7 @@ export default function LayoutTuningLab() {
       };
 
       // 3) Save
-      await wb.saveSettings(companyId, merged);
+      await wb.saveSettings(companyId, merged, { publish: false });
 
       // 4) Verify by reading back and checking presence
       const verify = await wb.getSettings(companyId);
@@ -466,7 +466,7 @@ export default function LayoutTuningLab() {
     if (!themeOverrides) { setSaveErr("No theme changes to save."); return; }
     setSaving(true);
     try {
-      await wb.saveSettings(companyId, { theme_overrides: themeOverrides });
+      await wb.saveSettings(companyId, { theme_overrides: themeOverrides }, { publish: false });
       setSaveMsg("Theme overrides saved.");
     } catch (e) {
       const msg = e?.response?.data?.message || e?.message || "Failed to save theme.";

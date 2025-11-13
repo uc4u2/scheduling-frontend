@@ -1,4 +1,4 @@
-﻿// src/components/website/BuilderInspectorParts.js
+// src/components/website/BuilderInspectorParts.js
 import React, { useEffect, useState } from "react";
 import {
   Alert,

@@ -1,5 +1,5 @@
 // src/pages/sections/management/InlineSiteEditor.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Paper,
@@ -15,6 +15,7 @@ import {
   DialogContent,
   IconButton,
   Alert,
+  Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import BrushIcon from "@mui/icons-material/Brush";
@@ -36,6 +37,25 @@ export default function InlineSiteEditor() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
+  const applySettingsPayload = useCallback((payload) => {
+    if (!payload) return;
+    const data = payload?.data ?? payload;
+    setSettings(data);
+  }, []);
+
+  const hasDraftChanges = Boolean(settings?.has_unpublished_changes);
+  const lastPublishedLabel = React.useMemo(() => {
+    const ts = settings?.branding_published_at;
+    if (!ts) return null;
+    try {
+      const date = new Date(ts);
+      if (Number.isNaN(date.getTime())) return null;
+      return `Published ${date.toLocaleString()}`;
+    } catch {
+      return null;
+    }
+  }, [settings?.branding_published_at]);
+
   const current = pages[tab] || null;
 
   useEffect(() => {
@@ -51,7 +71,7 @@ export default function InlineSiteEditor() {
         if (!alive) return;
         const list = Array.isArray(pagesRes.data) ? pagesRes.data : [];
         setPages(list);
-        setSettings(settingsRes.data || null);
+        applySettingsPayload(settingsRes.data || null);
         setThemes(Array.isArray(themesRes.data) ? themesRes.data : []);
       } catch {
         setErr("Failed to load the site.");
@@ -62,7 +82,7 @@ export default function InlineSiteEditor() {
     return () => {
       alive = false;
     };
-  }, [companyId]);
+  }, [companyId, applySettingsPayload]);
 
   const ordered = useMemo(
     () => pages.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
@@ -78,7 +98,8 @@ export default function InlineSiteEditor() {
   const publish = async () => {
     setPublishing(true);
     try {
-      await wb.publish(companyId, true);
+      const res = await wb.publish(companyId, true);
+      applySettingsPayload(res);
     } catch {
       // no-op; show toast in real app
     } finally {
@@ -89,8 +110,8 @@ export default function InlineSiteEditor() {
   const setTheme = async (themeId) => {
     try {
       const payload = { theme_id: themeId, is_live: settings?.is_live ?? false };
-      const { data } = await wb.saveSettings(companyId, payload);
-      setSettings(data);
+      const res = await wb.saveSettings(companyId, payload, { publish: false });
+      applySettingsPayload(res);
     } catch {
       // toast error
     }
@@ -122,7 +143,13 @@ export default function InlineSiteEditor() {
         <Typography variant="h5" fontWeight={800}>
           Your Website
         </Typography>
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          {hasDraftChanges && (
+            <Chip size="small" color="warning" label="Draft changes pending" />
+          )}
+          {lastPublishedLabel && (
+            <Chip size="small" variant="outlined" label={lastPublishedLabel} />
+          )}
           <Button
             size="small"
             startIcon={<BrushIcon />}

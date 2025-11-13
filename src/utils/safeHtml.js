@@ -1,4 +1,4 @@
-﻿// src/utils/safeHtml.js
+// src/utils/safeHtml.js
 import DOMPurify from "dompurify";
 
 // Add a one-time hook (for DOMPurify v2) to keep only text-align within style attributes

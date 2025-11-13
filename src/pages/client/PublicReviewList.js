@@ -257,8 +257,14 @@ export default function PublicReviewList({ slug, limit = 20, disableShell = fals
 
   const page = (
     <Box sx={{ py: pagePadding }}>
-      <Container maxWidth="lg">
-        <Stack spacing={5}>
+      <Container
+        maxWidth="lg"
+        sx={{
+          pt: { xs: 0, md: 0.5 },
+          pb: { xs: 1.5, md: 2.5 },
+        }}
+      >
+        <Stack spacing={3}>
           <Stack spacing={1} textAlign="center">
             <Typography variant="overline" sx={{ letterSpacing: ".3em" }}>
               Verified Reviews

@@ -38,7 +38,7 @@ const marketingLinks = [
   { label: "Features", translationKey: "nav.features", to: "/features", icon: <AutoAwesomeIcon fontSize="small" /> },
   { label: "Booking", translationKey: "nav.booking", to: "/booking", icon: <EventAvailableIcon fontSize="small" /> },
   { label: "Marketing", translationKey: "nav.marketing", to: "/marketing", icon: <CampaignIcon fontSize="small" /> },
-  { label: "Payroll", translationKey: "nav.payroll", to: "/payroll/canada", icon: <PaymentsOutlinedIcon fontSize="small" /> },
+  { label: "Payroll", translationKey: "nav.payroll", to: "/payroll", icon: <PaymentsOutlinedIcon fontSize="small" /> },
   {
     label: "Sites",
     translationKey: "nav.sites",

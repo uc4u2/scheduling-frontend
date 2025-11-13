@@ -132,7 +132,7 @@ export default function PublicReview() {
   if (loading) {
     return (
       <PublicPageShell activeKey="__reviews">
-        <Container maxWidth="sm" sx={{ mt: 8, textAlign: "center" }}>
+        <Container maxWidth="sm" sx={{ mt: 2, textAlign: "center" }}>
           <CircularProgress />
           <Typography sx={{ mt: 2 }}>Loading…</Typography>
         </Container>
@@ -143,7 +143,7 @@ export default function PublicReview() {
   if (error) {
     return (
       <PublicPageShell activeKey="__reviews">
-        <Container maxWidth="sm" sx={{ mt: 8 }}>
+        <Container maxWidth="sm" sx={{ mt: 2 }}>
           <Alert severity="error">{error}</Alert>
         </Container>
       </PublicPageShell>
@@ -153,7 +153,7 @@ export default function PublicReview() {
   if (!resolved) {
     return (
       <PublicPageShell activeKey="__reviews">
-        <Container maxWidth="sm" sx={{ mt: 8 }}>
+        <Container maxWidth="sm" sx={{ mt: 2 }}>
           <Alert severity="error">Appointment not found.</Alert>
         </Container>
       </PublicPageShell>
@@ -161,7 +161,7 @@ export default function PublicReview() {
   }
 
   const page = (
-    <Container maxWidth="sm" sx={{ mt: 6 }}>
+    <Container maxWidth="sm" sx={{ mt: 2 }}>
       <Paper
         elevation={0}
         sx={{

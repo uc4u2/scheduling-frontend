@@ -1096,6 +1096,28 @@
             "homepage": "\u0414\u043e\u043c\u0430\u0448\u043d\u044f\u044f \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0430",
             "autosave": "\u0410\u0432\u0442\u043e\u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435"
           }
+        },
+        "seoPrompt": "Need page-level SEO? Visit <seoLink>Website Manager \u2192 SEO</seoLink> to set site defaults.",
+        "seo": {
+          "cardTitle": "Page SEO & sharing",
+          "cardDescription": "Override how this page appears in search results and on social media.",
+          "fields": {
+            "title": "Meta title",
+            "description": "Meta description",
+            "keywords": "Keywords",
+            "ogTitle": "Open Graph title",
+            "ogDescription": "Open Graph description",
+            "ogImage": "Open Graph image URL",
+            "canonicalPath": "Canonical path or override",
+            "noindex": "Hide from search (noindex)"
+          },
+          "helpers": {
+            "title": "Recommended under 60 characters",
+            "description": "Recommended under 155 characters",
+            "canonicalPath": "Start with /contact, ?page=contact, or paste a full URL",
+            "keywords": "Comma separated keywords (optional)"
+          },
+          "descriptionFallback": "Add a short summary so search engines understand this page."
         }
       },
       "sections": {
@@ -2047,7 +2069,15 @@
         "showInMenu": "\u041f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0442\u044c \u0432 \u043c\u0435\u043d\u044e",
         "published": "\u041e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u043e",
         "homepage": "\u0414\u043e\u043c\u0430\u0448\u043d\u044f\u044f \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0430",
-        "contentJson": "\u041a\u043e\u043d\u0442\u0435\u043d\u0442 JSON"
+        "contentJson": "\u041a\u043e\u043d\u0442\u0435\u043d\u0442 JSON",
+        "seoTitle": "SEO Title",
+        "seoDescription": "SEO Description",
+        "seoKeywords": "SEO Keywords",
+        "ogTitle": "Open Graph Title",
+        "ogDescription": "Open Graph Description",
+        "ogImage": "Open Graph Image URL",
+        "canonicalPath": "Canonical Path / Override",
+        "noindex": "Hide from search (noindex)"
       },
       "tooltips": {
         "openPublic": "\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u0443\u0431\u043b\u0438\u0447\u043d\u044b\u0439 \u0441\u0430\u0439\u0442",
@@ -2076,7 +2106,8 @@
         "form": {
           "editTitle": "\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u044b",
           "newTitle": "\u041d\u043e\u0432\u0430\u044f \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0430"
-        }
+        },
+        "seo": "SEO & Sharing"
       },
       "messages": {
         "publicSnapshot": "\u041f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0435\u043c \u043f\u0443\u0431\u043b\u0438\u0447\u043d\u0443\u044e \u043a\u043e\u043f\u0438\u044e \u0441\u0442\u0440\u0430\u043d\u0438\u0446 (\u0442\u043e\u043b\u044c\u043a\u043e \u0447\u0442\u0435\u043d\u0438\u0435). \u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 \u0432\u0438\u0437\u0443\u0430\u043b\u044c\u043d\u044b\u0439 \u043a\u043e\u043d\u0441\u0442\u0440\u0443\u043a\u0442\u043e\u0440 \u0434\u043b\u044f \u0440\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f.",
@@ -2110,7 +2141,11 @@
       "placeholders": {
         "slug": "home, about, contact"
       },
-      "pageSecondary": "{{slug}} \u2014 \u043f\u043e\u0440\u044f\u0434\u043e\u043a {{order}} \u2014 {{status}}"
+      "pageSecondary": "{{slug}} \u2014 \u043f\u043e\u0440\u044f\u0434\u043e\u043a {{order}} \u2014 {{status}}",
+      "helpers": {
+        "seoKeywords": "Comma separated keywords (optional)",
+        "canonicalPath": "Start with /contact or ?page=contact"
+      }
     },
     "domainSettings": {
       "title": "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c\u0441\u043a\u0438\u0439 \u0434\u043e\u043c\u0435\u043d",
@@ -2276,6 +2311,30 @@
         "switchManual": "\u041f\u0435\u0440\u0435\u0439\u0442\u0438 \u043d\u0430 \u0440\u0443\u0447\u043d\u0443\u044e \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0443",
         "popup": "\u0411\u0440\u0430\u0443\u0437\u0435\u0440 \u0437\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043b \u043e\u043a\u043d\u043e? <Link>\u041e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u043f\u0440\u0438\u0433\u043b\u0430\u0448\u0435\u043d\u0438\u0435 GoDaddy</Link>.",
         "recordsConfirmed": "GoDaddy \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u043b \u0437\u0430\u043f\u0438\u0441\u0438. \u0420\u0443\u0447\u043d\u044b\u0435 \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u0438 \u043e\u0441\u0442\u0430\u044e\u0442\u0441\u044f \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u043c\u0438 \u043d\u0438\u0436\u0435, \u0435\u0441\u043b\u0438 \u043f\u043e\u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f."
+      },
+      "seo": {
+        "fields": {
+          "metaKeywords": "Meta Keywords",
+          "ogTitle": "Open Graph Title",
+          "ogDescription": "Open Graph Description",
+          "customHost": "Custom canonical host"
+        },
+        "helpers": {
+          "keywords": "Comma separated (e.g., tattoo, piercing, studio)",
+          "customHost": "Enter your verified domain, e.g., studio.example.com",
+          "structuredData": "Paste valid JSON-LD to include business schema"
+        },
+        "sections": {
+          "search": "Search result listing",
+          "searchHint": "Set the title and description Google shows most often.",
+          "social": "Social sharing",
+          "socialHint": "Customize the preview cards shown in chat, SMS, and social media.",
+          "advanced": "Advanced settings",
+          "advancedHint": "Control canonical hosts and structured data for better indexing."
+        },
+        "errors": {
+          "invalidStructuredData": "Structured data must be valid JSON."
+        }
       }
     },
     "domainHelp": {
@@ -3894,8 +3953,8 @@
             },
             {
               "label": "\u041d\u0430\u043f\u043e\u043c\u0438\u043d\u0430\u043d\u0438\u044f",
-              "schedulaa": "Email + SMS + 10\u2011\u043c\u0438\u043d\u0443\u0442\u043d\u044b\u0435 alerts.",
-              "competitor": "SMS/App \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u044f."
+              "schedulaa": "Email/SMS \u0438 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0437\u0430\u043f\u0440\u043e\u0441\u044b \u043e\u0442\u0437\u044b\u0432\u043e\u0432 \u0438 \u0447\u0430\u0435\u0432\u044b\u0445 \u043f\u043e\u0441\u043b\u0435 \u0432\u0438\u0437\u0438\u0442\u0430.",
+              "competitor": "SMS/App \u0443\u0432\u0435\u0434\u043e\u043c\u043b\u0435\u043d\u0438\u044f, \u043f\u0440\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u0438 \u0431\u0435\u0437 \u043f\u043e\u0441\u0442-\u0441\u0435\u0440\u0432\u0438\u0441 \u0444\u043e\u043b\u043b\u043e\u0443-\u0430\u043f\u0430."
             },
             {
               "label": "\u0410\u043d\u0430\u043b\u0438\u0442\u0438\u043a\u0430",

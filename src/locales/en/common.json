@@ -1109,6 +1109,28 @@
             "homepage": "Homepage",
             "autosave": "Autosave"
           }
+        },
+        "seoPrompt": "Need page-level SEO? Visit <seoLink>Website Manager \u2192 SEO</seoLink> to set site defaults.",
+        "seo": {
+          "cardTitle": "Page SEO & sharing",
+          "cardDescription": "Override how this page appears in search results and on social media.",
+          "fields": {
+            "title": "Meta title",
+            "description": "Meta description",
+            "keywords": "Keywords",
+            "ogTitle": "Open Graph title",
+            "ogDescription": "Open Graph description",
+            "ogImage": "Open Graph image URL",
+            "canonicalPath": "Canonical path or override",
+            "noindex": "Hide from search (noindex)"
+          },
+          "helpers": {
+            "title": "Recommended under 60 characters",
+            "description": "Recommended under 155 characters",
+            "canonicalPath": "Start with /contact, ?page=contact, or paste a full URL",
+            "keywords": "Comma separated keywords (optional)"
+          },
+          "descriptionFallback": "Add a short summary so search engines understand this page."
         }
       },
       "sections": {
@@ -2064,7 +2086,15 @@
         "showInMenu": "Show in menu",
         "published": "Published",
         "homepage": "Homepage",
-        "contentJson": "Content JSON"
+        "contentJson": "Content JSON",
+        "seoTitle": "SEO Title",
+        "seoDescription": "SEO Description",
+        "seoKeywords": "SEO Keywords",
+        "ogTitle": "Open Graph Title",
+        "ogDescription": "Open Graph Description",
+        "ogImage": "Open Graph Image URL",
+        "canonicalPath": "Canonical Path / Override",
+        "noindex": "Hide from search (noindex)"
       },
       "tooltips": {
         "openPublic": "Open public site",
@@ -2093,7 +2123,8 @@
         "form": {
           "editTitle": "Edit Page",
           "newTitle": "New Page"
-        }
+        },
+        "seo": "SEO & Sharing"
       },
       "messages": {
         "publicSnapshot": "Showing public snapshot of pages (read-only). Use Visual Site Builder to edit.",
@@ -2127,7 +2158,11 @@
       "placeholders": {
         "slug": "home, about, contact"
       },
-      "pageSecondary": "{{slug}} - order {{order}} - {{status}}"
+      "pageSecondary": "{{slug}} - order {{order}} - {{status}}",
+      "helpers": {
+        "seoKeywords": "Comma separated keywords (optional)",
+        "canonicalPath": "Start with /contact or ?page=contact"
+      }
     },
     "domainSettings": {
       "title": "Custom Domain",
@@ -2293,6 +2328,30 @@
         "switchManual": "Switch to manual setup",
         "popup": "Popup blocked? <Link>Open the GoDaddy prompt</Link>.",
         "recordsConfirmed": "GoDaddy confirmed DNS records. Manual instructions remain available below if you need them."
+      },
+      "seo": {
+        "fields": {
+          "metaKeywords": "Meta Keywords",
+          "ogTitle": "Open Graph Title",
+          "ogDescription": "Open Graph Description",
+          "customHost": "Custom canonical host"
+        },
+        "helpers": {
+          "keywords": "Comma separated (e.g., tattoo, piercing, studio)",
+          "customHost": "Enter your verified domain, e.g., studio.example.com",
+          "structuredData": "Paste valid JSON-LD to include business schema"
+        },
+        "sections": {
+          "search": "Search result listing",
+          "searchHint": "Set the title and description Google shows most often.",
+          "social": "Social sharing",
+          "socialHint": "Customize the preview cards shown in chat, SMS, and social media.",
+          "advanced": "Advanced settings",
+          "advancedHint": "Control canonical hosts and structured data for better indexing."
+        },
+        "errors": {
+          "invalidStructuredData": "Structured data must be valid JSON."
+        }
       }
     },
     "domainHelp": {
@@ -2329,10 +2388,12 @@
       "quickSummary": {
         "title": "Quick summary",
         "items": [
-          "Buy a domain (GoDaddy / Namecheap / Cloudflare).",
-          "Add the TXT + CNAME records from Schedulaa.",
-          "Click Verify DNS in Schedulaa.",
-          "Wait for SSL to activate. Done!"
+          "Prefer .com when available—customers trust it the most.",
+          "Start with the www version (www.yoursite.com). You can add the apex later if needed.",
+          "Avoid trademarks or other brands in your domain to prevent DNS issues.",
+          "Generate the TXT + CNAME records from Schedulaa.",
+          "Add those records at your DNS provider (GoDaddy, Namecheap, Cloudflare, etc.).",
+          "DNS can take up to 30 minutes to propagate—verify a little later if it is still pending."
         ]
       },
       "dnsInstructions": {
@@ -2380,7 +2441,7 @@
           "title": "Purchase or choose a domain",
           "bullets": [
             "If you need a new domain, buy it now (GoDaddy, Namecheap, Cloudflare, or your preferred registrar).",
-            "Use a clear brand name and prefer .com when available.",
+            "Use a clear brand name, avoid trademarks, and prefer .com when available.",
             "Keep both www and bare versions handy in case you want apex forwarding later."
           ]
         },
@@ -2610,22 +2671,22 @@
           "payroll": {
             "label": "Payroll",
             "summary": "Automate cross-region pay, overtime, and tax calculations for U.S. and Canada (excluding QC).",
-        "stats": [
-          {
-            "label": "Regions supported",
-            "value": "45 U.S. states + CA"
-          },
-          {
-            "label": "Payroll accuracy",
-            "value": "99.8%",
-            "helper": "Audited every run"
-          },
-          {
-            "label": "Time saved / run",
-            "value": "-72%",
-            "helper": "Compared to spreadsheets"
-          }
-        ],
+            "stats": [
+              {
+                "label": "Regions supported",
+                "value": "45 U.S. states + CA"
+              },
+              {
+                "label": "Payroll accuracy",
+                "value": "99.8%",
+                "helper": "Audited every run"
+              },
+              {
+                "label": "Time saved / run",
+                "value": "-72%",
+                "helper": "Compared to spreadsheets"
+              }
+            ],
             "bullets": [
               "CRA + IRS-ready exports (T4, W-2, ROE).",
               "Auto-recalc for YTD totals and overrides.",
@@ -2635,15 +2696,15 @@
           "commerce": {
             "label": "Commerce",
             "summary": "Sell services, products, or add-ons with a unified basket and secure Stripe checkout.",
-        "stats": [
-          {
-            "label": "Products live",
-            "value": "Full catalog",
-            "helper": "Site + POS"
-          },
-          {
-            "label": "Refund automation",
-            "value": "Enabled"
+            "stats": [
+              {
+                "label": "Products live",
+                "value": "Full catalog",
+                "helper": "Site + POS"
+              },
+              {
+                "label": "Refund automation",
+                "value": "Enabled"
               },
               {
                 "label": "Stripe checkout uptime",
@@ -3048,7 +3109,7 @@
         "canonical": "https://www.schedulaa.com/docs",
         "og": {
           "title": "Schedulaa Documentation | Scheduling, Payroll, and Commerce Guides",
-          "description": "Guides, onboarding steps, integrations, and FAQs for scheduling, payroll, and online sales — plus the roadmap for public APIs.",
+          "description": "Guides, onboarding steps, integrations, and FAQs for scheduling, payroll, and online sales \u2014 plus the roadmap for public APIs.",
           "image": "https://www.schedulaa.com/og/docs.jpg"
         }
       },
@@ -3367,7 +3428,7 @@
               "key": "starter",
               "name": "Starter",
               "price": "$19.99/mo",
-              "description": "Launch your website and start taking bookings and payments — perfect for solo professionals.",
+              "description": "Launch your website and start taking bookings and payments \u2014 perfect for solo professionals.",
               "features": [
                 "Website builder with branded pages and templates.",
                 "Online booking, confirmations, and client portal.",
@@ -3708,54 +3769,158 @@
         "competitor": "Vagaro",
         "metaTitle": "Schedulaa vs Vagaro | Booking, Payroll, and Operations Comparison",
         "metaDescription": "See how Schedulaa compares to Vagaro for booking, payroll, and analytics. Learn which platform fits growing service businesses best.",
-        "heroTitle": "Schedulaa vs Vagaro — Which Platform Is Right for Your Business?",
+        "heroTitle": "Schedulaa vs Vagaro \u2014 Which Platform Is Right for Your Business?",
         "heroSubtitle": "Vagaro focuses on salons and spas. Schedulaa unifies booking, staff scheduling, payroll, e-commerce, and analytics for service brands of any size.",
         "intro": [
           "Both Schedulaa and Vagaro help service-based businesses manage clients and appointments, but their focus is different.",
-          "Vagaro is built primarily for salons and spas, while Schedulaa is designed as an all-in-one operations platform that unifies booking, staff scheduling, payroll, e-commerce, and analytics — from beauty studios to creative agencies."
+          "Vagaro is built primarily for salons and spas, while Schedulaa is designed as an all-in-one operations platform that unifies booking, staff scheduling, payroll, e-commerce, and analytics \u2014 from beauty studios to creative agencies."
         ],
         "executiveOverview": {
-          "headers": ["Category", "Schedulaa", "Vagaro"],
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "Vagaro"
+          ],
           "rows": [
-            { "label": "Core Purpose", "schedulaa": "All-in-one operations platform: booking, scheduling, payroll, analytics, and commerce.", "competitor": "Appointment software for salons, spas, and fitness studios." },
-            { "label": "Target Industry", "schedulaa": "Service businesses across beauty, creative, and professional sectors.", "competitor": "Primarily beauty and wellness." },
-            { "label": "Platform Model", "schedulaa": "Business-branded platform (custom domain + logo).", "competitor": "Marketplace platform (Vagaro brand visible)." },
-            { "label": "Client Booking", "schedulaa": "Built-in booking pages, customizable intake forms, automated confirmations.", "competitor": "Booking via Vagaro marketplace and app." },
-            { "label": "Staff Scheduling", "schedulaa": "Integrated team scheduling, shifts, notifications, and swaps.", "competitor": "Basic staff calendar management." },
-            { "label": "Payroll & Compliance", "schedulaa": "Built-in Canadian (T4, ROE) and U.S. (W-2) payroll tools.", "competitor": "Limited payroll functionality; requires third-party integrations." },
-            { "label": "E-Commerce & Sales", "schedulaa": "Direct product and service sales through company domain.", "competitor": "Available through Vagaro platform with fees." },
-            { "label": "Automation", "schedulaa": "Automatic confirmations, cancellations, reschedules, and 10-minute reminders.", "competitor": "Reminders and confirmations through SMS and app." },
-            { "label": "Video Meetings", "schedulaa": "Integrated Jitsi link generation for virtual services.", "competitor": "Not available natively." },
-            { "label": "Analytics Dashboard", "schedulaa": "End-to-end reporting across bookings, sales, payroll, and staff.", "competitor": "Insights focused on bookings and client metrics." },
-            { "label": "Brand Customization", "schedulaa": "Full brand control and white-label experience.", "competitor": "Vagaro branding across most client interfaces." },
-            { "label": "Pricing Structure", "schedulaa": "Flat monthly tiers starting at $19.99.", "competitor": "Per-user and per-feature pricing model." }
+            {
+              "label": "Core Purpose",
+              "schedulaa": "All-in-one operations platform: booking, scheduling, payroll, analytics, and commerce.",
+              "competitor": "Appointment software for salons, spas, and fitness studios."
+            },
+            {
+              "label": "Target Industry",
+              "schedulaa": "Service businesses across beauty, creative, and professional sectors.",
+              "competitor": "Primarily beauty and wellness."
+            },
+            {
+              "label": "Platform Model",
+              "schedulaa": "Business-branded platform (custom domain + logo).",
+              "competitor": "Marketplace platform (Vagaro brand visible)."
+            },
+            {
+              "label": "Client Booking",
+              "schedulaa": "Built-in booking pages, customizable intake forms, automated confirmations.",
+              "competitor": "Booking via Vagaro marketplace and app."
+            },
+            {
+              "label": "Staff Scheduling",
+              "schedulaa": "Integrated team scheduling, shifts, notifications, and swaps.",
+              "competitor": "Basic staff calendar management."
+            },
+            {
+              "label": "Payroll & Compliance",
+              "schedulaa": "Built-in Canadian (T4, ROE) and U.S. (W-2) payroll tools.",
+              "competitor": "Limited payroll functionality; requires third-party integrations."
+            },
+            {
+              "label": "E-Commerce & Sales",
+              "schedulaa": "Direct product and service sales through company domain.",
+              "competitor": "Available through Vagaro platform with fees."
+            },
+            {
+              "label": "Automation",
+              "schedulaa": "Automatic confirmations, cancellations, reschedules, and 10-minute reminders.",
+              "competitor": "Reminders and confirmations through SMS and app."
+            },
+            {
+              "label": "Video Meetings",
+              "schedulaa": "Integrated Jitsi link generation for virtual services.",
+              "competitor": "Not available natively."
+            },
+            {
+              "label": "Analytics Dashboard",
+              "schedulaa": "End-to-end reporting across bookings, sales, payroll, and staff.",
+              "competitor": "Insights focused on bookings and client metrics."
+            },
+            {
+              "label": "Brand Customization",
+              "schedulaa": "Full brand control and white-label experience.",
+              "competitor": "Vagaro branding across most client interfaces."
+            },
+            {
+              "label": "Pricing Structure",
+              "schedulaa": "Flat monthly tiers starting at $19.99.",
+              "competitor": "Per-user and per-feature pricing model."
+            }
           ]
         },
         "differentiators": [
-          { "title": "Platform identity and brand ownership", "body": "Schedulaa lets you operate under your own domain, logo, and booking experience — ideal for premium or multi-brand businesses. Vagaro’s shared marketplace keeps the Vagaro brand front-and-center for every client interaction." },
-          { "title": "Integrated payroll and compliance", "body": "Schedulaa includes payroll and compliance tooling for Canada and the United States, reducing add-ons and manual reconciliation. Vagaro relies on external services when businesses scale beyond a few employees." },
-          { "title": "Custom domains and automation", "body": "Schedulaa pages live on your domain with branded forms, emails, and automated confirmations. Vagaro offers hosted pages with limited customization options." },
-          { "title": "Broader industry fit", "body": "Schedulaa is industry-agnostic: salons, photographers, tutors, clinics, and agencies can run booking, payroll, and analytics in one ecosystem. Vagaro stays focused on beauty and wellness." },
-          { "title": "Simplicity and cost control", "body": "Flat-rate pricing keeps Schedulaa predictable as teams grow. Vagaro’s per-user and add-on fees can increase quickly for multi-location businesses." }
+          {
+            "title": "Platform identity and brand ownership",
+            "body": "Schedulaa lets you operate under your own domain, logo, and booking experience \u2014 ideal for premium or multi-brand businesses. Vagaro\u2019s shared marketplace keeps the Vagaro brand front-and-center for every client interaction."
+          },
+          {
+            "title": "Integrated payroll and compliance",
+            "body": "Schedulaa includes payroll and compliance tooling for Canada and the United States, reducing add-ons and manual reconciliation. Vagaro relies on external services when businesses scale beyond a few employees."
+          },
+          {
+            "title": "Custom domains and automation",
+            "body": "Schedulaa pages live on your domain with branded forms, emails, and automated confirmations. Vagaro offers hosted pages with limited customization options."
+          },
+          {
+            "title": "Broader industry fit",
+            "body": "Schedulaa is industry-agnostic: salons, photographers, tutors, clinics, and agencies can run booking, payroll, and analytics in one ecosystem. Vagaro stays focused on beauty and wellness."
+          },
+          {
+            "title": "Simplicity and cost control",
+            "body": "Flat-rate pricing keeps Schedulaa predictable as teams grow. Vagaro\u2019s per-user and add-on fees can increase quickly for multi-location businesses."
+          }
         ],
         "summaryTable": {
-          "headers": ["Feature Group", "Schedulaa", "Vagaro"],
+          "headers": [
+            "Feature Group",
+            "Schedulaa",
+            "Vagaro"
+          ],
           "rows": [
-            { "label": "Booking Workflow", "schedulaa": "Integrated and fully automated.", "competitor": "Requires setup through Vagaro app/marketplace." },
-            { "label": "Payroll Support", "schedulaa": "Built-in, cross-border (CA + US).", "competitor": "Partial or external integration." },
-            { "label": "Brand Control", "schedulaa": "Full white-label customization.", "competitor": "Shared Vagaro branding." },
-            { "label": "Reminders & Notifications", "schedulaa": "Automated emails plus 10-minute alerts.", "competitor": "SMS reminders via app." },
-            { "label": "Analytics & Insights", "schedulaa": "Unified dashboard for bookings, shifts, payroll.", "competitor": "Focused on client visits and sales." },
-            { "label": "Scalability", "schedulaa": "Built for multi-brand, multi-region expansion.", "competitor": "Optimized for single-location salons." }
+            {
+              "label": "Booking Workflow",
+              "schedulaa": "Integrated and fully automated.",
+              "competitor": "Requires setup through Vagaro app/marketplace."
+            },
+            {
+              "label": "Payroll Support",
+              "schedulaa": "Built-in, cross-border (CA + US).",
+              "competitor": "Partial or external integration."
+            },
+            {
+              "label": "Brand Control",
+              "schedulaa": "Full white-label customization.",
+              "competitor": "Shared Vagaro branding."
+            },
+            {
+              "label": "Reminders & Notifications",
+              "schedulaa": "Automated emails/SMS plus post-visit review and tip nudges.",
+              "competitor": "SMS reminders via the Vagaro app; limited follow-up tooling."
+            },
+            {
+              "label": "Analytics & Insights",
+              "schedulaa": "Unified dashboard for bookings, shifts, payroll.",
+              "competitor": "Focused on client visits and sales."
+            },
+            {
+              "label": "Scalability",
+              "schedulaa": "Built for multi-brand, multi-region expansion.",
+              "competitor": "Optimized for single-location salons."
+            }
           ]
         },
         "fitMatrix": [
-          { "scenario": "A salon, spa, or fitness studio that values marketplace visibility.", "recommendation": "Vagaro" },
-          { "scenario": "A growing brand or multi-service business that needs automation, payroll, and full control.", "recommendation": "Schedulaa" },
-          { "scenario": "Professional studios, clinics, or agencies needing branded client portals.", "recommendation": "Schedulaa" }
+          {
+            "scenario": "A salon, spa, or fitness studio that values marketplace visibility.",
+            "recommendation": "Vagaro"
+          },
+          {
+            "scenario": "A growing brand or multi-service business that needs automation, payroll, and full control.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "Professional studios, clinics, or agencies needing branded client portals.",
+            "recommendation": "Schedulaa"
+          }
         ],
         "testimonial": {
-          "quote": "Schedulaa replaced multiple tools for our salon. Bookings, shift tracking, and payroll now happen in one dashboard — clients never leave our domain.",
+          "quote": "Schedulaa replaced multiple tools for our salon. Bookings, shift tracking, and payroll now happen in one dashboard \u2014 clients never leave our domain.",
           "attribution": "BeautyBar Collective, Toronto"
         },
         "conclusion": "Vagaro centralizes the beauty marketplace experience. Schedulaa centralizes your operations under your own brand. If your goal is growth, automation, and independence, Schedulaa provides the structure to scale across teams, services, and countries."
@@ -3764,161 +3929,465 @@
         "competitor": "QuickBooks",
         "metaTitle": "Schedulaa vs QuickBooks | Operations Platform vs Accounting Suite",
         "metaDescription": "Compare Schedulaa and QuickBooks. Learn when to use an all-in-one operations platform instead of an accounting-first tool.",
-        "heroTitle": "Schedulaa vs QuickBooks — All-in-One Operations vs Accounting-First Platforms",
+        "heroTitle": "Schedulaa vs QuickBooks \u2014 All-in-One Operations vs Accounting-First Platforms",
         "heroSubtitle": "QuickBooks focuses on accounting and bookkeeping. Schedulaa unifies booking, scheduling, payroll, and analytics for service-driven teams.",
         "intro": [
           "Both Schedulaa and QuickBooks are essential tools for modern businesses, but they serve different purposes.",
           "QuickBooks manages financial data, while Schedulaa runs the operational workflow that happens before revenue hits the ledger."
         ],
         "executiveOverview": {
-          "headers": ["Category", "Schedulaa", "QuickBooks"],
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "QuickBooks"
+          ],
           "rows": [
-            { "label": "Core Purpose", "schedulaa": "All-in-one platform combining booking, scheduling, payroll, and analytics.", "competitor": "Accounting and financial management software with optional payroll." },
-            { "label": "Primary Audience", "schedulaa": "Service businesses and professional teams managing client operations.", "competitor": "Accountants, bookkeepers, and finance departments." },
-            { "label": "Client Booking", "schedulaa": "Integrated booking pages with automated confirmations.", "competitor": "Requires third-party tools." },
-            { "label": "Payroll & Compliance", "schedulaa": "Built-in Canadian (T4, ROE) and U.S. (W-2) processing.", "competitor": "Payroll available as an add-on module." },
-            { "label": "Shift Scheduling", "schedulaa": "Built-in scheduling and time tracking.", "competitor": "Not available." },
-            { "label": "E-Commerce & Payments", "schedulaa": "Sell services and products from your branded portal.", "competitor": "Invoices and payment collection only." },
-            { "label": "Brand Customization", "schedulaa": "Custom domain, logo, and email branding.", "competitor": "QuickBooks-branded environment." },
-            { "label": "Automation", "schedulaa": "Confirmations, cancellations, reminders, meeting links, and payroll handoffs.", "competitor": "Automation focused on billing and reporting." },
-            { "label": "Analytics Dashboard", "schedulaa": "Unified operational metrics (sales, shifts, payroll).", "competitor": "Financial and accounting insights." },
-            { "label": "Video Meeting Links", "schedulaa": "Automatic Jitsi meeting link creation.", "competitor": "Not supported." },
-            { "label": "Pricing Structure", "schedulaa": "Flat monthly tiers starting at $19.99.", "competitor": "Per-user, per-feature model starting near $25/user." }
+            {
+              "label": "Core Purpose",
+              "schedulaa": "All-in-one platform combining booking, scheduling, payroll, and analytics.",
+              "competitor": "Accounting and financial management software with optional payroll."
+            },
+            {
+              "label": "Primary Audience",
+              "schedulaa": "Service businesses and professional teams managing client operations.",
+              "competitor": "Accountants, bookkeepers, and finance departments."
+            },
+            {
+              "label": "Client Booking",
+              "schedulaa": "Integrated booking pages with automated confirmations.",
+              "competitor": "Requires third-party tools."
+            },
+            {
+              "label": "Payroll & Compliance",
+              "schedulaa": "Built-in Canadian (T4, ROE) and U.S. (W-2) processing.",
+              "competitor": "Payroll available as an add-on module."
+            },
+            {
+              "label": "Shift Scheduling",
+              "schedulaa": "Built-in scheduling and time tracking.",
+              "competitor": "Not available."
+            },
+            {
+              "label": "E-Commerce & Payments",
+              "schedulaa": "Sell services and products from your branded portal.",
+              "competitor": "Invoices and payment collection only."
+            },
+            {
+              "label": "Brand Customization",
+              "schedulaa": "Custom domain, logo, and email branding.",
+              "competitor": "QuickBooks-branded environment."
+            },
+            {
+              "label": "Automation",
+              "schedulaa": "Confirmations, cancellations, reminders, meeting links, and payroll handoffs.",
+              "competitor": "Automation focused on billing and reporting."
+            },
+            {
+              "label": "Analytics Dashboard",
+              "schedulaa": "Unified operational metrics (sales, shifts, payroll).",
+              "competitor": "Financial and accounting insights."
+            },
+            {
+              "label": "Video Meeting Links",
+              "schedulaa": "Automatic Jitsi meeting link creation.",
+              "competitor": "Not supported."
+            },
+            {
+              "label": "Pricing Structure",
+              "schedulaa": "Flat monthly tiers starting at $19.99.",
+              "competitor": "Per-user, per-feature model starting near $25/user."
+            }
           ]
         },
         "differentiators": [
-          { "title": "Operational scope", "body": "Schedulaa covers the client journey from booking to payroll. QuickBooks manages financial records after transactions occur." },
-          { "title": "Integrated payroll across borders", "body": "Schedulaa ships with Canadian and U.S. payroll workflows. QuickBooks Payroll is a separate purchase with regional limits." },
-          { "title": "Brand and client experience", "body": "Schedulaa maintains your brand across domains, portals, and emails. QuickBooks keeps a standardized experience centered on accounting." },
-          { "title": "Automation and communication", "body": "Schedulaa automates confirmations, reschedules, cancellations, and meeting links. QuickBooks automates invoices and financial reminders only." },
-          { "title": "Pricing and scalability", "body": "Flat pricing keeps Schedulaa predictable as departments grow. QuickBooks adds cost per user and per module." }
+          {
+            "title": "Operational scope",
+            "body": "Schedulaa covers the client journey from booking to payroll. QuickBooks manages financial records after transactions occur."
+          },
+          {
+            "title": "Integrated payroll across borders",
+            "body": "Schedulaa ships with Canadian and U.S. payroll workflows. QuickBooks Payroll is a separate purchase with regional limits."
+          },
+          {
+            "title": "Brand and client experience",
+            "body": "Schedulaa maintains your brand across domains, portals, and emails. QuickBooks keeps a standardized experience centered on accounting."
+          },
+          {
+            "title": "Automation and communication",
+            "body": "Schedulaa automates confirmations, reschedules, cancellations, and meeting links. QuickBooks automates invoices and financial reminders only."
+          },
+          {
+            "title": "Pricing and scalability",
+            "body": "Flat pricing keeps Schedulaa predictable as departments grow. QuickBooks adds cost per user and per module."
+          }
         ],
         "summaryTable": {
-          "headers": ["Feature Group", "Schedulaa", "QuickBooks"],
+          "headers": [
+            "Feature Group",
+            "Schedulaa",
+            "QuickBooks"
+          ],
           "rows": [
-            { "label": "Booking & Scheduling", "schedulaa": "Integrated.", "competitor": "Not available." },
-            { "label": "Payroll & Compliance", "schedulaa": "Built-in CA + US.", "competitor": "Add-on module." },
-            { "label": "Automation", "schedulaa": "Full workflow automation.", "competitor": "Limited to billing." },
-            { "label": "Analytics", "schedulaa": "Operational and financial overview.", "competitor": "Financial only." },
-            { "label": "Branding & Domain", "schedulaa": "Custom domain and white-label UI.", "competitor": "QuickBooks-branded." },
-            { "label": "Pricing Model", "schedulaa": "Fixed tiers.", "competitor": "Per-user/per-feature." }
+            {
+              "label": "Booking & Scheduling",
+              "schedulaa": "Integrated.",
+              "competitor": "Not available."
+            },
+            {
+              "label": "Payroll & Compliance",
+              "schedulaa": "Built-in CA + US.",
+              "competitor": "Add-on module."
+            },
+            {
+              "label": "Automation",
+              "schedulaa": "Full workflow automation.",
+              "competitor": "Limited to billing."
+            },
+            {
+              "label": "Analytics",
+              "schedulaa": "Operational and financial overview.",
+              "competitor": "Financial only."
+            },
+            {
+              "label": "Branding & Domain",
+              "schedulaa": "Custom domain and white-label UI.",
+              "competitor": "QuickBooks-branded."
+            },
+            {
+              "label": "Pricing Model",
+              "schedulaa": "Fixed tiers.",
+              "competitor": "Per-user/per-feature."
+            }
           ]
         },
         "fitMatrix": [
-          { "scenario": "Beauty, wellness, creative, or professional services needing bookings and payroll.", "recommendation": "Schedulaa" },
-          { "scenario": "Finance-first organizations focused solely on bookkeeping and tax.", "recommendation": "QuickBooks" },
-          { "scenario": "Growing teams seeking automation and cross-department visibility.", "recommendation": "Schedulaa" }
+          {
+            "scenario": "Beauty, wellness, creative, or professional services needing bookings and payroll.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "Finance-first organizations focused solely on bookkeeping and tax.",
+            "recommendation": "QuickBooks"
+          },
+          {
+            "scenario": "Growing teams seeking automation and cross-department visibility.",
+            "recommendation": "Schedulaa"
+          }
         ],
         "testimonial": {
-          "quote": "Schedulaa unified everything we used to manage separately — bookings, payroll, and analytics — without adding extra licenses.",
+          "quote": "Schedulaa unified everything we used to manage separately \u2014 bookings, payroll, and analytics \u2014 without adding extra licenses.",
           "attribution": "Photo Artisto Studios, Toronto"
         },
-        "conclusion": "QuickBooks remains the standard for accounting. Schedulaa extends beyond finance — turning scheduling, team management, and payroll into a single workflow. For service-oriented businesses, this integration saves time, reduces tool overlap, and strengthens brand consistency."
+        "conclusion": "QuickBooks remains the standard for accounting. Schedulaa extends beyond finance \u2014 turning scheduling, team management, and payroll into a single workflow. For service-oriented businesses, this integration saves time, reduces tool overlap, and strengthens brand consistency."
       },
       "humi": {
         "competitor": "Humi",
         "metaTitle": "Schedulaa vs Humi | HR-Only vs Operations + HR",
         "metaDescription": "Compare Schedulaa and Humi. See how combining booking, scheduling, payroll, and HR workflows improves service-team efficiency.",
-        "heroTitle": "Schedulaa vs Humi — Operations, Scheduling, and HR in One Connected Platform",
+        "heroTitle": "Schedulaa vs Humi \u2014 Operations, Scheduling, and HR in One Connected Platform",
         "heroSubtitle": "Humi is an HR platform with payroll and benefits. Schedulaa blends HR essentials with booking, scheduling, and client operations.",
         "intro": [
-          "Both Schedulaa and Humi help modern businesses manage people — but they serve different priorities.",
+          "Both Schedulaa and Humi help modern businesses manage people \u2014 but they serve different priorities.",
           "Humi centers on HR, payroll, and benefits administration. Schedulaa combines HR workflows with booking, scheduling, leave requests, and shift management in one system."
         ],
         "executiveOverview": {
-          "headers": ["Category", "Schedulaa", "Humi"],
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "Humi"
+          ],
           "rows": [
-            { "label": "Core Purpose", "schedulaa": "All-in-one platform for booking, scheduling, payroll, and HR workflows.", "competitor": "HR and people-management system with payroll and benefits." },
-            { "label": "Target Audience", "schedulaa": "Service businesses, studios, clinics, and agencies managing shifts and bookings.", "competitor": "HR departments and mid-sized organizations." },
-            { "label": "Employee Profiles", "schedulaa": "Team profiles linked to scheduling and payroll.", "competitor": "HR-centered employee records." },
-            { "label": "Shift Management", "schedulaa": "Built-in scheduling, swaps, and time tracking.", "competitor": "Not natively included." },
-            { "label": "Leave Requests", "schedulaa": "Full workflow with approvals and audit trail.", "competitor": "Available within HR module." },
-            { "label": "Payroll & Compliance", "schedulaa": "Integrated for Canada (T4, ROE) and U.S. (W-2).", "competitor": "Canadian payroll integration only." },
-            { "label": "Client Booking", "schedulaa": "Direct booking and client management built in.", "competitor": "Not included." },
-            { "label": "Automation", "schedulaa": "Automated confirmations, reminders, and internal notifications.", "competitor": "Focused on HR approvals and onboarding." },
-            { "label": "Brand Customization", "schedulaa": "Branded company domain and communications.", "competitor": "Standardized Humi environment." },
-            { "label": "Analytics & Reporting", "schedulaa": "Combined analytics across clients, staff, payroll.", "competitor": "HR and people metrics only." },
-            { "label": "Pricing Structure", "schedulaa": "Flat tiers starting at $19.99/month.", "competitor": "Modular, per-user pricing." }
+            {
+              "label": "Core Purpose",
+              "schedulaa": "All-in-one platform for booking, scheduling, payroll, and HR workflows.",
+              "competitor": "HR and people-management system with payroll and benefits."
+            },
+            {
+              "label": "Target Audience",
+              "schedulaa": "Service businesses, studios, clinics, and agencies managing shifts and bookings.",
+              "competitor": "HR departments and mid-sized organizations."
+            },
+            {
+              "label": "Employee Profiles",
+              "schedulaa": "Team profiles linked to scheduling and payroll.",
+              "competitor": "HR-centered employee records."
+            },
+            {
+              "label": "Shift Management",
+              "schedulaa": "Built-in scheduling, swaps, and time tracking.",
+              "competitor": "Not natively included."
+            },
+            {
+              "label": "Leave Requests",
+              "schedulaa": "Full workflow with approvals and audit trail.",
+              "competitor": "Available within HR module."
+            },
+            {
+              "label": "Payroll & Compliance",
+              "schedulaa": "Integrated for Canada (T4, ROE) and U.S. (W-2).",
+              "competitor": "Canadian payroll integration only."
+            },
+            {
+              "label": "Client Booking",
+              "schedulaa": "Direct booking and client management built in.",
+              "competitor": "Not included."
+            },
+            {
+              "label": "Automation",
+              "schedulaa": "Automated confirmations, reminders, and internal notifications.",
+              "competitor": "Focused on HR approvals and onboarding."
+            },
+            {
+              "label": "Brand Customization",
+              "schedulaa": "Branded company domain and communications.",
+              "competitor": "Standardized Humi environment."
+            },
+            {
+              "label": "Analytics & Reporting",
+              "schedulaa": "Combined analytics across clients, staff, payroll.",
+              "competitor": "HR and people metrics only."
+            },
+            {
+              "label": "Pricing Structure",
+              "schedulaa": "Flat tiers starting at $19.99/month.",
+              "competitor": "Modular, per-user pricing."
+            }
           ]
         },
         "differentiators": [
-          { "title": "Unified operations and HR", "body": "Schedulaa merges front-line scheduling, booking, and payroll with HR workflows. Humi focuses on back-office HR administration." },
-          { "title": "Shift scheduling and leave management", "body": "Schedulaa includes native shift planning, swaps, and approvals. Humi requires additional tools for real-time operations." },
-          { "title": "Payroll and multi-region support", "body": "Schedulaa supports Canadian and U.S. compliance inside the same system. Humi payroll is Canadian-only." },
-          { "title": "Cross-department automation", "body": "Schedulaa automates notifications, approvals, and payroll adjustments. Humi automation centers on HR processes." },
-          { "title": "Brand and platform control", "body": "Schedulaa provides a white-label experience for employees and clients. Humi operates under its own centralized interface." }
+          {
+            "title": "Unified operations and HR",
+            "body": "Schedulaa merges front-line scheduling, booking, and payroll with HR workflows. Humi focuses on back-office HR administration."
+          },
+          {
+            "title": "Shift scheduling and leave management",
+            "body": "Schedulaa includes native shift planning, swaps, and approvals. Humi requires additional tools for real-time operations."
+          },
+          {
+            "title": "Payroll and multi-region support",
+            "body": "Schedulaa supports Canadian and U.S. compliance inside the same system. Humi payroll is Canadian-only."
+          },
+          {
+            "title": "Cross-department automation",
+            "body": "Schedulaa automates notifications, approvals, and payroll adjustments. Humi automation centers on HR processes."
+          },
+          {
+            "title": "Brand and platform control",
+            "body": "Schedulaa provides a white-label experience for employees and clients. Humi operates under its own centralized interface."
+          }
         ],
         "summaryTable": {
-          "headers": ["Feature Group", "Schedulaa", "Humi"],
+          "headers": [
+            "Feature Group",
+            "Schedulaa",
+            "Humi"
+          ],
           "rows": [
-            { "label": "Scheduling & Shift Management", "schedulaa": "Integrated with swap and notification system.", "competitor": "Requires external tool." },
-            { "label": "Leave Requests", "schedulaa": "Built-in workflows with approvals.", "competitor": "Available in HR module." },
-            { "label": "Payroll", "schedulaa": "Integrated (CA + US).", "competitor": "Canadian-only." },
-            { "label": "Client Booking", "schedulaa": "Included.", "competitor": "Not supported." },
-            { "label": "Automation Scope", "schedulaa": "HR + operations.", "competitor": "HR only." },
-            { "label": "Branding", "schedulaa": "Custom domain and emails.", "competitor": "Fixed Humi interface." }
+            {
+              "label": "Scheduling & Shift Management",
+              "schedulaa": "Integrated with swap and notification system.",
+              "competitor": "Requires external tool."
+            },
+            {
+              "label": "Leave Requests",
+              "schedulaa": "Built-in workflows with approvals.",
+              "competitor": "Available in HR module."
+            },
+            {
+              "label": "Payroll",
+              "schedulaa": "Integrated (CA + US).",
+              "competitor": "Canadian-only."
+            },
+            {
+              "label": "Client Booking",
+              "schedulaa": "Included.",
+              "competitor": "Not supported."
+            },
+            {
+              "label": "Automation Scope",
+              "schedulaa": "HR + operations.",
+              "competitor": "HR only."
+            },
+            {
+              "label": "Branding",
+              "schedulaa": "Custom domain and emails.",
+              "competitor": "Fixed Humi interface."
+            }
           ]
         },
         "fitMatrix": [
-          { "scenario": "Service businesses managing shifts, payroll, and client operations.", "recommendation": "Schedulaa" },
-          { "scenario": "Internal HR departments focused solely on employee administration.", "recommendation": "Humi" },
-          { "scenario": "Hybrid organizations needing both HR and scheduling automation.", "recommendation": "Schedulaa" }
+          {
+            "scenario": "Service businesses managing shifts, payroll, and client operations.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "Internal HR departments focused solely on employee administration.",
+            "recommendation": "Humi"
+          },
+          {
+            "scenario": "Hybrid organizations needing both HR and scheduling automation.",
+            "recommendation": "Schedulaa"
+          }
         ],
         "testimonial": {
-          "quote": "Schedulaa handles our entire staff lifecycle — from scheduling and shift swaps to payroll and leave management — in one dashboard.",
+          "quote": "Schedulaa handles our entire staff lifecycle \u2014 from scheduling and shift swaps to payroll and leave management \u2014 in one dashboard.",
           "attribution": "VelvetGlow Studios, Toronto"
         },
-        "conclusion": "Humi streamlines traditional HR administration. Schedulaa connects HR with real-time operations — from staff schedules to payroll and client-facing bookings — making it ideal for service-driven teams."
+        "conclusion": "Humi streamlines traditional HR administration. Schedulaa connects HR with real-time operations \u2014 from staff schedules to payroll and client-facing bookings \u2014 making it ideal for service-driven teams."
       },
       "square-appointments": {
         "competitor": "Square Appointments",
         "metaTitle": "Schedulaa vs Square Appointments | Booking System Comparison",
         "metaDescription": "Compare Schedulaa with Square Appointments. Learn when to use a full operations platform instead of a booking-only tool.",
-        "heroTitle": "Schedulaa vs Square Appointments — Complete Operations Platform vs Booking System",
+        "heroTitle": "Schedulaa vs Square Appointments \u2014 Complete Operations Platform vs Booking System",
         "heroSubtitle": "Square Appointments focuses on appointment booking and POS. Schedulaa adds scheduling, payroll, HR, and analytics under your own brand.",
         "intro": [
           "Both Schedulaa and Square Appointments make it easier to schedule clients and accept payments.",
           "Square excels at point-of-sale workflows; Schedulaa delivers the entire operational ecosystem for multi-staff service teams."
         ],
         "executiveOverview": {
-          "headers": ["Category", "Schedulaa", "Square Appointments"],
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "Square Appointments"
+          ],
           "rows": [
-            { "label": "Core Purpose", "schedulaa": "All-in-one platform for booking, scheduling, payroll, HR, and analytics.", "competitor": "Appointment scheduling and POS system." },
-            { "label": "Target Audience", "schedulaa": "Service businesses, salons, clinics, studios, agencies.", "competitor": "Independent professionals and small shops." },
-            { "label": "Client Booking", "schedulaa": "Custom-branded pages with intake forms and domain mapping.", "competitor": "Square-hosted booking page or ecosystem widget." },
-            { "label": "Staff Scheduling", "schedulaa": "Shift management, availability, swap requests.", "competitor": "Appointment calendar only." },
-            { "label": "Payroll & Compliance", "schedulaa": "Integrated for Canada (T4, ROE) and U.S. (W-2).", "competitor": "U.S. payroll sold separately." },
-            { "label": "Leave Management", "schedulaa": "Built-in requests, approvals, tracking.", "competitor": "Not included." },
-            { "label": "Video Meetings", "schedulaa": "Automatic Jitsi meeting link creation.", "competitor": "Not available." },
-            { "label": "Brand Customization", "schedulaa": "Operate on your own domain and color system.", "competitor": "Square-branded checkout and booking links." },
-            { "label": "Analytics & Reports", "schedulaa": "Bookings, shifts, payroll, and sales in one dashboard.", "competitor": "Appointment and sales reports." },
-            { "label": "Automation", "schedulaa": "Email confirmations, reminders, cancellations, reschedules.", "competitor": "SMS/email reminders and basic confirmations." },
-            { "label": "E-Commerce & Payments", "schedulaa": "Built-in commerce for services and products.", "competitor": "Integrated POS for in-person transactions." },
-            { "label": "Pricing Structure", "schedulaa": "Flat tiers starting at $19.99.", "competitor": "Free for individuals; paid tiers per location/team size." }
+            {
+              "label": "Core Purpose",
+              "schedulaa": "All-in-one platform for booking, scheduling, payroll, HR, and analytics.",
+              "competitor": "Appointment scheduling and POS system."
+            },
+            {
+              "label": "Target Audience",
+              "schedulaa": "Service businesses, salons, clinics, studios, agencies.",
+              "competitor": "Independent professionals and small shops."
+            },
+            {
+              "label": "Client Booking",
+              "schedulaa": "Custom-branded pages with intake forms and domain mapping.",
+              "competitor": "Square-hosted booking page or ecosystem widget."
+            },
+            {
+              "label": "Staff Scheduling",
+              "schedulaa": "Shift management, availability, swap requests.",
+              "competitor": "Appointment calendar only."
+            },
+            {
+              "label": "Payroll & Compliance",
+              "schedulaa": "Integrated for Canada (T4, ROE) and U.S. (W-2).",
+              "competitor": "U.S. payroll sold separately."
+            },
+            {
+              "label": "Leave Management",
+              "schedulaa": "Built-in requests, approvals, tracking.",
+              "competitor": "Not included."
+            },
+            {
+              "label": "Video Meetings",
+              "schedulaa": "Automatic Jitsi meeting link creation.",
+              "competitor": "Not available."
+            },
+            {
+              "label": "Brand Customization",
+              "schedulaa": "Operate on your own domain and color system.",
+              "competitor": "Square-branded checkout and booking links."
+            },
+            {
+              "label": "Analytics & Reports",
+              "schedulaa": "Bookings, shifts, payroll, and sales in one dashboard.",
+              "competitor": "Appointment and sales reports."
+            },
+            {
+              "label": "Automation",
+              "schedulaa": "Email confirmations, reminders, cancellations, reschedules.",
+              "competitor": "SMS/email reminders and basic confirmations."
+            },
+            {
+              "label": "E-Commerce & Payments",
+              "schedulaa": "Built-in commerce for services and products.",
+              "competitor": "Integrated POS for in-person transactions."
+            },
+            {
+              "label": "Pricing Structure",
+              "schedulaa": "Flat tiers starting at $19.99.",
+              "competitor": "Free for individuals; paid tiers per location/team size."
+            }
           ]
         },
         "differentiators": [
-          { "title": "End-to-end operations", "body": "Square Appointments handles booking and POS. Schedulaa continues through staffing, payroll, HR, and analytics." },
-          { "title": "Branded experience", "body": "Schedulaa keeps clients on your domain with custom forms and emails. Square maintains a shared ecosystem with Square branding." },
-          { "title": "Payroll, HR, and compliance", "body": "Schedulaa ties payroll to scheduling with Canadian/U.S. compliance. Square Payroll is separate and U.S.-centric." },
-          { "title": "Automation beyond reminders", "body": "Schedulaa automates leave approvals, swap notifications, and meeting links in addition to client reminders. Square focuses on appointment reminders only." },
-          { "title": "Pricing flexibility", "body": "Flat pricing keeps Schedulaa predictable as staff counts grow. Square charges per location and headcount." }
+          {
+            "title": "End-to-end operations",
+            "body": "Square Appointments handles booking and POS. Schedulaa continues through staffing, payroll, HR, and analytics."
+          },
+          {
+            "title": "Branded experience",
+            "body": "Schedulaa keeps clients on your domain with custom forms and emails. Square maintains a shared ecosystem with Square branding."
+          },
+          {
+            "title": "Payroll, HR, and compliance",
+            "body": "Schedulaa ties payroll to scheduling with Canadian/U.S. compliance. Square Payroll is separate and U.S.-centric."
+          },
+          {
+            "title": "Automation beyond reminders",
+            "body": "Schedulaa automates leave approvals, swap notifications, and meeting links in addition to client reminders. Square focuses on appointment reminders only."
+          },
+          {
+            "title": "Pricing flexibility",
+            "body": "Flat pricing keeps Schedulaa predictable as staff counts grow. Square charges per location and headcount."
+          }
         ],
         "summaryTable": {
-          "headers": ["Feature Group", "Schedulaa", "Square Appointments"],
+          "headers": [
+            "Feature Group",
+            "Schedulaa",
+            "Square Appointments"
+          ],
           "rows": [
-            { "label": "Booking & Client Forms", "schedulaa": "Branded booking pages with customization.", "competitor": "Square-hosted booking interface." },
-            { "label": "Scheduling & Shifts", "schedulaa": "Integrated with swap, leave, and availability tools.", "competitor": "Basic appointment calendar." },
-            { "label": "Payroll Integration", "schedulaa": "Built-in (CA + US).", "competitor": "Separate product." },
-            { "label": "HR & Leave Management", "schedulaa": "Included.", "competitor": "Not available." },
-            { "label": "Branding", "schedulaa": "White-label domain and email.", "competitor": "Square-branded." },
-            { "label": "Automation", "schedulaa": "Full client and staff workflows.", "competitor": "Appointment-focused reminders." }
+            {
+              "label": "Booking & Client Forms",
+              "schedulaa": "Branded booking pages with customization.",
+              "competitor": "Square-hosted booking interface."
+            },
+            {
+              "label": "Scheduling & Shifts",
+              "schedulaa": "Integrated with swap, leave, and availability tools.",
+              "competitor": "Basic appointment calendar."
+            },
+            {
+              "label": "Payroll Integration",
+              "schedulaa": "Built-in (CA + US).",
+              "competitor": "Separate product."
+            },
+            {
+              "label": "HR & Leave Management",
+              "schedulaa": "Included.",
+              "competitor": "Not available."
+            },
+            {
+              "label": "Branding",
+              "schedulaa": "White-label domain and email.",
+              "competitor": "Square-branded."
+            },
+            {
+              "label": "Automation",
+              "schedulaa": "Full client and staff workflows.",
+              "competitor": "Appointment-focused reminders."
+            }
           ]
         },
         "fitMatrix": [
-          { "scenario": "Solo stylist or small service provider focused on in-person checkout.", "recommendation": "Square Appointments" },
-          { "scenario": "Multi-staff or multi-location business needing automation, payroll, and scheduling.", "recommendation": "Schedulaa" },
-          { "scenario": "Hybrid or remote businesses offering virtual bookings and team management.", "recommendation": "Schedulaa" }
+          {
+            "scenario": "Solo stylist or small service provider focused on in-person checkout.",
+            "recommendation": "Square Appointments"
+          },
+          {
+            "scenario": "Multi-staff or multi-location business needing automation, payroll, and scheduling.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "Hybrid or remote businesses offering virtual bookings and team management.",
+            "recommendation": "Schedulaa"
+          }
         ],
         "testimonial": {
           "quote": "With Schedulaa, our booking, payroll, and scheduling systems finally speak to each other. Every shift, leave request, and payment flows automatically.",

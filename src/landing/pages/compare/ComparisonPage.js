@@ -14,6 +14,7 @@ import { alpha } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import Meta from "../../../components/Meta";
 import FloatingBlob from "../../../components/ui/FloatingBlob";
+import JsonLd from "../../../components/seo/JsonLd";
 
 const ComparisonTable = ({ headers, rows }) => (
   <Box component="section" sx={{ mt: 4 }}>
@@ -107,6 +108,30 @@ const ComparisonPage = () => {
     return mergeData(english, localized);
   }, [normalizedSlug, t, fallbackT, currentLanguage]);
 
+  const pageUrl = normalizedSlug
+    ? `https://www.schedulaa.com/compare/${normalizedSlug}`
+    : "https://www.schedulaa.com/compare";
+  const schemaEntries = useMemo(() => {
+    if (!comparison) return [];
+    const base = {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: comparison.metaTitle || comparison.heroTitle,
+      description: comparison.metaDescription,
+      url: pageUrl,
+    };
+    const breadcrumb = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://www.schedulaa.com/" },
+        { "@type": "ListItem", position: 2, name: "Compare", item: "https://www.schedulaa.com/compare" },
+        { "@type": "ListItem", position: 3, name: comparison.heroTitle || comparison.metaTitle, item: pageUrl },
+      ],
+    };
+    return [base, breadcrumb];
+  }, [comparison, pageUrl]);
+
   if (!comparison) {
     return <Navigate to="/pricing" replace />;
   }
@@ -123,15 +148,27 @@ const ComparisonPage = () => {
     fitMatrix,
     testimonial,
     conclusion,
+    competitorName,
   } = comparison;
+  const defaultOgImage = "https://www.schedulaa.com/og/compare.jpg";
+  const pageOg = {
+    title: metaTitle,
+    description: metaDescription,
+    image: comparison?.metaOgImage || defaultOgImage,
+  };
 
   return (
     <Box sx={{ position: "relative", overflow: "hidden" }}>
       <Meta
         title={metaTitle}
         description={metaDescription}
-        canonical={`https://www.schedulaa.com/compare/${normalizedSlug}`}
+        canonical={pageUrl}
+        og={pageOg}
+        twitter={pageOg}
       />
+      {schemaEntries.map((schema, idx) => (
+        <JsonLd key={idx} data={schema} />
+      ))}
 
       <FloatingBlob enableMotion color="#0ea5e9" size={1040} opacity={0.1} duration={32} sx={{ top: -220, left: -200 }} />
       <FloatingBlob enableMotion color="#34d399" size={960} opacity={0.08} duration={30} sx={{ bottom: -260, right: -220 }} />

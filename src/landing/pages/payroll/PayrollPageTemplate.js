@@ -47,7 +47,9 @@ const PayrollPageTemplate = ({ config }) => {
     cta,
     secondaryLinks = [],
     notice,
+    nextSteps,
   } = config;
+  const schemaEntries = Array.isArray(schema) ? schema : schema ? [schema] : [];
 
   return (
     <Box sx={{ backgroundColor: theme.palette.background.default, pb: { xs: 10, md: 14 } }}>
@@ -58,7 +60,9 @@ const PayrollPageTemplate = ({ config }) => {
         og={meta.og}
         twitter={meta.twitter}
       />
-      <JsonLd data={schema} />
+      {schemaEntries.map((entry, idx) => (
+        <JsonLd key={idx} data={entry} />
+      ))}
 
       <Container maxWidth="lg" sx={{ pt: { xs: 8, md: 10 } }}>
         <Box
@@ -268,18 +272,20 @@ const PayrollPageTemplate = ({ config }) => {
                     )}
                   </Stack>
                 </Grid>
-                <Grid item xs={12} md={6} order={{ xs: 2, md: index % 2 === 0 ? 2 : 1 }}>
-                  <Box
-                    component="img"
-                    src={row.image.src}
-                    alt={row.image.alt}
-                    sx={{
-                      width: "100%",
-                      borderRadius: 4,
-                      boxShadow: theme.shadows[10],
-                    }}
-                  />
-                </Grid>
+                {row.image?.src && (
+                  <Grid item xs={12} md={6} order={{ xs: 2, md: index % 2 === 0 ? 2 : 1 }}>
+                    <Box
+                      component="img"
+                      src={row.image.src}
+                      alt={row.image.alt || row.title}
+                      sx={{
+                        width: "100%",
+                        borderRadius: 4,
+                        boxShadow: theme.shadows[10],
+                      }}
+                    />
+                  </Grid>
+                )}
               </React.Fragment>
             ))}
           </Grid>
@@ -408,6 +414,71 @@ const PayrollPageTemplate = ({ config }) => {
               </Grid>
             ))}
           </Grid>
+        </Container>
+      )}
+
+      {nextSteps?.links?.length > 0 && (
+        <Container maxWidth="lg" sx={{ mt: { xs: 9, md: 12 } }}>
+          <Card
+            variant="outlined"
+            sx={{
+              borderRadius: 4,
+              p: { xs: 4, md: 6 },
+              borderColor: alpha(theme.palette.primary.main, 0.18),
+              boxShadow: "none",
+            }}
+          >
+            <Stack spacing={2}>
+              <Typography variant="overline" sx={{ letterSpacing: 2, color: theme.palette.text.secondary }}>
+                {nextSteps.overline || "Next steps"}
+              </Typography>
+              <Typography variant="h3" sx={{ fontWeight: 800 }}>
+                {nextSteps.title || "Explore the rest of payroll"}
+              </Typography>
+              {nextSteps.description && (
+                <Typography variant="body1" sx={{ color: theme.palette.text.secondary, maxWidth: 720 }}>
+                  {nextSteps.description}
+                </Typography>
+              )}
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                {nextSteps.links.map((link) => (
+                  <Grid item xs={12} sm={6} md={3} key={link.href}>
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        height: "100%",
+                        borderRadius: 3,
+                        borderColor: alpha(theme.palette.primary.main, 0.12),
+                        boxShadow: "none",
+                      }}
+                    >
+                      <CardContent>
+                        <Stack spacing={1.5}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            {link.label}
+                          </Typography>
+                          {link.description && (
+                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                              {link.description}
+                            </Typography>
+                          )}
+                          <Button
+                            component={Link}
+                            to={link.href}
+                            size="small"
+                            endIcon={<ArrowForwardIcon fontSize="small" />}
+                            sx={{ alignSelf: "flex-start", fontWeight: 600, textTransform: "none" }}
+                          >
+                            {link.cta || "Open"}
+                          </Button>
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Stack>
+          </Card>
         </Container>
       )}
 

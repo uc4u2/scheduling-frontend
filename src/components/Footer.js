@@ -32,7 +32,7 @@ const sections = [
       { label: "Features", to: "/features" },
       { label: "Booking", to: "/booking" },
       { label: "Marketing", to: "/marketing" },
-      { label: "Payroll", to: "/payroll/canada" },
+      { label: "Payroll", to: "/payroll" },
       { label: "Website Builder", to: "/website-builder" },
       { label: "Pricing", to: "/pricing" },
       { label: "Status", to: "/status", external: true },

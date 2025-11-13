@@ -683,7 +683,8 @@ function ShellInner({
           maxWidth={hideChrome ? false : undefined}
           disableGutters={hideChrome}
           sx={{
-            py: { xs: 3, md: 5 },
+            pt: hideChrome ? 0 : { xs: 0.5, md: 1 },
+            pb: hideChrome ? { xs: 2, md: 3 } : { xs: 1.25, md: 2 },
             px: hideChrome ? 0 : undefined,
           }}
         >

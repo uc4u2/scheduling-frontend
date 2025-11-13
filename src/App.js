@@ -51,6 +51,7 @@ import AcceptableUsePage from "./landing/pages/legal/AcceptableUsePage";
 import DataProcessingAddendumPage from "./landing/pages/legal/DataProcessingAddendumPage";
 import SecurityPage from "./landing/pages/legal/SecurityPage";
 import UserAgreementPage from "./landing/pages/legal/UserAgreementPage";
+import PayrollOverviewPage from "./landing/pages/payroll/PayrollOverviewPage";
 import CanadaPayrollPage from "./landing/pages/payroll/CanadaPayrollPage";
 import USPayrollPage from "./landing/pages/payroll/USPayrollPage";
 import ROEToolPage from "./landing/pages/payroll/ROEToolPage";
@@ -129,6 +130,7 @@ import ManagerPaymentsView from "./pages/sections/management/ManagerPaymentsView
 import EnterpriseAnalytics from "./pages/sections/management/EnterpriseAnalytics";
 import MarketingCouponBridge from "./pages/client/MarketingCouponBridge";
 import LayoutTuningLab from "./pages/sections/management/LayoutTuningLab";
+import DomainHelpPage from "./landing/pages/help/DomainHelpPage";
 
 export const ThemeModeContext = createContext({
   themeName: "sunset",
@@ -159,6 +161,7 @@ const MARKETING_PATHS = [
   '/marketing/email-campaigns',
   '/marketing/analytics-dashboard',
   '/marketing/clients-360',
+  '/payroll',
   '/payroll/canada',
   '/payroll/usa',
   '/payroll/tools/roe',
@@ -169,6 +172,7 @@ const MARKETING_PATHS = [
   '/contact',
   '/faq',
   '/docs',
+  '/help/domains',
   '/blog',
   '/blog/category/automation',
   '/blog/category/payroll',
@@ -335,6 +339,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/marketing/email-campaigns" element={<MarketingCampaignsPage />} />
             <Route path="/marketing/analytics-dashboard" element={<MarketingAnalyticsPage />} />
             <Route path="/marketing/clients-360" element={<MarketingClientsPage />} />
+            <Route path="/payroll" element={<PayrollOverviewPage />} />
             <Route path="/payroll/canada" element={<CanadaPayrollPage />} />
             <Route path="/payroll/usa" element={<USPayrollPage />} />
             <Route path="/payroll/tools/roe" element={<ROEToolPage />} />
@@ -342,6 +347,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/payroll/tools/w2" element={<W2ToolPage />} />
             <Route path="/payslips" element={<PayslipPortalPage />} />
             <Route path="/docs" element={<DocsPage />} />
+            <Route path="/help/domains" element={<DomainHelpPage />} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/blog/client-journey" element={<ClientJourneyPage />} />
             <Route path="/blog/category/:slug" element={<BlogCategoryPage />} />
