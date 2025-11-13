@@ -55,6 +55,7 @@ const sections = [
       { label: "Schedulaa vs QuickBooks", to: "/compare/quickbooks" },
       { label: "Schedulaa vs Humi", to: "/compare/humi" },
       { label: "Schedulaa vs Square Appointments", to: "/compare/square-appointments" },
+      { label: "Schedulaa vs Xero", to: "/compare/xero" },
     ],
   },
   {
