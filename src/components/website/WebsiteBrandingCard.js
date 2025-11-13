@@ -1,6 +1,5 @@
 // src/components/website/WebsiteBrandingCard.js
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import chroma from "chroma-js";
 import {
   Alert,
   Box,
@@ -43,6 +42,7 @@ import {
   DEFAULT_COPYRIGHT_TEXT,
   formatCopyrightText,
 } from "../../utils/footerDefaults";
+import { colorToPickerValue } from "../../utils/color";
 
 const THEME_PRESETS = [
   {
@@ -235,7 +235,7 @@ function ColorTokenInput({
         />
         <input
           type="color"
-          value={chroma.valid(value || "") ? chroma(value).hex() : "#000000"}
+          value={colorToPickerValue(value)}
           onChange={(e) => onChange?.(e.target.value)}
           style={{ width: 36, height: 36, border: "none", background: "transparent" }}
         />
