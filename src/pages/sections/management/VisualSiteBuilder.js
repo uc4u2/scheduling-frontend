@@ -79,7 +79,7 @@ import { SCHEMA_REGISTRY } from "../../../components/website/schemas";
 import SchemaInspector from "../../../components/website/SchemaInspector";
 
 /** Moved out pieces */
-import SectionInspector, { ImageField } from "../../../components/website/BuilderInspectorParts"; // ImageField NEW
+import SectionInspector from "../../../components/website/BuilderInspectorParts";
 import { NEW_BLOCKS } from "../../../components/website/BuilderBlockTemplates";
 import {
   emptyPage,
@@ -106,7 +106,6 @@ import TabShell from "../../../components/ui/TabShell";
 
 import WebsiteBuilderHelpDrawer from "./WebsiteBuilderHelpDrawer"; // NEW
 /** Local shims so the app renders even if helpers aren’t exported yet */
-const ThemeRuntimeProvider = ({ overrides, children }) => <>{children}</>;
 const CollapsibleSection = ({
   id,
   title,
@@ -930,30 +929,7 @@ useEffect(() => {
     return () => clearTimeout(t);
   }, [justImported]);
 
-  useEffect(() => {
-    // If Lab redirected with ?importLabPresetOnce=1, pull the preset then strip flag
-    try {
-      const qs = new URLSearchParams(
-        location.search || window.location.search || ""
-      );
-      if (qs.get("importLabPresetOnce") === "1") {
-        (async () => {
-          try {
-            await importLabSettingsFromServer(); // uses wb.getSettings()
-          } finally {
-            qs.delete("importLabPresetOnce");
-            const nextSearch = qs.toString();
-            const nextUrl = `${location.pathname}${
-              nextSearch ? `?${nextSearch}` : ""
-            }`;
-            window.history.replaceState({}, "", nextUrl);
-          }
-        })();
-      }
-    } catch (e) {
-      console.warn("Auto-import from Lab failed:", e?.message || e);
-    }
-  }, [location?.key]);
+ 
 
   const [loading, setLoading] = useState(true);        // ← used by Step 4
   const [authError, setAuthError] = useState(null);    // ← used by Step 5
@@ -1263,52 +1239,16 @@ const canvasMaxHeight = useMemo(() => {
   // {t("manager.visualBuilder.pageStyle.applyAll.button")} (UI toggle + helper)
 const [applyPageStyleToAll, setApplyPageStyleToAll] = useState(false);
 
-/** pick only the page-style keys we want to propagate */
-/** pick only the page-style keys we want to propagate */
-const pickPageStyle = (meta = {}) => {
-  const src = meta.pageStyle || meta;
-  const allow = [
-    // both naming styles supported
-    "bgColor","bgImage","bgPos","bgRepeat",
-    "backgroundColor","backgroundImage","backgroundRepeat","backgroundSize","backgroundPosition",
-    "overlayColor","overlayOpacity",
-    "bodyColor","headingColor","linkColor",
-    "headingFont","bodyFont",
-    "cardBg","cardRadius","cardShadow","cardBlur",
-    "heroHeadingShadow",
-    "btnBg","btnColor","btnRadius"
-  ];
-  const out = {};
-  for (const k of allow) if (src[k] !== undefined) out[k] = src[k];
-
-  // small normalization: mirror background* -> bg* for older code paths
-  if (out.backgroundColor && !out.bgColor) out.bgColor = out.backgroundColor;
-  if (out.backgroundImage && !out.bgImage) out.bgImage = out.backgroundImage;
-  if (out.backgroundRepeat && !out.bgRepeat) out.bgRepeat = out.backgroundRepeat;
-  if (out.backgroundPosition && !out.bgPos) out.bgPos = out.backgroundPosition;
-
-  return out;
-};
-
-
-
-
-
-
-
 /** Apply current page's PageStyle to every other page */
 // Replace BOTH earlier applyStyleToAllPagesNow() definitions with this one:
 // Apply the current page's Page Style (SECTION) to all other pages
-async function applyStyleToAllPagesNow() {
+const applyStyleToAllPagesNow = useCallback(async () => {
   if (!companyId) return;
 
-  // Prefer the section props; fall back to meta.pageStyle
-  // Prefer the Inspector (meta), then the section
-const srcProps =
-  editing?.content?.meta?.pageStyle ||
-  readPageStyleProps(editing) ||
-  null;
-
+  const srcProps =
+    editing?.content?.meta?.pageStyle ||
+    readPageStyleProps(editing) ||
+    null;
 
   if (!srcProps) {
     setErr(t("manager.visualBuilder.pageStyle.applyAll.none"));
@@ -1316,10 +1256,11 @@ const srcProps =
   }
 
   setBusy(true);
-  setErr(""); setMsg("");
+  setErr("");
+  setMsg("");
   try {
     const list = await wb.listPages(companyId);
-    const pagesList = Array.isArray(list?.data) ? list.data : (list || []);
+    const pagesList = Array.isArray(list?.data) ? list.data : list || [];
 
     for (const p of pagesList) {
       if (!p?.id || p.id === editing?.id) continue;
@@ -1337,11 +1278,15 @@ const srcProps =
 
     setMsg(`${t("manager.visualBuilder.pageStyle.applyAll.success")} ✔`);
   } catch (e) {
-    setErr(e?.response?.data?.error || e.message || t("manager.visualBuilder.pageStyle.applyAll.failed"));
+    setErr(
+      e?.response?.data?.error ||
+        e.message ||
+        t("manager.visualBuilder.pageStyle.applyAll.failed")
+    );
   } finally {
     setBusy(false);
   }
-}
+}, [companyId, editing, t]);
 
 
 
@@ -1367,11 +1312,6 @@ const srcProps =
   const handleJumpToNav = () => jumpToById("nav-settings-card");
   const handleJumpToAssets = () => jumpToById("assets-manager-card");
   const handleJumpToPageSettings = () => jumpToById("builder-page-settings");
-
-  const selectedPage = useMemo(
-    () => pages.find((p) => p.id === selectedId) || null,
-    [pages, selectedId]
-  );
 
   const siteSeoDefaults = useMemo(() => {
     if (siteSettings?.seo) return siteSettings.seo;
@@ -1653,134 +1593,53 @@ const autoProvisionIfEmpty = useCallback(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
-  const applyLabPresetFromServerNow = useCallback(
-    async (cid = companyId) => {
-      try {
-        const res = await wb.getSettings(cid);
-        const preset =
-          res?.data?.layout_lab_preset ||
-          res?.data?.settings?.layout_lab_preset ||
-          res?.data?.website?.layout_lab_preset ||
-          null;
-
-        if (!preset || (typeof preset === "object" && !Object.keys(preset).length))
-          return;
-
-        const computedDefaultGutterX = (() => {
-          if (typeof preset.gutterX === "number") return preset.gutterX;
-          if (preset.density === "compact") return 12;
-          if (preset.density === "comfortable") return 24;
-          return 16;
-        })();
-
-        setEditing((prev) => {
-          if (!prev) return prev;
-
-          const layout = preset.layout ?? prev.layout ?? "boxed";
-          const sectionSpacing =
-            typeof preset.sectionSpacing === "number"
-              ? preset.sectionSpacing
-              : prev?.content?.meta?.sectionSpacing ?? 6;
-
-          const srcSections = Array.isArray(preset.sections)
-            ? preset.sections
-            : [];
-          const mergedSections = (
-            Array.isArray(prev?.content?.sections) ? prev.content.sections : []
-          ).map((sec, i) => {
-            const sp = srcSections[i] || {};
-            const props = { ...(sec.props || {}) };
-            if (sp.cardStyle != null) props.cardStyle = sp.cardStyle;
-            if (sp.imageMode != null) props.imageMode = sp.imageMode;
-            if (sp.maxWidth != null) props.maxWidth = sp.maxWidth;
-            if (sp.align != null) props.align = sp.align;
-            if (sp.columns != null) props.columns = sp.columns;
-            if (sp.variant != null) props.variant = sp.variant;
-
-            if (typeof preset.gutterX === "number") props.gutterX = preset.gutterX;
-            if (typeof preset.bleedLeft === "boolean")
-              props.bleedLeft = preset.bleedLeft;
-            if (typeof preset.bleedRight === "boolean")
-              props.bleedRight = preset.bleedRight;
-
-            if (sec.type === "hero") {
-              if (typeof preset.heroHeight === "number")
-                props.heroHeight = preset.heroHeight;
-              if (typeof preset.safeTop === "boolean")
-                props.safeTop = preset.safeTop;
-              if (preset.contentMaxWidth !== undefined)
-                props.contentMaxWidth = preset.contentMaxWidth;
-            }
-
-            return { ...sec, props };
-          });
-
-          const content = prev.content || {};
-          const meta = content.meta || {};
-          const next = {
-            ...prev,
-            layout,
-            content: {
-              ...content,
-              meta: {
-                ...meta,
-                layout,
-                sectionSpacing,
-                defaultGutterX: computedDefaultGutterX,
-              },
-              sections: mergedSections,
-            },
-          };
-
-          return withLiftedLayout(next);
-        });
-
-        setMsg?.(t("manager.visualBuilder.messages.importedPreset"));
-      } catch (e) {
-        console.error("applyLabPresetFromServerNow failed", e);
-      }
-    },
-    [companyId, setEditing, setMsg]
-  );
-
   /* ----- save & publish (HOISTED) ----- */
-async function onSavePage() {
-  if (!companyId) return;
-  setBusy(true);
-  setErr("");
-  setMsg("");
-  try {
-    const payload = serializePage(ensureSectionIds(editing));
-    if (payload.id) {
-      const r = await wb.updatePage(companyId, payload.id, payload);
-      const saved = ensureSectionIds(
-        withLiftedLayout(normalizePage(r.data || payload))
-      );
-      setPages((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
-      setEditing(saved);
-      setMsg(t("manager.visualBuilder.messages.saved"));
-      if (applyPageStyleToAll) {
-        await applyStyleToAllPagesNow();
+  const onSavePage = useCallback(async () => {
+    if (!companyId) return;
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      const payload = serializePage(ensureSectionIds(editing));
+      if (payload.id) {
+        const r = await wb.updatePage(companyId, payload.id, payload);
+        const saved = ensureSectionIds(
+          withLiftedLayout(normalizePage(r.data || payload))
+        );
+        setPages((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+        setEditing(saved);
+        setMsg(t("manager.visualBuilder.messages.saved"));
+        if (applyPageStyleToAll) {
+          await applyStyleToAllPagesNow();
+        }
+      } else {
+        const r = await wb.createPage(companyId, payload);
+        const created = ensureSectionIds(
+          withLiftedLayout(normalizePage(r.data))
+        );
+        setPages((prev) => [created, ...prev]);
+        setSelectedId(created.id);
+        setEditing(created);
+        setMsg(t("manager.visualBuilder.messages.created"));
       }
-    } else {
-      const r = await wb.createPage(companyId, payload);
-      const created = ensureSectionIds(
-        withLiftedLayout(normalizePage(r.data))
-      );
-      setPages((prev) => [created, ...prev]);
-      setSelectedId(created.id);
-      setEditing(created);
-      setMsg(t("manager.visualBuilder.messages.created"));
+    } catch (e) {
+      console.error(e);
+      setErr(t("manager.visualBuilder.errors.savePage"));
+    } finally {
+      setBusy(false);
     }
-  } catch (e) {
-    console.error(e);
-    setErr(t("manager.visualBuilder.errors.savePage"));
-  } finally {
-    setBusy(false);
-  }
-}
+  }, [
+    applyPageStyleToAll,
+    applyStyleToAllPagesNow,
+    companyId,
+    editing,
+    setEditing,
+    setPages,
+    setSelectedId,
+    t,
+  ]);
 
-  async function importLabSettingsFromServer() {
+  const importLabSettingsFromServer = useCallback(async () => {
     if (!companyId) {
       setErr(t("manager.visualBuilder.errors.signIn"));
       return;
@@ -1801,7 +1660,6 @@ async function onSavePage() {
         return;
       }
 
-      // Page meta
       const layout = preset.layout ?? editing.layout ?? "boxed";
       const sectionSpacing = preset.sectionSpacing ?? 6;
       const defaultGutterX = (() => {
@@ -1824,7 +1682,6 @@ async function onSavePage() {
         });
       });
 
-      // section-level knobs
       setEditing((cur) => {
         const sections = (cur?.content?.sections || []).map((sct) => {
           const props = { ...(sct.props || {}) };
@@ -1852,51 +1709,84 @@ async function onSavePage() {
       setMsg(t("manager.visualBuilder.messages.importedPreset"));
     } catch (e) {
       const detail = e?.response?.data?.message || e?.message || "";
-      setErr(detail ? t("manager.visualBuilder.errors.importPresetDetail", { detail }) : t("manager.visualBuilder.errors.importPreset"));
+      setErr(
+        detail
+          ? t("manager.visualBuilder.errors.importPresetDetail", { detail })
+          : t("manager.visualBuilder.errors.importPreset")
+      );
     }
-  }
+  }, [companyId, editing, setEditing, t]);
+
+  useEffect(() => {
+    try {
+      const currentSearch =
+        location?.search ?? window.location.search ?? "";
+      const qs = new URLSearchParams(currentSearch);
+      if (qs.get("importLabPresetOnce") === "1") {
+        (async () => {
+          try {
+            await importLabSettingsFromServer();
+          } finally {
+            qs.delete("importLabPresetOnce");
+            const nextSearch = qs.toString();
+            const nextPath =
+              location?.pathname ?? window.location.pathname ?? "";
+            const nextUrl = `${nextPath}${nextSearch ? `?${nextSearch}` : ""}`;
+            window.history.replaceState({}, "", nextUrl);
+          }
+        })();
+      }
+    } catch (e) {
+      console.warn("Auto-import from Lab failed:", e?.message || e);
+    }
+  }, [importLabSettingsFromServer, location?.pathname, location?.search]);
 
   // --- Publish (no auto-apply of Lab; save current page then publish) ---
-  // VisualSiteBuilder.js
-async function onPublish() {
-  if (!companyId) return;
-  setBusy(true);
-  setErr("");
-  setMsg("");
+  const onPublish = useCallback(async () => {
+    if (!companyId) return;
+    setBusy(true);
+    setErr("");
+    setMsg("");
 
-  try {
-    // Take the current editor state, ensure section ids + mark as published
-    const snapshot = withLiftedLayout(ensureSectionIds({ ...editing, published: true }));
-    const payload  = serializePage(snapshot);
+    try {
+      const snapshot = withLiftedLayout(
+        ensureSectionIds({ ...editing, published: true })
+      );
+      const payload = serializePage(snapshot);
 
-    if (payload.id) {
-      // Save the latest snapshot before publish
-      await wb.updatePage(companyId, payload.id, payload);
-      // keep local state in sync
-      setEditing(snapshot);
-      setPages((prev) => prev.map((p) => (p.id === payload.id ? snapshot : p)));
-    } else {
-      // brand-new page flow (rare during publish)
-      const r = await wb.createPage(companyId, payload);
-      const created = ensureSectionIds(withLiftedLayout(normalizePage(r.data)));
-      setPages((prev) => [created, ...prev]);
-      setSelectedId(created.id);
-      setEditing(created);
+      if (payload.id) {
+        await wb.updatePage(companyId, payload.id, payload);
+        setEditing(snapshot);
+        setPages((prev) => prev.map((p) => (p.id === payload.id ? snapshot : p)));
+      } else {
+        const r = await wb.createPage(companyId, payload);
+        const created = ensureSectionIds(withLiftedLayout(normalizePage(r.data)));
+        setPages((prev) => [created, ...prev]);
+        setSelectedId(created.id);
+        setEditing(created);
+      }
+
+      const publishRes = await wb.publish(companyId, true);
+      const publishPayload = publishRes?.data || publishRes || {};
+      applyBrandingFromServer(publishPayload);
+      setSiteSettings(publishPayload);
+      const publishedMsg = `${
+        t("manager.visualBuilder.messages.sitePublished") || "Site published"
+      } ✔`;
+      setMsg(publishedMsg);
+    } catch (e) {
+      setErr(
+        t("manager.visualBuilder.errors.publishFailed", {
+          reason:
+            e?.response?.data?.message ||
+            e.message ||
+            t("manager.visualBuilder.errors.unknown"),
+        })
+      );
+    } finally {
+      setBusy(false);
     }
-
-    // Publish the whole site (force)
-    const publishRes = await wb.publish(companyId, true);
-    const publishPayload = publishRes?.data || publishRes || {};
-    applyBrandingFromServer(publishPayload);
-    setSiteSettings(publishPayload);
-    const publishedMsg = `${t("manager.visualBuilder.messages.sitePublished") || "Site published"} ✔`;
-    setMsg(publishedMsg);
-  } catch (e) {
-    setErr(t("manager.visualBuilder.errors.publishFailed", { reason: e?.response?.data?.message || e.message || t("manager.visualBuilder.errors.unknown") }));
-  } finally {
-    setBusy(false);
-  }
-}
+  }, [applyBrandingFromServer, companyId, editing, setEditing, setPages, setSelectedId, setSiteSettings, t]);
 
 
   /* ----- Keyboard shortcuts ----- */
@@ -1954,7 +1844,7 @@ async function onPublish() {
           console.error(e);
         }
       }, 800),
-    [companyId, autosaveEnabled]
+    [companyId, autosaveEnabled, t]
   );
   useEffect(() => {
     if (!autosaveEnabled) return;
@@ -2015,19 +1905,6 @@ async function onPublish() {
     };
   }, [setBlockProp]);
 
-  const beginSpaceDrag = (i, e) => {
-    e.preventDefault();
-    const metaSpace = editing?.content?.meta?.sectionSpacing ?? 6;
-    const startVal =
-      safeSections(editing)[i]?.props?.spaceAfter ?? metaSpace;
-    dragRef.current = {
-      active: true,
-      index: i,
-      startY: e.clientY,
-      startVal,
-    };
-    document.body.style.cursor = "ns-resize";
-  };
   const moveBlock = (idx, dir) => {
   const delta = dir === "up" ? -1 : dir === "down" ? 1 : Number(dir) || 0;
 
@@ -3022,8 +2899,11 @@ const CanvasColumn = (
     >
       <Box
         sx={{
-          maxHeight: fullPreview ? "none" : "60vh",
-          overflow: fullPreview ? "visible" : "auto",
+          maxHeight:
+            fullPreview || canvasMaxHeight === "none" ? "none" : canvasMaxHeight,
+          overflow:
+            fullPreview || canvasMaxHeight === "none" ? "visible" : "auto",
+          transition: "max-height 0.2s ease",
           borderRadius: 1,
           border: "1px solid",
           borderColor: "divider",

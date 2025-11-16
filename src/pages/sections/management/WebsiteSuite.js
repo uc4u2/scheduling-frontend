@@ -24,7 +24,7 @@ import ManagementFrame from "../../../components/ui/ManagementFrame";
 const TAB_KEYS = ["manager", "editor", "templates", "builder"];
 
 export default function WebsiteSuite() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [tab, setTab] = useState(0);
   const [open, setOpen] = useState(false);
   const [full, setFull] = useState(false);
@@ -52,7 +52,7 @@ export default function WebsiteSuite() {
         dialogTitle: t("manager.websiteSuite.tabs.builder.dialogTitle"),
       },
     ],
-    [i18n.language]
+    [t]
   );
 
   const activeKey = tabConfig[tab]?.key ?? TAB_KEYS[0];
@@ -115,4 +115,3 @@ export default function WebsiteSuite() {
     </ManagementFrame>
   );
 }
-

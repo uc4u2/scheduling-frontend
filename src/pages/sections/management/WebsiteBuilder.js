@@ -115,11 +115,6 @@ export default function WebsiteBuilder() {
   const currentThemeId = settings?.theme?.id || settings?.theme_id || "";
   const isLive = Boolean(settings?.is_live);
 
-  const selectedPage = useMemo(
-    () => pages.find((p) => p.id === selectedId) || null,
-    [pages, selectedId]
-  );
-
   useEffect(() => {
     if (!companyId) return;
     loadAll(companyId);

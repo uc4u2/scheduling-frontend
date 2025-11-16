@@ -329,12 +329,16 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
     if (!canPublish) return alert(t("management.website.alerts.pickTheme"));
     setErr("");
     setMsg("");
+    setPublishing(true);
     try {
       const res = await wb.publish(companyId, true);
       setSettings((s) => ({ ...(s || {}), is_live: !!res.data?.is_live }));
       setMsg(t("management.website.messages.sitePublished"));
-    } catch {
+    } catch (error) {
+      console.error("Publish failed", error);
       setErr(t("management.website.errors.publish"));
+    } finally {
+      setPublishing(false);
     }
   };
 
