@@ -202,6 +202,74 @@ export const invitationQuestionnaires = {
       .then((r) => r.data),
 };
 
+/* ------------------------------ Xero Integration ------------------------------ */
+export const xeroIntegration = {
+  status: (config = {}) => api.get("/integrations/xero/status", config).then((r) => r.data),
+  connect: (config = {}) => api.post("/integrations/xero/connect", {}, config).then((r) => r.data),
+  disconnect: (config = {}) => api.post("/integrations/xero/disconnect", {}, config).then((r) => r.data),
+  accounts: (config = {}) => api.get("/integrations/xero/accounts", config).then((r) => r.data),
+  presets: (config = {}) => api.get("/integrations/xero/presets", config).then((r) => r.data),
+  saveSettings: (payload, config = {}) =>
+    api.post("/integrations/xero/settings", payload, config).then((r) => r.data),
+  listAccountMap: (config = {}) => api.get("/integrations/xero/account-map", config).then((r) => r.data),
+  upsertAccountMap: (payload, config = {}) =>
+    api.post("/integrations/xero/account-map", payload, config).then((r) => r.data),
+  deleteAccountMap: (id, config = {}) =>
+    api.delete(`/integrations/xero/account-map/${id}`, config).then((r) => r.data),
+  listTrackingMap: (config = {}) => api.get("/integrations/xero/tracking-map", config).then((r) => r.data),
+  upsertTrackingMap: (payload, config = {}) =>
+    api.post("/integrations/xero/tracking-map", payload, config).then((r) => r.data),
+  deleteTrackingMap: (id, config = {}) =>
+    api.delete(`/integrations/xero/tracking-map/${id}`, config).then((r) => r.data),
+  validate: (config = {}) => api.get("/integrations/xero/validate", config).then((r) => r.data),
+  preview: (payload, config = {}) =>
+    api.post("/integrations/xero/export-preview", payload, config).then((r) => r.data),
+  exportPayroll: (payload, config = {}) =>
+    api.post("/integrations/xero/export-payroll", payload, config).then((r) => r.data),
+  exportRevenue: (payload, config = {}) =>
+    api.post("/integrations/xero/export-revenue", payload, config).then((r) => r.data),
+};
+
+/* ------------------------------ QuickBooks Integration ------------------------------ */
+export const quickbooksIntegration = {
+  status: (config = {}) => api.get("/integrations/quickbooks/status", config).then((r) => r.data),
+  connect: (config = {}) => api.post("/integrations/quickbooks/connect", {}, config).then((r) => r.data),
+  disconnect: (config = {}) =>
+    api.post("/integrations/quickbooks/disconnect", {}, config).then((r) => r.data),
+  accounts: (config = {}) => api.get("/integrations/quickbooks/accounts", config).then((r) => r.data),
+  presets: (config = {}) => api.get("/integrations/quickbooks/presets", config).then((r) => r.data),
+  saveSettings: (payload, config = {}) =>
+    api.post("/integrations/quickbooks/settings", payload, config).then((r) => r.data),
+  listAccountMap: (config = {}) =>
+    api.get("/integrations/quickbooks/account-map", config).then((r) => r.data),
+  upsertAccountMap: (payload, config = {}) =>
+    api.post("/integrations/quickbooks/account-map", payload, config).then((r) => r.data),
+  deleteAccountMap: (id, config = {}) =>
+    api.delete(`/integrations/quickbooks/account-map/${id}`, config).then((r) => r.data),
+  listTrackingMap: (config = {}) =>
+    api.get("/integrations/quickbooks/tracking-map", config).then((r) => r.data),
+  upsertTrackingMap: (payload, config = {}) =>
+    api.post("/integrations/quickbooks/tracking-map", payload, config).then((r) => r.data),
+  deleteTrackingMap: (id, config = {}) =>
+    api.delete(`/integrations/quickbooks/tracking-map/${id}`, config).then((r) => r.data),
+  validate: (config = {}) => api.get("/integrations/quickbooks/validate", config).then((r) => r.data),
+  preview: (payload, config = {}) =>
+    api.post("/integrations/quickbooks/export-preview", payload, config).then((r) => r.data),
+  exportPayroll: (payload, config = {}) =>
+    api.post("/integrations/quickbooks/export-payroll", payload, config).then((r) => r.data),
+  exportRevenue: (payload, config = {}) =>
+    api.post("/integrations/quickbooks/export-revenue", payload, config).then((r) => r.data),
+  exportInvoices: (payload, config = {}) =>
+    api.post("/integrations/quickbooks/export-invoices", payload, config).then((r) => r.data),
+};
+
+export const integrationActivity = {
+  list: (params = {}, config = {}) =>
+    api
+      .get("/integrations/activity", { params, ...config })
+      .then((r) => r.data),
+};
+
 /* ------------------------------ Questionnaire Uploads ------------------------------ */
 export const questionnaireUploadsApi = {
   reserveRecruiter: (payload, config = {}) =>

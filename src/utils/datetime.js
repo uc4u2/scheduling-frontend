@@ -33,3 +33,20 @@ export const formatDate = (d) =>
  */
 export const formatTime = (d) =>
   `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+/**
+ * Format an ISO string into the specified timezone.
+ * Falls back to the browser locale string if Luxon fails.
+ */
+export const formatDateTimeInTz = (isoString, tz, opts = DateTime.DATETIME_MED_WITH_SECONDS) => {
+  if (!isoString) return "";
+  try {
+    const zoned = DateTime.fromISO(isoString, { zone: "utc" }).setZone(tz || "local");
+    if (!zoned.isValid) {
+      return new Date(isoString).toLocaleString();
+    }
+    return zoned.toLocaleString(opts);
+  } catch {
+    return new Date(isoString).toLocaleString();
+  }
+};

@@ -14,6 +14,8 @@ import {
   IconButton,
   InputLabel,
   MenuItem,
+  Paper,
+  Portal,
   Select,
   Stack,
   Slider,
@@ -601,6 +603,13 @@ function ColumnsEditor({ columns, onChange }) {
   );
 }
 
+function deslug(value) {
+  return (value || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function HeaderPreview({ header, theme, onLogoDragStart, companySlug = "Preview brand" }) {
   const bg = header.bg || theme.header?.background || "#0f172a";
   const textColor = header.text || theme.header?.text || "#ffffff";
@@ -635,7 +644,7 @@ function HeaderPreview({ header, theme, onLogoDragStart, companySlug = "Preview 
   );
   const showBrandText = header.show_brand_text !== false;
   const brandLabel = showBrandText
-    ? header.text || companySlug || "Brand headline"
+    ? header.text || deslug(companySlug) || "Brand headline"
     : "";
   const forcedInlinePlacement = header.social_position === "after" ? "after" : null;
   const inlinePlacement = inlineSocial
@@ -859,6 +868,8 @@ export default function WebsiteBrandingCard({
   onChangeNavOverrides,
   pagesMeta = [],
   onRequestPagesJump,
+  floatingSaveVisible = true,
+  floatingSavePlacement = "bottom-right",
 }) {
   const header = useMemo(
     () => normalizeHeaderConfig(headerValue || defaultHeaderConfig()),
@@ -1463,11 +1474,71 @@ export default function WebsiteBrandingCard({
           ))}
         </Alert>
       )}
-      <Box>
-        <Button variant="contained" disabled={saving || uploading} onClick={handleSave}>
-          {saving ? "Saving…" : "Save branding draft"}
-        </Button>
-      </Box>
+      <Box sx={{ height: 80 }} />
+
+      {floatingSaveVisible && (
+        <Portal>
+          <Box
+            sx={{
+              position: "fixed",
+              zIndex: (theme) => theme.zIndex.tooltip + 1,
+              pointerEvents: "none",
+              ...(floatingSavePlacement === "top-left"
+                ? {
+                    top: { xs: 96, md: 104 },
+                    left: { xs: 16, md: 32 },
+                  }
+                : floatingSavePlacement === "top-right"
+                ? {
+                    top: { xs: 96, md: 104 },
+                    right: { xs: 16, md: 32 },
+                  }
+                : floatingSavePlacement === "bottom-left"
+                ? {
+                    bottom: { xs: 88, md: 48 },
+                    left: { xs: 16, md: 32 },
+                  }
+                : {
+                    bottom: { xs: 88, md: 48 },
+                    right: { xs: 16, md: 40 },
+                  }),
+            }}
+          >
+            <Paper
+              elevation={6}
+              sx={{
+                px: 2,
+                py: 1,
+                borderRadius: 999,
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                pointerEvents: "auto",
+                boxShadow: "0 10px 25px rgba(15,23,42,0.2)",
+                backdropFilter: "blur(12px)",
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? theme.palette.background.paper
+                    : theme.palette.background.default,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{ display: { xs: "none", md: "block" }, fontWeight: 600 }}
+              >
+                {saving ? "Saving…" : "Save branding draft"}
+              </Typography>
+              <Button
+                variant="contained"
+                disabled={saving || uploading}
+                onClick={handleSave}
+              >
+                {saving ? "Saving…" : "Save now"}
+              </Button>
+            </Paper>
+          </Box>
+        </Portal>
+      )}
     </Stack>
   );
 }

@@ -22,7 +22,12 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Chip,
+  Stack,
+  Tooltip,
 } from "@mui/material";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import { xeroIntegration, quickbooksIntegration } from "../../utils/api";
 
 
 
@@ -41,39 +46,35 @@ const blobToBase64 = (blob) =>
   });
 
 const formatPercent = (val) => {
-  const num = Number(val);
-  if (isNaN(num)) return "0.000%";
-  return `${num.toFixed(3)}%`;
+  const numVal = Number(val);
+  if (Number.isNaN(numVal)) return "0.000%";
+  return `${numVal.toFixed(3)}%`;
 };
 
 const formatCurrency = (val) => {
-  const num = Number(val);
-  return isNaN(num) ? "$0.00" : `$${num.toFixed(2)}`;
+  const numVal = Number(val);
+  return Number.isNaN(numVal) ? "$0.00" : `$${numVal.toFixed(2)}`;
 };
 
-function calculate_gross_with_overtime(
-  hoursWorked,
-  hourlyRate,
-  region = "ca",
-  province = "ON"
-) {
+function calculate_gross_with_overtime(hoursWorked, hourlyRate, region = "ca", province = "ON") {
+  const hrs = Number(hoursWorked || 0);
+  const rate = Number(hourlyRate || 0);
   let overtimeThreshold = 40;
   if (region === "ca" && province !== "QC") overtimeThreshold = 44;
-  if (region === "ca" && (province === "QC" || province === "MB"))
-    overtimeThreshold = 40;
+  if (region === "ca" && (province === "QC" || province === "MB")) overtimeThreshold = 40;
 
-  const regularHours = Math.min(hoursWorked, overtimeThreshold);
-  const overtimeHours = Math.max(0, hoursWorked - overtimeThreshold);
-  const regularPay = regularHours * hourlyRate;
-  const overtimePay = overtimeHours * hourlyRate * 1.5;
-  const grossPay = +(regularPay + overtimePay).toFixed(2);
+  const regularHours = Math.min(hrs, overtimeThreshold);
+  const overtimeHours = Math.max(0, hrs - overtimeThreshold);
+  const regularPay = regularHours * rate;
+  const overtimePay = overtimeHours * rate * 1.5;
+  const grossPay = regularPay + overtimePay;
 
   return {
     regularHours,
     overtimeHours,
     regularPay: +regularPay.toFixed(2),
     overtimePay: +overtimePay.toFixed(2),
-    grossPay,
+    grossPay: +grossPay.toFixed(2),
   };
 }
 
@@ -117,16 +118,26 @@ function recalcNetPay(data) {
     overtimeHours,
   } = calculate_gross_with_overtime(hours_worked || 0, rate || 0, region, province);
 
-  const vacationPay = +(grossBeforeVacation * (vacation_percent / 100)).toFixed(2);
+  const vacationPay = +(
+    Number(grossBeforeVacation || 0) *
+    (Number(vacation_percent || 0) / 100)
+  ).toFixed(2);
 
   const extraEarnings =
-    bonus + tip + commission + parental_insurance + travel_allowance + family_bonus + tax_credit + (data.parental_top_up || 0);
+    Number(bonus || 0) +
+    Number(tip || 0) +
+    Number(commission || 0) +
+    Number(parental_insurance || 0) +
+    Number(travel_allowance || 0) +
+    Number(family_bonus || 0) +
+    Number(tax_credit || 0) +
+    Number(data.parental_top_up || 0);
 
-  const gross = +(
-    grossBeforeVacation +
-    (include_vacation_in_gross ? vacationPay : 0) +
-    extraEarnings
-  ).toFixed(2);
+  const grossBase =
+    Number(grossBeforeVacation || 0) +
+    Number(include_vacation_in_gross ? vacationPay : 0) +
+    Number(extraEarnings || 0);
+  const gross = Number(grossBase.toFixed(2));
 
   const deductionItems = [
     federal_tax_amount,
@@ -170,6 +181,12 @@ const fetchPayrollPreview = async (payload, token) => {
   return res.data;
 };
 
+const getIntegrationStatusChip = (status) => {
+  if (status === "success") return { color: "success", label: "Synced" };
+  if (status === "error") return { color: "error", label: "Error" };
+  return { color: "default", label: status === "pending" ? "Pending" : status || "Pending" };
+};
+
 /* ──────────────────────────────────────────────────────────
    Component
    ────────────────────────────────────────────────────────── */
@@ -191,6 +208,47 @@ export default function PayrollPreview({
 }) {
   const isCanada = region === "ca";
   const token = localStorage.getItem("token");
+
+  const [xeroStatus, setXeroStatus] = useState(null);
+  const [xeroValidation, setXeroValidation] = useState(null);
+  const [xeroSyncing, setXeroSyncing] = useState(false);
+  const [quickbooksStatus, setQuickbooksStatus] = useState(null);
+  const [quickbooksValidation, setQuickbooksValidation] = useState(null);
+  const [quickbooksSyncing, setQuickbooksSyncing] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const statusData = await xeroIntegration.status();
+        if (active) setXeroStatus(statusData);
+      } catch {
+        if (active) setXeroStatus(null);
+      }
+      try {
+        const validationData = await xeroIntegration.validate();
+        if (active) setXeroValidation(validationData);
+      } catch {
+        if (active) setXeroValidation(null);
+      }
+      try {
+        const qbStatusData = await quickbooksIntegration.status();
+        if (active) setQuickbooksStatus(qbStatusData);
+      } catch {
+        if (active) setQuickbooksStatus(null);
+      }
+      try {
+        const qbValidationData = await quickbooksIntegration.validate();
+        if (active) setQuickbooksValidation(qbValidationData);
+      } catch {
+        if (active) setQuickbooksValidation(null);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   /* Local state */
   const [calculatedNetPay, setCalculatedNetPay] = useState(0);
@@ -416,6 +474,81 @@ const handleRecalculate = () => {
     });
 };
 
+  const handleSyncToXero = async () => {
+    if (!payroll?.id) return;
+    setXeroSyncing(true);
+    try {
+      const res = await xeroIntegration.exportPayroll({ payroll_id: payroll.id });
+      setSnackbar({ open: true, message: "Payroll synced to Xero", severity: "success" });
+      setPayroll((prev) =>
+        prev
+          ? {
+              ...prev,
+              xero_export_status: "success",
+              xero_journal_id: res?.xero_journal_id || prev.xero_journal_id,
+            }
+          : prev
+      );
+      try {
+        const [latestStatus, latestValidation] = await Promise.all([
+          xeroIntegration.status().catch(() => null),
+          xeroIntegration.validate().catch(() => null),
+        ]);
+        if (latestStatus) setXeroStatus(latestStatus);
+        if (latestValidation) setXeroValidation(latestValidation);
+      } catch {}
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message:
+          error?.displayMessage ||
+          error?.response?.data?.error ||
+          "Failed to sync payroll to Xero",
+        severity: "error",
+      });
+    } finally {
+      setXeroSyncing(false);
+    }
+  };
+
+  const handleSyncToQuickBooks = async () => {
+    if (!payroll?.id) return;
+    setQuickbooksSyncing(true);
+    try {
+      const res = await quickbooksIntegration.exportPayroll({ payroll_id: payroll.id });
+      setSnackbar({ open: true, message: "Payroll synced to QuickBooks", severity: "success" });
+      setPayroll((prev) =>
+        prev
+          ? {
+              ...prev,
+              qb_export_status: "success",
+              qb_journal_id: res?.qb_journal_id || prev.qb_journal_id,
+              qb_export_error: null,
+            }
+          : prev
+      );
+      try {
+        const [latestStatus, latestValidation] = await Promise.all([
+          quickbooksIntegration.status().catch(() => null),
+          quickbooksIntegration.validate().catch(() => null),
+        ]);
+        if (latestStatus) setQuickbooksStatus(latestStatus);
+        if (latestValidation) setQuickbooksValidation(latestValidation);
+      } catch {}
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message:
+          error?.displayMessage ||
+          error?.response?.data?.error ||
+          "Failed to sync payroll to QuickBooks",
+        severity: "error",
+      });
+    } finally {
+      setQuickbooksSyncing(false);
+    }
+  };
+
 /* Helper for deduction rows (kept unchanged) */
 
   const deductionField = (label, key, dynamicPercentKey = null) => (
@@ -444,6 +577,32 @@ const handleRecalculate = () => {
       </Grid>
     </>
   );
+
+  const xeroConnected = Boolean(xeroStatus?.connected);
+  const xeroMappingReady = Boolean(xeroValidation?.payroll?.ok);
+  const xeroChipMeta = getIntegrationStatusChip(payroll?.xero_export_status || "pending");
+  const xeroSyncDisabled =
+    xeroSyncing || !xeroConnected || !xeroMappingReady || !payroll?.id;
+  const xeroSyncTooltip = !xeroConnected
+    ? "Connect Xero in Settings"
+    : !xeroMappingReady
+    ? "Complete payroll mapping in Settings → Xero"
+    : !payroll?.id
+    ? "Save this payroll before syncing"
+    : "";
+
+  const quickbooksConnected = Boolean(quickbooksStatus?.connected);
+  const quickbooksMappingReady = Boolean(quickbooksValidation?.payroll?.ok);
+  const quickbooksChipMeta = getIntegrationStatusChip(payroll?.qb_export_status || "pending");
+  const quickbooksSyncDisabled =
+    quickbooksSyncing || !quickbooksConnected || !quickbooksMappingReady || !payroll?.id;
+  const quickbooksSyncTooltip = !quickbooksConnected
+    ? "Connect QuickBooks in Settings"
+    : !quickbooksMappingReady
+    ? "Complete payroll mapping in Settings → QuickBooks"
+    : !payroll?.id
+    ? "Save this payroll before syncing"
+    : "";
 
   /* ────────────────────────────────────────────────
      ⬇️ UI
@@ -781,41 +940,135 @@ const handleRecalculate = () => {
       {/* --------------------------------------------------
          Action buttons
 -------------------------------------------------- */}
-<Divider sx={{ my: 2 }} />
+      <Divider sx={{ my: 2 }} />
 
-<DownloadPayrollButton
-  recruiterId={payroll.recruiter_id}
-  payroll={payroll}                    /* forward full object → bonuses, overrides … */
-  month={month}
-  region={payroll.region || region || "ca"}
-  startDate={payroll.start_date}
-  endDate={payroll.end_date}
-  token={token}
-  selectedColumns={[
-    "regular_hours",
-    "overtime_hours",
-    "bonus",
-    "commission",
-    "tip",
-    "parental_top_up",
-    "parental_leave_hours",
-    "on_parental_leave",
-    "gross_pay",
-    "net_pay",
-    "federal_tax_amount",
-    "provincial_tax_amount",
-  ]}
-/>
+      <Stack spacing={1} sx={{ mb: 2 }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignItems={{ xs: "flex-start", md: "center" }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="subtitle2">Xero</Typography>
+            <Chip size="small" color={xeroChipMeta.color} label={xeroChipMeta.label} />
+            {payroll?.xero_journal_id && (
+              <Typography variant="body2" color="text.secondary">
+                #{payroll.xero_journal_id}
+              </Typography>
+            )}
+          </Stack>
+          <Box flexGrow={1} />
+          <Tooltip
+            title={xeroSyncTooltip}
+            disableHoverListener={!xeroSyncDisabled || !xeroSyncTooltip}
+          >
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={xeroSyncing ? <CircularProgress size={18} /> : <CloudUploadIcon />}
+                disabled={xeroSyncDisabled}
+                onClick={handleSyncToXero}
+              >
+                Sync to Xero
+              </Button>
+            </span>
+          </Tooltip>
+        </Stack>
+        {payroll?.xero_export_error && (
+          <Alert severity="warning">{payroll.xero_export_error}</Alert>
+        )}
+        {!xeroConnected && (
+          <Alert severity="info">
+            Connect Xero from Settings → Xero to enable payroll exports.
+          </Alert>
+        )}
+        {xeroConnected && !xeroMappingReady && (
+          <Alert severity="warning">
+            Complete the payroll account mapping in Settings → Xero before syncing.
+          </Alert>
+        )}
+      </Stack>
 
-<Button
-  variant="contained"
-  color="primary"
-  sx={{ ml: 2 }}
-  disabled={savingFinalized}
-  onClick={saveFinalizedPayroll}
->
-  {savingFinalized ? <CircularProgress size={18} /> : "Finalize & Save"}
-</Button>
+      <Stack spacing={1} sx={{ mb: 2 }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignItems={{ xs: "flex-start", md: "center" }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="subtitle2">QuickBooks</Typography>
+            <Chip size="small" color={quickbooksChipMeta.color} label={quickbooksChipMeta.label} />
+            {payroll?.qb_journal_id && (
+              <Typography variant="body2" color="text.secondary">
+                #{payroll.qb_journal_id}
+              </Typography>
+            )}
+          </Stack>
+          <Box flexGrow={1} />
+          <Tooltip
+            title={quickbooksSyncTooltip}
+            disableHoverListener={!quickbooksSyncDisabled || !quickbooksSyncTooltip}
+          >
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={quickbooksSyncing ? <CircularProgress size={18} /> : <CloudUploadIcon />}
+                disabled={quickbooksSyncDisabled}
+                onClick={handleSyncToQuickBooks}
+              >
+                Sync to QuickBooks
+              </Button>
+            </span>
+          </Tooltip>
+        </Stack>
+        {payroll?.qb_export_error && (
+          <Alert severity="warning">{payroll.qb_export_error}</Alert>
+        )}
+        {!quickbooksConnected && (
+          <Alert severity="info">
+            Connect QuickBooks from Settings → QuickBooks to enable payroll exports.
+          </Alert>
+        )}
+        {quickbooksConnected && !quickbooksMappingReady && (
+          <Alert severity="warning">
+            Complete the payroll account mapping in Settings → QuickBooks before syncing.
+          </Alert>
+        )}
+      </Stack>
+
+      <DownloadPayrollButton
+        recruiterId={payroll.recruiter_id}
+        payroll={payroll}
+        month={month}
+        region={payroll.region || region || "ca"}
+        startDate={payroll.start_date}
+        endDate={payroll.end_date}
+        token={token}
+        selectedColumns={[
+          "regular_hours",
+          "overtime_hours",
+          "bonus",
+          "commission",
+          "tip",
+          "parental_top_up",
+          "parental_leave_hours",
+          "on_parental_leave",
+          "gross_pay",
+          "net_pay",
+          "federal_tax_amount",
+          "provincial_tax_amount",
+        ]}
+      />
+
+      <Button
+        variant="contained"
+        color="primary"
+        sx={{ ml: 2 }}
+        disabled={savingFinalized}
+        onClick={saveFinalizedPayroll}
+      >
+        {savingFinalized ? <CircularProgress size={18} /> : "Finalize & Save"}
+      </Button>
 
 {/* Template save / load */}
 <Box sx={{ display: "flex", gap: 1, my: 2 }}>
@@ -908,5 +1161,3 @@ const handleRecalculate = () => {
     </Box>
   );
 }
-
-

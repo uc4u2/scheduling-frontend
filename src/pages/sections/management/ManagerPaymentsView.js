@@ -1527,6 +1527,32 @@ export default function ManagerPaymentsView({ connect }) {
                               Amount: {money(p.amount, p.currency)} | Provider:{" "}
                               {p.provider || "N/A"}
                             </Typography>
+                            {p.qb_export_status && (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ display: "block" }}
+                              >
+                                {(() => {
+                                  const docLabel = p.qb_doc_type
+                                    ? `${p.qb_doc_type.charAt(0).toUpperCase()}${p.qb_doc_type.slice(1)}`
+                                    : "Document";
+                                  if (p.qb_export_status === "success") {
+                                    return `QuickBooks: Synced ${docLabel}${
+                                      p.qb_doc_id ? ` #${p.qb_doc_id}` : ""
+                                    }`;
+                                  }
+                                  let statusLabel = `QuickBooks: ${p.qb_export_status}`;
+                                  if (p.qb_doc_id) {
+                                    statusLabel += ` (${docLabel} #${p.qb_doc_id})`;
+                                  }
+                                  if (p.qb_export_error) {
+                                    statusLabel += ` – ${p.qb_export_error}`;
+                                  }
+                                  return statusLabel;
+                                })()}
+                              </Typography>
+                            )}
                             {(p.created_at || p.timestamp) && (
                               <Typography
                                 variant="caption"
@@ -2082,4 +2108,3 @@ export default function ManagerPaymentsView({ connect }) {
     </>
   );
 }
-

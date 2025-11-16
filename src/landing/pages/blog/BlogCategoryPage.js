@@ -141,7 +141,6 @@ const BlogCategoryPage = () => {
         title={config.meta.title}
         description={config.meta.description}
         canonical={config.meta.canonical}
-        keywords={config.meta.keywords}
         og={{
           title: config.meta.title,
           description: config.meta.description,

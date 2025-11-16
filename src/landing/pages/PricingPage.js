@@ -406,7 +406,6 @@ const PricingPage = () => {
         title={metaContent?.title || DEFAULT_META.title}
         description={metaContent?.description || DEFAULT_META.description}
         canonical={metaContent?.canonical || DEFAULT_META.canonical}
-        keywords={metaContent?.keywords || DEFAULT_META.keywords}
         og={{
           title: metaOg.title || DEFAULT_META.og.title,
           description: metaOg.description || DEFAULT_META.og.description,

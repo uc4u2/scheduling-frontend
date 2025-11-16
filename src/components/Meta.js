@@ -29,15 +29,7 @@ const resolveCanonical = (explicit) => {
   return `${origin}${pathname || ""}${search || ""}`.replace(/\/+$/, pathname ? "" : "/");
 };
 
-const Meta = ({
-  title,
-  description,
-  canonical,
-  keywords,
-  robots,
-  og = {},
-  twitter = {},
-}) => {
+const Meta = ({ title, description, canonical, robots, og = {}, twitter = {} }) => {
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
 
@@ -47,7 +39,6 @@ const Meta = ({
 
     if (title) document.title = title;
     if (resolvedDescription) setMetaTag("name", "description", resolvedDescription);
-    if (keywords) setMetaTag("name", "keywords", keywords);
     if (robots) setMetaTag("name", "robots", robots);
 
     let previousCanonicalHref = null;
@@ -90,7 +81,6 @@ const Meta = ({
     return () => {
       document.title = previousTitle;
       if (resolvedDescription) removeMetaTag("name", "description");
-      if (keywords) removeMetaTag("name", "keywords");
       if (robots) removeMetaTag("name", "robots");
 
       if (resolvedCanonical) {
@@ -109,7 +99,7 @@ const Meta = ({
       ogEntries.forEach(([key]) => removeMetaTag("property", `og:${key}`));
       twitterEntries.forEach(([key]) => removeMetaTag("name", `twitter:${key}`));
     };
-  }, [title, description, canonical, keywords, robots, og, twitter]);
+  }, [title, description, canonical, robots, og, twitter]);
 
   return null;
 };

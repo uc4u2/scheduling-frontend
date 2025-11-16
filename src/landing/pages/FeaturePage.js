@@ -274,7 +274,6 @@ const FeaturePage = () => {
         title={metaCopy.title}
         description={metaCopy.description}
         canonical="https://www.schedulaa.com/features"
-        keywords="booking software, payroll SaaS, website builder, small business platform, scheduling software"
         og={{
           title: metaCopy.ogTitle || metaCopy.title,
           description: metaCopy.ogDescription || metaCopy.description,

@@ -255,68 +255,105 @@ useEffect(() => {
     setLoading(true);
   
     try {
-      const genRes = await axios.post(`${API_URL}/automation/payroll/generate`, {
+      const genRes = await axios.post(
+        `${API_URL}/automation/payroll/generate`,
+        {
+          recruiter_id: selectedRecruiter,
+          region,
+          start_date: startDate,
+          end_date: endDate,
+          pay_frequency: payFrequency,
+          province: payroll?.province || "ON",
+          state: payroll?.state || "CA",
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      const generatedRecord = genRes.data?.payroll || genRes.data || {};
+
+      // fallback-safe merge of required fields (ensure we keep backend id/flags)
+      const base = {
+        ...generatedRecord,
+        id: generatedRecord.id ?? generatedRecord.payroll_id,
+        payroll_id: generatedRecord.id ?? generatedRecord.payroll_id,
         recruiter_id: selectedRecruiter,
+
+        /* names */
+        employee_name:
+          generatedRecord.recruiter_name ||
+          generatedRecord.employee_name ||
+          generatedRecord.name ||
+          "",
+        name:
+          generatedRecord.recruiter_name ||
+          generatedRecord.employee_name ||
+          generatedRecord.name ||
+          "",
+
+        /* where & when */
         region,
+        province: payroll?.province || generatedRecord.province || "ON",
+        state: payroll?.state || generatedRecord.state || "CA",
         start_date: startDate,
         end_date: endDate,
         pay_frequency: payFrequency,
-        province: payroll?.province || "ON",
-        state: payroll?.state || "CA",
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-  
-      // fallback-safe merge of required fields
-const base = {
-  ...genRes.data,                        // raw numbers the backend just gave us
-  recruiter_id: selectedRecruiter,
+        month,
 
-  /* names */
-  employee_name: genRes.data.recruiter_name || genRes.data.name || "",
-  name:          genRes.data.recruiter_name || genRes.data.name || "",
+        /* basics */
+        rate: payroll?.rate ?? generatedRecord.rate ?? 0,
+        hours_worked: payroll?.hours_worked ?? generatedRecord.hours_worked ?? 0,
+        vacation_percent:
+          payroll?.vacation_percent ??
+          generatedRecord.vacation_percent ??
+          4,
+        include_vacation_in_gross:
+          payroll?.include_vacation_in_gross ??
+          generatedRecord.include_vacation_in_gross ??
+          true,
 
-  /* where & when */
-  region,
-  province: payroll?.province || genRes.data.province || "ON",
-  state:    payroll?.state    || genRes.data.state    || "CA",
-  start_date: startDate,
-  end_date:   endDate,
-  pay_frequency: payFrequency,
-  month,                                 // still useful for YTD look-ups
+        /* ➕ extra earnings */
+        bonus: payroll?.bonus ?? generatedRecord.bonus ?? 0,
+        attendance_bonus:
+          payroll?.attendance_bonus ?? generatedRecord.attendance_bonus ?? 0,
+        performance_bonus:
+          payroll?.performance_bonus ?? generatedRecord.performance_bonus ?? 0,
+        commission: payroll?.commission ?? generatedRecord.commission ?? 0,
+        tip: payroll?.tip ?? generatedRecord.tip ?? 0,
+        parental_insurance:
+          payroll?.parental_insurance ?? generatedRecord.parental_insurance ?? 0,
+        travel_allowance:
+          payroll?.travel_allowance ?? generatedRecord.travel_allowance ?? 0,
+        family_bonus:
+          payroll?.family_bonus ?? generatedRecord.family_bonus ?? 0,
+        tax_credit: payroll?.tax_credit ?? generatedRecord.tax_credit ?? 0,
 
-  /* basics */
-  rate:          payroll?.rate          ?? genRes.data.rate          ?? 0,
-  hours_worked:  payroll?.hours_worked  ?? genRes.data.hours_worked  ?? 0,
-  vacation_percent:          payroll?.vacation_percent          ?? 4,
-  include_vacation_in_gross: payroll?.include_vacation_in_gross ?? true,
-
-  /* ➕ extra earnings */
-  bonus:              payroll?.bonus              ?? 0,
-  attendance_bonus:   payroll?.attendance_bonus   ?? 0,
-  performance_bonus:  payroll?.performance_bonus  ?? 0,
-  commission:         payroll?.commission         ?? 0,
-  tip:                payroll?.tip                ?? 0,
-  parental_insurance: payroll?.parental_insurance ?? 0,
-  travel_allowance:   payroll?.travel_allowance   ?? 0,
-  family_bonus:       payroll?.family_bonus       ?? 0,
-  tax_credit:         payroll?.tax_credit         ?? 0,
-
-  /* ➖ insurance & retirement overrides (deduction side) */
-  medical_insurance:  payroll?.medical_insurance  ?? 0,
-  dental_insurance:   payroll?.dental_insurance   ?? 0,
-  life_insurance:     payroll?.life_insurance     ?? 0,
-  retirement_amount:  payroll?.retirement_amount  ?? 0,  // RRSP / 401k employee share
-  deduction:          payroll?.deduction          ?? 0,  // single “misc” line
-};
+        /* ➖ insurance & retirement overrides (deduction side) */
+        medical_insurance:
+          payroll?.medical_insurance ?? generatedRecord.medical_insurance ?? 0,
+        dental_insurance:
+          payroll?.dental_insurance ?? generatedRecord.dental_insurance ?? 0,
+        life_insurance:
+          payroll?.life_insurance ?? generatedRecord.life_insurance ?? 0,
+        retirement_amount:
+          payroll?.retirement_amount ?? generatedRecord.retirement_amount ?? 0,
+        deduction: payroll?.deduction ?? generatedRecord.deduction ?? 0,
+      };
 
       const calcRes = await axios.post(`${API_URL}/payroll/calculate`, base, {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
-      const { flags = {}, ...payrollData } = calcRes.data;
-  
-      setPayroll({ ...base, ...payrollData, flags });
+
+      const { flags = {}, ...payrollData } = calcRes.data || {};
+
+      setPayroll({
+        ...base,
+        ...payrollData,
+        id: base.id,
+        payroll_id: base.payroll_id,
+        flags,
+      });
       showMessage("✅ Payroll preview loaded", "success");
   
     } catch (err) {
@@ -374,7 +411,7 @@ const base = {
     }
     const toSave = {
       ...data,
-      payroll_id: undefined,
+      payroll_id: data?.id || data?.payroll_id,
       recruiter_id: selectedRecruiter,
       region,
       month,

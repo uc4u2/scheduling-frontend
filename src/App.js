@@ -58,6 +58,7 @@ import ROEToolPage from "./landing/pages/payroll/ROEToolPage";
 import T4ToolPage from "./landing/pages/payroll/T4ToolPage";
 import W2ToolPage from "./landing/pages/payroll/W2ToolPage";
 import PayslipPortalPage from "./landing/pages/payroll/PayslipPortalPage";
+import XeroCallback from "./pages/XeroCallback";
 import Login from "./Login";
 import Register from "./Register";
 import ForgotPassword from "./ForgotPassword";
@@ -346,6 +347,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/payroll/tools/t4" element={<T4ToolPage />} />
             <Route path="/payroll/tools/w2" element={<W2ToolPage />} />
             <Route path="/payslips" element={<PayslipPortalPage />} />
+            <Route path="/xero/callback" element={<XeroCallback />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/help/domains" element={<DomainHelpPage />} />
             <Route path="/blog" element={<BlogPage />} />

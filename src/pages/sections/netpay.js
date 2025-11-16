@@ -55,21 +55,7 @@ export function calculate_gross_with_overtime(hoursWorked, hourlyRate, region = 
 // ─────────────────────────────────────────────────────────────
 export function recalcNetPay(data, region = "ca") {
   const {
-    rate,
-    hours_worked,
     province = "ON",
-    vacation_percent = 4,
-    bonus = 0,
-    tip = 0,
-    commission = 0,
-    travel_allowance = 0,
-    parental_insurance = 0,
-    family_bonus = 0,
-    tax_credit = 0,
-    medical_insurance = 0,
-    dental_insurance = 0,
-    life_insurance = 0,
-    deduction = 0,
     federal_tax_amount = 0,
     provincial_tax_amount = 0,
     provincial_tax_percent = 0,
@@ -85,20 +71,50 @@ export function recalcNetPay(data, region = "ca") {
     rrsp_percent = 0
   } = data || {};
 
+  const hoursWorked = num(data?.hours_worked);
+  const hourlyRate = num(data?.rate);
+  const vacationPercent = num(data?.vacation_percent ?? 4);
+  const bonus = num(data?.bonus);
+  const tip = num(data?.tip);
+  const commission = num(data?.commission);
+  const travel_allowance = num(data?.travel_allowance);
+  const parental_insurance = num(data?.parental_insurance);
+  const family_bonus = num(data?.family_bonus);
+  const tax_credit = num(data?.tax_credit);
+  const medical_insurance = num(data?.medical_insurance);
+  const dental_insurance = num(data?.dental_insurance);
+  const life_insurance = num(data?.life_insurance);
+  const deduction = num(data?.deduction);
+  const includeVac = data?.include_vacation_in_gross ?? vacationIncludedByDefault(region, province);
+  const parental_top_up = num(data?.parental_top_up);
+
   // ✅ Destructure full overtime breakdown
   const {
-    grossPay: grossBeforeVacation,
+    grossPay: rawGrossBeforeVacation,
     regularPay,
     overtimePay,
     regularHours,
     overtimeHours
-  } = calculate_gross_with_overtime(hours_worked || 0, rate || 0, region, province);
+  } = calculate_gross_with_overtime(hoursWorked, hourlyRate, region, province);
+  const grossBeforeVacation = Number(rawGrossBeforeVacation || 0);
 
-  const vacationPay = +(grossBeforeVacation * (vacation_percent / 100)).toFixed(2);
-  const includeVac = data.include_vacation_in_gross ?? vacationIncludedByDefault(region, province);
+  const vacationPay = +(grossBeforeVacation * (vacationPercent / 100)).toFixed(2);
 
-  const gross = grossBeforeVacation + (includeVac ? vacationPay : 0)
-    + bonus + tip + commission + parental_insurance + travel_allowance + family_bonus + tax_credit;
+  const extraEarnings =
+    bonus +
+    tip +
+    commission +
+    parental_insurance +
+    travel_allowance +
+    family_bonus +
+    tax_credit +
+    parental_top_up;
+
+  const grossBase =
+    Number(grossBeforeVacation || 0) +
+    Number(includeVac ? vacationPay : 0) +
+    Number(extraEarnings || 0);
+  const gross = Number(grossBase.toFixed(2));
 
   // ✅ Compute fallback retirement contribution
   const calculatedRetirement =
@@ -142,7 +158,7 @@ export function recalcNetPay(data, region = "ca") {
     overtime_pay:     round(overtimePay),
 
     vacation_pay:     round(vacationPay),
-    vacation_percent: vacation_percent,
+    vacation_percent: vacationPercent,
 
     cpp_amount:       round(cpp_amount),
     ei_amount:        round(ei_amount),

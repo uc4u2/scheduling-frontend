@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useCallback, useState, useRef } from "react";
 import {
   Box,
   Typography,
@@ -19,13 +19,17 @@ import {
   Divider,
   Link as MuiLink,
   Button,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import ApiIcon from "@mui/icons-material/Api";
 import IntegrationInstructionsIcon from "@mui/icons-material/IntegrationInstructions";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-import { Link } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useTheme, alpha } from "@mui/material/styles";
 import { useTranslation, Trans } from "react-i18next";
 import Meta from "../../components/Meta";
@@ -60,6 +64,19 @@ const STATUS_PAGE_HREF = "/status";
 const PRIVACY_PAGE_HREF = "/privacy";
 const TERMS_PAGE_HREF = "/terms";
 
+const ACCOUNTING_GUIDE_CONFIG = [
+  {
+    id: "quickbooks-onboarding",
+    translationKey: "quickbooks",
+    ctaHref: "/manager/dashboard?view=settings&tab=quickbooks",
+  },
+  {
+    id: "xero-onboarding",
+    translationKey: "xero",
+    ctaHref: "/manager/dashboard?view=settings&tab=xero",
+  },
+];
+
 const DocsPage = () => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -76,6 +93,28 @@ const DocsPage = () => {
   const faqContent = useMemo(() => t("landing.docsPage.faq", { returnObjects: true }), [t]);
   const changelogContent = useMemo(() => t("landing.docsPage.changelog", { returnObjects: true }), [t]);
   const footerContent = useMemo(() => t("landing.docsPage.footer", { returnObjects: true }), [t]);
+  const accountingGuidesContent = useMemo(() => t("landing.docsPage.accountingGuides", { returnObjects: true }), [t]);
+  const accountingGuideEntries = useMemo(() => accountingGuidesContent?.guides || {}, [accountingGuidesContent]);
+  const accountingGuides = useMemo(() => {
+    return ACCOUNTING_GUIDE_CONFIG.map((guide) => {
+      const guideCopy = accountingGuideEntries?.[guide.translationKey] || {};
+      const fallbackTitle = guideCopy.title || guide.id.replace(/-/g, " ");
+      const summary = guideCopy.summary || "";
+      return {
+        ...guide,
+        eyebrow: guideCopy.eyebrow || "",
+        title: fallbackTitle,
+        summary,
+        quickLinkLabel: guideCopy.quickLinkLabel || fallbackTitle,
+        quickLinkDescription: guideCopy.quickLinkDescription || summary || fallbackTitle,
+        sections: Array.isArray(guideCopy.sections) ? guideCopy.sections : [],
+        cta: {
+          label: guideCopy.ctaLabel || "",
+          href: guide.ctaHref,
+        },
+      };
+    });
+  }, [accountingGuideEntries]);
 
   const heroTitle = useMemo(() => {
     const title = heroContent?.title;
@@ -96,8 +135,24 @@ const DocsPage = () => {
     });
   }, [quickLinksContent]);
 
+  const accountingQuickLinks = useMemo(
+    () =>
+      accountingGuides.map((guide) => ({
+        key: guide.id,
+        anchor: `accounting-guide-${guide.id}`,
+        label: guide.quickLinkLabel || guide.title,
+        description: guide.quickLinkDescription || guide.summary,
+      })),
+    [accountingGuides]
+  );
+
+  const combinedQuickLinkItems = useMemo(() => [...quickLinkItems, ...accountingQuickLinks], [quickLinkItems, accountingQuickLinks]);
+  const prioritizedChipTopics = useMemo(() => {
+    return [...accountingQuickLinks, ...quickLinkItems].slice(0, QUICK_LINK_TOPICS_COUNT);
+  }, [accountingQuickLinks, quickLinkItems]);
+
   const highlightCards = useMemo(() => {
-    return quickLinkItems.map((link) => {
+    return combinedQuickLinkItems.map((link) => {
       const IconComponent = QUICK_LINK_ICON_MAP[link.key] || DEFAULT_QUICK_LINK_ICON;
       return {
         title: link.label,
@@ -109,7 +164,7 @@ const DocsPage = () => {
         },
       };
     });
-  }, [quickLinkItems, quickLinksContent]);
+  }, [combinedQuickLinkItems, quickLinksContent]);
 
   const onboardingCards = useMemo(() => gettingStartedContent?.cards || [], [gettingStartedContent]);
   const guideSections = useMemo(() => productGuidesContent?.cards || [], [productGuidesContent]);
@@ -120,6 +175,57 @@ const DocsPage = () => {
   const faqItems = useMemo(() => faqContent?.items || [], [faqContent]);
   const faqSchemaItems = useMemo(() => faqContent?.schema || [], [faqContent]);
   const changelogReleases = useMemo(() => changelogContent?.releases || [], [changelogContent]);
+
+  const scrollToAnchor = useCallback((anchorId) => {
+    if (!anchorId) return;
+    const element = document.getElementById(anchorId);
+    if (element) {
+      const offset = window.innerWidth < 960 ? 120 : 160;
+      const top = element.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+    }
+  }, []);
+
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const topicParam = searchParams.get("topic");
+  const pendingGuideScrollRef = useRef(null);
+  const [expandedGuideId, setExpandedGuideId] = useState(null);
+
+  useEffect(() => {
+    if (location.hash) {
+      scrollToAnchor(location.hash.replace("#", ""));
+    }
+  }, [location.hash, scrollToAnchor]);
+
+  useEffect(() => {
+    if (topicParam) {
+      const targetId = `accounting-guide-${topicParam}`;
+      pendingGuideScrollRef.current = targetId;
+      scrollToAnchor(targetId);
+      setExpandedGuideId(topicParam);
+    }
+  }, [topicParam, scrollToAnchor]);
+
+  useEffect(() => {
+    if (!expandedGuideId && accountingGuides.length) {
+      setExpandedGuideId(accountingGuides[0].id);
+    }
+  }, [accountingGuides, expandedGuideId]);
+
+  useEffect(() => {
+    if (pendingGuideScrollRef.current && expandedGuideId && pendingGuideScrollRef.current.endsWith(expandedGuideId)) {
+      scrollToAnchor(pendingGuideScrollRef.current);
+      pendingGuideScrollRef.current = null;
+    }
+  }, [expandedGuideId, scrollToAnchor]);
+
+  const handleGuideChange = useCallback(
+    (guideId) => (_, isExpanded) => {
+      setExpandedGuideId(isExpanded ? guideId : null);
+    },
+    []
+  );
 
   useEffect(() => {
     const scriptId = "schedulaa-docs-faq-jsonld";
@@ -201,7 +307,6 @@ const DocsPage = () => {
         title={metaContent?.title || ""}
         description={metaContent?.description || ""}
         canonical={metaContent?.canonical || ""}
-        keywords="Schedulaa documentation, website builder docs, booking setup guide, payroll exports, marketing automation docs"
         og={{
           title: metaOg.title || "",
           description: metaOg.description || "",
@@ -481,7 +586,7 @@ const DocsPage = () => {
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} color="text.secondary">
                 <Typography variant="body2">{searchContent?.commonTopicsLabel || ""}</Typography>
                 <Stack direction="row" spacing={1}>
-                  {quickLinkItems.slice(0, QUICK_LINK_TOPICS_COUNT).map((link) => (
+                  {prioritizedChipTopics.map((link) => (
                     <Chip key={link.anchor} label={link.label} component="a" href={`#${link.anchor}`} clickable size="small" />
                   ))}
                 </Stack>
@@ -565,6 +670,87 @@ const DocsPage = () => {
                 </Grid>
               ))}
             </Grid>
+          </Stack>
+
+          <Stack id="accounting-guides" spacing={3}>
+            <Stack spacing={1}>
+              <Typography variant="h4" component="h2" fontWeight={700}>
+                {accountingGuidesContent?.title || "Accounting guides"}
+              </Typography>
+              {accountingGuidesContent?.subtitle && (
+                <Typography variant="body2" color="text.secondary">
+                  {accountingGuidesContent.subtitle}
+                </Typography>
+              )}
+            </Stack>
+            <Stack spacing={2}>
+              {accountingGuides.map((guide) => (
+                <Accordion
+                  key={guide.id}
+                  id={`accounting-guide-${guide.id}`}
+                  expanded={expandedGuideId === guide.id}
+                  onChange={handleGuideChange(guide.id)}
+                  disableGutters
+                  square={false}
+                  sx={{
+                    borderRadius: marketing.radius?.lg || 24,
+                    border: (t) => `1px solid ${alpha(t.palette.divider, 0.3)}`,
+                    scrollMarginTop: { xs: 96, md: 140 },
+                    "&:before": { display: "none" },
+                  }}
+                >
+                  <AccordionSummary
+                    expandIcon={<ExpandMoreIcon />}
+                    aria-controls={`${guide.id}-content`}
+                    id={`${guide.id}-header`}
+                    sx={{
+                      px: { xs: 2, md: 3 },
+                      py: { xs: 2, md: 2.5 },
+                      "& .MuiAccordionSummary-content": { margin: 0 },
+                    }}
+                  >
+                    <Stack spacing={0.5}>
+                      {guide.eyebrow ? (
+                        <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.3, textTransform: "uppercase" }}>
+                          {guide.eyebrow}
+                        </Typography>
+                      ) : null}
+                      <Typography variant="h6" component="h3" fontWeight={700}>
+                        {guide.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {guide.summary}
+                      </Typography>
+                    </Stack>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ px: { xs: 2, md: 3 }, pb: { xs: 2.5, md: 3 } }}>
+                    <Stack spacing={2.5}>
+                      {guide.sections.map((section) => (
+                        <Box key={`${guide.id}-${section.heading}`}>
+                          <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                            {section.heading}
+                          </Typography>
+                          <List dense sx={{ pl: 0, "& .MuiListItem-root": { pl: 0 } }}>
+                            {(section.items || []).map((item) => (
+                              <ListItem key={item} sx={{ pl: 0 }}>
+                                <ListItemText primaryTypographyProps={{ variant: "body2", color: "text.secondary" }} primary={item} />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Box>
+                      ))}
+                      {guide.cta?.label ? (
+                        <Box>
+                          <Button component={Link} to={guide.cta.href} variant="contained" color="primary" sx={{ textTransform: "none" }}>
+                            {guide.cta.label}
+                          </Button>
+                        </Box>
+                      ) : null}
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+              ))}
+            </Stack>
           </Stack>
 
           <Stack id="api-reference" spacing={3}>

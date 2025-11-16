@@ -32,6 +32,7 @@ import {
   Tooltip,
   Select,
   MenuItem,
+  Paper,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -851,7 +852,6 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   }, [rawNavOverrides]);
   const [navStyleState, setNavStyleState] = useState(null);
   const [themeOverridesDraft, setThemeOverridesDraft] = useState(defaultThemeOverrides);
-  const [pageSettingsOpen, setPageSettingsOpen] = useState(true);
   const [pages, setPages] = useState([]);
   const [navDraft, setNavDraft] = useState(null);
   const [navSaving, setNavSaving] = useState(false);
@@ -1059,6 +1059,16 @@ useEffect(() => {
 const [busy, setBusy] = useState(false);
 const [msg, setMsg] = useState("");
 const [err, setErr] = useState("");
+const [pagesListOpen, setPagesListOpen] = useState(false);
+const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
+const [inspectorOpen, setInspectorOpen] = useState(false);
+const [brandingPanelOpen, setBrandingPanelOpen] = useState(false);
+
+useEffect(() => {
+  if (selectedBlock >= 0) {
+    setInspectorOpen(true);
+  }
+}, [selectedBlock]);
 
 const handleNavDraftChange = useCallback(
   (draft) => {
@@ -1612,11 +1622,9 @@ const autoProvisionIfEmpty = useCallback(
       const first = ensureSectionIds(withLiftedLayout(home));
       setSelectedId(first.id);
       setEditing(first);
-      setPageSettingsOpen(true);
     } else {
       setSelectedId(null);
       setEditing(ensureSectionIds(withLiftedLayout(emptyPage())));
-      setPageSettingsOpen(true);
     }
 
     setSelectedBlock(-1);
@@ -2447,11 +2455,15 @@ async function onPublish() {
 
   const LeftColumn = (
     <Stack spacing={1.5}>
-      <CollapsibleSection
-        id="builder-pages-list"
-        title={t("manager.visualBuilder.pages.title")}
-        defaultExpanded
-      >
+    <CollapsibleSection
+      id="builder-pages-list"
+      title={t("manager.visualBuilder.pages.title")}
+      expanded={pagesListOpen}
+      onChange={(next) => {
+        setPagesListOpen(next);
+        setPageSettingsOpen(next);
+      }}
+    >
         <List dense sx={{ mb: 1 }}>
           {pages.map((p) => (
             <ListItem key={p.id} disablePadding>
@@ -2462,6 +2474,7 @@ async function onPublish() {
                 setSelectedId(lifted.id);
                 setEditing(lifted);
                 setSelectedBlock(-1);
+                setPagesListOpen(true);
                 setPageSettingsOpen(true);
               }}
             >
@@ -2494,25 +2507,6 @@ async function onPublish() {
         title={t("manager.visualBuilder.pages.settings.title")}
         expanded={pageSettingsOpen}
         onChange={(next) => setPageSettingsOpen(next)}
-        actions={
-          <Stack direction="row" spacing={1}>
-            <Button
-              size="small"
-              variant="contained"
-              onClick={savePageMeta}
-              disabled={busy || !companyId}
-            >
-              {t("manager.visualBuilder.pages.settings.save")}
-            </Button>
-            <Button
-              size="small"
-              onClick={() => loadAll(companyId)}
-              disabled={busy || !companyId}
-            >
-              {t("manager.visualBuilder.pages.settings.reload")}
-            </Button>
-          </Stack>
-        }
       >
         <Stack spacing={1}>
           <TextField
@@ -2649,6 +2643,24 @@ async function onPublish() {
             }
             label={t("manager.visualBuilder.pages.settings.toggles.autosave")}
           />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="flex-end" sx={{ pt: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => loadAll(companyId)}
+              disabled={busy || !companyId}
+            >
+              {t("manager.visualBuilder.pages.settings.reload")}
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={savePageMeta}
+              disabled={busy || !companyId}
+            >
+              {t("manager.visualBuilder.pages.settings.save")}
+            </Button>
+          </Stack>
         </Stack>
       </CollapsibleSection>
 
@@ -2656,7 +2668,6 @@ async function onPublish() {
         id="builder-page-seo"
         title={t("manager.visualBuilder.pages.seo.cardTitle")}
         description={t("manager.visualBuilder.pages.seo.cardDescription")}
-        defaultExpanded
       >
         <Stack spacing={1.5}>
           <TextField
@@ -2735,6 +2746,22 @@ async function onPublish() {
             description={socialPreviewDescription}
             image={socialPreviewImage}
           />
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            justifyContent="flex-end"
+            sx={{ pt: 0.5 }}
+          >
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SaveIcon fontSize="small" />}
+              onClick={onSavePage}
+              disabled={busy || !companyId}
+            >
+              {t("management.domainSettings.seo.buttons.save", "Save SEO")}
+            </Button>
+          </Stack>
         </Stack>
       </CollapsibleSection>
 
@@ -2764,6 +2791,8 @@ async function onPublish() {
           "manager.visualBuilder.branding.description",
           "Upload logos, configure sticky header links, and add footer columns."
         )}
+        expanded={brandingPanelOpen}
+        onChange={(open) => setBrandingPanelOpen(open)}
       >
         <WebsiteBrandingCard
           companyId={companyId}
@@ -2787,6 +2816,8 @@ async function onPublish() {
           onChangeNavOverrides={handleNavOverridesChange}
           pagesMeta={previewPagesMeta}
           onRequestPagesJump={handleJumpToPageSettings}
+          floatingSaveVisible={brandingPanelOpen}
+          floatingSavePlacement="top-left"
         />
       </CollapsibleSection>
 
@@ -3331,7 +3362,8 @@ const InspectorColumn = (
       id="inspector-block"
       title={t("manager.visualBuilder.inspector.title")}
       description={t("manager.visualBuilder.inspector.description")}
-      defaultExpanded
+      expanded={inspectorOpen}
+      onChange={(next) => setInspectorOpen(next)}
       actions={
         <Tooltip title={t("manager.visualBuilder.sections.hint")}>
           <IconButton size="small" edge="end">
@@ -3562,6 +3594,17 @@ const tabs = [
   },
 ];
 
+const disablePublish = busy || !companyId;
+const floatingPublishText = hasDraftChanges
+  ? t(
+      "manager.visualBuilder.controls.publishFloatingPending",
+      "Publish your latest edits"
+    )
+  : t(
+      "manager.visualBuilder.controls.publishFloatingReady",
+      "Publish site"
+    );
+
 // ---------- Step 4: loading gate ----------
 if (loading) {
   return <div className="p-6 text-sm text-gray-500">{t("manager.visualBuilder.load.loading")}</div>;
@@ -3601,6 +3644,51 @@ if (authError) {
         tabs={tabs}
         defaultIndex={0}
       />
+
+      {companyId && (
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: { xs: 24, md: 36 },
+            right: { xs: 16, md: 40 },
+            zIndex: (theme) => theme.zIndex.tooltip + 1,
+          }}
+        >
+          <Paper
+            elevation={8}
+            sx={{
+              borderRadius: 999,
+              px: 2,
+              py: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              boxShadow: "0 10px 25px rgba(15, 23, 42, 0.18)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ display: { xs: "none", sm: "block" }, fontWeight: 600 }}
+            >
+              {floatingPublishText}
+            </Typography>
+            <Tooltip title={t("manager.visualBuilder.controls.tooltips.publish")}>
+              <span>
+                <Button
+                  size="small"
+                  startIcon={<PublishIcon />}
+                  variant="contained"
+                  disabled={disablePublish}
+                  onClick={onPublish}
+                >
+                  {t("manager.visualBuilder.controls.buttons.publish")}
+                </Button>
+              </span>
+            </Tooltip>
+          </Paper>
+        </Box>
+      )}
 
       {/* Floating panel (single instance) */}
       <FloatingInspector.Panel

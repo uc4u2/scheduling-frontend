@@ -114,7 +114,6 @@ const BlogPage = () => {
         title="The Future of Business Automation | Schedulaa Blog"
         description="How Schedulaa is redefining all-in-one management for modern teams with unified booking, payroll, websites, and analytics."
         canonical="https://www.schedulaa.com/blog"
-        keywords="Schedulaa blog, business automation insights, booking and payroll strategies, website builder tips"
         og={{
           title: "The Future of Business Automation",
           description: "Schedulaa brings booking, payroll, websites, and analytics together so teams can scale without the chaos of disconnected tools.",
