@@ -978,7 +978,13 @@ const rawSiteTitle =
     slug ??
     "";
 
-  const siteTitle = useMemo(() => {
+const deslug = (value) =>
+  (value || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const siteTitle = useMemo(() => {
     const candidate = String(rawSiteTitle || "").trim();
     if (!candidate || PLACEHOLDER_SITE_TITLES.has(candidate)) {
       const fallback = company?.name || slug || "Our Business";
@@ -1025,14 +1031,10 @@ const rawSiteTitle =
   const navBrandName = useMemo(() => {
     if (!showBrandText) return "";
     const text = (headerConfig?.text || "").trim();
-    return (
-      text ||
-      company?.slug ||
-      company?.name ||
-      siteTitle ||
-      slug ||
-      "Brand"
-    );
+    if (text) return text;
+    if (company?.name) return company.name;
+    if (siteTitle) return siteTitle;
+    return deslug(company?.slug) || deslug(slug) || "Brand";
   }, [headerConfig, siteTitle, company?.slug, company?.name, slug, showBrandText]);
   const headerSocialLinks = Array.isArray(headerConfig?.social_links) ? headerConfig.social_links : [];
   const footerSocialLinks = Array.isArray(footerConfig?.social_links) ? footerConfig.social_links : [];
@@ -1175,14 +1177,55 @@ const rawSiteTitle =
   const headerLogoHeight = headerConfig?.logo_height
     ? clampNumber(headerConfig.logo_height, 24, 200, null)
     : null;
+  const headerLayoutKey = (headerConfig?.layout || "simple").toLowerCase();
+  const headerIsCenterLayout = headerLayoutKey === "center";
+  const headerIsSplitLayout = headerLayoutKey === "split";
+  const headerIsInlineLayout = !headerIsCenterLayout && !headerIsSplitLayout;
+  const headerNavAlignRaw = (headerConfig?.nav_alignment || "right").toLowerCase();
+  const headerNavFullWidthCenter = headerIsInlineLayout && headerNavAlignRaw === "center";
   const headerLogoAlign = alignToFlex(headerConfig?.logo_alignment, "flex-start");
   const headerNavAlign = alignToFlex(
-    headerConfig?.nav_alignment,
-    headerConfig?.layout === "center" ? "center" : "flex-end"
+    headerNavAlignRaw,
+    headerIsCenterLayout ? "center" : "flex-end"
   );
   const headerFullWidth = headerConfig?.full_width !== false;
+  const headerGridColumns = headerIsCenterLayout
+    ? "1fr"
+    : headerIsSplitLayout
+      ? { xs: "1fr", md: "auto 1fr" }
+      : headerNavFullWidthCenter
+        ? { xs: "1fr", md: "auto minmax(0, 1fr) auto" }
+        : { xs: "1fr", md: "auto 1fr" };
   const logoEdgePlacement = edgePlacement(headerConfig?.logo_alignment);
-  const navEdgePlacement = edgePlacement(headerConfig?.nav_alignment);
+  const navEdgePlacement = headerNavFullWidthCenter ? {} : edgePlacement(headerConfig?.nav_alignment);
+  const alignToGridSelf = (value, fallback = "start") => {
+    const raw = (value || "").toLowerCase();
+    if (raw === "center") return "center";
+    if (raw === "right" || raw === "far-right") return "end";
+    if (raw === "far-left") return "start";
+    return fallback;
+  };
+  const logoSelf = alignToGridSelf(headerConfig?.logo_alignment, "start");
+  const navSelf = alignToGridSelf(
+    headerConfig?.nav_alignment,
+    headerIsCenterLayout ? "center" : "end"
+  );
+  const headerBrandGridColumn = headerIsCenterLayout
+    ? "1 / -1"
+    : headerNavFullWidthCenter
+      ? { xs: "1 / -1", md: "1 / 2" }
+      : {
+          xs: "1 / -1",
+          md: headerIsSplitLayout ? "auto" : "auto",
+        };
+  const headerNavGridColumn = headerIsCenterLayout
+    ? "1 / -1"
+    : headerNavFullWidthCenter
+      ? { xs: "1 / -1", md: "2 / 3" }
+      : {
+          xs: "1 / -1",
+          md: headerIsSplitLayout ? "auto" : "auto",
+        };
   const headerSocialAlignRaw = (headerConfig?.social_alignment || "right").toLowerCase();
   const headerSocialAlign = alignToFlex(headerSocialAlignRaw, "flex-end");
   const headerSocialPosition = (headerConfig?.social_position || "inline").toLowerCase();
@@ -1193,6 +1236,62 @@ const rawSiteTitle =
         headerSocialPosition === "after" ? "after" : null
       )
     : null;
+
+  const renderHeaderBrandContent = useCallback(
+    ({ disableLink = false } = {}) => (
+      <>
+        {headerLogoUrl && (
+          <Box
+            component={disableLink ? "span" : RouterLink}
+            {...(!disableLink ? { to: `/${slug}` } : {})}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              textDecoration: "none",
+              color: headerTextColor,
+              pointerEvents: disableLink ? "none" : undefined,
+            }}
+          >
+            <Box
+              component="img"
+              src={headerLogoUrl}
+              alt={navBrandName}
+              sx={{
+                width: `${headerLogoWidth}px`,
+                height: headerLogoHeight ? `${headerLogoHeight}px` : "auto",
+                maxWidth: "100%",
+                objectFit: "contain",
+              }}
+            />
+          </Box>
+        )}
+        {showBrandText && (
+          <Typography
+            variant="h6"
+            sx={{
+              color: headerTextColor,
+              fontWeight: navStyle.font_weight ?? 600,
+              textTransform: navStyle.text_transform ?? "none",
+              fontFamily: "var(--nav-brand-font-family, inherit)",
+              fontSize: `var(--nav-brand-font-size, ${navStyle.brand_font_size || 20}px)`
+            }}
+          >
+            {navBrandName}
+          </Typography>
+        )}
+      </>
+    ),
+    [
+      headerLogoUrl,
+      headerLogoWidth,
+      headerLogoHeight,
+      headerTextColor,
+      showBrandText,
+      navStyle,
+      navBrandName,
+      slug,
+    ]
+  );
 
   const renderHeaderSocialIcons = useCallback(
     ({ inline = false, placement = "after" } = {}) => {
@@ -1278,7 +1377,6 @@ const rawSiteTitle =
         <Meta
           title={metaTitle}
           description={metaDescription}
-          keywords={metaKeywords || undefined}
           canonical={pageCanonicalUrl}
           robots={robots}
           og={{ title: ogTitle, description: ogDescription, image: ogImage, url: pageCanonicalUrl }}
@@ -1389,70 +1487,40 @@ const rawSiteTitle =
           disableGutters={headerFullWidth}
         >
           {headerSocialPosition === "above" && renderHeaderSocialIcons()}
-          <Box
+        <Box
+          sx={{
+            display: "grid",
+            gap: { xs: 1.5, md: 3 },
+            gridTemplateColumns: headerGridColumns,
+            alignItems: "center",
+            width: "100%",
+          }}
+        >
+          <Stack
+            direction="row"
+            spacing={1.25}
+            alignItems="center"
+            justifyContent={headerLogoAlign}
             sx={{
-              display: "flex",
-              flexDirection: { xs: "column", md: "row" },
-              gap: { xs: 1.5, md: 3 },
-              alignItems: { xs: "flex-start", md: "center" },
               width: "100%",
+              maxWidth:
+                headerConfig.layout === "split" && !headerFullWidth
+                  ? { md: 420 }
+                  : "100%",
+              justifySelf: { xs: "stretch", md: logoSelf },
+              gridColumn: headerBrandGridColumn,
+              ...logoEdgePlacement,
             }}
           >
-            <Stack
-              direction="row"
-              spacing={1.25}
-              alignItems="center"
-              justifyContent={headerLogoAlign}
-              sx={{
-                width: { xs: "100%", md: "auto" },
-                flexShrink: 0,
-                ...logoEdgePlacement,
-              }}
-            >
-              {headerLogoUrl && (
-                <Box
-                  component={RouterLink}
-                  to={`/${slug}`}
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    textDecoration: "none",
-                    color: headerTextColor,
-                  }}
-                >
-                  <Box
-                    component="img"
-                    src={headerLogoUrl}
-                    alt={navBrandName}
-                    sx={{
-                      width: `${headerLogoWidth}px`,
-                      height: headerLogoHeight ? `${headerLogoHeight}px` : "auto",
-                      maxWidth: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
-                </Box>
-              )}
-              {showBrandText && (
-                <Typography
-                  variant="h6"
-                  sx={{
-                    color: headerTextColor,
-                    fontWeight: navStyle.font_weight ?? 600,
-                    textTransform: navStyle.text_transform ?? "none",
-                    fontFamily: "var(--nav-brand-font-family, inherit)",
-                    fontSize: `var(--nav-brand-font-size, ${navStyle.brand_font_size || 20}px)`
-                  }}
-                >
-                  {navBrandName}
-                </Typography>
-              )}
+              {renderHeaderBrandContent()}
             </Stack>
             <Box
               sx={{
                 flex: 1,
                 width: "100%",
                 display: "flex",
+                justifySelf: { xs: "stretch", md: navSelf },
+                gridColumn: headerNavGridColumn,
                 ...navEdgePlacement,
               }}
             >
@@ -1509,6 +1577,22 @@ const rawSiteTitle =
                   })}
               </Stack>
             </Box>
+            {headerNavFullWidthCenter && (
+              <Stack
+                aria-hidden
+                direction="row"
+                spacing={1.25}
+                alignItems="center"
+                sx={{
+                  display: { xs: "none", md: "flex" },
+                  visibility: "hidden",
+                  pointerEvents: "none",
+                  gridColumn: { md: "3 / 4" },
+                }}
+              >
+                {renderHeaderBrandContent({ disableLink: true })}
+              </Stack>
+            )}
           </Box>
           {headerSocialPosition === "below" && renderHeaderSocialIcons()}
         </Container>

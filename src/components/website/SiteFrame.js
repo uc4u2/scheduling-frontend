@@ -188,6 +188,12 @@ export default function SiteFrame({
     return pageNavLinks;
   }, [headerConfig, pageNavLinks, menuSource]);
 
+  const deslug = (value) =>
+    (value || "")
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
   const headerLogo =
     headerConfig?.logo_asset?.url || site?.company?.logo_url || null;
   const headerSocial = Array.isArray(headerConfig?.social_links)
@@ -195,19 +201,26 @@ export default function SiteFrame({
     : [];
   const showBrandText = headerConfig?.show_brand_text !== false;
   const brandName =
-    headerConfig?.text ||
-    site?.company?.slug ||
+    (headerConfig?.text && headerConfig.text.trim()) ||
     site?.company?.name ||
-    slug;
+    deslug(site?.company?.slug) ||
+    deslug(slug) ||
+    "Brand";
   const headerPadding = clampNumber(headerConfig?.padding_y ?? 20, 4, 160, 20);
   const logoWidth = clampNumber(headerConfig?.logo_width ?? 140, 40, 360, 140);
   const logoHeight = headerConfig?.logo_height
     ? clampNumber(headerConfig.logo_height, 24, 200, null)
     : null;
   const logoAlign = alignToFlex(headerConfig?.logo_alignment, "flex-start");
+  const layoutKey = (headerConfig?.layout || "simple").toLowerCase();
+  const isCenterLayout = layoutKey === "center";
+  const isSplitLayout = layoutKey === "split";
+  const isInlineLayout = !isCenterLayout && !isSplitLayout;
+  const navAlignRaw = (headerConfig?.nav_alignment || "right").toLowerCase();
+  const navFullWidthCenter = isInlineLayout && navAlignRaw === "center";
   const navAlign = alignToFlex(
-    headerConfig?.nav_alignment,
-    headerConfig?.layout === "center" ? "center" : "flex-end"
+    navAlignRaw,
+    isCenterLayout ? "center" : "flex-end"
   );
   const socialAlignRaw = (headerConfig?.social_alignment || "right").toLowerCase();
   const socialAlign = alignToFlex(socialAlignRaw, "flex-end");
@@ -220,8 +233,73 @@ export default function SiteFrame({
       )
     : null;
   const headerFullWidth = headerConfig?.full_width !== false;
+  const headerGridColumns = isCenterLayout
+    ? "1fr"
+    : isSplitLayout
+      ? { xs: "1fr", md: "auto 1fr" }
+      : navFullWidthCenter
+        ? { xs: "1fr", md: "auto minmax(0, 1fr) auto" }
+        : { xs: "1fr", md: "auto 1fr" };
+  const alignToGridSelf = (value, fallback = "start") => {
+    const raw = (value || "").toLowerCase();
+    if (raw === "center") return "center";
+    if (raw === "right" || raw === "far-right") return "end";
+    if (raw === "far-left") return "start";
+    return fallback;
+  };
+  const logoSelf = alignToGridSelf(headerConfig?.logo_alignment, "start");
+  const navSelf = alignToGridSelf(
+    headerConfig?.nav_alignment,
+    isCenterLayout ? "center" : "end"
+  );
   const logoEdgePlacement = edgePlacement(headerConfig?.logo_alignment);
-  const navEdgePlacement = edgePlacement(headerConfig?.nav_alignment);
+  const navEdgePlacement = navFullWidthCenter ? {} : edgePlacement(headerConfig?.nav_alignment);
+  const brandGridColumn = isCenterLayout
+    ? "1 / -1"
+    : navFullWidthCenter
+      ? { xs: "1 / -1", md: "1 / 2" }
+      : {
+          xs: "1 / -1",
+          md: isSplitLayout ? "auto" : "auto",
+        };
+  const navGridColumn = isCenterLayout
+    ? "1 / -1"
+    : navFullWidthCenter
+      ? { xs: "1 / -1", md: "2 / 3" }
+      : {
+          xs: "1 / -1",
+          md: isSplitLayout ? "auto" : "auto",
+        };
+
+  const renderBrandContent = (showEmptyHint = false, hideText = false) => (
+    <>
+      {headerLogo && (
+        <Box
+          component="img"
+          src={headerLogo}
+          alt={brandName}
+          sx={{
+            width: `${logoWidth}px`,
+            height: logoHeight ? `${logoHeight}px` : "auto",
+            objectFit: "contain",
+          }}
+        />
+      )}
+      {showBrandText && !hideText && (
+        <Typography variant="h6" sx={{ fontWeight: 800 }}>
+          {brandName}
+        </Typography>
+      )}
+      {showEmptyHint && !headerHasContent && isPreview && (
+        <Typography
+          variant="caption"
+          sx={{ opacity: 0.7, fontWeight: 500 }}
+        >
+          Add header text/logo in Branding → Header
+        </Typography>
+      )}
+    </>
+  );
 
   const renderSessionButtons = (color = "inherit") =>
     clientLoggedIn ? (
@@ -408,10 +486,10 @@ export default function SiteFrame({
         {socialPosition === "above" && renderSocialIcons()}
         <Box
           sx={{
-            display: "flex",
-            flexDirection: { xs: "column", md: "row" },
+            display: "grid",
             gap: { xs: 1.5, md: 3 },
-            alignItems: { xs: "flex-start", md: "center" },
+            gridTemplateColumns: headerGridColumns,
+            alignItems: "center",
           }}
         >
           <Stack
@@ -420,42 +498,25 @@ export default function SiteFrame({
             alignItems="center"
             justifyContent={logoAlign}
             sx={{
-              width: { xs: "100%", md: "auto" },
-              flexShrink: 0,
+              width: "100%",
+              maxWidth:
+                headerConfig.layout === "split" && !headerFullWidth
+                  ? { md: 420 }
+                  : "100%",
+              justifySelf: { xs: "stretch", md: logoSelf },
+              gridColumn: brandGridColumn,
               ...logoEdgePlacement,
             }}
           >
-            {headerLogo && (
-              <Box
-                component="img"
-                src={headerLogo}
-                alt={brandName}
-                sx={{
-                  width: `${logoWidth}px`,
-                  height: logoHeight ? `${logoHeight}px` : "auto",
-                  objectFit: "contain",
-                }}
-              />
-            )}
-            {showBrandText && (
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                {brandName}
-              </Typography>
-            )}
-            {!headerHasContent && isPreview && (
-              <Typography
-                variant="caption"
-                sx={{ opacity: 0.7, fontWeight: 500 }}
-              >
-                Add header text/logo in Branding → Header
-              </Typography>
-            )}
+            {renderBrandContent(true)}
           </Stack>
           <Box
             sx={{
               flex: 1,
               width: "100%",
               display: "flex",
+              justifySelf: { xs: "stretch", md: navSelf },
+              gridColumn: navGridColumn,
               ...navEdgePlacement,
             }}
           >
@@ -476,6 +537,22 @@ export default function SiteFrame({
                 })}
             </Stack>
           </Box>
+          {navFullWidthCenter && (
+            <Stack
+              aria-hidden
+              direction="row"
+              spacing={1.25}
+              alignItems="center"
+              sx={{
+                display: { xs: "none", md: "flex" },
+                visibility: "hidden",
+                pointerEvents: "none",
+                gridColumn: { md: "3 / 4" },
+              }}
+            >
+              {renderBrandContent(false)}
+            </Stack>
+          )}
         </Box>
         {socialPosition === "below" && renderSocialIcons()}
       </Container>

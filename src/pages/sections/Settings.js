@@ -36,6 +36,9 @@ import SettingsCheckoutPro from "./SettingsCheckoutPro";
 import SettingsStripeHub from "./SettingsStripeHub";
 import SettingsArtistVisibility from "./SettingsArtistVisibility";
 import SettingsClientVideo from "./SettingsClientVideo";
+import SettingsXero from "./SettingsXero";
+import SettingsQuickBooks from "./SettingsQuickBooks";
+import IntegrationActivityCard from "./IntegrationActivityCard";
 import ProfessionSettings from "./ProfessionSetting";
 
 import SectionCard from "../../components/ui/SectionCard";
@@ -78,9 +81,12 @@ const Settings = () => {
       client: 5,
       stripe: 6,
       'stripe-hub': 6,
-      checkout: 7,
-      payments: 7,
-      'checkout-pro': 7,
+      xero: 7,
+      quickbooks: 8,
+      qb: 8,
+      checkout: 9,
+      payments: 9,
+      'checkout-pro': 9,
     };
     return map[tabParam] ?? 0;
   }, [tabParam]);
@@ -530,6 +536,18 @@ const Settings = () => {
       content: <SettingsStripeHub />,
     },
     {
+      label: t("settings.tabs.xero", "Xero"),
+      content: <SettingsXero />,
+    },
+    {
+      label: t("settings.tabs.quickbooks", "QuickBooks"),
+      content: <SettingsQuickBooks />,
+    },
+    {
+      label: t("settings.tabs.integrationActivity", "Integration activity"),
+      content: <IntegrationActivityCard />,
+    },
+    {
       label: t("settings.tabs.checkout"),
       content: <SettingsCheckoutPro />,
     },
@@ -555,6 +573,3 @@ const Settings = () => {
 };
 
 export default Settings;
-
-
-

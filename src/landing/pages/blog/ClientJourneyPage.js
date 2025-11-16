@@ -83,7 +83,6 @@ const ClientJourneyPage = () => {
         title="Designing a Client Journey — From Search to Loyalty | Schedulaa"
         description="Guide customers from their first impression to loyal advocate using Schedulaa's unified website, booking, marketing, and payroll platform."
         canonical="https://www.schedulaa.com/blog/client-journey"
-        keywords="client journey, booking software conversion, schedulaa analytics, marketing automation"
         og={{
           title: "Designing a Client Journey with Schedulaa",
           description:

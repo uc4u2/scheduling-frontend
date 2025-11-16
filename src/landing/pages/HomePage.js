@@ -510,7 +510,6 @@ const HomePage = () => {
         title={metaCopy.title}
         description={metaCopy.description}
         canonical="https://www.schedulaa.com/"
-        keywords="Schedulaa, booking software, payroll platform, website builder, scheduling software, service business SaaS"
         og={{
           title: metaCopy.ogTitle || metaCopy.title,
           description: metaCopy.ogDescription || metaCopy.description,

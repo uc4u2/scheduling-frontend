@@ -39,15 +39,17 @@ const sections = [
       { label: "Roadmap", to: "mailto:admin@schedulaa.com", external: true },
     ],
   },
-  {
-    title: "Resources",
-    links: [
-      { label: "Blog", to: "/blog" },
-      { label: "FAQ", to: "/faq" },
-      { label: "Help Center", to: "/client/support" },
-      { label: "Documentation", to: "/docs" },
-    ],
-  },
+      {
+        title: "Resources",
+        links: [
+          { label: "Blog", to: "/blog" },
+          { label: "FAQ", to: "/faq" },
+          { label: "Help Center", to: "/client/support" },
+          { label: "Documentation", to: "/docs" },
+          { label: "QuickBooks onboarding", to: "/docs?topic=quickbooks-onboarding" },
+          { label: "Xero onboarding", to: "/docs?topic=xero-onboarding" },
+        ],
+      },
   {
     title: "Compare",
     links: [
@@ -56,6 +58,7 @@ const sections = [
       { label: "Schedulaa vs Humi", to: "/compare/humi" },
       { label: "Schedulaa vs Square Appointments", to: "/compare/square-appointments" },
       { label: "Schedulaa vs Xero", to: "/compare/xero" },
+      { label: "Schedulaa vs Deputy", to: "/compare/deputy" },
     ],
   },
   {
