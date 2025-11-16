@@ -11,6 +11,7 @@ import {
   Divider,
   Button,
   Avatar,
+  Chip,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { motion } from "framer-motion";
@@ -67,6 +68,7 @@ const HIGHLIGHT_CARD_CONFIG = [
   { key: "commerce", Icon: PaymentsRoundedIcon },
   { key: "analytics", Icon: LanguageIcon },
 ];
+
 
 const GUIDE_ITEM_CONFIG = [
   {
@@ -882,13 +884,45 @@ const HomePage = () => {
           duration={32}
           sx={{ bottom: -260, left: -240 }}
         />
-        <FeatureShowcase
-          eyebrow={featureShowcaseCopy.eyebrow}
-          title={featureShowcaseCopy.title}
-          subtitle={featureShowcaseCopy.subtitle}
-          features={featurePillars}
-          onActiveChange={handleAccentChange}
-        />
+      <FeatureShowcase
+        eyebrow={featureShowcaseCopy.eyebrow}
+        title={featureShowcaseCopy.title}
+        subtitle={featureShowcaseCopy.subtitle}
+        features={featurePillars}
+        onActiveChange={handleAccentChange}
+      />
+    </Box>
+
+      <Box
+        sx={{
+          mt: { xs: 6, md: 8 },
+          mb: { xs: 8, md: 10 },
+          p: { xs: 3, md: 5 },
+          borderRadius: 4,
+          border: (theme) => `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+          background: (theme) =>
+            theme.palette.mode === "dark"
+              ? alpha(theme.palette.primary.main, 0.08)
+              : alpha(theme.palette.primary.light, 0.12),
+        }}
+      >
+        <Stack spacing={2} alignItems="center" textAlign="center">
+          <Chip label="New" color="primary" />
+          <Typography variant="h4" fontWeight={800}>
+            Workforce command center with policy-aware time tracking
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Clock-in/out policies, break enforcement, approvals, and payroll-ready exports now live alongside scheduling, payroll, websites, and analytics. IP/device hints, mid-shift approvals, and template-driven corrections keep compliance tight—without spreadsheets or copy/paste.
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <Button component={Link} to="/workforce" variant="contained" color="primary">
+              Explore Workforce
+            </Button>
+            <Button component={Link} to="/register" variant="outlined" color="primary" sx={{ textTransform: "none" }}>
+              Start free
+            </Button>
+          </Stack>
+        </Stack>
       </Box>
 
       <Spotlight sections={spotlightSections} accent={accent} />

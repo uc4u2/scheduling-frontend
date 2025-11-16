@@ -30,6 +30,7 @@ const sections = [
     title: "Product",
     links: [
       { label: "Features", to: "/features" },
+      { label: "Workforce", to: "/workforce" },
       { label: "Booking", to: "/booking" },
       { label: "Marketing", to: "/marketing" },
       { label: "Payroll", to: "/payroll" },

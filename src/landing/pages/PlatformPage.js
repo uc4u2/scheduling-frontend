@@ -1,2 +1,3 @@
-export { default } from "./FeaturePage";
+import FeaturePage from "./FeaturePage";
 
+export default FeaturePage;

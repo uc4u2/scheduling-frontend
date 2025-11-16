@@ -53,7 +53,7 @@ export const featurePillars = [
     icon: "06",
     title: "Automation & Integrations",
     description: [
-      "Zapier integration to connect Schedulaa with Mailchimp, Slack, QuickBooks, and more.",
+      "Zapier integration to connect Schedulaa with QuickBooks, Xero, and more.",
       "Webhooks and REST APIs to trigger workflows or keep external systems in sync.",
       "Scheduler automations for re-engagement campaigns, no-show alerts, and follow-ups.",
       "Embed widgets and booking flows directly into existing sites and partner portals.",

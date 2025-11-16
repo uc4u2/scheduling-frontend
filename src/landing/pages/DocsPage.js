@@ -405,7 +405,7 @@ const DocsPage = () => {
                     "Federal income tax (IRS brackets)",
                     "State income tax (where applicable)",
                     "FICA (Social Security & Medicare)",
-                    "Employer unemployment: FUTA & SUI/SUTA",
+                    "Employer unemployment: SUI/SUTA reporting",
                     "PTO & basic leave tracking",
                     "Payroll exports (PDF / CSV / XLSX)",
                     "Year-end forms: W-2 generation / export",

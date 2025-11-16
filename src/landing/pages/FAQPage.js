@@ -224,7 +224,7 @@ const FAQ_SECTIONS = [
       {
         question: "What payroll features are automated?",
         answer:
-          "We calculate federal/state taxes, FICA, FUTA/SUI, vacation accruals, automated statutory holiday pay (Canada), PTO tracking, and provide payroll exports. Year-end forms (W-2 / T4) and Canadian ROE creation/export are included.",
+          "We calculate federal/state taxes, FICA/SUI, vacation accruals, automated statutory holiday pay (Canada), PTO tracking, and provide payroll exports. Year-end forms (W-2 / T4) and Canadian ROE creation/export are included.",
       },
       {
         question: "Are local or city taxes calculated automatically?",

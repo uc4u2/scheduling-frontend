@@ -24,6 +24,7 @@ import ThemeSwitcher from "./components/ui/ThemeSwitcher";
 import HomePage from "./landing/pages/HomePage";
 import PricingPage from "./landing/pages/PricingPage";
 import FeaturePage from "./landing/pages/FeaturePage";
+import WorkforcePage from "./landing/pages/WorkforcePage";
 import DocsPage from "./landing/pages/DocsPage";
 import StatusPage from "./landing/pages/StatusPage";
 import BlogPage from "./landing/pages/BlogPage";
@@ -67,6 +68,8 @@ import RecruiterDashboard from "./RecruiterDashboard";
 import RecruiterInvitationsPage from "./pages/recruiter/RecruiterInvitationsPage";
 import RecruiterQuestionnairesPage from "./pages/recruiter/RecruiterQuestionnairesPage";
 import RecruiterUpcomingMeetingsPage from "./pages/recruiter/RecruiterUpcomingMeetingsPage";
+import RecruiterMyTimePage from "./pages/recruiter/RecruiterMyTimePage";
+import RecruiterMyShiftsPage from "./pages/recruiter/RecruiterMyShiftsPage";
 import ManagerDashboard from "./ManagerDashboard";
 import CandidateBooking from "./CandidateBooking";
 import CancelBooking from "./CancelBooking";
@@ -82,7 +85,6 @@ import AuditHistory from "./components/AuditHistory";
 import MonthlyAttendanceCalendar from "./components/MonthlyAttendanceCalendar";
 import AddRecruiter from "./AddRecruiter";
 import EmployeeShiftView from "./pages/sections/EmployeeShiftView";
-import SecondEmployeeShiftView from "./pages/sections/SecondEmployeeShiftView";
 import CompanyProfile from "./pages/sections/CompanyProfile";
 import Payroll from "./pages/sections/Payroll";
 import EmployeeProfileForm from "./pages/Payroll/EmployeeProfileForm";
@@ -153,6 +155,7 @@ const MARKETING_PATHS = [
   '/platform',
   '/pricing',
   '/website-builder',
+  '/workforce',
   '/booking',
   '/booking/salon',
   '/booking/spa',
@@ -331,6 +334,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/features" element={<FeaturePage />} />
             <Route path="/platform" element={<PlatformPage />} />
             <Route path="/website-builder" element={<WebsiteBuilderPage />} />
+            <Route path="/workforce" element={<WorkforcePage />} />
             <Route path="/booking" element={<BookingHubPage />} />
             <Route path="/booking/salon" element={<SalonBookingPage />} />
             <Route path="/booking/spa" element={<SpaBookingPage />} />
@@ -422,11 +426,12 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/recruiter/invitations" element={<RecruiterInvitationsPage token={token} />} />
           <Route path="/recruiter/questionnaires" element={<RecruiterQuestionnairesPage token={token} />} />
         <Route path="/recruiter/upcoming-meetings" element={<RecruiterUpcomingMeetingsPage token={token} />} />
+        <Route path="/recruiter/my-time" element={<RecruiterMyTimePage />} />
+        <Route path="/recruiter/my-shifts" element={<RecruiterMyShiftsPage />} />
         <Route path="/recruiter/*" element={<RecruiterDashboard token={token} />} />
           <Route path="/recruiter/candidates/:email" element={<RecruiterCandidates token={token} />} />
           <Route path="/recruiter/candidates" element={<RecruiterCandidates token={token} />} />
           <Route path="/recruiter-stats/:recruiterId" element={<RecruiterStats token={token} />} />
-          <Route path="/recruiter/my-shifts" element={<SecondEmployeeShiftView />} />
           <Route path="/manager/dashboard" element={<ManagerDashboard token={token} />} />
           <Route path="/manager/candidates" element={<CandidateManagement token={token} />} />
           <Route path="/manager/job-openings" element={<JobOpenings />} />

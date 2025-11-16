@@ -40,6 +40,7 @@ import SettingsXero from "./SettingsXero";
 import SettingsQuickBooks from "./SettingsQuickBooks";
 import IntegrationActivityCard from "./IntegrationActivityCard";
 import ProfessionSettings from "./ProfessionSetting";
+import SettingsTimeTracking from "./SettingsTimeTracking";
 
 import SectionCard from "../../components/ui/SectionCard";
 import { PROFESSION_OPTIONS } from "../../constants/professions";
@@ -508,6 +509,7 @@ const Settings = () => {
         <Stack spacing={2}>
           {GeneralCard}
           {PolicyCard}
+          <SettingsTimeTracking />
         </Stack>
       ),
     },

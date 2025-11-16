@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -16,6 +16,7 @@ import {
   Checkbox,
   ListItemText,
   OutlinedInput,
+  FormHelperText,
   Snackbar,
   Alert,
   Paper,
@@ -70,6 +71,28 @@ const getColorForRecruiter = (recruiterId) => COLORS[Math.abs(parseInt(recruiter
 // ------------------------------------------------------------------------------------
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const dayIndexToLabel = (value) => {
+  if (typeof value === "string") {
+    return dayLabels.includes(value) ? value : value;
+  }
+  const idx = Number(value);
+  if (Number.isNaN(idx) || idx < 0) return dayLabels[0];
+  return dayLabels[idx % 7];
+};
+const normalizeTemplateDays = (days) => (Array.isArray(days) ? days.map(dayIndexToLabel) : []);
+const formatAvailabilityDisplay = (slot) =>
+  `${slot.date} • ${slot.start_time} - ${slot.end_time}${slot.booked ? " (booked)" : ""}`;
+const toTimeInputValue = (value) => {
+  if (!value) return "";
+  if (typeof value === "string" && value.includes("T")) {
+    try {
+      return format(new Date(value), "HH:mm");
+    } catch (err) {
+      return value.slice(0, 5);
+    }
+  }
+  return value.slice(0, 5);
+};
 const toArray = (raw) =>
   Array.isArray(raw) ? raw : raw && typeof raw === "object" ? Object.values(raw) : [];
 
@@ -226,22 +249,28 @@ end:   s.clock_out ? format(new Date(s.clock_out), "HH:mm") : "",
     const shift = (shifts || []).find((s) => String(s.id) === String(id));
     if (!shift) return;
     setEditingShift(shift);
-const startD = shift?.clock_in ? new Date(shift.clock_in) : null;
-const endD   = shift?.clock_out ? new Date(shift.clock_out) : null;
+    const startD = shift?.clock_in ? new Date(shift.clock_in) : null;
+    const endD = shift?.clock_out ? new Date(shift.clock_out) : null;
 
-setFormData({
-  date: startD ? formatDate(startD) : (shift.date || ""),
-  startTime: startD ? formatTime(startD) : "",
-  endTime: endD ? formatTime(endD) : "",
-  location: shift.location || "",
-  note: shift.note || "",
-  recurring: false,
-  recurringDays: [],
-  selectedTemplate: "",
-  repeatMode: "weeks",
-  repeatWeeks: 2,
-  repeatUntil: "",
-});
+    setFormData({
+      date: startD ? formatDate(startD) : shift.date || "",
+      startTime: startD ? formatTime(startD) : "",
+      endTime: endD ? formatTime(endD) : "",
+      location: shift.location || "",
+      note: shift.note || "",
+      recurring: false,
+      recurringDays: [],
+      selectedTemplate: "",
+      repeatMode: "weeks",
+      repeatWeeks: 2,
+      repeatUntil: "",
+      breakStart: toTimeInputValue(shift.break_start),
+      breakEnd: toTimeInputValue(shift.break_end),
+      breakMinutes: shift.break_minutes ?? "",
+      breakPaid: Boolean(shift.break_paid),
+    });
+    setSelectedAvailabilityIds(shift.availability_id ? [shift.availability_id] : []);
+    fetchAvailabilityForModal(shift.recruiter_id, shift.date);
 
     setModalOpen(true);
   };
@@ -265,11 +294,16 @@ setFormData({
   const [templates, setTemplates] = useState([]);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [templateFormData, setTemplateFormData] = useState({
+    id: null,
     label: "",
     start: "",
     end: "",
     days: [],
-    recurring: true
+    recurring: true,
+    breakStart: "",
+    breakEnd: "",
+    breakMinutes: "",
+    breakPaid: false,
   });
   const [editingTemplateIndex, setEditingTemplateIndex] = useState(null);
 
@@ -285,11 +319,17 @@ setFormData({
     recurring: false,
     recurringDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
     selectedTemplate: "",
+    breakStart: "",
+    breakEnd: "",
+    breakMinutes: "",
+    breakPaid: false,
     // NEW — recurrence controls:
     repeatMode: "weeks",   // "weeks" | "until"
     repeatWeeks: 2,        // number of weeks when repeatMode = "weeks"
     repeatUntil: ""        // YYYY-MM-DD when repeatMode = "until"
   });
+  const [modalAvailabilitySlots, setModalAvailabilitySlots] = useState([]);
+  const [selectedAvailabilityIds, setSelectedAvailabilityIds] = useState([]);
 
   /* ------------------------------- messaging -------------------------------- */
   const [successMsg, setSuccessMsg] = useState("");
@@ -301,6 +341,7 @@ setFormData({
   const fsCalendarRef = useRef(null);
   const pendingRevertCallbackRef = useRef(null);
   const [pendingEventUpdate, setPendingEventUpdate] = useState(null);
+  const [availabilityOverlay, setAvailabilityOverlay] = useState([]);
 
   /* ------------------------------ date range -------------------------------- */
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
@@ -310,10 +351,10 @@ setFormData({
   });
 
   /* -------------------------------- helpers --------------------------------- */
-  const getAuthHeaders = () => {
+  const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
-  };
+  }, []);
 
   const generateRecurringDatesFlexible = (
     baseDate,
@@ -398,17 +439,17 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       }
     };
     fetchDepartments();
-  }, []);
+  }, [getAuthHeaders]);
 
   useEffect(() => {
     fetchRecruiters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDepartment]);
+  }, [selectedDepartment, getAuthHeaders]);
 
   useEffect(() => {
     fetchShifts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recruiters, selectedRecruiters, dateRange]);
+  }, [recruiters, selectedRecruiters, dateRange, getAuthHeaders]);
 
   useEffect(() => {
     const loadTemplates = async () => {
@@ -419,14 +460,17 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         if (!res.ok) throw new Error("API error");
         const data = await res.json();
 
-        const dayMap = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
         const list = (data || []).map((t) => ({
           id: t.id,
           label: t.name,
           start: (t.start_time || "").slice(0, 5),
           end: (t.end_time || "").slice(0, 5),
-          days: (t.days || []).map((i) => dayMap[i]),
+          days: normalizeTemplateDays(t.days || []),
           recurring: true,
+          breakStart: (t.break_start || "").slice(0, 5),
+          breakEnd: (t.break_end || "").slice(0, 5),
+          breakMinutes: t.break_minutes ?? "",
+          breakPaid: Boolean(t.break_paid),
         }));
 
         setTemplates(list);
@@ -437,6 +481,53 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     };
     loadTemplates();
   }, []);
+
+  useEffect(() => {
+    if (!selectedRecruiters.length) {
+      setAvailabilityOverlay([]);
+      return;
+    }
+    const fetchAvailability = async () => {
+      try {
+        const results = await Promise.all(
+          selectedRecruiters.map(async (rid) => {
+            const res = await fetch(
+              `${API_URL}/manager/recruiters/${rid}/availability?start_date=${dateRange.start}&end_date=${dateRange.end}`,
+              { headers: getAuthHeaders() }
+            );
+            if (!res.ok) {
+              return { recruiterId: rid, slots: [] };
+            }
+            const data = await res.json();
+            const slots = (data?.availability || data || []).map((slot) => ({
+              ...slot,
+              recruiter_id: rid,
+            }));
+            return { recruiterId: rid, slots };
+          })
+        );
+        const overlayEvents = results.flatMap(({ recruiterId, slots }) =>
+          slots.map((slot) => ({
+            id: `availability-${recruiterId}-${slot.id}`,
+            start: `${slot.date}T${slot.start_time}`,
+            end: `${slot.date}T${slot.end_time}`,
+            display: "background",
+            backgroundColor: slot.booked ? "rgba(244, 67, 54, 0.15)" : "rgba(76, 175, 80, 0.15)",
+            borderColor: slot.booked ? "rgba(244, 67, 54, 0.4)" : "rgba(76, 175, 80, 0.4)",
+            extendedProps: {
+              recruiterId,
+              availabilityId: slot.id,
+              booked: slot.booked,
+            },
+          }))
+        );
+        setAvailabilityOverlay(overlayEvents);
+      } catch (err) {
+        console.error("Failed to load availability", err);
+      }
+    };
+    fetchAvailability();
+  }, [selectedRecruiters, dateRange, getAuthHeaders]);
 
   /* --------------------------------- fetchers -------------------------------- */
   const fetchRecruiters = async () => {
@@ -471,6 +562,46 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       setErrorMsg("Failed to fetch shifts.");
     }
   };
+
+  const fetchAvailabilityForModal = useCallback(
+    async (recruiterId, referenceDate) => {
+      if (!recruiterId) {
+        setModalAvailabilitySlots([]);
+        return;
+      }
+      const fallbackDate = referenceDate || format(new Date(), "yyyy-MM-dd");
+      const startDate = format(addDays(asLocalDate(fallbackDate), -7), "yyyy-MM-dd");
+      const endDate = format(addDays(asLocalDate(fallbackDate), 14), "yyyy-MM-dd");
+      try {
+        const res = await fetch(
+          `${API_URL}/manager/recruiters/${recruiterId}/availability?start_date=${startDate}&end_date=${endDate}`,
+          { headers: getAuthHeaders() }
+        );
+        const data = await res.json();
+        const slots = (data?.availability || data || []).map((slot) => ({
+          ...slot,
+          id: slot.id,
+        }));
+        setModalAvailabilitySlots(slots);
+      } catch {
+        setModalAvailabilitySlots([]);
+      }
+    },
+    [getAuthHeaders]
+  );
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const recruiterId =
+      editingShift?.recruiter_id ||
+      (selectedRecruiters.length === 1 ? selectedRecruiters[0] : null);
+    if (!recruiterId) {
+      setModalAvailabilitySlots([]);
+      return;
+    }
+    const fallbackDate = formData.date || selectedDate || format(new Date(), "yyyy-MM-dd");
+    fetchAvailabilityForModal(recruiterId, fallbackDate);
+  }, [modalOpen, editingShift, selectedRecruiters, formData.date, selectedDate, fetchAvailabilityForModal]);
 
   /* -------------------------------- transforms ------------------------------- */
   const filteredShifts = useMemo(
@@ -562,6 +693,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
     return list;
   }, [filteredShifts, recruiters, selectedDate]);
+  const canLinkAvailability = Boolean(editingShift) || selectedRecruiters.length === 1;
 
   /* ------------------------------- handlers --------------------------------- */
   const handleMonthDateClick = (arg) => {
@@ -647,38 +779,60 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const shift = shifts.find((s) => String(s.id) === String(clickInfo.event.id));
     if (shift) {
       setEditingShift(shift);
-const sD = shift?.clock_in ? new Date(shift.clock_in) : null;
-const eD = shift?.clock_out ? new Date(shift.clock_out) : null;
+      const sD = shift?.clock_in ? new Date(shift.clock_in) : null;
+      const eD = shift?.clock_out ? new Date(shift.clock_out) : null;
 
-setFormData({
-  date: sD ? formatDate(sD) : (shift.date || ""),
-  startTime: sD ? formatTime(sD) : "",
-  endTime: eD ? formatTime(eD) : "",
-  location: shift.location || "",
-  note: shift.note || "",
-  recurring: false,
-  recurringDays: [],
-  selectedTemplate: "",
-});
+      setFormData({
+        date: sD ? formatDate(sD) : shift.date || "",
+        startTime: sD ? formatTime(sD) : "",
+        endTime: eD ? formatTime(eD) : "",
+        location: shift.location || "",
+        note: shift.note || "",
+        recurring: false,
+        recurringDays: [],
+        selectedTemplate: "",
+        breakStart: toTimeInputValue(shift.break_start),
+        breakEnd: toTimeInputValue(shift.break_end),
+        breakMinutes: shift.break_minutes ?? "",
+        breakPaid: Boolean(shift.break_paid),
+        repeatMode: "weeks",
+        repeatWeeks: 2,
+        repeatUntil: "",
+      });
+      setSelectedAvailabilityIds(shift.availability_id ? [shift.availability_id] : []);
+      fetchAvailabilityForModal(shift.recruiter_id, shift.date);
 
       setModalOpen(true);
     }
   };
 
   const handleDateClick = (clickInfo) => {
-  setEditingShift(null);
-  setFormData({
-    date: formatDate(clickInfo.date),   // ← use the Date object, not string-splitting
-    startTime: "09:00",
-    endTime: "17:00",
-    location: "",
-    note: "",
-    recurring: false,
-    recurringDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-    selectedTemplate: "",
-  });
-  setModalOpen(true);
-};
+    setEditingShift(null);
+    setFormData({
+      date: formatDate(clickInfo.date),
+      startTime: "09:00",
+      endTime: "17:00",
+      location: "",
+      note: "",
+      recurring: false,
+      recurringDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      selectedTemplate: "",
+      breakStart: "",
+      breakEnd: "",
+      breakMinutes: "",
+      breakPaid: false,
+      repeatMode: "weeks",
+      repeatWeeks: 2,
+      repeatUntil: "",
+    });
+    setSelectedAvailabilityIds([]);
+    if (selectedRecruiters.length === 1) {
+      fetchAvailabilityForModal(selectedRecruiters[0], formatDate(clickInfo.date));
+    } else {
+      setModalAvailabilitySlots([]);
+    }
+    setModalOpen(true);
+  };
 
 
   const handleFormChange = (e) => {
@@ -693,9 +847,34 @@ setFormData({
             : prev.recurringDays.filter((d) => d !== value);
           return { ...prev, recurringDays: newDays };
         });
+      } else {
+        setFormData((prev) => ({ ...prev, [name]: checked }));
       }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleAvailabilitySelection = (event) => {
+    const value = event.target.value;
+    const raw = typeof value === "string" ? value.split(",") : value;
+    const selection = raw.map((v) => {
+      const parsed = parseInt(v, 10);
+      return Number.isNaN(parsed) ? v : parsed;
+    });
+    setSelectedAvailabilityIds(selection);
+    if (selection.length === 1) {
+      const slot = modalAvailabilitySlots.find(
+        (s) => String(s.id) === String(selection[0])
+      );
+      if (slot) {
+        setFormData((prev) => ({
+          ...prev,
+          date: slot.date,
+          startTime: slot.start_time?.slice(0, 5) || prev.startTime,
+          endTime: slot.end_time?.slice(0, 5) || prev.endTime,
+        }));
+      }
     }
   };
 
@@ -715,8 +894,17 @@ setFormData({
       // keep recurrence controls in sync:
       repeatMode: "weeks",
       repeatWeeks: 2,
-      repeatUntil: ""
+      repeatUntil: "",
+      breakStart: "",
+      breakEnd: "",
+      breakMinutes: "",
+      breakPaid: false,
     });
+    setSelectedAvailabilityIds([]);
+    setModalAvailabilitySlots([]);
+    if (selectedRecruiters.length === 1) {
+      fetchAvailabilityForModal(selectedRecruiters[0], dateStr);
+    }
     setModalOpen(true);
   };
 
@@ -732,6 +920,10 @@ setFormData({
         endTime: template.end,
         recurring: template.recurring,
         recurringDays: template.days,
+        breakStart: template.breakStart || "",
+        breakEnd: template.breakEnd || "",
+        breakMinutes: template.breakMinutes || "",
+        breakPaid: Boolean(template.breakPaid),
       }));
     } else {
       setFormData((prev) => ({ ...prev, selectedTemplate: "" }));
@@ -739,7 +931,18 @@ setFormData({
   };
 
   const openTemplateModal = () => {
-    setTemplateFormData({ label: "", start: "", end: "", days: [], recurring: true });
+    setTemplateFormData({
+      id: null,
+      label: "",
+      start: "",
+      end: "",
+      days: [],
+      recurring: true,
+      breakStart: "",
+      breakEnd: "",
+      breakMinutes: "",
+      breakPaid: false,
+    });
     setEditingTemplateIndex(null);
     setTemplateModalOpen(true);
   };
@@ -778,6 +981,12 @@ setFormData({
       end_time: templateFormData.end,
       days: templateFormData.days.map((d) => dayLabels.indexOf(d)),
       template_type: "private",
+      break_start: templateFormData.breakStart || null,
+      break_end: templateFormData.breakEnd || null,
+      break_minutes: templateFormData.breakMinutes
+        ? parseInt(templateFormData.breakMinutes, 10)
+        : null,
+      break_paid: Boolean(templateFormData.breakPaid),
     };
 
     const method = editingTemplateIndex != null ? "PUT" : "POST";
@@ -806,14 +1015,17 @@ setFormData({
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const dataReload = await resReload.json();
-      const dayMap = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
       const listReload = (dataReload || []).map((t) => ({
         id: t.id,
         label: t.name,
         start: (t.start_time || "").slice(0, 5),
         end: (t.end_time || "").slice(0, 5),
-        days: (t.days || []).map((i) => dayMap[i]),
+        days: normalizeTemplateDays(t.days || []),
         recurring: true,
+        breakStart: (t.break_start || "").slice(0, 5),
+        breakEnd: (t.break_end || "").slice(0, 5),
+        breakMinutes: t.break_minutes ?? "",
+        breakPaid: Boolean(t.break_paid),
       }));
       setTemplates(listReload);
       setSuccessMsg("Template saved successfully.");
@@ -823,7 +1035,20 @@ setFormData({
   };
 
   const handleTemplateEdit = (index) => {
-    setTemplateFormData({ ...templates[index] });
+    const tpl = templates[index];
+    if (!tpl) return;
+    setTemplateFormData({
+      id: tpl.id,
+      label: tpl.label || "",
+      start: tpl.start || "",
+      end: tpl.end || "",
+      days: tpl.days || [],
+      recurring: tpl.recurring !== false,
+      breakStart: tpl.breakStart || "",
+      breakEnd: tpl.breakEnd || "",
+      breakMinutes: tpl.breakMinutes ?? "",
+      breakPaid: Boolean(tpl.breakPaid),
+    });
     setEditingTemplateIndex(index);
     setTemplateModalOpen(true);
   };
@@ -832,6 +1057,25 @@ setFormData({
     // Optional: call an API to delete. For now, remove client-side and toast.
     setTemplates((prev) => prev.filter((_, i) => i !== index));
     setSuccessMsg("Template deleted successfully.");
+  };
+
+  const applyBreakFields = (payload, dateStr) => {
+    const normalize = (time) =>
+      time && time.includes("T") ? time : `${dateStr}T${time}`;
+    if (formData.breakStart) {
+      payload.break_start = normalize(formData.breakStart);
+    }
+    if (formData.breakEnd) {
+      payload.break_end = normalize(formData.breakEnd);
+    }
+    if (formData.breakMinutes) {
+      const parsed = parseInt(formData.breakMinutes, 10);
+      if (!Number.isNaN(parsed)) {
+        payload.break_minutes = parsed;
+      }
+    }
+    payload.break_paid = Boolean(formData.breakPaid);
+    return payload;
   };
 
   /* --------------------------------- submitters ------------------------------ */
@@ -865,26 +1109,43 @@ setFormData({
     let conflicts = [];
     let failures = [];
 
-    for (let dateStr of dates) {
-      for (let recruiterId of selectedRecruiters) {
-        if (hasConflict(recruiterId, dateStr, formData.startTime, formData.endTime)) {
-          conflicts.push(`🟡 Conflict - Recruiter ${recruiterId} on ${dateStr}`);
+    const usingAvailabilitySlots = selectedAvailabilityIds.length > 0;
+    if (usingAvailabilitySlots && selectedRecruiters.length !== 1) {
+      setErrorMsg("Assign availability slots to one employee at a time.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const userId = parseInt(localStorage.getItem("userId"), 10);
+
+    if (usingAvailabilitySlots) {
+      const recruiterId = selectedRecruiters[0];
+      const slots = modalAvailabilitySlots.filter((slot) =>
+        selectedAvailabilityIds.includes(slot.id)
+      );
+      if (!slots.length) {
+        setErrorMsg("Select at least one availability slot.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      for (const slot of slots) {
+        if (hasConflict(recruiterId, slot.date, slot.start_time, slot.end_time)) {
+          conflicts.push(`🟡 Conflict - Recruiter ${recruiterId} on ${slot.date}`);
           continue;
         }
 
-        const clock_in = `${dateStr}T${formData.startTime}`;
-        const clock_out = `${dateStr}T${formData.endTime}`;
-
-        const payload = {
-          recruiter_id: recruiterId,
-          date: dateStr,
-          clock_in,
-          clock_out,
-          location: formData.location,
-          note: formData.note,
-          status: "assigned",
-          created_by: parseInt(localStorage.getItem("userId")),
-        };
+        const payload = applyBreakFields(
+          {
+            recruiter_id: recruiterId,
+            availability_id: slot.id,
+            location: formData.location,
+            note: formData.note,
+            status: "assigned",
+            created_by: userId,
+          },
+          slot.date
+        );
 
         try {
           const res = await fetch(`${API_URL}/automation/shifts/create`, {
@@ -896,12 +1157,53 @@ setFormData({
             body: JSON.stringify(payload),
           });
           if (!res.ok) {
-            failures.push(`🔴 Failed - Recruiter ${recruiterId} on ${dateStr}`);
+            failures.push(`🔴 Failed - Recruiter ${recruiterId} on ${slot.date}`);
           } else {
             successCount++;
           }
         } catch {
-          failures.push(`🔴 Error - Recruiter ${recruiterId} on ${dateStr}`);
+          failures.push(`🔴 Error - Recruiter ${recruiterId} on ${slot.date}`);
+        }
+      }
+    } else {
+      for (let dateStr of dates) {
+        for (let recruiterId of selectedRecruiters) {
+          if (hasConflict(recruiterId, dateStr, formData.startTime, formData.endTime)) {
+            conflicts.push(`🟡 Conflict - Recruiter ${recruiterId} on ${dateStr}`);
+            continue;
+          }
+
+          const payload = applyBreakFields(
+            {
+              recruiter_id: recruiterId,
+              date: dateStr,
+              clock_in: `${dateStr}T${formData.startTime}`,
+              clock_out: `${dateStr}T${formData.endTime}`,
+              location: formData.location,
+              note: formData.note,
+              status: "assigned",
+              created_by: userId,
+            },
+            dateStr
+          );
+
+          try {
+            const res = await fetch(`${API_URL}/automation/shifts/create`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeaders(),
+              },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+              failures.push(`🔴 Failed - Recruiter ${recruiterId} on ${dateStr}`);
+            } else {
+              successCount++;
+            }
+          } catch {
+            failures.push(`🔴 Error - Recruiter ${recruiterId} on ${dateStr}`);
+          }
         }
       }
     }
@@ -915,6 +1217,7 @@ setFormData({
     }
 
     setModalOpen(false);
+    setSelectedAvailabilityIds([]);
     fetchShifts();
     setIsSubmitting(false);
   };
@@ -928,7 +1231,7 @@ setFormData({
     const clock_out = `${dateStr}T${formData.endTime}`;
     const createdBy = localStorage.getItem("user_email");
 
-    const payload = {
+    const payload = applyBreakFields({
       recruiter_id: recruiterId,
       date: dateStr,
       clock_in,
@@ -937,7 +1240,13 @@ setFormData({
       note: formData.note,
       status: "assigned",
       created_by: createdBy,
-    };
+    }, dateStr);
+
+    if (selectedAvailabilityIds.length === 1) {
+      payload.availability_id = selectedAvailabilityIds[0];
+    } else if (!selectedAvailabilityIds.length) {
+      payload.availability_id = null;
+    }
 
     if (
       hasConflict(recruiterId, dateStr, formData.startTime, formData.endTime, editingShift.id)
@@ -1119,7 +1428,7 @@ setFormData({
   // shared props for Week/Day calendars
   const baseCalProps = {
     plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
-    events: calendarEvents,
+    events: [...calendarEvents, ...availabilityOverlay],
     editable: true,
     selectable: true,
     weekends: showWeekends,
@@ -1395,20 +1704,29 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                     label={c.label}
                     onClick={() => {
                       const s = c.raw;
-setEditingShift(s);
-const sD = s?.clock_in ? new Date(s.clock_in) : null;
-const eD = s?.clock_out ? new Date(s.clock_out) : null;
+                      setEditingShift(s);
+                      const sD = s?.clock_in ? new Date(s.clock_in) : null;
+                      const eD = s?.clock_out ? new Date(s.clock_out) : null;
 
-setFormData({
-  date: sD ? formatDate(sD) : (s.date || ""),
-  startTime: sD ? formatTime(sD) : "",
-  endTime: eD ? formatTime(eD) : "",
-  location: s.location || "",
-  note: s.note || "",
-  recurring: false,
-  recurringDays: [],
-  selectedTemplate: "",
-});
+                      setFormData({
+                        date: sD ? formatDate(sD) : s.date || "",
+                        startTime: sD ? formatTime(sD) : "",
+                        endTime: eD ? formatTime(eD) : "",
+                        location: s.location || "",
+                        note: s.note || "",
+                        recurring: false,
+                        recurringDays: [],
+                        selectedTemplate: "",
+                        breakStart: toTimeInputValue(s.break_start),
+                        breakEnd: toTimeInputValue(s.break_end),
+                        breakMinutes: s.break_minutes ?? "",
+                        breakPaid: Boolean(s.break_paid),
+                        repeatMode: "weeks",
+                        repeatWeeks: 2,
+                        repeatUntil: "",
+                      });
+                      setSelectedAvailabilityIds(s.availability_id ? [s.availability_id] : []);
+                      fetchAvailabilityForModal(s.recruiter_id, s.date);
 
                       setModalOpen(true);
                     }}
@@ -1568,20 +1886,31 @@ setFormData({
                   );
                   if (shift) {
                     setEditingShift(shift);
-const sD = shift?.clock_in ? new Date(shift.clock_in) : null;
-const eD = shift?.clock_out ? new Date(shift.clock_out) : null;
+                    const sD = shift?.clock_in ? new Date(shift.clock_in) : null;
+                    const eD = shift?.clock_out ? new Date(shift.clock_out) : null;
 
-setFormData({
-  date: sD ? formatDate(sD) : (shift.date || ""),
-  startTime: sD ? formatTime(sD) : "",
-  endTime: eD ? formatTime(eD) : "",
-  location: shift.location || "",
-  note: shift.note || "",
-  recurring: false,
-  recurringDays: [],
-  selectedTemplate: "",
-});
-setPendingEventUpdate(null);
+                    setFormData({
+                      date: sD ? formatDate(sD) : shift.date || "",
+                      startTime: sD ? formatTime(sD) : "",
+                      endTime: eD ? formatTime(eD) : "",
+                      location: shift.location || "",
+                      note: shift.note || "",
+                      recurring: false,
+                      recurringDays: [],
+                      selectedTemplate: "",
+                      breakStart: toTimeInputValue(shift.break_start),
+                      breakEnd: toTimeInputValue(shift.break_end),
+                      breakMinutes: shift.break_minutes ?? "",
+                      breakPaid: Boolean(shift.break_paid),
+                      repeatMode: "weeks",
+                      repeatWeeks: 2,
+                      repeatUntil: "",
+                    });
+                    setSelectedAvailabilityIds(
+                      shift.availability_id ? [shift.availability_id] : []
+                    );
+                    fetchAvailabilityForModal(shift.recruiter_id, shift.date);
+                    setPendingEventUpdate(null);
 
                     pendingRevertCallbackRef.current = null;
                     setModalOpen(true);
@@ -1681,6 +2010,8 @@ setPendingEventUpdate(null);
         onClose={() => {
           setModalOpen(false);
           setEditingShift(null);
+          setSelectedAvailabilityIds([]);
+          setModalAvailabilitySlots([]);
         }}
       >
         <Box
@@ -1744,6 +2075,107 @@ setPendingEventUpdate(null);
             value={formData.note}
             onChange={handleFormChange}
           />
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Break start"
+                type="time"
+                margin="normal"
+                name="breakStart"
+                InputLabelProps={{ shrink: true }}
+                value={formData.breakStart}
+                onChange={handleFormChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Break end"
+                type="time"
+                margin="normal"
+                name="breakEnd"
+                InputLabelProps={{ shrink: true }}
+                value={formData.breakEnd}
+                onChange={handleFormChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Break minutes"
+                type="number"
+                margin="normal"
+                name="breakMinutes"
+                value={formData.breakMinutes}
+                onChange={handleFormChange}
+              />
+            </Grid>
+          </Grid>
+          <FormControlLabel
+            control={
+              <Checkbox
+                name="breakPaid"
+                checked={formData.breakPaid}
+                onChange={handleFormChange}
+              />
+            }
+            label="Break is paid"
+          />
+          <FormControl
+            fullWidth
+            margin="normal"
+            disabled={!canLinkAvailability}
+          >
+            <InputLabel>Availability slot</InputLabel>
+            <Select
+              multiple
+              label="Availability slot"
+              value={selectedAvailabilityIds}
+              onChange={handleAvailabilitySelection}
+              input={<OutlinedInput label="Availability slot" />}
+              renderValue={(selected) =>
+                selected
+                  .map((id) => {
+                    const slot = modalAvailabilitySlots.find(
+                      (s) => String(s.id) === String(id)
+                    );
+                    return slot ? formatAvailabilityDisplay(slot) : id;
+                  })
+                  .join(", ")
+              }
+            >
+              {!canLinkAvailability ? (
+                <MenuItem disabled>Select one employee to link availability.</MenuItem>
+              ) : modalAvailabilitySlots.length === 0 ? (
+                <MenuItem disabled>No open slots near this date.</MenuItem>
+              ) : (
+                modalAvailabilitySlots.map((slot) => (
+                  <MenuItem
+                    key={slot.id}
+                    value={slot.id}
+                    disabled={
+                      slot.booked &&
+                      (!editingShift || String(slot.id) !== String(editingShift.availability_id))
+                    }
+                  >
+                    <Checkbox
+                      size="small"
+                      checked={selectedAvailabilityIds.some(
+                        (id) => String(id) === String(slot.id)
+                      )}
+                    />
+                    <ListItemText primary={formatAvailabilityDisplay(slot)} />
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+            <FormHelperText>
+              {canLinkAvailability
+                ? "Optional: auto-link availability slots (select one to fill times)."
+                : "Select a single employee to link availability slots."}
+            </FormHelperText>
+          </FormControl>
 
           {/* Recurrence controls */}
           <Box mt={2}>
@@ -1919,6 +2351,62 @@ setPendingEventUpdate(null);
             onChange={handleTemplateFormChange}
           />
 
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Break start"
+                type="time"
+                margin="normal"
+                name="breakStart"
+                InputLabelProps={{ shrink: true }}
+                value={templateFormData.breakStart}
+                onChange={handleTemplateFormChange}
+                helperText="Optional default pause"
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Break end"
+                type="time"
+                margin="normal"
+                name="breakEnd"
+                InputLabelProps={{ shrink: true }}
+                value={templateFormData.breakEnd}
+                onChange={handleTemplateFormChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                fullWidth
+                label="Break minutes"
+                type="number"
+                margin="normal"
+                name="breakMinutes"
+                value={templateFormData.breakMinutes}
+                onChange={handleTemplateFormChange}
+                helperText="Used when start/end empty"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="breakPaid"
+                    checked={templateFormData.breakPaid}
+                    onChange={handleTemplateFormChange}
+                  />
+                }
+                label="Break is paid"
+              />
+            </Grid>
+          </Grid>
+          <Typography variant="caption" color="text.secondary">
+            These defaults flow into shift assignments and employee clock breaks, so values here should
+            mirror your labour policy.
+          </Typography>
+
           <Box mt={2}>
             <Typography variant="subtitle2">Select Days</Typography>
             <Grid container>
@@ -1983,6 +2471,12 @@ setPendingEventUpdate(null);
               >
                 <Typography>
                   {temp.label} ({temp.start} - {temp.end} on {temp.days.join(", ")})
+                  {temp.breakStart || temp.breakMinutes ? (
+                    <>
+                      {" "}• Break {temp.breakStart ? `${temp.breakStart}–${temp.breakEnd || ""}` : `${temp.breakMinutes} min`}{" "}
+                      {temp.breakPaid ? "(paid)" : "(unpaid)"}
+                    </>
+                  ) : null}
                 </Typography>
                 <Box>
                   <Button size="small" onClick={() => handleTemplateEdit(index)}>

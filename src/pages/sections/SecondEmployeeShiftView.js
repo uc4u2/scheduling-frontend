@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 //  SecondEmployeeShiftView.js  •  Employee self-service: Shifts + Leave + Swap + Manager Approvals
 // ─────────────────────────────────────────────────────────────────────────
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -30,15 +30,19 @@ import {
   Tooltip,
   Switch,
 } from "@mui/material";
-import { format, parseISO, differenceInMinutes, addDays } from "date-fns";
+import { format, parseISO, differenceInMinutes, addDays, addMinutes } from "date-fns";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CloseIcon from "@mui/icons-material/Close";
 import axios from "axios";
 import { STATUS } from "../../utils/shiftSwap";
 import { POLL_MS } from "../../utils/shiftSwap";
 
+/* eslint-disable react-hooks/exhaustive-deps */
 import ShiftSwapPanel from "../../components/ShiftSwapPanel";
 import IncomingSwapRequests from "../../components/IncomingSwapRequests";
+import { getUserTimezone } from "../../utils/timezone";
+import { formatDateTimeInTz } from "../../utils/datetime";
+import { timeTracking } from "../../utils/api";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -49,6 +53,7 @@ const SecondEmployeeShiftView = () => {
 
   const isManager = userRole.toLowerCase() === "manager";
   const [optOut, setOptOut] = useState(false);
+  const viewerTimezone = getUserTimezone();
 
   // ──────────────── Shift / leave states ────────────────
   const [shifts, setShifts] = useState([]);
@@ -84,11 +89,29 @@ const SecondEmployeeShiftView = () => {
 
   // Snackbar feedback (shared)
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false });
+  const [clocking, setClocking] = useState(false);
+  const [breakSubmitting, setBreakSubmitting] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef(null);
+  const activeShiftRef = useRef(null);
+  const [timeSummary, setTimeSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
  // ───────────────────────────────────────────────────────
 //  Fetch helpers
 // ───────────────────────────────────────────────────────
 const authHeader = { Authorization: `Bearer ${token}` };
+const loadTimeSummary = useCallback(async () => {
+  setSummaryLoading(true);
+  try {
+    const data = await timeTracking.employeeSummary();
+    setTimeSummary(data);
+  } catch {
+    setTimeSummary(null);
+  } finally {
+    setSummaryLoading(false);
+  }
+}, []);
 
 const loadShifts = async () => {
   try {
@@ -107,6 +130,9 @@ const loadShifts = async () => {
         id: e.shift_id,
         clock_in: e.start,
         clock_out: e.end,
+        clock_source: e.clock_source || "schedule",
+        status: e.status || "assigned",
+        timezone: e.timezone,
         is_locked: e.is_locked ?? false,
         swap_status: e.swap_status,
         on_leave: e.on_leave,
@@ -114,6 +140,10 @@ const loadShifts = async () => {
         leave_subtype: e.leave_subtype,
         leave_status: e.leave_status,
         override_hours: e.override_hours,
+        break_start: e.break_start,
+        break_end: e.break_end,
+        break_minutes: e.break_minutes,
+        break_paid: e.break_paid,
       }));
 
     setShifts(shiftEvents);
@@ -162,12 +192,14 @@ const loadSwappableShifts = async (shiftId, scope = "week") => {
   }
 };
 
+// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   loadShifts();
   loadPendingSwaps(showSwapHistory);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  loadOptOut();
 }, [userId]);
 
+// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   const intervalId = setInterval(() => {
     loadShifts();
@@ -313,6 +345,40 @@ useEffect(() => {
       : `⏱️ ${h}h ${m}m`;
   };
 
+  const todayShift = useMemo(() => {
+    if (!shifts.length) return null;
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const match = shifts.find((shift) => {
+      try {
+        return format(parseISO(shift.clock_in), "yyyy-MM-dd") === todayStr;
+      } catch {
+        return false;
+      }
+    });
+    return match || null;
+  }, [shifts]);
+  const formatHoursValue = useCallback((value) => `${Number(value || 0).toFixed(1)}h`, []);
+  const summaryMetrics = useMemo(() => {
+    if (!timeSummary) return [];
+    return [
+      {
+        label: "Hours this week",
+        value: formatHoursValue(timeSummary?.hours?.worked),
+        helper: `${formatHoursValue(timeSummary?.hours?.overtime)} overtime`,
+      },
+      {
+        label: "Breaks",
+        value: `${timeSummary?.breaks?.taken || 0}`,
+        helper: `${timeSummary?.breaks?.missed || 0} missed`,
+      },
+      {
+        label: "Shifts tracked",
+        value: `${timeSummary?.shifts?.count || 0}`,
+        helper: `${timeSummary?.breaks?.minutes || 0} break mins`,
+      },
+    ];
+  }, [timeSummary, formatHoursValue]);
+
   const swapStatusChip = (shift) => {
   if (!shift.swap_status) return null;
   return (
@@ -329,9 +395,240 @@ useEffect(() => {
 
 
   //  Component markup
+  const currentShiftNumbers = todayShift
+    ? {
+        in: formatDateTimeInTz(todayShift.clock_in, todayShift.timezone || viewerTimezone),
+        out: todayShift.clock_out
+          ? formatDateTimeInTz(todayShift.clock_out, todayShift.timezone || viewerTimezone)
+          : null,
+      }
+    : null;
+
+  const computeElapsedSeconds = useCallback((shift) => {
+    if (!shift?.clock_in) return 0;
+    const start = parseISO(shift.clock_in);
+    const end = shift.clock_out ? parseISO(shift.clock_out) : new Date();
+    let total = Math.max((end - start) / 1000, 0);
+    let breakSeconds = (shift.break_minutes || 0) * 60;
+    if (shift.break_start && !shift.break_end) {
+      try {
+        breakSeconds += Math.max((new Date() - parseISO(shift.break_start)) / 1000, 0);
+      } catch {}
+    }
+    return Math.max(total - breakSeconds, 0);
+  }, []);
+
+  useEffect(() => {
+    activeShiftRef.current = todayShift;
+    if (!todayShift) {
+      setElapsedSeconds(0);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+
+    setElapsedSeconds(computeElapsedSeconds(todayShift));
+
+    if (todayShift.clock_source === "clock" && !todayShift.clock_out) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        if (activeShiftRef.current) {
+          setElapsedSeconds(computeElapsedSeconds(activeShiftRef.current));
+        }
+      }, 1000);
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      };
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [todayShift, computeElapsedSeconds]);
+
+  useEffect(() => () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
+  useEffect(() => {
+    loadTimeSummary();
+  }, [loadTimeSummary]);
+
+  const formatElapsed = useCallback((seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const parts = [String(hrs).padStart(2, "0"), String(mins).padStart(2, "0"), String(secs).padStart(2, "0")];
+    return parts.join(":");
+  }, []);
+
+  const handleClockAction = async (action) => {
+    if (!todayShift) return;
+    setClocking(true);
+    try {
+      if (action === "in") {
+        await timeTracking.clockIn(todayShift.id);
+        setSnackbar({ open: true, msg: "Clock-in recorded.", error: false });
+      } else {
+        await timeTracking.clockOut(todayShift.id);
+        setSnackbar({ open: true, msg: "Clock-out recorded.", error: false });
+      }
+      await loadShifts();
+      await loadTimeSummary();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        error: true,
+        msg: err?.response?.data?.error || "Unable to record time.",
+      });
+    } finally {
+      setClocking(false);
+    }
+  };
+
+  const isClocked = todayShift?.clock_source === "clock";
+  const isInProgress = isClocked && todayShift?.status === "in_progress";
+  const isCompleted = isClocked && ["completed", "approved"].includes(todayShift?.status);
+  const isLockedShift = todayShift?.is_locked;
+  const canClockIn = todayShift && !isClocked && !isLockedShift;
+  const canClockOut = isInProgress && !isLockedShift;
+  const breakInProgress = Boolean(todayShift?.break_start && !todayShift?.break_end);
+  const breakMinutesLogged = todayShift?.break_minutes || 0;
+  const currentBreakMinutes = breakInProgress
+    ? Math.max(
+        differenceInMinutes(new Date(), parseISO(todayShift.break_start || new Date().toISOString())),
+        0
+      )
+    : 0;
+  const totalBreakMinutes = breakMinutesLogged + currentBreakMinutes;
+  const canStartBreak = isInProgress && !breakInProgress && !isCompleted && !breakSubmitting;
+  const canEndBreak = isInProgress && breakInProgress && !breakSubmitting;
+  const timelineMeta = useMemo(() => {
+    if (!todayShift) return null;
+    try {
+      const start = parseISO(todayShift.clock_in);
+      const endRaw = todayShift.clock_out;
+      if (!start || !endRaw) return null;
+      const end = parseISO(endRaw);
+      const totalMinutes = Math.max(differenceInMinutes(end, start), 1);
+      const now = new Date();
+      const elapsedMinutes = Math.min(Math.max((now - start) / 60000, 0), totalMinutes);
+      const progressPct = Math.min(Math.max((elapsedMinutes / totalMinutes) * 100, 0), 100);
+      let breakSegment = null;
+      if (todayShift.break_start) {
+        const breakStart = parseISO(todayShift.break_start);
+        const breakEnd = todayShift.break_end
+          ? parseISO(todayShift.break_end)
+          : todayShift.break_minutes
+          ? addMinutes(breakStart, todayShift.break_minutes)
+          : new Date();
+        const startOffset = Math.max((breakStart - start) / 60000, 0);
+        const endOffset = Math.min((breakEnd - start) / 60000, totalMinutes);
+        if (endOffset > startOffset) {
+          breakSegment = {
+            left: (startOffset / totalMinutes) * 100,
+            width: Math.max(((endOffset - startOffset) / totalMinutes) * 100, 2),
+            inProgress: !todayShift.break_end,
+          };
+        }
+      }
+      const requiredBreak = timeSummary?.policy?.required_break_minutes || 0;
+      const needsBreak = requiredBreak && totalMinutes / 60 >= 6;
+      const breakDeficit = needsBreak ? Math.max(requiredBreak - totalBreakMinutes, 0) : 0;
+      return {
+        start,
+        end,
+        progressPct,
+        breakSegment,
+        needsBreak,
+        breakDeficit,
+      };
+    } catch {
+      return null;
+    }
+  }, [todayShift, totalBreakMinutes, timeSummary]);
+
+  const handleBreakAction = async (action) => {
+    if (!todayShift) return;
+    setBreakSubmitting(true);
+    try {
+      if (action === "start") {
+        await timeTracking.startBreak(todayShift.id);
+        setSnackbar({ open: true, msg: "Break started.", error: false });
+      } else {
+        await timeTracking.endBreak(todayShift.id);
+        setSnackbar({ open: true, msg: "Break ended.", error: false });
+      }
+      await loadShifts();
+      await loadTimeSummary();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        error: true,
+        msg: err?.response?.data?.error || "Unable to record break.",
+      });
+    } finally {
+      setBreakSubmitting(false);
+    }
+  };
+
 // ───────────────────────────────────────────────────────
 return (
   <>
+    <Paper
+      elevation={0}
+      sx={{
+        mb: 2,
+        p: 3,
+        borderRadius: 3,
+        border: (theme) => `1px solid ${theme.palette.divider}`,
+        background: (theme) => theme.palette.background.paper,
+      }}
+    >
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+      >
+        <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
+          This week at a glance
+        </Typography>
+        {summaryLoading && <CircularProgress size={16} />}
+      </Stack>
+      {summaryMetrics.length ? (
+        <Grid container spacing={2} sx={{ mt: 1 }}>
+          {summaryMetrics.map((metric) => (
+            <Grid item xs={12} sm={4} key={metric.label}>
+              <Box>
+                <Typography variant="h5" fontWeight={700}>
+                  {metric.value}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {metric.label}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {metric.helper}
+                </Typography>
+              </Box>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          {summaryLoading ? "Calculating your week..." : "No tracked hours yet this week."}
+        </Typography>
+      )}
+    </Paper>
+
     {/* Top-level button */}
     <Button
       variant="outlined"
@@ -341,6 +638,194 @@ return (
     >
       View My Shifts
     </Button>
+
+    <Paper
+      elevation={0}
+      sx={{
+        mb: 3,
+        p: 3,
+        borderRadius: 3,
+        border: (theme) => `1px solid ${theme.palette.divider}`,
+        background: (theme) => theme.palette.background.paper,
+      }}
+    >
+      <Stack spacing={1}>
+        <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
+          Today's shift
+        </Typography>
+        {todayShift ? (
+          <>
+            <Typography variant="h6" fontWeight={700}>
+              {format(parseISO(todayShift.clock_in), "EEE, MMM d")} ·{" "}
+              {format(parseISO(todayShift.clock_in), "HH:mm")} –{" "}
+              {format(parseISO(todayShift.clock_out), "HH:mm")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {isClocked
+                ? `Clocked in at ${currentShiftNumbers?.in}${
+                    isCompleted && currentShiftNumbers?.out
+                      ? ` • Clocked out at ${currentShiftNumbers?.out}`
+                      : ""
+                  }`
+                : "Not clocked in yet."}
+            </Typography>
+            {isClocked && (
+              <Typography variant="body2" color="text.secondary">
+                Time on shift: {formatElapsed(elapsedSeconds)}
+              </Typography>
+            )}
+            {breakInProgress && todayShift.break_start && (
+              <Chip
+                size="small"
+                color="warning"
+                label={`On break since ${formatDateTimeInTz(
+                  todayShift.break_start,
+                  todayShift.timezone || viewerTimezone
+                )}`}
+                sx={{ width: "fit-content", mt: 1 }}
+              />
+            )}
+            {isLockedShift && (
+              <Chip size="small" color="success" label="Approved / locked" sx={{ width: "fit-content", mt: 1 }} />
+            )}
+            {timelineMeta && (
+              <Box mt={2}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                  Shift timeline
+                </Typography>
+                <Box
+                  sx={(theme) => ({
+                    position: "relative",
+                    height: 10,
+                    borderRadius: 999,
+                    background: theme.palette.action.hover,
+                    mt: 0.5,
+                  })}
+                >
+                  <Box
+                    sx={(theme) => ({
+                      position: "absolute",
+                      top: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: `${timelineMeta.progressPct}%`,
+                      borderRadius: 999,
+                      background: theme.palette.primary.main,
+                    })}
+                  />
+                  {timelineMeta.breakSegment && (
+                    <Box
+                      sx={(theme) => ({
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        left: `${timelineMeta.breakSegment.left}%`,
+                        width: `${timelineMeta.breakSegment.width}%`,
+                        borderRadius: 999,
+                        background: theme.palette.warning.light,
+                        opacity: 0.9,
+                      })}
+                    />
+                  )}
+                  <Box
+                    sx={(theme) => ({
+                      position: "absolute",
+                      top: -4,
+                      width: 8,
+                      height: 18,
+                      borderRadius: 1,
+                      left: `calc(${timelineMeta.progressPct}% - 4px)`,
+                      background: theme.palette.text.primary,
+                    })}
+                  />
+                </Box>
+                <Stack direction="row" justifyContent="space-between" mt={0.5}>
+                  <Typography variant="caption" color="text.secondary">
+                    {format(timelineMeta.start, "HH:mm")}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {format(new Date(), "HH:mm")}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {format(timelineMeta.end, "HH:mm")}
+                  </Typography>
+                </Stack>
+                {timelineMeta.needsBreak && (
+                  <Chip
+                    size="small"
+                    color={timelineMeta.breakDeficit > 0 ? "error" : "success"}
+                    variant={timelineMeta.breakDeficit > 0 ? "filled" : "outlined"}
+                    label={
+                      timelineMeta.breakDeficit > 0
+                        ? `Break overdue · ${timelineMeta.breakDeficit}m required`
+                        : `Break compliant (${totalBreakMinutes}m logged)`
+                    }
+                    sx={{ mt: 1, width: "fit-content" }}
+                  />
+                )}
+              </Box>
+            )}
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "stretch", sm: "center" }}
+              mt={2}
+            >
+              <Button
+                variant="contained"
+                disabled={!canClockIn || clocking}
+                onClick={() => handleClockAction("in")}
+              >
+                Clock In
+              </Button>
+              <Button
+                variant="outlined"
+                color="secondary"
+                disabled={!canClockOut || clocking}
+                onClick={() => handleClockAction("out")}
+              >
+                Clock Out
+              </Button>
+              {isClocked && !isInProgress && !isCompleted && (
+                <Chip label={todayShift.status} size="small" sx={{ width: "fit-content" }} />
+              )}
+            </Stack>
+            {isInProgress && (
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                alignItems={{ xs: "stretch", sm: "center" }}
+                mt={1}
+              >
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => handleBreakAction("start")}
+                  disabled={!canStartBreak}
+                >
+                  Start Break
+                </Button>
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => handleBreakAction("end")}
+                  disabled={!canEndBreak}
+                >
+                  End Break
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  Breaks logged: {totalBreakMinutes} min {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
+                </Typography>
+              </Stack>
+            )}
+          </>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No shift scheduled today. Upcoming shifts will appear here for quick clock actions.
+          </Typography>
+        )}
+      </Stack>
+    </Paper>
     
     {/* Manager-only toggle for approvals */}
     {isManager && (
@@ -650,7 +1135,7 @@ return (
           <Typography variant="h6" mb={2}>
             Request Shift Swap
           </Typography>
-          // inside the Swap modal, above the select
+          {/* inside the Swap modal, above the select */}
 <FormControlLabel
   control={
     <Switch
@@ -771,4 +1256,5 @@ return (
   );
 };
 
+/* eslint-enable react-hooks/exhaustive-deps */
 export default SecondEmployeeShiftView;

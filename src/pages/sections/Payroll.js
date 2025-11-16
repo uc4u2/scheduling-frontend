@@ -543,7 +543,6 @@ return (
       <li>✅ Federal Income Tax (IRS brackets)</li>
       <li>✅ State Income Tax (where applicable)</li>
       <li>✅ FICA: Social Security & Medicare</li>
-      <li>✅ FUTA: Federal Unemployment Tax (employer portion)</li>
       <li>✅ SUI/SUTA: State Unemployment Insurance (employer-paid)</li>
       <li>✅ PTO & Time Tracking support</li>
       <li>✅ Payroll exports (PDF / CSV / XLSX)</li>

@@ -11,6 +11,8 @@ const TAB_CONFIG = [
   { value: "candidate-forms", label: "Candidate Forms", path: "/recruiter/invitations?section=forms" },
   { value: "questionnaires", label: "Questionnaires", path: "/recruiter/questionnaires" },
   { value: "upcoming-meetings", label: "Upcoming Meetings", path: "/recruiter/upcoming-meetings" },
+  { value: "my-time", label: "My Time", path: "/recruiter/my-time" },
+  { value: "view-my-shift", label: "View My Shift", path: "/recruiter/my-shifts" },
 ];
 
 const LOCAL_TABS = new Set(["calendar", "availability", "shifts"]);
@@ -25,6 +27,12 @@ const getPathValue = (locationPathname, searchParams, fallback) => {
   }
   if (locationPathname.startsWith("/recruiter/upcoming-meetings")) {
     return "upcoming-meetings";
+  }
+  if (locationPathname.startsWith("/recruiter/my-time")) {
+    return "my-time";
+  }
+  if (locationPathname.startsWith("/recruiter/my-shifts")) {
+    return "view-my-shift";
   }
   return fallback;
 };

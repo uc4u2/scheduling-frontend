@@ -33,6 +33,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useNavigate } from "react-router-dom";
 import { format, endOfMonth, addDays } from "date-fns";
+import TimeEntriesPanel from "./TimeEntriesPanel";
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -1060,6 +1061,8 @@ const SecondTeam = () => {
       >
         <Alert severity="error">{errorMsg}</Alert>
       </Snackbar>
+
+      <TimeEntriesPanel recruiters={recruiters} />
 
       {/* Employee Shift Summary Table */}
       <Box mt={4}>

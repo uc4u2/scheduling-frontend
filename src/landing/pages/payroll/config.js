@@ -90,7 +90,7 @@ const overviewConfig = {
     subtitle:
       "Pull real-time hours from scheduling, apply CRA or IRS logic, and ship payslips plus ROE/T4/W-2 documents without leaving Schedulaa.",
     bullets: [
-      "Regional engines for Canada (CPP, EI, BPA) and the USA (FICA, FUTA).",
+      "Regional engines for Canada (CPP, EI, BPA) and the USA (FICA plus state tax logic).",
       "ROE, T4, W-2, and payslip exports backed by our public docs.",
       "Employee self-serve portal plus automated notifications.",
     ],
@@ -117,7 +117,7 @@ const overviewConfig = {
       label: "Compliance",
       title: "Canada & USA tax engines",
       description:
-        "Switch between Canadian CPP/EI/BPA logic or U.S. FICA, FUTA, and state tax rules. Both engines pull the same UI but respect regional settings.",
+        "Switch between Canadian CPP/EI/BPA logic or U.S. FICA and state tax rules. Both engines pull the same UI but respect regional settings.",
       link: "/payroll/canada",
       linkLabel: "See regional calculators",
     },
@@ -504,7 +504,7 @@ const usaConfig = {
       "Handle federal and state income tax, FICA, Medicare, bonuses, tips, commissions, and employer contributions in the same pay run.",
     bullets: [
       "Preview multi-state deductions before you finalize payroll.",
-      "Track employer FUTA and SUTA alongside employee withholding.",
+      "Track employer unemployment contributions alongside employee withholding.",
       "Email PDF payslips and keep a downloadable archive for staff.",
     ],
     primaryCta: { label: "Run US payroll", href: REGISTER_URL },
@@ -520,7 +520,7 @@ const usaConfig = {
       label: "Tax engine",
       title: "Federal and state withholding",
       description:
-        "Calculate federal income tax, FICA, and Medicare, plus state income tax for the main jurisdictions. Employer FUTA/SUTA amounts display alongside employee deductions.",
+        "Calculate federal income tax, FICA, and Medicare, plus state income tax for the main jurisdictions. Employer unemployment contributions display alongside employee deductions.",
     },
     {
       icon: "timeline",
@@ -632,7 +632,7 @@ const usaConfig = {
   ],
   cta: sharedCta,
   secondaryLinks: sharedSecondaryLinks,
-  notice: "Employer FUTA and SUTA contributions are surfaced for reference. Local/city income taxes are not automated yet.",
+  notice: "Employer unemployment contributions are surfaced for reference. Local/city income taxes are not automated yet.",
 };
 
 const roeConfig = {

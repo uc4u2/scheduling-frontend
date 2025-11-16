@@ -80,6 +80,7 @@ import MasterCalendar from "./pages/sections/MasterCalendar";
 import SecondMasterCalendar from "./pages/sections/SecondMasterCalendar";
 
 import Team from "./pages/sections/Team";
+import TimeEntriesPanel from "./pages/sections/TimeEntriesPanel";
 import LeaveRequests from "./pages/sections/LeaveRequests";
 import Meetings from "./pages/sections/Meetings";
 import ROE from "./pages/sections/ROE";
@@ -172,6 +173,7 @@ const menuConfig = [
       { labelKey: "manager.menu.availableShifts", key: "available-shifts", icon: <CalendarToday /> },
       { labelKey: "manager.menu.availableSlots", key: "available-slots", icon: <EventNote /> },
       { labelKey: "manager.menu.shiftManagement", key: "team", icon: <People /> },
+      { labelKey: "manager.menu.timeTracking", key: "time-tracking", icon: <History /> },
     ],
   },
 
@@ -1496,6 +1498,16 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
           </ManagementFrame>
         );
 
+      case "time-tracking":
+        return (
+          <ManagementFrame
+            title="Time Tracking"
+            subtitle="Approve employee punches and keep payroll-ready records."
+          >
+            <TimeEntriesPanel />
+          </ManagementFrame>
+        );
+
       case "team":
         return (
           <ManagementFrame
@@ -1833,6 +1845,3 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 };
 
 export default NewManagementDashboard;
-
-
-

@@ -84,7 +84,7 @@ const knowledgeCategories = [
     title: "Integrations and Automations",
     articles: [
       "Enable Stripe webhooks for payouts and refunds",
-      "Configure Jitsi interviews and Mailchimp marketing",
+      "Configure Jitsi interviews and QuickBooks/Xero syncing",
       "Set up outbound webhooks; Zapier templates are planned",
     ],
     docsLink: "/docs#integrations",
@@ -147,6 +147,12 @@ const DEFAULT_ARTICLES = [
     description: "Understand how Schedulaa complements Xero rather than competing with it.",
     to: "/compare/xero",
     keywords: ["xero", "comparison", "accounting"],
+  },
+  {
+    title: "Workforce command center",
+    description: "Clock-in/out, approvals, and payroll-ready exports from the same workspace.",
+    to: "/workforce",
+    keywords: ["workforce", "time tracking", "clock", "payroll"],
   },
   {
     title: "Canadian payroll coverage",
@@ -224,6 +230,7 @@ const KEYWORD_OVERRIDES = {
   "/status": ["zapier", "api", "integrations", "uptime"],
   "/compare/xero": ["zapier", "integrations"],
   "/compare/deputy": ["zapier", "integrations"],
+  "/workforce": ["time tracking", "clock", "payroll"],
 };
 
 const DESCRIPTION_OVERRIDES = {

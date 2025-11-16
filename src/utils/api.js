@@ -174,6 +174,34 @@ export const questionnaires = {
     api.delete(`/api/questionnaires/${id}`, config).then((r) => r.data),
 };
 
+/* ------------------------------ Time Tracking ------------------------------ */
+export const timeTracking = {
+  getSettings: (config = {}) =>
+    api.get("/admin/time-tracking-settings", config).then((r) => r.data?.policy || r.data),
+  saveSettings: (payload, config = {}) =>
+    api.post("/admin/time-tracking-settings", payload, config).then((r) => r.data),
+  clockIn: (shiftId, config = {}) =>
+    api.post(`/employee/shifts/${shiftId}/clock-in`, {}, config).then((r) => r.data),
+  clockOut: (shiftId, config = {}) =>
+    api.post(`/employee/shifts/${shiftId}/clock-out`, {}, config).then((r) => r.data),
+  startBreak: (shiftId, config = {}) =>
+    api.post(`/employee/shifts/${shiftId}/break-start`, {}, config).then((r) => r.data),
+  endBreak: (shiftId, config = {}) =>
+    api.post(`/employee/shifts/${shiftId}/break-end`, {}, config).then((r) => r.data),
+  listEntries: (params = {}, config = {}) =>
+    api.get("/manager/time-entries", { params, ...config }).then((r) => r.data),
+  approveEntry: (id, config = {}) =>
+    api.post(`/manager/time-entries/${id}/approve`, {}, config).then((r) => r.data),
+  rejectEntry: (id, payload = {}, config = {}) =>
+    api.post(`/manager/time-entries/${id}/reject`, payload, config).then((r) => r.data),
+  bulkAdjustEntries: (payload = {}, config = {}) =>
+    api.post("/manager/time-entries/bulk-adjust", payload, config).then((r) => r.data),
+  employeeSummary: (params = {}, config = {}) =>
+    api.get("/employee/time-summary", { params, ...config }).then((r) => r.data),
+  listTemplates: (config = {}) =>
+    api.get("/api/shift-templates", config).then((r) => r.data),
+};
+
 /* ------------------------------ Invitation Questionnaire Assignments ------------------------------ */
 export const invitationQuestionnaires = {
   list: (invitationId, config = {}) =>

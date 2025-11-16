@@ -375,13 +375,30 @@ const RecruiterDashboard = ({ token }) => {
     >
       <RecruiterTabs localTab={activeTab} onLocalTabChange={handleLocalTabChange} />
 
+      <Paper sx={{ mb: 3, p: 2 }} elevation={1}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="subtitle1" fontWeight={600}>
+              Need a focused clock view?
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Use the new My Time or View My Shift tabs to open the streamlined clock-in workspace.
+            </Typography>
+          </Box>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button variant="outlined" onClick={() => navigate("/recruiter/my-time")}>My Time</Button>
+            <Button variant="contained" onClick={() => navigate("/recruiter/my-shifts")}>View My Shift</Button>
+          </Stack>
+        </Stack>
+      </Paper>
+
       {/* --- OTHER PANELS ABOVE (unchanged) --- */}
       <Grid container spacing={2}>
         {/* --- left column (panels) ------------------------------------------------ */}
         <Grid item xs={12} md={4}>
           {/* Calendar */}
           <Box id="tab-calendar" sx={{ scrollMarginTop: theme.spacing(10) }}>
-            <Accordion defaultExpanded={true}>
+            <Accordion defaultExpanded={false}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
                 My Calendar
@@ -391,18 +408,6 @@ const RecruiterDashboard = ({ token }) => {
               <MySetmoreCalendar token={token} />
             </AccordionDetails>
           </Accordion>
-          </Box>
-          <Box id="tab-shifts" sx={{ scrollMarginTop: theme.spacing(10) }}>
-            <Accordion defaultExpanded={false}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
-                  View My Shifts
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <SecondEmployeeShiftView />
-              </AccordionDetails>
-            </Accordion>
           </Box>
           <Box id="tab-availability" sx={{ scrollMarginTop: theme.spacing(10) }}>
             {/* One-Time Availability */}
@@ -618,7 +623,7 @@ const RecruiterDashboard = ({ token }) => {
   slot.timezone            // <- use what the server sent
    ));
                     const localEnd = moment(
-   isoFromParts(slot.date, slot.end_time, slot.timezone)   // keep the slot’s zone
+   isoFromParts(slot.date, slot.end_time, slot.timezone)   // keep the slots zone
 );
                     return (
                       <Grid key={slot.id} item xs={12} sm={6}>
@@ -825,7 +830,6 @@ const RecruiterDashboard = ({ token }) => {
   );
 };
 export default RecruiterDashboard;
-
 
 
 

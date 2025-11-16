@@ -1,5 +1,5 @@
 // src/EmployeeAvailabilityManagement.js
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -14,15 +14,20 @@ import {
   Tab,
   FormControlLabel,
   Checkbox,
+  Paper,
+  Stack,
 } from "@mui/material";
 import axios from "axios";
-import { pad, isoFromParts } from "../../../utils/datetime";
+import { pad } from "../../../utils/datetime";
 import { DateTime } from "luxon";
+import { useNavigate } from "react-router-dom";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const SHIFT_LOOKAHEAD_DAYS = 21;
 
 const EmployeeAvailabilityManagement = ({ token }) => {
+  const navigate = useNavigate();
   /* ─────────────────────────────── Reference data ─────────────────────────────── */
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -65,6 +70,20 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   /* ─────────────────────────────── Service‑slot state ─────────────────────────── */
   const [slotDate, setSlotDate] = useState("");
   const [slotStartTime, setSlotStartTime] = useState("");
+  const [assignedShifts, setAssignedShifts] = useState([]);
+  const [loadingShifts, setLoadingShifts] = useState(false);
+  const overtimeCount = useMemo(() => {
+    return assignedShifts.filter((shift) => {
+      if (!(shift.clock_in && shift.clock_out)) return false;
+      try {
+        const start = DateTime.fromISO(shift.clock_in);
+        const end = DateTime.fromISO(shift.clock_out);
+        return end.diff(start, "hours").hours >= 9;
+      } catch {
+        return false;
+      }
+    }).length;
+  }, [assignedShifts]);
 
   /* ─────────────────────────────── Helpers ─────────────────────────────────────── */
   const resetAlerts = () => {
@@ -112,6 +131,10 @@ const EmployeeAvailabilityManagement = ({ token }) => {
             start: t.start_time.slice(0, 5),
             end: t.end_time.slice(0, 5),
             days: (t.days || []).map((i) => dayLabels[i]),
+            breakStart: t.break_start ? t.break_start.slice(0, 5) : "",
+            breakEnd: t.break_end ? t.break_end.slice(0, 5) : "",
+            breakMinutes: t.break_minutes ?? "",
+            breakPaid: Boolean(t.break_paid),
           }))
         )
       )
@@ -124,17 +147,18 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   }, [token]);
 
   /* ─────────────────────────────── Pre‑fill on employee change ─────────────────── */
-  useEffect(() => {
-    if (!selectedEmployeeId) {
-      setWDayFrom("");
-      setWDayTo("");
-      setWStart("");
-      setWEnd("");
-      setMakeSlots(false);
-      setWDuration(60);
-      setWCooling(0);
-      return;
-    }
+useEffect(() => {
+  if (!selectedEmployeeId) {
+    setWDayFrom("");
+    setWDayTo("");
+    setWStart("");
+    setWEnd("");
+    setMakeSlots(false);
+    setWDuration(60);
+    setWCooling(0);
+    setAssignedShifts([]);
+    return;
+  }
 
     const emp = employees.find((e) => e.id === selectedEmployeeId);
     setSelectedEmployeeTimezone(emp?.timezone || "UTC");
@@ -153,7 +177,29 @@ const EmployeeAvailabilityManagement = ({ token }) => {
         setWEnd(s.end_time);
       })
       .catch(() => {});
-  }, [selectedEmployeeId, employees, token]);
+}, [selectedEmployeeId, employees, token]);
+
+const loadAssignedShifts = useCallback(() => {
+  if (!selectedEmployeeId) {
+    setAssignedShifts([]);
+    return;
+  }
+  const start = DateTime.now().startOf("day");
+  const end = start.plus({ days: SHIFT_LOOKAHEAD_DAYS });
+  setLoadingShifts(true);
+  axios
+    .get(
+      `${API_URL}/automation/shifts/range?start_date=${start.toISODate()}&end_date=${end.toISODate()}&recruiter_ids=${selectedEmployeeId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    .then((r) => setAssignedShifts(r.data?.shifts || []))
+    .catch(() => setAssignedShifts([]))
+    .finally(() => setLoadingShifts(false));
+}, [selectedEmployeeId, token]);
+
+useEffect(() => {
+  loadAssignedShifts();
+}, [loadAssignedShifts]);
 
   /* ─────────────────────────────── Filters & selects ───────────────────────────── */
   const filteredEmployees = useMemo(
@@ -162,6 +208,10 @@ const EmployeeAvailabilityManagement = ({ token }) => {
         ? employees.filter((e) => String(e.department_id) === String(selectedDepartment))
         : employees,
     [employees, selectedDepartment]
+  );
+  const selectedEmployee = useMemo(
+    () => employees.find((e) => e.id === selectedEmployeeId),
+    [employees, selectedEmployeeId]
   );
 
   const handleDepartmentChange = (e) => {
@@ -183,11 +233,18 @@ const EmployeeAvailabilityManagement = ({ token }) => {
     if (tmpl) {
       setWStart(tmpl.start);
       setWEnd(tmpl.end);
+      setStartTime(tmpl.start);
+      setEndTime(tmpl.end);
+      setBreakStartTime(tmpl.breakStart || "");
+      setBreakEndTime(tmpl.breakEnd || "");
     } else {
       setWStart("");
       setWEnd("");
+      setBreakStartTime("");
+      setBreakEndTime("");
     }
   };
+
 
   /* ─────────────────────────────── Save helpers ────────────────────────────────── */
   const saveDailyWindow = async () => {
@@ -347,6 +404,83 @@ const EmployeeAvailabilityManagement = ({ token }) => {
           renderInput={(params) => <TextField {...params} label="Employee" fullWidth margin="dense" />}
           sx={{ mb: 2 }}
         />
+      )}
+
+      {selectedEmployeeId && (
+        <Paper sx={{ p: 2, mb: 3 }} variant="outlined">
+          <Stack direction={{ xs: "column", lg: "row" }} spacing={2} justifyContent="space-between">
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600}>
+                Shift health snapshot
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Upcoming {SHIFT_LOOKAHEAD_DAYS}-day outlook for{" "}
+                {selectedEmployee?.full_name || selectedEmployee?.name || "this employee"}.
+              </Typography>
+            </Box>
+            <Button size="small" variant="outlined" onClick={loadAssignedShifts} disabled={loadingShifts}>
+              Refresh metrics
+            </Button>
+          </Stack>
+          {loadingShifts ? (
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2 }}>
+              <CircularProgress size={18} />
+              <Typography variant="body2" color="text.secondary">
+                Calculating shift metrics…
+              </Typography>
+            </Stack>
+          ) : (
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mt: 2 }}>
+              <Paper
+                variant="outlined"
+                sx={{ flex: 1, p: 2, cursor: "pointer" }}
+                onClick={() => navigate(`/manager/dashboard?view=team&recruiter=${selectedEmployeeId}`)}
+              >
+                <Typography variant="h4" fontWeight={700}>
+                  {assignedShifts.length}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Shifts scheduled next {SHIFT_LOOKAHEAD_DAYS} days
+                </Typography>
+                <Typography variant="caption" color="primary">
+                  Open shift manager ↗
+                </Typography>
+              </Paper>
+              <Paper variant="outlined" sx={{ flex: 1, p: 2 }}>
+                <Typography variant="h4" fontWeight={700}>
+                  {assignedShifts.filter((s) => s.status === "in_progress").length}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Currently in progress
+                </Typography>
+              </Paper>
+              <Paper variant="outlined" sx={{ flex: 1, p: 2 }}>
+                <Typography variant="h4" fontWeight={700}>
+                  {overtimeCount}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Overtime risk (9h+ shifts)
+                </Typography>
+              </Paper>
+              <Paper variant="outlined" sx={{ flex: 1, p: 2 }}>
+                <Typography variant="h4" fontWeight={700}>
+                  {
+                    assignedShifts.filter(
+                      (s) =>
+                        !s.break_start &&
+                        !s.break_minutes &&
+                        (!s.breakStart || s.breakStart === "") &&
+                        (!s.breakMinutes || s.breakMinutes === "")
+                    ).length
+                  }
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Shifts lacking break defaults
+                </Typography>
+              </Paper>
+            </Stack>
+          )}
+        </Paper>
       )}
 
       {/* Tabs */}
