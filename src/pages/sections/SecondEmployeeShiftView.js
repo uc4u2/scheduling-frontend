@@ -29,10 +29,19 @@ import {
   Stack,
   Tooltip,
   Switch,
+  Collapse,
+  Table,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableRow,
 } from "@mui/material";
-import { format, parseISO, differenceInMinutes, addDays, addMinutes } from "date-fns";
+import { format, parseISO, differenceInMinutes, addDays } from "date-fns";
+import { DateTime } from "luxon";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CloseIcon from "@mui/icons-material/Close";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import axios from "axios";
 import { STATUS } from "../../utils/shiftSwap";
 import { POLL_MS } from "../../utils/shiftSwap";
@@ -60,6 +69,8 @@ const SecondEmployeeShiftView = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [todayCardCollapsed, setTodayCardCollapsed] = useState(false);
+  const [countdownTick, setCountdownTick] = useState(Date.now());
 
   // Leave-request dialog
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
@@ -96,6 +107,15 @@ const SecondEmployeeShiftView = () => {
   const activeShiftRef = useRef(null);
   const [timeSummary, setTimeSummary] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState([]);
+  const [historySummary, setHistorySummary] = useState(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const [historyFilters, setHistoryFilters] = useState(() => {
+    const end = format(new Date(), "yyyy-MM-dd");
+    const start = format(addDays(new Date(), -30), "yyyy-MM-dd");
+    return { startDate: start, endDate: end, status: "all" };
+  });
 
  // ───────────────────────────────────────────────────────
 //  Fetch helpers
@@ -113,6 +133,26 @@ const loadTimeSummary = useCallback(async () => {
   }
 }, []);
 
+const loadTimeHistory = useCallback(async () => {
+  setHistoryLoading(true);
+  setHistoryError("");
+  try {
+    const data = await timeTracking.employeeHistory({
+      start_date: historyFilters.startDate,
+      end_date: historyFilters.endDate,
+      status: historyFilters.status !== "all" ? historyFilters.status : undefined,
+    });
+    setHistoryEntries(Array.isArray(data?.entries) ? data.entries : []);
+    setHistorySummary(data?.summary || null);
+  } catch (err) {
+    setHistoryEntries([]);
+    setHistorySummary(null);
+    setHistoryError(err?.response?.data?.error || "Failed to load time history.");
+  } finally {
+    setHistoryLoading(false);
+  }
+}, [historyFilters.endDate, historyFilters.startDate, historyFilters.status]);
+
 const loadShifts = async () => {
   try {
     const today = format(new Date(), "yyyy-MM-dd");
@@ -126,25 +166,37 @@ const loadShifts = async () => {
 
     const shiftEvents = events
       .filter((e) => e.type === "shift")
-      .map((e) => ({
-        id: e.shift_id,
-        clock_in: e.start,
-        clock_out: e.end,
-        clock_source: e.clock_source || "schedule",
-        status: e.status || "assigned",
-        timezone: e.timezone,
-        is_locked: e.is_locked ?? false,
-        swap_status: e.swap_status,
-        on_leave: e.on_leave,
-        leave_type: e.leave_type,
-        leave_subtype: e.leave_subtype,
-        leave_status: e.leave_status,
-        override_hours: e.override_hours,
-        break_start: e.break_start,
-        break_end: e.break_end,
-        break_minutes: e.break_minutes,
-        break_paid: e.break_paid,
-      }));
+      .map((e) => {
+        let shiftDate = e.date || null;
+        if (!shiftDate && e.start) {
+          try {
+            shiftDate = format(parseISO(e.start), "yyyy-MM-dd");
+          } catch {
+            shiftDate = null;
+          }
+        }
+        return {
+          id: e.shift_id,
+          clock_in: e.start,
+          clock_out: e.end,
+          clock_source: e.clock_source || "schedule",
+          status: e.status || "assigned",
+          timezone: e.timezone,
+          is_locked: e.is_locked ?? false,
+          swap_status: e.swap_status,
+          on_leave: e.on_leave,
+          leave_type: e.leave_type,
+          leave_subtype: e.leave_subtype,
+          leave_status: e.leave_status,
+          override_hours: e.override_hours,
+          break_start: e.break_start,
+          break_end: e.break_end,
+          break_minutes: e.break_minutes,
+          break_paid: e.break_paid,
+          break_policy: e.break_policy,
+          date: shiftDate,
+        };
+      });
 
     setShifts(shiftEvents);
   } catch (err) {
@@ -197,6 +249,7 @@ useEffect(() => {
   loadShifts();
   loadPendingSwaps(showSwapHistory);
   loadOptOut();
+  loadTimeHistory();
 }, [userId]);
 
 // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,6 +260,15 @@ useEffect(() => {
   }, POLL_MS); // <--- use the shared constant!
   return () => clearInterval(intervalId);
 }, [showSwapHistory]);
+
+useEffect(() => {
+  const ticker = setInterval(() => setCountdownTick(Date.now()), 30000);
+  return () => clearInterval(ticker);
+}, []);
+
+useEffect(() => {
+  loadTimeHistory();
+}, [loadTimeHistory, historyFilters.startDate, historyFilters.endDate, historyFilters.status]);
 
 // ───────────────────────────────────────────────────────
 //  Leave-request logic
@@ -345,18 +407,29 @@ useEffect(() => {
       : `⏱️ ${h}h ${m}m`;
   };
 
-  const todayShift = useMemo(() => {
-    if (!shifts.length) return null;
-    const todayStr = format(new Date(), "yyyy-MM-dd");
-    const match = shifts.find((shift) => {
-      try {
-        return format(parseISO(shift.clock_in), "yyyy-MM-dd") === todayStr;
-      } catch {
-        return false;
-      }
-    });
-    return match || null;
-  }, [shifts]);
+const todayShift = useMemo(() => {
+  if (!shifts.length) return null;
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const match = shifts.find((shift) => {
+    try {
+      const shiftDate = format(parseISO(shift.clock_in), "yyyy-MM-dd");
+      const shiftStatus = (shift.status || "").toLowerCase();
+      return (
+        shiftDate === todayStr &&
+        (shiftStatus === "in_progress" ||
+          shiftStatus === "assigned" ||
+          shiftStatus === "pending")
+      );
+    } catch {
+      return false;
+    }
+  });
+  return match || null;
+}, [shifts]);
+
+useEffect(() => {
+  setTodayCardCollapsed(false);
+}, [todayShift?.id]);
   const formatHoursValue = useCallback((value) => `${Number(value || 0).toFixed(1)}h`, []);
   const summaryMetrics = useMemo(() => {
     if (!timeSummary) return [];
@@ -395,28 +468,62 @@ useEffect(() => {
 
 
   //  Component markup
-  const currentShiftNumbers = todayShift
-    ? {
-        in: formatDateTimeInTz(todayShift.clock_in, todayShift.timezone || viewerTimezone),
-        out: todayShift.clock_out
-          ? formatDateTimeInTz(todayShift.clock_out, todayShift.timezone || viewerTimezone)
-          : null,
-      }
-    : null;
+  const shiftTimezone = todayShift?.timezone || viewerTimezone;
+  const parseShiftDate = useCallback(
+    (iso) => {
+      if (!iso) return null;
+      const hasOffset = /([+-]\d{2}:?\d{2}|Z)$/i.test(iso);
+      const base = hasOffset
+        ? DateTime.fromISO(iso, { setZone: true })
+        : DateTime.fromISO(iso, { zone: "utc" });
+      if (!base.isValid) return null;
+      return base.setZone(shiftTimezone);
+    },
+    [shiftTimezone]
+  );
 
-  const computeElapsedSeconds = useCallback((shift) => {
-    if (!shift?.clock_in) return 0;
-    const start = parseISO(shift.clock_in);
-    const end = shift.clock_out ? parseISO(shift.clock_out) : new Date();
-    let total = Math.max((end - start) / 1000, 0);
-    let breakSeconds = (shift.break_minutes || 0) * 60;
-    if (shift.break_start && !shift.break_end) {
-      try {
-        breakSeconds += Math.max((new Date() - parseISO(shift.break_start)) / 1000, 0);
-      } catch {}
-    }
-    return Math.max(total - breakSeconds, 0);
-  }, []);
+  const clockInDt = todayShift?.clock_in ? parseShiftDate(todayShift.clock_in) : null;
+  const clockOutDt = todayShift?.clock_out ? parseShiftDate(todayShift.clock_out) : null;
+  const breakStartDt = todayShift?.break_start ? parseShiftDate(todayShift.break_start) : null;
+  const breakEndDt = todayShift?.break_end ? parseShiftDate(todayShift.break_end) : null;
+  const shiftDateIso = todayShift?.date || (clockInDt ? clockInDt.toISODate() : null);
+
+  const currentShiftNumbers =
+    todayShift && clockInDt
+      ? {
+          in: formatDateTimeInTz(clockInDt.toISO(), shiftTimezone),
+          out: clockOutDt ? formatDateTimeInTz(clockOutDt.toISO(), shiftTimezone) : null,
+        }
+      : null;
+  const shiftDateLabel = clockInDt ? clockInDt.toFormat("ccc, LLL d") : null;
+  const shiftStartLabel = clockInDt ? clockInDt.toFormat("HH:mm") : null;
+  const shiftEndLabel = clockOutDt ? clockOutDt.toFormat("HH:mm") : null;
+
+  const computeElapsedSeconds = useCallback(
+    (shift) => {
+      if (!shift?.clock_in) return 0;
+      const start = shift.clock_in ? parseShiftDate(shift.clock_in) : null;
+      const end = shift.clock_out
+        ? parseShiftDate(shift.clock_out)
+        : DateTime.now().setZone(shiftTimezone);
+      if (!start || !end) return 0;
+      let total = Math.max(end.diff(start, "seconds").seconds, 0);
+      let breakSeconds = (shift.break_minutes || 0) * 60;
+      if (shift.break_start && !shift.break_end) {
+        try {
+          const breakStart = parseShiftDate(shift.break_start);
+          if (breakStart) {
+            breakSeconds += Math.max(
+              DateTime.now().setZone(shiftTimezone).diff(breakStart, "seconds").seconds,
+              0
+            );
+          }
+        } catch {}
+      }
+      return Math.max(total - breakSeconds, 0);
+    },
+    [parseShiftDate, shiftTimezone]
+  );
 
   useEffect(() => {
     activeShiftRef.current = todayShift;
@@ -469,9 +576,28 @@ useEffect(() => {
     const parts = [String(hrs).padStart(2, "0"), String(mins).padStart(2, "0"), String(secs).padStart(2, "0")];
     return parts.join(":");
   }, []);
+  const formatClockLocal = useCallback(
+    (iso, tz) => {
+      if (!iso) return "—";
+      try {
+        return DateTime.fromISO(iso, { zone: "utc" })
+          .setZone(tz || shiftTimezone || viewerTimezone)
+          .toFormat("LLL d, HH:mm");
+      } catch {
+        return iso;
+      }
+    },
+    [shiftTimezone, viewerTimezone]
+  );
 
   const handleClockAction = async (action) => {
     if (!todayShift) return;
+    if (action === "out" && canClockOut) {
+      const confirmed = window.confirm(
+        "Are you sure you want to clock out? Make sure you've finished your tasks."
+      );
+      if (!confirmed) return;
+    }
     setClocking(true);
     try {
       if (action === "in") {
@@ -494,49 +620,197 @@ useEffect(() => {
     }
   };
 
+  const handleHistoryChange = (key) => (event) => {
+    const value = event.target.value;
+    setHistoryFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const downloadHistoryCsv = async () => {
+    try {
+      const params = new URLSearchParams({
+        start_date: historyFilters.startDate,
+        end_date: historyFilters.endDate,
+      });
+      if (historyFilters.status && historyFilters.status !== "all") {
+        params.set("status", historyFilters.status);
+      }
+      params.set("format", "csv");
+      const res = await fetch(`${API_URL}/employee/time-history?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `time_history_${historyFilters.startDate}_${historyFilters.endDate}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setSnackbar({ open: true, msg: "Unable to download CSV.", error: true });
+    }
+  };
+
   const isClocked = todayShift?.clock_source === "clock";
   const isInProgress = isClocked && todayShift?.status === "in_progress";
   const isCompleted = isClocked && ["completed", "approved"].includes(todayShift?.status);
   const isLockedShift = todayShift?.is_locked;
   const canClockIn = todayShift && !isClocked && !isLockedShift;
-  const canClockOut = isInProgress && !isLockedShift;
+  const hasClockedOut = isCompleted || Boolean(todayShift?.clock_out_ip);
+  const canClockOut = isInProgress && !isLockedShift && !hasClockedOut;
   const breakInProgress = Boolean(todayShift?.break_start && !todayShift?.break_end);
   const breakMinutesLogged = todayShift?.break_minutes || 0;
-  const currentBreakMinutes = breakInProgress
-    ? Math.max(
-        differenceInMinutes(new Date(), parseISO(todayShift.break_start || new Date().toISOString())),
-        0
-      )
-    : 0;
+  const currentBreakMinutes =
+    breakInProgress && breakStartDt
+      ? Math.max(
+          DateTime.now().setZone(shiftTimezone).diff(breakStartDt, "minutes").minutes,
+          0
+        )
+      : 0;
   const totalBreakMinutes = breakMinutesLogged + currentBreakMinutes;
-  const canStartBreak = isInProgress && !breakInProgress && !isCompleted && !breakSubmitting;
-  const canEndBreak = isInProgress && breakInProgress && !breakSubmitting;
-  const timelineMeta = useMemo(() => {
-    if (!todayShift) return null;
+  const requiredBreakMinutes = timeSummary?.policy?.required_break_minutes || 0;
+  const breakTargetMinutes =
+    requiredBreakMinutes || todayShift?.break_minutes || 15;
+  const breakPolicy = todayShift?.break_policy || {};
+  const generatedSlot = breakPolicy?.generated_slot;
+  const resolvedBreakWindow = useMemo(() => {
+    if (generatedSlot?.start && generatedSlot?.end) {
+      return { start: generatedSlot.start, end: generatedSlot.end, source: "slot" };
+    }
+    if (breakPolicy?.window_start && breakPolicy?.window_end) {
+      return { start: breakPolicy.window_start, end: breakPolicy.window_end, source: "window" };
+    }
+    if (breakPolicy?.start_time && breakPolicy?.end_time) {
+      return { start: breakPolicy.start_time, end: breakPolicy.end_time, source: "fixed" };
+    }
+    return null;
+  }, [generatedSlot, breakPolicy]);
+  const breakWindowLabel = resolvedBreakWindow
+    ? `${resolvedBreakWindow.start}–${resolvedBreakWindow.end}`
+    : null;
+  const breakWindowDescriptor =
+    resolvedBreakWindow?.source === "slot" ? "Break slot" : "Break window";
+  const breakCountdownMinutes = useMemo(() => {
+    if (!breakInProgress || !breakTargetMinutes) return null;
+    const remaining = Math.max(Math.round(breakTargetMinutes - currentBreakMinutes), 0);
+    return remaining;
+  }, [breakInProgress, breakTargetMinutes, currentBreakMinutes]);
+
+  const canStartBreak = useMemo(() => {
+    if (!(isInProgress && !breakInProgress && !isCompleted)) return false;
+    if (!resolvedBreakWindow || !shiftDateIso) return true;
     try {
-      const start = parseISO(todayShift.clock_in);
-      const endRaw = todayShift.clock_out;
-      if (!start || !endRaw) return null;
-      const end = parseISO(endRaw);
-      const totalMinutes = Math.max(differenceInMinutes(end, start), 1);
-      const now = new Date();
-      const elapsedMinutes = Math.min(Math.max((now - start) / 60000, 0), totalMinutes);
+      const now = DateTime.now().setZone(shiftTimezone);
+      const start = DateTime.fromISO(`${shiftDateIso}T${resolvedBreakWindow.start}`, {
+        zone: shiftTimezone,
+      });
+      const end = DateTime.fromISO(`${shiftDateIso}T${resolvedBreakWindow.end}`, {
+        zone: shiftTimezone,
+      });
+      return now >= start && now <= end;
+    } catch {
+      return true;
+    }
+  }, [
+    isInProgress,
+    breakInProgress,
+    isCompleted,
+    resolvedBreakWindow,
+    shiftTimezone,
+    shiftDateIso,
+  ]);
+
+  const canEndBreak = isInProgress && breakInProgress && !breakSubmitting;
+  const breakCountdownNotice = useMemo(() => {
+    if (!todayShift || !resolvedBreakWindow || !shiftDateIso) return null;
+    try {
+      const start = DateTime.fromISO(`${shiftDateIso}T${resolvedBreakWindow.start}`, {
+        zone: shiftTimezone,
+      });
+      const end = DateTime.fromISO(`${shiftDateIso}T${resolvedBreakWindow.end}`, {
+        zone: shiftTimezone,
+      });
+      if (!start.isValid || !end.isValid) return null;
+      const now = DateTime.now().setZone(shiftTimezone);
+      if (breakInProgress) {
+        const remaining = Math.max(
+          Math.round((breakTargetMinutes || 0) - currentBreakMinutes),
+          0
+        );
+        if (!breakTargetMinutes) {
+          return null;
+        }
+        return {
+          severity: remaining <= 0 ? "warning" : "info",
+          text:
+            remaining <= 0
+              ? "Break has exceeded the planned duration."
+              : `Wrap break in ${remaining}m to stay on schedule.`,
+        };
+      }
+      if (now < start) {
+        const minutes = Math.max(Math.round(start.diff(now, "minutes").minutes), 0);
+        return {
+          severity: minutes <= 5 ? "warning" : "info",
+          text:
+            minutes <= 0
+              ? "Break window opening now."
+              : minutes <= 60
+              ? `Break opens in ${minutes}m`
+              : `Break window begins at ${start.toFormat("HH:mm")}`,
+        };
+      }
+      if (now >= start && now <= end) {
+        const remaining = Math.max(Math.round(end.diff(now, "minutes").minutes), 0);
+        return {
+          severity: remaining <= 5 ? "error" : "warning",
+          text: `Break window closes in ${remaining}m`,
+        };
+      }
+      if (!todayShift.break_start && !todayShift.break_end) {
+        return {
+          severity: "error",
+          text: "Break window missed — manager will be notified.",
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [
+    todayShift,
+    resolvedBreakWindow,
+    shiftDateIso,
+    shiftTimezone,
+    breakInProgress,
+    breakTargetMinutes,
+    currentBreakMinutes,
+    countdownTick,
+  ]);
+  const timelineMeta = useMemo(() => {
+    if (!clockInDt || !clockOutDt) return null;
+    try {
+      const totalMinutes = Math.max(clockOutDt.diff(clockInDt, "minutes").minutes, 1);
+      const now = DateTime.now().setZone(shiftTimezone);
+      const elapsedMinutes = Math.min(
+        Math.max(now.diff(clockInDt, "minutes").minutes, 0),
+        totalMinutes
+      );
       const progressPct = Math.min(Math.max((elapsedMinutes / totalMinutes) * 100, 0), 100);
       let breakSegment = null;
-      if (todayShift.break_start) {
-        const breakStart = parseISO(todayShift.break_start);
-        const breakEnd = todayShift.break_end
-          ? parseISO(todayShift.break_end)
-          : todayShift.break_minutes
-          ? addMinutes(breakStart, todayShift.break_minutes)
-          : new Date();
-        const startOffset = Math.max((breakStart - start) / 60000, 0);
-        const endOffset = Math.min((breakEnd - start) / 60000, totalMinutes);
+      if (breakStartDt) {
+        const breakEnd = breakEndDt || breakStartDt.plus({ minutes: todayShift?.break_minutes || 15 });
+        const startOffset = Math.max(breakStartDt.diff(clockInDt, "minutes").minutes, 0);
+        const endOffset = Math.min(breakEnd.diff(clockInDt, "minutes").minutes, totalMinutes);
         if (endOffset > startOffset) {
           breakSegment = {
             left: (startOffset / totalMinutes) * 100,
             width: Math.max(((endOffset - startOffset) / totalMinutes) * 100, 2),
-            inProgress: !todayShift.break_end,
+            inProgress: !breakEndDt,
           };
         }
       }
@@ -544,8 +818,6 @@ useEffect(() => {
       const needsBreak = requiredBreak && totalMinutes / 60 >= 6;
       const breakDeficit = needsBreak ? Math.max(requiredBreak - totalBreakMinutes, 0) : 0;
       return {
-        start,
-        end,
         progressPct,
         breakSegment,
         needsBreak,
@@ -554,7 +826,38 @@ useEffect(() => {
     } catch {
       return null;
     }
-  }, [todayShift, totalBreakMinutes, timeSummary]);
+  }, [
+    clockInDt,
+    clockOutDt,
+    breakStartDt,
+    breakEndDt,
+    todayShift,
+    totalBreakMinutes,
+    timeSummary,
+    shiftTimezone,
+  ]);
+
+const breakTimelineMeta = useMemo(() => {
+  if (!breakStartDt) return null;
+  try {
+    const target = Math.max(breakTargetMinutes || 15, 5);
+    const plannedEnd = breakStartDt.plus({ minutes: target });
+    const actualEnd = breakEndDt || plannedEnd;
+    const totalMinutes = Math.max(actualEnd.diff(breakStartDt, "minutes").minutes, 1);
+    const now = breakEndDt || DateTime.now().setZone(shiftTimezone);
+    const elapsed = Math.min(Math.max(now.diff(breakStartDt, "minutes").minutes, 0), totalMinutes);
+    return {
+      start: breakStartDt,
+      targetMinutes: target,
+      active: !breakEndDt,
+      progressPct: Math.min(Math.max((elapsed / totalMinutes) * 100, 0), 100),
+      elapsed,
+      totalMinutes,
+    };
+  } catch {
+    return null;
+  }
+}, [breakStartDt, breakEndDt, breakTargetMinutes, shiftTimezone]);
 
   const handleBreakAction = async (action) => {
     if (!todayShift) return;
@@ -649,182 +952,461 @@ return (
         background: (theme) => theme.palette.background.paper,
       }}
     >
-      <Stack spacing={1}>
-        <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
-          Today's shift
-        </Typography>
-        {todayShift ? (
-          <>
-            <Typography variant="h6" fontWeight={700}>
-              {format(parseISO(todayShift.clock_in), "EEE, MMM d")} ·{" "}
-              {format(parseISO(todayShift.clock_in), "HH:mm")} –{" "}
-              {format(parseISO(todayShift.clock_out), "HH:mm")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {isClocked
-                ? `Clocked in at ${currentShiftNumbers?.in}${
-                    isCompleted && currentShiftNumbers?.out
-                      ? ` • Clocked out at ${currentShiftNumbers?.out}`
-                      : ""
-                  }`
-                : "Not clocked in yet."}
-            </Typography>
-            {isClocked && (
-              <Typography variant="body2" color="text.secondary">
-                Time on shift: {formatElapsed(elapsedSeconds)}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", sm: "center" }}
+      >
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
+            Time history
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            View past shifts, breaks, and approvals.
+          </Typography>
+        </Box>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap alignItems="center">
+          <TextField
+            type="date"
+            size="small"
+            label="From"
+            InputLabelProps={{ shrink: true }}
+            value={historyFilters.startDate}
+            onChange={handleHistoryChange("startDate")}
+          />
+          <TextField
+            type="date"
+            size="small"
+            label="To"
+            InputLabelProps={{ shrink: true }}
+            value={historyFilters.endDate}
+            onChange={handleHistoryChange("endDate")}
+          />
+          <TextField
+            select
+            size="small"
+            label="Status"
+            value={historyFilters.status}
+            onChange={handleHistoryChange("status")}
+            sx={{ minWidth: 140 }}
+          >
+            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="completed">Completed</MenuItem>
+            <MenuItem value="approved">Approved</MenuItem>
+            <MenuItem value="rejected">Rejected</MenuItem>
+            <MenuItem value="in_progress">In progress</MenuItem>
+          </TextField>
+          <Button variant="outlined" onClick={downloadHistoryCsv} size="small">
+            Download CSV
+          </Button>
+        </Stack>
+      </Stack>
+
+      <Stack direction="row" spacing={2} mt={2} flexWrap="wrap" useFlexGap>
+        <Chip
+          label={`Hours: ${historySummary?.hours_worked ?? 0}`}
+          variant="outlined"
+          color="primary"
+        />
+        <Chip
+          label={`Overtime: ${historySummary?.overtime_hours ?? 0}`}
+          variant="outlined"
+          color={historySummary?.overtime_hours ? "warning" : "default"}
+        />
+        <Chip
+          label={`Break minutes: ${historySummary?.break_minutes ?? 0}`}
+          variant="outlined"
+        />
+        <Chip
+          label={`Missed breaks: ${historySummary?.missed_breaks ?? 0}`}
+          variant="outlined"
+          color={historySummary?.missed_breaks ? "error" : "default"}
+        />
+      </Stack>
+
+      {historyError && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {historyError}
+        </Alert>
+      )}
+
+      <Box sx={{ mt: 2 }}>
+        {historyLoading ? (
+          <Box display="flex" justifyContent="center" py={3}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : historyEntries.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No shifts found for this range.
+          </Typography>
+        ) : (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Date</TableCell>
+                <TableCell>Clocked</TableCell>
+                <TableCell>Hours</TableCell>
+                <TableCell>Breaks</TableCell>
+                <TableCell>Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {historyEntries.map((entry) => (
+                <TableRow key={entry.id}>
+                  <TableCell>
+                    <Typography fontWeight={600}>{entry.date}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {entry.period_label || ""}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      In: {formatClockLocal(entry.clock_in, entry.timezone)}
+                    </Typography>
+                    <Typography variant="body2">
+                      Out: {formatClockLocal(entry.clock_out, entry.timezone)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {entry.clock_in_ip ? `IP: ${entry.clock_in_ip}` : ""}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{entry.hours_worked_rounded ?? entry.hours_worked}h</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={`${entry.break_minutes || 0}m`}
+                      color={entry.break_non_compliant ? "error" : "default"}
+                      variant={entry.break_non_compliant ? "filled" : "outlined"}
+                    />
+                    {entry.break_missing_minutes > 0 && (
+                      <Typography variant="caption" color="error.main" sx={{ display: "block" }}>
+                        Missing {entry.break_missing_minutes}m
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="small" label={entry.status} />
+                    {entry.approved_by_name && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                        By {entry.approved_by_name}
+                      </Typography>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Box>
+    </Paper>
+    <Paper
+      elevation={0}
+      sx={{
+        mb: 3,
+        p: 3,
+        borderRadius: 3,
+        border: (theme) => `1px solid ${theme.palette.divider}`,
+        background: (theme) => theme.palette.background.paper,
+      }}
+    >
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+        spacing={1}
+      >
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
+            Today's shift
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Live clock + break guidance
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center">
+          {todayShift && (
+            <Chip
+              size="small"
+              color={isLockedShift ? "success" : isInProgress ? "primary" : "default"}
+              label={todayShift.status}
+            />
+          )}
+          <Tooltip title={todayCardCollapsed ? "Expand shift card" : "Collapse shift card"}>
+            <IconButton size="small" onClick={() => setTodayCardCollapsed((prev) => !prev)}>
+              {todayCardCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
+      <Collapse in={!todayCardCollapsed} timeout="auto">
+        <Box mt={2}>
+          {todayShift ? (
+            <>
+              <Typography variant="h6" fontWeight={700}>
+                {shiftDateLabel} · {shiftStartLabel} – {shiftEndLabel}
               </Typography>
-            )}
-            {breakInProgress && todayShift.break_start && (
-              <Chip
-                size="small"
-                color="warning"
-                label={`On break since ${formatDateTimeInTz(
-                  todayShift.break_start,
-                  todayShift.timezone || viewerTimezone
-                )}`}
-                sx={{ width: "fit-content", mt: 1 }}
-              />
-            )}
-            {isLockedShift && (
-              <Chip size="small" color="success" label="Approved / locked" sx={{ width: "fit-content", mt: 1 }} />
-            )}
-            {timelineMeta && (
-              <Box mt={2}>
-                <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                  Shift timeline
+              <Typography variant="body2" color="text.secondary">
+                {isClocked
+                  ? `Clocked in at ${currentShiftNumbers?.in}${
+                      isCompleted && currentShiftNumbers?.out
+                        ? ` • Clocked out at ${currentShiftNumbers?.out}`
+                        : ""
+                    }`
+                  : "Not clocked in yet."}
+              </Typography>
+              {isClocked && (
+                <Typography variant="body2" color="text.secondary">
+                  Time on shift: {formatElapsed(elapsedSeconds)}
                 </Typography>
-                <Box
-                  sx={(theme) => ({
-                    position: "relative",
-                    height: 10,
-                    borderRadius: 999,
-                    background: theme.palette.action.hover,
-                    mt: 0.5,
-                  })}
+              )}
+              {resolvedBreakWindow && (
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  sx={{ mt: 1 }}
+                  useFlexGap
+                  flexWrap="wrap"
                 >
+                  <Chip
+                    size="small"
+                    color="info"
+                    label={`${breakWindowDescriptor}: ${breakWindowLabel}`}
+                  />
+                  {!canStartBreak && !breakInProgress && isInProgress && (
+                    <Typography variant="caption" color="warning.main">
+                      Break opens at {resolvedBreakWindow.start}
+                    </Typography>
+                  )}
+                </Stack>
+              )}
+              {breakCountdownNotice && (
+                <Alert
+                  severity={breakCountdownNotice.severity}
+                  variant="outlined"
+                  sx={{ mt: 1 }}
+                >
+                  {breakCountdownNotice.text}
+                </Alert>
+              )}
+              {breakInProgress && breakStartDt && (
+                <Chip
+                  size="small"
+                  color="warning"
+                  label={`On break since ${formatDateTimeInTz(
+                    breakStartDt.toISO(),
+                    shiftTimezone
+                  )}`}
+                  sx={{ width: "fit-content", mt: 1 }}
+                />
+              )}
+              {isLockedShift && (
+                <Chip
+                  size="small"
+                  color="success"
+                  label="Approved / locked"
+                  sx={{ width: "fit-content", mt: 1 }}
+                />
+              )}
+              {timelineMeta && (
+                <Box mt={2}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                    Shift timeline
+                  </Typography>
                   <Box
                     sx={(theme) => ({
-                      position: "absolute",
-                      top: 0,
-                      bottom: 0,
-                      left: 0,
-                      width: `${timelineMeta.progressPct}%`,
+                      position: "relative",
+                      height: 10,
                       borderRadius: 999,
-                      background: theme.palette.primary.main,
+                      background: theme.palette.action.hover,
+                      mt: 0.5,
                     })}
-                  />
-                  {timelineMeta.breakSegment && (
+                  >
                     <Box
                       sx={(theme) => ({
                         position: "absolute",
                         top: 0,
                         bottom: 0,
-                        left: `${timelineMeta.breakSegment.left}%`,
-                        width: `${timelineMeta.breakSegment.width}%`,
+                        left: 0,
+                        width: `${timelineMeta.progressPct}%`,
                         borderRadius: 999,
-                        background: theme.palette.warning.light,
-                        opacity: 0.9,
+                        background: theme.palette.primary.main,
                       })}
                     />
+                    {timelineMeta.breakSegment && (
+                      <Box
+                        sx={(theme) => ({
+                          position: "absolute",
+                          top: 0,
+                          bottom: 0,
+                          left: `${timelineMeta.breakSegment.left}%`,
+                          width: `${timelineMeta.breakSegment.width}%`,
+                          borderRadius: 999,
+                          background: theme.palette.warning.light,
+                          opacity: 0.9,
+                        })}
+                      />
+                    )}
+                    <Box
+                      sx={(theme) => ({
+                        position: "absolute",
+                        top: -4,
+                        width: 8,
+                        height: 18,
+                        borderRadius: 1,
+                        left: `calc(${timelineMeta.progressPct}% - 4px)`,
+                        background: theme.palette.text.primary,
+                      })}
+                    />
+                  </Box>
+                  <Stack direction="row" justifyContent="space-between" mt={0.5}>
+                    <Typography variant="caption" color="text.secondary">
+                      {shiftStartLabel}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {DateTime.now().setZone(shiftTimezone).toFormat("HH:mm")}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {shiftEndLabel}
+                    </Typography>
+                  </Stack>
+                  {timelineMeta.needsBreak && (
+                    <Chip
+                      size="small"
+                      color={timelineMeta.breakDeficit > 0 ? "error" : "success"}
+                      variant={timelineMeta.breakDeficit > 0 ? "filled" : "outlined"}
+                      label={
+                        timelineMeta.breakDeficit > 0
+                          ? `Break overdue · ${timelineMeta.breakDeficit}m required`
+                          : `Break compliant (${totalBreakMinutes}m logged)`
+                      }
+                      sx={{ mt: 1, width: "fit-content" }}
+                    />
                   )}
-                  <Box
-                    sx={(theme) => ({
-                      position: "absolute",
-                      top: -4,
-                      width: 8,
-                      height: 18,
-                      borderRadius: 1,
-                      left: `calc(${timelineMeta.progressPct}% - 4px)`,
-                      background: theme.palette.text.primary,
-                    })}
-                  />
                 </Box>
-                <Stack direction="row" justifyContent="space-between" mt={0.5}>
-                  <Typography variant="caption" color="text.secondary">
-                    {format(timelineMeta.start, "HH:mm")}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {format(new Date(), "HH:mm")}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {format(timelineMeta.end, "HH:mm")}
-                  </Typography>
-                </Stack>
-                {timelineMeta.needsBreak && (
-                  <Chip
-                    size="small"
-                    color={timelineMeta.breakDeficit > 0 ? "error" : "success"}
-                    variant={timelineMeta.breakDeficit > 0 ? "filled" : "outlined"}
-                    label={
-                      timelineMeta.breakDeficit > 0
-                        ? `Break overdue · ${timelineMeta.breakDeficit}m required`
-                        : `Break compliant (${totalBreakMinutes}m logged)`
-                    }
-                    sx={{ mt: 1, width: "fit-content" }}
-                  />
-                )}
-              </Box>
-            )}
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1.5}
-              alignItems={{ xs: "stretch", sm: "center" }}
-              mt={2}
-            >
-              <Button
-                variant="contained"
-                disabled={!canClockIn || clocking}
-                onClick={() => handleClockAction("in")}
-              >
-                Clock In
-              </Button>
-              <Button
-                variant="outlined"
-                color="secondary"
-                disabled={!canClockOut || clocking}
-                onClick={() => handleClockAction("out")}
-              >
-                Clock Out
-              </Button>
-              {isClocked && !isInProgress && !isCompleted && (
-                <Chip label={todayShift.status} size="small" sx={{ width: "fit-content" }} />
               )}
-            </Stack>
-            {isInProgress && (
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={1.5}
                 alignItems={{ xs: "stretch", sm: "center" }}
-                mt={1}
+                mt={2}
               >
                 <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => handleBreakAction("start")}
-                  disabled={!canStartBreak}
+                  variant="contained"
+                  disabled={!canClockIn || clocking}
+                  onClick={() => handleClockAction("in")}
                 >
-                  Start Break
+                  Clock In
                 </Button>
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => handleBreakAction("end")}
-                  disabled={!canEndBreak}
+                <Tooltip
+                  title={
+                    !canClockOut
+                      ? hasClockedOut
+                        ? "Already clocked out for this shift."
+                        : "Clock out becomes available after you clock in and the shift is active."
+                      : ""
+                  }
+                  arrow
                 >
-                  End Break
-                </Button>
-                <Typography variant="caption" color="text.secondary">
-                  Breaks logged: {totalBreakMinutes} min {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
-                </Typography>
+                  <span>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      disabled={!canClockOut || clocking}
+                      onClick={() => handleClockAction("out")}
+                    >
+                      Clock Out
+                    </Button>
+                  </span>
+                </Tooltip>
+                {isClocked && !isInProgress && !isCompleted && (
+                  <Chip label={todayShift.status} size="small" sx={{ width: "fit-content" }} />
+                )}
               </Stack>
-            )}
-          </>
-        ) : (
-          <Typography variant="body2" color="text.secondary">
-            No shift scheduled today. Upcoming shifts will appear here for quick clock actions.
-          </Typography>
-        )}
-      </Stack>
+              {isInProgress && (
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1.5}
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                  mt={1}
+                >
+                  <Button
+                    variant={canStartBreak ? "outlined" : "text"}
+                    size="small"
+                    onClick={() => handleBreakAction("start")}
+                    disabled={!canStartBreak || breakSubmitting}
+                  >
+                    Start Break
+                  </Button>
+                  <Button
+                    variant={canEndBreak ? "contained" : "text"}
+                    size="small"
+                    color="warning"
+                    onClick={() => handleBreakAction("end")}
+                    disabled={!canEndBreak}
+                  >
+                    End Break
+                  </Button>
+                  <Typography variant="caption" color="text.secondary">
+                    Breaks logged: {totalBreakMinutes} min {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
+                  </Typography>
+                </Stack>
+              )}
+            {breakTimelineMeta && (
+              <Box mt={2}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                  Break timeline {breakTimelineMeta.active ? "(in progress)" : "(recorded)"}
+                </Typography>
+                {breakTimelineMeta.active && typeof breakCountdownMinutes === "number" && (
+                  <Typography variant="caption" color="warning.main" sx={{ display: "block", mb: 0.5 }}>
+                    {breakCountdownMinutes > 0
+                      ? `Time remaining: ${breakCountdownMinutes}m`
+                      : "Break time reached — wrap up now."}
+                  </Typography>
+                )}
+                <Box
+                  sx={{
+                    position: "relative",
+                    mt: 0.5,
+                    height: 8,
+                      borderRadius: 999,
+                      background: (theme) => theme.palette.action.hover,
+                    }}
+                  >
+                    <Box
+                      sx={(theme) => ({
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        width: `${breakTimelineMeta.progressPct}%`,
+                        borderRadius: 999,
+                        background: breakTimelineMeta.active
+                          ? theme.palette.warning.main
+                          : theme.palette.success.main,
+                        transition: "width 0.2s ease",
+                      })}
+                    />
+                  </Box>
+                  <Stack direction="row" justifyContent="space-between" mt={0.5}>
+                    <Typography variant="caption" color="text.secondary">
+                      Start {breakTimelineMeta.start.toFormat("HH:mm")}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Target {breakTimelineMeta.targetMinutes}m
+                    </Typography>
+                  </Stack>
+                </Box>
+              )}
+            </>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No shift scheduled today. Upcoming shifts will appear here for quick clock actions.
+            </Typography>
+          )}
+        </Box>
+      </Collapse>
     </Paper>
     
     {/* Manager-only toggle for approvals */}
@@ -1161,12 +1743,16 @@ return (
                 No eligible shifts found
               </MenuItem>
             )}
-            {swappableShifts.map((s) => (
-              <MenuItem key={s.id} value={s.id}>
-                {format(parseISO(s.clock_in), "MMM d HH:mm")} –{" "}
-                {format(parseISO(s.clock_out), "HH:mm")} ({s.recruiter_name})
-              </MenuItem>
-            ))}
+            {swappableShifts.map((s) => {
+              const startLabel = parseShiftDate(s.clock_in)?.toFormat("MMM d HH:mm");
+              const endLabel = parseShiftDate(s.clock_out)?.toFormat("HH:mm");
+              return (
+                <MenuItem key={s.id} value={s.id}>
+                  {startLabel || format(parseISO(s.clock_in), "MMM d HH:mm")} –{" "}
+                  {endLabel || format(parseISO(s.clock_out), "HH:mm")} ({s.recruiter_name})
+                </MenuItem>
+              );
+            })}
           </TextField>
 
           <TextField

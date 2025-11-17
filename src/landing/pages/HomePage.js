@@ -398,11 +398,23 @@ const HomePage = () => {
       const cardCopy = t(`landing.home.highlightCards.${key}`, {
         returnObjects: true,
       });
+      const defaults =
+        key === "commerce"
+          ? {
+              title: "Commerce that converts",
+              description: "Sell products, services, and add-ons in one cart — powered by Stripe Checkout.",
+              points: [
+                "Mixed carts with secure Stripe sessions",
+                "Coupons, refunds, and saved cards included",
+                "Easy tax setup via Stripe Tax toggle",
+              ],
+            }
+          : {};
       return {
-        title: cardCopy?.title || "",
-        description: cardCopy?.description || "",
+        title: cardCopy?.title || defaults.title || "",
+        description: cardCopy?.description || defaults.description || "",
         icon: <Icon fontSize="medium" />,
-        points: cardCopy?.points || [],
+        points: cardCopy?.points || defaults.points || [],
       };
     });
   }, [t]);
@@ -482,6 +494,17 @@ const HomePage = () => {
     () => t("landing.home.seoSection", { returnObjects: true }) || {},
     [t]
   );
+  const seoCards = useMemo(() => {
+    const cards = Array.isArray(seoSection.cards) ? seoSection.cards : [];
+    return [
+      ...cards,
+      {
+        heading: "Time tracking + payroll exports",
+        body: "Approved hours arrive with unpaid breaks deducted, OT/missed-break markers attached, and IP/device hints for audits—ready for payroll CSV/PDF.",
+        link: { label: "See time tracking & breaks", to: "/features#time-tracking-smart-breaks" },
+      },
+    ];
+  }, [seoSection.cards]);
 
   const [accent, setAccent] = useState(heroModules[0]?.accent || theme.palette.primary.main);
 
@@ -571,7 +594,7 @@ const HomePage = () => {
                 color: alpha(theme.palette.common.white, 0.78),
               }}
             >
-              Schedulaa combines booking, payroll, marketing, and website building into a single SaaS platform for service businesses across the US and Canada.
+              Schedulaa combines scheduling, time tracking, payroll, marketing, and website building into a single SaaS platform for service businesses across the US and Canada.
             </Typography>
 
             <Stack
@@ -804,7 +827,7 @@ const HomePage = () => {
         </Stack>
 
         <Grid container spacing={4} mt={{ xs: 4, md: 6 }}>
-          {(Array.isArray(seoSection.cards) ? seoSection.cards : []).map((item) => {
+          {seoCards.map((item) => {
             const linkProps = item.link || {};
             const buttonRoutingProps = linkProps.to
               ? { component: Link, to: linkProps.to }
@@ -920,6 +943,9 @@ const HomePage = () => {
             </Button>
             <Button component={Link} to="/register" variant="outlined" color="primary" sx={{ textTransform: "none" }}>
               Start free
+            </Button>
+            <Button component={Link} to="/features#time-tracking-smart-breaks" variant="text" color="primary">
+              See time tracking & breaks
             </Button>
           </Stack>
         </Stack>

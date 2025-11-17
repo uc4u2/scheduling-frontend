@@ -33,6 +33,7 @@ import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import InsightHighlight from "../components/InsightHighlight";
 import FloatingBlob from "../../components/ui/FloatingBlob";
+import FeatureGrid from "../components/FeatureGrid";
 
 import { featurePillars } from "../data/features";
 import { testimonials } from "../data/testimonials";
@@ -398,6 +399,56 @@ const FeaturePage = () => {
             Read the docs
           </Button>
         </Stack>
+      </Box>
+
+      {/* Time tracking & compliance block */}
+      <Box component="section" id="time-tracking-smart-breaks" sx={{ mt: { xs: 6, md: 10 } }}>
+        <FeatureGrid
+          title="Time tracking, smart breaks, and live roster"
+          subtitle="Policy-aware clock-in/out, break enforcement, and manager approvals feed straight into payroll—no extra time app required."
+          features={[
+            {
+              icon: "⏱",
+              title: "Time Tracking & Compliance",
+              description: [
+                "Real-time clock-in/out tied to each scheduled shift (no free-floating entries).",
+                "Break-policy enforcement: fixed, windowed, and staggered modes from your templates.",
+                "Forced clock-out with full audit trail when someone forgets to punch.",
+                "IP/device capture on every punch for basic geo/device hints.",
+                "Approvals plus CSV/PDF exports for payroll and auditors.",
+              ],
+            },
+            {
+              icon: "☕",
+              title: "Smart Breaks",
+              description: [
+                "Staggered break slots so coverage stays intact at peak times.",
+                "Auto-enforced break windows with alerts when a window is opening or closing.",
+                "Auto-deductions for unpaid breaks based on policy, not manual edits.",
+                "Employee countdowns so staff know exactly how much break time is left.",
+                "Manager oversight chips that flag missed or auto-enforced breaks.",
+              ],
+            },
+            {
+              icon: "🧭",
+              title: "Live Roster & Anomaly Flags",
+              description: [
+                "Live roster cards show who is clocked-in, on break, or late in real time.",
+                "Anomaly flags for unusual IP/device, missing breaks, or out-of-policy punches.",
+                "Force clock-out and bulk break template application from one panel.",
+                "Time-history drill-downs with overtime risk and exportable summaries.",
+                "Routing that feels like QuickBooks Time/Deputy—wired into Schedulaa shifts.",
+              ],
+            },
+          ]}
+          footer={{
+            title: "Payroll-ready by design",
+            description: [
+              "Approved hours feed payroll and QuickBooks/Xero exports without manual spreadsheets.",
+              "Time policies, break rules, and approvals share the same audit trail as shifts and pay runs.",
+            ],
+          }}
+        />
       </Box>
 
       <Box

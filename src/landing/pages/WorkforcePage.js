@@ -53,6 +53,7 @@ const workforceHighlights = [
     bullets: [
       "Templates capture break start/end times, duration, paid/unpaid flags, and availability links.",
       "Applying a template pushes those rules into every shift assignment and the employee clock UI automatically—no manual edits.",
+      "Force clock-out and annotate overdue shifts so approvals stay clean for payroll.",
     ],
   },
   {
@@ -61,6 +62,7 @@ const workforceHighlights = [
     bullets: [
       "Managers see each employee’s upcoming shifts, availability conflicts, and overtime risk inside the Availability pane.",
       "Assignments inherit template break settings so double entry disappears, and linked availability slots stay locked until the shift is cleared.",
+      "Live roster shows who is on-break vs. on-shift, with anomaly flags for unusual IP/device.",
     ],
   },
   {

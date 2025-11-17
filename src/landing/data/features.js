@@ -11,6 +11,26 @@ export const featurePillars = [
   },
   {
     icon: "02",
+    title: "Commerce that converts",
+    description: [
+      "Sell products, services, and add-ons in one cart — powered by Stripe Checkout.",
+      "Mixed carts with secure Stripe sessions and saved cards.",
+      "Coupons, refunds, and partial refunds included.",
+      "Easy tax setup via Stripe Tax toggle.",
+    ],
+  },
+  {
+    icon: "03",
+    title: "Analytics & campaigns",
+    description: [
+      "Enterprise-grade dashboards and automated win-back, VIP, and add-on campaigns.",
+      "KPI dashboards: revenue, churn, top services.",
+      "Automated client outreach & coupon workflows.",
+      "Performance tracking by staff or branch.",
+    ],
+  },
+  {
+    icon: "04",
     title: "Powerful Payroll & HR",
     description: [
       "Canada + 45 U.S. states supported, with EI, CPP, automated stat holiday pay, and year-end forms (W-2 / T4) plus ROE export.",
@@ -20,33 +40,13 @@ export const featurePillars = [
     ],
   },
   {
-    icon: "03",
-    title: "Website Builder & Online Presence",
-    description: [
-      "Drag-and-drop templates for services, products, hero sections, and contact flows.",
-      "Theme customization across fonts, colors, backgrounds, and layout blocks.",
-      "Add or remove pages, rearrange navigation, and publish changes instantly.",
-      "Connect or purchase a custom domain with SEO-ready structure baked in.",
-    ],
-  },
-  {
-    icon: "04",
+    icon: "05",
     title: "eCommerce & Product Sales",
     description: [
       "Native product catalog for physical or digital items with rich detail pages.",
       "Secure checkout via Stripe Connect with refunds, partial refunds, and tipping.",
       "Inventory management, pricing controls, and variant options by SKU.",
       "Sales analytics that surface revenue trends, top performers, and sell-through.",
-    ],
-  },
-  {
-    icon: "05",
-    title: "Smart Analytics & Reporting",
-    description: [
-      "Dashboards for revenue, bookings, retention, and customer lifetime value.",
-      "Staff performance reporting with utilization and productivity metrics.",
-      "Tax, payout, and settlement reporting with exportable CSV dashboards.",
-      "Insights to drive smarter decisions, forecast demand, and spot gaps early.",
     ],
   },
   {

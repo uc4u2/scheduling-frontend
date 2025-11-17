@@ -42,7 +42,7 @@ import {
   Dialog,
   GlobalStyles,
 } from "@mui/material";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+import { KeyboardArrowDown, KeyboardArrowUp, InfoOutlined } from "@mui/icons-material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { format, endOfMonth, addDays } from "date-fns";
@@ -54,7 +54,9 @@ import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
+import { DateTime } from "luxon";
 import { formatDate, formatTime } from "../../utils/datetime";
+import { getUserTimezone } from "../../utils/timezone";
 
 // ------------------------------------------------------------------------------------
 // Color helpers
@@ -95,6 +97,157 @@ const toTimeInputValue = (value) => {
 };
 const toArray = (raw) =>
   Array.isArray(raw) ? raw : raw && typeof raw === "object" ? Object.values(raw) : [];
+
+const defaultBreakPolicyForm = {
+  breakMode: "none",
+  breakLength: "",
+  breakFixedStart: "",
+  breakFixedEnd: "",
+  breakWindowStart: "",
+  breakWindowEnd: "",
+  breakLatestStart: "",
+  breakMaxSimultaneous: "",
+  breakRotate: false,
+};
+
+const hydrateBreakPolicyFormState = (policy) => {
+  if (!policy || typeof policy !== "object") {
+    return { ...defaultBreakPolicyForm };
+  }
+  return {
+    ...defaultBreakPolicyForm,
+    breakMode: policy.mode || "none",
+    breakLength:
+      policy.length_minutes !== undefined && policy.length_minutes !== null
+        ? String(policy.length_minutes)
+        : "",
+    breakFixedStart: policy.start_time || "",
+    breakFixedEnd: policy.end_time || "",
+    breakWindowStart: policy.window_start || "",
+    breakWindowEnd: policy.window_end || "",
+    breakLatestStart: policy.latest_start || "",
+    breakMaxSimultaneous:
+      policy.max_simultaneous !== undefined && policy.max_simultaneous !== null
+        ? String(policy.max_simultaneous)
+        : "",
+    breakRotate: Boolean(
+      policy.rotate_slots || policy.shuffle || policy.rotate || policy.rotate_employees
+    ),
+  };
+};
+
+const buildBreakPolicyPayload = (formState, paidFlag) => {
+  const mode = formState.breakMode || "none";
+  if (!mode || mode === "none") {
+    return null;
+  }
+  const policy = { mode };
+  const parsedLength = parseInt(formState.breakLength || formState.breakMinutes, 10);
+  if (!Number.isNaN(parsedLength) && parsedLength > 0) {
+    policy.length_minutes = parsedLength;
+  }
+
+  const assignTime = (key, value) => {
+    if (value) {
+      policy[key] = value;
+    }
+  };
+
+  if (mode === "fixed") {
+    assignTime("start_time", formState.breakFixedStart || formState.breakStart);
+    assignTime("end_time", formState.breakFixedEnd || formState.breakEnd);
+  } else if (mode === "window") {
+    assignTime("window_start", formState.breakWindowStart);
+    assignTime("window_end", formState.breakWindowEnd);
+    assignTime("latest_start", formState.breakLatestStart);
+  } else if (mode === "stagger") {
+    assignTime("window_start", formState.breakWindowStart);
+    assignTime("window_end", formState.breakWindowEnd);
+    const maxSim = parseInt(formState.breakMaxSimultaneous, 10);
+    if (!Number.isNaN(maxSim) && maxSim > 0) {
+      policy.max_simultaneous = maxSim;
+    }
+    policy.shuffle = Boolean(formState.breakRotate);
+  }
+
+  if (typeof paidFlag === "boolean") {
+    policy.paid = paidFlag;
+  }
+  return policy;
+};
+
+const viewerTimezone = getUserTimezone();
+
+const toLocalIso = (iso, zone) => {
+  if (!iso) return null;
+  try {
+    return DateTime.fromISO(iso, { zone: "utc" })
+      .setZone(zone || viewerTimezone)
+      .toISO();
+  } catch {
+    return iso;
+  }
+};
+
+const formatLocalTime = (iso) => {
+  if (!iso) return "";
+  try {
+    return DateTime.fromISO(iso, { setZone: true }).toFormat("HH:mm");
+  } catch {
+    return iso.slice(11, 16);
+  }
+};
+
+const formatLocalDate = (iso) => {
+  if (!iso) return "";
+  try {
+    return DateTime.fromISO(iso, { setZone: true }).toFormat("yyyy-MM-dd");
+  } catch {
+    return iso.slice(0, 10);
+  }
+};
+
+const getShiftLocalDate = (shift) =>
+  shift.clock_in_local_date ||
+  formatLocalDate(shift.clock_in_display) ||
+  shift.date;
+
+const getShiftLocalEndDate = (shift) =>
+  shift.clock_out_local_date ||
+  formatLocalDate(shift.clock_out_display) ||
+  shift.date;
+
+const getShiftLocalStart = (shift) =>
+  shift.clock_in_local_time ||
+  formatLocalTime(shift.clock_in_display) ||
+  (shift.clock_in || "").slice(11, 16);
+
+const getShiftLocalEnd = (shift) =>
+  shift.clock_out_local_time ||
+  formatLocalTime(shift.clock_out_display) ||
+  (shift.clock_out || "").slice(11, 16);
+
+const parseUtcMillis = (iso) => {
+  if (!iso) return null;
+  try {
+    return DateTime.fromISO(iso, { zone: "utc" }).toMillis();
+  } catch {
+    return null;
+  }
+};
+
+const localPartsToUtcMillis = (date, time, zone) => {
+  if (!date || !time) return null;
+  try {
+    return DateTime.fromISO(`${date}T${time}`, {
+      zone: zone || viewerTimezone,
+    })
+      .toUTC()
+      .toMillis();
+  } catch {
+    return null;
+  }
+};
 
 /* =============================================================================
    Team / Shift Management (Setmore-style)
@@ -148,15 +301,45 @@ const asLocalDate = (ymd) => {
   const [employeesPerPage, setEmployeesPerPage] = useState(8);
 
   // flatten shifts into table rows (stable keys for selection/edit)
+  const resolveRecruiterTimezone = useCallback(
+    (recruiterId) =>
+      recruiters.find((r) => r.id === recruiterId)?.timezone || viewerTimezone,
+    [recruiters]
+  );
+
+  const enrichShift = useCallback(
+    (shift) => {
+      const zone = shift?.timezone || resolveRecruiterTimezone(shift.recruiter_id);
+      const clock_in_display = toLocalIso(shift.clock_in, zone);
+      const clock_out_display = toLocalIso(shift.clock_out, zone);
+      const break_start_display = toLocalIso(shift.break_start, zone);
+      const break_end_display = toLocalIso(shift.break_end, zone);
+      return {
+        ...shift,
+        timezone: zone,
+        clock_in_display,
+        clock_out_display,
+        clock_in_local_time: formatLocalTime(clock_in_display),
+        clock_out_local_time: formatLocalTime(clock_out_display),
+        clock_in_local_date: formatLocalDate(clock_in_display),
+        clock_out_local_date: formatLocalDate(clock_out_display),
+        break_start_display,
+        break_end_display,
+        break_start_local_time: formatLocalTime(break_start_display),
+        break_end_local_time: formatLocalTime(break_end_display),
+      };
+    },
+    [resolveRecruiterTimezone]
+  );
+
   const flatRows = useMemo(() => {
     return (shifts || []).map((s) => ({
       id: s.id,
       recruiter_id: s.recruiter_id,
       employee: recruiters.find((r) => r.id === s.recruiter_id)?.name || String(s.recruiter_id),
-      date: s.date,
-      start: s.clock_in  ? format(new Date(s.clock_in), "HH:mm")  : "",
-end:   s.clock_out ? format(new Date(s.clock_out), "HH:mm") : "",
-
+      date: getShiftLocalDate(s),
+      start: getShiftLocalStart(s),
+      end: getShiftLocalEnd(s),
       status: s.status || "",
       location: s.location || "",
       note: s.note || "",
@@ -249,13 +432,19 @@ end:   s.clock_out ? format(new Date(s.clock_out), "HH:mm") : "",
     const shift = (shifts || []).find((s) => String(s.id) === String(id));
     if (!shift) return;
     setEditingShift(shift);
-    const startD = shift?.clock_in ? new Date(shift.clock_in) : null;
-    const endD = shift?.clock_out ? new Date(shift.clock_out) : null;
+    const startDate = getShiftLocalDate(shift);
+    const startTime = getShiftLocalStart(shift);
+    const endTime = getShiftLocalEnd(shift);
 
+    const policyState = hydrateBreakPolicyFormState(shift.break_policy);
+    const derivedBreakMinutes =
+      shift.break_minutes ?? policyState.breakLength ?? "";
     setFormData({
-      date: startD ? formatDate(startD) : shift.date || "",
-      startTime: startD ? formatTime(startD) : "",
-      endTime: endD ? formatTime(endD) : "",
+      ...defaultBreakPolicyForm,
+      ...policyState,
+      date: startDate || shift.date || "",
+      startTime: startTime || "",
+      endTime: endTime || "",
       location: shift.location || "",
       note: shift.note || "",
       recurring: false,
@@ -264,9 +453,9 @@ end:   s.clock_out ? format(new Date(s.clock_out), "HH:mm") : "",
       repeatMode: "weeks",
       repeatWeeks: 2,
       repeatUntil: "",
-      breakStart: toTimeInputValue(shift.break_start),
-      breakEnd: toTimeInputValue(shift.break_end),
-      breakMinutes: shift.break_minutes ?? "",
+      breakStart: toTimeInputValue(shift.break_start_display || shift.break_start),
+      breakEnd: toTimeInputValue(shift.break_end_display || shift.break_end),
+      breakMinutes: derivedBreakMinutes,
       breakPaid: Boolean(shift.break_paid),
     });
     setSelectedAvailabilityIds(shift.availability_id ? [shift.availability_id] : []);
@@ -293,41 +482,43 @@ end:   s.clock_out ? format(new Date(s.clock_out), "HH:mm") : "",
   /* ------------------------------- templates -------------------------------- */
   const [templates, setTemplates] = useState([]);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
-  const [templateFormData, setTemplateFormData] = useState({
-    id: null,
-    label: "",
-    start: "",
-    end: "",
-    days: [],
-    recurring: true,
-    breakStart: "",
-    breakEnd: "",
-    breakMinutes: "",
-    breakPaid: false,
-  });
+const [templateFormData, setTemplateFormData] = useState({
+  id: null,
+  label: "",
+  start: "",
+  end: "",
+  days: [],
+  recurring: true,
+  breakStart: "",
+  breakEnd: "",
+  breakMinutes: "",
+  breakPaid: false,
+  ...defaultBreakPolicyForm,
+});
   const [editingTemplateIndex, setEditingTemplateIndex] = useState(null);
 
   /* ----------------------------- shift form/modal ---------------------------- */
   const [modalOpen, setModalOpen] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
-  const [formData, setFormData] = useState({
-    date: "",
-    startTime: "",
-    endTime: "",
-    location: "",
-    note: "",
-    recurring: false,
-    recurringDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-    selectedTemplate: "",
-    breakStart: "",
-    breakEnd: "",
-    breakMinutes: "",
-    breakPaid: false,
-    // NEW — recurrence controls:
-    repeatMode: "weeks",   // "weeks" | "until"
-    repeatWeeks: 2,        // number of weeks when repeatMode = "weeks"
-    repeatUntil: ""        // YYYY-MM-DD when repeatMode = "until"
-  });
+const [formData, setFormData] = useState({
+  date: "",
+  startTime: "",
+  endTime: "",
+  location: "",
+  note: "",
+  recurring: false,
+  recurringDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+  selectedTemplate: "",
+  breakStart: "",
+  breakEnd: "",
+  breakMinutes: "",
+  breakPaid: false,
+  ...defaultBreakPolicyForm,
+  // NEW — recurrence controls:
+  repeatMode: "weeks",   // "weeks" | "until"
+  repeatWeeks: 2,        // number of weeks when repeatMode = "weeks"
+  repeatUntil: ""        // YYYY-MM-DD when repeatMode = "until"
+});
   const [modalAvailabilitySlots, setModalAvailabilitySlots] = useState([]);
   const [selectedAvailabilityIds, setSelectedAvailabilityIds] = useState([]);
 
@@ -399,14 +590,18 @@ end:   s.clock_out ? format(new Date(s.clock_out), "HH:mm") : "",
   };
 
   const hasConflict = (recruiterId, date, startTime, endTime, shiftIdToExclude = null) => {
-    const newStart = new Date(`${date}T${startTime}`);
-    const newEnd = new Date(`${date}T${endTime}`);
+    const zone = resolveRecruiterTimezone(recruiterId);
+    const newStartUtc = localPartsToUtcMillis(date, startTime, zone);
+    const newEndUtc = localPartsToUtcMillis(date, endTime, zone);
+    if (!newStartUtc || !newEndUtc) return false;
+
     return shifts.some((s) => {
       if (s.recruiter_id !== recruiterId) return false;
       if (shiftIdToExclude && s.id === shiftIdToExclude) return false;
-      const existingStart = new Date(s.clock_in);
-      const existingEnd = new Date(s.clock_out);
-      return newStart < existingEnd && newEnd > existingStart;
+      const existingStartUtc = parseUtcMillis(s.clock_in);
+      const existingEndUtc = parseUtcMillis(s.clock_out);
+      if (!existingStartUtc || !existingEndUtc) return false;
+      return newStartUtc < existingEndUtc && newEndUtc > existingStartUtc;
     });
   };
 
@@ -471,6 +666,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           breakEnd: (t.break_end || "").slice(0, 5),
           breakMinutes: t.break_minutes ?? "",
           breakPaid: Boolean(t.break_paid),
+          breakPolicy: t.break_policy || null,
         }));
 
         setTemplates(list);
@@ -557,7 +753,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       const url = `${API_URL}/automation/shifts/range?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
       const res = await fetch(url, { headers: getAuthHeaders() });
       const data = await res.json();
-      setShifts(data.shifts || []);
+      setShifts((data.shifts || []).map(enrichShift));
     } catch {
       setErrorMsg("Failed to fetch shifts.");
     }
@@ -625,8 +821,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         return {
           id: String(s.id),
           title: `${s.status || "assigned"}`,
-          start: s.clock_in, // ISO string (browser renders in local TZ)
-          end: s.clock_out,
+          start: s.clock_in_display || s.clock_in,
+          end: s.clock_out_display || s.clock_out,
           backgroundColor: isOnLeave ? "#f0f0f0" : (s.status === "accepted" ? "#e6f4ea" : "#e8f0fe"),
           borderColor: isOnLeave ? "#ccc" : color,
           textColor: isOnLeave ? "#999" : "#111",
@@ -638,6 +834,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             recruiter_id: s.recruiter_id,
             recruiter_name: recruiters.find((r) => r.id === s.recruiter_id)?.name || `Emp ${s.recruiter_id}`,
             status: s.status,
+            timezone: s.timezone,
             leave_reason: s.leave_reason || null,
             _empColor: color,
           },
@@ -654,8 +851,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         title:
           recruiters.find((r) => r.id === s.recruiter_id)?.name ||
           `Emp ${s.recruiter_id}`,
-        start: s.clock_in,
-        end: s.clock_out,
+        start: s.clock_in_display || s.clock_in,
+        end: s.clock_out_display || s.clock_out,
         backgroundColor: getColorForRecruiter(s.recruiter_id),
         borderColor: getColorForRecruiter(s.recruiter_id),
         textColor: "#000",
@@ -668,28 +865,27 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   const dayChips = useMemo(() => {
     const list = filteredShifts
       .filter((s) => {
-  const localDateFromISO = format(new Date(s.clock_in), "yyyy-MM-dd");
-  return s.date === selectedDate || localDateFromISO === selectedDate;
-})
+          const localDateFromISO = getShiftLocalDate(s);
+          return s.date === selectedDate || localDateFromISO === selectedDate;
+        })
 
       .map((s) => {
-        const start = new Date(s.clock_in);
-        const end = new Date(s.clock_out);
-        const startLabel = format(start, "HH:mm");
-        const endLabel = format(end, "HH:mm");
+        const startLabel = getShiftLocalStart(s);
+        const endLabel = getShiftLocalEnd(s);
         const name =
           recruiters.find((r) => r.id === s.recruiter_id)?.name ||
           s.recruiter_id;
         return {
-          key: `${s.id}-${s.clock_in}`,
+          key: `${s.id}-${s.clock_in_display || s.clock_in}`,
           id: s.id,
           recruiter_id: s.recruiter_id,
           label: `${startLabel}–${endLabel} • ${name} (${s.status})`,
           color: getColorForRecruiter(s.recruiter_id),
           raw: s,
+          sortKey: `${getShiftLocalDate(s)} ${startLabel}`,
         };
       })
-      .sort((a, b) => (a.raw.clock_in < b.raw.clock_in ? -1 : 1));
+      .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 
     return list;
   }, [filteredShifts, recruiters, selectedDate]);
@@ -715,6 +911,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       status: dropInfo.event.extendedProps.status,
       location: dropInfo.event.extendedProps.location,
       note: dropInfo.event.extendedProps.note,
+      timezone: dropInfo.event.extendedProps.timezone,
     });
   };
 
@@ -728,14 +925,18 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       status: resizeInfo.event.extendedProps.status,
       location: resizeInfo.event.extendedProps.location,
       note: resizeInfo.event.extendedProps.note,
+      timezone: resizeInfo.event.extendedProps.timezone,
     });
   };
 
   const handleSavePendingEventUpdate = async () => {
     if (!pendingEventUpdate) return;
-    const newDate = format(pendingEventUpdate.newStart, "yyyy-MM-dd");
-    const newStartTime = format(pendingEventUpdate.newStart, "HH:mm");
-    const newEndTime = format(pendingEventUpdate.newEnd, "HH:mm");
+    const zone = pendingEventUpdate.timezone || viewerTimezone;
+    const startDt = DateTime.fromJSDate(pendingEventUpdate.newStart).setZone(zone);
+    const endDt = DateTime.fromJSDate(pendingEventUpdate.newEnd).setZone(zone);
+    const newDate = startDt.toFormat("yyyy-MM-dd");
+    const newStartTime = startDt.toFormat("HH:mm");
+    const newEndTime = endDt.toFormat("HH:mm");
     const payload = {
       date: newDate,
       clock_in: `${newDate}T${newStartTime}`,
@@ -777,38 +978,43 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
   const handleEventClick = (clickInfo) => {
     const shift = shifts.find((s) => String(s.id) === String(clickInfo.event.id));
-    if (shift) {
-      setEditingShift(shift);
-      const sD = shift?.clock_in ? new Date(shift.clock_in) : null;
-      const eD = shift?.clock_out ? new Date(shift.clock_out) : null;
+    if (!shift) return;
+    setEditingShift(shift);
+    const startDate = getShiftLocalDate(shift);
+    const startTime = getShiftLocalStart(shift);
+    const endTime = getShiftLocalEnd(shift);
+    const policyState = hydrateBreakPolicyFormState(shift.break_policy);
+    const derivedBreakMinutes =
+      shift.break_minutes ?? policyState.breakLength ?? "";
 
-      setFormData({
-        date: sD ? formatDate(sD) : shift.date || "",
-        startTime: sD ? formatTime(sD) : "",
-        endTime: eD ? formatTime(eD) : "",
-        location: shift.location || "",
-        note: shift.note || "",
-        recurring: false,
-        recurringDays: [],
-        selectedTemplate: "",
-        breakStart: toTimeInputValue(shift.break_start),
-        breakEnd: toTimeInputValue(shift.break_end),
-        breakMinutes: shift.break_minutes ?? "",
-        breakPaid: Boolean(shift.break_paid),
-        repeatMode: "weeks",
-        repeatWeeks: 2,
-        repeatUntil: "",
-      });
-      setSelectedAvailabilityIds(shift.availability_id ? [shift.availability_id] : []);
-      fetchAvailabilityForModal(shift.recruiter_id, shift.date);
-
-      setModalOpen(true);
-    }
+    setFormData({
+      ...defaultBreakPolicyForm,
+      ...policyState,
+      date: startDate || shift.date || "",
+      startTime: startTime || "",
+      endTime: endTime || "",
+      location: shift.location || "",
+      note: shift.note || "",
+      recurring: false,
+      recurringDays: [],
+      selectedTemplate: "",
+      breakStart: toTimeInputValue(shift.break_start_display || shift.break_start),
+      breakEnd: toTimeInputValue(shift.break_end_display || shift.break_end),
+      breakMinutes: derivedBreakMinutes,
+      breakPaid: Boolean(shift.break_paid),
+      repeatMode: "weeks",
+      repeatWeeks: 2,
+      repeatUntil: "",
+    });
+    setSelectedAvailabilityIds(shift.availability_id ? [shift.availability_id] : []);
+    fetchAvailabilityForModal(shift.recruiter_id, shift.date);
+    setModalOpen(true);
   };
 
   const handleDateClick = (clickInfo) => {
     setEditingShift(null);
     setFormData({
+      ...defaultBreakPolicyForm,
       date: formatDate(clickInfo.date),
       startTime: "09:00",
       endTime: "17:00",
@@ -851,8 +1057,21 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         setFormData((prev) => ({ ...prev, [name]: checked }));
       }
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      if (name === "breakMinutes") {
+        setFormData((prev) => ({ ...prev, breakMinutes: value, breakLength: value }));
+      } else {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+      }
     }
+  };
+
+  const handleBreakModeChange = (_, value) => {
+    if (!value) return;
+    setFormData((prev) => ({
+      ...prev,
+      ...defaultBreakPolicyForm,
+      breakMode: value,
+    }));
   };
 
   const handleAvailabilitySelection = (event) => {
@@ -883,6 +1102,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const dateStr = selectedDate || format(new Date(), "yyyy-MM-dd");
     setEditingShift(null);
     setFormData({
+      ...defaultBreakPolicyForm,
       date: dateStr,
       startTime: "09:00",
       endTime: "17:00",
@@ -913,8 +1133,12 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const templateLabel = e.target.value;
     const template = templates.find((t) => t.label === templateLabel);
     if (template) {
+      const policyState = hydrateBreakPolicyFormState(template.breakPolicy);
+      const derivedMinutes =
+        template.breakMinutes || policyState.breakLength || "";
       setFormData((prev) => ({
         ...prev,
+        ...defaultBreakPolicyForm,
         selectedTemplate: templateLabel,
         startTime: template.start,
         endTime: template.end,
@@ -922,8 +1146,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         recurringDays: template.days,
         breakStart: template.breakStart || "",
         breakEnd: template.breakEnd || "",
-        breakMinutes: template.breakMinutes || "",
+        breakMinutes: derivedMinutes,
         breakPaid: Boolean(template.breakPaid),
+        ...policyState,
       }));
     } else {
       setFormData((prev) => ({ ...prev, selectedTemplate: "" }));
@@ -932,6 +1157,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
   const openTemplateModal = () => {
     setTemplateFormData({
+      ...defaultBreakPolicyForm,
       id: null,
       label: "",
       start: "",
@@ -956,12 +1182,29 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           : prev.days.filter((d) => d !== value);
         return { ...prev, days: newDays };
       });
-    } else {
-      setTemplateFormData((prev) => ({
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      }));
+      return;
     }
+    setTemplateFormData((prev) => {
+      const next = { ...prev };
+      if (type === "checkbox") {
+        next[name] = checked;
+      } else if (name === "breakMinutes") {
+        next.breakMinutes = value;
+        next.breakLength = value;
+      } else {
+        next[name] = value;
+      }
+      return next;
+    });
+  };
+
+  const handleTemplateBreakModeChange = (_, value) => {
+    if (!value) return;
+    setTemplateFormData((prev) => ({
+      ...prev,
+      ...defaultBreakPolicyForm,
+      breakMode: value,
+    }));
   };
 
   const handleTemplateSave = async () => {
@@ -988,6 +1231,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         : null,
       break_paid: Boolean(templateFormData.breakPaid),
     };
+    const templatePolicy = buildBreakPolicyPayload(
+      templateFormData,
+      payload.break_paid
+    );
+    if (templatePolicy) {
+      payload.break_policy = templatePolicy;
+    }
 
     const method = editingTemplateIndex != null ? "PUT" : "POST";
     const id = templates[editingTemplateIndex]?.id;
@@ -1026,6 +1276,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         breakEnd: (t.break_end || "").slice(0, 5),
         breakMinutes: t.break_minutes ?? "",
         breakPaid: Boolean(t.break_paid),
+        breakPolicy: t.break_policy || null,
       }));
       setTemplates(listReload);
       setSuccessMsg("Template saved successfully.");
@@ -1037,7 +1288,12 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   const handleTemplateEdit = (index) => {
     const tpl = templates[index];
     if (!tpl) return;
+    const policyState = hydrateBreakPolicyFormState(tpl.breakPolicy);
+    const derivedMinutes =
+      tpl.breakMinutes ?? policyState.breakLength ?? "";
     setTemplateFormData({
+      ...defaultBreakPolicyForm,
+      ...policyState,
       id: tpl.id,
       label: tpl.label || "",
       start: tpl.start || "",
@@ -1046,7 +1302,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       recurring: tpl.recurring !== false,
       breakStart: tpl.breakStart || "",
       breakEnd: tpl.breakEnd || "",
-      breakMinutes: tpl.breakMinutes ?? "",
+      breakMinutes: derivedMinutes,
       breakPaid: Boolean(tpl.breakPaid),
     });
     setEditingTemplateIndex(index);
@@ -1075,6 +1331,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       }
     }
     payload.break_paid = Boolean(formData.breakPaid);
+    const policyPayload = buildBreakPolicyPayload(formData, payload.break_paid);
+    if (policyPayload) {
+      payload.break_policy = policyPayload;
+    }
     return payload;
   };
 
@@ -1317,8 +1577,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       Recruiter:
         recruiters.find((r) => r.id === s.recruiter_id)?.name || s.recruiter_id,
       Date: s.date,
-      ClockIn: s.clock_in,
-      ClockOut: s.clock_out,
+      ClockIn: `${getShiftLocalStart(s)} (${getShiftLocalDate(s)})`,
+      ClockOut: `${getShiftLocalEnd(s)} (${getShiftLocalEndDate(s)})`,
       Location: s.location || "",
       Note: s.note || "",
       Status: s.status,
@@ -1705,21 +1965,23 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                     onClick={() => {
                       const s = c.raw;
                       setEditingShift(s);
-                      const sD = s?.clock_in ? new Date(s.clock_in) : null;
-                      const eD = s?.clock_out ? new Date(s.clock_out) : null;
-
+                      const policyState = hydrateBreakPolicyFormState(s.break_policy);
+                      const derivedBreakMinutes =
+                        s.break_minutes ?? policyState.breakLength ?? "";
                       setFormData({
-                        date: sD ? formatDate(sD) : s.date || "",
-                        startTime: sD ? formatTime(sD) : "",
-                        endTime: eD ? formatTime(eD) : "",
+                        ...defaultBreakPolicyForm,
+                        ...policyState,
+                        date: getShiftLocalDate(s) || s.date || "",
+                        startTime: getShiftLocalStart(s) || "",
+                        endTime: getShiftLocalEnd(s) || "",
                         location: s.location || "",
                         note: s.note || "",
                         recurring: false,
                         recurringDays: [],
                         selectedTemplate: "",
-                        breakStart: toTimeInputValue(s.break_start),
-                        breakEnd: toTimeInputValue(s.break_end),
-                        breakMinutes: s.break_minutes ?? "",
+                        breakStart: toTimeInputValue(s.break_start_display || s.break_start),
+                        breakEnd: toTimeInputValue(s.break_end_display || s.break_end),
+                        breakMinutes: derivedBreakMinutes,
                         breakPaid: Boolean(s.break_paid),
                         repeatMode: "weeks",
                         repeatWeeks: 2,
@@ -1886,20 +2148,18 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                   );
                   if (shift) {
                     setEditingShift(shift);
-                    const sD = shift?.clock_in ? new Date(shift.clock_in) : null;
-                    const eD = shift?.clock_out ? new Date(shift.clock_out) : null;
 
                     setFormData({
-                      date: sD ? formatDate(sD) : shift.date || "",
-                      startTime: sD ? formatTime(sD) : "",
-                      endTime: eD ? formatTime(eD) : "",
+                      date: getShiftLocalDate(shift) || shift.date || "",
+                      startTime: getShiftLocalStart(shift) || "",
+                      endTime: getShiftLocalEnd(shift) || "",
                       location: shift.location || "",
                       note: shift.note || "",
                       recurring: false,
                       recurringDays: [],
                       selectedTemplate: "",
-                      breakStart: toTimeInputValue(shift.break_start),
-                      breakEnd: toTimeInputValue(shift.break_end),
+                      breakStart: toTimeInputValue(shift.break_start_display || shift.break_start),
+                      breakEnd: toTimeInputValue(shift.break_end_display || shift.break_end),
                       breakMinutes: shift.break_minutes ?? "",
                       breakPaid: Boolean(shift.break_paid),
                       repeatMode: "weeks",
@@ -2029,99 +2289,215 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
             {editingShift ? "Edit Shift" : "Add New Shift"}
           </Typography>
 
-          <TextField
-            fullWidth
-            label="Date"
-            type="date"
-            margin="normal"
-            name="date"
-            InputLabelProps={{ shrink: true }}
-            value={formData.date}
-            onChange={handleFormChange}
-          />
-          <TextField
-            fullWidth
-            label="Start Time"
-            type="time"
-            margin="normal"
-            name="startTime"
-            InputLabelProps={{ shrink: true }}
-            value={formData.startTime}
-            onChange={handleFormChange}
-          />
-          <TextField
-            fullWidth
-            label="End Time"
-            type="time"
-            margin="normal"
-            name="endTime"
-            InputLabelProps={{ shrink: true }}
-            value={formData.endTime}
-            onChange={handleFormChange}
-          />
-          <TextField
-            fullWidth
-            label="Location"
-            margin="normal"
-            name="location"
-            value={formData.location}
-            onChange={handleFormChange}
-          />
-          <TextField
-            fullWidth
-            label="Note"
-            margin="normal"
-            name="note"
-            value={formData.note}
-            onChange={handleFormChange}
-          />
-          <Grid container spacing={2} sx={{ mt: 1 }}>
+          <Grid container spacing={2}>
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Break start"
-                type="time"
+                label="Date"
+                type="date"
                 margin="normal"
-                name="breakStart"
+                name="date"
                 InputLabelProps={{ shrink: true }}
-                value={formData.breakStart}
+                value={formData.date}
                 onChange={handleFormChange}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Break end"
+                label="Start Time"
                 type="time"
                 margin="normal"
-                name="breakEnd"
+                name="startTime"
                 InputLabelProps={{ shrink: true }}
-                value={formData.breakEnd}
+                value={formData.startTime}
                 onChange={handleFormChange}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
               <TextField
                 fullWidth
-                label="Break minutes"
-                type="number"
+                label="End Time"
+                type="time"
                 margin="normal"
-                name="breakMinutes"
-                value={formData.breakMinutes}
+                name="endTime"
+                InputLabelProps={{ shrink: true }}
+                value={formData.endTime}
+                onChange={handleFormChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Location"
+                margin="normal"
+                name="location"
+                value={formData.location}
+                onChange={handleFormChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Note"
+                margin="normal"
+                name="note"
+                value={formData.note}
                 onChange={handleFormChange}
               />
             </Grid>
           </Grid>
-          <FormControlLabel
-            control={
-              <Checkbox
-                name="breakPaid"
-                checked={formData.breakPaid}
-                onChange={handleFormChange}
-              />
-            }
-            label="Break is paid"
-          />
+          <Box mt={3}>
+            <Box display="flex" alignItems="center" gap={1}>
+              <Typography variant="subtitle1" fontWeight={600}>
+                Break strategy
+              </Typography>
+              <Tooltip
+                title="Decide when breaks occur. Fixed = exact times, Window = must occur within the range, Stagger = auto-assigns unique slots to avoid coverage gaps."
+                arrow
+              >
+                <IconButton size="small">
+                  <InfoOutlined fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={formData.breakMode}
+              onChange={handleBreakModeChange}
+              sx={{ flexWrap: "wrap", gap: 1 }}
+            >
+              <ToggleButton value="none">Manual</ToggleButton>
+              <ToggleButton value="fixed">Fixed time</ToggleButton>
+              <ToggleButton value="window">Window</ToggleButton>
+              <ToggleButton value="stagger">Auto-stagger</ToggleButton>
+            </ToggleButtonGroup>
+            {formData.breakMode === "fixed" && (
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Break start"
+                    type="time"
+                    margin="normal"
+                    name="breakStart"
+                    InputLabelProps={{ shrink: true }}
+                    value={formData.breakStart}
+                    onChange={handleFormChange}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Break end"
+                    type="time"
+                    margin="normal"
+                    name="breakEnd"
+                    InputLabelProps={{ shrink: true }}
+                    value={formData.breakEnd}
+                    onChange={handleFormChange}
+                  />
+                </Grid>
+              </Grid>
+            )}
+            {formData.breakMode !== "none" && (
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Break minutes"
+                    type="number"
+                    margin="normal"
+                    name="breakMinutes"
+                    value={formData.breakMinutes}
+                    onChange={handleFormChange}
+                  />
+                </Grid>
+                {(formData.breakMode === "window" || formData.breakMode === "stagger") && (
+                  <>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Window start"
+                        type="time"
+                        margin="normal"
+                        name="breakWindowStart"
+                        InputLabelProps={{ shrink: true }}
+                        value={formData.breakWindowStart}
+                        onChange={handleFormChange}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Window end"
+                        type="time"
+                        margin="normal"
+                        name="breakWindowEnd"
+                        InputLabelProps={{ shrink: true }}
+                        value={formData.breakWindowEnd}
+                        onChange={handleFormChange}
+                      />
+                    </Grid>
+                  </>
+                )}
+                {formData.breakMode === "window" && (
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Must start by"
+                      helperText="Latest time an employee can begin their break."
+                      type="time"
+                      margin="normal"
+                      name="breakLatestStart"
+                      InputLabelProps={{ shrink: true }}
+                      value={formData.breakLatestStart}
+                      onChange={handleFormChange}
+                    />
+                  </Grid>
+                )}
+                {formData.breakMode === "stagger" && (
+                  <>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Max people on break"
+                        type="number"
+                        margin="normal"
+                        name="breakMaxSimultaneous"
+                        value={formData.breakMaxSimultaneous}
+                        onChange={handleFormChange}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            name="breakRotate"
+                            checked={formData.breakRotate}
+                            onChange={handleFormChange}
+                          />
+                        }
+                        label="Rotate assignments each time"
+                      />
+                    </Grid>
+                  </>
+                )}
+              </Grid>
+            )}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name="breakPaid"
+                  checked={formData.breakPaid}
+                  onChange={handleFormChange}
+                />
+              }
+              label="Break is paid"
+              sx={{ mt: 1 }}
+            />
+          </Box>
           <FormControl
             fullWidth
             margin="normal"
@@ -2351,61 +2727,152 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
             onChange={handleTemplateFormChange}
           />
 
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Break start"
-                type="time"
-                margin="normal"
-                name="breakStart"
-                InputLabelProps={{ shrink: true }}
-                value={templateFormData.breakStart}
-                onChange={handleTemplateFormChange}
-                helperText="Optional default pause"
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Break end"
-                type="time"
-                margin="normal"
-                name="breakEnd"
-                InputLabelProps={{ shrink: true }}
-                value={templateFormData.breakEnd}
-                onChange={handleTemplateFormChange}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Break minutes"
-                type="number"
-                margin="normal"
-                name="breakMinutes"
-                value={templateFormData.breakMinutes}
-                onChange={handleTemplateFormChange}
-                helperText="Used when start/end empty"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    name="breakPaid"
-                    checked={templateFormData.breakPaid}
+          <Box mt={3}>
+            <Typography variant="subtitle1" fontWeight={600}>
+              Break strategy (template)
+            </Typography>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={templateFormData.breakMode}
+              onChange={handleTemplateBreakModeChange}
+              sx={{ flexWrap: "wrap", gap: 1, mt: 1 }}
+            >
+              <ToggleButton value="none">Manual</ToggleButton>
+              <ToggleButton value="fixed">Fixed time</ToggleButton>
+              <ToggleButton value="window">Window</ToggleButton>
+              <ToggleButton value="stagger">Auto-stagger</ToggleButton>
+            </ToggleButtonGroup>
+            {templateFormData.breakMode === "fixed" && (
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Break start"
+                    type="time"
+                    margin="normal"
+                    name="breakStart"
+                    InputLabelProps={{ shrink: true }}
+                    value={templateFormData.breakStart}
+                    onChange={handleTemplateFormChange}
+                    helperText="Optional default pause"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Break end"
+                    type="time"
+                    margin="normal"
+                    name="breakEnd"
+                    InputLabelProps={{ shrink: true }}
+                    value={templateFormData.breakEnd}
                     onChange={handleTemplateFormChange}
                   />
-                }
-                label="Break is paid"
-              />
-            </Grid>
-          </Grid>
-          <Typography variant="caption" color="text.secondary">
-            These defaults flow into shift assignments and employee clock breaks, so values here should
-            mirror your labour policy.
-          </Typography>
+                </Grid>
+              </Grid>
+            )}
+            {templateFormData.breakMode !== "none" && (
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Break minutes"
+                    type="number"
+                    margin="normal"
+                    name="breakMinutes"
+                    value={templateFormData.breakMinutes}
+                    onChange={handleTemplateFormChange}
+                    helperText="Used when start/end empty"
+                  />
+                </Grid>
+                {(templateFormData.breakMode === "window" ||
+                  templateFormData.breakMode === "stagger") && (
+                  <>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Window start"
+                        type="time"
+                        margin="normal"
+                        name="breakWindowStart"
+                        InputLabelProps={{ shrink: true }}
+                        value={templateFormData.breakWindowStart}
+                        onChange={handleTemplateFormChange}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Window end"
+                        type="time"
+                        margin="normal"
+                        name="breakWindowEnd"
+                        InputLabelProps={{ shrink: true }}
+                        value={templateFormData.breakWindowEnd}
+                        onChange={handleTemplateFormChange}
+                      />
+                    </Grid>
+                  </>
+                )}
+                {templateFormData.breakMode === "window" && (
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Must start by"
+                      type="time"
+                      margin="normal"
+                      name="breakLatestStart"
+                      InputLabelProps={{ shrink: true }}
+                      value={templateFormData.breakLatestStart}
+                      onChange={handleTemplateFormChange}
+                    />
+                  </Grid>
+                )}
+                {templateFormData.breakMode === "stagger" && (
+                  <>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Max people on break"
+                        type="number"
+                        margin="normal"
+                        name="breakMaxSimultaneous"
+                        value={templateFormData.breakMaxSimultaneous}
+                        onChange={handleTemplateFormChange}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            name="breakRotate"
+                            checked={templateFormData.breakRotate}
+                            onChange={handleTemplateFormChange}
+                          />
+                        }
+                        label="Rotate assignments each time"
+                      />
+                    </Grid>
+                  </>
+                )}
+              </Grid>
+            )}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name="breakPaid"
+                  checked={templateFormData.breakPaid}
+                  onChange={handleTemplateFormChange}
+                />
+              }
+              label="Break is paid"
+            />
+            <Typography variant="caption" color="text.secondary">
+              These defaults flow into shift assignments and employee clock breaks, so values here should
+              mirror your labour policy.
+            </Typography>
+          </Box>
 
           <Box mt={2}>
             <Typography variant="subtitle2">Select Days</Typography>

@@ -190,14 +190,20 @@ export const timeTracking = {
     api.post(`/employee/shifts/${shiftId}/break-end`, {}, config).then((r) => r.data),
   listEntries: (params = {}, config = {}) =>
     api.get("/manager/time-entries", { params, ...config }).then((r) => r.data),
+  managerHistory: (params = {}, config = {}) =>
+    api.get("/manager/time-entries/history", { params, ...config }).then((r) => r.data),
   approveEntry: (id, config = {}) =>
     api.post(`/manager/time-entries/${id}/approve`, {}, config).then((r) => r.data),
   rejectEntry: (id, payload = {}, config = {}) =>
     api.post(`/manager/time-entries/${id}/reject`, payload, config).then((r) => r.data),
+  forceClockOut: (id, payload = {}, config = {}) =>
+    api.post(`/manager/time-entries/${id}/force-clock-out`, payload, config).then((r) => r.data),
   bulkAdjustEntries: (payload = {}, config = {}) =>
     api.post("/manager/time-entries/bulk-adjust", payload, config).then((r) => r.data),
   employeeSummary: (params = {}, config = {}) =>
     api.get("/employee/time-summary", { params, ...config }).then((r) => r.data),
+  employeeHistory: (params = {}, config = {}) =>
+    api.get("/employee/time-history", { params, ...config }).then((r) => r.data),
   listTemplates: (config = {}) =>
     api.get("/api/shift-templates", config).then((r) => r.data),
 };

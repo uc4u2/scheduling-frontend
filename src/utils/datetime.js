@@ -41,7 +41,7 @@ export const formatTime = (d) =>
 export const formatDateTimeInTz = (isoString, tz, opts = DateTime.DATETIME_MED_WITH_SECONDS) => {
   if (!isoString) return "";
   try {
-    const zoned = DateTime.fromISO(isoString, { zone: "utc" }).setZone(tz || "local");
+    const zoned = DateTime.fromISO(isoString).setZone(tz || "local");
     if (!zoned.isValid) {
       return new Date(isoString).toLocaleString();
     }

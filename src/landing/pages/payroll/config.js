@@ -88,7 +88,7 @@ const overviewConfig = {
     badge: "Scheduling + payroll + docs",
     title: "Payroll that stays in sync with operations",
     subtitle:
-      "Pull real-time hours from scheduling, apply CRA or IRS logic, and ship payslips plus ROE/T4/W-2 documents without leaving Schedulaa.",
+      "Pull real-time hours from scheduling and time tracking, apply CRA or IRS logic, and ship payslips plus ROE/T4/W-2 documents without leaving Schedulaa.",
     bullets: [
       "Regional engines for Canada (CPP, EI, BPA) and the USA (FICA plus state tax logic).",
       "ROE, T4, W-2, and payslip exports backed by our public docs.",
@@ -189,6 +189,18 @@ const overviewConfig = {
       links: [
         { label: "Open analytics tour", href: "/marketing/analytics-dashboard" },
         { label: "Read payroll help guides", href: "/docs#payroll" },
+      ],
+    },
+    {
+      icon: "schedule",
+      label: "Payroll-ready time data",
+      title: "Hours arrive with breaks, overtime, and audits attached",
+      body:
+        "Approved time entries land with unpaid breaks deducted, overtime and missed-break markers attached, and IP/UA metadata for audits. Finance exports CSV/PDF or syncs to accounting without spreadsheets.",
+      points: [
+        "Forced clock-out and bulk break template fixes are fully audited.",
+        "OT/missed-break flags travel with each pay period.",
+        "Safe portal links keep employees on the right local domain.",
       ],
     },
   ],

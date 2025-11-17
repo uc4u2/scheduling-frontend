@@ -28,38 +28,74 @@ import {
   Collapse,
   IconButton,
 } from "@mui/material";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material"; // ✅ ADD THIS TOO
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { format, getDay } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { format, endOfMonth, addDays } from "date-fns";
-import TimeEntriesPanel from "./TimeEntriesPanel";
+import { DateTime } from "luxon";
+import { getUserTimezone } from "../../utils/timezone";
+
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const viewerTimezone = getUserTimezone();
 
-// Parse "YYYY-MM-DD" as a LOCAL date (never use new Date("YYYY-MM-DD"))
-const asLocalDate = (ymd) => {
-  if (!ymd) return new Date();
-  const [y, m, d] = ymd.split("-").map(Number);
-  return new Date(y, (m || 1) - 1, d || 1);
+const toLocalIso = (iso, zone) => {
+  if (!iso) return null;
+  try {
+    return DateTime.fromISO(iso, { zone: "utc" })
+      .setZone(zone || viewerTimezone)
+      .toISO();
+  } catch {
+    return iso;
+  }
 };
 
-// quick format helpers (local)
-const hhmm = (iso) => (iso ? format(new Date(iso), "HH:mm") : "");
-const ymdFromIso = (iso) => (iso ? format(new Date(iso), "yyyy-MM-dd") : "");
+const formatLocalTime = (iso) => {
+  if (!iso) return "";
+  try {
+    return DateTime.fromISO(iso, { setZone: true }).toFormat("HH:mm");
+  } catch {
+    return iso.slice(11, 16);
+  }
+};
 
-const toArray = (raw) =>
-  Array.isArray(raw)
-    ? raw
-    : raw && typeof raw === "object"
-      ? Object.values(raw)
-      : [];
+const formatLocalDate = (iso) => {
+  if (!iso) return "";
+  try {
+    return DateTime.fromISO(iso, { setZone: true }).toFormat("yyyy-MM-dd");
+  } catch {
+    return iso.slice(0, 10);
+  }
+};
+
+const getShiftLocalDate = (shift) =>
+  shift.clock_in_local_date ||
+  formatLocalDate(shift.clock_in_display) ||
+  shift.date;
+
+const getShiftLocalEndDate = (shift) =>
+  shift.clock_out_local_date ||
+  formatLocalDate(shift.clock_out_display) ||
+  shift.date;
+
+const getShiftLocalStart = (shift) =>
+  shift.clock_in_local_time ||
+  formatLocalTime(shift.clock_in_display) ||
+  (shift.clock_in || "").slice(11, 16);
+
+const getShiftLocalEnd = (shift) =>
+  shift.clock_out_local_time ||
+  formatLocalTime(shift.clock_out_display) ||
+  (shift.clock_out || "").slice(11, 16);
+
 const SecondTeam = () => {
-  /* ─────────────────────────── State ─────────────────────────── */
+  // Basic States
   const [expandedRows, setExpandedRows] = useState({});
-  const toggleRow = (id) =>
-    setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
 
+  const toggleRow = (id) => {
+    setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
   const [selectedShiftIds, setSelectedShiftIds] = useState([]);
   const navigate = useNavigate();
   const [recruiters, setRecruiters] = useState([]);
@@ -68,103 +104,205 @@ const SecondTeam = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-  const [departments, setDepartments] = useState([]);
-  const [selectedDepartment, setSelectedDepartment] = useState("");
-
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(
-    format(new Date(), "yyyy-MM")
-  );
-
-  const today = new Date();
-  // Add after other useState:
-  const [dateRange, setDateRange] = useState({
-    start: format(new Date(), "yyyy-MM-dd"),
-    end: format(addDays(new Date(), 30), "yyyy-MM-dd"),
+  // Modal state for shift assign/edit
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState(null);
+  const [formData, setFormData] = useState({
+    date: "",
+    startTime: "",
+    endTime: "",
+    location: "",
+    note: "",
+    recurring: false,
+    recurringDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+    selectedTemplate: ""
   });
 
-  const fetchDepartments = async () => {
+  // State for editable shift templates
+  const [templates, setTemplates] = useState([
+    { label: "Morning (9am-1pm, Mon–Fri)", start: "09:00", end: "13:00", days: ["Mon", "Tue", "Wed", "Thu", "Fri"], recurring: true },
+    { label: "Evening (2pm-6pm, Mon–Fri)", start: "14:00", end: "18:00", days: ["Mon", "Tue", "Wed", "Thu", "Fri"], recurring: true },
+    { label: "Weekend (Sat–Sun 10am-4pm)", start: "10:00", end: "16:00", days: ["Sat", "Sun"], recurring: true }
+  ]);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [templateFormData, setTemplateFormData] = useState({
+    label: "",
+    start: "",
+    end: "",
+    days: [],
+    recurring: true
+  });
+  const [editingTemplateIndex, setEditingTemplateIndex] = useState(null);
+
+  // State for pending event updates (drag/resize)
+  const [pendingEventUpdate, setPendingEventUpdate] = useState(null);
+  const pendingRevertCallbackRef = useRef(null);
+
+  const getRecruiterTimezoneById = (recruiterId) =>
+    recruiters.find((r) => r.id === recruiterId)?.timezone || viewerTimezone;
+
+  const parseUtcMillis = (iso) => {
+    if (!iso) return null;
     try {
-      const res = await fetch(`${API_URL}/departments`, {
-        headers: getAuthHeaders(),
-      });
-      const data = await res.json();
-      setDepartments(data.departments || []);
-    } catch (err) {
-      setErrorMsg("Failed to load departments.");
+      return DateTime.fromISO(iso, { zone: "utc" }).toMillis();
+    } catch {
+      return null;
     }
   };
 
-  /* ───────── omitted: modal / templates / calendar refs … ─────── */
+  const localPartsToUtcMillis = (date, time, zone) => {
+    if (!date || !time) return null;
+    try {
+      return DateTime.fromISO(`${date}T${time}`, {
+        zone: zone || viewerTimezone
+      })
+        .toUTC()
+        .toMillis();
+    } catch {
+      return null;
+    }
+  };
 
-  /* ------------------------------------------------------------------
-     ①  Load recruiter list once on mount
-  ------------------------------------------------------------------ */
+  const calendarRef = useRef(null);
+  const handleBulkDeleteShifts = async () => {
+    if (!window.confirm("Are you sure you want to delete selected shifts?")) return;
+  
+    try {
+      const res = await fetch(`${API_URL}/automation/shifts/delete-bulk`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ shift_ids: selectedShiftIds })
+      });
+  
+      const result = await res.json();
+  
+      if (res.ok) {
+        setSuccessMsg(result.message || "Shifts deleted successfully.");
+        setSelectedShiftIds([]);
+        fetchShifts();
+      } else {
+        setErrorMsg(result.error || "Error deleting shifts.");
+      }
+    } catch (err) {
+      setErrorMsg("Bulk delete failed.");
+    }
+  };
+  
+  // Define update and delete handlers first so that ESLint finds them
+  const handleDeleteShift = async () => {
+    if (!editingShift) return;
+  
+    try {
+      await fetch(`${API_URL}/automation/shifts/delete/${editingShift.id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders()
+      });
+      setSuccessMsg("Shift deleted successfully.");
+      setModalOpen(false);
+      fetchShifts();
+    } catch (err) {
+      setErrorMsg("Error deleting shift.");
+    }
+  };
+  
+  const handleUpdateShift = async () => {
+    if (!editingShift) return;
+  
+    const recruiterId = editingShift.recruiter_id;
+    const dateStr = formData.date;
+    const clock_in = `${dateStr}T${formData.startTime}`;
+    const clock_out = `${dateStr}T${formData.endTime}`;
+    const createdBy = localStorage.getItem("user_email"); // or whatever key you use for logged-in user
+  
+    const payload = {
+      recruiter_id: recruiterId,
+      date: dateStr,
+      clock_in,
+      clock_out,
+      location: formData.location,
+      note: formData.note,
+      status: "assigned",
+      created_by: createdBy
+    };
+  
+    if (hasConflict(recruiterId, dateStr, formData.startTime, formData.endTime, editingShift.id)) {
+      setErrorMsg("Conflict detected for updated shift.");
+      return;
+    }
+  
+    try {
+      await fetch(`${API_URL}/automation/shifts/update/${editingShift.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(payload)
+      });
+      setSuccessMsg("Shift updated successfully.");
+      setModalOpen(false);
+      fetchShifts();
+    } catch (err) {
+      setErrorMsg("Error updating shift.");
+    }
+  };
+  
+
+  // useEffect to load data on mount
   useEffect(() => {
     fetchRecruiters();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    fetchDepartments();
-  }, []);
-
-  useEffect(() => {
-    fetchRecruiters();
-  }, [selectedDepartment]);
-
-  /* ------------------------------------------------------------------
-     ②  After we have recruiter IDs – or the range / selection changes –
-        pull shifts.
-  ------------------------------------------------------------------ */
-  useEffect(() => {
-    if (!recruiters.length || !selectedRecruiters.length) return;
     fetchShifts();
-  }, [recruiters, selectedRecruiters, dateRange]);
+  }, []);
 
-  /* ------------------------------------------------------------------
-     Fetch recruiters and auto-select them on the first load
-  ------------------------------------------------------------------ */
+  // Fetch recruiters
   const fetchRecruiters = async () => {
     try {
-      const url = selectedDepartment
-        ? `${API_URL}/manager/recruiters?department_id=${selectedDepartment}`
-        : `${API_URL}/manager/recruiters`;
-
-      const res = await fetch(url, {
-        headers: getAuthHeaders(),
+      const res = await fetch(`${API_URL}/manager/recruiters`, {
+        headers: getAuthHeaders()
       });
-
       const data = await res.json();
-      const list = (data.recruiters || []).map((r) => ({
-        ...r,
-        name: r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim(),
-      }));
-
-      setRecruiters(list);
-
-      setSelectedRecruiters((prev) =>
-        prev.length === 0 ? list.map((r) => r.id) : prev
-      );
+      setRecruiters(data.recruiters || []);
     } catch (err) {
-      setErrorMsg("Failed to load recruiters.");
+      setErrorMsg("Failed to fetch recruiters.");
     }
   };
 
-  /* ------------------------------------------------------------------
-     Fetch shifts for the current dateRange and selected recruiters
-  ------------------------------------------------------------------ */
+  // Fetch shifts (using current month)
   const fetchShifts = async () => {
     try {
-      const ids = selectedRecruiters.length
-        ? selectedRecruiters.join(",")
-        : recruiters.map((r) => r.id).join(",");
-
-      const url = `${API_URL}/automation/shifts/range?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
-
-      const res = await fetch(url, { headers: getAuthHeaders() });
+      const now = new Date();
+      const month = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+      const res = await fetch(`${API_URL}/automation/shifts/monthly?month=${month}`, {
+        headers: getAuthHeaders()
+      });
       const data = await res.json();
-      setShifts(data.shifts || []);
+      const normalized = (data.shifts || []).map((shift) => {
+        const zone = shift.timezone || viewerTimezone;
+        const clock_in_display = toLocalIso(shift.clock_in, zone);
+        const clock_out_display = toLocalIso(shift.clock_out, zone);
+        const break_start_display = toLocalIso(shift.break_start, zone);
+        const break_end_display = toLocalIso(shift.break_end, zone);
+        return {
+          ...shift,
+          timezone: zone,
+          clock_in_display,
+          clock_out_display,
+          clock_in_local_time: formatLocalTime(clock_in_display),
+          clock_out_local_time: formatLocalTime(clock_out_display),
+          clock_in_local_date: formatLocalDate(clock_in_display),
+          clock_out_local_date: formatLocalDate(clock_out_display),
+          break_start_display,
+          break_end_display,
+          break_start_local_time: formatLocalTime(break_start_display),
+          break_end_local_time: formatLocalTime(break_end_display),
+        };
+      });
+      setShifts(normalized);
+      
     } catch (err) {
       setErrorMsg("Failed to fetch shifts.");
     }
@@ -179,7 +317,7 @@ const SecondTeam = () => {
   // Generate recurring dates for given base date and selected days
   const generateRecurringDates = (baseDate, days, count = 14) => {
     const result = [];
-    let current = asLocalDate(baseDate);
+    let current = new Date(baseDate);
     while (result.length < count) {
       if (days.includes(dayLabels[current.getDay()])) {
         result.push(format(current, "yyyy-MM-dd"));
@@ -190,21 +328,19 @@ const SecondTeam = () => {
   };
 
   // Check for conflicts between shifts
-  const hasConflict = (
-    recruiterId,
-    date,
-    startTime,
-    endTime,
-    shiftIdToExclude = null
-  ) => {
-    const newStart = new Date(`${date}T${startTime}`);
-    const newEnd = new Date(`${date}T${endTime}`);
+  const hasConflict = (recruiterId, date, startTime, endTime, shiftIdToExclude = null) => {
+    const zone = getRecruiterTimezoneById(recruiterId);
+    const newStartUtc = localPartsToUtcMillis(date, startTime, zone);
+    const newEndUtc = localPartsToUtcMillis(date, endTime, zone);
+    if (!newStartUtc || !newEndUtc) return false;
+
     return shifts.some((s) => {
       if (s.recruiter_id !== recruiterId) return false;
       if (shiftIdToExclude && s.id === shiftIdToExclude) return false;
-      const existingStart = new Date(s.clock_in);
-      const existingEnd = new Date(s.clock_out);
-      return newStart < existingEnd && newEnd > existingStart;
+      const existingStartUtc = parseUtcMillis(s.clock_in);
+      const existingEndUtc = parseUtcMillis(s.clock_out);
+      if (!existingStartUtc || !existingEndUtc) return false;
+      return newStartUtc < existingEndUtc && newEndUtc > existingStartUtc;
     });
   };
 
@@ -213,35 +349,35 @@ const SecondTeam = () => {
     const { name, value, type, checked } = e.target;
     if (type === "checkbox") {
       if (name === "recurring") {
-        setFormData((prev) => ({ ...prev, recurring: checked }));
+        setFormData(prev => ({ ...prev, recurring: checked }));
       } else if (name === "recurringDays") {
-        setFormData((prev) => {
+        setFormData(prev => {
           const newDays = checked
             ? [...prev.recurringDays, value]
-            : prev.recurringDays.filter((day) => day !== value);
+            : prev.recurringDays.filter(day => day !== value);
           return { ...prev, recurringDays: newDays };
         });
       }
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
   };
 
   // Handle template selection
   const handleTemplateSelect = (e) => {
     const templateLabel = e.target.value;
-    const template = templates.find((t) => t.label === templateLabel);
+    const template = templates.find(t => t.label === templateLabel);
     if (template) {
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
         selectedTemplate: templateLabel,
         startTime: template.start,
         endTime: template.end,
         recurring: template.recurring,
-        recurringDays: template.days,
+        recurringDays: template.days
       }));
     } else {
-      setFormData((prev) => ({ ...prev, selectedTemplate: "" }));
+      setFormData(prev => ({ ...prev, selectedTemplate: "" }));
     }
   };
 
@@ -251,36 +387,29 @@ const SecondTeam = () => {
       setErrorMsg("Please specify a date.");
       return;
     }
-
+  
     setErrorMsg(""); // Clear old errors
     setSuccessMsg(""); // Clear old success
     setIsSubmitting(true); // Optional: UI flag to disable button
-
+  
     let dates = formData.recurring
       ? generateRecurringDates(formData.date, formData.recurringDays, 14)
       : [formData.date];
-
+  
     let successCount = 0;
     let conflicts = [];
     let failures = [];
-
+  
     for (let dateStr of dates) {
       for (let recruiterId of selectedRecruiters) {
-        if (
-          hasConflict(
-            recruiterId,
-            dateStr,
-            formData.startTime,
-            formData.endTime
-          )
-        ) {
+        if (hasConflict(recruiterId, dateStr, formData.startTime, formData.endTime)) {
           conflicts.push(`🟡 Conflict - Recruiter ${recruiterId} on ${dateStr}`);
           continue;
         }
-
+  
         const clock_in = `${dateStr}T${formData.startTime}`;
         const clock_out = `${dateStr}T${formData.endTime}`;
-
+  
         const payload = {
           recruiter_id: recruiterId,
           date: dateStr,
@@ -289,23 +418,21 @@ const SecondTeam = () => {
           location: formData.location,
           note: formData.note,
           status: "assigned",
-          created_by: parseInt(localStorage.getItem("userId")),
+          created_by: parseInt(localStorage.getItem("userId"))
         };
-
+        
         try {
           const res = await fetch(`${API_URL}/automation/shifts/create`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              ...getAuthHeaders(),
+              ...getAuthHeaders()
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(payload)
           });
-
+  
           if (!res.ok) {
-            failures.push(
-              `🔴 Failed - Recruiter ${recruiterId} on ${dateStr}`
-            );
+            failures.push(`🔴 Failed - Recruiter ${recruiterId} on ${dateStr}`);
           } else {
             successCount++;
           }
@@ -314,57 +441,51 @@ const SecondTeam = () => {
         }
       }
     }
-
+  
     // Post-process results
     let resultMsg = "";
     if (successCount > 0) {
       resultMsg += `✅ ${successCount} shift(s) assigned successfully.\n`;
       setSuccessMsg(resultMsg);
     }
-
+  
     if (conflicts.length > 0 || failures.length > 0) {
       const combined = [...conflicts, ...failures].join("\n");
       setErrorMsg(`Some issues occurred:\n${combined}`);
     }
-
-    if (dates.length > 0) {
-      const first = dates[0];
-      const last = dates[dates.length - 1];
-      setDateRange({ start: first, end: last });
-      setSelectedMonth(first.slice(0, 7)); // keep month picker in sync
-    }
-
+  
     setModalOpen(false);
-
+    fetchShifts();
     setIsSubmitting(false);
   };
+  
 
   // Floating panel for pending drag/resize updates
   const handleSavePendingEventUpdate = async () => {
     if (!pendingEventUpdate) return;
-    const newDate = format(pendingEventUpdate.newStart, "yyyy-MM-dd");
-    const newStartTime = format(pendingEventUpdate.newStart, "HH:mm");
-    const newEndTime = format(pendingEventUpdate.newEnd, "HH:mm");
+    const zone = pendingEventUpdate.timezone || viewerTimezone;
+    const startDt = DateTime.fromJSDate(pendingEventUpdate.newStart).setZone(zone);
+    const endDt = DateTime.fromJSDate(pendingEventUpdate.newEnd).setZone(zone);
+    const newDate = startDt.toFormat("yyyy-MM-dd");
+    const newStartTime = startDt.toFormat("HH:mm");
+    const newEndTime = endDt.toFormat("HH:mm");
     const payload = {
       date: newDate,
       clock_in: `${newDate}T${newStartTime}`,
       clock_out: `${newDate}T${newEndTime}`,
       location: pendingEventUpdate.location,
       note: pendingEventUpdate.note,
-      status: pendingEventUpdate.status,
+      status: pendingEventUpdate.status
     };
     try {
-      const res = await fetch(
-        `${API_URL}/automation/shifts/update/${pendingEventUpdate.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = await fetch(`${API_URL}/automation/shifts/update/${pendingEventUpdate.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(payload)
+      });
       if (res.ok) {
         setSuccessMsg("Shift update saved successfully.");
         setPendingEventUpdate(null);
@@ -397,6 +518,7 @@ const SecondTeam = () => {
       status: dropInfo.event.extendedProps.status,
       location: dropInfo.event.extendedProps.location,
       note: dropInfo.event.extendedProps.note,
+      timezone: dropInfo.event.extendedProps.timezone
     });
   };
 
@@ -411,23 +533,24 @@ const SecondTeam = () => {
       status: resizeInfo.event.extendedProps.status,
       location: resizeInfo.event.extendedProps.location,
       note: resizeInfo.event.extendedProps.note,
+      timezone: resizeInfo.event.extendedProps.timezone
     });
   };
 
   // When an event is clicked, open the modal for editing
   const handleEventClick = (clickInfo) => {
-    const shift = shifts.find((s) => String(s.id) === clickInfo.event.id);
+    const shift = shifts.find(s => String(s.id) === clickInfo.event.id);
     if (shift) {
       setEditingShift(shift);
       setFormData({
-        date: ymdFromIso(shift.clock_in) || shift.date,
-        startTime: hhmm(shift.clock_in),
-        endTime: hhmm(shift.clock_out),
+        date: getShiftLocalDate(shift),
+        startTime: getShiftLocalStart(shift),
+        endTime: getShiftLocalEnd(shift),
         location: shift.location || "",
         note: shift.note || "",
         recurring: false,
         recurringDays: [],
-        selectedTemplate: "",
+        selectedTemplate: ""
       });
       setModalOpen(true);
     }
@@ -437,54 +560,47 @@ const SecondTeam = () => {
   const handleDateClick = (clickInfo) => {
     setEditingShift(null);
     setFormData({
-      date: format(clickInfo.date, "yyyy-MM-dd"),
+      date: clickInfo.dateStr.split("T")[0],
       startTime: "09:00",
       endTime: "17:00",
       location: "",
       note: "",
       recurring: false,
       recurringDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-      selectedTemplate: "",
+      selectedTemplate: ""
     });
     setModalOpen(true);
   };
 
   // Prepare filtered shifts for calendar events
   const filteredShifts = shifts
-    .filter((s) => (statusFilter === "all" ? true : s.status === statusFilter))
-    .filter((s) =>
-      selectedRecruiters.length === 0
-        ? true
-        : selectedRecruiters.includes(s.recruiter_id)
-    );
+    .filter(s => statusFilter === "all" ? true : s.status === statusFilter)
+    .filter(s => selectedRecruiters.length === 0 ? true : selectedRecruiters.includes(s.recruiter_id));
 
-  const calendarEvents = filteredShifts.map((s) => ({
-    id: s.id,
-    title: `${
-      recruiters.find((r) => r.id === s.recruiter_id)?.name || s.recruiter_id
-    } (${s.status})`,
-    start: s.clock_in,
-    end: s.clock_out,
-    extendedProps: {
-      location: s.location,
-      note: s.note,
-      recruiter_id: s.recruiter_id,
-      status: s.status,
-    },
-  }));
+const calendarEvents = filteredShifts.map(s => ({
+  id: s.id,
+  title: `${recruiters.find(r => r.id === s.recruiter_id)?.name || s.recruiter_id} (${s.status})`,
+  start: s.clock_in_display || s.clock_in,
+  end: s.clock_out_display || s.clock_out,
+  extendedProps: {
+    location: s.location,
+    note: s.note,
+    recruiter_id: s.recruiter_id,
+    status: s.status,
+    timezone: s.timezone
+  }
+}));
 
   // Export shifts to Excel
   const exportShiftsToExcel = () => {
-    const data = filteredShifts.map((s) => ({
-      Recruiter:
-        recruiters.find((r) => r.id === s.recruiter_id)?.name ||
-        s.recruiter_id,
-      Date: s.date,
-      ClockIn: s.clock_in,
-      ClockOut: s.clock_out,
+    const data = filteredShifts.map(s => ({
+      Recruiter: recruiters.find(r => r.id === s.recruiter_id)?.name || s.recruiter_id,
+      Date: getShiftLocalDate(s),
+      ClockIn: `${getShiftLocalStart(s)} (${getShiftLocalDate(s)})`,
+      ClockOut: `${getShiftLocalEnd(s)} (${getShiftLocalEndDate(s)})`,
       Location: s.location || "",
       Note: s.note || "",
-      Status: s.status,
+      Status: s.status
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -496,13 +612,7 @@ const SecondTeam = () => {
 
   // ----- Shift Template Editor Handlers -----
   const openTemplateModal = () => {
-    setTemplateFormData({
-      label: "",
-      start: "",
-      end: "",
-      days: [],
-      recurring: true,
-    });
+    setTemplateFormData({ label: "", start: "", end: "", days: [], recurring: true });
     setEditingTemplateIndex(null);
     setTemplateModalOpen(true);
   };
@@ -510,27 +620,22 @@ const SecondTeam = () => {
   const handleTemplateFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     if (name === "days") {
-      setTemplateFormData((prev) => {
+      setTemplateFormData(prev => {
         const newDays = checked
           ? [...prev.days, value]
-          : prev.days.filter((d) => d !== value);
+          : prev.days.filter(d => d !== value);
         return { ...prev, days: newDays };
       });
     } else {
-      setTemplateFormData((prev) => ({
+      setTemplateFormData(prev => ({
         ...prev,
-        [name]: type === "checkbox" ? checked : value,
+        [name]: type === "checkbox" ? checked : value
       }));
     }
   };
 
   const handleTemplateSave = () => {
-    if (
-      !templateFormData.label ||
-      !templateFormData.start ||
-      !templateFormData.end ||
-      templateFormData.days.length === 0
-    ) {
+    if (!templateFormData.label || !templateFormData.start || !templateFormData.end || templateFormData.days.length === 0) {
       setErrorMsg("Please fill all template fields.");
       return;
     }
@@ -540,7 +645,7 @@ const SecondTeam = () => {
       setTemplates(updatedTemplates);
       setSuccessMsg("Template updated successfully.");
     } else {
-      setTemplates((prev) => [...prev, { ...templateFormData }]);
+      setTemplates(prev => [...prev, { ...templateFormData }]);
       setSuccessMsg("Template added successfully.");
     }
     setTemplateModalOpen(false);
@@ -553,19 +658,14 @@ const SecondTeam = () => {
   };
 
   const handleTemplateDelete = (index) => {
-    setTemplates((prev) => prev.filter((_, i) => i !== index));
+    setTemplates(prev => prev.filter((_, i) => i !== index));
     setSuccessMsg("Template deleted successfully.");
   };
 
   // Prepare employee shift summary for table below calendar
-  const employeeShiftData = recruiters.map((r) => {
-    const employeeShifts = shifts.filter((s) => s.recruiter_id === r.id);
-    return {
-      id: r.id,
-      name: r.name,
-      shiftCount: employeeShifts.length,
-      shifts: employeeShifts,
-    };
+  const employeeShiftData = recruiters.map(r => {
+    const employeeShifts = shifts.filter(s => s.recruiter_id === r.id);
+    return { id: r.id, name: r.name, shiftCount: employeeShifts.length, shifts: employeeShifts };
   });
 
   return (
@@ -578,104 +678,72 @@ const SecondTeam = () => {
       <Grid container spacing={2} mb={2}>
         <Grid item xs={12} md={3}>
           <FormControl fullWidth>
-            <InputLabel>Department</InputLabel>
-            <Select
-              value={selectedDepartment}
-              label="Department"
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-            >
-              <MenuItem value="">All</MenuItem>
-              {toArray(departments).map((dept) => (
-                <MenuItem key={dept.id} value={dept.id}>
-                  {dept.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
-
-        <Grid item xs={12} md={3}>
-          <FormControl fullWidth>
-            <InputLabel>Select Employees</InputLabel>
+            <InputLabel>Select Recruiters</InputLabel>
             <Select
               multiple
               value={selectedRecruiters}
               onChange={(e) => setSelectedRecruiters(e.target.value)}
-              input={<OutlinedInput label="Select Employees" />}
+              input={<OutlinedInput label="Select Recruiters" />}
               renderValue={(selected) =>
-                recruiters
-                  .filter((r) => selected.includes(r.id))
-                  .map((r) => r.name)
-                  .join(", ")
+                selected.map(id => recruiters.find(r => r.id === id)?.name || id).join(", ")
               }
             >
-              {recruiters.map((r) => (
+              {recruiters.map(r => (
                 <MenuItem key={r.id} value={r.id}>
-                  <Checkbox checked={selectedRecruiters.includes(r.id)} />
-                  <ListItemText primary={r.name} secondary={r.email} />
+                  <Checkbox checked={selectedRecruiters.indexOf(r.id) > -1} />
+                  <ListItemText primary={r.name} />
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
         </Grid>
-
-        {/* Status filter */}
         <Grid item xs={12} md={2}>
-          {/* … unchanged code … */}
+          <FormControl fullWidth>
+            <InputLabel>Status Filter</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Status Filter"
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="accepted">Accepted</MenuItem>
+              <MenuItem value="rejected">Rejected</MenuItem>
+            </Select>
+          </FormControl>
         </Grid>
-
-        {/* Template picker */}
         <Grid item xs={12} md={3}>
-          {/* … unchanged code … */}
+          <FormControl fullWidth>
+            <InputLabel>Shift Template</InputLabel>
+            <Select
+              value={formData.selectedTemplate}
+              label="Shift Template"
+              onChange={handleTemplateSelect}
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {templates.map((t, idx) => (
+                <MenuItem key={idx} value={t.label}>{t.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Grid>
-
-        {/* Edit templates button */}
         <Grid item xs={12} md={2}>
           <Button variant="outlined" onClick={openTemplateModal}>
             Edit Templates
           </Button>
         </Grid>
-
-        {/* ───────── Month picker – drives dateRange ───────── */}
         <Grid item xs={12} md={2}>
-          <TextField
-            type="month"
-            label="Month"
-            value={selectedMonth}
-            onChange={(e) => {
-              const month = e.target.value; // "YYYY-MM"
-              setSelectedMonth(month);
-
-              const first = `${month}-01`;
-              const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
-
-              setDateRange({ start: first, end: last });
-            }}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-          />
-        </Grid>
-
-        {/* Assign-shift button */}
-        <Grid item xs={12} md={2}>
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={() => {
-              setModalOpen(true);
-              setEditingShift(null);
-            }}
-          >
-            ➕ Assign&nbsp;Shift
+          <Button variant="contained" onClick={() => { setModalOpen(true); setEditingShift(null); }}>
+            ➕ Assign Shift
           </Button>
         </Grid>
-      </Grid>{" "}
-      {/* ← closes the toolbar grid container */}
+      </Grid>
 
-      /* ───────── Buttons that live *below* the toolbar ───────── */
       <Box mb={2}>
         <Button variant="contained" onClick={exportShiftsToExcel}>
-          Export&nbsp;to&nbsp;Excel
+          Export to Excel
         </Button>
       </Box>
 
@@ -691,7 +759,7 @@ const SecondTeam = () => {
           headerToolbar={{
             left: "prev,next today",
             center: "title",
-            right: "timeGridWeek,dayGridMonth",
+            right: "timeGridWeek,dayGridMonth"
           }}
           selectable={true}
           editable={true}
@@ -705,108 +773,71 @@ const SecondTeam = () => {
 
       {/* Floating panel for pending event update */}
       {pendingEventUpdate && (
-        <Box
-          sx={{
-            position: "fixed",
-            bottom: 16,
-            right: 16,
-            zIndex: 1300,
-            background: "white",
-            p: 2,
-            borderRadius: 2,
-            boxShadow: 3,
-          }}
-        >
-          <Typography variant="body1" gutterBottom>
-            Unsaved shift update
-          </Typography>
-          <Button
-            onClick={handleSavePendingEventUpdate}
-            variant="contained"
-            sx={{ mr: 1 }}
-          >
-            Save
-          </Button>
-          <Button
-            onClick={handleCancelPendingEventUpdate}
-            color="secondary"
-            sx={{ mr: 1 }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="outlined"
-            color="primary"
-            sx={{ mr: 1 }}
-            onClick={() => {
-              const shift = shifts.find(
-                (s) => String(s.id) === String(pendingEventUpdate.id)
-              );
-              if (shift) {
-                setEditingShift(shift);
-                setFormData({
-                  date: ymdFromIso(shift.clock_in) || shift.date,
-                  startTime: hhmm(shift.clock_in),
-                  endTime: hhmm(shift.clock_out),
-                  location: shift.location || "",
-                  note: shift.note || "",
-                  recurring: false,
-                  recurringDays: [],
-                  selectedTemplate: "",
-                });
-                setPendingEventUpdate(null); // close panel
-                pendingRevertCallbackRef.current = null;
-                setModalOpen(true);
-              }
-            }}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={async () => {
-              try {
-                await fetch(
-                  `${API_URL}/automation/shifts/delete/${pendingEventUpdate.id}`,
-                  {
-                    method: "DELETE",
-                    headers: getAuthHeaders(),
-                  }
-                );
-                setSuccessMsg("Shift deleted.");
-                setPendingEventUpdate(null);
-                pendingRevertCallbackRef.current = null;
-                fetchShifts();
-              } catch (err) {
-                setErrorMsg("Error deleting shift.");
-              }
-            }}
-          >
-            Delete
-          </Button>
-        </Box>
-      )}
+  <Box sx={{ position: "fixed", bottom: 16, right: 16, zIndex: 1300, background: "white", p: 2, borderRadius: 2, boxShadow: 3 }}>
+    <Typography variant="body1" gutterBottom>Unsaved shift update</Typography>
+    <Button onClick={handleSavePendingEventUpdate} variant="contained" sx={{ mr: 1 }}>Save</Button>
+    <Button onClick={handleCancelPendingEventUpdate} color="secondary" sx={{ mr: 1 }}>Cancel</Button>
+    <Button
+      variant="outlined"
+      color="primary"
+      sx={{ mr: 1 }}
+      onClick={() => {
+        const shift = shifts.find(s => String(s.id) === String(pendingEventUpdate.id));
+        if (shift) {
+          setEditingShift(shift);
+          setFormData({
+            date: getShiftLocalDate(shift),
+            startTime: getShiftLocalStart(shift),
+            endTime: getShiftLocalEnd(shift),
+            location: shift.location || "",
+            note: shift.note || "",
+            recurring: false,
+            recurringDays: [],
+            selectedTemplate: ""
+          });
+          setPendingEventUpdate(null); // close panel
+          pendingRevertCallbackRef.current = null;
+          setModalOpen(true);
+        }
+      }}
+    >
+      Edit
+    </Button>
+    <Button
+      variant="outlined"
+      color="error"
+      onClick={async () => {
+        try {
+          await fetch(`${API_URL}/automation/shifts/delete/${pendingEventUpdate.id}`, {
+            method: "DELETE",
+            headers: getAuthHeaders()
+          });
+          setSuccessMsg("Shift deleted.");
+          setPendingEventUpdate(null);
+          pendingRevertCallbackRef.current = null;
+          fetchShifts();
+        } catch (err) {
+          setErrorMsg("Error deleting shift.");
+        }
+      }}
+    >
+      Delete
+    </Button>
+  </Box>
+)}
+
 
       {/* Modal for Adding/Editing Shift */}
-      <Modal
-        open={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setEditingShift(null);
-        }}
-      >
-        <Box
-          sx={{
-            p: 4,
-            bgcolor: "white",
-            width: 400,
-            mx: "auto",
-            mt: "10%",
-            borderRadius: 2,
-            boxShadow: 6,
-          }}
-        >
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setEditingShift(null); }}>
+        <Box sx={{
+          p: 4,
+          bgcolor: "white",
+          width: 400,
+          mx: "auto",
+          mt: "10%",
+          borderRadius: 2,
+          boxShadow: 6
+        }}>
           <Typography variant="h6" gutterBottom>
             {editingShift ? "Edit Shift" : "Add New Shift"}
           </Typography>
@@ -862,10 +893,7 @@ const SecondTeam = () => {
               <Select
                 value={formData.recurring ? "yes" : "no"}
                 onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    recurring: e.target.value === "yes",
-                  }))
+                  setFormData(prev => ({ ...prev, recurring: e.target.value === "yes" }))
                 }
                 label="Recurring"
               >
@@ -877,7 +905,7 @@ const SecondTeam = () => {
               <Box mt={2}>
                 <Typography variant="subtitle2">Select Days</Typography>
                 <Grid container>
-                  {dayLabels.map((day) => (
+                  {dayLabels.map(day => (
                     <Grid item key={day}>
                       <Checkbox
                         name="recurringDays"
@@ -898,43 +926,31 @@ const SecondTeam = () => {
                 <Button variant="contained" onClick={handleUpdateShift}>
                   Update Shift
                 </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  onClick={handleDeleteShift}
-                >
+                <Button variant="outlined" color="error" onClick={handleDeleteShift}>
                   Delete Shift
                 </Button>
               </>
             ) : (
-              <Button
-                variant="contained"
-                onClick={handleSubmitShift}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Assigning..." : "Submit Shift"}
-              </Button>
+              <Button variant="contained" onClick={handleSubmitShift} disabled={isSubmitting}>
+  {isSubmitting ? "Assigning..." : "Submit Shift"}
+</Button>
+
             )}
           </Box>
         </Box>
       </Modal>
 
       {/* Modal for Shift Template Editor */}
-      <Modal
-        open={templateModalOpen}
-        onClose={() => setTemplateModalOpen(false)}
-      >
-        <Box
-          sx={{
-            p: 4,
-            bgcolor: "white",
-            width: 500,
-            mx: "auto",
-            mt: "8%",
-            borderRadius: 2,
-            boxShadow: 6,
-          }}
-        >
+      <Modal open={templateModalOpen} onClose={() => setTemplateModalOpen(false)}>
+        <Box sx={{
+          p: 4,
+          bgcolor: "white",
+          width: 500,
+          mx: "auto",
+          mt: "8%",
+          borderRadius: 2,
+          boxShadow: 6
+        }}>
           <Typography variant="h6" gutterBottom>
             Shift Template Editor
           </Typography>
@@ -969,7 +985,7 @@ const SecondTeam = () => {
           <Box mt={2}>
             <Typography variant="subtitle2">Select Days</Typography>
             <Grid container>
-              {dayLabels.map((day) => (
+              {dayLabels.map(day => (
                 <Grid item key={day}>
                   <Checkbox
                     name="days"
@@ -988,10 +1004,7 @@ const SecondTeam = () => {
               <Select
                 value={templateFormData.recurring ? "yes" : "no"}
                 onChange={(e) =>
-                  setTemplateFormData((prev) => ({
-                    ...prev,
-                    recurring: e.target.value === "yes",
-                  }))
+                  setTemplateFormData(prev => ({ ...prev, recurring: e.target.value === "yes" }))
                 }
                 label="Recurring"
               >
@@ -1004,41 +1017,18 @@ const SecondTeam = () => {
             <Button variant="contained" onClick={handleTemplateSave}>
               Save Template
             </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={() => setTemplateModalOpen(false)}
-            >
+            <Button variant="outlined" color="error" onClick={() => setTemplateModalOpen(false)}>
               Cancel
             </Button>
           </Box>
           <Box mt={3}>
             <Typography variant="subtitle1">Existing Templates</Typography>
             {templates.map((temp, index) => (
-              <Box
-                key={index}
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-                mt={1}
-                p={1}
-                sx={{ border: "1px solid #ccc", borderRadius: 1 }}
-              >
-                <Typography>
-                  {temp.label} ({temp.start} - {temp.end} on{" "}
-                  {temp.days.join(", ")})
-                </Typography>
+              <Box key={index} display="flex" alignItems="center" justifyContent="space-between" mt={1} p={1} sx={{ border: "1px solid #ccc", borderRadius: 1 }}>
+                <Typography>{temp.label} ({temp.start} - {temp.end} on {temp.days.join(", ")})</Typography>
                 <Box>
-                  <Button size="small" onClick={() => handleTemplateEdit(index)}>
-                    Edit
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={() => handleTemplateDelete(index)}
-                  >
-                    Delete
-                  </Button>
+                  <Button size="small" onClick={() => handleTemplateEdit(index)}>Edit</Button>
+                  <Button size="small" color="error" onClick={() => handleTemplateDelete(index)}>Delete</Button>
                 </Box>
               </Box>
             ))}
@@ -1047,131 +1037,113 @@ const SecondTeam = () => {
       </Modal>
 
       {/* Notification Snackbars */}
-      <Snackbar
-        open={!!successMsg}
-        autoHideDuration={4000}
-        onClose={() => setSuccessMsg("")}
-      >
+      <Snackbar open={!!successMsg} autoHideDuration={4000} onClose={() => setSuccessMsg("")}>
         <Alert severity="success">{successMsg}</Alert>
       </Snackbar>
-      <Snackbar
-        open={!!errorMsg}
-        autoHideDuration={4000}
-        onClose={() => setErrorMsg("")}
-      >
+      <Snackbar open={!!errorMsg} autoHideDuration={4000} onClose={() => setErrorMsg("")}>
         <Alert severity="error">{errorMsg}</Alert>
       </Snackbar>
 
-      <TimeEntriesPanel recruiters={recruiters} />
+ {/* Employee Shift Summary Table */}
+<Box mt={4}>
+  <Typography variant="h6" gutterBottom>
+    Employee Shift Summary
+  </Typography>
 
-      {/* Employee Shift Summary Table */}
-      <Box mt={4}>
-        <Typography variant="h6" gutterBottom>
-          Employee Shift Summary
-        </Typography>
-
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell />
-              <TableCell>Employee Name</TableCell>
-              <TableCell align="right"># of Shifts</TableCell>
-              <TableCell>Delete Mode</TableCell>
+  <Table>
+    <TableHead>
+      <TableRow>
+        <TableCell />
+        <TableCell>Employee Name</TableCell>
+        <TableCell align="right"># of Shifts</TableCell>
+        <TableCell>Delete Mode</TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+      {recruiters.map((r) => {
+        const employeeShifts = shifts.filter((s) => s.recruiter_id === r.id);
+        const isExpanded = expandedRows[r.id] || false;
+        return (
+          <React.Fragment key={r.id}>
+            <TableRow hover>
+              <TableCell>
+                <IconButton size="small" onClick={() => toggleRow(r.id)}>
+                  {isExpanded ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+                </IconButton>
+              </TableCell>
+              <TableCell
+                sx={{ cursor: "pointer", fontWeight: 500 }}
+                onClick={() =>
+                  navigate(`/manager/employee-shift-view?recruiterId=${r.id}`)
+                }
+              >
+                {r.name}
+              </TableCell>
+              <TableCell align="right">{employeeShifts.length}</TableCell>
+              <TableCell>
+                {employeeShifts.some((s) => selectedShiftIds.includes(s.id))
+                  ? "Selected"
+                  : ""}
+              </TableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {recruiters.map((r) => {
-              const employeeShifts = shifts.filter(
-                (s) => s.recruiter_id === r.id
-              );
-              const isExpanded = expandedRows[r.id] || false;
-              return (
-                <React.Fragment key={r.id}>
-                  <TableRow hover>
-                    <TableCell>
-                      <IconButton size="small" onClick={() => toggleRow(r.id)}>
-                        {isExpanded ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-                      </IconButton>
-                    </TableCell>
-                    <TableCell
-                      sx={{ cursor: "pointer", fontWeight: 500 }}
-                      onClick={() =>
-                        navigate(
-                          `/manager/employee-shift-view?recruiterId=${r.id}`
-                        )
-                      }
-                    >
-                      {r.name}
-                    </TableCell>
-                    <TableCell align="right">
-                      {employeeShifts.length}
-                    </TableCell>
-                    <TableCell>
-                      {employeeShifts.some((s) =>
-                        selectedShiftIds.includes(s.id)
-                      )
-                        ? "Selected"
-                        : ""}
-                    </TableCell>
-                  </TableRow>
 
-                  <TableRow>
-                    <TableCell
-                      style={{ paddingBottom: 0, paddingTop: 0 }}
-                      colSpan={4}
-                    >
-                      <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                        <Box sx={{ margin: 1 }}>
-                          {employeeShifts.map((s, i) => (
-                            <Box
-                              key={i}
-                              display="flex"
-                              alignItems="center"
-                              gap={1}
-                              mb={0.5}
-                            >
-                              <Checkbox
-                                size="small"
-                                checked={selectedShiftIds.includes(s.id)}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={(e) => {
-                                  setSelectedShiftIds((prev) =>
-                                    e.target.checked
-                                      ? [...prev, s.id]
-                                      : prev.filter((id) => id !== s.id)
-                                  );
-                                }}
-                              />
-                              <Typography variant="caption">
-                                📅 {s.date} ({hhmm(s.clock_in)}–{hhmm(s.clock_out)})
-                              </Typography>
-                            </Box>
-                          ))}
-                        </Box>
-                      </Collapse>
-                    </TableCell>
-                  </TableRow>
-                </React.Fragment>
-              );
-            })}
-          </TableBody>
-        </Table>
+            <TableRow>
+              <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={4}>
+                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                  <Box sx={{ margin: 1 }}>
+                    {employeeShifts.map((s, i) => (
+                      <Box
+                        key={i}
+                        display="flex"
+                        alignItems="center"
+                        gap={1}
+                        mb={0.5}
+                      >
+                        <Checkbox
+                          size="small"
+                          checked={selectedShiftIds.includes(s.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            setSelectedShiftIds((prev) =>
+                              e.target.checked
+                                ? [...prev, s.id]
+                                : prev.filter((id) => id !== s.id)
+                            );
+                          }}
+                        />
+                        <Typography variant="caption">
+                          📅 {getShiftLocalDate(s)} ({getShiftLocalStart(s)}–
+                          {getShiftLocalEnd(s)})
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Collapse>
+              </TableCell>
+            </TableRow>
+          </React.Fragment>
+        );
+      })}
+    </TableBody>
+  </Table>
 
-        {/* ✅ Delete Selected Button */}
-        {selectedShiftIds.length > 0 && (
-          <Box mt={2}>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={handleBulkDeleteShifts}
-            >
-              🗑 Delete Selected ({selectedShiftIds.length})
-            </Button>
-          </Box>
-        )}
-      </Box>
+  {/* ✅ Delete Selected Button */}
+  {selectedShiftIds.length > 0 && (
+    <Box mt={2}>
+      <Button
+        variant="outlined"
+        color="error"
+        onClick={handleBulkDeleteShifts}
+      >
+        🗑 Delete Selected ({selectedShiftIds.length})
+      </Button>
     </Box>
+  )}
+</Box>
+
+</Box>
   );
 };
+
 
 export default SecondTeam;

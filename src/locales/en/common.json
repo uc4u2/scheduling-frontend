@@ -2830,6 +2830,14 @@
               "label": "Compare plans & analytics",
               "to": "/pricing"
             }
+          },
+          {
+            "heading": "Time tracking + payroll exports",
+            "body": "Approved hours arrive with unpaid breaks deducted, OT/missed-break markers attached, and IP/device hints for audits—ready for payroll CSV/PDF.",
+            "link": {
+              "label": "See time tracking & breaks",
+              "to": "/features#time-tracking-smart-breaks"
+            }
           }
         ]
       },
@@ -2841,7 +2849,45 @@
       "featureShowcase": {
         "eyebrow": "Platform pillars",
         "title": "Everything works together out of the box",
-        "subtitle": "Each Schedulaa module hands off context so your staff and clients never lose the thread."
+        "subtitle": "Each Schedulaa module hands off context so your staff and clients never lose the thread.",
+        "columns": [
+          {
+            "title": "Smarter scheduling",
+            "description": "Recurring templates, real-time availability, and branded booking modals that embed anywhere.",
+            "points": [
+              "Recurring or one-off availability with cooling times",
+              "Client-side reschedule, cancellation, and waitlists",
+              "Theme-aware embeds that stay on-brand"
+            ]
+          },
+          {
+            "title": "Commerce that converts",
+            "description": "Sell products, services, and add-ons in one cart — powered by Stripe Checkout.",
+            "points": [
+              "Mixed carts with secure Stripe sessions and saved cards",
+              "Coupons, refunds, and partial refunds included",
+              "Easy tax setup via Stripe Tax toggle"
+            ]
+          },
+          {
+            "title": "Analytics & campaigns",
+            "description": "Enterprise-grade dashboards and automated win-back, VIP, and add-on campaigns.",
+            "points": [
+              "KPI dashboards: revenue, churn, top services",
+              "Automated client outreach & coupon workflows",
+              "Performance tracking by staff or branch"
+            ]
+          },
+          {
+            "title": "Time tracking & breaks",
+            "description": "Clock-in/out tied to scheduled shifts with break compliance and audit-ready exports.",
+            "points": [
+              "Break policies: fixed, windowed, or staggered",
+              "Force clock-out with audit trails for missed punches",
+              "Payroll-ready exports with IP/device hints"
+            ]
+          }
+        ]
       },
       "spotlight": {
         "workspace": {
@@ -3051,6 +3097,16 @@
               "Secure data storage with encryption, audit logs, and automated backups.",
               "Multi-location, multi-branch support with centralized oversight.",
               "Compliance with regional payroll and privacy regulations out of the box."
+            ]
+          },
+          {
+            "icon": "08",
+            "title": "Time Tracking & Break Compliance",
+            "description": [
+              "Clock-in/out tied to scheduled shifts with IP/device hints captured per punch.",
+              "Break policies that enforce fixed, windowed, or staggered slots and flag missed breaks.",
+              "Force clock-out and bulk apply break templates with full audit trails for payroll.",
+              "Exports flow to payroll with unpaid breaks deducted and overtime markers included."
             ]
           }
         ]
