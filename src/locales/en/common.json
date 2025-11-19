@@ -4370,6 +4370,136 @@
         },
         "conclusion": "QuickBooks remains the standard for accounting. Schedulaa extends beyond finance — turning scheduling, team management, and payroll into a single workflow. For service-oriented businesses, this integration saves time, reduces tool overlap, and strengthens brand consistency."
       },
+      "quickbooks-payroll": {
+        "competitor": "QuickBooks Payroll",
+        "metaTitle": "Schedulaa vs QuickBooks Payroll | Real Cost for 20 Employees",
+        "metaDescription": "See the true monthly cost of QuickBooks Payroll versus Schedulaa for a 20-employee company. Compare features included at that price.",
+        "heroTitle": "Schedulaa vs QuickBooks Payroll — Real cost for a 20-employee team",
+        "heroSubtitle": "Compare pricing, features, and actual cost per 20-employee company — the most common use case.",
+        "intro": [
+          "Compare pricing, features, and actual cost per 20-employee company — the most common use case teams ask us about.",
+          "See what changes when payroll, scheduling, and compliance live in one platform versus buying payroll-only software."
+        ],
+        "executiveOverview": {
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "QuickBooks Payroll"
+          ],
+          "rows": [
+            {
+              "label": "Pricing model",
+              "schedulaa": "Flat base price with included staff; additional employees are $9 each. Payroll is included on Pro and Business.",
+              "competitor": "Per-employee payroll pricing with short-term promos that expire."
+            },
+            {
+              "label": "20-employee monthly cost",
+              "schedulaa": "$219.99/mo (Business plan for 10 staff + 10 add-ons at $9 each; includes payroll, scheduling, PTO, and compliance).",
+              "competitor": "Payroll only: Core $105, Premium $215, or Elite $380 after promos end."
+            },
+            {
+              "label": "Operations coverage",
+              "schedulaa": "Scheduling, time tracking, break enforcement, PTO workflows, audit log, payroll exports (W-2, T4, ROE).",
+              "competitor": "Payroll engine without scheduling, break rules, shift swaps, or leave workflows."
+            },
+            {
+              "label": "Time tracking & scheduling",
+              "schedulaa": "Included, tied directly to payroll and compliance logic.",
+              "competitor": "Requires third-party scheduling and time tracking tools."
+            },
+            {
+              "label": "Employee self-serve",
+              "schedulaa": "Employee Payslip Portal (self-serve PDF downloads), multi-step approvals, and audits.",
+              "competitor": "Paystub access only; no scheduling or PTO portal."
+            },
+            {
+              "label": "Compliance & overtime",
+              "schedulaa": "Break enforcement, overtime from schedules, location-specific rules, and audit trails.",
+              "competitor": "Manual entry; no shift-level enforcement."
+            }
+          ]
+        },
+        "differentiators": [
+          {
+            "title": "Operations OS vs payroll-only",
+            "body": "Schedulaa fixes scheduling, breaks, PTO, and compliance before payroll. QuickBooks runs payroll after everything is manually entered."
+          },
+          {
+            "title": "Built-in scheduling and time tracking",
+            "body": "Schedules, swaps, and attendance feed payroll automatically. QuickBooks needs separate scheduling and time tools."
+          },
+          {
+            "title": "Predictable cost at 20 employees",
+            "body": "Business plan + 10 extra staff at $9 each = $219.99/mo including payroll, scheduling, PTO, and compliance. QuickBooks Premium is $215/mo for payroll only."
+          },
+          {
+            "title": "Compliance before pay run",
+            "body": "Break rules, PTO logic, and anomalies are enforced before issuing pay. QuickBooks does not manage these workflows."
+          },
+          {
+            "title": "Exports ready for accounting",
+            "body": "W-2, T4, ROE, and payroll reports export cleanly to QuickBooks or Xero. QuickBooks payroll does not add scheduling or compliance data."
+          }
+        ],
+        "summaryTable": {
+          "headers": [
+            "Aspect",
+            "Schedulaa",
+            "QuickBooks Payroll"
+          ],
+          "rows": [
+            {
+              "label": "20-employee cost",
+              "schedulaa": "$219.99/mo (10 included + 10 extra at $9).",
+              "competitor": "$105-$380/mo after promo for payroll only."
+            },
+            {
+              "label": "What that price includes",
+              "schedulaa": "Payroll, scheduling, PTO logic, multi-location compliance, audit logs, and website checkout.",
+              "competitor": "Payroll calculations only; scheduling, time tracking, and PTO require extra tools."
+            },
+            {
+              "label": "Scheduling + time tracking",
+              "schedulaa": "Included and tied to payroll rules.",
+              "competitor": "Requires third-party apps ($70-$140/mo+)."
+            },
+            {
+              "label": "PTO & break management",
+              "schedulaa": "Built-in requests, approvals, accruals, and break enforcement.",
+              "competitor": "Not available."
+            },
+            {
+              "label": "Compliance outputs",
+              "schedulaa": "W-2, T4, ROE, payroll reports, and exports for accounting.",
+              "competitor": "Payroll filings without scheduling context."
+            },
+            {
+              "label": "Growth impact",
+              "schedulaa": "Flat and predictable; extra staff $9 each.",
+              "competitor": "Per-employee pricing escalates with headcount."
+            }
+          ]
+        },
+        "fitMatrix": [
+          {
+            "scenario": "You need payroll + scheduling + compliance in one place for a 20-employee team.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "You only want payroll and already manage scheduling elsewhere.",
+            "recommendation": "QuickBooks Payroll"
+          },
+          {
+            "scenario": "You want predictable pricing that includes PTO, audits, and scheduling data feeding payroll.",
+            "recommendation": "Schedulaa"
+          }
+        ],
+        "testimonial": {
+          "quote": "We were paying for payroll plus two other tools for scheduling and time tracking. Schedulaa combined them — the 20-employee math finally made sense.",
+          "attribution": "Ops Lead, 3-location service brand"
+        },
+        "conclusion": "QuickBooks Payroll charges per employee for payroll only. Schedulaa delivers payroll, scheduling, PTO, compliance, and reporting in one platform for $219.99/mo at 20 employees — keeping operations and accounting in sync."
+      },
       "humi": {
         "competitor": "Humi",
         "metaTitle": "Schedulaa vs Humi | HR-Only vs Operations + HR",
