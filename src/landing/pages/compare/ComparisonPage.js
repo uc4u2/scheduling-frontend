@@ -157,6 +157,15 @@ const ComparisonPage = () => {
     image: comparison?.metaOgImage || defaultOgImage,
   };
 
+  const downloadUrl =
+    normalizedSlug === "quickbooks-payroll"
+      ? "https://www.schedulaa.com/resources/schedulaa-vs-quickbooks-payroll.doc"
+      : null;
+  const downloadLabel =
+    normalizedSlug === "quickbooks-payroll"
+      ? "Download comparison (DOC)"
+      : null;
+
   return (
     <Box sx={{ position: "relative", overflow: "hidden" }}>
       <Meta
@@ -192,6 +201,19 @@ const ComparisonPage = () => {
               {paragraph}
             </Typography>
           ))}
+          {downloadUrl && (
+            <Button
+              component="a"
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="outlined"
+              color="primary"
+              sx={{ alignSelf: "center", borderRadius: 999, px: 4 }}
+            >
+              {downloadLabel}
+            </Button>
+          )}
         </Stack>
 
         <ComparisonTable headers={executiveOverview.headers} rows={executiveOverview.rows} />
