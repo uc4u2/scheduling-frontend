@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -12,6 +12,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
@@ -21,6 +23,7 @@ import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import LaunchIcon from "@mui/icons-material/Launch";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { Link as RouterLink } from "react-router-dom";
 import Meta from "../../components/Meta";
 import FloatingBlob from "../../components/ui/FloatingBlob";
@@ -52,6 +55,7 @@ const QUICK_ACTIONS = [
 
 const DemoPage = () => {
   const theme = useTheme();
+  const [copiedField, setCopiedField] = useState("");
   const loginDetails = useMemo(
     () => [
       { label: "Email", value: DEMO_EMAIL, icon: <MailOutlineIcon fontSize="small" /> },
@@ -146,24 +150,57 @@ const DemoPage = () => {
                   <Typography variant="h5" fontWeight={700}>
                     Demo credentials
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Update these values via <code>REACT_APP_DEMO_*</code> environment variables before building if you rotate the shared login.
-                  </Typography>
                   <Divider />
                   <List disablePadding>
                     {loginDetails.map((item) => (
-                      <ListItem key={item.label} disableGutters sx={{ py: 1.5 }}>
+                      <ListItem key={item.label} disableGutters sx={{ py: 1.5 }} secondaryAction={
+                        <Tooltip title={copiedField === item.label ? "Copied" : "Copy"} placement="top" arrow>
+                          <IconButton
+                            edge="end"
+                            color={copiedField === item.label ? "success" : "primary"}
+                            onClick={() => {
+                              if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+                                navigator.clipboard.writeText(item.value).then(() => {
+                                  setCopiedField(item.label);
+                                  setTimeout(() => setCopiedField(""), 1500);
+                                });
+                              }
+                            }}
+                          >
+                            <ContentCopyIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      }>
                         <ListItemIcon sx={{ minWidth: 40, color: theme.palette.primary.main }}>{item.icon}</ListItemIcon>
                         <ListItemText
                           primary={
-                            <Typography variant="subtitle2" fontWeight={600}>
+                            <Typography variant="subtitle2" fontWeight={700} textTransform="uppercase" letterSpacing={0.8} color={alpha(theme.palette.text.secondary, 0.9)}>
                               {item.label}
                             </Typography>
                           }
                           secondary={
-                            <Typography variant="body2" color="text.primary" sx={{ fontFamily: "var(--font-mono, 'Space Mono', monospace)" }}>
-                              {item.value}
-                            </Typography>
+                            <Box
+                              sx={{
+                                mt: 0.5,
+                                px: 1.5,
+                                py: 0.75,
+                                borderRadius: 2,
+                                background: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.2 : 0.08),
+                                border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+                              }}
+                            >
+                              <Typography
+                                variant="h6"
+                                sx={{
+                                  fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                                  fontWeight: 700,
+                                  letterSpacing: 0.5,
+                                  color: theme.palette.text.primary,
+                                }}
+                              >
+                                {item.value}
+                              </Typography>
+                            </Box>
                           }
                         />
                       </ListItem>
@@ -269,12 +306,6 @@ const DemoPage = () => {
                 }}
               >
                 <Stack spacing={2}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <RocketLaunchIcon color="primary" />
-                    <Typography variant="h6" fontWeight={700}>
-                      Suggested demo flows
-                    </Typography>
-                  </Stack>
                   {QUICK_ACTIONS.map((action) => (
                     <Box key={action.title} sx={{ py: 1 }}>
                       <Typography variant="subtitle1" fontWeight={600}>
