@@ -34,9 +34,7 @@ const DEMO_EMAIL = process.env.REACT_APP_DEMO_EMAIL || "testschedulaa@gmail.com"
 const DEMO_PASSWORD = process.env.REACT_APP_DEMO_PASSWORD || "Test!12345";
 const DEMO_OTP = process.env.REACT_APP_DEMO_OTP || "0000";
 const DEMO_ENV = process.env.REACT_APP_DEMO_ENV || "Staging";
-// To swap the video, upload a file to public/assets/videos/manager-demo.mp4 (or host on your CDN)
-// and set REACT_APP_DEMO_VIDEO to that URL during build.
-const DEMO_VIDEO_SRC = process.env.REACT_APP_DEMO_VIDEO || "https://www.w3schools.com/html/mov_bbb.mp4";
+const DEMO_VIDEO_SRC = process.env.REACT_APP_DEMO_VIDEO || "/assets/videos/manager-demo.mp4";
 
 const QUICK_ACTIONS = [
   {
@@ -275,10 +273,6 @@ const DemoPage = () => {
                       Watch the 4-minute walkthrough
                     </Typography>
                   </Stack>
-                  <Typography variant="body2" color="text.secondary">
-                    Replace this video by uploading your final MP4 to <code>public/assets/videos/manager-demo.mp4</code> or by setting{" "}
-                    <code>REACT_APP_DEMO_VIDEO</code> during build.
-                  </Typography>
                   <Box
                     component="video"
                     src={DEMO_VIDEO_SRC}
