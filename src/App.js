@@ -28,6 +28,7 @@ import WorkforcePage from "./landing/pages/WorkforcePage";
 import DocsPage from "./landing/pages/DocsPage";
 import StatusPage from "./landing/pages/StatusPage";
 import BlogPage from "./landing/pages/BlogPage";
+import DemoPage from "./landing/pages/DemoPage";
 import AboutPage from "./landing/pages/AboutPage";
 import ContactPage from "./landing/pages/ContactPage";
 import FAQPage from "./landing/pages/FAQPage";
@@ -175,6 +176,7 @@ const MARKETING_PATHS = [
   '/payslips',
   '/about',
   '/contact',
+  '/demo',
   '/faq',
   '/docs',
   '/help/domains',
@@ -361,6 +363,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/status" element={<StatusPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/demo" element={<DemoPage />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/user-agreement" element={<UserAgreementPage />} />

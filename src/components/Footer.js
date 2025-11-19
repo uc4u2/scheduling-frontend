@@ -44,6 +44,7 @@ const sections = [
         title: "Resources",
         links: [
           { label: "Blog", to: "/blog" },
+          { label: "Demo / Test Drive", to: "/demo" },
           { label: "FAQ", to: "/faq" },
           { label: "Help Center", to: "/client/support" },
           { label: "Documentation", to: "/docs" },

@@ -24,6 +24,7 @@ import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import LanguageIcon from "@mui/icons-material/Language";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
+import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonIcon from "@mui/icons-material/Person";
 import WorkspacesIcon from "@mui/icons-material/Workspaces";
@@ -48,6 +49,7 @@ const marketingLinks = [
     icon: <LanguageIcon fontSize="small" />,
   },
   { label: "Pricing", translationKey: "nav.pricing", to: "/pricing", icon: <MonetizationOnIcon fontSize="small" /> },
+  { label: "Demo", translationKey: "nav.demo", to: "/demo", icon: <RocketLaunchIcon fontSize="small" /> },
   { label: "Contact", translationKey: "nav.contact", to: "/contact", icon: <SupportAgentIcon fontSize="small" /> },
 ];
 
