@@ -674,6 +674,7 @@
       "roe": "ROE",
       "t4": "T4",
       "w2": "W2",
+      "payrollRaw": "Raw payroll data",
       "availableShifts": "Available Shifts",
       "availableSlots": "Available Slots",
       "shiftManagement": "Shift Management",

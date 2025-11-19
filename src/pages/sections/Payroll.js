@@ -347,11 +347,53 @@ useEffect(() => {
 
       const { flags = {}, ...payrollData } = calcRes.data || {};
 
+      // Prefer backend-calculated hours; if missing, derive from regular + OT
+      const num = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+      // Prefer backend preview values, fall back to generated base values
+      const regFromPreview = num(
+        payrollData.regular_hours ??
+        payrollData.regularHours ??
+        base.regular_hours ??
+        base.regularHours
+      );
+      const otFromPreview = num(
+        payrollData.overtime_hours ??
+        payrollData.overtimeHours ??
+        base.overtime_hours ??
+        base.overtimeHours
+      );
+      const holFromPreview = num(
+        payrollData.holiday_hours ??
+        payrollData.holidayHours ??
+        base.holiday_hours ??
+        base.holidayHours
+      );
+      const leaveFromPreview = num(
+        payrollData.parental_leave_hours ??
+        payrollData.parentalLeaveHours ??
+        base.parental_leave_hours ??
+        base.parentalLeaveHours
+      );
+      const totalFromPreview = num(
+        payrollData.hours_worked ??
+        payrollData.total_hours ??
+        payrollData.totalHours ??
+        base.total_hours ??
+        base.hours_worked
+      );
+      const hoursFromPreview =
+        (totalFromPreview ||
+          regFromPreview + otFromPreview + holFromPreview + leaveFromPreview) || 0;
+
       setPayroll({
         ...base,
         ...payrollData,
         id: base.id,
         payroll_id: base.payroll_id,
+        hours_worked: hoursFromPreview,
         flags,
       });
       showMessage("✅ Payroll preview loaded", "success");

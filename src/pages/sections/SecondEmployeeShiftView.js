@@ -113,8 +113,7 @@ const SecondEmployeeShiftView = () => {
   const [historyError, setHistoryError] = useState("");
   const [historyFilters, setHistoryFilters] = useState(() => {
     const end = format(new Date(), "yyyy-MM-dd");
-    const start = format(addDays(new Date(), -30), "yyyy-MM-dd");
-    return { startDate: start, endDate: end, status: "all" };
+    return { startDate: end, endDate: end, status: "all" };
   });
 
  // ───────────────────────────────────────────────────────

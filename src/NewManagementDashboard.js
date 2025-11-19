@@ -86,6 +86,7 @@ import Meetings from "./pages/sections/Meetings";
 import ROE from "./pages/sections/ROE";
 import T4 from "./pages/sections/T4";
 import W2 from "./pages/sections/W2";
+import PayrollRawPage from "./pages/sections/PayrollRawPage";
 import SettingsPage from "./pages/sections/Settings";
 import AuditHistory from "./components/AuditHistory";
 import MonthlyAttendanceCalendar from "./components/MonthlyAttendanceCalendar";
@@ -161,6 +162,7 @@ const menuConfig = [
       { labelKey: "manager.menu.roe", key: "roe", icon: <Article /> },
       { labelKey: "manager.menu.t4", key: "T4", icon: <ReceiptLong /> },
       { labelKey: "manager.menu.w2", key: "W2", icon: <ReceiptLong /> },
+      { labelKey: "manager.menu.payrollRaw", key: "payroll-raw", icon: <ReceiptLong /> },
     ],
   },
 
@@ -1636,6 +1638,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
       case "W2":
         return <W2 token={token} />;
+
+      case "payroll-raw":
+        return <PayrollRawPage />;
 
       case "CompanyProfile":
         return <CompanyProfile token={token} />;

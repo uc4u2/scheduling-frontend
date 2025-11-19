@@ -376,7 +376,47 @@ useEffect(() => {
   };
 
   fetchPayrollPreview(payload, token)
-    .then((preview) => setPayroll((prev) => ({ ...prev, ...preview })))
+    .then((preview) => {
+      const num = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+      const reg = num(
+        preview.regular_hours ??
+        preview.regularHours ??
+        payroll.regular_hours ??
+        payroll.regularHours
+      );
+      const ot = num(
+        preview.overtime_hours ??
+        preview.overtimeHours ??
+        payroll.overtime_hours ??
+        payroll.overtimeHours
+      );
+      const hol = num(
+        preview.holiday_hours ??
+        preview.holidayHours ??
+        payroll.holiday_hours ??
+        payroll.holidayHours
+      );
+      const leave = num(
+        preview.parental_leave_hours ??
+        preview.parentalLeaveHours ??
+        payroll.parental_leave_hours ??
+        payroll.parentalLeaveHours
+      );
+      const total = num(
+        preview.hours_worked ??
+        preview.total_hours ??
+        preview.totalHours
+      ) || reg + ot + hol + leave;
+
+      setPayroll((prev) => ({
+        ...prev,
+        ...preview,
+        hours_worked: total,
+      }));
+    })
     .catch((err) => {
       console.error("❌ Auto-recalc failed:", err.response?.data || err.message);
     });
@@ -463,7 +503,47 @@ const handleRecalculate = () => {
   console.log("📤 Sending manual recalc payload:", payload);
 
   fetchPayrollPreview(payload, token)
-    .then((preview) => setPayroll((prev) => ({ ...prev, ...preview })))
+    .then((preview) => {
+      const num = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+      const reg = num(
+        preview.regular_hours ??
+        preview.regularHours ??
+        payroll.regular_hours ??
+        payroll.regularHours
+      );
+      const ot = num(
+        preview.overtime_hours ??
+        preview.overtimeHours ??
+        payroll.overtime_hours ??
+        payroll.overtimeHours
+      );
+      const hol = num(
+        preview.holiday_hours ??
+        preview.holidayHours ??
+        payroll.holiday_hours ??
+        payroll.holidayHours
+      );
+      const leave = num(
+        preview.parental_leave_hours ??
+        preview.parentalLeaveHours ??
+        payroll.parental_leave_hours ??
+        payroll.parentalLeaveHours
+      );
+      const total = num(
+        preview.hours_worked ??
+        preview.total_hours ??
+        preview.totalHours
+      ) || reg + ot + hol + leave;
+
+      setPayroll((prev) => ({
+        ...prev,
+        ...preview,
+        hours_worked: total,
+      }));
+    })
     .catch((err) => {
       console.error("❌ Preview fetch failed:", err.response?.data || err.message);
       setSnackbar({
@@ -658,6 +738,7 @@ const handleRecalculate = () => {
             label="Hours Worked"
             value={payroll.hours_worked || 0}
             InputProps={{ readOnly: true }}
+            helperText="Calculated from approved shifts"
             fullWidth
           />
         </Grid>

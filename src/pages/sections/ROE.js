@@ -440,7 +440,7 @@ const ROE = ({ token }) => {
           </MenuItem>
           {filteredRecruiters.map((r) => (
             <MenuItem key={r.id} value={r.id}>
-              {r.name} ({r.email})
+              {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || r.email || `#${r.id}`}
             </MenuItem>
           ))}
         </TextField>
@@ -840,6 +840,5 @@ const ROE = ({ token }) => {
 };
 
 export default ROE;
-
 
 

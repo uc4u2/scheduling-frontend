@@ -3,22 +3,9 @@
       or simply “Save” without downloading. */
 
 import React, { useState } from "react";
-import {
-  Button,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  CircularProgress,
-  Tooltip,
-  Snackbar,
-  Alert,
-} from "@mui/material";
-import DownloadIcon     from "@mui/icons-material/Download";
+import { Button, CircularProgress, Tooltip, Snackbar, Alert, Stack, Typography } from "@mui/material";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import TableChartIcon   from "@mui/icons-material/TableChart";
-import GridOnIcon       from "@mui/icons-material/GridOn";
-import EmailIcon        from "@mui/icons-material/Email";
+import EmailIcon from "@mui/icons-material/Email";
 import axios  from "axios";
 import dayjs  from "dayjs";
 
@@ -56,17 +43,11 @@ export default function DownloadPayrollButton({
 }) {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-  const [anchor, setAnchor] = useState(null);
   const [busy  , setBusy  ] = useState(false);
   const [snack , setSnack ] = useState({ open: false, msg: "", sev: "info" });
 
-  /* ───────── menu helpers ───────── */
-  const openMenu  = (e) => setAnchor(e.currentTarget);
-  const closeMenu = () => setAnchor(null);
-
   /* ───────── main handler ───────── */
   const handleDownload = async (fmt, emailToEmployee = false) => {
-    closeMenu();
     if (busy) return;
     setBusy(true);
 
@@ -225,42 +206,45 @@ export default function DownloadPayrollButton({
      ───────────────────────────────────────────────────────── */
   return (
     <>
-      <Tooltip title="Finalise payroll, then export or save">
-        <span>
-          <Button
-            variant="contained"
-            color="success"
-            startIcon={busy ? <CircularProgress size={18} /> : <DownloadIcon />}
-            onClick={openMenu}
-            disabled={busy}
-          >
-            Export / Save
-          </Button>
-        </span>
-      </Tooltip>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        alignItems={{ xs: "stretch", sm: "center" }}
+        sx={{ mb: 1.5 }}
+      >
+        <Tooltip title="Download the employee-safe payslip PDF (whitelisted fields only)">
+          <span>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={busy ? <CircularProgress size={18} /> : <PictureAsPdfIcon />}
+              onClick={() => handleDownload("pdf")}
+              disabled={busy}
+              sx={{ minWidth: 240, textTransform: "none" }}
+            >
+              Download Employee Payslip (PDF)
+            </Button>
+          </span>
+        </Tooltip>
 
-      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={closeMenu}>
-        <MenuItem onClick={() => handleDownload("pdf")}>
-          <ListItemIcon><PictureAsPdfIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>PDF</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleDownload("csv")}>
-          <ListItemIcon><TableChartIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>CSV</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleDownload("xlsx")}>
-          <ListItemIcon><GridOnIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Excel</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleDownload("pdf", true)}>
-          <ListItemIcon><EmailIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>PDF + e-mail to employee</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={() => handleDownload("save")}>
-          <ListItemIcon><DownloadIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Save only (no download)</ListItemText>
-        </MenuItem>
-      </Menu>
+        <Tooltip title="Finalize payroll, lock the record, and e-mail the employee a payslip (manager copy downloaded too).">
+          <span>
+            <Button
+              variant="outlined"
+              color="success"
+              startIcon={busy ? <CircularProgress size={18} /> : <EmailIcon />}
+              onClick={() => handleDownload("pdf", true)}
+              disabled={busy}
+              sx={{ minWidth: 260, textTransform: "none" }}
+            >
+              Finalize Payroll + Send to Employee
+            </Button>
+          </span>
+        </Tooltip>
+      </Stack>
+      <Typography variant="caption" color="text.secondary">
+        Employee Payslip = whitelisted PDF for employees. Finalize Payroll = locks the run, syncs data, and sends the payslip with an audit trail.
+      </Typography>
 
       <Snackbar
         open={snack.open}
