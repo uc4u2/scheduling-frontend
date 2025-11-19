@@ -96,9 +96,9 @@ const DEFAULT_PLANS = [
       "Everything in Starter.",
       "Custom domain + automatic SSL included.",
       "Up to 5 staff seats and 1 location included.",
+      "Payroll processing included with Employee Payslip Portal (self-serve PDF downloads).",
       "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
       "Advanced Analytics (bookings, revenue, client segments).",
-      "Employee Payslip Portal (self-serve PDF downloads).",
       "Automated Canadian stat holiday pay and accruals.",
       "Priority support (business hours).",
     ],
@@ -116,7 +116,7 @@ const DEFAULT_PLANS = [
     features: [
       "Everything in Pro.",
       "10 staff seats and up to 2 locations included.",
-      "Add additional staff seats for $10/mo each.",
+      "Add additional staff seats for $9/mo each.",
       "Compliance Documents Pack: W-2 (US), T4 (CA), ROE (CA) creation & export (PDF/XML).",
       "Advanced payroll exports, audits, and tax reports.",
       "Role-based access (managers / staff / finance).",
@@ -135,7 +135,7 @@ const DEFAULT_ADDONS = {
   headers: { addon: "Add-on", price: "Price" },
   items: [
     { key: "customDomain", name: "Custom domain + automatic SSL", price: "$5/mo" },
-    { key: "extraSeat", name: "Additional staff seat", price: "$10/mo" },
+    { key: "extraSeat", name: "Additional staff seat", price: "$9/mo" },
     { key: "smsPack", name: "SMS reminder pack (100 msgs)", price: "$5/mo" },
     { key: "whiteGlove", name: "Dedicated onboarding (one-time)", price: "$99" },
   ],
