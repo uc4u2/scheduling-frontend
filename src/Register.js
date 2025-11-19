@@ -79,7 +79,7 @@ const Register = () => {
 
   const passwordChecklist = useMemo(
     () => [
-      { label: "At least 12 characters", pass: password.length >= 12 },
+      { label: "At least 8 characters", pass: password.length >= 8 },
       { label: "One uppercase letter", pass: /[A-Z]/.test(password) },
       { label: "One lowercase letter", pass: /[a-z]/.test(password) },
       { label: "One number", pass: /\d/.test(password) },
@@ -92,7 +92,6 @@ const Register = () => {
   const passwordsMatch = password && password === confirmPassword;
   const canSubmit =
     Boolean(firstName && lastName && email && password && timezone && role) &&
-    passwordIsStrong &&
     passwordsMatch &&
     !loading &&
     acceptedTerms;
