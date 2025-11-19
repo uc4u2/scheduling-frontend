@@ -19,6 +19,7 @@ import SettingsBackupRestoreIcon from "@mui/icons-material/SettingsBackupRestore
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 
 import Meta from "../../components/Meta";
+import JsonLd from "../../components/seo/JsonLd";
 import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import FloatingBlob from "../../components/ui/FloatingBlob";
@@ -35,6 +36,41 @@ const DEFAULT_DIRECT_LINES = [
 ];
 
 const FALLBACK_CONTACT_SLUGS = ["photo-artisto", "photo-artisto-corp", "schedulaa"];
+
+const COMPANY_ADDRESS = {
+  streetAddress: "171 Harbord Street",
+  addressLocality: "Toronto",
+  addressRegion: "Ontario",
+  postalCode: "M5S 1H3",
+  addressCountry: "CA",
+};
+
+const createLocalBusinessSchema = (email = DEFAULT_CONTACT_EMAIL) => ({
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  name: "Schedulaa",
+  url: "https://www.schedulaa.com/contact",
+  image: "https://www.schedulaa.com/og/contact.jpg",
+  telephone: "+1-415-555-0198",
+  email,
+  address: {
+    "@type": "PostalAddress",
+    ...COMPANY_ADDRESS,
+  },
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "09:00",
+      closes: "18:00",
+    },
+  ],
+  sameAs: [
+    "https://www.linkedin.com/company/schedulaa/",
+    "https://twitter.com/schedulaa",
+    "https://www.instagram.com/schedulaa.app",
+  ],
+});
 
 const DEFAULT_CONTENT = {
   meta: {
@@ -137,6 +173,7 @@ const ContactPage = () => {
   const theme = useTheme();
   const { t } = useTranslation();
   const marketing = theme.marketing || {};
+  const localBusinessSchema = useMemo(() => createLocalBusinessSchema(DEFAULT_CONTACT_EMAIL), []);
 
   const content = useMemo(() => t("landing.contactPage", { returnObjects: true }), [t]);
 
@@ -312,6 +349,7 @@ const ContactPage = () => {
           image: metaOg.image || DEFAULT_CONTENT.meta.og.image,
         }}
       />
+      <JsonLd data={localBusinessSchema} />
 
       <HeroShowcase
         eyebrow={heroContent?.eyebrow || DEFAULT_CONTENT.hero.eyebrow}
@@ -520,6 +558,4 @@ const ContactPage = () => {
 };
 
 export default ContactPage;
-
-
 

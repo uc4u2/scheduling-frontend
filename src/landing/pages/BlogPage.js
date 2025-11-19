@@ -16,6 +16,7 @@ import InsightsIcon from "@mui/icons-material/Insights";
 
 import { Link } from "react-router-dom";
 import Meta from "../../components/Meta";
+import JsonLd from "../../components/seo/JsonLd";
 import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import FloatingBlob from "../../components/ui/FloatingBlob";
@@ -71,6 +72,34 @@ const articleParagraphs = [
   "Thousands of operators are already replacing fractured stacks with Schedulaa. Less tab hopping, fewer CSVs, more time spent on clients and growth.",
 ];
 
+const BLOG_LISTING_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  name: "Schedulaa Blog",
+  description: "Automation, payroll, and operations playbooks for teams running on the Schedulaa platform.",
+  url: "https://www.schedulaa.com/blog",
+  publisher: {
+    "@type": "Organization",
+    name: "Schedulaa",
+    logo: {
+      "@type": "ImageObject",
+      url: "https://www.schedulaa.com/og/logo.png",
+    },
+  },
+  blogPost: [
+    {
+      "@type": "BlogPosting",
+      headline: "Designing a Client Journey with Schedulaa",
+      description: "Guide prospects from first visit to loyal customer using Schedulaa’s website builder, booking engine, automation, and analytics.",
+      url: "https://www.schedulaa.com/blog/client-journey",
+      image: "https://www.schedulaa.com/og/blog.jpg",
+      datePublished: "2025-11-04",
+      dateModified: "2025-11-04",
+      author: { "@type": "Organization", name: "Schedulaa" },
+    },
+  ],
+};
+
 const BlogPage = () => {
   const theme = useTheme();
 
@@ -120,6 +149,7 @@ const BlogPage = () => {
           image: "https://www.schedulaa.com/og/blog.jpg",
         }}
       />
+      <JsonLd data={BLOG_LISTING_SCHEMA} />
 
       <HeroShowcase
         eyebrow="Blog"

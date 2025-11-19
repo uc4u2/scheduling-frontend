@@ -53,7 +53,7 @@ const ARTICLE_SECTIONS = [
 
 const articleJsonLd = {
   "@context": "https://schema.org",
-  "@type": "Article",
+  "@type": "BlogPosting",
   headline: "Designing a Client Journey with Schedulaa",
   description:
     "How to guide prospects from first visit to loyal customer using Schedulaa’s website builder, booking engine, automation, and analytics.",
@@ -72,6 +72,7 @@ const articleJsonLd = {
   datePublished: "2025-11-04",
   dateModified: "2025-11-04",
   url: "https://www.schedulaa.com/blog/client-journey",
+  articleSection: ["Client Journey", "Automation"],
 };
 
 const ClientJourneyPage = () => {
