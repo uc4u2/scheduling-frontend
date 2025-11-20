@@ -1,0 +1,56 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Arial;}{\f1 Courier New;}}
+\f0\fs28 Schedulaa vs QuickBooks Payroll \par
+\fs20 \par
+Schedulaa vs QuickBooks Payroll is the most requested comparison for 20-employee teams. This document summarizes the pricing math, features, and operational gaps. \par
+\par
+\b 1. QuickBooks Payroll Pricing (Real Cost for 20 Employees)\b0\par
+QuickBooks sells payroll only and charges per employee. Promotions last six months then revert to list price. \par
+\par
+QB Plan\tab Base Price\tab Per Employee\tab 20 Employees\tab Total Monthly Cost\par
+Core\tab $25 promo ($6.25)\tab $4\tab $80\tab $86.25 promo then $105\par
+Premium\tab $55 promo ($13.75)\tab $8\tab $160\tab $173.75 promo then $215\par
+Elite\tab $80 promo ($20)\tab $15\tab $300\tab $320 promo then $380\par
+\par
+After promo ends, QuickBooks Payroll customers pay $105, $215, or $380 per month exclusively for payroll. No scheduling, no break enforcement, no PTO logic, no compliance workflow, and no audit trail across shifts. \par
+\par
+\b 2. Schedulaa Pricing (What It Includes)\b0\par
+Schedulaa is an Operations OS that bundles scheduling, breaks, attendance, PTO, payroll, compliance, websites, and exports in one price. \par
+\par
+Schedulaa Plan\tab Staff Included\tab Locations\tab Payroll Included?\tab Price\par
+Starter\tab 1\tab 1\tab No\tab $19.99/mo\par
+Pro\tab Up to 5\tab 1\tab Yes (Payroll + Payslip Portal)\tab $49.99/mo\par
+Business\tab Up to 10\tab 2\tab Yes (Full payroll + W-2, T4, ROE)\tab $119.99/mo\par
+\par
+Additional staff beyond quota cost $9 each; extra locations are $10 each. \par
+\par
+\b 3. Schedulaa for a 20-Employee Company\b0\par
+Business Plan (10 staff) = $119.99\par
+10 extra staff x $9 = $90\par
+\bTotal: $219.99/mo\b0 including:\par
+- Scheduling and break enforcement\par
+- PTO logic with automatic accruals\par
+- Time tracking and overtime rules\par
+- Leave requests and multi-step approval\par
+- Audit logs, multi-location compliance, payroll exports\par
+- W-2, T4, ROE files plus Xero and QuickBooks export\par
+\par
+\b 4. True Cost Comparison (20 Employees)\b0\par
+QuickBooks Payroll Premium: $215/mo for payroll only. Scheduling, time tracking, PTO, or break management require third-party apps ($70-$140+ per month).\par
+Schedulaa Business: $219.99/mo for payroll + scheduling + PTO + compliance + websites + checkout.\par
+\par
+QuickBooks stack quickly reaches $300-$450 per month when you add scheduling and time tracking. Schedulaa stays at $219.99 because operations are built in.\par
+\par
+\b 5. Key Difference\b0\par
+QuickBooks Payroll: Pay people after HR and scheduling are handled manually. No tooling for schedules, breaks, clock-ins, PTO, shift swaps, or anomalies.\par
+Schedulaa: Fix everything before payroll by tying scheduling, break enforcement, time tracking, PTO, compliance, audits, and exports to one workflow that produces accurate payroll.\par
+\par
+\b 6. Summary\b0\par
+- QuickBooks pricing punishes growth via per-employee fees.\par
+- Schedulaa pricing is predictable: base tier + $9 per extra staff.\par
+- QuickBooks solves payroll; Schedulaa solves operations, the root cause of payroll mistakes.\par
+- QuickBooks bolts into workflows; Schedulaa is the workflow.\par
+- QuickBooks requires accountants to reconcile data; Schedulaa reduces that dependency.\par
+\par
+Download more comparisons at https://www.schedulaa.com/compare.\par
+}\n
