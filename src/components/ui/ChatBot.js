@@ -28,7 +28,12 @@ const ChatBot = ({ token }) => {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:5000/chat", {
+      const apiBase =
+        process.env.REACT_APP_API_URL ||
+        (typeof window !== "undefined" && window.__ENV__?.API_URL) ||
+        "http://localhost:5000";
+      const url = `${apiBase.replace(/\/$/, "")}/chat`;
+      const res = await axios.post(url, {
         message: input,
       });
 
