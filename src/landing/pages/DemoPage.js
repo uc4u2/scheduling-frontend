@@ -34,7 +34,9 @@ const DEMO_EMAIL = process.env.REACT_APP_DEMO_EMAIL || "testschedulaa@gmail.com"
 const DEMO_PASSWORD = process.env.REACT_APP_DEMO_PASSWORD || "Test!12345";
 const DEMO_OTP = process.env.REACT_APP_DEMO_OTP || "0000";
 const DEMO_ENV = process.env.REACT_APP_DEMO_ENV || "Staging";
-const DEMO_VIDEO_SRC = process.env.REACT_APP_DEMO_VIDEO || "/assets/videos/manager-demo.mp4";
+const DEMO_VIDEO_SRC =
+  process.env.REACT_APP_DEMO_VIDEO ||
+  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/manager-demo.mp4";
 
 const QUICK_ACTIONS = [
   {

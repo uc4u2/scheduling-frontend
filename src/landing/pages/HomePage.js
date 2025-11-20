@@ -39,7 +39,7 @@ const TRUSTED_LOGOS = [
   "Urban Brush",
   "Studio Bloom",
   "Pixel Parlor",
-  "Recruitly",
+  "Digital Pixel Tech",
 ];
 const FEATURE_ACCENTS = [
   "#0ea5e9",
@@ -118,73 +118,71 @@ const SPOTLIGHT_CONFIG = [
   { key: "analytics", imageIndex: 0 },
 ];
 
-const TrustedSlider = ({ accent, title }) => {
-  const marqueeItems = [...TRUSTED_LOGOS, ...TRUSTED_LOGOS];
-  return (
-    <Box
-      sx={{
-        position: "relative",
-        overflow: "hidden",
-        py: { xs: 6, md: 8 },
-        px: { xs: 2, md: 6 },
-      }}
-    >
-      <FloatingBlob
-        enableMotion
-        color={accent}
-        size={1040}
-        opacity={0.14}
-        duration={28}
-        sx={{ top: -220, left: -240 }}
-      />
-      <FloatingBlob
-        enableMotion
-        color={alpha(accent, 0.65)}
-        size={880}
-        opacity={0.12}
-        duration={26}
-        sx={{ bottom: -220, right: -240 }}
-      />
-      <Stack
-        spacing={2}
-        alignItems="center"
-        position="relative"
-        zIndex={1}
-        sx={{ width: "100%" }}
-      >
-        <Typography variant="overline" color="text.secondary" fontWeight={700}>
-          {title}
-        </Typography>
-        <Box sx={{ width: "100%", maxWidth: 960, overflow: "hidden" }}>
-          <motion.div
-            initial={{ x: 0 }}
-            animate={{ x: "-50%" }}
-            transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
-            style={{ display: "flex" }}
-          >
-            <Stack
-              direction="row"
-              spacing={{ xs: 4, sm: 6 }}
-              alignItems="center"
-              sx={{ pr: { xs: 4, sm: 6 } }}
+const TrustedSlider = ({ accent, title }) => (
+  <Box
+    sx={{
+      position: "relative",
+      overflow: "hidden",
+      py: { xs: 6, md: 8 },
+      px: { xs: 2, md: 6 },
+    }}
+  >
+    <FloatingBlob
+      enableMotion
+      color={accent}
+      size={1040}
+      opacity={0.14}
+      duration={28}
+      sx={{ top: -220, left: -240 }}
+    />
+    <FloatingBlob
+      enableMotion
+      color={alpha(accent, 0.65)}
+      size={880}
+      opacity={0.12}
+      duration={26}
+      sx={{ bottom: -220, right: -240 }}
+    />
+    <Stack spacing={3} alignItems="center" position="relative" zIndex={1} sx={{ width: "100%" }}>
+      <Typography variant="overline" color="primary" fontWeight={800} letterSpacing={6} textAlign="center">
+        {title}
+      </Typography>
+      <Box sx={{ width: "100%", maxWidth: 980, overflow: "hidden" }}>
+        <motion.div
+          initial={{ x: 0 }}
+          animate={{ x: "-50%" }}
+          transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
+          style={{ display: "flex" }}
+        >
+          {[...TRUSTED_LOGOS, ...TRUSTED_LOGOS].map((logo, index) => (
+            <Box
+              key={`${logo}-${index}`}
+              sx={{
+                px: { xs: 1.75, md: 2.75 },
+                py: 0.75,
+                mr: { xs: 1.5, md: 2 },
+                borderRadius: 999,
+                backgroundColor: alpha(accent, 0.06),
+                border: `1px solid ${alpha(accent, 0.2)}`,
+                fontSize: { xs: 13, md: 14 },
+                fontWeight: 600,
+                color: alpha(accent, 0.9),
+                whiteSpace: "nowrap",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  backgroundColor: alpha(accent, 0.12),
+                  transform: "translateY(-1px)",
+                },
+              }}
             >
-              {marqueeItems.map((logo, index) => (
-                <Typography
-                  key={`${logo}-${index}`}
-                  variant="subtitle1"
-                  fontWeight={600}
-                  color="text.secondary"
-                >
-                  {logo}
-                </Typography>
-              ))}
-            </Stack>
-          </motion.div>
-        </Box>
-      </Stack>
-    </Box>
-  );
-};
+              {logo}
+            </Box>
+          ))}
+        </motion.div>
+      </Box>
+    </Stack>
+  </Box>
+);
 
 const Spotlight = ({ sections, accent }) => {
   const theme = useTheme();
