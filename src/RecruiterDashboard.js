@@ -367,7 +367,7 @@ const RecruiterDashboard = ({ token }) => {
   /* ------------------------------------------------------------------ */
   return (
     <ManagementFrame
-      title="Recruiter Dashboard"
+      title="Employee Dashboard"
       subtitle="Manage your availability, bookings, and invites."
       fullWidth
       sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
@@ -830,6 +830,4 @@ const RecruiterDashboard = ({ token }) => {
   );
 };
 export default RecruiterDashboard;
-
-
 
