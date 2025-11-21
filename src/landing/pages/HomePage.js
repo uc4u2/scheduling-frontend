@@ -188,6 +188,64 @@ const Spotlight = ({ sections, accent }) => {
   const theme = useTheme();
   const marketing = theme.marketing || {};
 
+  const SpotlightGallery = ({ images }) => {
+    const [active, setActive] = useState(0);
+
+    useEffect(() => {
+      if (images.length <= 1) return;
+      const id = setInterval(() => {
+        setActive((prev) => (prev + 1) % images.length);
+      }, 3500);
+      return () => clearInterval(id);
+    }, [images.length]);
+
+    if (!images.length) return null;
+
+    return (
+      <Box position="relative">
+        <motion.img
+          key={images[active]}
+          src={images[active]}
+          alt="Automation & Integrations"
+          style={{ display: "block", width: "100%", height: "auto" }}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        />
+        {images.length > 1 && (
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              position: "absolute",
+              bottom: 16,
+              left: "50%",
+              transform: "translateX(-50%)",
+            }}
+          >
+            {images.map((img, index) => (
+              <Box
+                key={img}
+                onClick={() => setActive(index)}
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  bgcolor:
+                    index === active
+                      ? theme.palette.primary.main
+                      : alpha(theme.palette.common.white, 0.7),
+                }}
+              />
+            ))}
+          </Stack>
+        )}
+      </Box>
+    );
+  };
+
   return (
     <Box
       sx={{
@@ -264,18 +322,10 @@ const Spotlight = ({ sections, accent }) => {
                   boxShadow: marketing.shadows?.lg || theme.shadows[12],
                   border: (t) =>
                     `1px solid ${alpha(t.palette.primary.main, 0.16)}`,
-                  p: { xs: 2, md: 3 },
+                  position: "relative",
                 }}
               >
-                <motion.img
-                  src={section.image}
-                  alt={section.alt}
-                  style={{ display: "block", width: "100%", height: "auto" }}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                  viewport={{ once: true, amount: 0.4 }}
-                />
+                <SpotlightGallery images={section.gallery.length ? section.gallery : [section.image]} />
               </Paper>
             </Grid>
           </Grid>
@@ -451,6 +501,7 @@ const HomePage = () => {
         bullets: sectionCopy?.bullets || [],
         image: homeFeatureSections[imageIndex]?.imageUrl,
         alt: sectionCopy?.alt || "",
+        gallery: homeFeatureSections[imageIndex]?.gallery || [],
       };
     });
   }, [t]);

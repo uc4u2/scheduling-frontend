@@ -103,12 +103,16 @@ export const homeFeatureSections = [
     imageUrl: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80",
   },
   {
-    title: "All-in-one storefront",
+    title: "Automations & Integrations",
     bullets: [
-      "Product orders with integrated inventory",
-      "Promotions and coupons with analytics",
-      "Client portal, gallery, and upsells",
+      "Zapier, webhooks, and REST API hooks",
+      "Slack and email notifications with audit history",
+      "QuickBooks/Xero-ready exports and data syncs",
     ],
-    imageUrl: "https://images.unsplash.com/photo-1523475472560-d2df97ec485c?auto=format&fit=crop&w=1200&q=80",
+    gallery: [
+      "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1483478550801-ceba5fe50e8e?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80",
+    ],
   },
 ];

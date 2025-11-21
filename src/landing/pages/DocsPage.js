@@ -36,7 +36,7 @@ import Meta from "../../components/Meta";
 import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import FloatingBlob from "../../components/ui/FloatingBlob";
-import automationJourney from "../../assets/marketing/automation-journey.svg";
+import automationJourney from "../../assets/marketing/automation-journey.png";
 
 const HERO_PRIMARY_CTA_TARGET = "#search";
 const HERO_SECONDARY_CTA_TARGET = "#api-reference";

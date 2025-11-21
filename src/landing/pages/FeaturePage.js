@@ -38,9 +38,9 @@ import FeatureGrid from "../components/FeatureGrid";
 import { featurePillars } from "../data/features";
 import { testimonials } from "../data/testimonials";
 
-import heroShowcaseMedia from "../../assets/marketing/hero-dashboard.svg";
-import platformMap from "../../assets/marketing/platform-map.svg";
-import automationJourney from "../../assets/marketing/automation-journey.svg";
+import heroShowcaseMedia from "../../assets/marketing/features-hero.png";
+import platformMap from "../../assets/marketing/platform-automation.png";
+import automationJourney from "../../assets/marketing/automation-journey.png";
 
 const highlightCardConfig = [
   { key: "scheduling", Icon: EventAvailableIcon },
@@ -542,28 +542,29 @@ const FeaturePage = () => {
             </Stack>
           </Grid>
           <Grid item xs={12} md={7}>
-            <Paper
-              elevation={0}
+            <Box
               sx={{
-                borderRadius: marketing.radius?.xl || 32,
-                overflow: "hidden",
-                p: { xs: 2, md: 3 },
-                background:
-                  marketing.gradients?.surface || alpha(theme.palette.background.paper, 0.9),
-                boxShadow: marketing.shadows?.lg || theme.shadows[12],
-                border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.18)}`,
+                width: "100%",
+                maxWidth: 860,
+                mx: "auto",
               }}
             >
               <motion.img
                 src={platformMap}
                 alt={platformMapCopy.mediaAlt}
-                style={{ display: "block", width: "100%", height: "auto" }}
-                initial={{ opacity: 0, scale: 0.94 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  height: "auto",
+                  borderRadius: marketing.radius?.lg || 24,
+                  boxShadow: marketing.shadows?.lg || theme.shadows[12],
+                }}
+                initial={{ opacity: 0, x: 24, scale: 0.98, rotateX: 6 }}
+                whileInView={{ opacity: 1, x: 0, scale: 1, rotateX: 0 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
                 viewport={{ once: true, amount: 0.4 }}
               />
-            </Paper>
+            </Box>
           </Grid>
         </Grid>
       </Box>

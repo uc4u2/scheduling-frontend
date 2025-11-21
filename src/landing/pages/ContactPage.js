@@ -24,7 +24,7 @@ import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import FloatingBlob from "../../components/ui/FloatingBlob";
 import { publicSite } from "../../utils/api";
-import automationJourney from "../../assets/marketing/automation-journey.svg";
+import automationJourney from "../../assets/marketing/automation-journey.png";
 
 const DEFAULT_CONTACT_EMAIL =
   process.env.REACT_APP_CONTACT_ADMIN_EMAIL ||
@@ -558,4 +558,3 @@ const ContactPage = () => {
 };
 
 export default ContactPage;
-
