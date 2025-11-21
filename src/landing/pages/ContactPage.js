@@ -9,6 +9,7 @@ import {
   Alert,
   Paper,
   CircularProgress,
+  Grid,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
@@ -29,11 +30,15 @@ import automationJourney from "../../assets/marketing/automation-journey.png";
 const DEFAULT_CONTACT_EMAIL =
   process.env.REACT_APP_CONTACT_ADMIN_EMAIL ||
   (typeof window !== "undefined" && window.__ENV__?.CONTACT_EMAIL) ||
-  "support@schedulaa.com";
+  "admin@schedulaa.com";
 const DEFAULT_DIRECT_LINES = [
-  `Sales: +1 (415) 555-0198`,
+  `Sales: +1 (514) 000-0000`,
   `Admin: ${DEFAULT_CONTACT_EMAIL}`,
 ];
+
+const HQ_ADDRESS = "171 Harbord Street, Toronto, ON M5S 1H3";
+const MAP_EMBED_URL = "https://maps.google.com/maps?q=171%20Harbord%20Street%2C%20Toronto%2C%20ON%20M5S%201H3&t=&z=15&ie=UTF8&iwloc=&output=embed";
+const MAP_DIRECTIONS_URL = "https://www.google.com/maps/dir/?api=1&destination=171+Harbord+Street+Toronto+ON+M5S+1H3";
 
 const FALLBACK_CONTACT_SLUGS = ["photo-artisto", "photo-artisto-corp", "schedulaa"];
 
@@ -93,7 +98,7 @@ const DEFAULT_CONTENT = {
       overline: "Here to help",
       title: "Reach our rollout specialists in one business day",
     },
-    primaryCta: { label: "Email sales", href: "mailto:sales@schedulaa.com" },
+    primaryCta: { label: "Email us", href: `mailto:${DEFAULT_CONTACT_EMAIL}` },
     secondaryCta: {
       label: "Call +1 (415) 555-0198",
       href: "tel:+14155550198",
@@ -156,6 +161,23 @@ const DEFAULT_CONTENT = {
     title: "Direct lines",
     lines: DEFAULT_DIRECT_LINES,
   },
+  faq: {
+    title: "Contact FAQ",
+    items: [
+      {
+        question: "How fast will someone reply?",
+        answer: "Enterprise rollout specialists respond within one business day for scheduling, payroll, and migration requests.",
+      },
+      {
+        question: "Do you offer implementation services?",
+        answer: "Yes. Our team handles data imports, template mapping, staff onboarding, and payroll validation for every location.",
+      },
+      {
+        question: "How do partners or resellers reach you?",
+        answer: `Email ${DEFAULT_CONTACT_EMAIL} and we’ll route your note to our partnership, integration, or reseller teams.`,
+      },
+    ],
+  },
 };
 
 const HIGHLIGHT_ICON_MAP = {
@@ -182,10 +204,12 @@ const ContactPage = () => {
   const highlightsContent = content?.highlights || DEFAULT_CONTENT.highlights;
   const formContent = content?.form || DEFAULT_CONTENT.form;
   const directContent = content?.direct || DEFAULT_CONTENT.direct;
+  const faqContent = content?.faq || DEFAULT_CONTENT.faq;
   const directLines = getArray(
     directContent.lines,
     DEFAULT_CONTENT.direct.lines
   );
+  const faqItems = getArray(faqContent.items, DEFAULT_CONTENT.faq.items);
 
   const rawSlugEnv =
     process.env.REACT_APP_CONTACT_SLUGS ||
@@ -350,6 +374,22 @@ const ContactPage = () => {
         }}
       />
       <JsonLd data={localBusinessSchema} />
+      {faqItems.length > 0 && (
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faqItems.map((item) => ({
+              "@type": "Question",
+              name: item.question,
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: item.answer,
+              },
+            })),
+          }}
+        />
+      )}
 
       <HeroShowcase
         eyebrow={heroContent?.eyebrow || DEFAULT_CONTENT.hero.eyebrow}
@@ -539,9 +579,89 @@ const ContactPage = () => {
                 </Typography>
               ))}
             </Stack>
-</Paper>
+          </Paper>
+
+          <Paper
+            elevation={0}
+            sx={{
+              mt: 2,
+              p: { xs: 3, md: 5 },
+              borderRadius: marketing.radius?.lg || 28,
+              border: (t) => `1px solid ${alpha(t.palette.divider, 0.2)}`,
+              boxShadow: marketing.shadows?.md || "0 20px 48px rgba(15,23,42,0.12)",
+            }}
+          >
+            <Grid container spacing={{ xs: 3, md: 4 }} alignItems="center">
+              <Grid item xs={12} md={5}>
+                <Stack spacing={1.5} textAlign="center" alignItems="center">
+                  <Typography variant="overline" color="primary" letterSpacing={3}>
+                    Visit our HQ
+                  </Typography>
+                  <Typography variant="h4" fontWeight={800}>
+                    Toronto headquarters
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {HQ_ADDRESS}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Book a meeting in advance and we’ll guide you through the rollout labs and demo suites used for enterprise implementations.
+                  </Typography>
+                  <Button
+                    component="a"
+                    href={MAP_DIRECTIONS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="contained"
+                    color="primary"
+                    sx={{ alignSelf: "center", textTransform: "none", borderRadius: 999, px: 3 }}
+                  >
+                    Get directions
+                  </Button>
+                </Stack>
+              </Grid>
+              <Grid item xs={12} md={7}>
+                <Box
+                  component="iframe"
+                  title="Schedulaa HQ map"
+                  src={MAP_EMBED_URL}
+                  loading="lazy"
+                  style={{ border: 0 }}
+                  sx={{
+                    width: "100%",
+                    height: { xs: 260, md: 320 },
+                    borderRadius: marketing.radius?.lg || 24,
+                    boxShadow: marketing.shadows?.sm || "0 16px 32px rgba(15,23,42,0.15)",
+                  }}
+                  allowFullScreen
+                />
+              </Grid>
+            </Grid>
+          </Paper>
         </Stack>
       </Box>
+
+      {faqItems.length > 0 && (
+        <Box component="section" sx={{ px: { xs: 2, md: 6 }, pb: { xs: 8, md: 10 } }}>
+          <Typography variant="overline" color="primary" letterSpacing={4} fontWeight={700}>
+            {faqContent.title}
+          </Typography>
+          <Typography variant="h3" fontWeight={800} sx={{ mb: 3 }}>
+            Need quick answers?
+          </Typography>
+          <Stack spacing={2}>
+            {faqItems.map((item) => (
+              <Paper key={item.question} variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 4 }}>
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  {item.question}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {item.answer}
+                </Typography>
+              </Paper>
+            ))}
+          </Stack>
+        </Box>
+      )}
 
       <Box sx={{ position: "relative", py: { xs: 8, md: 10 } }}>
         <FloatingBlob

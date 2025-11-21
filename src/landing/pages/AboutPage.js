@@ -135,6 +135,30 @@ const DEFAULT_CONTENT = {
       "Partner with your team",
     ],
   },
+  globalPresence: {
+    title: "Global operations and support",
+    intro:
+      "Schedulaa anchors salons, studios, clinics, and recruiting teams across North America, Europe, and APAC with localized scheduling, booking, and analytics—while payroll compliance today focuses on Canada and the United States.",
+    offices: [
+      {
+        heading: "Toronto · Product HQ",
+        body: "Design, engineering, and compliance teams build the core platform from our Harbord Street headquarters.",
+      },
+      {
+        heading: "San Francisco · Customer success",
+        body: "Enterprise rollout specialists, solution engineers, and partner managers support U.S. customers in Pacific and Central time zones.",
+      },
+      {
+        heading: "London · EMEA launch squad",
+        body: "Regional product leads localize booking flows, analytics, and payroll exports for UK/EU markets.",
+      },
+    ],
+    stats: [
+      { label: "Active customers", value: "2,800+ teams" },
+      { label: "Monthly bookings", value: "1.2M+ reservations" },
+      { label: "Average response", value: "<1 business day" },
+    ],
+  },
   contact: {
     title: "Contact",
     company:
@@ -168,6 +192,7 @@ const AboutPage = () => {
   const missionContent = content?.mission || DEFAULT_CONTENT.mission;
   const leadershipContent = content?.leadership || DEFAULT_CONTENT.leadership;
   const coreValuesContent = content?.coreValues || DEFAULT_CONTENT.coreValues;
+  const globalPresenceContent = content?.globalPresence || DEFAULT_CONTENT.globalPresence;
   const contactContent = content?.contact || DEFAULT_CONTENT.contact;
 
   const heroTitle = getArray(heroContent.title, DEFAULT_CONTENT.hero.title);
@@ -458,6 +483,108 @@ const AboutPage = () => {
               sx={{ bottom: -220, left: -200 }}
             />
           </Box>
+        </Stack>
+      </Box>
+
+      <Box component="section" sx={{ px: { xs: 2, md: 6 }, py: { xs: 8, md: 12 } }}>
+        <Stack spacing={2.5} alignItems="center" textAlign="center">
+          <Typography variant="overline" color="primary" letterSpacing={4} fontWeight={700}>
+            {globalPresenceContent.title}
+          </Typography>
+          <Paper
+            elevation={0}
+            sx={{
+              px: { xs: 3, md: 6 },
+              py: { xs: 3, md: 4 },
+              borderRadius: marketing.radius?.xl || 32,
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)}, ${alpha(
+                theme.palette.secondary.main,
+                0.08
+              )})`,
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+            }}
+          >
+            <Stack spacing={2} alignItems="center">
+              <Box
+                sx={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                  color: theme.palette.primary.main,
+                }}
+              >
+                <PublicIcon fontSize="large" />
+              </Box>
+              <Typography
+                variant="h4"
+                fontWeight={800}
+                sx={{ textAlign: "center", maxWidth: 1080, lineHeight: 1.25 }}
+              >
+                {globalPresenceContent.intro}
+              </Typography>
+              <Typography variant="subtitle2" color="text.secondary" maxWidth={720}>
+                Payroll engines currently support Canada (CPP/EI) and the United States (federal + supported states). Additional regions follow the public roadmap in Docs.
+              </Typography>
+            </Stack>
+          </Paper>
+        </Stack>
+        <Grid container spacing={{ xs: 3, md: 4 }} sx={{ mt: 4 }}>
+          {globalPresenceContent.offices.map((office) => (
+            <Grid item xs={12} md={4} key={office.heading}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  height: "100%",
+                  p: 3,
+                  borderRadius: marketing.radius?.lg || 24,
+                  borderColor: alpha(theme.palette.primary.main, 0.2),
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1.5,
+                }}
+              >
+                <Typography variant="h6" fontWeight={700} gutterBottom>
+                  {office.heading}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {office.body}
+                </Typography>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={3}
+          justifyContent="center"
+          sx={{ mt: 6 }}
+        >
+          {globalPresenceContent.stats.map((stat) => (
+            <Paper
+              key={stat.label}
+              elevation={0}
+              sx={{
+                px: 4,
+                py: 3,
+                borderRadius: 24,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                textAlign: "center",
+                minWidth: 220,
+              }}
+            >
+              <Typography variant="h4" fontWeight={800} color="primary">
+                {stat.value}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {stat.label}
+              </Typography>
+            </Paper>
+          ))}
         </Stack>
       </Box>
     </Box>

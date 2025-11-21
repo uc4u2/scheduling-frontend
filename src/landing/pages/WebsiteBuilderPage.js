@@ -38,6 +38,11 @@ import JsonLd from "../../components/seo/JsonLd";
 const PAGE_URL = "https://www.schedulaa.com/website-builder";
 const CTA_URL = "/register";
 
+const breadcrumbItems = [
+  { name: "Schedulaa", href: "https://www.schedulaa.com/" },
+  { name: "Website builder", href: PAGE_URL },
+];
+
 const featureCards = [
   {
     icon: <BoltIcon fontSize="large" />,
@@ -150,6 +155,36 @@ const supportLinks = [
   { label: "See booking in action", href: "/booking" },
 ];
 
+const resourceHighlights = [
+  {
+    overline: "Docs & onboarding",
+    title: "Step-by-step guides",
+    body: "Access detailed launch guides that cover page creation, booking flows, Stripe activation, and DNS/domain cutovers.",
+    links: [
+      { label: "Read the docs", href: "/docs#website-builder" },
+      { label: "Download sitemap", href: "/sitemap.xml" },
+    ],
+  },
+  {
+    overline: "SEO resources",
+    title: "Index-ready structure",
+    body: "Schedulaa publishes canonical URLs, Open Graph tags, and sitemap updates automatically so Google can crawl every template.",
+    links: [
+      { label: "View SEO checklist", href: "/docs#seo" },
+      { label: "Contact rollout team", href: "/contact" },
+    ],
+  },
+  {
+    overline: "Customer stories",
+    title: "Templates that convert",
+    body: "Studios, clinics, and recruiters ship new landing pages without developers, then monitor conversions from the analytics hub.",
+    links: [
+      { label: "Explore industries", href: "/booking" },
+      { label: "Schedule a walkthrough", href: "/contact" },
+    ],
+  },
+];
+
 const HeroShell = styled(Box)(({ theme }) => ({
   position: "relative",
   overflow: "hidden",
@@ -223,6 +258,20 @@ const WebsiteBuilderPage = () => {
     []
   );
 
+  const breadcrumbSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: breadcrumbItems.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.name,
+        item: item.href,
+      })),
+    }),
+    []
+  );
+
   return (
     <Box sx={{ backgroundColor: theme.palette.background.default, pb: { xs: 10, md: 14 } }}>
       <Meta
@@ -247,6 +296,7 @@ const WebsiteBuilderPage = () => {
       <JsonLd data={softwareSchema} />
       <JsonLd data={howToSchema} />
       <JsonLd data={faqSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       <Container maxWidth="lg" sx={{ pt: { xs: 8, md: 12 } }}>
         <HeroShell>
@@ -396,6 +446,63 @@ const WebsiteBuilderPage = () => {
                     }}
                   />
                 </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Container>
+
+      <Container maxWidth="lg" sx={{ mt: { xs: 8, md: 12 } }}>
+        <Stack spacing={3} textAlign="center" alignItems="center">
+          <Typography variant="overline" sx={{ letterSpacing: 2, color: theme.palette.text.secondary }}>
+            Resources for crawlers & teams
+          </Typography>
+          <Typography variant="h2" sx={{ fontWeight: 800, fontSize: { xs: "1.8rem", md: "2.4rem" } }}>
+            Everything Google and your staff need to trust the site
+          </Typography>
+          <Typography variant="body1" sx={{ maxWidth: 760, color: theme.palette.text.secondary }}>
+            Each website includes structured metadata, sitemap coverage, documentation, and analytics dashboards so search engines
+            crawl fast and operators see what’s working.
+          </Typography>
+        </Stack>
+        <Grid container spacing={3} sx={{ mt: { xs: 4, md: 6 } }}>
+          {resourceHighlights.map((block) => (
+            <Grid item xs={12} md={4} key={block.title}>
+              <Card
+                variant="outlined"
+                sx={{
+                  height: "100%",
+                  borderRadius: 3,
+                  borderColor: alpha(theme.palette.secondary.main, 0.2),
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1.5,
+                  p: 3,
+                }}
+              >
+                <Typography variant="overline" sx={{ letterSpacing: 2, color: theme.palette.secondary.main }}>
+                  {block.overline}
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                  {block.title}
+                </Typography>
+                <Typography variant="body2" sx={{ color: theme.palette.text.secondary, flexGrow: 1 }}>
+                  {block.body}
+                </Typography>
+                <Stack spacing={1.25}>
+                  {block.links.map((link) => (
+                    <Button
+                      key={link.href}
+                      component={Link}
+                      to={link.href}
+                      size="small"
+                      endIcon={<ArrowForwardIcon fontSize="small" />}
+                      sx={{ justifyContent: "flex-start", textTransform: "none", fontWeight: 600 }}
+                    >
+                      {link.label}
+                    </Button>
+                  ))}
+                </Stack>
               </Card>
             </Grid>
           ))}

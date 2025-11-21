@@ -33,6 +33,7 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useTheme, alpha } from "@mui/material/styles";
 import { useTranslation, Trans } from "react-i18next";
 import Meta from "../../components/Meta";
+import JsonLd from "../../components/seo/JsonLd";
 import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import FloatingBlob from "../../components/ui/FloatingBlob";
@@ -59,7 +60,7 @@ const INTEGRATION_STATUS_COLORS = {
   beta: "warning",
 };
 const SUPPORT_LINK_PATH = "/client/support";
-const SUPPORT_EMAIL = "support@schedulaa.com";
+const SUPPORT_EMAIL = "admin@schedulaa.com";
 const STATUS_PAGE_HREF = "/status";
 const PRIVACY_PAGE_HREF = "/privacy";
 const TERMS_PAGE_HREF = "/terms";
@@ -174,6 +175,22 @@ const DocsPage = () => {
   const integrationStatusLabels = useMemo(() => integrationsContent?.statusLabels || {}, [integrationsContent]);
   const faqItems = useMemo(() => faqContent?.items || [], [faqContent]);
   const faqSchemaItems = useMemo(() => faqContent?.schema || [], [faqContent]);
+  const faqJsonLd = useMemo(() => {
+    const schemaEntries = faqSchemaItems.length ? faqSchemaItems : faqItems;
+    if (!schemaEntries.length) return null;
+    return {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: schemaEntries.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    };
+  }, [faqItems, faqSchemaItems]);
   const changelogReleases = useMemo(() => changelogContent?.releases || [], [changelogContent]);
 
   const scrollToAnchor = useCallback((anchorId) => {
@@ -227,47 +244,6 @@ const DocsPage = () => {
     []
   );
 
-  useEffect(() => {
-    const scriptId = "schedulaa-docs-faq-jsonld";
-    const existing = document.getElementById(scriptId);
-
-    if (!faqSchemaItems.length) {
-      if (existing) {
-        existing.remove();
-      }
-      return;
-    }
-
-    const jsonLd = {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      mainEntity: faqSchemaItems.map((item) => ({
-        "@type": "Question",
-        name: item.question,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: item.answer,
-        },
-      })),
-    };
-
-    if (existing) {
-      existing.remove();
-    }
-
-    const script = document.createElement("script");
-    script.type = "application/ld+json";
-    script.id = scriptId;
-    script.text = JSON.stringify(jsonLd);
-    document.head.appendChild(script);
-
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
-  }, [faqSchemaItems]);
-
   const heroBadge = useMemo(
     () => (
       <Stack direction="row" spacing={1.5} alignItems="center">
@@ -313,6 +289,7 @@ const DocsPage = () => {
           image: metaOg.image || "",
         }}
       />
+      <JsonLd data={faqJsonLd} />
 
       <HeroShowcase
         eyebrow={heroContent?.eyebrow || ""}

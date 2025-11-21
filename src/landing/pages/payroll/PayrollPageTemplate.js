@@ -50,6 +50,21 @@ const PayrollPageTemplate = ({ config }) => {
     nextSteps,
   } = config;
   const schemaEntries = Array.isArray(schema) ? schema : schema ? [schema] : [];
+  const faqJsonLd =
+    faq.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faq.map((item) => ({
+            "@type": "Question",
+            name: item.question,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: item.answer,
+            },
+          })),
+        }
+      : null;
 
   return (
     <Box sx={{ backgroundColor: theme.palette.background.default, pb: { xs: 10, md: 14 } }}>
@@ -61,8 +76,9 @@ const PayrollPageTemplate = ({ config }) => {
         twitter={meta.twitter}
       />
       {schemaEntries.map((entry, idx) => (
-        <JsonLd key={idx} data={entry} />
+        <JsonLd key={`schema-${idx}`} data={entry} />
       ))}
+      {faqJsonLd && <JsonLd data={faqJsonLd} />}
 
       <Container maxWidth="lg" sx={{ pt: { xs: 8, md: 10 } }}>
         <Box
