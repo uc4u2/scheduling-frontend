@@ -91,7 +91,10 @@ export const homeFeatureSections = [
       "Collect reviews automatically",
       "Automated reminders and confirmations",
     ],
-    imageUrl: "https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80",
+    gallery: [
+      "https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1525182008055-f88b95ff7980?q=80&w=1200&auto=format&fit=crop",
+    ],
   },
   {
     title: "Staff scheduling & payroll without spreadsheets",
@@ -100,7 +103,10 @@ export const homeFeatureSections = [
       "Time-off approvals synced to payroll",
       "Export payroll with compliance guardrails",
     ],
-    imageUrl: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80",
+    gallery: [
+      "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1454165205744-3b78555e5572?auto=format&fit=crop&w=1200&q=80",
+    ],
   },
   {
     title: "Automations & Integrations",
@@ -111,8 +117,20 @@ export const homeFeatureSections = [
     ],
     gallery: [
       "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1483478550801-ceba5fe50e8e?auto=format&fit=crop&w=1200&q=80",
       "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80",
+    ],
+  },
+  {
+    title: "Actionable analytics",
+    bullets: [
+      "Track revenue, refunds, retention, and utilization",
+      "Drill down by provider, department, or campaign",
+      "Export advanced KPIs directly from dashboards",
+    ],
+    gallery: [
+      "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1500522144261-ea64433bbe27?auto=format&fit=crop&w=1200&q=80",
     ],
   },
 ];
