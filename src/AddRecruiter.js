@@ -35,9 +35,6 @@ const ROLE_OPTIONS = [
   { value: "manager", label: "Manager" },
 ];
 
-const REQUIRED_SUFFIX = " *";
-const withRequired = (label) => `${label}${REQUIRED_SUFFIX}`;
-
 const AddRecruiter = () => {
   const [form, setForm] = useState({
     firstName: "",
@@ -209,7 +206,7 @@ const passwordStrength = useMemo(() => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
-                label={withRequired("First name")}
+                label="First name"
                 fullWidth
                 value={form.firstName}
                 onChange={handleChange("firstName")}
@@ -221,7 +218,7 @@ const passwordStrength = useMemo(() => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label={withRequired("Last name")}
+                label="Last name"
                 fullWidth
                 value={form.lastName}
                 onChange={handleChange("lastName")}
@@ -233,7 +230,7 @@ const passwordStrength = useMemo(() => {
             </Grid>
             <Grid item xs={12}>
               <TextField
-                label={withRequired("Work email")}
+                label="Work email"
                 type="email"
                 fullWidth
                 value={form.email}
@@ -247,7 +244,7 @@ const passwordStrength = useMemo(() => {
             <Grid item xs={12} sm={6}>
               <TextField
                 select
-                label={withRequired("Department")}
+                label="Department"
                 fullWidth
                 value={form.departmentId}
                 onChange={handleChange("departmentId")}
@@ -258,7 +255,6 @@ const passwordStrength = useMemo(() => {
                     ? "Assign this member to a department."
                     : "No departments yet? Add them under Settings → Departments.")
                 }
-                required
               >
                 <MenuItem value="">
                   <em>Choose department</em>
@@ -273,11 +269,10 @@ const passwordStrength = useMemo(() => {
             <Grid item xs={12} sm={6}>
               <TextField
                 select
-                label={withRequired("Role")}
+                label="Role"
                 fullWidth
                 value={form.role}
                 onChange={handleChange("role")}
-                required
               >
                 {ROLE_OPTIONS.map((role) => (
                   <MenuItem key={role.value} value={role.value}>
@@ -288,13 +283,12 @@ const passwordStrength = useMemo(() => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label={withRequired("Timezone")}
+                label="Timezone"
                 fullWidth
                 value={form.timezone}
                 onChange={handleChange("timezone")}
                 error={Boolean(fieldErrors.timezone)}
                 helperText={fieldErrors.timezone || "IANA format (e.g., America/Toronto)"}
-                required
               />
             </Grid>
           </Grid>
@@ -315,7 +309,6 @@ const passwordStrength = useMemo(() => {
                 error={Boolean(fieldErrors.street)}
                 helperText={fieldErrors.street}
                 autoComplete="address-line1"
-                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -327,7 +320,6 @@ const passwordStrength = useMemo(() => {
                 error={Boolean(fieldErrors.city)}
                 helperText={fieldErrors.city}
                 autoComplete="address-level2"
-                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -368,7 +360,7 @@ const passwordStrength = useMemo(() => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
-                label={withRequired("Password")}
+                label="Password"
                 type={showPassword ? "text" : "password"}
                 fullWidth
                 value={form.password}
@@ -394,7 +386,7 @@ const passwordStrength = useMemo(() => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label={withRequired("Confirm password")}
+                label="Confirm password"
                 type={showConfirm ? "text" : "password"}
                 fullWidth
                 value={form.confirmPassword}
