@@ -10,9 +10,11 @@ import {
   Snackbar,
   Alert,
   CircularProgress,
+  Stack,
 } from "@mui/material";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
+import { Link as RouterLink } from "react-router-dom";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 
 const CANADA_PROVINCES = [
@@ -231,6 +233,47 @@ const EmployeeProfileForm = ({ token }) => {
       title={t("manager.employeeProfiles.title")}
       subtitle={t("manager.employeeProfiles.subtitle")}
     >
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          mb: 3,
+          borderRadius: 3,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          backgroundColor: (theme) =>
+            theme.palette.mode === "dark"
+              ? theme.palette.background.paper
+              : theme.palette.grey[50],
+        }}
+      >
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignItems={{ xs: "flex-start", md: "center" }}
+          justifyContent="space-between"
+        >
+          <Box>
+            <Typography variant="subtitle1" fontWeight={600}>
+              {t("manager.employeeProfiles.quickAddTitle", "Need to add someone new?")}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t(
+                "manager.employeeProfiles.quickAddSubtitle",
+                "Use the Add Team Member workflow for stronger validation, password rules, and onboarding controls."
+              )}
+            </Typography>
+          </Box>
+          <Button
+            component={RouterLink}
+            to="/manager/add-member"
+            variant="contained"
+            color="primary"
+          >
+            {t("manager.employeeProfiles.actions.launchAddMember", "Open Add Team Member")}
+          </Button>
+        </Stack>
+      </Paper>
+
       <TextField
         select
         label={t("manager.employeeProfiles.filters.department")}

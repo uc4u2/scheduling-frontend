@@ -64,6 +64,7 @@ import {
   FolderShared,
   OpenInFull,
   CloseFullscreen,
+  PersonAddAlt as PersonAddAltIcon,
 } from "@mui/icons-material";
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 
@@ -95,6 +96,7 @@ import Payroll from "./pages/sections/Payroll";
 import EmployeeProfileForm from "./pages/Payroll/EmployeeProfileForm";
 import Tax from "./pages/sections/Tax";
 import SavedPayrollsPortal from "./pages/sections/SavedPayrollsPortal";
+import AddRecruiter from "./AddRecruiter";
 import WebsiteSuite from "./pages/sections/management/WebsiteSuite";
 import ManagementFrame from "./components/ui/ManagementFrame";
 import { getUserTimezone } from "./utils/timezone";
@@ -144,6 +146,7 @@ const menuConfig = [
     children: [
       { labelKey: "manager.menu.companyProfile", key: "CompanyProfile", icon: <Business /> },
       { labelKey: "manager.menu.employeeProfiles", key: "employee-profiles", icon: <FolderShared /> },
+      { label: "Add team member", key: "add-member", icon: <PersonAddAltIcon /> },
     ],
   },
 
@@ -676,13 +679,13 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       menuConfig.map((item) => {
         const mappedItem = {
           ...item,
-          label: t(item.labelKey),
+          label: item.labelKey ? t(item.labelKey) : item.label || "",
         };
 
         if (item.children) {
           mappedItem.children = item.children.map((child) => ({
             ...child,
-            label: t(child.labelKey),
+            label: child.labelKey ? t(child.labelKey) : child.label || "",
           }));
         }
 
@@ -1623,6 +1626,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
       case "employee-profiles":
         return <EmployeeProfileForm token={token} />;
+      case "add-member":
+        return <AddRecruiter />;
 
       case "website-pages":
         return <WebsiteSuite />;

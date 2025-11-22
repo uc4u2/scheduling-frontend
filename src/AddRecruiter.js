@@ -21,6 +21,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
 import axios from "axios";
 import { getUserTimezone } from "./utils/timezone";
+import { Link as RouterLink } from "react-router-dom";
+import { useDepartments } from "./pages/sections/hooks/useRecruiterDepartments";
 
 const API_BASE =
   (process.env.REACT_APP_API_URL || "http://localhost:5000").replace(/\/$/, "");
@@ -29,7 +31,7 @@ const PASSWORD_HELP =
   "8+ chars, uppercase, lowercase, number, and symbol required.";
 
 const ROLE_OPTIONS = [
-  { value: "recruiter", label: "Recruiter" },
+  { value: "recruiter", label: "Employee" },
   { value: "manager", label: "Manager" },
 ];
 
@@ -40,8 +42,12 @@ const AddRecruiter = () => {
     email: "",
     phone: "",
     role: "recruiter",
-    department: "",
+    departmentId: "",
     timezone: getUserTimezone(),
+    city: "",
+    street: "",
+    state: "",
+    postalCode: "",
     password: "",
     confirmPassword: "",
     agreedToTerms: false,
@@ -50,20 +56,21 @@ const AddRecruiter = () => {
   const [submitState, setSubmitState] = useState({ status: "idle", message: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const departments = useDepartments();
 
-  const passwordStrength = useMemo(() => {
-    if (!form.password) return "";
-    const score = [
-      /[A-Z]/.test(form.password),
-      /[a-z]/.test(form.password),
-      /[0-9]/.test(form.password),
-      /[^A-Za-z0-9]/.test(form.password),
-      form.password.length >= 12,
-    ].filter(Boolean).length;
-    if (score >= 4) return "Strong";
-    if (score >= 3) return "Medium";
-    return "Weak";
-  }, [form.password]);
+const passwordStrength = useMemo(() => {
+  if (!form.password) return "";
+  const score = [
+    /[A-Z]/.test(form.password),
+    /[a-z]/.test(form.password),
+    /[0-9]/.test(form.password),
+    /[^A-Za-z0-9]/.test(form.password),
+    form.password.length >= 12,
+  ].filter(Boolean).length;
+  if (score >= 4) return "Strong";
+  if (score >= 3) return "Medium";
+  return "Weak";
+}, [form.password]);
 
   const handleChange = (key) => (event) => {
     const value = event.target.type === "checkbox" ? event.target.checked : event.target.value;
@@ -77,7 +84,7 @@ const AddRecruiter = () => {
     if (!form.lastName.trim()) errors.lastName = "Required";
     if (!form.email.trim()) errors.email = "Email required";
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) errors.email = "Invalid email";
-    if (!form.department.trim()) errors.department = "Required";
+    if (!form.departmentId) errors.departmentId = "Required";
     if (!form.password) errors.password = "Password required";
     else if (!/[A-Z]/.test(form.password) ||
       !/[a-z]/.test(form.password) ||
@@ -108,8 +115,12 @@ const AddRecruiter = () => {
         email: form.email.trim(),
         phone: form.phone.trim(),
         role: form.role,
-        department: form.department.trim() || "General",
+        department_id: form.departmentId ? Number(form.departmentId) : null,
         timezone: form.timezone.trim() || getUserTimezone(),
+        address_city: form.city.trim() || null,
+        address_street: form.street.trim() || null,
+        address_state: form.state.trim() || null,
+        address_zip: form.postalCode.trim() || null,
         password: form.password,
         password_confirm: form.confirmPassword,
         agreed_to_terms: form.agreedToTerms,
@@ -128,8 +139,12 @@ const AddRecruiter = () => {
         email: "",
         phone: "",
         role: form.role,
-        department: "",
+        departmentId: "",
         timezone: getUserTimezone(),
+        city: "",
+        street: "",
+        state: "",
+        postalCode: "",
         password: "",
         confirmPassword: "",
         agreedToTerms: false,
@@ -145,6 +160,11 @@ const AddRecruiter = () => {
             last_name: "lastName",
             password_confirm: "confirmPassword",
             agreed_to_terms: "agreedToTerms",
+            department_id: "departmentId",
+            address_street: "street",
+            address_city: "city",
+            address_state: "state",
+            address_zip: "postalCode",
           }[key] || key;
           mapped[mapKey] = value;
         });
@@ -220,22 +240,28 @@ const AddRecruiter = () => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Phone"
-                fullWidth
-                value={form.phone}
-                onChange={handleChange("phone")}
-                autoComplete="tel"
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
+                select
                 label="Department"
                 fullWidth
-                value={form.department}
-                onChange={handleChange("department")}
-                error={Boolean(fieldErrors.department)}
-                helperText={fieldErrors.department || "e.g., Sales, Ops"}
-              />
+                value={form.departmentId}
+                onChange={handleChange("departmentId")}
+                error={Boolean(fieldErrors.departmentId)}
+                helperText={
+                  fieldErrors.departmentId ||
+                  (departments.length
+                    ? "Assign this member to a department."
+                    : "No departments yet? Add them under Settings → Departments.")
+                }
+              >
+                <MenuItem value="">
+                  <em>Choose department</em>
+                </MenuItem>
+                {departments.map((dept) => (
+                  <MenuItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
@@ -260,6 +286,68 @@ const AddRecruiter = () => {
                 onChange={handleChange("timezone")}
                 error={Boolean(fieldErrors.timezone)}
                 helperText={fieldErrors.timezone || "IANA format (e.g., America/Toronto)"}
+              />
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 3 }} />
+
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            Location & contact details
+          </Typography>
+
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                label="Street address"
+                fullWidth
+                value={form.street}
+                onChange={handleChange("street")}
+                error={Boolean(fieldErrors.street)}
+                helperText={fieldErrors.street}
+                autoComplete="address-line1"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="City"
+                fullWidth
+                value={form.city}
+                onChange={handleChange("city")}
+                error={Boolean(fieldErrors.city)}
+                helperText={fieldErrors.city}
+                autoComplete="address-level2"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="State / Province"
+                fullWidth
+                value={form.state}
+                onChange={handleChange("state")}
+                error={Boolean(fieldErrors.state)}
+                helperText={fieldErrors.state}
+                autoComplete="address-level1"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Postal / ZIP code"
+                fullWidth
+                value={form.postalCode}
+                onChange={handleChange("postalCode")}
+                error={Boolean(fieldErrors.postalCode)}
+                helperText={fieldErrors.postalCode || "CA: A1A 1A1 · US: 12345-6789"}
+                autoComplete="postal-code"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Phone"
+                fullWidth
+                value={form.phone}
+                onChange={handleChange("phone")}
+                autoComplete="tel"
               />
             </Grid>
           </Grid>
@@ -317,7 +405,21 @@ const AddRecruiter = () => {
             <Grid item xs={12}>
               <FormControlLabel
                 control={<Checkbox checked={form.agreedToTerms} onChange={handleChange("agreedToTerms")} />}
-                label="I confirm that this user agrees to the Schedulaa User Agreement."
+                label={
+                  <Typography variant="body2">
+                    I confirm this user agrees to the{" "}
+                    <Button
+                      component={RouterLink}
+                      to="/user-agreement"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="small"
+                    >
+                      Schedulaa User Agreement
+                    </Button>
+                    .
+                  </Typography>
+                }
               />
               {fieldErrors.agreedToTerms && (
                 <Typography variant="caption" color="error">
@@ -341,18 +443,24 @@ const AddRecruiter = () => {
               variant="outlined"
               color="inherit"
               fullWidth
-              onClick={() => setForm({
-                firstName: "",
-                lastName: "",
-                email: "",
-                phone: "",
-                role: form.role,
-                department: "",
-                timezone: getUserTimezone(),
-                password: "",
-                confirmPassword: "",
-                agreedToTerms: false,
-              })}
+              onClick={() =>
+                setForm({
+                  firstName: "",
+                  lastName: "",
+                  email: "",
+                  phone: "",
+                  role: form.role,
+                  departmentId: "",
+                  timezone: getUserTimezone(),
+                  city: "",
+                  street: "",
+                  state: "",
+                  postalCode: "",
+                  password: "",
+                  confirmPassword: "",
+                  agreedToTerms: false,
+                })
+              }
             >
               Reset form
             </Button>
