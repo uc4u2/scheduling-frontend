@@ -146,9 +146,10 @@ const menuConfig = [
     children: [
       { labelKey: "manager.menu.companyProfile", key: "CompanyProfile", icon: <Business /> },
       { labelKey: "manager.menu.employeeProfiles", key: "employee-profiles", icon: <FolderShared /> },
-      { label: "Add team member", key: "add-member", icon: <PersonAddAltIcon /> },
     ],
   },
+
+  { label: "Add team member", key: "add-member", icon: <PersonAddAltIcon /> },
 
   // Website & pages stays top-level
   { labelKey: "manager.menu.websitePages", key: "website-pages", icon: <Article /> },
@@ -710,19 +711,6 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
-  const [newEmployee, setNewEmployee] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    password: "",
-    timezone: getUserTimezone(),
-    role: "recruiter",
-    department_id: "",
-    address_street: "",
-    address_city: "",
-    address_state: "",
-    address_zip: "",
-  });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [confirmArchiveId, setConfirmArchiveId] = useState(null);
@@ -732,16 +720,6 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const [timeRange, setTimeRange] = useState("14");
 
   const API_URL_LOCAL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
-  const timezones = [
-    "America/Toronto",
-    "America/New_York",
-    "America/Chicago",
-    "Europe/London",
-    "Asia/Tokyo",
-    "Asia/Kolkata",
-    "Australia/Sydney",
-  ];
 
   useEffect(() => {
     localStorage.setItem("manager_selected_view", selectedView);
@@ -779,12 +757,20 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, departmentFilter, selectedView]);
 
+  useEffect(() => {
+    if (token && selectedView === "overview") {
+      fetchEmployees({ ignoreFilter: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, selectedView]);
+
   // API calls - Employee Management
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (options = {}) => {
+    const { ignoreFilter = false } = options;
     try {
       const res = await axios.get(`${API_URL_LOCAL}/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: departmentFilter ? { department_id: departmentFilter } : {},
+        params: !ignoreFilter && departmentFilter ? { department_id: departmentFilter } : {},
       });
       setEmployees(res.data.recruiters || []);
     } catch {
@@ -800,39 +786,6 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       setDepartments(res.data || []);
     } catch {
       setError("Failed to fetch departments.");
-    }
-  };
-
-  const handleAddEmployee = async () => {
-    const { first_name, last_name, email, password, timezone, role, department_id } = newEmployee;
-
-    if (!first_name || !last_name || !email || !timezone || !role) {
-      return setError("First name, last name, email, timezone, and role are required.");
-    }
-
-    try {
-      const res = await axios.post(`${API_URL_LOCAL}/manager/recruiters`, newEmployee, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setMessage(res.data.message);
-      setNewEmployee({
-        first_name: "",
-        last_name: "",
-        email: "",
-        password: "",
-        timezone: "America/New_York",
-        role: "recruiter",
-        department_id: "",
-        address_street: "",
-        address_city: "",
-        address_state: "",
-        address_zip: "",
-      });
-
-      fetchEmployees();
-    } catch (err) {
-      setError(err.response?.data?.error || "Error adding employee.");
     }
   };
 
@@ -892,8 +845,12 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     }
   };
 
-  const filteredEmployees =
-    departmentFilter ? employees.filter((e) => String(e.department_id) === String(departmentFilter)) : employees;
+  const filteredEmployees = useMemo(() => {
+    if (departmentFilter && selectedView === "employee-management") {
+      return employees.filter((e) => String(e.department_id) === String(departmentFilter));
+    }
+    return employees;
+  }, [departmentFilter, employees, selectedView]);
 
   const headerStyle = {
     color: theme.palette.text.primary,
@@ -934,7 +891,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     switch (selectedView) {
       case "__landing__":
         return (
-          <ManagementFrame title="Employee Management" subtitle="Manage active employees, add new team members, and compare performance.">
+          <ManagementFrame title="Employee Management" subtitle="Manage active employees, launch onboarding workflows, and compare performance.">
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>Employee Management</Typography>
@@ -1056,7 +1013,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         );
       case "employee-management":
         return (
-          <ManagementFrame title="Employee Management" subtitle="Manage active employees, add new team members, and compare performance.">
+          <ManagementFrame title="Employee Management" subtitle="Manage active employees, launch onboarding workflows, and compare performance.">
 
             {error && (
               <Typography color="error" sx={{ mb: 2 }}>
@@ -1068,6 +1025,32 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                 {message}
               </Typography>
             )}
+
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                borderRadius: 2,
+                border: (theme) => `1px dashed ${theme.palette.divider}`,
+                backgroundColor: (theme) => theme.palette.background.default,
+              }}
+            >
+              <Typography fontWeight={600} gutterBottom>
+                Need to add a new team member?
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Use the dedicated Add Member workspace for the full onboarding form (address, department, payroll, compliance consent).
+              </Typography>
+              <Button
+                sx={{ mt: 2 }}
+                variant="contained"
+                onClick={() => navigate("/manager/add-member")}
+                startIcon={<PersonAddAltIcon />}
+              >
+                Launch Add Member
+              </Button>
+            </Paper>
 
             {/* Active Employees */}
             <Accordion defaultExpanded>
@@ -1147,131 +1130,61 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
               </AccordionDetails>
             </Accordion>
 
-            {/* Add New Employee */}
+            {/* Confirm Archive Dialog */}
+            <Dialog open={!!confirmArchiveId} onClose={() => setConfirmArchiveId(null)}>
+              <DialogTitle>Are you sure you want to archive this employee?</DialogTitle>
+              <DialogActions>
+                <Button onClick={() => setConfirmArchiveId(null)}>Cancel</Button>
+                <Button onClick={handleArchive} color="warning">
+                  Archive
+                </Button>
+              </DialogActions>
+            </Dialog>
+          </ManagementFrame>
+        );
+
+      case "advanced-management":
+        return <SecondNewManagementDashboard token={token} />;
+
+      // Other dashboard sections render here
+      case "overview":
+        return (
+          <ManagementFrame title="Employee Management" subtitle="Manage active employees, launch onboarding workflows, and compare performance.">
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+              Dashboard Overview
+            </Typography>
+            <Overview token={token} />
+
+            <Typography variant="h6" sx={{ mt: 3, mb: 1.5, fontWeight: 700 }}>
+              Quick Links
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
+              <Button variant="contained" onClick={() => setSelectedView("website-pages")}>{t("manager.menu.websitePages")}</Button>
+              <Button variant="outlined" onClick={() => setSelectedView("team-activity")}>Team Activity</Button>
+              <Button variant="outlined" onClick={() => setSelectedView("master-calendar")}>Master Calendar</Button>
+              <Button variant="outlined" onClick={() => setSelectedView("candidate-funnel")}>Candidate Funnel</Button>
+              <Button variant="outlined" onClick={() => setSelectedView("recruiter-performance")}>Recruiter Performance</Button>
+              <Button variant="outlined" onClick={() => setSelectedView("candidate-search")}>Candidate Search</Button>
+              <Button variant="outlined" onClick={() => setSelectedView("feedback-notes")}>Feedback & Notes</Button>
+              <Button variant="outlined" onClick={() => setSelectedView("recruiter-availability")}>Recruiter Availability</Button>
+              <Button variant="outlined" onClick={() => setSelectedView("recent-bookings")}>Recent Bookings</Button>
+            </Stack>
+
             <Accordion sx={{ mt: 2 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" sx={headerStyle}>
-                  Add New Employee
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Stack spacing={2}>
-                  <TextField
-                    label="First Name"
-                    value={newEmployee.first_name}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, first_name: e.target.value })}
-                    fullWidth
-                    required
-                  />
-                  <TextField
-                    label="Last Name"
-                    value={newEmployee.last_name}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, last_name: e.target.value })}
-                    fullWidth
-                    required
-                  />
-                  <TextField
-                    label="Email"
-                    value={newEmployee.email}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                    fullWidth
-                    required
-                  />
-                  <TextField
-                    label="Password"
-                    type="password"
-                    value={newEmployee.password}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
-                    fullWidth
-                    required
-                  />
-
-                  <TextField
-                    select
-                    label="Department"
-                    value={newEmployee.department_id || ""}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, department_id: e.target.value })}
-                    fullWidth
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {getDepartmentArray(departments).map((dept) => (
-                      <MenuItem key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-
-                  <TextField
-                    label="Street Address"
-                    value={newEmployee.address_street}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, address_street: e.target.value })}
-                    fullWidth
-                  />
-                  <TextField
-                    label="City"
-                    value={newEmployee.address_city}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, address_city: e.target.value })}
-                    fullWidth
-                  />
-                  <TextField
-                    label="State / Province"
-                    value={newEmployee.address_state}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, address_state: e.target.value })}
-                    fullWidth
-                  />
-                  <TextField
-                    label="Postal / ZIP Code"
-                    value={newEmployee.address_zip}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, address_zip: e.target.value })}
-                    fullWidth
-                    helperText="🇨🇦 Canada: A1A 1A1 | 🇺🇸 USA: 12345-6789"
-                  />
-
-                  <TextField
-                    select
-                    label="Timezone"
-                    value={newEmployee.timezone}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, timezone: e.target.value })}
-                    fullWidth
-                  >
-                    {timezones.map((tz) => (
-                      <MenuItem key={tz} value={tz}>
-                        {tz}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-
-                  <TextField
-                    select
-                    label="Role"
-                    value={newEmployee.role}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
-                    fullWidth
-                  >
-                    <MenuItem value="recruiter">Employee</MenuItem>
-                    <MenuItem value="manager">Manager</MenuItem>
-                  </TextField>
-
-                  <Button variant="contained" onClick={handleAddEmployee}>
-                    Add Employee
-                  </Button>
-                </Stack>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Employee Comparison Panel */}
-            <Accordion sx={{ mt: 2 }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6" sx={headerStyle}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   Compare Employees
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
                 <FormControl fullWidth>
                   <InputLabel>Select Employees</InputLabel>
-                  <Select multiple value={selectedForComparison} onChange={(e) => setSelectedForComparison(e.target.value)} label="Select Employees">
+                  <Select
+                    multiple
+                    value={selectedForComparison}
+                    onChange={(e) => setSelectedForComparison(e.target.value)}
+                    label="Select Employees"
+                  >
                     {(filteredEmployees || []).map((e) => (
                       <MenuItem key={e.id} value={e.id}>
                         {e.first_name} {e.last_name} ({e.email})
@@ -1280,14 +1193,14 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                   </Select>
                 </FormControl>
 
-                <Stack direction="row" spacing={2} alignItems="center" mt={2}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }} mt={2}>
                   <TextField
                     select
                     label="Time Range (days)"
                     value={timeRange}
                     onChange={(e) => setTimeRange(e.target.value)}
                     size="small"
-                    sx={{ width: 200 }}
+                    sx={{ width: { xs: "100%", md: 200 } }}
                   >
                     <MenuItem value="7">Last 7 Days</MenuItem>
                     <MenuItem value="14">Last 14 Days</MenuItem>
@@ -1315,46 +1228,6 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                 {comparisonData.length > 0 && <RecruiterComparisonPanel data={comparisonData} />}
               </AccordionDetails>
             </Accordion>
-
-            {/* Confirm Archive Dialog */}
-            <Dialog open={!!confirmArchiveId} onClose={() => setConfirmArchiveId(null)}>
-              <DialogTitle>Are you sure you want to archive this employee?</DialogTitle>
-              <DialogActions>
-                <Button onClick={() => setConfirmArchiveId(null)}>Cancel</Button>
-                <Button onClick={handleArchive} color="warning">
-                  Archive
-                </Button>
-              </DialogActions>
-            </Dialog>
-          </ManagementFrame>
-        );
-
-      case "advanced-management":
-        return <SecondNewManagementDashboard token={token} />;
-
-      // Other dashboard sections render here
-      case "overview":
-        return (
-          <ManagementFrame title="Employee Management" subtitle="Manage active employees, add new team members, and compare performance.">
-            <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-              Dashboard Overview
-            </Typography>
-            <Overview token={token} />
-
-            <Typography variant="h6" sx={{ mt: 3, mb: 1.5, fontWeight: 700 }}>
-              Quick Links
-            </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-              <Button variant="contained" onClick={() => setSelectedView("website-pages")}>{t("manager.menu.websitePages")}</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("team-activity")}>Team Activity</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("master-calendar")}>Master Calendar</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("candidate-funnel")}>Candidate Funnel</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("recruiter-performance")}>Recruiter Performance</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("candidate-search")}>Candidate Search</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("feedback-notes")}>Feedback & Notes</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("recruiter-availability")}>Recruiter Availability</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("recent-bookings")}>Recent Bookings</Button>
-            </Stack>
 
             {/* Inline sections 2..10 */}
             <Accordion sx={{ mt: 2 }}>
@@ -1574,7 +1447,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
       case "recent-bookings":
         return (
-          <ManagementFrame title="Employee Management" subtitle="Manage active employees, add new team members, and compare performance.">
+          <ManagementFrame title="Employee Management" subtitle="Manage active employees, launch onboarding workflows, and compare performance.">
             <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Recent Bookings</Typography>
             {Array.isArray(activityLanding.recent_bookings) && activityLanding.recent_bookings.length > 0 ? (
               <Paper sx={{ p: 3, mt: 1, borderLeft: (theme) => `5px solid ${theme.palette.primary.main}` }}>
