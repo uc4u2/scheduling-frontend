@@ -26,6 +26,8 @@ import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
 
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import OnboardingWidget from "../../components/management/OnboardingWidget";
+import AttendanceSummaryCard from "../../components/management/AttendanceSummaryCard";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -243,6 +245,21 @@ const Overview = () => {
                 departments,
                 "#455a64"
               )}
+            </Grid>
+          </Grid>
+
+          <Grid container spacing={3} sx={{ mt: 1 }}>
+            <Grid item xs={12} md={6}>
+              <OnboardingWidget
+                onViewAll={() => navigate("/manager/onboarding")}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <AttendanceSummaryCard
+                onViewReport={() =>
+                  navigate("/manager/attendance-summaries")
+                }
+              />
             </Grid>
           </Grid>
 

@@ -22,6 +22,10 @@ const BASE_CHIPS = [
   "Payroll & QuickBooks/Xero",
   "Pricing & plans",
   "Compare Schedulaa with QuickBooks",
+  "AI Website Assistant",
+  "Onboarding checklist & rollout",
+  "Attendance summaries",
+  "Payroll explanations",
 ];
 
 const PAGE_CHIPS = {
@@ -369,6 +373,10 @@ function buildIntroMessages() {
     {
       sender: "bot",
       text: "Schedulaa is an operations OS for service teams.\nBooking → staff scheduling → breaks → time tracking → payroll → QuickBooks/Xero — all in one workflow.",
+    },
+    {
+      sender: "bot",
+      text: "New AI copilots can generate website copy, build onboarding checklists, summarize attendance trends, and explain payroll changes. Ask me where to find them or how to use them.",
     },
     {
       sender: "bot",

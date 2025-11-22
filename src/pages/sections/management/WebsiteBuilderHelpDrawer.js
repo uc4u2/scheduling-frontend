@@ -24,6 +24,7 @@ import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import FolderIcon from "@mui/icons-material/Folder";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import WebsiteAiAssistant from "../../../components/website/WebsiteAiAssistant";
 
 const STEP_CONFIG = [
   { key: "pickPage", Icon: GridViewIcon },
@@ -169,6 +170,9 @@ export default function WebsiteBuilderHelpDrawer({
             {t("buttons.closeGuide")}
           </Button>
         </Stack>
+
+        <Divider sx={{ my: 3 }} />
+        <WebsiteAiAssistant />
       </Box>
     </Drawer>
   );

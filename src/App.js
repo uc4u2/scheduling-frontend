@@ -86,6 +86,8 @@ import AuditHistory from "./components/AuditHistory";
 import MonthlyAttendanceCalendar from "./components/MonthlyAttendanceCalendar";
 import AddRecruiter from "./AddRecruiter";
 import EmployeeShiftView from "./pages/sections/EmployeeShiftView";
+import OnboardingPage from "./pages/sections/management/OnboardingPage";
+import AttendanceReportPage from "./pages/sections/management/AttendanceReportPage";
 import CompanyProfile from "./pages/sections/CompanyProfile";
 import PayrollRawPage from "./pages/sections/PayrollRawPage";
 import Payroll from "./pages/sections/Payroll";
@@ -437,6 +439,11 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/recruiter/candidates" element={<RecruiterCandidates token={token} />} />
           <Route path="/recruiter-stats/:recruiterId" element={<RecruiterStats token={token} />} />
           <Route path="/manager/dashboard" element={<ManagerDashboard token={token} />} />
+          <Route path="/manager/onboarding" element={<OnboardingPage />} />
+          <Route
+            path="/manager/attendance-summaries"
+            element={<AttendanceReportPage />}
+          />
           <Route path="/manager/candidates" element={<CandidateManagement token={token} />} />
           <Route path="/manager/job-openings" element={<JobOpenings />} />
           <Route path="/manager/candidates-management" element={<CandidateManagement />} />

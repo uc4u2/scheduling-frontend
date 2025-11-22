@@ -118,6 +118,25 @@ export default function PayslipModal({ open, onClose, payroll = {}, month }) {
           Pay Period: {month}
         </Typography>
 
+        {row.ai_explanation && (
+          <Box
+            sx={{
+              mt: 1,
+              p: 2,
+              borderRadius: 2,
+              backgroundColor: "background.paper",
+              border: (theme) => `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+              Explanation
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {row.ai_explanation}
+            </Typography>
+          </Box>
+        )}
+
         {isNonZero(row.bpa_annual) && (
           <Typography>BPA Annual: {money(row.bpa_annual)}</Typography>
         )}
