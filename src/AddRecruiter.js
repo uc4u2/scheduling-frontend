@@ -35,6 +35,9 @@ const ROLE_OPTIONS = [
   { value: "manager", label: "Manager" },
 ];
 
+const REQUIRED_SUFFIX = " *";
+const withRequired = (label) => `${label}${REQUIRED_SUFFIX}`;
+
 const AddRecruiter = () => {
   const [form, setForm] = useState({
     firstName: "",
@@ -187,7 +190,7 @@ const passwordStrength = useMemo(() => {
             </Typography>
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            Create recruiter or manager profiles with immediate portal access. Strong passwords and consent are required for enterprise compliance.
+            Create employee or manager profiles with immediate portal access. Strong passwords and consent are required for enterprise compliance.
           </Typography>
         </Stack>
 
@@ -206,29 +209,31 @@ const passwordStrength = useMemo(() => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="First name"
+                label={withRequired("First name")}
                 fullWidth
                 value={form.firstName}
                 onChange={handleChange("firstName")}
                 error={Boolean(fieldErrors.firstName)}
                 helperText={fieldErrors.firstName}
                 autoComplete="given-name"
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Last name"
+                label={withRequired("Last name")}
                 fullWidth
                 value={form.lastName}
                 onChange={handleChange("lastName")}
                 error={Boolean(fieldErrors.lastName)}
                 helperText={fieldErrors.lastName}
                 autoComplete="family-name"
+                required
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
-                label="Work email"
+                label={withRequired("Work email")}
                 type="email"
                 fullWidth
                 value={form.email}
@@ -236,12 +241,13 @@ const passwordStrength = useMemo(() => {
                 error={Boolean(fieldErrors.email)}
                 helperText={fieldErrors.email || "Used for login + OTP"}
                 autoComplete="email"
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 select
-                label="Department"
+                label={withRequired("Department")}
                 fullWidth
                 value={form.departmentId}
                 onChange={handleChange("departmentId")}
@@ -252,6 +258,7 @@ const passwordStrength = useMemo(() => {
                     ? "Assign this member to a department."
                     : "No departments yet? Add them under Settings → Departments.")
                 }
+                required
               >
                 <MenuItem value="">
                   <em>Choose department</em>
@@ -266,10 +273,11 @@ const passwordStrength = useMemo(() => {
             <Grid item xs={12} sm={6}>
               <TextField
                 select
-                label="Role"
+                label={withRequired("Role")}
                 fullWidth
                 value={form.role}
                 onChange={handleChange("role")}
+                required
               >
                 {ROLE_OPTIONS.map((role) => (
                   <MenuItem key={role.value} value={role.value}>
@@ -280,12 +288,13 @@ const passwordStrength = useMemo(() => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Timezone"
+                label={withRequired("Timezone")}
                 fullWidth
                 value={form.timezone}
                 onChange={handleChange("timezone")}
                 error={Boolean(fieldErrors.timezone)}
                 helperText={fieldErrors.timezone || "IANA format (e.g., America/Toronto)"}
+                required
               />
             </Grid>
           </Grid>
@@ -306,6 +315,7 @@ const passwordStrength = useMemo(() => {
                 error={Boolean(fieldErrors.street)}
                 helperText={fieldErrors.street}
                 autoComplete="address-line1"
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -317,6 +327,7 @@ const passwordStrength = useMemo(() => {
                 error={Boolean(fieldErrors.city)}
                 helperText={fieldErrors.city}
                 autoComplete="address-level2"
+                required
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -357,7 +368,7 @@ const passwordStrength = useMemo(() => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Password"
+                label={withRequired("Password")}
                 type={showPassword ? "text" : "password"}
                 fullWidth
                 value={form.password}
@@ -383,7 +394,7 @@ const passwordStrength = useMemo(() => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Confirm password"
+                label={withRequired("Confirm password")}
                 type={showConfirm ? "text" : "password"}
                 fullWidth
                 value={form.confirmPassword}
@@ -404,7 +415,7 @@ const passwordStrength = useMemo(() => {
             </Grid>
             <Grid item xs={12}>
               <FormControlLabel
-                control={<Checkbox checked={form.agreedToTerms} onChange={handleChange("agreedToTerms")} />}
+                control={<Checkbox required checked={form.agreedToTerms} onChange={handleChange("agreedToTerms")} />}
                 label={
                   <Typography variant="body2">
                     I confirm this user agrees to the{" "}
