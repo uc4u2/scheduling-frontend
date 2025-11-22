@@ -24,7 +24,9 @@ import {
   Link,
   Tooltip,
   Chip,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import PaletteIcon from "@mui/icons-material/Palette";
@@ -54,6 +56,9 @@ const EMPTY_FORM = {
 
 const WebsiteManager = ({ companyId: companyIdProp }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
   const autoCompanyId = useCompanyId();
   const companyId = companyIdProp ?? autoCompanyId;
 
@@ -475,40 +480,48 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
         )}
 
         {/* Public viewer link (auto from slug) */}
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "stretch", sm: "center" }}
+          sx={{ width: "100%" }}
+        >
           <TextField
             size="small"
             label={t("management.website.fields.publicUrl")}
             value={slugFullUrl || t("management.website.fields.publicUrlPlaceholder")}
             InputProps={{ readOnly: true }}
-            sx={{ minWidth: 360 }}
+            fullWidth
           />
-          <Tooltip title={t("management.website.tooltips.openPublic")}
-          >
-            <span>
-              <Button
-                variant="outlined"
-                endIcon={<OpenInNewIcon />}
-                href={slugPath || undefined}
-                target="_blank"
-                disabled={!slugPath}
-              >
-                {t("management.website.buttons.open")}
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip title={t("management.website.tooltips.copyLink")}>
-            <span>
-              <Button
-                variant="text"
-                onClick={copyUrl}
-                disabled={!slugFullUrl}
-                startIcon={<ContentCopyIcon />}
-              >
-                {t("management.website.buttons.copy")}
-              </Button>
-            </span>
-          </Tooltip>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+            <Tooltip title={t("management.website.tooltips.openPublic")}>
+              <span>
+                <Button
+                  variant="outlined"
+                  endIcon={<OpenInNewIcon />}
+                  href={slugPath || undefined}
+                  target="_blank"
+                  disabled={!slugPath}
+                  fullWidth={isSmDown}
+                >
+                  {t("management.website.buttons.open")}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title={t("management.website.tooltips.copyLink")}>
+              <span>
+                <Button
+                  variant="text"
+                  onClick={copyUrl}
+                  disabled={!slugFullUrl}
+                  startIcon={<ContentCopyIcon />}
+                  fullWidth={isSmDown}
+                >
+                  {t("management.website.buttons.copy")}
+                </Button>
+              </span>
+            </Tooltip>
+          </Stack>
         </Stack>
       </Stack>
 
@@ -537,8 +550,12 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
       />
 
       <Paper sx={{ p: 2, mb: 3 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <FormControl size="small" sx={{ minWidth: 240 }}>
+        <Stack
+          direction={{ xs: "column", lg: "row" }}
+          spacing={2}
+          alignItems={{ xs: "stretch", lg: "center" }}
+        >
+          <FormControl size="small" sx={{ minWidth: { lg: 240 } }} fullWidth={isMdDown}>
             <InputLabel>{t("management.website.fields.theme")}</InputLabel>
             <Select
               label={t("management.website.fields.theme")}
@@ -564,15 +581,30 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
             variant="outlined"
             startIcon={<PaletteIcon />}
             onClick={() => setOpenTheme(true)}
+            fullWidth={isSmDown}
           >
             {t("management.website.buttons.theme")}
           </Button>
 
-          <Button variant="outlined" onClick={saveSettings}>
+          <Button variant="outlined" onClick={saveSettings} fullWidth={isSmDown}>
             {t("management.website.buttons.saveTheme")}
           </Button>
-          <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", sm: "block" } }} />
-          <Button variant="contained" onClick={publishSite} disabled={!canPublish || publishing}>
+          <Divider
+            orientation="vertical"
+            flexItem
+            sx={{ display: { xs: "none", lg: "block" } }}
+          />
+          <Divider
+            orientation="horizontal"
+            flexItem
+            sx={{ display: { xs: "block", lg: "none" }, my: { xs: 1, lg: 0 } }}
+          />
+          <Button
+            variant="contained"
+            onClick={publishSite}
+            disabled={!canPublish || publishing}
+            fullWidth={isSmDown}
+          >
             {publishing
               ? t("management.website.buttons.publishing", "Publishing…")
               : settings?.is_live
@@ -580,11 +612,15 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
               : t("management.website.buttons.publish")}
           </Button>
 
-          <Stack direction="row" spacing={1} sx={{ ml: "auto" }}>
-            <Button variant="outlined" href="/manager/website/templates">
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            sx={{ ml: { lg: "auto" } }}
+          >
+            <Button variant="outlined" href="/manager/website/templates" fullWidth={isSmDown}>
               {t("management.website.buttons.templates")}
             </Button>
-            <Button variant="contained" href="/manage/website/builder">
+            <Button variant="contained" href="/manage/website/builder" fullWidth={isSmDown}>
               {t("management.website.buttons.visualBuilder")}
             </Button>
           </Stack>
@@ -618,8 +654,17 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
                   <ListItem
                     key={p.id || p.slug}
                     secondaryAction={
-                      <Stack direction="row" spacing={1}>
-                        <Button size="small" onClick={() => editPage(p)} disabled={readOnlyPages}>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        sx={{ minWidth: { sm: 160 } }}
+                      >
+                        <Button
+                          size="small"
+                          onClick={() => editPage(p)}
+                          disabled={readOnlyPages}
+                          fullWidth={isSmDown}
+                        >
                           {t("management.website.buttons.edit")}
                         </Button>
                         <Button
@@ -627,6 +672,7 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
                           color="error"
                           onClick={() => delPage(p.id)}
                           disabled={readOnlyPages || !p.id}
+                          fullWidth={isSmDown}
                         >
                           {t("management.website.buttons.delete")}
                         </Button>

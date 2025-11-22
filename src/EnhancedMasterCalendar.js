@@ -13,6 +13,8 @@ import {
   Select,
   InputLabel,
   Paper,
+  Stack,
+  useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import axios from "axios";
@@ -24,6 +26,7 @@ import { getUserTimezone } from "./utils/timezone";   // adjust path if needed
 import { isoFromParts } from "./utils/datetime";
 const EnhancedMasterCalendar = ({ token }) => {
   const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
 
   /* ─────────── state ─────────── */
   const [events, setEvents] = useState([]);
@@ -128,8 +131,8 @@ const EnhancedMasterCalendar = ({ token }) => {
           borderRadius: 2,
         }}
       >
-        {/* Department */}
-        <FormControl fullWidth sx={{ mb: 2 }}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+          <FormControl fullWidth>
           <InputLabel id="department-select-label">Filter by Department</InputLabel>
           <Select
             labelId="department-select-label"
@@ -147,10 +150,9 @@ const EnhancedMasterCalendar = ({ token }) => {
               </MenuItem>
             ))}
           </Select>
-        </FormControl>
+          </FormControl>
 
-        {/* Recruiter */}
-        <FormControl fullWidth>
+          <FormControl fullWidth>
           <InputLabel id="recruiter-select-label">Filter by Recruiter</InputLabel>
           <Select
             labelId="recruiter-select-label"
@@ -165,7 +167,8 @@ const EnhancedMasterCalendar = ({ token }) => {
               </MenuItem>
             ))}
           </Select>
-        </FormControl>
+          </FormControl>
+        </Stack>
       </Paper>
 
       {/* ───── Calendar ───── */}

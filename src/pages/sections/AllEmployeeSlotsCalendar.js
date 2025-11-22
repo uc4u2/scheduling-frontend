@@ -19,6 +19,7 @@ import {
   Tooltip,
   IconButton,
   useTheme,
+  useMediaQuery,
   Paper,
   Chip,
   Dialog,
@@ -63,6 +64,7 @@ const colorForEmp = (id) => COLORS[Math.abs(parseInt(id, 10) || 0) % COLORS.leng
 
 const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const calRef = useRef(null);
   const fsCalRef = useRef(null);
   const isRecruiter = window.location.pathname.includes("recruiter");
@@ -757,7 +759,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         }}
       />
 
-      <Typography variant="h5" gutterBottom fontWeight={700}>
+      <Typography
+        variant="h5"
+        gutterBottom
+        fontWeight={700}
+        sx={{ textAlign: { xs: "center", sm: "left" } }}
+      >
         Team Availability{" "}
         <Typography component="span" variant="caption" color="text.secondary" fontWeight={400}>
           &nbsp;(Enterprise views)
@@ -838,7 +845,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           </Select>
         </FormControl>
 
-        <Stack direction="row" spacing={1} sx={{ gridColumn: { xs: "span 12", md: "span 3" }, justifyContent: "flex-end" }} alignItems="center">
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1}
+          sx={{ gridColumn: { xs: "span 12", md: "span 3" }, justifyContent: "flex-end" }}
+          alignItems="center"
+        >
           <Chip size="small" label={`TZ: ${tzLabel}`} />
           <Tooltip title="Export CSV/XLSX">
             <IconButton onClick={exportToExcel}><DownloadIcon /></IconButton>
@@ -847,7 +859,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           {/* Day bulk actions */}
           {canCloseSlots && (
             <>
-              <Button size="small" variant="outlined" onClick={(e) => setDayMenuAnchor(e.currentTarget)}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={(e) => setDayMenuAnchor(e.currentTarget)}
+                fullWidth={isSmDown}
+              >
                 Day
               </Button>
               <Menu anchorEl={dayMenuAnchor} open={Boolean(dayMenuAnchor)} onClose={() => setDayMenuAnchor(null)}>
@@ -879,13 +896,21 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               });
               setOpenModal(true);
             }}
+            fullWidth={isSmDown}
           >
             Add
           </Button>
 
-          <Button variant="outlined" onClick={() => fetchEvents()}>Refresh</Button>
+          <Button variant="outlined" onClick={() => fetchEvents()} fullWidth={isSmDown}>
+            Refresh
+          </Button>
 
-          <Button startIcon={<OpenInFullIcon />} variant="contained" onClick={() => setFullScreenOpen(true)}>
+          <Button
+            startIcon={<OpenInFullIcon />}
+            variant="contained"
+            onClick={() => setFullScreenOpen(true)}
+            fullWidth={isSmDown}
+          >
             Open Full Screen
           </Button>
         </Stack>

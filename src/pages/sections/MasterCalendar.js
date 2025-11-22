@@ -16,7 +16,10 @@ import {
   Alert,
   Paper,
   Tooltip,
+  Stack,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 
 /* ------------------------------------------------------------------
    1️⃣  Pastel-colour generator using the golden-angle
@@ -40,6 +43,8 @@ function stringToColor(str) {
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const AvailableShiftsCalendar = ({ token }) => {
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -116,7 +121,11 @@ const AvailableShiftsCalendar = ({ token }) => {
   /* ------------------- UI ------------------- */
   return (
     <Box sx={{ my: 4 }}>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
+      <Typography
+        variant="h5"
+        gutterBottom
+        sx={{ fontWeight: 700, textAlign: { xs: "center", sm: "left" } }}
+      >
         Available Shifts&nbsp;
         <Typography
           component="span"
@@ -135,18 +144,14 @@ const AvailableShiftsCalendar = ({ token }) => {
       )}
 
       {/* Filter Bar */}
-      <Paper
-        sx={{
-          p: 2,
-          mb: 2,
-          display: "flex",
-          gap: 2,
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-        elevation={1}
-      >
-        <FormControl sx={{ minWidth: 220 }}>
+      <Paper sx={{ p: 2, mb: 2 }} elevation={1}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignItems={{ xs: "stretch", md: "center" }}
+          flexWrap="wrap"
+        >
+          <FormControl sx={{ minWidth: { md: 220 } }} fullWidth={isSmDown}>
           <InputLabel>Department</InputLabel>
           <Select
             size="small"
@@ -164,9 +169,9 @@ const AvailableShiftsCalendar = ({ token }) => {
               </MenuItem>
             ))}
           </Select>
-        </FormControl>
+          </FormControl>
 
-        <FormControl sx={{ minWidth: 220 }}>
+          <FormControl sx={{ minWidth: { md: 220 } }} fullWidth={isSmDown}>
           <InputLabel>Employee</InputLabel>
           <Select
             size="small"
@@ -182,7 +187,8 @@ const AvailableShiftsCalendar = ({ token }) => {
               </MenuItem>
             ))}
           </Select>
-        </FormControl>
+          </FormControl>
+        </Stack>
       </Paper>
 
       {/* Legend */}

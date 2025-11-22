@@ -29,7 +29,9 @@ import {
   Snackbar,
   TextField,
   Menu,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -48,6 +50,8 @@ const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
  * Adds employee-side actions if manager permitted in /api/employee/permissions.
  */
 export default function MySetmoreCalendar({ token, initialDate }) {
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const calRef = useRef(null);
   const fsCalRef = useRef(null);
 
@@ -530,17 +534,30 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       )}
 
       <Paper sx={{ p: 2, mb: 2 }} elevation={1}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }} useFlexGap flexWrap="wrap">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          sx={{ mb: 1 }}
+          spacing={1}
+        >
           <Typography variant="h6" fontWeight={700}>
             My Availability{" "}
             <Typography component="span" variant="caption" color="text.secondary" fontWeight={400}>
               &nbsp;(Enterprise)
             </Typography>
           </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
             <Chip size="small" label={`TZ: ${viewerTz}`} />
-            <Button variant="outlined" onClick={fetchEvents}>Refresh</Button>
-            <Button startIcon={<OpenInFullIcon />} variant="contained" onClick={() => setFullScreenOpen(true)}>
+            <Button variant="outlined" onClick={fetchEvents} fullWidth={isSmDown}>
+              Refresh
+            </Button>
+            <Button
+              startIcon={<OpenInFullIcon />}
+              variant="contained"
+              onClick={() => setFullScreenOpen(true)}
+              fullWidth={isSmDown}
+            >
               Full Screen
             </Button>
           </Stack>
@@ -585,7 +602,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           </ToggleButtonGroup>
 
           {/* Status filter */}
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={{ minWidth: 160, flex: isSmDown ? 1 : "initial" }}>
             <InputLabel>Slot Status</InputLabel>
             <Select
               multiple
@@ -620,19 +637,25 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       </Paper>
 
       <Paper sx={{ p: 2 }} elevation={1}>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          alignItems={{ xs: "flex-start", md: "center" }}
+          spacing={1}
+          sx={{ mb: 1 }}
+        >
           <Typography variant="subtitle1" fontWeight={700}>
             {moment(selectedDate).format("ddd, MMM D")} — {daySlots.length} slot(s)
           </Typography>
           <Chip size="small" color="success" label="Available" />
           <Chip size="small" color="error" label="Booked" />
-          <Box sx={{ flex: 1 }} />
+          <Box sx={{ flex: 1, display: { xs: "none", md: "block" } }} />
           {(canCloseSlots || canEditAvailability) && (
             <>
               <Button
                 size="small"
                 variant="outlined"
                 onClick={(e) => setDayMenuEl(e.currentTarget)}
+                fullWidth={isSmDown}
               >
                 Day ▾
               </Button>

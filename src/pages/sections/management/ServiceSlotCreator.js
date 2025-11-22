@@ -10,12 +10,16 @@ import {
   CircularProgress,
   Grid,
   Snackbar,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import axios from "axios";
 
 const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const ServiceSlotCreator = ({ token }) => {
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   // ✅ State
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -192,6 +196,7 @@ const ServiceSlotCreator = ({ token }) => {
         sx={{ mt: 3 }}
         disabled={loading}
         onClick={handleCreateSlot}
+        fullWidth={isSmDown}
       >
         {loading ? <CircularProgress size={24} /> : "Create Slot"}
       </Button>

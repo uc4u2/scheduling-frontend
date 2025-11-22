@@ -37,6 +37,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Slider,
+  useMediaQuery,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import SaveIcon from "@mui/icons-material/Save";
@@ -58,6 +59,7 @@ import { nanoid } from "nanoid";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import { useTranslation, Trans } from "react-i18next";
+import { useTheme } from "@mui/material/styles";
 
 import { wb, navSettings } from "../../../utils/api";
 import { normalizeNavStyle } from "../../../utils/navStyle";
@@ -816,6 +818,9 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const { t } = useTranslation();
   const location = useLocation();                 // ✅ use the hook, not window.location
   const detectedCompanyId = useCompanyId();       // ✅ get it from the hook
+  const theme = useTheme();
+  const isLgDown = useMediaQuery(theme.breakpoints.down("lg"));
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const [companyId, setCompanyId] = useState(     // ✅ local state
     companyIdProp ?? detectedCompanyId ?? ""
   );
@@ -923,11 +928,17 @@ useEffect(() => {
   const justImported = Boolean(location.state?.postImportReload);
   const [suppressEmptyState, setSuppressEmptyState] = useState(justImported);
 
-  useEffect(() => {
-    if (!justImported) return;
-    const t = setTimeout(() => setSuppressEmptyState(false), 400);
-    return () => clearTimeout(t);
-  }, [justImported]);
+useEffect(() => {
+  if (!justImported) return;
+  const t = setTimeout(() => setSuppressEmptyState(false), 400);
+  return () => clearTimeout(t);
+}, [justImported]);
+
+useEffect(() => {
+  if (!isLgDown && inspectorDrawerOpen) {
+    setInspectorDrawerOpen(false);
+  }
+}, [isLgDown, inspectorDrawerOpen]);
 
  
 
@@ -1038,6 +1049,7 @@ const [err, setErr] = useState("");
 const [pagesListOpen, setPagesListOpen] = useState(false);
 const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
 const [inspectorOpen, setInspectorOpen] = useState(false);
+const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
 const [brandingPanelOpen, setBrandingPanelOpen] = useState(false);
 
 useEffect(() => {
@@ -3451,6 +3463,56 @@ const InspectorColumn = (
 );
 
 
+  const mobileInspectorCard = (
+    <SectionCard
+      title={t("manager.visualBuilder.inspector.title")}
+      description={t("manager.visualBuilder.inspector.description")}
+    >
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        {t(
+          "manager.visualBuilder.controls.mobileHint",
+          "Open the inspector or theme designer to fine-tune styles on smaller screens."
+        )}
+      </Typography>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <Button
+          variant="contained"
+          onClick={() => setInspectorDrawerOpen(true)}
+          fullWidth={isSmDown}
+        >
+          {t("manager.visualBuilder.inspector.title")}
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => setThemeOpen(true)}
+          fullWidth={isSmDown}
+        >
+          {t("manager.visualBuilder.controls.buttons.theme")}
+        </Button>
+      </Stack>
+    </SectionCard>
+  );
+
+  const builderColumns = isLgDown ? (
+    <Stack spacing={2}>
+      <Box>{LeftColumn}</Box>
+      <Box>{CanvasColumn}</Box>
+      {mobileInspectorCard}
+    </Stack>
+  ) : (
+    <Grid container spacing={2}>
+      <Grid item xs={12} lg={3}>
+        {LeftColumn}
+      </Grid>
+      <Grid item xs={12} lg={6}>
+        {CanvasColumn}
+      </Grid>
+      <Grid item xs={12} lg={3}>
+        {InspectorColumn}
+      </Grid>
+    </Grid>
+  );
+
 const tabs = [
   {
     label: t("manager.visualBuilder.tabs.build"),
@@ -3458,17 +3520,7 @@ const tabs = [
       <Stack spacing={2}>
         {ControlsCard}
         {AlertsCard}
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={3}>
-            {LeftColumn}
-          </Grid>
-          <Grid item xs={12} md={6}>
-            {CanvasColumn}
-          </Grid>
-          <Grid item xs={12} md={3}>
-            {InspectorColumn}
-          </Grid>
-        </Grid>
+        {builderColumns}
       </Stack>
     ),
   },
@@ -3589,6 +3641,18 @@ if (authError) {
         )}
       />
 
+      <Drawer
+        anchor="right"
+        open={isLgDown && inspectorDrawerOpen}
+        onClose={() => setInspectorDrawerOpen(false)}
+        ModalProps={{ keepMounted: true }}
+        sx={{ display: { lg: "none" } }}
+      >
+        <Box sx={{ width: { xs: "90vw", sm: 420 }, maxWidth: 480, p: 2 }}>
+          {InspectorColumn}
+        </Box>
+      </Drawer>
+
       {/* THEME DRAWER */}
       <Drawer
         anchor="right"
@@ -3605,7 +3669,7 @@ if (authError) {
           }
         }}
       >
-        <Box sx={{ width: { xs: 360, md: 420 }, p: 2 }}>
+        <Box sx={{ width: { xs: "90vw", sm: 420, md: 480 }, maxWidth: 520, p: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
             {t("manager.visualBuilder.drawer.themeDesignerTitle")}
           </Typography>

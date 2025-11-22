@@ -2,9 +2,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Box,
   Button,
   Checkbox,
@@ -18,12 +15,12 @@ import {
   Typography,
   Chip,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import QUESTIONNAIRE_LIMITS from "../constants/questionnaireUploads";
 import { candidateIntakeApi } from "../utils/api";
 import { uploadQuestionnaireFile, downloadQuestionnaireFile } from "../utils/questionnaireUploads";
+import CandidateSlotPicker from "../components/CandidateSlotPicker";
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -164,6 +161,7 @@ const CandidateIntakePage = () => {
   const [slots, setSlots] = useState([]);
   const [timezone, setTimezone] = useState("UTC");
   const [selectedSlotId, setSelectedSlotId] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [bookingSaving, setBookingSaving] = useState(false);
   const [bookingMessage, setBookingMessage] = useState({ severity: "info", message: "" });
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -182,6 +180,7 @@ const CandidateIntakePage = () => {
   const [storageInfo, setStorageInfo] = useState(QUESTIONNAIRE_LIMITS);
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [uploadStates, setUploadStates] = useState({});
+  
 
   const sortedQuestionnaires = useMemo(
     () =>
@@ -194,6 +193,7 @@ const CandidateIntakePage = () => {
     const list = storageInfo?.allowed_mime || storageInfo?.allowedMime;
     return Array.isArray(list) && list.length ? list : QUESTIONNAIRE_LIMITS.allowedMime;
   }, [storageInfo]);
+
 
   const fetchSubmission = useCallback(async () => {
     if (!token) return;
@@ -292,16 +292,9 @@ const CandidateIntakePage = () => {
       );
   }, [slots]);
 
-  const groupedSlots = useMemo(() => {
-    return upcomingSlots.reduce((acc, slot) => {
-      (acc[slot.date] = acc[slot.date] || []).push(slot);
-      return acc;
-    }, {});
-  }, [upcomingSlots]);
-
-  const sortedDateKeys = useMemo(() =>
-    Object.keys(groupedSlots).sort((a, b) => new Date(`${a}T00:00:00`) - new Date(`${b}T00:00:00`)),
-  [groupedSlots]);
+  
+  
+  
 
   const dateHeadingFormatter = useMemo(() =>
     new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }),
@@ -329,13 +322,29 @@ const CandidateIntakePage = () => {
     }
   };
 
-  const selectedSlot = useMemo(() => upcomingSlots.find((slot) => slot.id === selectedSlotId) || null, [upcomingSlots, selectedSlotId]);
+  useEffect(() => {
+    if (!selectedSlotId) {
+      if (selectedSlot) {
+        setSelectedSlot(null);
+      }
+      return;
+    }
+    const match = upcomingSlots.find((slot) => slot.id === selectedSlotId);
+    if (match) {
+      if (!selectedSlot || match.id !== selectedSlot.id) {
+        setSelectedSlot(match);
+      }
+    } else {
+      setSelectedSlotId(null);
+      setSelectedSlot(null);
+    }
+  }, [upcomingSlots, selectedSlotId, selectedSlot]);
 
   const bookedSlotLabel = (() => {
     if (!bookingSuccess || !bookedSlotInfo) return "";
     const tzLabel = bookedSlotInfo?.timezone || timezone;
     if (bookedSlotInfo?.date && bookedSlotInfo?.start && bookedSlotInfo?.end) {
-      return `Interview slot confirmed for ${formatDateHeading(bookedSlotInfo.date)} � ${formatTime(bookedSlotInfo.date, bookedSlotInfo.start, tzLabel)} - ${formatTime(bookedSlotInfo.date, bookedSlotInfo.end, tzLabel)} (${tzLabel})`;
+      return `Interview slot confirmed for ${formatDateHeading(bookedSlotInfo.date)} — ${formatTime(bookedSlotInfo.date, bookedSlotInfo.start, tzLabel)} - ${formatTime(bookedSlotInfo.date, bookedSlotInfo.end, tzLabel)} (${tzLabel})`;
     }
     return "Interview slot confirmed.";
   })();
@@ -344,8 +353,10 @@ const CandidateIntakePage = () => {
   const bookedSlotMeetingLink = bookingSuccess && bookedSlotInfo ? bookedSlotInfo.meetingLink || "" : "";
   const bookedSlotCancelLink = bookingSuccess && bookedSlotInfo ? bookedSlotInfo.cancelLink || "" : "";
 
-  const handleSelectSlot = useCallback((slotId) => {
-    setSelectedSlotId((current) => (current === slotId ? null : slotId));
+  const handleSelectSlot = useCallback((slot) => {
+    setSelectedSlotId((current) => (current === slot.id ? null : slot.id));
+    setSelectedSlot((current) => (current && current.id === slot.id ? null : slot));
+    setBookingMessage({ severity: "info", message: "" });
   }, []);
 
   const handleBasicsChange = useCallback((field) => (event) => {
@@ -665,7 +676,7 @@ const handleSubmit = useCallback(async () => {
 
             <Box>
               <Typography variant="h6" gutterBottom>
-                Step 1 � Pick an interview slot
+                Step 1 — Pick an interview slot
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 Select a time that works best for you, then confirm the booking. The form below unlocks after your slot is reserved.
@@ -712,53 +723,20 @@ const handleSubmit = useCallback(async () => {
                 </Alert>
               )}
 
-              {slotsLoading ? (
+                            {slotsLoading ? (
                 <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
                   <CircularProgress size={28} />
                 </Box>
               ) : (
-                <>
-                  {sortedDateKeys.length ? (
-                    sortedDateKeys.map((dateKey, index) => {
-                      const slotsForDate = groupedSlots[dateKey] || [];
-                      return (
-                        <Accordion key={dateKey} defaultExpanded={index === 0} sx={{ mt: index === 0 ? 2 : 1 }}>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Box>
-                              <Typography variant="subtitle1">{formatDateHeading(dateKey)}</Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                Times shown in {timezone}
-                              </Typography>
-                            </Box>
-                          </AccordionSummary>
-                          <AccordionDetails>
-                            <Stack direction="row" spacing={1.5} flexWrap="wrap">
-                              {slotsForDate.map((slot) => {
-                                const isSelected = selectedSlotId === slot.id;
-                                return (
-                                  <Button
-                                    key={slot.id}
-                                    variant={isSelected ? "contained" : "outlined"}
-                                    color={isSelected ? "primary" : "inherit"}
-                                    onClick={() => handleSelectSlot(slot.id)}
-                                    disabled={bookingSuccess}
-                                  >
-                                    {formatTime(slot.date, slot.start_time, timezone)} � {formatTime(slot.date, slot.end_time, timezone)}
-                                  </Button>
-                                );
-                              })}
-                            </Stack>
-                          </AccordionDetails>
-                        </Accordion>
-                      );
-                    })
-                  ) : (
-                    <Alert severity="info" sx={{ mt: 2 }}>
-                      No available slots at the moment. Please check back soon or contact the recruiter.
-                    </Alert>
-                  )}
-                </>
+                <CandidateSlotPicker
+                  slots={upcomingSlots}
+                  timezone={timezone}
+                  selectedSlotId={selectedSlotId}
+                  onSelect={handleSelectSlot}
+                  disabled={bookingSuccess || bookingSaving}
+                />
               )}
+
 
               <Stack spacing={2} sx={{ mt: 3 }}>
                 <TextField
@@ -829,7 +807,7 @@ const handleSubmit = useCallback(async () => {
                   </Button>
                   {selectedSlot && !bookingSuccess && (
                     <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                      Selected: {formatDateHeading(selectedSlot.date)} � {formatTime(selectedSlot.date, selectedSlot.start_time, timezone)} � {formatTime(selectedSlot.date, selectedSlot.end_time, timezone)}
+                      Selected: {formatDateHeading(selectedSlot.date)} — {formatTime(selectedSlot.date, selectedSlot.start_time, timezone)} — {formatTime(selectedSlot.date, selectedSlot.end_time, timezone)}
                     </Typography>
                   )}
                 </Box>
@@ -839,10 +817,10 @@ const handleSubmit = useCallback(async () => {
             {sortedQuestionnaires.length > 0 && (
               <Box>
                 <Typography variant="h6" gutterBottom>
-                  Step 2 � Upload questionnaire documents
+                  Step 2 — Upload questionnaire documents
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Allowed types: {allowedMimeList.join(', ')} � Max {storageInfo?.maxFileMb ?? QUESTIONNAIRE_LIMITS.maxFileMb} MB per file
+                  Allowed types: {allowedMimeList.join(', ')} — Max {storageInfo?.maxFileMb ?? QUESTIONNAIRE_LIMITS.maxFileMb} MB per file
                 </Typography>
                 <Stack spacing={2} sx={{ mt: 2 }}>
                   {sortedQuestionnaires.map((assignment) => {
@@ -1112,4 +1090,3 @@ const handleSubmit = useCallback(async () => {
 };
 
 export default CandidateIntakePage;
-

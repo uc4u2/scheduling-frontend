@@ -16,7 +16,9 @@ import {
   Checkbox,
   Paper,
   Stack,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import axios from "axios";
 import { pad } from "../../../utils/datetime";
 import { DateTime } from "luxon";
@@ -27,6 +29,8 @@ const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHIFT_LOOKAHEAD_DAYS = 21;
 
 const EmployeeAvailabilityManagement = ({ token }) => {
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
   /* ─────────────────────────────── Reference data ─────────────────────────────── */
   const [departments, setDepartments] = useState([]);
@@ -372,39 +376,37 @@ useEffect(() => {
         </Alert>
       )}
 
-      {/* Department select */}
-      <TextField
-        select
-        label="Department"
-        fullWidth
-        sx={{ mb: 2 }}
-        value={selectedDepartment}
-        onChange={handleDepartmentChange}
-      >
-        <MenuItem value="">
-          <em>All Departments</em>
-        </MenuItem>
-        {departments.map((d) => (
-          <MenuItem key={d.id} value={String(d.id)}>
-            {d.name}
+      <Stack spacing={2} sx={{ mb: 2 }}>
+        <TextField
+          select
+          label="Department"
+          fullWidth
+          value={selectedDepartment}
+          onChange={handleDepartmentChange}
+        >
+          <MenuItem value="">
+            <em>All Departments</em>
           </MenuItem>
-        ))}
-      </TextField>
+          {departments.map((d) => (
+            <MenuItem key={d.id} value={String(d.id)}>
+              {d.name}
+            </MenuItem>
+          ))}
+        </TextField>
 
-      {/* Employee select */}
-      {loadingEmployees ? (
-        <CircularProgress size={24} />
-      ) : (
-        <Autocomplete
-          options={filteredEmployees}
-          getOptionLabel={(o) => o.full_name || `${o.first_name} ${o.last_name}`}
-          noOptionsText={selectedDepartment ? "No employees in department" : "No employees"}
-          value={filteredEmployees.find((e) => e.id === selectedEmployeeId) || null}
-          onChange={handleEmployeeChange}
-          renderInput={(params) => <TextField {...params} label="Employee" fullWidth margin="dense" />}
-          sx={{ mb: 2 }}
-        />
-      )}
+        {loadingEmployees ? (
+          <CircularProgress size={24} />
+        ) : (
+          <Autocomplete
+            options={filteredEmployees}
+            getOptionLabel={(o) => o.full_name || `${o.first_name} ${o.last_name}`}
+            noOptionsText={selectedDepartment ? "No employees in department" : "No employees"}
+            value={filteredEmployees.find((e) => e.id === selectedEmployeeId) || null}
+            onChange={handleEmployeeChange}
+            renderInput={(params) => <TextField {...params} label="Employee" fullWidth margin="dense" />}
+          />
+        )}
+      </Stack>
 
       {selectedEmployeeId && (
         <Paper sx={{ p: 2, mb: 3 }} variant="outlined">

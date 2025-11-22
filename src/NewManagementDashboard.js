@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  AppBar,
   Box,
   Typography,
   Paper,
@@ -718,6 +719,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const [comparisonData, setComparisonData] = useState([]);
   const [statsError, setStatsError] = useState("");
   const [timeRange, setTimeRange] = useState("14");
+  const isMobileViewport = useMediaQuery(theme.breakpoints.down("lg"));
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const drawerExpanded = isMobileViewport ? true : isDrawerOpen;
+  const drawerWidthCurrent = drawerExpanded ? drawerWidth : collapsedWidth;
 
   const API_URL_LOCAL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -763,6 +768,12 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, selectedView]);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setMobileDrawerOpen(false);
+    }
+  }, [isMobileViewport]);
 
   // API calls - Employee Management
   const fetchEmployees = async (options = {}) => {
@@ -883,6 +894,21 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       fetchSwapRequests();
     } catch {
       setSwapError("Failed to update swap status.");
+    }
+  };
+
+  const handleNavSelect = (viewKey) => {
+    setSelectedView(viewKey);
+    if (isMobileViewport) {
+      setMobileDrawerOpen(false);
+    }
+  };
+
+  const toggleDrawer = () => {
+    if (isMobileViewport) {
+      setMobileDrawerOpen((prev) => !prev);
+    } else {
+      setIsDrawerOpen((prev) => !prev);
     }
   };
 
@@ -1061,31 +1087,54 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
               </AccordionSummary>
               <AccordionDetails>
                 {/* Department filter */}
-                <FormControl size="small" sx={{ mb: 2, minWidth: 200 }}>
-                  <InputLabel>Department</InputLabel>
-                  <Select
-                    label="Department"
-                    value={departmentFilter}
-                    onChange={(e) => {
-                      setDepartmentFilter(e.target.value);
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={2}
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                  sx={{ mb: 2 }}
+                >
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>Department</InputLabel>
+                    <Select
+                      label="Department"
+                      value={departmentFilter}
+                      onChange={(e) => {
+                        setDepartmentFilter(e.target.value);
+                        setSelectedForComparison([]);
+                      }}
+                    >
+                      <MenuItem value="">All Departments</MenuItem>
+                      {getDepartmentArray(departments).map((d) => (
+                        <MenuItem key={d.id} value={d.id}>
+                          {d.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="text"
+                    onClick={() => {
+                      setDepartmentFilter("");
                       setSelectedForComparison([]);
                     }}
+                    sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
                   >
-                    <MenuItem value="">All Departments</MenuItem>
-                    {getDepartmentArray(departments).map((d) => (
-                      <MenuItem key={d.id} value={d.id}>
-                        {d.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                    Clear filter
+                  </Button>
+                </Stack>
 
                 <Grid container spacing={2}>
                   {filteredEmployees
                     .filter((e) => e.status !== "inactive")
                     .map((e) => (
                       <Grid item xs={12} sm={6} key={e.id}>
-                        <Paper elevation={1} sx={{ p: 2, borderRadius: 2 }}>
+                        <Paper
+                          elevation={1}
+                          sx={{
+                            p: { xs: 1.5, sm: 2 },
+                            borderRadius: 2,
+                          }}
+                        >
                           <Typography fontWeight={600}>
                             {e.first_name} {e.last_name}
                           </Typography>
@@ -1106,8 +1155,18 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                             <MenuItem value="manager">Manager</MenuItem>
                           </TextField>
 
-                          <Stack direction="row" spacing={1} mt={2}>
-                            <Button size="small" variant="outlined" onClick={() => handleResetPassword(e.id)} startIcon={<RestartAltIcon />}>
+                          <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            spacing={1}
+                            mt={2}
+                          >
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => handleResetPassword(e.id)}
+                              startIcon={<RestartAltIcon />}
+                              fullWidth={isMobileViewport}
+                            >
                               Reset Password
                             </Button>
                             <Button
@@ -1116,10 +1175,16 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                               variant="outlined"
                               startIcon={<ArchiveIcon />}
                               onClick={() => setConfirmArchiveId(e.id)}
+                              fullWidth={isMobileViewport}
                             >
                               Archive
                             </Button>
-                            <Button size="small" variant="outlined" onClick={() => navigate(`/recruiter-stats/${e.id}`)}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => navigate(`/recruiter-stats/${e.id}`)}
+                              fullWidth={isMobileViewport}
+                            >
                               View Stats
                             </Button>
                           </Stack>
@@ -1158,16 +1223,38 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             <Typography variant="h6" sx={{ mt: 3, mb: 1.5, fontWeight: 700 }}>
               Quick Links
             </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-              <Button variant="contained" onClick={() => setSelectedView("website-pages")}>{t("manager.menu.websitePages")}</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("team-activity")}>Team Activity</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("master-calendar")}>Master Calendar</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("candidate-funnel")}>Candidate Funnel</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("recruiter-performance")}>Recruiter Performance</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("candidate-search")}>Candidate Search</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("feedback-notes")}>Feedback & Notes</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("recruiter-availability")}>Recruiter Availability</Button>
-              <Button variant="outlined" onClick={() => setSelectedView("recent-bookings")}>Recent Bookings</Button>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1}
+              flexWrap="wrap"
+              sx={{ mb: 2 }}
+            >
+              <Button
+                variant="contained"
+                onClick={() => setSelectedView("website-pages")}
+                fullWidth={isMobileViewport}
+              >
+                {t("manager.menu.websitePages")}
+              </Button>
+              {[
+                { label: "Team Activity", key: "team-activity" },
+                { label: "Master Calendar", key: "master-calendar" },
+                { label: "Candidate Funnel", key: "candidate-funnel" },
+                { label: "Recruiter Performance", key: "recruiter-performance" },
+                { label: "Candidate Search", key: "candidate-search" },
+                { label: "Feedback & Notes", key: "feedback-notes" },
+                { label: "Recruiter Availability", key: "recruiter-availability" },
+                { label: "Recent Bookings", key: "recent-bookings" },
+              ].map((item) => (
+                <Button
+                  key={item.key}
+                  variant="outlined"
+                  onClick={() => setSelectedView(item.key)}
+                  fullWidth={isMobileViewport}
+                >
+                  {item.label}
+                </Button>
+              ))}
             </Stack>
 
             <Accordion sx={{ mt: 2 }}>
@@ -1543,94 +1630,69 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     }
   };
 
-  if (sectionOnly) {
-    return (
-      <Box sx={{ width: '100%' }}>
-        {renderView()}
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ display: "flex", minHeight: "100vh", width: '100%' }}>
-      <CssBaseline />
-
-      {/* Sidebar */}
-      <Drawer
-        variant="permanent"
+  const drawerContent = (
+    <>
+      <Toolbar
         sx={{
-          width: isDrawerOpen ? drawerWidth : collapsedWidth,
-          flexShrink: 0,
-          whiteSpace: "nowrap",
-          transition: "width 0.3s",
-          mt: `${APP_BAR_HEIGHT}px`,
-          height: `calc(100vh - ${APP_BAR_HEIGHT}px)`,
-          [`& .MuiDrawer-paper`]: {
-            width: isDrawerOpen ? drawerWidth : collapsedWidth,
-            overflowX: "hidden",
-            transition: "width 0.3s",
-            boxSizing: "border-box",
-            zIndex: 1200,
-            top: APP_BAR_HEIGHT,
-            height: `calc(100vh - ${APP_BAR_HEIGHT}px)`,
-          },
+          display: "flex",
+          alignItems: "center",
+          justifyContent: drawerExpanded ? "space-between" : "center",
+          px: 1.5,
+          py: 1.5,
+          minHeight: APP_BAR_HEIGHT,
         }}
       >
-        <Toolbar
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: isDrawerOpen ? "space-between" : "center",
-            px: 1.5,
-            py: 1.5,
-            minHeight: 64,
-          }}
-        >
-          {isDrawerOpen ? (
-            <Typography
-              variant="h6"
-              sx={{ fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}
-            >
-              Schedulaa
-            </Typography>
-          ) : (
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>S</Typography>
-          )}
+        {drawerExpanded ? (
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}
+          >
+            Schedulaa
+          </Typography>
+        ) : (
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            S
+          </Typography>
+        )}
+        {!isMobileViewport && (
           <IconButton onClick={() => setIsDrawerOpen((prev) => !prev)} size="small">
             <MenuIcon />
           </IconButton>
-        </Toolbar>
-        <Divider />
-        <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", pt: 0.75 }}>
-          <List>
-            {menuItems.map((item) => {
+        )}
+      </Toolbar>
+      <Divider />
+      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", pt: 0.75 }}>
+        <List>
+          {menuItems.map((item) => {
             const hasChildren = Array.isArray(item.children) && item.children.length > 0;
             if (!hasChildren) {
               return (
-                <Tooltip key={item.key} title={!isDrawerOpen ? item.label : ""} placement="right" arrow>
+                <Tooltip key={item.key} title={!drawerExpanded ? item.label : ""} placement="right" arrow>
                   <ListItemButton
                     selected={selectedView === item.key}
-                    onClick={() => setSelectedView(item.key)}
+                    onClick={() => handleNavSelect(item.key)}
                     sx={{
-                      justifyContent: isDrawerOpen ? "flex-start" : "center",
+                      justifyContent: drawerExpanded ? "flex-start" : "center",
                       px: 2,
-                      '&:hover': { backgroundColor: (t) => t.palette.action.hover },
+                      "&:hover": { backgroundColor: (t) => t.palette.action.hover },
                     }}
                   >
-                    <ListItemIcon sx={{
-                      minWidth: 36,
-                      mr: isDrawerOpen ? 2 : 0,
-                      justifyContent: "center",
-                      color: 'text.secondary',
-                      '& .MuiSvgIcon-root': { fontSize: 20 },
-                    }}>
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 36,
+                        mr: drawerExpanded ? 2 : 0,
+                        justifyContent: "center",
+                        color: "text.secondary",
+                        "& .MuiSvgIcon-root": { fontSize: 20 },
+                      }}
+                    >
                       {item.icon}
                     </ListItemIcon>
-                    {isDrawerOpen && (
+                    {drawerExpanded && (
                       <ListItemText
                         primary={item.label}
                         primaryTypographyProps={{ noWrap: true }}
-                        sx={{ overflow: 'hidden', pr: 1 }}
+                        sx={{ overflow: "hidden", pr: 1 }}
                       />
                     )}
                   </ListItemButton>
@@ -1638,35 +1700,48 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
               );
             }
 
-            const isOpen = Boolean((openGroups[item.key] ?? false) || item.children.some((c) => c.key === selectedView));
+            const isOpen = Boolean(
+              (openGroups[item.key] ?? false) || item.children.some((c) => c.key === selectedView)
+            );
             return (
               <Box key={item.key}>
-                <Tooltip title={!isDrawerOpen ? item.label : ""} placement="right" arrow>
+                <Tooltip title={!drawerExpanded ? item.label : ""} placement="right" arrow>
                   <ListItemButton
                     selected={selectedView === item.key || isOpen}
                     onClick={() => {
                       let defaultView = selectedView;
-                      if (item.key === 'employee-group') defaultView = 'employee-management';
-                      else if (item.key === 'payroll-group') defaultView = 'payroll';
-                      else if (item.key === 'shifts-group') defaultView = 'available-shifts';
-                      else if (item.key === 'overview') defaultView = 'overview';
+                      if (item.key === "employee-group") defaultView = "employee-management";
+                      else if (item.key === "payroll-group") defaultView = "payroll";
+                      else if (item.key === "shifts-group") defaultView = "available-shifts";
+                      else if (item.key === "overview") defaultView = "overview";
                       setSelectedView(defaultView);
-                      setOpenGroups({ ...openGroups, [item.key]: !isOpen });
+                      setOpenGroups((prev) => ({ ...prev, [item.key]: !isOpen }));
                     }}
-                    sx={{ justifyContent: "flex-start", px: 2, '&:hover': { backgroundColor: (t) => t.palette.action.hover } }}
+                    sx={{
+                      justifyContent: "flex-start",
+                      px: 2,
+                      "&:hover": { backgroundColor: (t) => t.palette.action.hover },
+                    }}
                   >
-                    <ListItemIcon sx={{ minWidth: 36, mr: isDrawerOpen ? 2 : 0, justifyContent: "center", color: 'text.secondary', '& .MuiSvgIcon-root': { fontSize: 20 } }}>
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 36,
+                        mr: drawerExpanded ? 2 : 0,
+                        justifyContent: "center",
+                        color: "text.secondary",
+                        "& .MuiSvgIcon-root": { fontSize: 20 },
+                      }}
+                    >
                       {item.icon}
                     </ListItemIcon>
-                    {isDrawerOpen && (
+                    {drawerExpanded && (
                       <ListItemText
                         primary={item.label}
                         primaryTypographyProps={{ noWrap: true }}
-                        sx={{ overflow: 'hidden', pr: 1 }}
+                        sx={{ overflow: "hidden", pr: 1 }}
                       />
                     )}
-                    {/* Always reserve space for chevron; align to right for clarity */}
-                    {isDrawerOpen && (
+                    {drawerExpanded && (
                       <Box sx={{ ml: "auto", display: "flex", alignItems: "center", minWidth: 28, pl: 1 }}>
                         {isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                       </Box>
@@ -1680,20 +1755,30 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                         key={child.key}
                         selected={selectedView === child.key}
                         onClick={() => {
-                          const empKeys = ['emp-active','emp-add','emp-compare'];
-                          const next = empKeys.includes(child.key) ? 'employee-management' : child.key;
-                          setSelectedView(next);
+                          const empKeys = ["emp-active", "emp-add", "emp-compare"];
+                          const next = empKeys.includes(child.key) ? "employee-management" : child.key;
+                          handleNavSelect(next);
                         }}
-                        sx={{ pl: isDrawerOpen ? 4 : 2, '&:hover': { backgroundColor: (t) => t.palette.action.hover } }}
+                        sx={{
+                          pl: drawerExpanded ? 4 : 2,
+                          "&:hover": { backgroundColor: (t) => t.palette.action.hover },
+                        }}
                       >
-                        <ListItemIcon sx={{ minWidth: 36, mr: isDrawerOpen ? 2 : 0, color: 'text.secondary', '& .MuiSvgIcon-root': { fontSize: 20 } }}>
+                        <ListItemIcon
+                          sx={{
+                            minWidth: 36,
+                            mr: drawerExpanded ? 2 : 0,
+                            color: "text.secondary",
+                            "& .MuiSvgIcon-root": { fontSize: 20 },
+                          }}
+                        >
                           {child.icon}
                         </ListItemIcon>
-                        {isDrawerOpen && (
+                        {drawerExpanded && (
                           <ListItemText
                             primary={child.label}
                             primaryTypographyProps={{ noWrap: true }}
-                            sx={{ overflow: 'hidden' }}
+                            sx={{ overflow: "hidden" }}
                           />
                         )}
                       </ListItemButton>
@@ -1705,22 +1790,108 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
           })}
         </List>
       </Box>
-    </Drawer>
+    </>
+  );
 
-      {/* Main Content - full width to the right of the sidebar */}
+  if (sectionOnly) {
+    return <Box sx={{ width: "100%" }}>{renderView()}</Box>;
+  }
+
+  return (
+    <Box sx={{ display: "flex", minHeight: "100vh", width: "100%" }}>
+      <CssBaseline />
+      <AppBar
+        position="fixed"
+        color="inherit"
+        elevation={0}
+        sx={{
+          borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+          height: APP_BAR_HEIGHT,
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <Toolbar sx={{ minHeight: APP_BAR_HEIGHT, px: { xs: 1.5, md: 3 } }}>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexGrow: 1 }}>
+            {isMobileViewport && (
+              <IconButton edge="start" color="inherit" onClick={toggleDrawer} size="large">
+                <MenuIcon />
+              </IconButton>
+            )}
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Manager Dashboard
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip size="small" label={`TZ ${currentTimezone}`} />
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => handleNavSelect("add-member")}
+              sx={{ display: { xs: "none", sm: "inline-flex" } }}
+            >
+              Add member
+            </Button>
+          </Stack>
+        </Toolbar>
+      </AppBar>
+
+      <Box
+        component="nav"
+        sx={{ width: { lg: drawerWidthCurrent }, flexShrink: { lg: 0 } }}
+        aria-label="manager navigation"
+      >
+        <Drawer
+          variant="temporary"
+          open={mobileDrawerOpen}
+          onClose={toggleDrawer}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            display: { xs: "block", lg: "none" },
+            "& .MuiDrawer-paper": {
+              width: drawerWidth,
+              boxSizing: "border-box",
+              top: APP_BAR_HEIGHT,
+              height: `calc(100vh - ${APP_BAR_HEIGHT}px)`,
+            },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+        <Drawer
+          variant="permanent"
+          open
+          sx={{
+            display: { xs: "none", lg: "block" },
+            width: drawerWidthCurrent,
+            flexShrink: 0,
+            whiteSpace: "nowrap",
+            [`& .MuiDrawer-paper`]: {
+              width: drawerWidthCurrent,
+              overflowX: "hidden",
+              transition: "width 0.3s",
+              boxSizing: "border-box",
+              top: APP_BAR_HEIGHT,
+              height: `calc(100vh - ${APP_BAR_HEIGHT}px)`,
+            },
+          }}
+        >
+          {drawerContent}
+        </Drawer>
+      </Box>
+
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
+          p: { xs: 2, md: 3 },
           backgroundColor: (theme) => theme.palette.background.default,
           minWidth: 0,
-          width: '100%',
-          maxWidth: 'none',
+          width: "100%",
+          maxWidth: "none",
+          mt: `${APP_BAR_HEIGHT}px`,
         }}
       >
-        <Toolbar />
-
         {renderView()}
       </Box>
     </Box>

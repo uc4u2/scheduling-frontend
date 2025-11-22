@@ -19,6 +19,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Checkbox,
+  useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -39,6 +40,7 @@ const LOCAL_TABS = ["calendar", "availability", "shifts"];
 const RecruiterDashboard = ({ token }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   /* ---------- form fields ---------- */
   const [date, setDate] = useState("");
@@ -386,8 +388,20 @@ const RecruiterDashboard = ({ token }) => {
             </Typography>
           </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Button variant="outlined" onClick={() => navigate("/recruiter/my-time")}>My Time</Button>
-            <Button variant="contained" onClick={() => navigate("/recruiter/my-shifts")}>View My Shift</Button>
+            <Button
+              variant="outlined"
+              onClick={() => navigate("/recruiter/my-time")}
+              fullWidth={isSmDown}
+            >
+              My Time
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => navigate("/recruiter/my-shifts")}
+              fullWidth={isSmDown}
+            >
+              View My Shift
+            </Button>
           </Stack>
         </Stack>
       </Paper>
@@ -445,7 +459,7 @@ const RecruiterDashboard = ({ token }) => {
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
                 />
-                <Button variant="contained" onClick={handleSubmitOneTime}>
+                <Button variant="contained" onClick={handleSubmitOneTime} fullWidth={isSmDown}>
                   Set Availability
                 </Button>
               </Stack>
@@ -549,14 +563,19 @@ const RecruiterDashboard = ({ token }) => {
               <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
                 Your Availability Slots
               </Typography>
-              <Box sx={{ mt: 1, display: "flex", gap: 2 }}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                sx={{ mt: 1 }}
+              >
                 <TextField
                   select
                   size="small"
                   label="Show past weeks"
                   value={pastWeeks}
                   onChange={(e) => setPastWeeks(Number(e.target.value))}
-                  sx={{ width: 140 }}
+                  sx={{ minWidth: { sm: 140 } }}
+                  fullWidth={isSmDown}
                 >
                   {[1, 2, 4, 8, 12, 24].map((w) => (
                     <MenuItem key={w} value={w}>
@@ -570,37 +589,45 @@ const RecruiterDashboard = ({ token }) => {
                   size="small"
                   value={filterMonth}
                   onChange={handleMonthChange}
-                  sx={{ width: 140 }}
+                  sx={{ minWidth: { sm: 140 } }}
                   InputLabelProps={{ shrink: true }}
+                  fullWidth={isSmDown}
                 />
-              </Box>
+              </Stack>
             </AccordionSummary>
             <AccordionDetails>
               {nonBookedFilteredSlots.length > 0 && (
-                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                  <Checkbox
-                    checked={
-                      nonBookedFilteredSlots.length > 0 &&
-                      selectedSlotIds.length === nonBookedFilteredSlots.length
-                    }
-                    indeterminate={
-                      selectedSlotIds.length > 0 &&
-                      selectedSlotIds.length < nonBookedFilteredSlots.length
-                    }
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                  />
-                  <Typography variant="body1">Select All</Typography>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  sx={{ mb: 2 }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center" }}>
+                    <Checkbox
+                      checked={
+                        nonBookedFilteredSlots.length > 0 &&
+                        selectedSlotIds.length === nonBookedFilteredSlots.length
+                      }
+                      indeterminate={
+                        selectedSlotIds.length > 0 &&
+                        selectedSlotIds.length < nonBookedFilteredSlots.length
+                      }
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                    />
+                    <Typography variant="body1">Select All</Typography>
+                  </Box>
                   {selectedSlotIds.length > 0 && (
                     <Button
                       variant="contained"
                       color="error"
                       onClick={handleDeleteSelected}
-                      sx={{ ml: 2 }}
+                      fullWidth={isSmDown}
                     >
                       Delete Selected
                     </Button>
                   )}
-                </Box>
+                </Stack>
               )}
               {loadingSlots ? (
                 <Box
@@ -830,4 +857,3 @@ const RecruiterDashboard = ({ token }) => {
   );
 };
 export default RecruiterDashboard;
-

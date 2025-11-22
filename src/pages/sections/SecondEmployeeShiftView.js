@@ -35,8 +35,10 @@ import {
   TableBody,
   TableCell,
   TableRow,
+  useMediaQuery,
 } from "@mui/material";
 import { format, parseISO, differenceInMinutes, addDays } from "date-fns";
+import { useTheme } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import CloseIcon from "@mui/icons-material/Close";
@@ -56,6 +58,8 @@ import { timeTracking } from "../../utils/api";
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const SecondEmployeeShiftView = () => {
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const userId = localStorage.getItem("userId");
   const token = localStorage.getItem("token");
   const userRole = localStorage.getItem("userRole") || ""; // Example role storage
@@ -956,6 +960,7 @@ return (
         spacing={2}
         justifyContent="space-between"
         alignItems={{ xs: "flex-start", sm: "center" }}
+        sx={{ textAlign: { xs: "center", sm: "left" } }}
       >
         <Box>
           <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
@@ -965,7 +970,13 @@ return (
             View past shifts, breaks, and approvals.
           </Typography>
         </Box>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap alignItems="center">
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1}
+          useFlexGap
+          alignItems="center"
+          sx={{ width: { xs: "100%", sm: "auto" } }}
+        >
           <TextField
             type="date"
             size="small"
@@ -973,6 +984,7 @@ return (
             InputLabelProps={{ shrink: true }}
             value={historyFilters.startDate}
             onChange={handleHistoryChange("startDate")}
+            fullWidth={isSmDown}
           />
           <TextField
             type="date"
@@ -981,6 +993,7 @@ return (
             InputLabelProps={{ shrink: true }}
             value={historyFilters.endDate}
             onChange={handleHistoryChange("endDate")}
+            fullWidth={isSmDown}
           />
           <TextField
             select
@@ -988,7 +1001,8 @@ return (
             label="Status"
             value={historyFilters.status}
             onChange={handleHistoryChange("status")}
-            sx={{ minWidth: 140 }}
+            sx={{ minWidth: { sm: 140 } }}
+            fullWidth={isSmDown}
           >
             <MenuItem value="all">All</MenuItem>
             <MenuItem value="completed">Completed</MenuItem>
@@ -996,7 +1010,12 @@ return (
             <MenuItem value="rejected">Rejected</MenuItem>
             <MenuItem value="in_progress">In progress</MenuItem>
           </TextField>
-          <Button variant="outlined" onClick={downloadHistoryCsv} size="small">
+          <Button
+            variant="outlined"
+            onClick={downloadHistoryCsv}
+            size="small"
+            fullWidth={isSmDown}
+          >
             Download CSV
           </Button>
         </Stack>
@@ -1085,7 +1104,7 @@ return (
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip size="small" label={entry.status} />
+                    <Chip size="small" label={entry.status || "—"} />
                     {entry.approved_by_name && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                         By {entry.approved_by_name}
@@ -1115,7 +1134,7 @@ return (
         justifyContent="space-between"
         spacing={1}
       >
-        <Box>
+        <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
           <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
             Today's shift
           </Typography>
@@ -1142,10 +1161,18 @@ return (
         <Box mt={2}>
           {todayShift ? (
             <>
-              <Typography variant="h6" fontWeight={700}>
+              <Typography
+                variant="h6"
+                fontWeight={700}
+                sx={{ textAlign: { xs: "center", sm: "left" } }}
+              >
                 {shiftDateLabel} · {shiftStartLabel} – {shiftEndLabel}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ textAlign: { xs: "center", sm: "left" } }}
+              >
                 {isClocked
                   ? `Clocked in at ${currentShiftNumbers?.in}${
                       isCompleted && currentShiftNumbers?.out
@@ -1209,7 +1236,7 @@ return (
                 />
               )}
               {timelineMeta && (
-                <Box mt={2}>
+                <Box mt={2} sx={{ textAlign: { xs: "center", sm: "left" } }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600}>
                     Shift timeline
                   </Typography>
@@ -1295,6 +1322,7 @@ return (
                   variant="contained"
                   disabled={!canClockIn || clocking}
                   onClick={() => handleClockAction("in")}
+                  fullWidth={isSmDown}
                 >
                   Clock In
                 </Button>
@@ -1314,6 +1342,7 @@ return (
                       color="secondary"
                       disabled={!canClockOut || clocking}
                       onClick={() => handleClockAction("out")}
+                      fullWidth={isSmDown}
                     >
                       Clock Out
                     </Button>
@@ -1335,6 +1364,7 @@ return (
                     size="small"
                     onClick={() => handleBreakAction("start")}
                     disabled={!canStartBreak || breakSubmitting}
+                    fullWidth={isSmDown}
                   >
                     Start Break
                   </Button>
@@ -1344,6 +1374,7 @@ return (
                     color="warning"
                     onClick={() => handleBreakAction("end")}
                     disabled={!canEndBreak}
+                    fullWidth={isSmDown}
                   >
                     End Break
                   </Button>
@@ -1598,6 +1629,7 @@ return (
 
       {/* Leave dialog */}
       <Dialog
+        fullScreen={isSmDown}
         open={leaveModalOpen}
         onClose={() => setLeaveModalOpen(false)}
         maxWidth="sm"
@@ -1708,9 +1740,11 @@ return (
             bgcolor: "background.paper",
             borderRadius: 2,
             mx: "auto",
-            my: "10%",
-            width: 420,
-            maxWidth: "90vw",
+            my: isSmDown ? 2 : "10%",
+            width: isSmDown ? "94vw" : 420,
+            maxWidth: "94vw",
+            maxHeight: "80vh",
+            overflowY: "auto",
           }}
         >
           <Typography variant="h6" mb={2}>
@@ -1805,12 +1839,20 @@ return (
             </>
           )}
 
-          <Stack direction="row" justifyContent="flex-end" spacing={2} mt={3}>
-            <Button onClick={() => setSwapModalOpen(false)}>Close</Button>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            justifyContent="flex-end"
+            spacing={2}
+            mt={3}
+          >
+            <Button onClick={() => setSwapModalOpen(false)} fullWidth={isSmDown}>
+              Close
+            </Button>
             <Button
               variant="contained"
               disabled={!swapTargetShiftId}
               onClick={handleSwapRequest}
+              fullWidth={isSmDown}
             >
               Submit Swap
             </Button>

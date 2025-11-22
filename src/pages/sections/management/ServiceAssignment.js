@@ -20,6 +20,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { DataGrid } from "@mui/x-data-grid";
 import { Add, Edit, Delete } from "@mui/icons-material";
 import axios from "axios";
@@ -28,6 +30,8 @@ import axios from "axios";
    COMPONENT
 ================================================================= */
 const ServiceAssignment = ({ token }) => {
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   /* ─────────── remote data ─────────── */
   const [employees, setEmployees]   = useState([]); // recruiters
   const [services, setServices]     = useState([]);
@@ -226,14 +230,20 @@ const ServiceAssignment = ({ token }) => {
 
       {/* ───────────── Filter bar ───────────── */}
       <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignItems={{ xs: "stretch", md: "center" }}
+          flexWrap="wrap"
+        >
           {/* Department */}
           <TextField
             select
             label="Department"
             value={selectedDepartment}
             onChange={handleDeptChange}
-            sx={{ minWidth: 220 }}
+            sx={{ minWidth: { md: 220 } }}
+            fullWidth={isSmDown}
           >
             <MenuItem value="">
               <em>All Departments</em>
@@ -251,7 +261,8 @@ const ServiceAssignment = ({ token }) => {
             label="Employee"
             value={selectedEmployee}
             onChange={e => setSelectedEmployee(e.target.value)}
-            sx={{ minWidth: 220 }}
+            sx={{ minWidth: { md: 220 } }}
+            fullWidth={isSmDown}
             disabled={!filteredEmployees.length}
           >
             <MenuItem value="">
@@ -264,9 +275,14 @@ const ServiceAssignment = ({ token }) => {
             ))}
           </TextField>
 
-          <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ flexGrow: 1, display: { xs: "none", md: "block" } }} />
 
-          <Button startIcon={<Add />} onClick={() => openDialog()} variant="contained">
+          <Button
+            startIcon={<Add />}
+            onClick={() => openDialog()}
+            variant="contained"
+            fullWidth={isSmDown}
+          >
             Add Assignment
           </Button>
         </Stack>

@@ -140,11 +140,12 @@ import { stripeConnect } from "../../../utils/api";
  */
 
 const SecondNewManagementDashboard = ({ token }) => {
-
   const theme = useTheme();
   const { t } = useTranslation();
 
-  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
+  const isCompactTabs = useMediaQuery(theme.breakpoints.down("md"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
 
 
@@ -771,7 +772,12 @@ const panels = useMemo(
 
           {/* Quick actions */}
 
-          <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            flexWrap="wrap"
+            sx={{ width: { xs: "100%", md: "auto" } }}
+          >
 
             <Button
 
@@ -782,6 +788,8 @@ const panels = useMemo(
               component={RouterLink}
 
               to="/manager/payments"
+
+              fullWidth={isSmallScreen}
 
             >
 
@@ -796,6 +804,8 @@ const panels = useMemo(
               startIcon={<InsightsIcon />}
 
               onClick={openAnalytics}
+
+              fullWidth={isSmallScreen}
 
             >
 
@@ -863,7 +873,11 @@ const panels = useMemo(
 
             </Box>
 
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              flexWrap="wrap"
+            >
 
               <Button
 
@@ -872,6 +886,7 @@ const panels = useMemo(
                 onClick={primaryConnectAction}
 
                 disabled={disablePrimary}
+                fullWidth={isSmallScreen}
 
               >
 
@@ -886,6 +901,7 @@ const panels = useMemo(
                 onClick={handleRefreshLink}
 
                 disabled={disableRefresh}
+                fullWidth={isSmallScreen}
 
               >
 
@@ -902,6 +918,7 @@ const panels = useMemo(
                   onClick={handleStartOnboarding}
 
                   disabled={disableStartLink}
+                  fullWidth={isSmallScreen}
 
                 >
 
@@ -951,45 +968,79 @@ const panels = useMemo(
 
       >
 
-        <Tabs
+        {isCompactTabs ? (
 
-          value={tabIndex}
+          <Stack spacing={1} sx={{ p: { xs: 1, sm: 2 } }}>
 
-          onChange={(_, idx) => handleOpen(idx)}
+            {panels.map((p, idx) => (
 
-          variant="scrollable"
+              <Button
 
-          scrollButtons="auto"
+                key={p.label}
 
-          allowScrollButtonsMobile
+                variant="outlined"
 
-          sx={{
+                startIcon={p.icon}
 
-            ".MuiTab-root": { textTransform: "none", minHeight: 48 },
+                onClick={() => handleOpen(idx)}
 
-            ".MuiTabs-indicator": { height: 3 },
+                fullWidth
 
-          }}
+                sx={{ justifyContent: "flex-start" }}
 
-        >
+              >
 
-          {panels.map((p, idx) => (
+                {p.label}
 
-            <Tab
+              </Button>
 
-              key={idx}
+            ))}
 
-              icon={p.icon}
+          </Stack>
 
-              iconPosition="start"
+        ) : (
 
-              label={p.label}
+          <Tabs
 
-            />
+            value={tabIndex}
 
-          ))}
+            onChange={(_, idx) => handleOpen(idx)}
 
-        </Tabs>
+            variant="scrollable"
+
+            scrollButtons="auto"
+
+            allowScrollButtonsMobile
+
+            sx={{
+
+              ".MuiTab-root": { textTransform: "none", minHeight: 48 },
+
+              ".MuiTabs-indicator": { height: 3 },
+
+            }}
+
+          >
+
+            {panels.map((p, idx) => (
+
+              <Tab
+
+                key={idx}
+
+                icon={p.icon}
+
+                iconPosition="start"
+
+                label={p.label}
+
+              />
+
+            ))}
+
+          </Tabs>
+
+        )}
 
 
 
@@ -1164,7 +1215,3 @@ const panels = useMemo(
 
 
 export default SecondNewManagementDashboard;
-
-
-
-
