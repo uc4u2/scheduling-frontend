@@ -84,7 +84,6 @@ const passwordStrength = useMemo(() => {
     if (!form.lastName.trim()) errors.lastName = "Required";
     if (!form.email.trim()) errors.email = "Email required";
     else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) errors.email = "Invalid email";
-    if (!form.departmentId) errors.departmentId = "Required";
     if (!form.password) errors.password = "Password required";
     else if (!/[A-Z]/.test(form.password) ||
       !/[a-z]/.test(form.password) ||
@@ -252,7 +251,7 @@ const passwordStrength = useMemo(() => {
                 helperText={
                   fieldErrors.departmentId ||
                   (departments.length
-                    ? "Assign this member to a department."
+                    ? "(Optional) Assign this member to a department."
                     : "No departments yet? Add them under Settings → Departments.")
                 }
               >
