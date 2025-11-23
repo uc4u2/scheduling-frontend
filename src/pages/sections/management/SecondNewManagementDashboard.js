@@ -108,14 +108,11 @@ import AllEmployeeSlotsCalendar from "../AllEmployeeSlotsCalendar";
 import ClientBookingView from "./ClientBookingView";
 
 import ManagerBookings from "./ManagerBookings";
-
 import MarketingCampaignsTab from "./MarketingCampaignsTab";
 
-
-
 /* Payments (enterprise-grade view) */
-
 import ManagerPaymentsView from "./ManagerPaymentsView";
+import ManagerManualPayments from "./ManagerManualPayments";
 
 
 
@@ -568,6 +565,16 @@ const panels = useMemo(
       icon: <ListAltIcon />,
 
       element: <ManagerBookings connect={connectContext} />,
+
+    },
+
+    {
+
+      label: "Manual Payments / Invoices",
+
+      icon: <PaymentsIcon />,
+
+      element: <ManagerManualPayments />,
 
     },
 

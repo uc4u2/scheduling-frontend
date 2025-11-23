@@ -786,7 +786,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         headers: { Authorization: `Bearer ${token}` },
         params: !ignoreFilter && departmentFilter ? { department_id: departmentFilter } : {},
       });
-      setEmployees(res.data.recruiters || []);
+      const rows = res.data?.recruiters || res.data || [];
+      setEmployees(rows);
     } catch {
       setError("Failed to fetch employees.");
     }
