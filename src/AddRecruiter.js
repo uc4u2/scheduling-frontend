@@ -112,7 +112,7 @@ const passwordStrength = useMemo(() => {
         first_name: form.firstName.trim(),
         last_name: form.lastName.trim(),
         email: form.email.trim(),
-        phone: form.phone.trim(),
+        phone: form.phone.trim().slice(0, 20),
         role: form.role,
         department_id: form.departmentId ? Number(form.departmentId) : null,
         timezone: form.timezone.trim() || getUserTimezone(),
@@ -125,12 +125,15 @@ const passwordStrength = useMemo(() => {
         agreed_to_terms: form.agreedToTerms,
         terms_version: "2025-11",
       };
-      const response = await axios.post(`${API_BASE}/register`, payload, {
+
+      // Use manager-scoped endpoint so new members attach to the manager's company
+      const response = await axios.post(`${API_BASE}/manager/recruiters`, payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : undefined,
           "Content-Type": "application/json",
         },
       });
+
       setSubmitState({ status: "success", message: response.data?.message || "Recruiter added." });
       setForm({
         firstName: "",
