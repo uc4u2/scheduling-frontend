@@ -214,7 +214,7 @@ const ManagerBookings = ({ slug, connect }) => {
   /* -- Fetch Departments & Recruiters --------------------- */
   const fetchDepartments = useCallback(async () => {
     try {
-      const { data } = await api.get("/api/manager/departments");
+      const { data } = await api.get("/api/departments");
       const list = Array.isArray(data?.departments)
         ? data.departments
         : Array.isArray(data)
@@ -229,7 +229,7 @@ const ManagerBookings = ({ slug, connect }) => {
 
   const fetchRecruiters = useCallback(async () => {
     try {
-      const { data } = await api.get("/api/manager/recruiters");
+      const { data } = await api.get("/manager/recruiters");
       const list = Array.isArray(data?.recruiters)
         ? data.recruiters
         : Array.isArray(data)
@@ -1181,7 +1181,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
 
 
 
