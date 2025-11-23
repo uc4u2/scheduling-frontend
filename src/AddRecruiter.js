@@ -126,8 +126,7 @@ const passwordStrength = useMemo(() => {
         terms_version: "2025-11",
       };
 
-      // Use manager-scoped endpoint so new members attach to the manager's company
-      const response = await axios.post(`${API_BASE}/manager/recruiters`, payload, {
+      const response = await axios.post(`${API_BASE}/register`, payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : undefined,
           "Content-Type": "application/json",
