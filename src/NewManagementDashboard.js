@@ -721,6 +721,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const [timeRange, setTimeRange] = useState("14");
   const isMobileViewport = useMediaQuery(theme.breakpoints.down("lg"));
   const navOffset = useMediaQuery(theme.breakpoints.down("sm")) ? 56 : 64; // height of global nav bar
+  const managerBarHeight = isMobileViewport ? APP_BAR_HEIGHT : 0; // show local bar only on mobile for drawer toggle
+  const headerOffset = navOffset + managerBarHeight;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const drawerExpanded = isMobileViewport ? true : isDrawerOpen;
   const drawerWidthCurrent = drawerExpanded ? drawerWidth : collapsedWidth;
@@ -1806,16 +1808,16 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         color="inherit"
         elevation={0}
         sx={{
+          display: isMobileViewport ? "flex" : "none",
           zIndex: (theme) => theme.zIndex.drawer + 2,
           borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-          height: APP_BAR_HEIGHT,
-          display: "flex",
+          height: managerBarHeight,
           justifyContent: "center",
           backgroundColor: (theme) => theme.palette.background.paper,
           top: navOffset,
         }}
       >
-        <Toolbar sx={{ minHeight: APP_BAR_HEIGHT, px: { xs: 1.5, md: 3 } }}>
+        <Toolbar sx={{ minHeight: managerBarHeight, px: { xs: 1.5, md: 3 } }}>
           <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexGrow: 1 }}>
             {isMobileViewport && (
               <IconButton edge="start" color="inherit" onClick={toggleDrawer} size="large">
@@ -1824,7 +1826,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             )}
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
-            {/* Removed TZ chip per request */}
+            {/* TZ chip removed */}
           </Stack>
         </Toolbar>
       </AppBar>
@@ -1844,8 +1846,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
               "& .MuiDrawer-paper": {
                 width: drawerWidth,
                 boxSizing: "border-box",
-                top: APP_BAR_HEIGHT + navOffset,
-                height: `calc(100vh - ${APP_BAR_HEIGHT + navOffset}px)`,
+                top: headerOffset,
+                height: `calc(100vh - ${headerOffset}px)`,
               },
             }}
           >
@@ -1864,8 +1866,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                 overflowX: "hidden",
                 transition: "width 0.3s",
                 boxSizing: "border-box",
-                top: APP_BAR_HEIGHT + navOffset,
-                height: `calc(100vh - ${APP_BAR_HEIGHT + navOffset}px)`,
+                top: headerOffset,
+                height: `calc(100vh - ${headerOffset}px)`,
               },
             }}
           >
@@ -1882,7 +1884,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
           minWidth: 0,
           width: "100%",
           maxWidth: "none",
-          mt: `${APP_BAR_HEIGHT + navOffset}px`,
+          mt: `${headerOffset}px`,
         }}
       >
         {renderView()}
