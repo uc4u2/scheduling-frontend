@@ -126,7 +126,7 @@ const passwordStrength = useMemo(() => {
         terms_version: "2025-11",
       };
 
-      const response = await axios.post(`${API_BASE}/register`, payload, {
+      const response = await axios.post(`${API_BASE}/manager/recruiters`, payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : undefined,
           "Content-Type": "application/json",
