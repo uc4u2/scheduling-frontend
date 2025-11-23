@@ -1824,7 +1824,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             )}
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
-            <Chip size="small" label={`TZ ${currentTimezone}`} />
+            {/* Removed TZ chip per request */}
           </Stack>
         </Toolbar>
       </AppBar>
