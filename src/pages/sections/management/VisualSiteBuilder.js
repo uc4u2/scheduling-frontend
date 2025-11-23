@@ -928,6 +928,16 @@ useEffect(() => {
   const justImported = Boolean(location.state?.postImportReload);
   const [suppressEmptyState, setSuppressEmptyState] = useState(justImported);
 
+  // UI state (needs to live before effects that reference it)
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [pagesListOpen, setPagesListOpen] = useState(false);
+  const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
+  const [brandingPanelOpen, setBrandingPanelOpen] = useState(false);
+
 useEffect(() => {
   if (!justImported) return;
   const t = setTimeout(() => setSuppressEmptyState(false), 400);
@@ -1043,14 +1053,6 @@ useEffect(() => {
   } = useHistory(emptyPage());
   const [selectedBlock, setSelectedBlock] = useState(-1);
 
-const [busy, setBusy] = useState(false);
-const [msg, setMsg] = useState("");
-const [err, setErr] = useState("");
-const [pagesListOpen, setPagesListOpen] = useState(false);
-const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
-const [inspectorOpen, setInspectorOpen] = useState(false);
-const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
-const [brandingPanelOpen, setBrandingPanelOpen] = useState(false);
 
 useEffect(() => {
   if (selectedBlock >= 0) {

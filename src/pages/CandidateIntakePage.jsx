@@ -354,6 +354,12 @@ const CandidateIntakePage = () => {
   const bookedSlotCancelLink = bookingSuccess && bookedSlotInfo ? bookedSlotInfo.cancelLink || "" : "";
 
   const handleSelectSlot = useCallback((slot) => {
+    if (!slot) {
+      setSelectedSlotId(null);
+      setSelectedSlot(null);
+      setBookingMessage({ severity: "info", message: "" });
+      return;
+    }
     setSelectedSlotId((current) => (current === slot.id ? null : slot.id));
     setSelectedSlot((current) => (current && current.id === slot.id ? null : slot));
     setBookingMessage({ severity: "info", message: "" });
@@ -682,12 +688,6 @@ const handleSubmit = useCallback(async () => {
                 Select a time that works best for you, then confirm the booking. The form below unlocks after your slot is reserved.
               </Typography>
 
-              {slotsError && (
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  {slotsError}
-                </Alert>
-              )}
-
               {bookingMessage.message && (
                 <Alert severity={bookingMessage.severity} sx={{ mb: 2 }} onClose={() => setBookingMessage({ severity: "info", message: "" })}>
                   {bookingMessage.message}
@@ -723,19 +723,68 @@ const handleSubmit = useCallback(async () => {
                 </Alert>
               )}
 
-                            {slotsLoading ? (
-                <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
-                  <CircularProgress size={28} />
+              <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
+                <Box
+                  sx={{
+                    flex: 1,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    p: 2,
+                    bgcolor: "background.paper",
+                  }}
+                >
+                  <Typography variant="subtitle2" gutterBottom>
+                    Booking summary
+                  </Typography>
+                  {selectedSlot ? (
+                    <>
+                      <Typography variant="body2" color="text.secondary">
+                        {`${formatDateHeading(selectedSlot.date)} — ${formatTime(selectedSlot.date, selectedSlot.start_time, timezone)} to ${formatTime(selectedSlot.date, selectedSlot.end_time, timezone)} (${timezone})`}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                        We’ll send the confirmation with timezone details.
+                      </Typography>
+                    </>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Select a date to see available times in your timezone.
+                    </Typography>
+                  )}
+                  {bookingSuccess && bookedSlotInfo && (
+                    <Typography variant="caption" color="success.main" sx={{ display: "block", mt: 1 }}>
+                      Confirmation sent. Use the links above to join or cancel.
+                    </Typography>
+                  )}
                 </Box>
-              ) : (
-                <CandidateSlotPicker
-                  slots={upcomingSlots}
-                  timezone={timezone}
-                  selectedSlotId={selectedSlotId}
-                  onSelect={handleSelectSlot}
-                  disabled={bookingSuccess || bookingSaving}
-                />
-              )}
+                <Box
+                  sx={{
+                    flex: 1,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    p: 2,
+                    bgcolor: "background.default",
+                  }}
+                >
+                  <Typography variant="subtitle2" gutterBottom>
+                    Good to know
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    We hold your selected slot for a short time while you complete the form. All uploads are encrypted in transit. Need to reschedule? Use your confirmation link anytime.
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <CandidateSlotPicker
+                slots={upcomingSlots}
+                timezone={timezone}
+                selectedSlotId={selectedSlotId}
+                onSelect={handleSelectSlot}
+                loading={slotsLoading}
+                error={slotsError}
+                disabled={bookingSuccess || bookingSaving}
+              />
 
 
               <Stack spacing={2} sx={{ mt: 3 }}>

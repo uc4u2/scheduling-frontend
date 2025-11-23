@@ -52,7 +52,6 @@ import { POLL_MS } from "../../utils/shiftSwap";
 import ShiftSwapPanel from "../../components/ShiftSwapPanel";
 import IncomingSwapRequests from "../../components/IncomingSwapRequests";
 import { getUserTimezone } from "../../utils/timezone";
-import { formatDateTimeInTz } from "../../utils/datetime";
 import { timeTracking } from "../../utils/api";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -491,13 +490,6 @@ useEffect(() => {
   const breakEndDt = todayShift?.break_end ? parseShiftDate(todayShift.break_end) : null;
   const shiftDateIso = todayShift?.date || (clockInDt ? clockInDt.toISODate() : null);
 
-  const currentShiftNumbers =
-    todayShift && clockInDt
-      ? {
-          in: formatDateTimeInTz(clockInDt.toISO(), shiftTimezone),
-          out: clockOutDt ? formatDateTimeInTz(clockOutDt.toISO(), shiftTimezone) : null,
-        }
-      : null;
   const shiftDateLabel = clockInDt ? clockInDt.toFormat("ccc, LLL d") : null;
   const shiftStartLabel = clockInDt ? clockInDt.toFormat("HH:mm") : null;
   const shiftEndLabel = clockOutDt ? clockOutDt.toFormat("HH:mm") : null;
@@ -914,8 +906,16 @@ return (
         <Grid container spacing={2} sx={{ mt: 1 }}>
           {summaryMetrics.map((metric) => (
             <Grid item xs={12} sm={4} key={metric.label}>
-              <Box>
-                <Typography variant="h5" fontWeight={700}>
+              <Box
+                sx={(theme) => ({
+                  p: 2,
+                  borderRadius: 2,
+                  border: `1px solid ${theme.palette.divider}`,
+                  background: theme.palette.mode === "light" ? theme.palette.grey[50] : theme.palette.background.default,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+                })}
+              >
+                <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.2 }}>
                   {metric.value}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -1134,22 +1134,25 @@ return (
         justifyContent="space-between"
         spacing={1}
       >
-        <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
-          <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
-            Today's shift
+        <Stack spacing={0.25} sx={{ textAlign: { xs: "center", sm: "left" } }}>
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: "center", sm: "flex-start" }}>
+            <Typography variant="h6" fontWeight={700}>
+              Today’s shift
+            </Typography>
+            {todayShift && (
+              <Chip
+                size="small"
+                color={isLockedShift ? "success" : isInProgress ? "primary" : "default"}
+                label={todayShift.status}
+                icon={<Box component="span" sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "currentColor" }} />}
+              />
+            )}
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Live clock & break guidance
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Live clock + break guidance
-          </Typography>
-        </Box>
+        </Stack>
         <Stack direction="row" spacing={1} alignItems="center">
-          {todayShift && (
-            <Chip
-              size="small"
-              color={isLockedShift ? "success" : isInProgress ? "primary" : "default"}
-              label={todayShift.status}
-            />
-          )}
           <Tooltip title={todayCardCollapsed ? "Expand shift card" : "Collapse shift card"}>
             <IconButton size="small" onClick={() => setTodayCardCollapsed((prev) => !prev)}>
               {todayCardCollapsed ? <ExpandMoreIcon /> : <ExpandLessIcon />}
@@ -1174,11 +1177,9 @@ return (
                 sx={{ textAlign: { xs: "center", sm: "left" } }}
               >
                 {isClocked
-                  ? `Clocked in at ${currentShiftNumbers?.in}${
-                      isCompleted && currentShiftNumbers?.out
-                        ? ` • Clocked out at ${currentShiftNumbers?.out}`
-                        : ""
-                    }`
+                  ? `Clocked in: ${clockInDt?.toFormat("HH:mm")}${
+                      breakInProgress && breakStartDt ? ` • On break since: ${breakStartDt.toFormat("HH:mm")}` : ""
+                    }${isCompleted && clockOutDt ? ` • Clocked out: ${clockOutDt.toFormat("HH:mm")}` : ""}`
                   : "Not clocked in yet."}
               </Typography>
               {isClocked && (
@@ -1215,17 +1216,6 @@ return (
                 >
                   {breakCountdownNotice.text}
                 </Alert>
-              )}
-              {breakInProgress && breakStartDt && (
-                <Chip
-                  size="small"
-                  color="warning"
-                  label={`On break since ${formatDateTimeInTz(
-                    breakStartDt.toISO(),
-                    shiftTimezone
-                  )}`}
-                  sx={{ width: "fit-content", mt: 1 }}
-                />
               )}
               {isLockedShift && (
                 <Chip
@@ -1385,23 +1375,34 @@ return (
               )}
             {breakTimelineMeta && (
               <Box mt={2}>
-                <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                  Break timeline {breakTimelineMeta.active ? "(in progress)" : "(recorded)"}
-                </Typography>
-                {breakTimelineMeta.active && typeof breakCountdownMinutes === "number" && (
-                  <Typography variant="caption" color="warning.main" sx={{ display: "block", mb: 0.5 }}>
-                    {breakCountdownMinutes > 0
-                      ? `Time remaining: ${breakCountdownMinutes}m`
-                      : "Break time reached — wrap up now."}
+                <Box
+                  sx={(theme) => ({
+                    p: 2,
+                    borderRadius: 2,
+                    border: `1px solid ${theme.palette.divider}`,
+                    background: theme.palette.mode === "light" ? theme.palette.grey[50] : theme.palette.background.default,
+                  })}
+                >
+                  <Stack direction="row" alignItems="center" justifyContent="space-between">
+                    <Typography variant="subtitle2">Break</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {breakTimelineMeta.active && typeof breakCountdownMinutes === "number"
+                        ? breakCountdownMinutes > 0
+                          ? `${breakCountdownMinutes}m remaining`
+                          : "Wrap up now"
+                        : `${breakTimelineMeta.totalMinutes}m logged`}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                    Started {breakTimelineMeta.start.toFormat("HH:mm")} · Target {breakTimelineMeta.targetMinutes}m
                   </Typography>
-                )}
                 <Box
                   sx={{
                     position: "relative",
-                    mt: 0.5,
+                    mt: 1,
                     height: 8,
-                      borderRadius: 999,
-                      background: (theme) => theme.palette.action.hover,
+                    borderRadius: 999,
+                    background: (theme) => theme.palette.action.hover,
                     }}
                   >
                     <Box
@@ -1419,18 +1420,11 @@ return (
                       })}
                     />
                   </Box>
-                  <Stack direction="row" justifyContent="space-between" mt={0.5}>
-                    <Typography variant="caption" color="text.secondary">
-                      Start {breakTimelineMeta.start.toFormat("HH:mm")}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Target {breakTimelineMeta.targetMinutes}m
-                    </Typography>
-                  </Stack>
                 </Box>
-              )}
-            </>
-          ) : (
+              </Box>
+            )}
+          </>
+        ) : (
             <Typography variant="body2" color="text.secondary">
               No shift scheduled today. Upcoming shifts will appear here for quick clock actions.
             </Typography>
