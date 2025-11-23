@@ -720,6 +720,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const [statsError, setStatsError] = useState("");
   const [timeRange, setTimeRange] = useState("14");
   const isMobileViewport = useMediaQuery(theme.breakpoints.down("lg"));
+  const navOffset = useMediaQuery(theme.breakpoints.down("sm")) ? 56 : 64; // height of global nav bar
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const drawerExpanded = isMobileViewport ? true : isDrawerOpen;
   const drawerWidthCurrent = drawerExpanded ? drawerWidth : collapsedWidth;
@@ -1805,10 +1806,13 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         color="inherit"
         elevation={0}
         sx={{
+          zIndex: (theme) => theme.zIndex.drawer + 2,
           borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
           height: APP_BAR_HEIGHT,
           display: "flex",
           justifyContent: "center",
+          backgroundColor: (theme) => theme.palette.background.paper,
+          top: navOffset,
         }}
       >
         <Toolbar sx={{ minHeight: APP_BAR_HEIGHT, px: { xs: 1.5, md: 3 } }}>
@@ -1818,20 +1822,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                 <MenuIcon />
               </IconButton>
             )}
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Manager Dashboard
-            </Typography>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip size="small" label={`TZ ${currentTimezone}`} />
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => handleNavSelect("add-member")}
-              sx={{ display: { xs: "none", sm: "inline-flex" } }}
-            >
-              Add member
-            </Button>
           </Stack>
         </Toolbar>
       </AppBar>
@@ -1841,41 +1834,41 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         sx={{ width: { lg: drawerWidthCurrent }, flexShrink: { lg: 0 } }}
         aria-label="manager navigation"
       >
-        <Drawer
-          variant="temporary"
-          open={mobileDrawerOpen}
-          onClose={toggleDrawer}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: "block", lg: "none" },
-            "& .MuiDrawer-paper": {
-              width: drawerWidth,
-              boxSizing: "border-box",
-              top: APP_BAR_HEIGHT,
-              height: `calc(100vh - ${APP_BAR_HEIGHT}px)`,
-            },
-          }}
-        >
+          <Drawer
+            variant="temporary"
+            open={mobileDrawerOpen}
+            onClose={toggleDrawer}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              display: { xs: "block", lg: "none" },
+              "& .MuiDrawer-paper": {
+                width: drawerWidth,
+                boxSizing: "border-box",
+                top: APP_BAR_HEIGHT + navOffset,
+                height: `calc(100vh - ${APP_BAR_HEIGHT + navOffset}px)`,
+              },
+            }}
+          >
           {drawerContent}
         </Drawer>
         <Drawer
           variant="permanent"
           open
-          sx={{
-            display: { xs: "none", lg: "block" },
-            width: drawerWidthCurrent,
-            flexShrink: 0,
-            whiteSpace: "nowrap",
-            [`& .MuiDrawer-paper`]: {
+            sx={{
+              display: { xs: "none", lg: "block" },
               width: drawerWidthCurrent,
-              overflowX: "hidden",
-              transition: "width 0.3s",
-              boxSizing: "border-box",
-              top: APP_BAR_HEIGHT,
-              height: `calc(100vh - ${APP_BAR_HEIGHT}px)`,
-            },
-          }}
-        >
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+              [`& .MuiDrawer-paper`]: {
+                width: drawerWidthCurrent,
+                overflowX: "hidden",
+                transition: "width 0.3s",
+                boxSizing: "border-box",
+                top: APP_BAR_HEIGHT + navOffset,
+                height: `calc(100vh - ${APP_BAR_HEIGHT + navOffset}px)`,
+              },
+            }}
+          >
           {drawerContent}
         </Drawer>
       </Box>
@@ -1889,7 +1882,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
           minWidth: 0,
           width: "100%",
           maxWidth: "none",
-          mt: `${APP_BAR_HEIGHT}px`,
+          mt: `${APP_BAR_HEIGHT + navOffset}px`,
         }}
       >
         {renderView()}
