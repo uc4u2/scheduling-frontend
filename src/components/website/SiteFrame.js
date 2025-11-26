@@ -36,6 +36,11 @@ const clampNumber = (value, min, max, fallback) => {
   return clamped;
 };
 
+const DEFAULT_SOCIAL_LINKS = [
+  { icon: "instagram", href: "https://instagram.com/schedulaa" },
+  { icon: "linkedin", href: "https://linkedin.com/company/schedulaa" },
+];
+
 const alignToFlex = (value, fallback = "flex-start") => {
   switch ((value || "").toLowerCase()) {
     case "center":
@@ -199,9 +204,9 @@ export default function SiteFrame({
   const headerSocial =
     (Array.isArray(headerConfig?.social_links) && headerConfig.social_links.length
       ? headerConfig.social_links
-      : Array.isArray(site?.header?.social_links)
+      : Array.isArray(site?.header?.social_links) && site.header.social_links.length
         ? site.header.social_links
-        : []) || [];
+        : DEFAULT_SOCIAL_LINKS) || [];
   const showBrandText = headerConfig?.show_brand_text !== false;
   const brandName =
     (headerConfig?.text && headerConfig.text.trim()) ||
@@ -573,9 +578,9 @@ export default function SiteFrame({
   const footerSocial =
     (Array.isArray(footerConfig?.social_links) && footerConfig.social_links.length
       ? footerConfig.social_links
-      : Array.isArray(site?.footer?.social_links)
+      : Array.isArray(site?.footer?.social_links) && site.footer.social_links.length
         ? site.footer.social_links
-        : []) || [];
+        : DEFAULT_SOCIAL_LINKS) || [];
   const footerLegal =
     (Array.isArray(footerConfig?.legal_links) && footerConfig.legal_links.length
       ? footerConfig.legal_links
