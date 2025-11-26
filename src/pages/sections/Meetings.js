@@ -163,11 +163,11 @@ const Meetings = ({ token }) => {
       {error && <Alert severity="error">{error}</Alert>}
 
       <FormControl fullWidth sx={{ mb: 2 }}>
-        <InputLabel>Select Recruiter</InputLabel>
+        <InputLabel>Select Employee</InputLabel>
         <Select
           value={selectedRecruiter}
           onChange={(e) => setSelectedRecruiter(e.target.value)}
-          label="Select Recruiter"
+          label="Select Employee"
         >
           {recruiters.map((r) => (
             <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>

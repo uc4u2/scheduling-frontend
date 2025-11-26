@@ -1773,12 +1773,12 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
         <Grid item xs={12} md={3}>
           <FormControl fullWidth>
-            <InputLabel>Select Recruiters</InputLabel>
+            <InputLabel>Select Employees</InputLabel>
             <Select
               multiple
               value={selectedRecruiters}
               onChange={(e) => setSelectedRecruiters(e.target.value)}
-              input={<OutlinedInput label="Select Recruiters" />}
+              input={<OutlinedInput label="Select Employees" />}
               renderValue={(selected) =>
                 selected
                   .map((id) => recruiters.find((r) => r.id === id)?.name || id)

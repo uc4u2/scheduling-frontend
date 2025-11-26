@@ -588,10 +588,11 @@ const handleApprove = async (id) => {
               label="Employee"
               value={filters.recruiterId}
               onChange={handleChange("recruiterId")}
+              helperText="Choose one employee or leave as All employees to see everyone."
             >
-              <MenuItem value="">All employees</MenuItem>
+              <MenuItem value="">All employees (show everyone)</MenuItem>
               {visibleEmployees.map((rec) => {
-                const displayName = 
+                const displayName =
                   rec.name ||
                   rec.full_name ||
                   [rec.first_name, rec.last_name].filter(Boolean).join(" ") ||

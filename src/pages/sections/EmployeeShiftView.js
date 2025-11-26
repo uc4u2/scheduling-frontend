@@ -649,10 +649,10 @@ useEffect(() => {
   {userRole === "manager" && (
     <Grid item xs={12} sm={6} md={4}>
       <FormControl fullWidth>
-        <InputLabel id="recruiter-select-label">Select Recruiter</InputLabel>
+        <InputLabel id="recruiter-select-label">Select Employee</InputLabel>
         <Select
   labelId="recruiter-select-label"
-  label="Select Recruiter"
+  label="Select Employee"
   value={selectedRecruiters[0] || ""}
   onChange={(e) => setSelectedRecruiters([String(e.target.value)])}
 >
