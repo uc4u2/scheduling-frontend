@@ -10,8 +10,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import TelegramIcon from "@mui/icons-material/Telegram";
-import DiscordIcon from "@mui/icons-material/Discord";
-import ForumIcon from "@mui/icons-material/Forum"; // Messenger/Line/Slack fallback
+import ChatBubbleIcon from "@mui/icons-material/ChatBubble"; // Messenger/Line/Slack/Discord fallback
 import RedditIcon from "@mui/icons-material/Reddit";
 import RssFeedIcon from "@mui/icons-material/RssFeed";
 import VideocamIcon from "@mui/icons-material/Videocam"; // Vimeo
@@ -29,10 +28,10 @@ export const SOCIAL_ICON_MAP = {
   whatsapp: WhatsAppIcon,
   snapchat: CameraAltIcon,
   telegram: TelegramIcon,
-  discord: DiscordIcon,
-  slack: ForumIcon,
-  messenger: ForumIcon,
-  line: ForumIcon,
+  discord: ChatBubbleIcon,
+  slack: ChatBubbleIcon,
+  messenger: ChatBubbleIcon,
+  line: ChatBubbleIcon,
   reddit: RedditIcon,
   rss: RssFeedIcon,
   vimeo: VideocamIcon,
