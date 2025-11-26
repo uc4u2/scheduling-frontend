@@ -822,7 +822,15 @@ const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign
   );
 };
 
-const GalleryCarousel = ({ title, caption, images = [], autoplay = true, titleAlign, maxWidth }) => {
+const GalleryCarousel = ({
+  title,
+  caption,
+  images = [],
+  autoplay = true,
+  titleAlign,
+  maxWidth,
+  aspectRatio = "4 / 3" // enforce a consistent frame so mixed sizes look uniform
+}) => {
   const imgs = toArray(images);
   const reduced = usePrefersReducedMotion();
   const [index, setIndex, setPaused] = useAutoplay(
@@ -858,12 +866,28 @@ const GalleryCarousel = ({ title, caption, images = [], autoplay = true, titleAl
             }}
             aria-hidden={i !== index}
           >
-            <img
-              src={src}
-              alt=""
-              loading="lazy"
-              style={{ width: "100%", display: "block" }}
-            />
+            <Box
+              sx={{
+                position: "relative",
+                width: "100%",
+                aspectRatio,
+                overflow: "hidden"
+              }}
+            >
+              <img
+                src={src}
+                alt=""
+                loading="lazy"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  position: "absolute",
+                  inset: 0
+                }}
+              />
+            </Box>
           </Box>
         ))}
         {imgs.length > 1 && (
