@@ -2330,6 +2330,7 @@ const autoProvisionIfEmpty = useCallback(
             <Switch checked={fullPreview} onChange={(_, v) => setFullPreview(v)} />
           }
         />
+
       </Stack>
     </SectionCard>
   );

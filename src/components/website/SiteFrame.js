@@ -196,9 +196,12 @@ export default function SiteFrame({
 
   const headerLogo =
     headerConfig?.logo_asset?.url || site?.company?.logo_url || null;
-  const headerSocial = Array.isArray(headerConfig?.social_links)
-    ? headerConfig.social_links
-    : [];
+  const headerSocial =
+    (Array.isArray(headerConfig?.social_links) && headerConfig.social_links.length
+      ? headerConfig.social_links
+      : Array.isArray(site?.header?.social_links)
+        ? site.header.social_links
+        : []) || [];
   const showBrandText = headerConfig?.show_brand_text !== false;
   const brandName =
     (headerConfig?.text && headerConfig.text.trim()) ||
@@ -567,9 +570,12 @@ export default function SiteFrame({
     (Array.isArray(footerConfig?.columns) && footerConfig.columns.length
       ? footerConfig.columns
       : cloneFooterColumns()) || [];
-  const footerSocial = Array.isArray(footerConfig?.social_links)
-    ? footerConfig.social_links
-    : [];
+  const footerSocial =
+    (Array.isArray(footerConfig?.social_links) && footerConfig.social_links.length
+      ? footerConfig.social_links
+      : Array.isArray(site?.footer?.social_links)
+        ? site.footer.social_links
+        : []) || [];
   const footerLegal =
     (Array.isArray(footerConfig?.legal_links) && footerConfig.legal_links.length
       ? footerConfig.legal_links
