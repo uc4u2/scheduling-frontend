@@ -2,13 +2,26 @@
 import { DEFAULT_COPYRIGHT_TEXT } from "./footerDefaults";
 export const SOCIAL_ICON_OPTIONS = [
   { value: "instagram", label: "Instagram" },
-  { value: "facebook", label: "Facebook" },
   { value: "linkedin", label: "LinkedIn" },
+  { value: "facebook", label: "Facebook" },
   { value: "youtube", label: "YouTube" },
   { value: "tiktok", label: "TikTok" },
   { value: "twitter", label: "Twitter / X" },
   { value: "threads", label: "Threads" },
   { value: "pinterest", label: "Pinterest" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "telegram", label: "Telegram" },
+  { value: "wechat", label: "WeChat" },
+  { value: "snapchat", label: "Snapchat" },
+  { value: "discord", label: "Discord" },
+  { value: "slack", label: "Slack" },
+  { value: "messenger", label: "Messenger" },
+  { value: "line", label: "LINE" },
+  { value: "reddit", label: "Reddit" },
+  { value: "github", label: "GitHub" },
+  { value: "medium", label: "Medium" },
+  { value: "vimeo", label: "Vimeo" },
+  { value: "rss", label: "RSS" },
 ];
 
 const clampNumber = (value, min, max, fallback) => {

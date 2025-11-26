@@ -9,6 +9,12 @@ import PinterestIcon from "@mui/icons-material/Pinterest";
 import LinkIcon from "@mui/icons-material/Link";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import TelegramIcon from "@mui/icons-material/Telegram";
+import DiscordIcon from "@mui/icons-material/Discord";
+import ForumIcon from "@mui/icons-material/Forum"; // Messenger/Line/Slack fallback
+import RedditIcon from "@mui/icons-material/Reddit";
+import RssFeedIcon from "@mui/icons-material/RssFeed";
+import VideocamIcon from "@mui/icons-material/Videocam"; // Vimeo
 
 export const SOCIAL_ICON_MAP = {
   instagram: InstagramIcon,
@@ -22,6 +28,14 @@ export const SOCIAL_ICON_MAP = {
   pinterest: PinterestIcon,
   whatsapp: WhatsAppIcon,
   snapchat: CameraAltIcon,
+  telegram: TelegramIcon,
+  discord: DiscordIcon,
+  slack: ForumIcon,
+  messenger: ForumIcon,
+  line: ForumIcon,
+  reddit: RedditIcon,
+  rss: RssFeedIcon,
+  vimeo: VideocamIcon,
 };
 
 export const DEFAULT_SOCIAL_ICON = LinkIcon;
