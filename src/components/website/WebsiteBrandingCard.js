@@ -469,14 +469,19 @@ function PageDrivenMenuPreview({
 
 function SocialLinksEditor({ title, items, onChange }) {
   const list = Array.isArray(items) ? items : [];
+  const isDisabled = !onChange;
   const handleAdd = () => {
-    onChange?.([...list, { icon: "instagram", href: "" }]);
+    if (isDisabled) return;
+    // Seed with a non-empty href so normalization doesn't drop the row.
+    onChange([...list, { icon: "instagram", href: "https://" }]);
   };
   const handleRemove = (idx) => {
-    onChange?.(list.filter((_, i) => i !== idx));
+    if (isDisabled) return;
+    onChange(list.filter((_, i) => i !== idx));
   };
   const handleChange = (idx, patch) => {
-    onChange?.(list.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
+    if (isDisabled) return;
+    onChange(list.map((item, i) => (i === idx ? { ...item, ...patch } : item)));
   };
   return (
     <Stack spacing={1.5}>
@@ -486,7 +491,7 @@ function SocialLinksEditor({ title, items, onChange }) {
           size="small"
           startIcon={<AddCircleOutlineIcon fontSize="small" />}
           onClick={handleAdd}
-          disabled={list.length >= 6}
+          disabled={isDisabled || list.length >= 6}
         >
           Add social link
         </Button>
