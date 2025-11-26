@@ -36,6 +36,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LogoutIcon from "@mui/icons-material/Logout";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const statusColor = {
@@ -327,10 +328,10 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     }
   }, [rosterUpdatedAt, viewerTimezone]);
 
-const handleApprove = async (id) => {
-  setActionId(id);
-  try {
-    await timeTracking.approveEntry(id);
+  const handleApprove = async (id) => {
+    setActionId(id);
+    try {
+      await timeTracking.approveEntry(id);
       setSnackbar({
         open: true,
         severity: "success",
@@ -342,6 +343,29 @@ const handleApprove = async (id) => {
         open: true,
         severity: "error",
         message: err?.response?.data?.error || "Approve failed.",
+      });
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const confirm = window.confirm("Delete this time entry? This cannot be undone.");
+    if (!confirm) return;
+    setActionId(id);
+    try {
+      await timeTracking.deleteEntry(id);
+      setEntries((prev) => prev.filter((e) => String(e.id) !== String(id)));
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: "Time entry deleted.",
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: err?.response?.data?.error || "Failed to delete entry.",
       });
     } finally {
       setActionId(null);
@@ -810,11 +834,11 @@ const handleApprove = async (id) => {
                         <Button
                           size="small"
                           variant="outlined"
-                          disabled={
-                            entry.status !== "completed" ||
-                            actionId === entry.id ||
-                            entry.is_locked
-                          }
+                      disabled={
+                        entry.status !== "completed" ||
+                        actionId === entry.id ||
+                        entry.is_locked
+                      }
                           onClick={() => handleApprove(entry.id)}
                         >
                           Approve
@@ -843,6 +867,20 @@ const handleApprove = async (id) => {
                         >
                           Reject
                         </Button>
+                        <Tooltip title="Delete this entry">
+                          <span>
+                            <Button
+                              size="small"
+                              color="error"
+                              variant="text"
+                              startIcon={<DeleteIcon fontSize="small" />}
+                              disabled={actionId === entry.id}
+                              onClick={() => handleDelete(entry.id)}
+                            >
+                              Delete
+                            </Button>
+                          </span>
+                        </Tooltip>
                       </Stack>
                     </TableCell>
                   </TableRow>

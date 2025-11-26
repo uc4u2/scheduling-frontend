@@ -198,6 +198,8 @@ export const timeTracking = {
     api.post(`/manager/time-entries/${id}/reject`, payload, config).then((r) => r.data),
   forceClockOut: (id, payload = {}, config = {}) =>
     api.post(`/manager/time-entries/${id}/force-clock-out`, payload, config).then((r) => r.data),
+  deleteEntry: (id, config = {}) =>
+    api.delete(`/manager/time-entries/${id}`, config).then((r) => r.data),
   bulkAdjustEntries: (payload = {}, config = {}) =>
     api.post("/manager/time-entries/bulk-adjust", payload, config).then((r) => r.data),
   employeeSummary: (params = {}, config = {}) =>
