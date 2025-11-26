@@ -37,20 +37,14 @@ const DEMO_ENV = process.env.REACT_APP_DEMO_ENV || "Staging";
 const DEMO_VIDEO_SRC =
   process.env.REACT_APP_DEMO_VIDEO ||
   "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/manager-demo.mp4";
+const DEMO_VIDEO_BUILDER_SRC =
+  process.env.REACT_APP_DEMO_VIDEO_BUILDER ||
+  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/website-builder-demo.mp4";
+const DEMO_VIDEO_TIME_SRC =
+  process.env.REACT_APP_DEMO_VIDEO_TIME ||
+  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/schedulaa-time-tracking.mp4";
 
 const QUICK_ACTIONS = [
-  {
-    title: "Review live scheduling",
-    body: "Load the Calendar view, create a demo shift, and approve a staff swap request.",
-  },
-  {
-    title: "Verify payroll handoff",
-    body: "Export a payroll preview, inspect stat holiday logic, and download a sample W-2/T4 report.",
-  },
-  {
-    title: "Trigger automations",
-    body: "Send a win-back campaign, update a landing page, and watch analytics refresh in real time.",
-  },
 ];
 
 const DemoPage = () => {
@@ -258,17 +252,16 @@ const DemoPage = () => {
           </Grid>
 
           <Grid container spacing={3} alignItems="stretch">
-            <Grid item xs={12} md={7}>
+            <Grid item xs={12}>
               <Paper
                 elevation={0}
                 sx={{
                   p: { xs: 3, md: 4 },
                   borderRadius: 4,
                   border: (t) => `1px solid ${alpha(t.palette.divider, 0.4)}`,
-                  height: "100%",
                 }}
               >
-                <Stack spacing={2}>
+                <Stack spacing={3}>
                   <Stack direction="row" spacing={1.5} alignItems="center">
                     <PlayCircleOutlineIcon color="primary" />
                     <Typography variant="h5" fontWeight={700}>
@@ -288,30 +281,56 @@ const DemoPage = () => {
                   >
                     Your browser does not support the video tag.
                   </Box>
-                </Stack>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={5}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: { xs: 3, md: 4 },
-                  borderRadius: 4,
-                  border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.2)}`,
-                  height: "100%",
-                }}
-              >
-                <Stack spacing={2}>
-                  {QUICK_ACTIONS.map((action) => (
-                    <Box key={action.title} sx={{ py: 1 }}>
-                      <Typography variant="subtitle1" fontWeight={600}>
-                        {action.title}
+
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <PlayCircleOutlineIcon color="primary" />
+                      <Typography variant="h6" fontWeight={700}>
+                        Edit the website step-by-step
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {action.body}
-                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 820 }}>
+                      Short guide to using the Visual Site Builder: change themes, edit sections, and publish.
+                    </Typography>
+                    <Box
+                      component="video"
+                      src={DEMO_VIDEO_BUILDER_SRC}
+                      controls
+                      preload="metadata"
+                      sx={{
+                        width: "100%",
+                        borderRadius: 3,
+                        border: (t) => `1px solid ${alpha(t.palette.divider, 0.4)}`,
+                      }}
+                    >
+                      Your browser does not support the video tag.
                     </Box>
-                  ))}
+                  </Stack>
+
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <PlayCircleOutlineIcon color="primary" />
+                      <Typography variant="h6" fontWeight={700}>
+                        Clock in/out & approvals
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 820 }}>
+                      How employees clock in/out and how managers review, approve, or adjust punches.
+                    </Typography>
+                    <Box
+                      component="video"
+                      src={DEMO_VIDEO_TIME_SRC}
+                      controls
+                      preload="metadata"
+                      sx={{
+                        width: "100%",
+                        borderRadius: 3,
+                        border: (t) => `1px solid ${alpha(t.palette.divider, 0.4)}`,
+                      }}
+                    >
+                      Your browser does not support the video tag.
+                    </Box>
+                  </Stack>
                 </Stack>
               </Paper>
             </Grid>
