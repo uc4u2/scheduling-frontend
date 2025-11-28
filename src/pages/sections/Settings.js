@@ -18,6 +18,10 @@ import {
   Radio,
   IconButton,
   Tooltip,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -101,6 +105,9 @@ const Settings = () => {
   const [theme, setTheme] = useState("light");
 
   const [primary, setPrimary] = useState("#1976d2");
+  const [embedPrimary, setEmbedPrimary] = useState("#1976d2");
+  const [embedText, setEmbedText] = useState("light");
+  const [embedDialog, setEmbedDialog] = useState(false);
 
   const professionLabelMap = useMemo(() => new Map(PROFESSION_OPTIONS.map((option) => [option.value, option.label])), []);
 
@@ -110,6 +117,7 @@ const Settings = () => {
 
   // which one to show managers (simple toggle)
   const [embedMode, setEmbedMode] = useState("popup"); // "popup" | "inline"
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // cancellation rules
   const [cancelWindow, setCancelWindow] = useState(24);
@@ -118,6 +126,7 @@ const Settings = () => {
   const [maxReschedules, setMaxReschedules] = useState(3);
 
   const [message, setMessage] = useState(null);
+  const [copyToast, setCopyToast] = useState(false);
   const [saving, setSaving] = useState(false);
 
   /* ---------- load settings + snippets ---------- */
@@ -129,14 +138,16 @@ const Settings = () => {
         const { data } = await axios.get(`${API_URL}/settings`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setProfession(data.profession ?? "");
-        setDefaultProfession(data.default_profession ?? "");
+        setProfession(data.profession || "general");
+        setDefaultProfession(data.default_profession || "general");
         const effective = data.effective_profession ?? data.default_profession ?? "";
-        setEffectiveProfession(effective);
+        setEffectiveProfession(effective || "general");
         setWorkspaceName(data.workspace_name ?? "prefs");
         setTheme(data.theme ?? "light");
         setLanguage(data.language ?? "en");
         setPrimary(data.primary_color ?? "#1976d2");
+        setEmbedPrimary(data.primary_color ?? "#1976d2");
+        setEmbedText((data.theme ?? "light").toLowerCase().includes("dark") ? "dark" : "light");
         setCancelWindow(data.cancellation_window_hours ?? 24);
         setMaxCancels(data.max_cancels_per_month ?? 3);
         setResWindow(data.reschedule_window_hours ?? 6);
@@ -196,8 +207,59 @@ const Settings = () => {
   };
 
   /* ---------- derived ---------- */
-  const activeSnippet = embedMode === "popup" ? snippetWidget : snippetIframe;
-  const previewSrc = useMemo(() => extractIframeSrc(snippetIframe), [snippetIframe]);
+  const resolvedPrimary = embedPrimary || primary || "#1976d2";
+  const resolvedText = embedText || "light";
+
+  const applyAttr = (html, attr, value) => {
+    if (!value) return html;
+    const re = new RegExp(`${attr}="[^"]*"`);
+    if (re.test(html)) return html.replace(re, `${attr}="${value}"`);
+    return html.replace(/<script/i, `<script ${attr}="${value}"`);
+  };
+
+  const withScriptParams = useMemo(() => {
+    if (!snippetWidget) return "";
+    let out = snippetWidget;
+    out = applyAttr(out, "data-primary", resolvedPrimary);
+    out = applyAttr(out, "data-text", resolvedText);
+    out = applyAttr(out, "data-mode", embedMode);
+    out = embedDialog ? applyAttr(out, "data-dialog", "1") : out;
+    if (!embedDialog) {
+      out = out.replace(/\sdata-dialog="[^"]*"/, "");
+    }
+    return out;
+  }, [snippetWidget, resolvedPrimary, resolvedText, embedMode, embedDialog]);
+
+  const rewriteIframeSnippet = useMemo(() => {
+    if (!snippetIframe) return "";
+    const src = extractIframeSrc(snippetIframe);
+    if (!src) return snippetIframe;
+    let url;
+    try {
+      url = new URL(src, window.location.origin);
+    } catch {
+      return snippetIframe;
+    }
+    url.searchParams.set("primary", resolvedPrimary);
+    url.searchParams.set("text", resolvedText);
+    url.searchParams.set("embed", "1");
+    if (embedDialog) url.searchParams.set("dialog", "1");
+    else url.searchParams.delete("dialog");
+    if (embedMode === "popup") {
+      url.searchParams.set("mode", "modal");
+      url.searchParams.set("dialog", "1");
+    } else {
+      url.searchParams.set("mode", "inline");
+    }
+    const updatedSrc = url.toString();
+    return snippetIframe.replace(src, updatedSrc);
+  }, [snippetIframe, resolvedPrimary, resolvedText, embedMode, embedDialog]);
+
+  const activeSnippet = embedMode === "popup" ? withScriptParams : rewriteIframeSnippet;
+  const previewSrc = useMemo(() => {
+    const target = embedMode === "popup" ? rewriteIframeSnippet : rewriteIframeSnippet;
+    return extractIframeSrc(target);
+  }, [rewriteIframeSnippet, embedMode]);
 
   const notSetLabel = t("settings.general.profession.notSet", { defaultValue: "Not set" });
 
@@ -212,115 +274,37 @@ const Settings = () => {
   /* ---------- sections ---------- */
   const GeneralCard = (
     <SectionCard
-      title={t("settings.general.title")}
-      description={t("settings.general.description")}
+      title={t("settings.general.title", { defaultValue: "Industry" })}
+      description={t("settings.general.description", { defaultValue: "Choose the industry that best fits your workspace." })}
       actions={
         <Button variant="contained" onClick={save} disabled={saving}>
           {saving ? t("settings.common.saving") : t("settings.general.actions.save")}
         </Button>
       }
     >
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
-          <FormControl fullWidth>
-            <InputLabel>{t("settings.general.profession.label")}</InputLabel>
-            <Select
-              label={t("settings.general.profession.label")}
-              value={profession}
-              onChange={(e) => setProfession(e.target.value)}
-            >
-              <MenuItem value="hr">{t("settings.general.profession.options.hr")}</MenuItem>
-              <MenuItem value="salon">{t("settings.general.profession.options.salon")}</MenuItem>
-              <MenuItem value="clinic">{t("settings.general.profession.options.clinic")}</MenuItem>
-              <MenuItem value="education">{t("settings.general.profession.options.education")}</MenuItem>
-              <MenuItem value="other">{t("settings.general.profession.options.other")}</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: "block", mt: 1 }}
+      <Stack spacing={2}>
+        <Alert severity="info" variant="outlined">
+          {t("settings.general.profession.helper", {
+            defaultValue: "Optional but recommended: choose an industry to appear in the public directory and get industry-ready templates.",
+            company: companyProfessionLabel,
+            effective: effectiveProfessionLabel,
+          })}
+        </Alert>
+        <FormControl fullWidth>
+          <InputLabel>{t("settings.general.profession.label", { defaultValue: "Industry" })}</InputLabel>
+          <Select
+            label={t("settings.general.profession.label", { defaultValue: "Industry" })}
+            value={profession}
+            onChange={(e) => setProfession(e.target.value)}
           >
-            {t("settings.general.profession.helper", {
-              defaultValue: "Company default: {{company}} | Your view: {{effective}}",
-              company: companyProfessionLabel,
-              effective: effectiveProfessionLabel,
-            })}
-          </Typography>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <TextField
-            label={t("settings.general.workspaceName.label")}
-            fullWidth
-            value={workspaceName}
-            onChange={(e) => setWorkspaceName(e.target.value)}
-          />
-        </Grid>
-
-        <Grid item xs={6} md={4}>
-          <FormControl fullWidth>
-            <InputLabel>{t("settings.general.language.label")}</InputLabel>
-            <Select
-              label={t("settings.general.language.label")}
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              <MenuItem value="en">{t("settings.general.language.options.en")}</MenuItem>
-              <MenuItem value="fr">{t("settings.general.language.options.fr")}</MenuItem>
-              <MenuItem value="es">{t("settings.general.language.options.es")}</MenuItem>
-              <MenuItem value="de">{t("settings.general.language.options.de")}</MenuItem>
-              <MenuItem value="ar">{t("settings.general.language.options.ar")}</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-
-        <Grid item xs={6} md={4}>
-          <FormControl fullWidth>
-            <InputLabel>{t("settings.general.theme.label")}</InputLabel>
-            <Select
-              label={t("settings.general.theme.label")}
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-            >
-              <MenuItem value="light">{t("settings.general.theme.options.light")}</MenuItem>
-              <MenuItem value="dark">{t("settings.general.theme.options.dark")}</MenuItem>
-              <MenuItem value="blue">{t("settings.general.theme.options.blue")}</MenuItem>
-              <MenuItem value="pastel">{t("settings.general.theme.options.pastel")}</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-
-        {/* Brand color */}
-        <Grid item xs={12} md={4}>
-          <Typography variant="body2" sx={{ mb: 0.5 }}>
-            {t("settings.general.primaryColor.label")}
-          </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <input
-              type="color"
-              value={primary}
-              onChange={(e) => setPrimary(e.target.value)}
-              style={{
-                width: 48,
-                height: 36,
-                border: "1px solid rgba(0,0,0,0.12)",
-                borderRadius: 6,
-                cursor: "pointer",
-                padding: 0,
-                background: "transparent",
-              }}
-            />
-            <Chip size="small" label={primary} />
-            <Tooltip title={t("settings.general.primaryColor.tooltip")}>
-              <IconButton size="small">
-                <InfoOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-        </Grid>
-      </Grid>
+            {PROFESSION_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
     </SectionCard>
   );
 
@@ -395,6 +379,55 @@ const Settings = () => {
         </RadioGroup>
       </FormControl>
 
+      <Grid container spacing={2} sx={{ mb: 1 }}>
+        <Grid item xs={12} sm={4}>
+          <Typography variant="body2" sx={{ mb: 0.5 }}>
+            {t("settings.general.primaryColor.label")}
+          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <input
+              type="color"
+              value={resolvedPrimary}
+              onChange={(e) => setEmbedPrimary(e.target.value)}
+              style={{
+                width: 48,
+                height: 36,
+                border: "1px solid rgba(0,0,0,0.12)",
+                borderRadius: 6,
+                cursor: "pointer",
+                padding: 0,
+                background: "transparent",
+              }}
+            />
+            <Chip size="small" label={resolvedPrimary} />
+          </Stack>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <FormControl fullWidth>
+            <InputLabel>{t("settings.general.theme.label")}</InputLabel>
+            <Select
+              label={t("settings.general.theme.label")}
+              value={resolvedText}
+              onChange={(e) => setEmbedText(e.target.value)}
+            >
+              <MenuItem value="light">{t("settings.general.theme.options.light")}</MenuItem>
+              <MenuItem value="dark">{t("settings.general.theme.options.dark")}</MenuItem>
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={12} sm={4} sx={{ display: "flex", alignItems: "center" }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={embedDialog}
+                onChange={(e) => setEmbedDialog(e.target.checked)}
+              />
+            }
+            label={t("settings.embed.dialogLabel", "Force open in modal/dialog")}
+          />
+        </Grid>
+      </Grid>
+
       {/* Snippet box */}
       <TextField
         label={
@@ -411,26 +444,31 @@ const Settings = () => {
 
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
         <Button
-          variant="outlined"
-          startIcon={<ContentCopyIcon />}
-          onClick={() => navigator.clipboard.writeText(activeSnippet || "")}
-        >
-          {t("settings.common.copy")}
-        </Button>
-        {/* Quick preview for inline (and for popup we still preview inline UI) */}
+        variant="outlined"
+        startIcon={<ContentCopyIcon />}
+        onClick={() =>
+          navigator.clipboard
+            .writeText(activeSnippet || "")
+            .then(() => setCopyToast(true))
+            .catch(() => setMessage(t("settings.common.copyFailed", { defaultValue: "Copy failed. Please copy manually." })))
+        }
+      >
+        {t("settings.common.copy")}
+      </Button>
+        {/* Quick preview for inline and popup */}
         {previewSrc && (
           <Button
             variant="text"
             endIcon={<OpenInNewIcon />}
-            onClick={() => window.open(previewSrc, "_blank", "noopener")}
+            onClick={() => setPreviewOpen(true)}
           >
             {t("settings.common.preview")}
           </Button>
         )}
       </Stack>
 
-      {/* Live inline preview (only if inline selected) */}
-      {embedMode === "inline" && previewSrc && (
+      {/* Live preview */}
+      {previewSrc && (
         <Box
           sx={{
             mt: 2,
@@ -445,8 +483,29 @@ const Settings = () => {
             src={previewSrc}
             style={{ width: "100%", height: 540, border: "0" }}
           />
+          <Box sx={{ p: 2, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography variant="body2" color="text.secondary">
+              {t("settings.embed.previewFallback", "If the embed is blocked, open the booking page directly.")}
+            </Typography>
+            <Button size="small" onClick={() => window.open(previewSrc, "_blank", "noopener")}>
+              {t("settings.common.preview")}
+            </Button>
+          </Box>
         </Box>
       )}
+
+      <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} fullWidth maxWidth="lg">
+        <DialogTitle>{t("settings.embed.previewTitle")}</DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          {previewSrc && (
+            <iframe
+              title={t("settings.embed.previewTitle")}
+              src={previewSrc}
+              style={{ width: "100%", height: "70vh", border: "0" }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Help / instructions */}
       <Accordion sx={{ mt: 3 }}>
@@ -568,6 +627,16 @@ const Settings = () => {
       <Snackbar open={!!message} autoHideDuration={3500} onClose={() => setMessage(null)}>
         <Alert onClose={() => setMessage(null)} severity="info" sx={{ width: "100%" }}>
           {message}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={copyToast}
+        autoHideDuration={2000}
+        onClose={() => setCopyToast(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={() => setCopyToast(false)} severity="success" sx={{ width: "100%" }}>
+          {t("settings.embed.copySuccess", { defaultValue: "Embed snippet copied" })}
         </Alert>
       </Snackbar>
     </>

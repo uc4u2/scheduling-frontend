@@ -25,6 +25,7 @@ const marketingLinks = [
   { label: "Features", to: "/features" },
   { label: "Workforce", to: "/workforce" },
   { label: "Marketing", to: "/marketing" },
+  { label: "Industries", to: "/industries" },
   { label: "Docs", to: "/docs" },
   { label: "Pricing", to: "/pricing" },
   { label: "Contact", to: "/contact" },

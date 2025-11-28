@@ -32,6 +32,7 @@ const sections = [
       { label: "Features", to: "/features" },
       { label: "Workforce", to: "/workforce" },
       { label: "Booking", to: "/booking" },
+      { label: "Industries", to: "/industries" },
       { label: "Marketing", to: "/marketing" },
       { label: "Payroll", to: "/payroll" },
       { label: "Website Builder", to: "/website-builder" },

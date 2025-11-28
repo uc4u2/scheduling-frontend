@@ -138,6 +138,7 @@ import EnterpriseAnalytics from "./pages/sections/management/EnterpriseAnalytics
 import MarketingCouponBridge from "./pages/client/MarketingCouponBridge";
 import LayoutTuningLab from "./pages/sections/management/LayoutTuningLab";
 import DomainHelpPage from "./landing/pages/help/DomainHelpPage";
+import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 
 export const ThemeModeContext = createContext({
   themeName: "sunset",
@@ -193,6 +194,7 @@ const MARKETING_PATHS = [
   '/data-processing',
   '/security',
   '/user-agreement',
+  '/industries',
 ];
 
 const RESERVED_SLUG_PREFIXES = new Set([
@@ -349,6 +351,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/marketing/email-campaigns" element={<MarketingCampaignsPage />} />
             <Route path="/marketing/analytics-dashboard" element={<MarketingAnalyticsPage />} />
             <Route path="/marketing/clients-360" element={<MarketingClientsPage />} />
+            <Route path="/industries" element={<IndustryDirectoryPage />} />
             <Route path="/payroll" element={<PayrollOverviewPage />} />
             <Route path="/payroll/canada" element={<CanadaPayrollPage />} />
             <Route path="/payroll/usa" element={<USPayrollPage />} />

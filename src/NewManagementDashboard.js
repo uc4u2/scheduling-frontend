@@ -108,6 +108,7 @@ import PerformanceMetrics from "./PerformanceMetrics";
 import CandidateSearch from "./CandidateSearch";
 import FeedbackNotes from "./FeedbackNotes";
 import RecruiterAvailabilityTracker from "./RecruiterAvailabilityTracker";
+import ClientProfileSettings from "./pages/client/ClientProfileSettings";
 
 // NEW — FullCalendar for the Setmore-style panel
 import FullCalendar from "@fullcalendar/react";
@@ -119,7 +120,7 @@ import { format, endOfMonth } from "date-fns";
 // NEW — Toggle group for views/options
 import { ToggleButtonGroup, ToggleButton } from "@mui/material";
 
-const drawerWidth = 240;
+const drawerWidth = 280;
 const collapsedWidth = 64;
 const APP_BAR_HEIGHT = 64;
 
@@ -133,13 +134,14 @@ const overviewChildrenConfig = [
   { labelKey: "manager.menu.feedbackNotes", key: "feedback-notes", icon: <Article /> },
   { labelKey: "manager.menu.recruiterAvailability", key: "recruiter-availability", icon: <CalendarToday /> },
   { labelKey: "manager.menu.recentBookings", key: "recent-bookings", icon: <History /> },
+  { label: "Payroll Audit History", key: "audit", icon: <History /> },
+  { label: "Monthly Attendance Calendar", key: "attendance", icon: <CalendarToday /> },
+  { label: "Candidate Profile", key: "candidate-profile", icon: <PersonAddAltIcon /> },
 ];
 
 
 const menuConfig = [
-  { labelKey: "manager.menu.advancedManagement", key: "advanced-management", icon: <Dashboard /> },
-
-  // Employee group
+  // Employee group (first)
   {
     labelKey: "manager.menu.employeeManagement",
     key: "employee-group",
@@ -147,13 +149,22 @@ const menuConfig = [
     children: [
       { labelKey: "manager.menu.companyProfile", key: "CompanyProfile", icon: <Business /> },
       { labelKey: "manager.menu.employeeProfiles", key: "employee-profiles", icon: <FolderShared /> },
+      { label: "Add team member", key: "add-member", icon: <PersonAddAltIcon /> },
     ],
   },
 
-  { label: "Add team member", key: "add-member", icon: <PersonAddAltIcon /> },
-
-  // Website & pages stays top-level
-  { labelKey: "manager.menu.websitePages", key: "website-pages", icon: <Article /> },
+  // Shifts & Availability (second)
+  {
+    labelKey: "manager.menu.shiftsAvailability",
+    key: "shifts-group",
+    icon: <CalendarToday />,
+    children: [
+      { labelKey: "manager.menu.shiftManagement", key: "team", icon: <People /> },
+      { labelKey: "manager.menu.timeTracking", key: "time-tracking", icon: <History /> },
+      { labelKey: "manager.menu.leaves", key: "leaves", icon: <Assignment /> },
+      { labelKey: "manager.menu.swapApprovals", key: "swap-approvals", icon: <Assignment /> },
+    ],
+  },
 
   // Advanced Payroll group
   {
@@ -171,32 +182,21 @@ const menuConfig = [
     ],
   },
 
-  // Shifts & Availability group
-  {
-    labelKey: "manager.menu.shiftsAvailability",
-    key: "shifts-group",
-    icon: <CalendarToday />,
-    children: [
-      { labelKey: "manager.menu.availableShifts", key: "available-shifts", icon: <CalendarToday /> },
-      { labelKey: "manager.menu.availableSlots", key: "available-slots", icon: <EventNote /> },
-      { labelKey: "manager.menu.shiftManagement", key: "team", icon: <People /> },
-      { labelKey: "manager.menu.timeTracking", key: "time-tracking", icon: <History /> },
-    ],
-  },
-
-  // Remaining single items
-  { labelKey: "manager.menu.leaves", key: "leaves", icon: <Assignment /> },
-  { labelKey: "manager.menu.swapApprovals", key: "swap-approvals", icon: <Assignment /> },
-  { labelKey: "manager.menu.auditHistory", key: "audit", icon: <History /> },
-  { labelKey: "manager.menu.attendanceCalendar", key: "attendance", icon: <CalendarToday /> },
-
-  // Move Overview (with children) to the bottom, just above Settings
+  // Overview cluster near bottom
   {
     labelKey: "manager.menu.overview",
     key: "overview",
     icon: <Dashboard />,
     children: overviewChildrenConfig,
   },
+
+  // Website & pages
+  { labelKey: "manager.menu.websitePages", key: "website-pages", icon: <Article /> },
+
+  // Services & Bookings
+  { label: "Services & Bookings", key: "advanced-management", icon: <Dashboard /> },
+
+  // Settings last
   { labelKey: "manager.menu.settings", key: "settings", icon: <Settings /> },
 ];
 
@@ -721,7 +721,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const [timeRange, setTimeRange] = useState("14");
   const isMobileViewport = useMediaQuery(theme.breakpoints.down("lg"));
   const navOffset = useMediaQuery(theme.breakpoints.down("sm")) ? 56 : 64; // height of global nav bar
-  const managerBarHeight = isMobileViewport ? APP_BAR_HEIGHT : 0; // show local bar only on mobile for drawer toggle
+  const managerBarHeight = 0; // remove extra bar on mobile; rely on floating toggle
   const headerOffset = navOffset + managerBarHeight;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const drawerExpanded = isMobileViewport ? true : isDrawerOpen;
@@ -1629,6 +1629,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       case "settings":
         return <SettingsPage token={token} />;
 
+      case "candidate-profile":
+        return <ClientProfileSettings />;
+
       default:
         return <Overview token={token} />;
     }
@@ -1640,24 +1643,12 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         sx={{
           display: "flex",
           alignItems: "center",
-          justifyContent: drawerExpanded ? "space-between" : "center",
-          px: 1.5,
-          py: 1.5,
-          minHeight: APP_BAR_HEIGHT,
+          justifyContent: drawerExpanded ? "flex-end" : "center",
+          px: 1,
+          py: 1,
+          minHeight: 56,
         }}
       >
-        {drawerExpanded ? (
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}
-          >
-            Schedulaa
-          </Typography>
-        ) : (
-          <Typography variant="h6" sx={{ fontWeight: 800 }}>
-            S
-          </Typography>
-        )}
         {!isMobileViewport && (
           <IconButton onClick={() => setIsDrawerOpen((prev) => !prev)} size="small">
             <MenuIcon />
@@ -1695,8 +1686,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                     {drawerExpanded && (
                       <ListItemText
                         primary={item.label}
-                        primaryTypographyProps={{ noWrap: true }}
-                        sx={{ overflow: "hidden", pr: 1 }}
+                        primaryTypographyProps={{ sx: { whiteSpace: "nowrap", overflow: "visible" } }}
+                        sx={{ pr: 1 }}
                       />
                     )}
                   </ListItemButton>
@@ -1781,8 +1772,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                         {drawerExpanded && (
                           <ListItemText
                             primary={child.label}
-                            primaryTypographyProps={{ noWrap: true }}
-                            sx={{ overflow: "hidden" }}
+                            primaryTypographyProps={{ sx: { whiteSpace: "nowrap", overflow: "visible" } }}
                           />
                         )}
                       </ListItemButton>
@@ -1804,34 +1794,24 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", width: "100%" }}>
       <CssBaseline />
-      <AppBar
-        position="fixed"
-        color="inherit"
-        elevation={0}
-        sx={{
-          display: isMobileViewport ? "flex" : "none",
-          zIndex: (theme) => theme.zIndex.drawer + 2,
-          borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
-          height: managerBarHeight,
-          justifyContent: "center",
-          backgroundColor: (theme) => theme.palette.background.paper,
-          top: navOffset,
-        }}
-      >
-        <Toolbar sx={{ minHeight: managerBarHeight, px: { xs: 1.5, md: 3 } }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexGrow: 1 }}>
-            {isMobileViewport && (
-              <IconButton edge="start" color="inherit" onClick={toggleDrawer} size="large">
-                <MenuIcon />
-              </IconButton>
-            )}
-          </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            {/* TZ chip removed */}
-          </Stack>
-        </Toolbar>
-      </AppBar>
-
+      {isMobileViewport && (
+        <IconButton
+          color="inherit"
+          onClick={toggleDrawer}
+          size="large"
+          sx={{
+            position: "fixed",
+            top: navOffset + 8,
+            left: 12,
+            zIndex: (theme) => theme.zIndex.drawer + 3,
+            backgroundColor: (theme) => theme.palette.background.paper,
+            border: (theme) => `1px solid ${theme.palette.divider}`,
+            boxShadow: 1,
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+      )}
       <Box
         component="nav"
         sx={{ width: { lg: drawerWidthCurrent }, flexShrink: { lg: 0 } }}
