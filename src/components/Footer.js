@@ -9,12 +9,18 @@ import {
   MenuItem,
   Tooltip,
   Stack,
+  Button,
+  Collapse,
+  useMediaQuery,
 } from "@mui/material";
 import PaletteIcon from "@mui/icons-material/Palette";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import YouTubeIcon from "@mui/icons-material/YouTube";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { Link } from "react-router-dom";
+import { useTheme } from "@mui/material/styles";
 import { ThemeModeContext } from "../App";
 
 const sections = [
@@ -124,8 +130,11 @@ const themeLabels = {
 };
 
 const Footer = () => {
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const { themeName, setThemeName } = useContext(ThemeModeContext);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleOpenThemes = (event) => setAnchorEl(event.currentTarget);
   const handleCloseThemes = () => setAnchorEl(null);
@@ -163,61 +172,113 @@ const Footer = () => {
     );
   };
 
+  const isOpen = !isSmDown || mobileOpen;
+
   return (
-    <Box component="footer" sx={{ background: (theme) => theme.palette.background.paper, borderTop: (theme) => `1px solid ${theme.palette.divider}`, mt: 10 }}>
-      <Box sx={{ maxWidth: 1280, mx: "auto", px: { xs: 2, sm: 3, md: 6 }, py: { xs: 6, md: 8 } }}>
-        <Grid container spacing={4}>
-          {sections.map((section) => (
-            <Grid item xs={12} sm={6} md={3} key={section.title}>
-              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                {section.title}
+    <Box
+      component="footer"
+      sx={{
+        background: (t) => t.palette.background.paper,
+        borderTop: (t) => `1px solid ${t.palette.divider}`,
+        mt: 10,
+      }}
+    >
+      <Box
+        sx={{
+          maxWidth: 1280,
+          mx: "auto",
+          px: { xs: 2, sm: 3, md: 6 },
+          py: { xs: 4, md: 8 },
+        }}
+      >
+        {isSmDown && (
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setMobileOpen((s) => !s)}
+              endIcon={mobileOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+            >
+              {mobileOpen ? "Hide footer links" : "Show footer links"}
+            </Button>
+          </Box>
+        )}
+
+        <Collapse in={isOpen} timeout="auto" unmountOnExit={isSmDown}>
+          <Grid container spacing={4}>
+            {sections.map((section) => (
+              <Grid item xs={12} sm={6} md={3} key={section.title}>
+                <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                  {section.title}
+                </Typography>
+                {section.links.map(renderLink)}
+              </Grid>
+            ))}
+          </Grid>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            spacing={3}
+            mt={6}
+          >
+            <Stack spacing={1}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                Schedulaa
               </Typography>
-              {section.links.map(renderLink)}
-            </Grid>
-          ))}
-        </Grid>
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={3} mt={6}>
-          <Stack spacing={1}>
-            <Typography variant="subtitle1" fontWeight={700}>
-              Schedulaa
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {"\u00A9"} {new Date().getFullYear()} Photo Artisto Corp. All rights reserved.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              171 Harbord Street, Toronto, Ontario M5S 1H3 Canada
-            </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {"\u00A9"} {new Date().getFullYear()} Photo Artisto Corp. All rights reserved.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                171 Harbord Street, Toronto, Ontario M5S 1H3 Canada
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Tooltip title="LinkedIn">
+                <IconButton
+                  href="https://www.linkedin.com/company/schedulaa/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                >
+                  <LinkedInIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Instagram">
+                <IconButton
+                  href="https://www.instagram.com/schedulaa.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                >
+                  <InstagramIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="YouTube">
+                <IconButton
+                  href="https://www.youtube.com/@schedulaa"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="YouTube"
+                >
+                  <YouTubeIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Change theme">
+                <IconButton aria-label="Change theme" onClick={handleOpenThemes}>
+                  <PaletteIcon />
+                </IconButton>
+              </Tooltip>
+              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseThemes}>
+                {themeNames.map((name) => (
+                  <MenuItem key={name} selected={themeName === name} onClick={() => handleThemeChange(name)}>
+                    {themeLabels[name]}
+                  </MenuItem>
+                ))}
+              </Menu>
+            </Stack>
           </Stack>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Tooltip title="LinkedIn">
-              <IconButton href="https://www.linkedin.com/company/schedulaa/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-                <LinkedInIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Instagram">
-              <IconButton href="https://www.instagram.com/schedulaa.app" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-                <InstagramIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="YouTube">
-              <IconButton href="https://www.youtube.com/@schedulaa" target="_blank" rel="noopener noreferrer" aria-label="YouTube">
-                <YouTubeIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Change theme">
-              <IconButton aria-label="Change theme" onClick={handleOpenThemes}>
-                <PaletteIcon />
-              </IconButton>
-            </Tooltip>
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleCloseThemes}>
-              {themeNames.map((name) => (
-                <MenuItem key={name} selected={themeName === name} onClick={() => handleThemeChange(name)}>
-                  {themeLabels[name]}
-                </MenuItem>
-              ))}
-            </Menu>
-          </Stack>
-        </Stack>
+        </Collapse>
       </Box>
     </Box>
   );
