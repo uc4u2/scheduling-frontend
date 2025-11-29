@@ -13,22 +13,9 @@ import {
   Checkbox,
 } from "@mui/material";
 import PasswordField from "./PasswordField";
+import TimezoneSelect from "./components/TimezoneSelect";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
-
-const STATIC_TIMEZONES = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "Europe/London",
-  "Europe/Berlin",
-  "Europe/Paris",
-  "Asia/Kolkata",
-  "Asia/Tokyo",
-  "Asia/Dubai",
-  "Australia/Sydney",
-];
 
 const ROLE_OPTIONS = [
   {
@@ -305,10 +292,6 @@ const Login = ({ setToken }) => {
     }
   };
 
-  const tzOptions = STATIC_TIMEZONES.includes(timezone)
-    ? STATIC_TIMEZONES
-    : [timezone, ...STATIC_TIMEZONES];
-
   useEffect(() => {
     if (resendCooldown <= 0) {
       if (resendTimerRef.current) {
@@ -436,23 +419,12 @@ const Login = ({ setToken }) => {
                   ))}
                 </TextField>
 
-                <TextField
-                  select
+                <TimezoneSelect
                   label="Timezone"
                   value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  fullWidth
-                  helperText="We store an IANA timezone (e.g. America/New_York)."
-                >
-                  {!STATIC_TIMEZONES.includes(timezone) && (
-                    <MenuItem value={timezone}>{timezone} (detected)</MenuItem>
-                  )}
-                  {tzOptions.map((tz) => (
-                    <MenuItem key={tz} value={tz}>
-                      {tz}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  onChange={setTimezone}
+                  helperText="We store an IANA timezone (e.g., America/New_York). Type to search."
+                />
 
                 <Button type="submit" variant="contained" fullWidth sx={{ py: 1.25 }}>
                   Sign In

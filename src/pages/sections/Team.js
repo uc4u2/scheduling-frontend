@@ -41,6 +41,8 @@ import {
   Pagination,
   Dialog,
   GlobalStyles,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowUp, InfoOutlined } from "@mui/icons-material";
 import * as XLSX from "xlsx";
@@ -259,6 +261,8 @@ const localPartsToUtcMillis = (date, time, zone) => {
    ========================================================================== */
 const SecondTeam = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
 
   /* --------------------------- view & layout state --------------------------- */
   const [viewMode, setViewMode] = useState("month"); // 'month' | 'week'
@@ -1719,7 +1723,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
   /* --------------------------------- render --------------------------------- */
   return (
-    <Box p={4}>
+    <Box p={{ xs: 1, md: 4 }} sx={{ bgcolor: { xs: "transparent", md: "background.default" } }}>
       {/* Global tweaks for readability in timeGrid */}
       <GlobalStyles
         styles={{
@@ -1750,151 +1754,299 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
 
       {/* Filters row */}
-      <Grid container spacing={2} mb={2}>
-        <Grid item xs={12} md={3}>
-          <FormControl fullWidth>
-            <InputLabel>Department</InputLabel>
-            <Select
-              value={selectedDepartment}
-              label="Department"
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-            >
-              <MenuItem value="">
-                <em>All</em>
-              </MenuItem>
-              {toArray(departments).map((dept) => (
-                <MenuItem key={dept.id} value={dept.id}>
-                  {dept.name}
+      {isSmDown ? (
+        <Accordion disableGutters sx={{ mb: 2 }} defaultExpanded={false}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2">Filters & templates</Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Grid container spacing={2} mt={1}>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Department</InputLabel>
+                  <Select
+                    value={selectedDepartment}
+                    label="Department"
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                  >
+                    <MenuItem value="">
+                      <em>All</em>
+                    </MenuItem>
+                    {toArray(departments).map((dept) => (
+                      <MenuItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Select Employees</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedRecruiters}
+                    onChange={(e) => setSelectedRecruiters(e.target.value)}
+                    input={<OutlinedInput label="Select Employees" />}
+                    renderValue={(selected) =>
+                      selected
+                        .map((id) => recruiters.find((r) => r.id === id)?.name || id)
+                        .join(", ")
+                    }
+                  >
+                    {recruiters.map((r) => (
+                      <MenuItem key={r.id} value={r.id}>
+                        <Checkbox checked={selectedRecruiters.indexOf(r.id) > -1} />
+                        <ListItemText primary={r.name} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Status Filter</InputLabel>
+                  <Select
+                    value={statusFilter}
+                    label="Status Filter"
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">All</MenuItem>
+                    <MenuItem value="pending">Pending</MenuItem>
+                    <MenuItem value="accepted">Accepted</MenuItem>
+                    <MenuItem value="rejected">Rejected</MenuItem>
+                    <MenuItem value="assigned">Assigned</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  type="month"
+                  label="Month"
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    const month = e.target.value;
+                    setSelectedMonth(month);
+                    const first = `${month}-01`;
+                    const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
+
+                    setDateRange({ start: first, end: last });
+                    setSelectedDate(first);
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Shift Template</InputLabel>
+                  <Select
+                    value={formData.selectedTemplate}
+                    label="Shift Template"
+                    onChange={handleTemplateSelect}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {templates.length === 0 ? (
+                      <MenuItem disabled>Loading…</MenuItem>
+                    ) : (
+                      templates.map((t) => (
+                        <MenuItem key={t.id} value={t.label}>
+                          {t.label}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} display="flex" gap={1} alignItems="center" flexWrap="wrap">
+                <Button variant="outlined" onClick={openTemplateModal} size="small">
+                  Edit Templates
+                </Button>
+                <ToggleButtonGroup
+                  size="small"
+                  exclusive
+                  value={viewMode}
+                  onChange={(_, v) => v && setViewMode(v)}
+                >
+                  <ToggleButton value="month" title="Month + Chips">
+                    Month
+                  </ToggleButton>
+                  <ToggleButton value="week" title="Week/Day (drag & drop)">
+                    Week/Day
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
+      ) : (
+        <Grid container spacing={2} mb={2}>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>Department</InputLabel>
+              <Select
+                value={selectedDepartment}
+                label="Department"
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+              >
+                <MenuItem value="">
+                  <em>All</em>
                 </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
+                {toArray(departments).map((dept) => (
+                  <MenuItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
 
-        <Grid item xs={12} md={3}>
-          <FormControl fullWidth>
-            <InputLabel>Select Employees</InputLabel>
-            <Select
-              multiple
-              value={selectedRecruiters}
-              onChange={(e) => setSelectedRecruiters(e.target.value)}
-              input={<OutlinedInput label="Select Employees" />}
-              renderValue={(selected) =>
-                selected
-                  .map((id) => recruiters.find((r) => r.id === id)?.name || id)
-                  .join(", ")
-              }
-            >
-              {recruiters.map((r) => (
-                <MenuItem key={r.id} value={r.id}>
-                  <Checkbox checked={selectedRecruiters.indexOf(r.id) > -1} />
-                  <ListItemText primary={r.name} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl fullWidth>
+              <InputLabel>Select Employees</InputLabel>
+              <Select
+                multiple
+                value={selectedRecruiters}
+                onChange={(e) => setSelectedRecruiters(e.target.value)}
+                input={<OutlinedInput label="Select Employees" />}
+                renderValue={(selected) =>
+                  selected
+                    .map((id) => recruiters.find((r) => r.id === id)?.name || id)
+                    .join(", ")
+                }
+              >
+                {recruiters.map((r) => (
+                  <MenuItem key={r.id} value={r.id}>
+                    <Checkbox checked={selectedRecruiters.indexOf(r.id) > -1} />
+                    <ListItemText primary={r.name} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
 
-        <Grid item xs={12} md={2}>
-          <FormControl fullWidth>
-            <InputLabel>Status Filter</InputLabel>
-            <Select
-              value={statusFilter}
-              label="Status Filter"
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="pending">Pending</MenuItem>
-              <MenuItem value="accepted">Accepted</MenuItem>
-              <MenuItem value="rejected">Rejected</MenuItem>
-              <MenuItem value="assigned">Assigned</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth>
+              <InputLabel>Status Filter</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Status Filter"
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="accepted">Accepted</MenuItem>
+                <MenuItem value="rejected">Rejected</MenuItem>
+                <MenuItem value="assigned">Assigned</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
 
-        <Grid item xs={12} md={2}>
-          <TextField
-            type="month"
-            label="Month"
-            value={selectedMonth}
-            onChange={(e) => {
-              const month = e.target.value;
-              setSelectedMonth(month);
-              const first = `${month}-01`;
+          <Grid item xs={12} md={2}>
+            <TextField
+              type="month"
+              label="Month"
+              value={selectedMonth}
+              onChange={(e) => {
+                const month = e.target.value;
+                setSelectedMonth(month);
+                const first = `${month}-01`;
 const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
 
-              setDateRange({ start: first, end: last });
-              setSelectedDate(first);
-            }}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-          />
-        </Grid>
+                setDateRange({ start: first, end: last });
+                setSelectedDate(first);
+              }}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+          </Grid>
 
-        {/* ✅ Template Box */}
-        <Grid item xs={12} md={2}>
-          <FormControl fullWidth>
-            <InputLabel>Shift Template</InputLabel>
-            <Select
-              value={formData.selectedTemplate}
-              label="Shift Template"
-              onChange={handleTemplateSelect}
+          {/* ✅ Template Box */}
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth>
+              <InputLabel>Shift Template</InputLabel>
+              <Select
+                value={formData.selectedTemplate}
+                label="Shift Template"
+                onChange={handleTemplateSelect}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {templates.length === 0 ? (
+                  <MenuItem disabled>Loading…</MenuItem>
+                ) : (
+                  templates.map((t) => (
+                    <MenuItem key={t.id} value={t.label}>
+                      {t.label}
+                    </MenuItem>
+                  ))
+                )}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} md={2} display="flex" gap={1} alignItems="center">
+            <Button variant="outlined" onClick={openTemplateModal}>
+              Edit Templates
+            </Button>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={viewMode}
+              onChange={(_, v) => v && setViewMode(v)}
             >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              {templates.length === 0 ? (
-                <MenuItem disabled>Loading…</MenuItem>
-              ) : (
-                templates.map((t) => (
-                  <MenuItem key={t.id} value={t.label}>
-                    {t.label}
-                  </MenuItem>
-                ))
-              )}
-            </Select>
-          </FormControl>
+              <ToggleButton value="month" title="Month + Chips">
+                Month
+              </ToggleButton>
+              <ToggleButton value="week" title="Week/Day (drag & drop)">
+                Week/Day
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Grid>
         </Grid>
-
-        <Grid item xs={12} md={2} display="flex" gap={1} alignItems="center">
-          <Button variant="outlined" onClick={openTemplateModal}>
-            Edit Templates
-          </Button>
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={viewMode}
-            onChange={(_, v) => v && setViewMode(v)}
-          >
-            <ToggleButton value="month" title="Month + Chips">
-              Month
-            </ToggleButton>
-            <ToggleButton value="week" title="Week/Day (drag & drop)">
-              Week/Day
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Grid>
-      </Grid>
+      )}
 
       {/* Action row */}
-      <Box mb={2} display="flex" gap={1} alignItems="center" flexWrap="wrap">
+      <Box
+        mb={2}
+        display="flex"
+        gap={1}
+        alignItems="center"
+        flexWrap="wrap"
+        sx={{
+          position: { xs: "sticky", md: "static" },
+          top: { xs: 8, md: "auto" },
+          zIndex: 10,
+          bgcolor: { xs: "background.paper", md: "transparent" },
+          py: { xs: 1, md: 0 },
+        }}
+      >
         <Tooltip title={selectedRecruiters.length === 0 ? "Select at least one employee above" : ""}>
           <span>
             <Button
               variant="contained"
               onClick={handleOpenAssignShift}
               disabled={selectedRecruiters.length === 0}
+              fullWidth={isSmDown}
             >
               Assign Shift
             </Button>
           </span>
         </Tooltip>
 
-        <Button variant="outlined" onClick={handleExportToExcel}>
+        <Button variant="outlined" onClick={handleExportToExcel} fullWidth={isSmDown}>
           Export to Excel
         </Button>
 
-        <Button variant="outlined" onClick={fetchShifts}>
+        <Button variant="outlined" onClick={fetchShifts} fullWidth={isSmDown}>
           Refresh
         </Button>
       </Box>
@@ -1902,7 +2054,19 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
       {/* ============================== MONTH MODE ============================== */}
       {viewMode === "month" && (
         <>
-          <Paper sx={{ p: 2, mb: 2 }} elevation={1}>
+          <Paper
+            sx={{
+              p: { xs: 1.25, md: 2 },
+              mb: 2,
+              border: { xs: "none", md: "none" },
+              borderColor: { xs: "transparent", md: "transparent" },
+              boxShadow: { xs: "none", md: 1 },
+              bgcolor: { xs: "transparent", md: "background.paper" },
+              mx: { xs: -4, md: 0 },
+              width: { xs: "calc(100% + 64px)", md: "100%" },
+            }}
+            elevation={isSmDown ? 0 : 1}
+          >
             <FullCalendar
               plugins={[dayGridPlugin, interactionPlugin]}
               initialView="dayGridMonth"
@@ -1940,8 +2104,25 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
           </Stack>
 
           {/* Day rail chips */}
-          <Paper sx={{ p: 2, mb: 4 }} elevation={1}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+          <Paper
+            sx={{
+              p: { xs: 1.25, md: 2 },
+              mb: 4,
+              border: { xs: "none", md: "none" },
+              borderColor: { xs: "transparent", md: "transparent" },
+              boxShadow: { xs: "none", md: 1 },
+              bgcolor: { xs: "transparent", md: "background.paper" },
+              mx: { xs: -4, md: 0 },
+              width: { xs: "calc(100% + 64px)", md: "100%" },
+            }}
+            elevation={isSmDown ? 0 : 1}
+          >
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{ mb: 1, display: { xs: "none", md: "flex" } }}
+            >
               <Typography variant="subtitle1" fontWeight={700}>
                 {format(asLocalDate(selectedDate), "EEE, MMM d")} — {dayChips.length} shift(s)
 
@@ -2092,11 +2273,18 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
             sx={{
               p: compactDensity ? 1 : 2,
               mb: 4,
-              minHeight: "600px",
+              minHeight: isSmDown ? "360px" : "600px",
               width: calendarWidth,
               maxWidth: "150vw",
               overflowX: calendarWidth !== "100%" ? "auto" : "hidden",
+              border: { xs: "none", md: "none" },
+              borderColor: { xs: "transparent", md: "transparent" },
+              boxShadow: { xs: "none", md: 1 },
+              bgcolor: { xs: "transparent", md: "background.paper" },
+              mx: { xs: -4, md: 0 },
+              width: { xs: "calc(100% + 64px)", md: calendarWidth },
             }}
+            elevation={isSmDown ? 0 : 1}
           >
             <FullCalendar
               ref={calendarRef}
@@ -2276,13 +2464,16 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
       >
         <Box
           sx={{
-            p: 4,
+            p: { xs: 2.5, sm: 4 },
             bgcolor: "white",
-            width: 420,
+            width: { xs: "calc(100% - 24px)", sm: 420 },
+            maxWidth: 520,
             mx: "auto",
-            mt: "10%",
+            mt: { xs: "5vh", sm: "10%" },
             borderRadius: 2,
             boxShadow: 6,
+            maxHeight: "90vh",
+            overflowY: "auto",
           }}
         >
           <Typography variant="h6" gutterBottom>

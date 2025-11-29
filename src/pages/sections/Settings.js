@@ -273,7 +273,7 @@ const Settings = () => {
 
   /* ---------- sections ---------- */
   const GeneralCard = (
-    <SectionCard
+      <SectionCard
       title={t("settings.general.title", { defaultValue: "Industry" })}
       description={t("settings.general.description", { defaultValue: "Choose the industry that best fits your workspace." })}
       actions={
@@ -285,15 +285,15 @@ const Settings = () => {
       <Stack spacing={2}>
         <Alert severity="info" variant="outlined">
           {t("settings.general.profession.helper", {
-            defaultValue: "Optional but recommended: choose an industry to appear in the public directory and get industry-ready templates.",
+          defaultValue: "Optional but recommended: choose an industry so clients can find your business in the right category and book you faster.",
             company: companyProfessionLabel,
             effective: effectiveProfessionLabel,
           })}
         </Alert>
         <FormControl fullWidth>
-          <InputLabel>{t("settings.general.profession.label", { defaultValue: "Industry" })}</InputLabel>
+          <InputLabel>Industry</InputLabel>
           <Select
-            label={t("settings.general.profession.label", { defaultValue: "Industry" })}
+            label="Industry"
             value={profession}
             onChange={(e) => setProfession(e.target.value)}
           >

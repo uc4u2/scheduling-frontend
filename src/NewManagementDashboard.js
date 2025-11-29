@@ -921,7 +921,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     switch (selectedView) {
       case "__landing__":
         return (
-          <ManagementFrame title="Employee Management" subtitle="Manage active employees, launch onboarding workflows, and compare performance.">
+          <ManagementFrame>
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>Employee Management</Typography>
@@ -1043,7 +1043,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         );
       case "employee-management":
         return (
-          <ManagementFrame title="Employee Management" subtitle="Manage active employees, launch onboarding workflows, and compare performance.">
+          <Box>
 
             {error && (
               <Typography color="error" sx={{ mb: 2 }}>
@@ -1209,7 +1209,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                 </Button>
               </DialogActions>
             </Dialog>
-          </ManagementFrame>
+          </Box>
         );
 
       case "advanced-management":
@@ -1218,7 +1218,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       // Other dashboard sections render here
       case "overview":
         return (
-          <ManagementFrame title="Employee Management" subtitle="Manage active employees, launch onboarding workflows, and compare performance.">
+          <ManagementFrame>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
               Dashboard Overview
             </Typography>
@@ -1481,7 +1481,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         return (
           <ManagementFrame
             title="Shift Management"
-            subtitle="Create, assign, and manage employee shifts."
+            subtitle={isMobileViewport ? "" : "Create, assign, and manage employee shifts."}
           >
             <Team token={token} />
           </ManagementFrame>
@@ -1538,7 +1538,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
       case "recent-bookings":
         return (
-          <ManagementFrame title="Employee Management" subtitle="Manage active employees, launch onboarding workflows, and compare performance.">
+          <ManagementFrame>
             <Typography variant="h5" fontWeight={700} sx={{ mb: 2 }}>Recent Bookings</Typography>
             {Array.isArray(activityLanding.recent_bookings) && activityLanding.recent_bookings.length > 0 ? (
               <Paper sx={{ p: 3, mt: 1, borderLeft: (theme) => `5px solid ${theme.palette.primary.main}` }}>
@@ -1591,7 +1591,14 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       case "employee-profiles":
         return <EmployeeProfileForm token={token} />;
       case "add-member":
-        return <AddRecruiter />;
+        return (
+          <ManagementFrame
+            title="Add Team Member"
+            subtitle="Create employee or manager profiles with immediate portal access. Strong passwords and consent are required for enterprise compliance."
+          >
+            <AddRecruiter />
+          </ManagementFrame>
+        );
 
       case "website-pages":
         return <WebsiteSuite />;

@@ -1004,10 +1004,26 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
       return;
     }
 
-    const normalisedFields = templateFields.map((field, index) => ({
+    let normalisedFields = templateFields.map((field, index) => ({
       ...normaliseFieldDefinition(field, index),
       order_index: index,
     }));
+
+    // If no custom fields, inject a hidden placeholder so backend validation passes.
+    if (normalisedFields.length === 0) {
+      normalisedFields = [
+        {
+          key: "__placeholder",
+          label: "Placeholder",
+          type: "text",
+          field_type: "text",
+          is_required: false,
+          required: false,
+          order_index: 0,
+          config: { hidden: true },
+        },
+      ];
+    }
 
     const keySet = new Set();
     for (const field of normalisedFields) {
@@ -1020,11 +1036,6 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
         return;
       }
       keySet.add(field.key);
-    }
-
-    if (normalisedFields.length === 0) {
-      setTemplateDialogError("Add at least one field before saving.");
-      return;
     }
 
     const fieldsTextValue = serialiseTemplateFields(normalisedFields);
@@ -1785,8 +1796,6 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
 };
 
 export default CandidateFormsPanel;
-
-
 
 
 

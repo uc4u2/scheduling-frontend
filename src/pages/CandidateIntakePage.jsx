@@ -2,25 +2,33 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Snackbar,
   Box,
   Button,
   Checkbox,
   CircularProgress,
   Divider,
   FormControlLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   MenuItem,
   Paper,
   Stack,
   TextField,
   Typography,
   Chip,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import QUESTIONNAIRE_LIMITS from "../constants/questionnaireUploads";
 import { candidateIntakeApi } from "../utils/api";
 import { uploadQuestionnaireFile, downloadQuestionnaireFile } from "../utils/questionnaireUploads";
 import CandidateSlotPicker from "../components/CandidateSlotPicker";
+import TimezoneSelect from "../components/TimezoneSelect";
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -36,7 +44,7 @@ const BOOKING_CAPTURED_KEYS = new Set([
   "candidate_phone",
   "candidate_position",
   "linkedin",
-  "other_link"
+  
 ]);
 
 const normaliseOptions = (options) => {
@@ -57,28 +65,29 @@ const normaliseOptions = (options) => {
   return [];
 };
 
-const normaliseField = (field) => {
-  if (!field) return null;
-  const key = field.key || field.id;
-  if (!key) return null;
-  const type = String(field.type || field.field_type || "text").toLowerCase();
-  const config = field.config || {};
-  const options = normaliseOptions(field.options || config.options);
-  const orderIndex = field.order_index ?? field.order ?? 0;
-  return {
-    key,
-    type,
-    label: field.label || key,
-    placeholder: field.placeholder || "",
-    helperText: field.help_text || field.description || "",
-    section: field.section || field.group || null,
-    isRequired: Boolean(field.is_required || field.required),
-    options,
-    orderIndex,
+  const normaliseField = (field) => {
+    if (!field) return null;
+    const key = field.key || field.id;
+    if (!key) return null;
+    const type = String(field.type || field.field_type || "text").toLowerCase();
+    const config = field.config || {};
+    const options = normaliseOptions(field.options || config.options);
+    const orderIndex = field.order_index ?? field.order ?? 0;
+    return {
+      key,
+      type,
+      label: field.label || key,
+      placeholder: field.placeholder || "",
+      helperText: field.help_text || field.description || "",
+      section: field.section || field.group || null,
+      isRequired: Boolean(field.is_required || field.required),
+      options,
+      orderIndex,
+      config,
+    };
   };
-};
 
-const buildSections = (template) => {
+  const buildSections = (template) => {
 
   if (!template) return [];
 
@@ -89,6 +98,12 @@ const buildSections = (template) => {
     .filter(Boolean)
 
     .filter((field) => !BOOKING_CAPTURED_KEYS.has((field.key || '').toLowerCase()))
+    .filter((field) => {
+      const k = (field.key || "").toLowerCase();
+      const hidden = field.config?.hidden === true;
+      const isPlaceholder = k.startsWith("__placeholder");
+      return !hidden && !isPlaceholder;
+    })
 
     .sort((a, b) => a.orderIndex - b.orderIndex);
 
@@ -166,6 +181,16 @@ const CandidateIntakePage = () => {
   const [bookingMessage, setBookingMessage] = useState({ severity: "info", message: "" });
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookedSlotInfo, setBookedSlotInfo] = useState(null);
+  const [bookingToast, setBookingToast] = useState({ open: false, message: "", severity: "success" });
+  const [viewerTimezone, setViewerTimezone] = useState(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      return "UTC";
+    }
+  });
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const [resumeFile, setResumeFile] = useState(null);
   const [candidateBasics, setCandidateBasics] = useState({
     candidateName: "",
@@ -173,7 +198,6 @@ const CandidateIntakePage = () => {
     candidatePhone: "",
     candidatePosition: "",
     linkedin: "",
-    otherLink: "",
   });
 
   const [questionnaires, setQuestionnaires] = useState([]);
@@ -240,7 +264,6 @@ const CandidateIntakePage = () => {
         candidatePhone: data.submission?.invite_phone || submissionResponses.phone || "",
         candidatePosition: submissionResponses.candidate_position || "",
         linkedin: submissionResponses.linkedin || "",
-        otherLink: submissionResponses.other_link || "",
       };
       setCandidateBasics((prev) => ({ ...prev, ...defaults }));
     } catch (err) {
@@ -320,6 +343,16 @@ const CandidateIntakePage = () => {
     } catch (error) {
       return timeStr;
     }
+  };
+
+  const formatRangeDual = (slot) => {
+    if (!slot) return "";
+    const baseTz = slot.timezone || timezone || "UTC";
+    const localTz = viewerTimezone || baseTz;
+    const base = `${formatDateHeading(slot.date)} — ${formatTime(slot.date, slot.start_time, baseTz)} to ${formatTime(slot.date, slot.end_time, baseTz)} (${baseTz})`;
+    if (localTz === baseTz) return base;
+    const local = `${formatTime(slot.date, slot.start_time, localTz)} to ${formatTime(slot.date, slot.end_time, localTz)} (${localTz})`;
+    return `${base} · ${local}`;
   };
 
   useEffect(() => {
@@ -509,7 +542,7 @@ const CandidateIntakePage = () => {
       setBookingMessage({ severity: "warning", message: "Please pick a slot to book." });
       return;
     }
-    const { candidateName, candidateEmail, candidatePhone, candidatePosition, linkedin, otherLink } = candidateBasics;
+    const { candidateName, candidateEmail, candidatePhone, candidatePosition, linkedin } = candidateBasics;
     if (!candidateName || !candidateEmail || !candidatePhone || !candidatePosition) {
       setBookingMessage({ severity: "warning", message: "Please provide your name, email, phone, and position before booking." });
       return;
@@ -525,7 +558,6 @@ const CandidateIntakePage = () => {
       formData.append("candidate_position", candidatePosition);
       formData.append("availability_id", slotDetails.id);
       if (linkedin) formData.append("linkedin", linkedin);
-      if (otherLink) formData.append("other_link", otherLink);
       if (resumeFile) formData.append("resume", resumeFile);
 
       const { data } = await axios.post(`${API_BASE}/api/candidate-forms/intake/${token}/book-slot`, formData, {
@@ -539,6 +571,7 @@ const CandidateIntakePage = () => {
       setSlots((prev) => prev.filter((slot) => slot.id !== (slotSummary?.id ?? slotDetails.id)));
       setSelectedSlotId(null);
       setResumeFile(null);
+      setBookingToast({ open: true, severity: "success", message: data.message || "Interview slot booked successfully." });
       setBookedSlotInfo(
         slotSummary
           ? {
@@ -570,6 +603,7 @@ const CandidateIntakePage = () => {
         err.response?.data?.message ||
         (typeof err?.message === "string" ? err.message : "Failed to book slot.");
       setBookingMessage({ severity: "error", message: detail });
+      setBookingToast({ open: true, severity: "error", message: detail });
     } finally {
       setBookingSaving(false);
     }
@@ -666,6 +700,140 @@ const handleSubmit = useCallback(async () => {
   const heading = submission?.invite_name || template?.name || "Candidate intake";
   const description = template?.description || "Please complete the following information.";
 
+  const bookingPanelsDesktop = (
+    <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
+      <Box
+        sx={{
+          flex: 1,
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 2,
+          p: 2,
+          bgcolor: "background.paper",
+        }}
+      >
+        <Typography variant="subtitle2" gutterBottom>
+          Booking summary
+        </Typography>
+        {selectedSlot ? (
+          <>
+            <Typography variant="body2" color="text.secondary">
+              {formatRangeDual(selectedSlot)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+              We’ll send the confirmation with timezone details.
+            </Typography>
+          </>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            Select a date to see available times in your timezone.
+          </Typography>
+        )}
+        {bookingSuccess && bookedSlotInfo && (
+          <Typography variant="caption" color="success.main" sx={{ display: "block", mt: 1 }}>
+            Confirmation sent. Use the links above to join or cancel.
+          </Typography>
+        )}
+      </Box>
+      <Stack
+        sx={{
+          flex: 1,
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 2,
+          p: 2,
+          bgcolor: "background.default",
+          gap: 1.5,
+        }}
+      >
+        <Typography variant="subtitle2" gutterBottom>
+          Good to know
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          We hold your selected slot for a short time while you complete the form. All uploads are encrypted in transit. Need to reschedule? Use your confirmation link anytime.
+        </Typography>
+        <Box>
+          <Typography variant="subtitle2" gutterBottom>
+            Your timezone
+          </Typography>
+          <TimezoneSelect
+            label="Timezone"
+            value={viewerTimezone}
+            onChange={setViewerTimezone}
+          />
+        </Box>
+      </Stack>
+    </Stack>
+  );
+
+  const bookingPanelsMobile = (
+    <Accordion defaultExpanded={false} disableGutters>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography variant="subtitle2">Booking summary & timezone</Typography>
+      </AccordionSummary>
+      <AccordionDetails sx={{ pt: 0 }}>
+        <Stack spacing={2}>
+          <Box
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 2,
+              p: 2,
+              bgcolor: "background.paper",
+            }}
+          >
+            <Typography variant="subtitle2" gutterBottom>
+              Booking summary
+            </Typography>
+            {selectedSlot ? (
+              <>
+                <Typography variant="body2" color="text.secondary">
+                  {formatRangeDual(selectedSlot)}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                  We’ll send the confirmation with timezone details.
+                </Typography>
+              </>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Select a date to see available times in your timezone.
+              </Typography>
+            )}
+            {bookingSuccess && bookedSlotInfo && (
+              <Typography variant="caption" color="success.main" sx={{ display: "block", mt: 1 }}>
+                Confirmation sent. Use the links above to join or cancel.
+              </Typography>
+            )}
+          </Box>
+          <Box
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 2,
+              p: 2,
+              bgcolor: "background.default",
+            }}
+          >
+            <Typography variant="subtitle2" gutterBottom>
+              Good to know
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              We hold your selected slot for a short time while you complete the form. All uploads are encrypted in transit. Need to reschedule? Use your confirmation link anytime.
+            </Typography>
+            <Typography variant="subtitle2" gutterBottom>
+              Your timezone
+            </Typography>
+            <TimezoneSelect
+              label="Timezone"
+              value={viewerTimezone}
+              onChange={setViewerTimezone}
+            />
+          </Box>
+        </Stack>
+      </AccordionDetails>
+    </Accordion>
+  );
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 4, md: 6 }, px: 2 }}>
       <Box sx={{ maxWidth: 900, mx: "auto" }}>
@@ -684,107 +852,65 @@ const handleSubmit = useCallback(async () => {
               <Typography variant="h6" gutterBottom>
                 Step 1 — Pick an interview slot
               </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Select a time that works best for you, then confirm the booking. The form below unlocks after your slot is reserved.
-              </Typography>
-
-              {bookingMessage.message && (
-                <Alert severity={bookingMessage.severity} sx={{ mb: 2 }} onClose={() => setBookingMessage({ severity: "info", message: "" })}>
-                  {bookingMessage.message}
-                </Alert>
-              )}
-
-              {bookingSuccess && bookedSlotInfo && bookedSlotLabel && (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  {bookedSlotLabel}
-                  {bookedSlotLocation && (
-                    <>
-                      <br />
-                      Location: {bookedSlotLocation}
-                    </>
-                  )}
-                  {bookedSlotMeetingLink && (
-                    <>
-                      <br />
-                      <a href={bookedSlotMeetingLink} target="_blank" rel="noopener noreferrer">
-                        Join meeting
-                      </a>
-                    </>
-                  )}
-                  {bookedSlotCancelLink && (
-                    <>
-                      <br />
-                      Cancellation link:{' '}
-                      <a href={bookedSlotCancelLink} target="_blank" rel="noopener noreferrer">
-                        {bookedSlotCancelLink}
-                      </a>
-                    </>
-                  )}
-                </Alert>
-              )}
-
-              <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
-                <Box
-                  sx={{
-                    flex: 1,
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: 2,
-                    p: 2,
-                    bgcolor: "background.paper",
-                  }}
-                >
-                  <Typography variant="subtitle2" gutterBottom>
-                    Booking summary
+              <Accordion defaultExpanded={false} disableGutters sx={{ mb: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2">Booking details & status</Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Select a time that works best for you, then confirm the booking. The form below unlocks after your slot is reserved.
                   </Typography>
-                  {selectedSlot ? (
-                    <>
-                      <Typography variant="body2" color="text.secondary">
-                        {`${formatDateHeading(selectedSlot.date)} — ${formatTime(selectedSlot.date, selectedSlot.start_time, timezone)} to ${formatTime(selectedSlot.date, selectedSlot.end_time, timezone)} (${timezone})`}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                        We’ll send the confirmation with timezone details.
-                      </Typography>
-                    </>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Select a date to see available times in your timezone.
-                    </Typography>
-                  )}
-                  {bookingSuccess && bookedSlotInfo && (
-                    <Typography variant="caption" color="success.main" sx={{ display: "block", mt: 1 }}>
-                      Confirmation sent. Use the links above to join or cancel.
-                    </Typography>
-                  )}
-                </Box>
-                <Box
-                  sx={{
-                    flex: 1,
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: 2,
-                    p: 2,
-                    bgcolor: "background.default",
-                  }}
-                >
-                  <Typography variant="subtitle2" gutterBottom>
-                    Good to know
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    We hold your selected slot for a short time while you complete the form. All uploads are encrypted in transit. Need to reschedule? Use your confirmation link anytime.
-                  </Typography>
-                </Box>
-              </Stack>
 
-              <CandidateSlotPicker
-                slots={upcomingSlots}
-                timezone={timezone}
-                selectedSlotId={selectedSlotId}
-                onSelect={handleSelectSlot}
-                loading={slotsLoading}
-                error={slotsError}
-                disabled={bookingSuccess || bookingSaving}
-              />
+                  {bookingMessage.message && (
+                    <Alert severity={bookingMessage.severity} sx={{ mb: 2 }} onClose={() => setBookingMessage({ severity: "info", message: "" })}>
+                      {bookingMessage.message}
+                    </Alert>
+                  )}
+
+                  {bookingSuccess && bookedSlotInfo && bookedSlotLabel && (
+                    <Alert severity="success" sx={{ mb: 2 }}>
+                      {bookedSlotLabel}
+                      {bookedSlotLocation && (
+                        <>
+                          <br />
+                          Location: {bookedSlotLocation}
+                        </>
+                      )}
+                      {bookedSlotMeetingLink && (
+                        <>
+                          <br />
+                          <a href={bookedSlotMeetingLink} target="_blank" rel="noopener noreferrer">
+                            Join meeting
+                          </a>
+                        </>
+                      )}
+                      {bookedSlotCancelLink && (
+                        <>
+                          <br />
+                          Cancellation link:{' '}
+                          <a href={bookedSlotCancelLink} target="_blank" rel="noopener noreferrer">
+                            {bookedSlotCancelLink}
+                          </a>
+                        </>
+                      )}
+                    </Alert>
+                  )}
+                </AccordionDetails>
+              </Accordion>
+
+              {!isSmDown && bookingPanelsDesktop}
+
+              <Box sx={{ mb: 2 }}>
+                <CandidateSlotPicker
+                  slots={upcomingSlots}
+                  timezone={timezone}
+                  selectedSlotId={selectedSlotId}
+                  onSelect={handleSelectSlot}
+                  loading={slotsLoading}
+                  error={slotsError}
+                  disabled={bookingSuccess || bookingSaving}
+                />
+              </Box>
 
 
               <Stack spacing={2} sx={{ mt: 3 }}>
@@ -828,16 +954,9 @@ const handleSubmit = useCallback(async () => {
                   fullWidth
                   disabled={bookingSaving || bookingSuccess}
                 />
-                <TextField
-                  label="Other relevant link (optional)"
-                  value={candidateBasics.otherLink}
-                  onChange={handleBasicsChange("otherLink")}
-                  fullWidth
-                  disabled={bookingSaving || bookingSuccess}
-                />
                 <Box>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Resume (optional)
+                    Resume / document (optional)
                   </Typography>
                   <input
                     type="file"
@@ -847,24 +966,31 @@ const handleSubmit = useCallback(async () => {
                   />
                 </Box>
                 <Box>
-                  <Button
-                    variant="contained"
-                    onClick={handleBookSlot}
-                    disabled={bookingSaving || bookingSuccess || !selectedSlot}
-                  >
-                    {bookingSaving ? "Booking..." : bookingSuccess ? "Slot booked" : "Confirm slot"}
-                  </Button>
-                  {selectedSlot && !bookingSuccess && (
-                    <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                      Selected: {formatDateHeading(selectedSlot.date)} — {formatTime(selectedSlot.date, selectedSlot.start_time, timezone)} — {formatTime(selectedSlot.date, selectedSlot.end_time, timezone)}
-                    </Typography>
-                  )}
-                </Box>
-              </Stack>
-            </Box>
+              <Button
+                variant="contained"
+                onClick={handleBookSlot}
+                disabled={bookingSaving || bookingSuccess || !selectedSlot}
+                startIcon={bookingSaving ? <CircularProgress size={16} /> : null}
+              >
+                {bookingSaving ? "Booking..." : bookingSuccess ? "Slot booked" : "Confirm slot"}
+              </Button>
+                {selectedSlot && !bookingSuccess && (
+                  <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Selected: {formatDateHeading(selectedSlot.date)} — {formatTime(selectedSlot.date, selectedSlot.start_time, timezone)} — {formatTime(selectedSlot.date, selectedSlot.end_time, timezone)}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
+          </Box>
 
-            {sortedQuestionnaires.length > 0 && (
-              <Box>
+          {isSmDown && (
+            <Box sx={{ mt: 2 }}>
+              {bookingPanelsMobile}
+            </Box>
+          )}
+
+          {sortedQuestionnaires.length > 0 && (
+            <Box>
                 <Typography variant="h6" gutterBottom>
                   Step 2 — Upload questionnaire documents
                 </Typography>
@@ -985,135 +1111,125 @@ const handleSubmit = useCallback(async () => {
 
             <Divider />
 
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Step 2 � Complete your profile
-              </Typography>
-              {!bookingSuccess && !isReadOnly && (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  Please confirm an interview slot above before submitting this form.
-                </Alert>
-              )}
-              {bookingSuccess && bookedSlotLabel && (
-                <Alert severity="success" sx={{ mb: 2 }}>
-                  {bookedSlotLabel}
-                </Alert>
-              )}
-            </Box>
-
-            {error && (
-              <Alert severity="error" onClose={() => setError("")}>{error}</Alert>
-            )}
-            {saveMessage && (
-              <Alert severity="info" onClose={() => setSaveMessage("")}>{saveMessage}</Alert>
-            )}
-            {success && (
-              <Alert severity="success">Thank you! Your information has been submitted.</Alert>
-            )}
-
-            <Stack spacing={4}>
-              {sections.map((section) => (
-                <Box key={section.title}>
+            {sections.length > 0 && (
+              <>
+                <Box>
                   <Typography variant="h6" gutterBottom>
-                    {section.title}
+                    Step 2 — Complete your profile
                   </Typography>
-                  <Stack spacing={2}>
-                    {section.fields.map((field) => {
-                      const value = responses[field.key] ?? (field.type === "boolean" ? false : "");
-                      const fieldError = fieldErrors[field.key];
-                      const disabled = isReadOnly;
-
-                      if (field.type === "checkbox" || field.type === "boolean") {
-                        return (
-                          <FormControlLabel
-                            key={field.key}
-                            control={
-                              <Checkbox
-                                checked={Boolean(value)}
-                                onChange={(event) =>
-                                  setResponses((prev) => ({
-                                    ...prev,
-                                    [field.key]: event.target.checked,
-                                  }))
-                                }
-                                disabled={disabled}
-                              />
-                            }
-                            label={field.label}
-                          />
-                        );
-                      }
-
-                      const fieldKey = field.key;
-                      const commonProps = {
-                        label: field.label,
-                        value: value === undefined || value === null ? "" : value,
-                        onChange: (event) =>
-                          setResponses((prev) => ({
-                            ...prev,
-                            [field.key]: event.target.value,
-                          })),
-                        required: field.isRequired,
-                        disabled,
-                        helperText: fieldError || field.helperText,
-                        error: Boolean(fieldError),
-                        fullWidth: true,
-                      };
-
-                      if (field.type === "textarea") {
-                        return (
-                          <TextField
-                            key={fieldKey}
-                            {...commonProps}
-                            multiline
-                            minRows={4}
-                          />
-                        );
-                      }
-
-                      if (field.type === "select" || field.type === "multi_select" || field.type === "radio") {
-                        return (
-                          <TextField
-                            key={fieldKey}
-                            {...commonProps}
-                            select
-                            SelectProps={{ multiple: field.type === "multi_select" }}
-                          >
-                            {field.options.length ? (
-                              field.options.map((option) => (
-                                <MenuItem key={option.value ?? option.label} value={option.value ?? option.label}>
-                                  {option.label ?? option.value}
-                                </MenuItem>
-                              ))
-                            ) : (
-                              <MenuItem value="">No options configured</MenuItem>
-                            )}
-                          </TextField>
-                        );
-                      }
-
-                      let inputType = "text";
-                      if (["number", "integer", "decimal"].includes(field.type)) {
-                        inputType = "number";
-                      } else if (["email", "date", "time", "datetime"].includes(field.type)) {
-                        inputType = field.type === "datetime" ? "datetime-local" : field.type;
-                      }
-
-                      return (
-                        <TextField
-                          key={fieldKey}
-                          {...commonProps}
-                          type={inputType}
-                        />
-                      );
-                    })}
-                  </Stack>
-                  <Divider sx={{ mt: 3 }} />
+                  {!bookingSuccess && !isReadOnly && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Please confirm an interview slot above before submitting this form.
+                    </Alert>
+                  )}
+                  {bookingSuccess && bookedSlotLabel && (
+                    <Alert severity="success" sx={{ mb: 2 }}>
+                      {bookedSlotLabel}
+                    </Alert>
+                  )}
                 </Box>
-              ))}
-            </Stack>
 
-            {!isReadOnly && (
+                {error && (
+                  <Alert severity="error" onClose={() => setError("")}>{error}</Alert>
+                )}
+                {saveMessage && (
+                  <Alert severity="info" onClose={() => setSaveMessage("")}>{saveMessage}</Alert>
+                )}
+                {success && (
+                  <Alert severity="success">Thank you! Your information has been submitted.</Alert>
+                )}
+
+                <Stack spacing={4}>
+                  {sections.map((section) => (
+                    <Box key={section.title}>
+                      <Typography variant="h6" gutterBottom>
+                        {section.title}
+                      </Typography>
+                      <Stack spacing={2}>
+                        {section.fields.map((field) => {
+                          const value = responses[field.key] ?? (field.type === "boolean" ? false : "");
+                          const fieldError = fieldErrors[field.key];
+                          const disabled = isReadOnly;
+
+                          if (field.type === "checkbox" || field.type === "boolean") {
+                            return (
+                              <FormControlLabel
+                                key={field.key}
+                                control={
+                                  <Checkbox
+                                    checked={Boolean(value)}
+                                    onChange={(event) =>
+                                      setResponses((prev) => ({
+                                        ...prev,
+                                        [field.key]: event.target.checked,
+                                      }))
+                                    }
+                                    disabled={disabled}
+                                  />
+                                }
+                                label={field.label}
+                              />
+                            );
+                          }
+
+                          const fieldKey = field.key;
+                          const commonProps = {
+                            label: field.label,
+                            value: value === undefined || value === null ? "" : value,
+                            onChange: (event) =>
+                              setResponses((prev) => ({
+                                ...prev,
+                                [field.key]: event.target.value,
+                              })),
+                            required: field.isRequired,
+                            disabled,
+                            helperText: fieldError || field.helperText,
+                            error: Boolean(fieldError),
+                            fullWidth: true,
+                          };
+
+                          if (field.type === "textarea" || field.type === "longtext") {
+                            return (
+                              <TextField
+                                key={fieldKey}
+                                {...commonProps}
+                                multiline
+                                minRows={3}
+                              />
+                            );
+                          }
+
+                          if (field.type === "select") {
+                            return (
+                              <TextField
+                                key={fieldKey}
+                                select
+                                {...commonProps}
+                              >
+                                {(field.options || []).map((option) => (
+                                  <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            );
+                          }
+
+                          return (
+                            <TextField
+                              key={fieldKey}
+                              {...commonProps}
+                            />
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+                  ))}
+                </Stack>
+              </>
+            )}
+
+            {sections.length > 0 && !isReadOnly && (
               <Stack spacing={2}>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                   <Button variant="outlined" onClick={handleSaveProgress} disabled={submitting}>
@@ -1126,7 +1242,7 @@ const handleSubmit = useCallback(async () => {
               </Stack>
             )}
 
-            {isReadOnly && (
+            {sections.length > 0 && isReadOnly && (
               <Typography variant="body1" color="success.main">
                 This intake has already been submitted. Thank you!
               </Typography>
@@ -1134,6 +1250,20 @@ const handleSubmit = useCallback(async () => {
           </Stack>
         </Paper>
       </Box>
+      <Snackbar
+        open={bookingToast.open}
+        autoHideDuration={3000}
+        onClose={() => setBookingToast((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setBookingToast((prev) => ({ ...prev, open: false }))}
+          severity={bookingToast.severity}
+          sx={{ width: "100%" }}
+        >
+          {bookingToast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

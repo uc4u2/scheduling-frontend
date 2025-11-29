@@ -370,6 +370,38 @@ Let me know if you need any special arrangements.
 Best regards,
 {notary_name}`,
 
+  tattoo_piercing:
+`Subject: Book Your Tattoo / Piercing Session at {studio_name}
+
+Hi {client_name},
+
+This is {artist_name} from {studio_name}. I’d love to help with your next tattoo or piercing. Please use the link below to choose a time that works for you:
+{booking_link}
+
+If you have design ideas, placement preferences, or references, include them in your booking notes.
+
+Looking forward to working with you!
+
+Best,
+{artist_name}
+{studio_name}`,
+
+  cleaning:
+`Subject: Book Your Cleaning with {company_name}
+
+Dear {client_name},
+
+Thank you for considering {company_name} for your cleaning needs. This is {cleaner_name}. Please use the link below to choose a convenient time for your service:
+{booking_link}
+
+If you have any special instructions (pets, parking, access codes, or areas to prioritize), include them in your booking notes.
+
+We look forward to making your space shine.
+
+Best regards,
+{cleaner_name}
+{company_name}`,
+
   // fallback
   custom:
 `Hello,
@@ -380,12 +412,25 @@ You are invited to book a meeting. Please use the following link:
 Best regards,`
 };
 
+const GENERIC_TEMPLATE = `Subject: Book Your Next Appointment
+
+Hello {client_name},
+
+Please use the link below to choose a time that works for you:
+{booking_link}
+
+If you have notes or preferences, include them in your booking.
+
+Best regards,
+{sender_company_name}`;
+
 
 const EnhancedInvitationForm = ({ token, embedded = false }) => {
   const theme = useTheme();
 
   // NEW: Profession state and dynamic template
   const [profession, setProfession] = useState("recruiter");
+
   const professionOptions = useMemo(() => {
     const base = [...PROFESSION_OPTIONS];
     const value = profession;
@@ -449,6 +494,8 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
   // Doctor/Medical
   doctorName: "",
   patientName: "",
+  // Cleaning
+  cleanerName: "",
   // Photographer
   photographerName: "",
   studioName: "",
@@ -481,26 +528,27 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
 
   const requiredFieldsByProfession = {
   recruiter: ["recruiterName", "recruiterEmail", "senderCompanyName", "jobTitle", "companyName", "candidateName", "candidateEmail"],
-  teacher: ["teacherName", "parentName", "candidateEmail"],
-  fitness_coach: ["coachName", "candidateEmail"],
-  therapist: ["therapistName", "candidateEmail"],
-  doctor: ["doctorName", "patientName", "candidateEmail"],
-  photographer: ["photographerName", "studioName", "candidateEmail"],
-  consultant: ["consultantName", "candidateEmail"],
-  lawyer: ["lawyerName", "candidateEmail"],
-  real_estate: ["agentName", "candidateEmail"],
-  salon: ["stylistName", "salonName", "clientName", "candidateEmail"],
-  tax_advisor: ["advisorName", "candidateEmail"],
-  financial_advisor: ["advisorName", "candidateEmail"],
-  tutor: ["tutorName", "candidateEmail"],
-  event_planner: ["plannerName", "candidateEmail"],
-  contractor: ["contractorName", "candidateEmail"],
-  coach_life: ["coachName", "candidateEmail"],
-  it_support: ["supportTechName", "candidateEmail"],
-  repair_service: ["technicianName", "candidateEmail"],
-  counselor: ["counselorName", "candidateEmail"],
-  notary: ["notaryName", "candidateEmail"],
-  custom: ["recruiterName", "candidateEmail"],
+  teacher: ["teacherName", "parentName", "candidateName", "candidateEmail"],
+  fitness_coach: ["coachName", "candidateName", "candidateEmail"],
+  therapist: ["therapistName", "candidateName", "candidateEmail"],
+  doctor: ["doctorName", "patientName", "candidateName", "candidateEmail"],
+  photographer: ["photographerName", "studioName", "candidateName", "candidateEmail"],
+  consultant: ["consultantName", "candidateName", "candidateEmail"],
+  lawyer: ["lawyerName", "candidateName", "candidateEmail"],
+  real_estate: ["agentName", "candidateName", "candidateEmail"],
+  salon: ["stylistName", "salonName", "candidateName", "candidateEmail"],
+  tax_advisor: ["advisorName", "candidateName", "candidateEmail"],
+  financial_advisor: ["advisorName", "candidateName", "candidateEmail"],
+  tutor: ["tutorName", "candidateName", "candidateEmail"],
+  event_planner: ["plannerName", "candidateName", "candidateEmail"],
+  contractor: ["contractorName", "candidateName", "candidateEmail"],
+  coach_life: ["coachName", "candidateName", "candidateEmail"],
+  it_support: ["supportTechName", "candidateName", "candidateEmail"],
+  repair_service: ["technicianName", "candidateName", "candidateEmail"],
+  counselor: ["counselorName", "candidateName", "candidateEmail"],
+  notary: ["notaryName", "candidateName", "candidateEmail"],
+  cleaning: ["cleanerName", "candidateName", "candidateEmail"],
+  custom: ["recruiterName", "candidateName", "candidateEmail"],
 };
 
   const toSnakeCase = (value) => value.replace(/([A-Z])/g, "_$1").toLowerCase();
@@ -527,6 +575,7 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
     repair_service: ['clientName'],
     counselor: ['clientName'],
     notary: ['clientName'],
+    cleaning: ['clientName'],
   };
 
   const resolveInviteName = () => {
@@ -623,7 +672,7 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
         console.warn("Default profession lookup failed", err);
       }
 
-      let initialTemplate = PROFESSION_TEMPLATES[nextProfession] || "";
+      let initialTemplate = PROFESSION_TEMPLATES[nextProfession] || GENERIC_TEMPLATE;
       try {
         const storedTemplate = localStorage.getItem(`invitationTemplate_${nextProfession}`);
         if (storedTemplate) {
@@ -677,7 +726,7 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
     if (savedTemplate) {
       setTemplate(savedTemplate);
     } else {
-      setTemplate(PROFESSION_TEMPLATES[profession] || "");
+      setTemplate(PROFESSION_TEMPLATES[profession] || GENERIC_TEMPLATE);
     }
   }, [profession]);
 
@@ -714,6 +763,7 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
       patientName,
       photographerName,
       studioName,
+      cleanerName,
     }) => ({
       recruiterName,
       recruiterEmail,
@@ -734,6 +784,7 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
       patientName,
       photographerName,
       studioName,
+      cleanerName,
     }))(formData);
     localStorage.setItem("recruiterDefaults", JSON.stringify(recruiterDefaults));
     setMessage("Defaults saved successfully.");
@@ -776,13 +827,14 @@ const handlePreview = () => {
     therapist: ["client_name", "therapist_name", "booking_link"],
     doctor: ["patient_name", "doctor_name", "booking_link"],
     photographer: ["client_name", "photographer_name", "studio_name", "booking_link"],
-    custom: ["candidate_name", "booking_link"]
+    cleaning: ["client_name", "cleaner_name", "company_name", "booking_link", "additional_message", "custom_signature"],
+    custom: ["candidate_name", "booking_link"],
   };
   const professionVariables = VARIABLE_OPTIONS[profession] || ['candidate_name', 'booking_link'];
 
-  const showCandidateNameField = profession === 'recruiter' || profession === 'custom';
-  const contactInfoTitle = showCandidateNameField ? 'Candidate Info' : 'Contact Info';
-  const emailLabel = showCandidateNameField ? 'Candidate Email' : 'Client Email';
+  const showCandidateNameField = true; // always collect a name for templates
+  const contactInfoTitle = 'Contact Info';
+  const emailLabel = 'Client Email';
 
   // Fetch profile (kept from your original)
   useEffect(() => {
@@ -1025,9 +1077,9 @@ const handlePreview = () => {
       const response = await axios.post(
         `${API_URL}/send-invitation`,
         {
-          candidate_name: formData.candidateName,
+          candidate_name: formData.candidateName || formData.clientName,
           candidate_email: formData.candidateEmail,
-          invite_name: inviteNameValue || formData.candidateName || 'Candidate',
+          invite_name: inviteNameValue || formData.candidateName || formData.clientName || 'Candidate',
           ...formData,
           template: template,
           profession: profession,
@@ -1561,6 +1613,28 @@ const handlePreview = () => {
             />
           </>
         );
+      case "cleaning":
+        return (
+          <>
+            <Typography variant="h6" mt={2}>Cleaning Service Info</Typography>
+            <TextField
+              name="cleanerName"
+              label="Cleaner Name"
+              fullWidth
+              margin="dense"
+              value={formData.cleanerName}
+              onChange={handleChange}
+            />
+            <TextField
+              name="companyName"
+              label="Company Name"
+              fullWidth
+              margin="dense"
+              value={formData.companyName}
+              onChange={handleChange}
+            />
+          </>
+        );
       case "custom":
         return (
           <>
@@ -1853,11 +1927,14 @@ const handlePreview = () => {
       {showCandidateNameField && (
         <TextField
           name="candidateName"
-          label="Candidate Name"
+          label="Client / Candidate Name"
           fullWidth
           margin="dense"
           value={formData.candidateName}
-          onChange={handleChange}
+          onChange={(e) => {
+            const val = e.target.value;
+            setFormData((prev) => ({ ...prev, candidateName: val, clientName: val }));
+          }}
         />
       )}
       <TextField
@@ -2154,16 +2231,3 @@ const handlePreview = () => {
 };
 
 export default EnhancedInvitationForm;
-
-
-
-
-
-
-
-
-
-
-
-
-

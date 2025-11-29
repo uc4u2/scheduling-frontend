@@ -28,7 +28,6 @@ import {
   Checkbox,
   ListItemIcon,
   Chip,
-  MenuItem,
   Paper,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -36,6 +35,7 @@ import AddIcon from "@mui/icons-material/Add";
 import { useTheme } from "@mui/material/styles";
 import axios from "axios";
 import PublicPageShell from "./PublicPageShell";
+import TimezoneSelect from "../../components/TimezoneSelect";
 
 const stashProductOrder = (order, sessionId) => {
   if (!order) return;
@@ -155,20 +155,11 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
             margin="normal"
           />
 
-          <TextField
-            select
+          <TimezoneSelect
             label="Timezone"
             value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            fullWidth
-            margin="normal"
-          >
-            {timezones.map((tz) => (
-              <MenuItem key={tz} value={tz}>
-                {tz}
-              </MenuItem>
-            ))}
-          </TextField>
+            onChange={setTimezone}
+          />
         </form>
       </DialogContent>
 
@@ -193,20 +184,6 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
 /* RegisterDialog component (unchanged) */
 function RegisterDialog({ open, onClose, onRegisterSuccess }) {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
-  const timezones = [
-    "America/New_York",
-    "America/Chicago",
-    "America/Denver",
-    "America/Los_Angeles",
-    "Europe/London",
-    "Europe/Berlin",
-    "Europe/Paris",
-    "Asia/Kolkla",
-    "Asia/Tokyo",
-    "Asia/Dubai",
-    "Australia/Sydney",
-  ];
 
   const [firstName, setFirstName] = React.useState("");
   const [lastName, setLastName] = React.useState("");
@@ -302,20 +279,11 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
             required
             margin="normal"
           />
-          <TextField
-            select
+          <TimezoneSelect
             label="Timezone"
             value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            fullWidth
-            margin="normal"
-          >
-            {timezones.map((tz) => (
-              <MenuItem key={tz} value={tz}>
-                {tz}
-              </MenuItem>
-            ))}
-          </TextField>
+            onChange={setTimezone}
+          />
         </form>
       </DialogContent>
 

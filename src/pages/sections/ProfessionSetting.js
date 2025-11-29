@@ -109,10 +109,10 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
       <Stack spacing={variant === "embedded" ? 2 : 3}>
         <Box>
           <Typography variant={titleVariant} fontWeight={600} gutterBottom>
-            Company Default Profession
+            Company Default Industry
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Recruiters will see <strong>{currentEffectiveLabel}</strong> by default. Personal preferences still override the company default when set in the workspace tab.
+            Employees will see <strong>{currentEffectiveLabel}</strong> by default. Personal preferences still override the company default when set in the workspace tab.
           </Typography>
           {!isManager && !loading && (
             <Alert sx={{ mt: 2 }} severity="info">
@@ -122,10 +122,10 @@ const ProfessionSettings = ({ variant = "standalone" } = {}) => {
         </Box>
 
         <FormControl fullWidth disabled={!canEdit || saving}>
-          <InputLabel id="default-profession-label">Default profession</InputLabel>
+          <InputLabel id="default-profession-label">Default industry</InputLabel>
           <Select
             labelId="default-profession-label"
-            label="Default profession"
+            label="Default industry"
             value={profession}
             onChange={(event) => setProfession(event.target.value)}
           >

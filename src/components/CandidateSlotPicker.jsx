@@ -73,11 +73,11 @@ const CandidateSlotPicker = ({
   return (
     <Box
       sx={{
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: 2,
-        p: { xs: 2, md: 3 },
-        bgcolor: "background.paper",
+        border: { xs: "none", md: "1px solid" },
+        borderColor: { md: "divider" },
+        borderRadius: { xs: 0, md: 2 },
+        p: { xs: 0, md: 3 },
+        bgcolor: { xs: "transparent", md: "background.paper" },
       }}
     >
       {loading ? (
@@ -90,28 +90,44 @@ const CandidateSlotPicker = ({
         <Alert severity="info">No available slots at the moment. Please check back soon or contact the recruiter.</Alert>
       ) : (
         <>
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <CalendarPicker
-              date={calendarDate}
-              onChange={(date) => {
-                if (date) {
-                  setCalendarDate(date);
-                }
-              }}
-              shouldDisableDate={(date) => {
-                const iso = formatDateFns(date, "yyyy-MM-dd");
-                return !groupedSlots[iso];
-              }}
-              disabled={disabled}
-              showDaysOutsideCurrentMonth
-              sx={{
-                "& .MuiPickersDay-root": {
-                  width: isMobile ? 32 : 36,
-                  height: isMobile ? 32 : 36,
-                },
-              }}
-            />
-          </LocalizationProvider>
+          <Box
+            sx={{
+              overflowX: { xs: "auto", md: "visible" },
+              pb: { xs: 1, md: 0 },
+              mx: { xs: -2.5, md: 0 },
+            }}
+          >
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <CalendarPicker
+                date={calendarDate}
+                onChange={(date) => {
+                  if (date) {
+                    setCalendarDate(date);
+                  }
+                }}
+                shouldDisableDate={(date) => {
+                  const iso = formatDateFns(date, "yyyy-MM-dd");
+                  return !groupedSlots[iso];
+                }}
+                disabled={disabled}
+                showDaysOutsideCurrentMonth
+                sx={{
+                  display: "inline-block",
+                  minWidth: 0,
+                  "& .MuiPickersCalendar-header": { px: 0.5 },
+                  "& .MuiDayCalendar-weekContainer": {
+                    justifyContent: { xs: "flex-start", sm: "space-between" },
+                    ml: { xs: 0.5, sm: 0 },
+                  },
+                  "& .MuiPickersDay-root": {
+                    width: isMobile ? 27 : 36,
+                    height: isMobile ? 27 : 36,
+                    mx: { xs: 0.15, sm: 0.2 },
+                  },
+                }}
+              />
+            </LocalizationProvider>
+          </Box>
 
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
             Times shown in {timezone}

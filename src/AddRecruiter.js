@@ -23,6 +23,7 @@ import axios from "axios";
 import { getUserTimezone } from "./utils/timezone";
 import { Link as RouterLink } from "react-router-dom";
 import { useDepartments } from "./pages/sections/hooks/useRecruiterDepartments";
+import TimezoneSelect from "./components/TimezoneSelect";
 
 const API_BASE =
   (process.env.REACT_APP_API_URL || "http://localhost:5000").replace(/\/$/, "");
@@ -178,19 +179,17 @@ const passwordStrength = useMemo(() => {
   };
 
   return (
-    <Box sx={{ maxWidth: 720, mx: "auto", my: 4, px: 2 }}>
-      <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, border: (t) => `1px solid ${t.palette.divider}` }}>
-        <Stack spacing={2} sx={{ mb: 2 }}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <PersonAddAltIcon color="primary" />
-            <Typography variant="h5" fontWeight={700}>
-              Add new team member
-            </Typography>
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            Create employee or manager profiles with immediate portal access. Strong passwords and consent are required for enterprise compliance.
-          </Typography>
-        </Stack>
+    <Box sx={{ maxWidth: 1300, mx: "auto", my: 4, px: { xs: 1, sm: 2 } }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 3, md: 4 },
+          borderRadius: 3,
+          border: (t) => `1px solid ${t.palette.divider}`,
+          backgroundColor: (t) => t.palette.background.paper,
+          boxShadow: (t) => t.shadows[1],
+        }}
+      >
 
         {submitState.status === "success" && (
           <Alert icon={<CheckCircleIcon fontSize="inherit" />} severity="success" sx={{ mb: 2 }}>
@@ -283,13 +282,11 @@ const passwordStrength = useMemo(() => {
               </TextField>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
+              <TimezoneSelect
                 label="Timezone"
-                fullWidth
                 value={form.timezone}
-                onChange={handleChange("timezone")}
-                error={Boolean(fieldErrors.timezone)}
-                helperText={fieldErrors.timezone || "IANA format (e.g., America/Toronto)"}
+                onChange={(val) => handleChange("timezone")({ target: { value: val } })}
+                helperText={fieldErrors.timezone || "IANA format (e.g., America/Toronto). Type to search or detect."}
               />
             </Grid>
           </Grid>

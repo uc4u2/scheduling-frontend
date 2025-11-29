@@ -18,20 +18,7 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PasswordField from "./PasswordField";
 import axios from "axios";
-
-const timezones = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "Europe/London",
-  "Europe/Berlin",
-  "Europe/Paris",
-  "Asia/Kolkata",
-  "Asia/Tokyo",
-  "Asia/Dubai",
-  "Australia/Sydney",
-];
+import TimezoneSelect from "./components/TimezoneSelect";
 
 const ROLE_OPTIONS = [
   {
@@ -66,7 +53,7 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
+    Intl.DateTimeFormat().resolvedOptions().timeZone || ""
   );
   const [role, setRole] = useState("owner");
   const [error, setError] = useState("");
@@ -237,24 +224,12 @@ const Register = () => {
               />
 
 
-              <TextField
-                select
+              <TimezoneSelect
                 label="Timezone"
-                fullWidth
                 value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
+                onChange={setTimezone}
                 required
-                helperText="We store an IANA timezone (e.g. America/New_York)."
-              >
-                {!timezones.includes(timezone) && (
-                  <MenuItem value={timezone}>{timezone} (detected)</MenuItem>
-                )}
-                {timezones.map((tz) => (
-                  <MenuItem key={tz} value={tz}>
-                    {tz}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
 
               <TextField
                 select
