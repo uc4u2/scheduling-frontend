@@ -209,6 +209,7 @@ const EmployeeProfile = () => {
               companySlug={effectiveSlug}
               artistId={employeeId}
               serviceId={serviceId}
+              departmentId={departmentId}
               onSlotSelect={handleSlotSelected}
             />
           </Box>

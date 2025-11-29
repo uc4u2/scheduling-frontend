@@ -43,6 +43,15 @@ const DEMO_VIDEO_BUILDER_SRC =
 const DEMO_VIDEO_TIME_SRC =
   process.env.REACT_APP_DEMO_VIDEO_TIME ||
   "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/schedulaa-time-tracking.mp4";
+const DEMO_VIDEO_SHIFT_SRC =
+  process.env.REACT_APP_DEMO_VIDEO_SHIFT ||
+  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/Schedulaa.shift.management.mp4";
+const DEMO_VIDEO_PAYROLL_SRC =
+  process.env.REACT_APP_DEMO_VIDEO_PAYROLL ||
+  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/Schedulaa.Payroll.Under1Min.mp4";
+const DEMO_VIDEO_SERVICE_SRC =
+  process.env.REACT_APP_DEMO_VIDEO_SERVICE ||
+  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/Schedulaa.Service.Management.mp4";
 
 const QUICK_ACTIONS = [
 ];
@@ -265,7 +274,7 @@ const DemoPage = () => {
                   <Stack direction="row" spacing={1.5} alignItems="center">
                     <PlayCircleOutlineIcon color="primary" />
                     <Typography variant="h5" fontWeight={700}>
-                      Watch the 4-minute walkthrough
+                      Watch the 9-minute walkthrough
                     </Typography>
                   </Stack>
                   <Box
@@ -320,6 +329,81 @@ const DemoPage = () => {
                     <Box
                       component="video"
                       src={DEMO_VIDEO_TIME_SRC}
+                      controls
+                      preload="metadata"
+                      sx={{
+                        width: "100%",
+                        borderRadius: 3,
+                        border: (t) => `1px solid ${alpha(t.palette.divider, 0.4)}`,
+                      }}
+                    >
+                      Your browser does not support the video tag.
+                    </Box>
+                  </Stack>
+
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <PlayCircleOutlineIcon color="primary" />
+                      <Typography variant="h6" fontWeight={700}>
+                        Shift management overview
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 820 }}>
+                      Assign shifts, review coverage, and manage the roster in a single view.
+                    </Typography>
+                    <Box
+                      component="video"
+                      src={DEMO_VIDEO_SHIFT_SRC}
+                      controls
+                      preload="metadata"
+                      sx={{
+                        width: "100%",
+                        borderRadius: 3,
+                        border: (t) => `1px solid ${alpha(t.palette.divider, 0.4)}`,
+                      }}
+                    >
+                      Your browser does not support the video tag.
+                    </Box>
+                  </Stack>
+
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <PlayCircleOutlineIcon color="primary" />
+                      <Typography variant="h6" fontWeight={700}>
+                        Payroll in under a minute
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 820 }}>
+                      Generate, finalize, and send payroll to employees in about a minute.
+                    </Typography>
+                    <Box
+                      component="video"
+                      src={DEMO_VIDEO_PAYROLL_SRC}
+                      controls
+                      preload="metadata"
+                      sx={{
+                        width: "100%",
+                        borderRadius: 3,
+                        border: (t) => `1px solid ${alpha(t.palette.divider, 0.4)}`,
+                      }}
+                    >
+                      Your browser does not support the video tag.
+                    </Box>
+                  </Stack>
+
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <PlayCircleOutlineIcon color="primary" />
+                      <Typography variant="h6" fontWeight={700}>
+                        Service management + client booking
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 820 }}>
+                      Add services, assign them to artists, and let clients book (Stripe off for demo checkout).
+                    </Typography>
+                    <Box
+                      component="video"
+                      src={DEMO_VIDEO_SERVICE_SRC}
                       controls
                       preload="metadata"
                       sx={{

@@ -49,6 +49,7 @@ export default function EmployeeAvailabilityCalendar({
   companySlug: companySlugProp,
   artistId: artistIdProp,
   serviceId: serviceIdProp,
+  departmentId: departmentIdProp,
   serviceName,
   onSlotSelect, // optional callback({ date, start_time, timezone })
 }) {
@@ -59,6 +60,7 @@ export default function EmployeeAvailabilityCalendar({
   const companySlug = companySlugProp || params.slug;
   const artistId = artistIdProp || params.employeeId || params.artistId;
   const serviceId = serviceIdProp || params.serviceId;
+  const departmentId = departmentIdProp || params.departmentId || "";
 
   /* ------------ state ------------ */
   const [monthView, setMonthView] = useState(() => {
@@ -151,6 +153,7 @@ export default function EmployeeAvailabilityCalendar({
             service_id: serviceId,
             date: selectedDate,
             timezone: userTz,
+            department_id: departmentId || undefined,
           },
         });
 
@@ -179,7 +182,7 @@ export default function EmployeeAvailabilityCalendar({
       }
     };
     run();
-  }, [companySlug, artistId, serviceId, selectedDate]);
+  }, [companySlug, artistId, serviceId, departmentId, selectedDate]);
 
   useEffect(() => {
     const iso = isoFromParts(

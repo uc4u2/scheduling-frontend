@@ -108,6 +108,24 @@ const timeHMInTZ = (startUtc, tz) => {
   }); // "HH:MM"
 };
 
+const isoFromParts = (dateStr, timeStr, tz) => {
+  try {
+    const d = new Date(`${dateStr}T${timeStr || "00:00"}`);
+    return d.toLocaleString("sv-SE", {
+      timeZone: tz || "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).replace(" ", "T");
+  } catch {
+    return null;
+  }
+};
+
 export default function ServiceDetails() {
   const { slug, serviceId } = useParams();
   const [searchParams] = useSearchParams();
@@ -171,6 +189,7 @@ export default function ServiceDetails() {
   const dialogContentRef = useRef(null);
   const timesRef = useRef(null);
   const providersRef = useRef(null);
+  const autoScrolledRef = useRef(false);
   const focusTimeoutRef = useRef(null);
   const closeGuardTimerRef = useRef(null);
   const fetchVersionRef = useRef(0);
@@ -364,33 +383,37 @@ export default function ServiceDetails() {
         ...(departmentId ? { department_id: departmentId } : {}),
       });
       if (cartJSON) alt.set("cart", cartJSON);
-      const { data } = await api.get(
-        `/public/${slug}/artists/${empId}/availability?${alt.toString()}`,
-        { noCompanyHeader: true }
-      );
-      const slots = Array.isArray(data?.slots)
-        ? data.slots
-        : Array.isArray(data?.times)
-        ? data.times
-        : [];
-      return slots.filter(
-        (s) => !s.booked && (s.type ? s.type === "available" : true)
-      );
-    } catch {
-      return [];
-    }
-  };
+        const { data } = await api.get(
+          `/public/${slug}/artists/${empId}/availability?${alt.toString()}`,
+          { noCompanyHeader: true }
+        );
+        const slots = Array.isArray(data?.slots)
+          ? data.slots
+          : Array.isArray(data?.times)
+          ? data.times
+          : [];
+        return slots.filter((s) => {
+          const typeOk = s.type ? s.type === "available" : true;
+          const statusOk = s.status ? s.status === "available" : true;
+          return !s.booked && typeOk && statusOk;
+        });
+      } catch {
+        return [];
+      }
+    };
 
   /* helper: aggregate by start_utc (so TZ display is always correct) */
   const aggregateByUTC = (selectedDateStr, results) => {
     const map = new Map(); // key = start_utc
     for (const { emp, slots } of results) {
       for (const s of slots) {
-        const startUtc = s.start_utc; // authoritative UTC
-        if (!startUtc || (s.type && s.type !== "available")) continue;
+        const tz = s.timezone || "UTC";
+        const startUtc =
+          s.start_utc ||
+          (s.date && s.start_time ? isoFromParts(s.date, s.start_time, tz) : null);
+        if (!startUtc || (s.type && s.type !== "available") || s.status === "unavailable") continue;
 
         const key = startUtc;
-        const tz = s.timezone || "UTC";
         const startLocal = s.start_time || timeHMInTZ(startUtc, tz);
 
         if (!map.has(key)) {
@@ -477,6 +500,7 @@ export default function ServiceDetails() {
     if (!calendarOpen || !selectedDate || !employees.length) {
       setDaySlots([]);
       setSelectedTimeKey("");
+      autoScrolledRef.current = false;
       return;
     }
 
@@ -956,7 +980,11 @@ export default function ServiceDetails() {
 
     const target = timesRef.current;
     if (!target) return;
-    scrollSectionIntoView(target);
+    // Only auto-scroll once per open cycle to avoid rubber-banding on desktop
+    if (!autoScrolledRef.current) {
+      scrollSectionIntoView(target);
+      autoScrolledRef.current = true;
+    }
 
     let focusTimer = typeof window !== "undefined" ? window.setTimeout(() => {
       const firstChip = target.querySelector(
@@ -974,6 +1002,12 @@ export default function ServiceDetails() {
       }
     };
   }, [daySlots, calendarOpen, selectedDate, isMobile, selectTimeSlot, selectedTimeKey, scrollSectionIntoView, armCloseGuard]);
+
+  useEffect(() => {
+    if (!calendarOpen) {
+      autoScrolledRef.current = false;
+    }
+  }, [calendarOpen, selectedDate]);
 
   /* guards */
   if (loading) {
