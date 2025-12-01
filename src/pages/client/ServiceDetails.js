@@ -416,6 +416,7 @@ export default function ServiceDetails() {
         const key = startUtc;
         const startLocal = s.start_time || timeHMInTZ(startUtc, tz);
 
+        const profileImage = emp.profile_image_url || s.profile_image_url || "";
         if (!map.has(key)) {
           map.set(key, {
             key,
@@ -427,6 +428,7 @@ export default function ServiceDetails() {
                 full_name: emp.full_name,
                 timezone: tz,
                 start_time_local: startLocal,
+                profile_image_url: profileImage,
               },
             ],
           });
@@ -438,6 +440,7 @@ export default function ServiceDetails() {
               full_name: emp.full_name,
               timezone: tz,
               start_time_local: startLocal,
+              profile_image_url: profileImage,
             });
           }
         }
@@ -744,7 +747,11 @@ export default function ServiceDetails() {
                 justifyContent="space-between"
               >
                 <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
-                  <Avatar sx={{ width: 40, height: 40 }}>
+                  <Avatar
+                    src={p.profile_image_url || undefined}
+                    alt={p.full_name || "Provider"}
+                    sx={{ width: 44, height: 44, bgcolor: calendarAccent }}
+                  >
                     {p.full_name?.[0] || "•"}
                   </Avatar>
                   <Box minWidth={0}>
@@ -1123,11 +1130,20 @@ export default function ServiceDetails() {
                   },
                 }}
               >
-                <ListItemText
-                  primaryTypographyProps={{ fontWeight: 600 }}
-                  primary={emp.full_name}
-                  secondary={emp.bio || "No bio available."}
-                />
+                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flex: 1, width: "100%" }}>
+                  <Avatar
+                    src={emp.profile_image_url || undefined}
+                    alt={emp.full_name || "Provider"}
+                    sx={{ width: 48, height: 48, bgcolor: calendarAccent, flexShrink: 0 }}
+                  >
+                    {emp.full_name?.[0] || "•"}
+                  </Avatar>
+                  <ListItemText
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    primary={emp.full_name}
+                    secondary={emp.bio || "No bio available."}
+                  />
+                </Stack>
                 <Box sx={{ width: { xs: "100%", sm: "auto" } }}>
                   <Button
                     fullWidth={isMobile}

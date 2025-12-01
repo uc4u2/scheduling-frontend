@@ -11,8 +11,12 @@ import {
   Alert,
   CircularProgress,
   Stack,
+  Avatar,
+  Tooltip,
 } from "@mui/material";
 import axios from "axios";
+import UploadIcon from "@mui/icons-material/Upload";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import ManagementFrame from "../../components/ui/ManagementFrame";
@@ -96,6 +100,8 @@ const EmployeeProfileForm = ({ token }) => {
   const [loading, setLoading] = useState(false);
   const [messageKey, setMessageKey] = useState("");
   const [errorKey, setErrorKey] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const companyId = employee?.company_id || "";
 
   const [departments, setDepartments] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
@@ -164,6 +170,7 @@ const EmployeeProfileForm = ({ token }) => {
         address_city: data.address?.city || "",
         address_state: data.address?.state || "",
         address_zip: data.address?.zip || "",
+        company_id: data.company_id,
       };
       setEmployee(flatData);
       setErrorKey("");
@@ -178,6 +185,46 @@ const EmployeeProfileForm = ({ token }) => {
   const handleChange = (event) => {
     const { name, value } = event.target;
     setEmployee((prev) => (prev ? { ...prev, [name]: value } : prev));
+  };
+
+  const handleImageUpload = async (file) => {
+    if (!file || !companyId || !employee) {
+      setErrorKey("manager.employeeProfiles.messages.updateFailed");
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("company_id", companyId);
+      // Use existing website media upload (supports auth + company scoping)
+      const res = await axios.post(`${API_URL}/api/website/media/upload`, form, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+          ...(companyId ? { "X-Company-Id": companyId } : {}),
+        },
+      });
+      const url =
+        res.data?.items?.[0]?.url_public ||
+        res.data?.items?.[0]?.file_url ||
+        res.data?.items?.[0]?.url ||
+        res.data?.url ||
+        res.data?.url_public;
+      if (url) {
+        setEmployee((prev) => (prev ? { ...prev, profile_image_url: url } : prev));
+      }
+      setErrorKey("");
+    } catch (err) {
+      console.error("Image upload failed", err);
+      setErrorKey("manager.employeeProfiles.messages.updateFailed");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageRemove = () => {
+    setEmployee((prev) => (prev ? { ...prev, profile_image_url: "" } : prev));
   };
 
   const handleSubmit = async () => {
@@ -365,6 +412,63 @@ const EmployeeProfileForm = ({ token }) => {
             </Grid>
 
             <Grid item xs={12} md={6}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  borderRadius: 2,
+                }}
+              >
+                <Avatar
+                  src={employee.profile_image_url || ""}
+                  alt={employee.first_name || "Employee"}
+                  sx={{ width: 72, height: 72 }}
+                />
+                <Stack spacing={1} flex={1}>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    {t("manager.employeeProfiles.form.fields.profileImage") || "Profile image"}
+                  </Typography>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      component="label"
+                      startIcon={<UploadIcon fontSize="small" />}
+                      disabled={uploadingImage || !companyId || !employee}
+                    >
+                      {uploadingImage ? t("common.uploading", "Uploading…") : t("common.upload", "Upload")}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        hidden
+                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+                      />
+                    </Button>
+                    <Tooltip title={employee.profile_image_url ? "Remove image" : "No image set"}>
+                      <span>
+                        <Button
+                          variant="text"
+                          size="small"
+                          startIcon={<DeleteOutlineIcon fontSize="small" />}
+                          disabled={!employee.profile_image_url}
+                          onClick={handleImageRemove}
+                        >
+                          {t("common.remove", "Remove")}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </Stack>
+                    <Typography variant="caption" color="text.secondary">
+                    Optional. JPG/PNG/WebP. Select an employee first so we know which company to upload to.
+                  </Typography>
+                </Stack>
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
               <TextField
                 label={t("manager.employeeProfiles.form.fields.phone")}
                 name="phone"
@@ -379,7 +483,11 @@ const EmployeeProfileForm = ({ token }) => {
                 select
                 label={t("manager.employeeProfiles.form.fields.department")}
                 name="department_id"
-                value={employee.department_id || ""}
+                value={
+                  departments.some((d) => d.id === employee.department_id)
+                    ? employee.department_id
+                    : ""
+                }
                 onChange={handleChange}
                 fullWidth
               >
