@@ -23,8 +23,12 @@ import axios from "axios";
 import { pad } from "../../../utils/datetime";
 import { DateTime } from "luxon";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../../../utils/api";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API_URL =
+  (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
+  API_BASE_URL ||
+  "https://scheduling-application.onrender.com";
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHIFT_LOOKAHEAD_DAYS = 21;
 

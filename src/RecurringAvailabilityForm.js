@@ -12,6 +12,7 @@ import {
   Select
 } from "@mui/material";
 import axios from "axios";
+import { API_BASE_URL } from "./utils/api";
 
 const RecurringAvailabilityForm = ({ token, onSuccess }) => {
   const [startDate, setStartDate] = useState("");
@@ -46,8 +47,13 @@ const RecurringAvailabilityForm = ({ token, onSuccess }) => {
     }
 
     try {
+      const API_URL =
+        (typeof process !== "undefined" && process.env.REACT_APP_API_URL) ||
+        API_BASE_URL ||
+        "https://scheduling-application.onrender.com";
+
       const response = await axios.post(
-        "http://localhost:5000/api/set-recurring-availability",
+        `${API_URL.replace(/\/$/, "")}/api/set-recurring-availability`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
