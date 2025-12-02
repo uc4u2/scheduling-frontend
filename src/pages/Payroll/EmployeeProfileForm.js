@@ -455,7 +455,7 @@ const API_URL =
                 <Stack spacing={1} flex={1}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Typography variant="subtitle1" fontWeight={600}>
-                      {t("manager.employeeProfiles.form.fields.profileImage") || "Employee profile image"}
+                      Employee profile image
                     </Typography>
                     <Button
                       size="small"
