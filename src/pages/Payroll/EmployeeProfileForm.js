@@ -119,8 +119,7 @@ const API_URL =
   (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
   API_BASE_URL ||
   "https://scheduling-application.onrender.com";
-  const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
-  const allowedMime = ["image/jpeg", "image/png", "image/webp"];
+  const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20MB
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -206,10 +205,6 @@ const API_URL =
       setUploadError("Image is too large. Max 10MB.");
       return;
     }
-    if (file.type && !allowedMime.includes(file.type)) {
-      setUploadError("Unsupported file type. Use JPG, PNG, or WebP.");
-      return;
-    }
     setUploadingImage(true);
     try {
       const form = new FormData();
@@ -239,8 +234,8 @@ const API_URL =
       const detail =
         err?.response?.data?.error ||
         err?.response?.data?.message ||
-        (err?.response?.status === 413 ? "Image is too large. Max 10MB." : "") ||
-        "We couldn't upload that image. Please try a smaller JPG/PNG/WebP.";
+        (err?.response?.status === 413 ? "Image is too large. Max 20MB." : "") ||
+        "We couldn't upload that image. Please try again later or use a smaller file.";
       setUploadError(detail);
       setErrorKey("");
     } finally {
