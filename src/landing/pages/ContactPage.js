@@ -40,7 +40,8 @@ const HQ_ADDRESS = "171 Harbord Street, Toronto, ON M5S 1H3";
 const MAP_EMBED_URL = "https://maps.google.com/maps?q=171%20Harbord%20Street%2C%20Toronto%2C%20ON%20M5S%201H3&t=&z=15&ie=UTF8&iwloc=&output=embed";
 const MAP_DIRECTIONS_URL = "https://www.google.com/maps/dir/?api=1&destination=171+Harbord+Street+Toronto+ON+M5S+1H3";
 
-const FALLBACK_CONTACT_SLUGS = ["photo-artisto", "photo-artisto-corp", "schedulaa"];
+// Fall back to the main marketing slug only; primary targeting should come from env or query params.
+const FALLBACK_CONTACT_SLUGS = ["schedulaa"];
 
 const COMPANY_ADDRESS = {
   streetAddress: "171 Harbord Street",
@@ -216,6 +217,20 @@ const ContactPage = () => {
     (typeof window !== "undefined" && window.__ENV__?.CONTACT_SLUGS) ||
     "";
 
+  // Allow overriding via ?slug= or ?company= on the marketing contact page
+  const slugParams = React.useMemo(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const params = new URLSearchParams(window.location.search || "");
+      const list = [];
+      const qp = params.get("slug") || params.get("company");
+      if (qp) list.push(qp.trim());
+      return list;
+    } catch {
+      return [];
+    }
+  }, []);
+
   const marketingContactSlugs = React.useMemo(() => {
     const envList = rawSlugEnv
       ? rawSlugEnv
@@ -223,7 +238,7 @@ const ContactPage = () => {
           .map((slug) => slug.trim())
           .filter(Boolean)
       : [];
-    const combined = [...envList, ...FALLBACK_CONTACT_SLUGS];
+    const combined = [...slugParams, ...envList, ...FALLBACK_CONTACT_SLUGS];
     const seen = new Set();
     return combined.filter((slug) => {
       const key = slug.toLowerCase();
@@ -231,7 +246,7 @@ const ContactPage = () => {
       seen.add(key);
       return true;
     });
-  }, [rawSlugEnv]);
+  }, [rawSlugEnv, slugParams]);
 
   const heroTitle = getArray(heroContent.title, DEFAULT_CONTENT.hero.title);
   const highlightItems = getArray(
