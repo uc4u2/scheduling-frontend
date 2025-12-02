@@ -1,6 +1,6 @@
 // src/components/website/ContactFormSection.js
 import React, { useMemo, useState, useMemo as useMemo2 } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import {
   Box, Button, Container, Grid, Stack, TextField, Alert, CircularProgress, Typography
 } from "@mui/material";
@@ -33,16 +33,19 @@ export default function ContactFormSection(props) {
   } = props;
 
   const { slug, pageSlug } = useParams();
+  const location = useLocation();
 
   const [values, setValues]   = useState({});
   const [sending, setSending] = useState(false);
   const [ok, setOk]           = useState(false);
   const [err, setErr]         = useState("");
 
-  const endpoint = useMemo(
-    () => (slug ? `/api/public/${slug}/form/${encodeURIComponent(formKey)}` : null),
-    [slug, formKey]
-  );
+  const endpoint = useMemo(() => {
+    const qs = new URLSearchParams(location.search || "");
+    const slugFromQuery = qs.get("slug");
+    const resolvedSlug = slug || slugFromQuery;
+    return resolvedSlug ? `/api/public/${resolvedSlug}/form/${encodeURIComponent(formKey)}` : null;
+  }, [slug, location.search, formKey]);
 
   // --- helpers ---
   const capFirst = (s) => (typeof s === "string" && s.length ? s.charAt(0).toUpperCase() + s.slice(1) : "");
