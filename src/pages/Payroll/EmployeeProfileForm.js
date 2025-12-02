@@ -15,6 +15,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import axios from "axios";
+import { API_BASE_URL } from "../../utils/api";
 import UploadIcon from "@mui/icons-material/Upload";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useTranslation } from "react-i18next";
@@ -111,7 +112,10 @@ const EmployeeProfileForm = ({ token }) => {
   const [perPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API_URL =
+  (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
+  API_BASE_URL ||
+  "https://scheduling-application.onrender.com";
 
   useEffect(() => {
     const fetchDepartments = async () => {
