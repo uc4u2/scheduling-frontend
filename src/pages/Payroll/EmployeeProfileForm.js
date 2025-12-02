@@ -218,14 +218,29 @@ const API_URL =
           ...(companyId ? { "X-Company-Id": companyId } : {}),
         },
       });
-      const url =
+      const rawUrl =
         res.data?.items?.[0]?.url_public ||
         res.data?.items?.[0]?.file_url ||
         res.data?.items?.[0]?.url ||
         res.data?.url ||
         res.data?.url_public;
-      if (url) {
-        setEmployee((prev) => (prev ? { ...prev, profile_image_url: url } : prev));
+
+      let finalUrl = rawUrl;
+      // If backend returned a relative path (e.g., /api/website/media/file/1/xyz.png),
+      // prepend the API host so the public site doesn't try to fetch it from www.schedulaa.com.
+      if (rawUrl && !/^https?:\/\//i.test(rawUrl)) {
+        try {
+          const apiOrigin = new URL(API_URL).origin;
+          finalUrl = `${apiOrigin}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
+        } catch (e) {
+          finalUrl = rawUrl;
+        }
+      }
+
+      if (finalUrl) {
+        setEmployee((prev) =>
+          prev ? { ...prev, profile_image_url: finalUrl } : prev
+        );
       }
       setErrorKey("");
       setUploadError("");
