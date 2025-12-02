@@ -103,6 +103,8 @@ const EmployeeProfileForm = ({ token }) => {
   const [messageKey, setMessageKey] = useState("");
   const [errorKey, setErrorKey] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [showImageHelp, setShowImageHelp] = useState(false);
   const companyId = employee?.company_id || getAuthedCompanyId() || "";
 
   const [departments, setDepartments] = useState([]);
@@ -117,6 +119,8 @@ const API_URL =
   (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
   API_BASE_URL ||
   "https://scheduling-application.onrender.com";
+  const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+  const allowedMime = ["image/jpeg", "image/png", "image/webp"];
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -194,7 +198,16 @@ const API_URL =
 
   const handleImageUpload = async (file) => {
     if (!file || !employee) {
+      setUploadError("Select an employee and choose an image to upload.");
       setErrorKey("manager.employeeProfiles.messages.updateFailed");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setUploadError("Image is too large. Max 10MB.");
+      return;
+    }
+    if (file.type && !allowedMime.includes(file.type)) {
+      setUploadError("Unsupported file type. Use JPG, PNG, or WebP.");
       return;
     }
     setUploadingImage(true);
@@ -220,9 +233,16 @@ const API_URL =
         setEmployee((prev) => (prev ? { ...prev, profile_image_url: url } : prev));
       }
       setErrorKey("");
+      setUploadError("");
     } catch (err) {
       console.error("Image upload failed", err);
-      setErrorKey("manager.employeeProfiles.messages.updateFailed");
+      const detail =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        (err?.response?.status === 413 ? "Image is too large. Max 10MB." : "") ||
+        "We couldn't upload that image. Please try a smaller JPG/PNG/WebP.";
+      setUploadError(detail);
+      setErrorKey("");
     } finally {
       setUploadingImage(false);
     }
@@ -433,9 +453,23 @@ const API_URL =
                   sx={{ width: 72, height: 72 }}
                 />
                 <Stack spacing={1} flex={1}>
-                  <Typography variant="subtitle1" fontWeight={600}>
-                    {t("manager.employeeProfiles.form.fields.profileImage") || "Profile image"}
-                  </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      {t("manager.employeeProfiles.form.fields.profileImage") || "Employee profile image"}
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => setShowImageHelp((s) => !s)}
+                    >
+                      {showImageHelp ? "Hide info" : "Upload tips"}
+                    </Button>
+                  </Stack>
+                  {showImageHelp && (
+                    <Typography variant="caption" color="text.secondary">
+                      Upload a clear headshot (JPG/PNG/WebP, up to 10MB). This appears on booking pages so clients can recognize the provider.
+                    </Typography>
+                  )}
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                     <Button
                       variant="outlined"
@@ -466,9 +500,11 @@ const API_URL =
                       </span>
                     </Tooltip>
                   </Stack>
-                    <Typography variant="caption" color="text.secondary">
-                    Optional. JPG/PNG/WebP. Select an employee first so we know which company to upload to.
-                  </Typography>
+                  {uploadError && (
+                    <Typography variant="caption" color="error">
+                      {uploadError}
+                    </Typography>
+                  )}
                 </Stack>
               </Paper>
             </Grid>
