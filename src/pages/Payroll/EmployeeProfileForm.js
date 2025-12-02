@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import { API_BASE_URL } from "../../utils/api";
+import { getAuthedCompanyId } from "../../utils/authedCompany";
 import UploadIcon from "@mui/icons-material/Upload";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { useTranslation } from "react-i18next";
@@ -102,7 +103,7 @@ const EmployeeProfileForm = ({ token }) => {
   const [messageKey, setMessageKey] = useState("");
   const [errorKey, setErrorKey] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
-  const companyId = employee?.company_id || "";
+  const companyId = employee?.company_id || getAuthedCompanyId() || "";
 
   const [departments, setDepartments] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
@@ -192,7 +193,7 @@ const API_URL =
   };
 
   const handleImageUpload = async (file) => {
-    if (!file || !companyId || !employee) {
+    if (!file || !employee) {
       setErrorKey("manager.employeeProfiles.messages.updateFailed");
       return;
     }
@@ -200,7 +201,7 @@ const API_URL =
     try {
       const form = new FormData();
       form.append("file", file);
-      form.append("company_id", companyId);
+      if (companyId) form.append("company_id", companyId);
       // Use existing website media upload (supports auth + company scoping)
       const res = await axios.post(`${API_URL}/api/website/media/upload`, form, {
         headers: {
@@ -441,7 +442,7 @@ const API_URL =
                       size="small"
                       component="label"
                       startIcon={<UploadIcon fontSize="small" />}
-                      disabled={uploadingImage || !companyId || !employee}
+                      disabled={uploadingImage || !employee}
                     >
                       {uploadingImage ? t("common.uploading", "Uploading…") : t("common.upload", "Upload")}
                       <input
