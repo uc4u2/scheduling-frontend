@@ -52,6 +52,9 @@ const DEMO_VIDEO_PAYROLL_SRC =
 const DEMO_VIDEO_SERVICE_SRC =
   process.env.REACT_APP_DEMO_VIDEO_SERVICE ||
   "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/Schedulaa.Service.Management.mp4";
+const DEMO_VIDEO_INVITES_SRC =
+  process.env.REACT_APP_DEMO_VIDEO_INVITES ||
+  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/invitations.schedulaa.mp4";
 
 const QUICK_ACTIONS = [
 ];
@@ -404,6 +407,31 @@ const DemoPage = () => {
                     <Box
                       component="video"
                       src={DEMO_VIDEO_SERVICE_SRC}
+                      controls
+                      preload="metadata"
+                      sx={{
+                        width: "100%",
+                        borderRadius: 3,
+                        border: (t) => `1px solid ${alpha(t.palette.divider, 0.4)}`,
+                      }}
+                    >
+                      Your browser does not support the video tag.
+                    </Box>
+                  </Stack>
+
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <PlayCircleOutlineIcon color="primary" />
+                      <Typography variant="h6" fontWeight={700}>
+                        Send invitations in minutes
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 820 }}>
+                      Send client/candidate invitations with the right templates, self-booking, and auto-confirmations.
+                    </Typography>
+                    <Box
+                      component="video"
+                      src={DEMO_VIDEO_INVITES_SRC}
                       controls
                       preload="metadata"
                       sx={{
