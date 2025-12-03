@@ -165,6 +165,11 @@ export function ImageField({ label, value, onChange, companyId }) {
 
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return;
+    const MAX_BYTES = 5 * 1024 * 1024; // 5MB guard to avoid backend 413
+    if (files[0].size > MAX_BYTES) {
+      alert("Image is too large. Max size 5MB. Please upload a smaller JPG/PNG/WebP.");
+      return;
+    }
     try {
       const res = await website.uploadMedia(files[0], { companyId });
       const item = res?.items?.[0];
@@ -181,7 +186,11 @@ export function ImageField({ label, value, onChange, companyId }) {
       applyUrl(raw);
     } catch (e) {
       console.error("upload failed", e);
-      alert(t("manager.visualBuilder.inspector.imageField.uploadFailed"));
+      if (e?.response?.status === 413) {
+        alert("Image is too large. Max size 5MB. Please upload a smaller JPG/PNG/WebP.");
+      } else {
+        alert(t("manager.visualBuilder.inspector.imageField.uploadFailed"));
+      }
     }
   };
 

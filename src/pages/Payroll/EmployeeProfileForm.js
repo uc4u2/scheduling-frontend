@@ -119,7 +119,7 @@ const API_URL =
   (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
   API_BASE_URL ||
   "https://scheduling-application.onrender.com";
-  const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20MB
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -202,7 +202,7 @@ const API_URL =
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      setUploadError("Image is too large. Max 10MB.");
+      setUploadError("Image is too large. Max 5MB. Please choose a smaller JPG/PNG/WebP.");
       return;
     }
     setUploadingImage(true);
@@ -249,7 +249,9 @@ const API_URL =
       const detail =
         err?.response?.data?.error ||
         err?.response?.data?.message ||
-        (err?.response?.status === 413 ? "Image is too large. Max 20MB." : "") ||
+        (err?.response?.status === 413
+          ? "Image is too large. Max 5MB. Please upload a smaller JPG/PNG/WebP."
+          : "") ||
         "We couldn't upload that image. Please try again later or use a smaller file.";
       setUploadError(detail);
       setErrorKey("");

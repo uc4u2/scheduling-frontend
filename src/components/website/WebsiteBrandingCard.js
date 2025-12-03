@@ -1038,6 +1038,12 @@ export default function WebsiteBrandingCard({
 
   const uploadLogo = async (file, target) => {
     if (!file || !companyId) return;
+    // Client-side guard to avoid server 413s
+    const MAX_LOGO_BYTES = 5 * 1024 * 1024; // 5MB budget to stay under backend limits
+    if (file.size > MAX_LOGO_BYTES) {
+      setUploadErr("Image is too large. Max size 5MB. Please upload a smaller JPG/PNG/WebP.");
+      return;
+    }
     setUploading(true);
     setUploadErr("");
     try {
@@ -1050,7 +1056,16 @@ export default function WebsiteBrandingCard({
         updateFooter({ logo_asset_id: asset.id, logo_asset: asset });
       }
     } catch (e) {
-      setUploadErr(e?.message || "Upload failed");
+      const status = e?.response?.status;
+      if (status === 413) {
+        setUploadErr("Image is too large. Max size 5MB. Please upload a smaller JPG/PNG/WebP.");
+      } else {
+        setUploadErr(
+          e?.response?.data?.error ||
+            e?.message ||
+            "Upload failed. Try a smaller image or check your connection."
+        );
+      }
     } finally {
       setUploading(false);
     }
