@@ -786,7 +786,8 @@ function HeaderPreview({ header, theme, onLogoDragStart, companySlug = "Preview 
 
 function FooterPreview({ footer, theme, companySlug }) {
   const bg = footer.bg || theme.footer?.background || "#0b1120";
-  const textColor = footer.text || theme.footer?.text || "#e2e8f0";
+  const textColor = footer.text_color || theme.footer?.text || "#e2e8f0";
+  const linkColor = footer.link_color || textColor;
   const showCopyright = footer.show_copyright !== false;
   const copyrightSample = formatCopyrightText(footer.copyright_text, {
     company: companySlug,
@@ -799,7 +800,15 @@ function FooterPreview({ footer, theme, companySlug }) {
         overflow: "hidden",
       }}
     >
-      <Box sx={{ background: bg, color: textColor, px: 3, py: 2 }}>
+      <Box
+        sx={{
+          background: bg,
+          color: textColor,
+          px: 3,
+          py: 2,
+          a: { color: linkColor },
+        }}
+      >
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
           Footer preview
         </Typography>
@@ -1407,6 +1416,16 @@ export default function WebsiteBrandingCard({
             label="Footer background"
             value={footer.bg || themeOverrides.footer?.background}
             onChange={(val) => updateFooter({ bg: val })}
+          />
+          <ColorTokenInput
+            label="Footer text colour"
+            value={footer.text_color || ""}
+            onChange={(val) => updateFooter({ text_color: val })}
+          />
+          <ColorTokenInput
+            label="Footer link colour"
+            value={footer.link_color || ""}
+            onChange={(val) => updateFooter({ link_color: val })}
           />
           <TextField
             size="small"

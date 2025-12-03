@@ -7,12 +7,14 @@ export const NAV_STYLE_DEFAULT = Object.freeze({
   padding_x: 20,
   padding_y: 10,
   border_radius: 999,
-  bg: "var(--sched-primary, #6366F1)",
-  bg_hover: "var(--sched-primary, #6366F1)",
+  // Default to the page link colour first so builders can change nav colour
+  // without hunting for theme overrides. Falls back to the primary token.
+  bg: "var(--page-link-color, var(--sched-primary, #6366F1))",
+  bg_hover: "var(--page-link-color, var(--sched-primary, #6366F1))",
   text: "#ffffff",
   text_hover: "#ffffff",
   active_bg: "rgba(255,255,255,0.18)",
-  active_text: "var(--sched-primary, #6366F1)",
+  active_text: "var(--page-link-color, var(--sched-primary, #6366F1))",
   shadow: "0 20px 34px rgba(15,23,42,0.18)",
   divider: null,
   brand_font_family: "inherit",

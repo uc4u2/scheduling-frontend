@@ -86,6 +86,7 @@ export default function SiteFrame({
   const [site, setSite] = useState(initialSite);
   const [loading, setLoading] = useState(!initialSite && !disableFetch);
   const [err, setErr] = useState("");
+  const themeOverrides = site?.theme_overrides || {};
   const nav = useMemo(() => site?.nav_overrides || {}, [site]);
   const menuSource = nav?.menu_source || "pages";
   const navigate = useNavigate();
@@ -98,6 +99,11 @@ export default function SiteFrame({
     () => site?.footer || site?.settings?.footer || null,
     [site]
   );
+  const linkColor =
+    headerConfig?.link_color ||
+    footerConfig?.link_color ||
+    themeOverrides?.footer?.text ||
+    theme.palette.primary.main;
 
   // auth state for showing login / my bookings / logout
   const token = (typeof localStorage !== "undefined" && localStorage.getItem("token")) || "";
@@ -478,6 +484,7 @@ export default function SiteFrame({
     <Box
       component="header"
       sx={{
+        "--page-link-color": linkColor,
         position: headerConfig.sticky === false ? "relative" : "sticky",
         top: 0,
         zIndex: 30,
@@ -597,13 +604,23 @@ export default function SiteFrame({
       footerSocial.length ||
       footerLegal.length);
 
+  const footerTextColor =
+    footerConfig?.text_color ||
+    themeOverrides?.footer?.text ||
+    theme.palette.text.primary;
+  const footerLinkColor =
+    footerConfig?.link_color ||
+    footerTextColor ||
+    linkColor;
+
   const footerNode = footerConfig ? (
     <Box
       component="footer"
       sx={{
+        "--page-link-color": footerLinkColor,
         backgroundColor:
           footerConfig.bg || alpha(theme.palette.text.primary, 0.04),
-        color: footerConfig.text ? "inherit" : theme.palette.text.primary,
+        color: footerTextColor,
         mt: 8,
       }}
     >
@@ -639,7 +656,7 @@ export default function SiteFrame({
                         key={`footer-col-${idx}-link-${linkIdx}`}
                         component={component || RouterLink}
                         {...rest}
-                        color="inherit"
+                        color="var(--page-link-color)"
                         underline="hover"
                         sx={{ fontSize: "0.95rem" }}
                       >
@@ -693,7 +710,7 @@ export default function SiteFrame({
                     key={`footer-legal-${idx}`}
                     component={component || RouterLink}
                     {...rest}
-                    color="inherit"
+                    color="var(--page-link-color)"
                     underline="hover"
                     sx={{ fontSize: "0.875rem" }}
                   >

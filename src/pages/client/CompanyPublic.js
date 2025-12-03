@@ -1053,7 +1053,11 @@ const siteTitle = useMemo(() => {
   );
   const footerSummary = (footerConfig?.text || "").trim();
   const footerBg = footerConfig?.bg || themeOverrides?.footer?.background || "var(--page-secondary-bg, #0f172a)";
-  const footerTextColor = footerConfig?.text || themeOverrides?.footer?.text || "rgba(255,255,255,0.92)";
+  const footerTextColor =
+    footerConfig?.text_color ||
+    themeOverrides?.footer?.text ||
+    "rgba(255,255,255,0.92)";
+  const footerLinkColor = footerConfig?.link_color || footerTextColor;
   const footerLogoUrl =
     footerConfig?.logo_asset?.url ||
     footerConfig?.logo_asset?.url_public ||
@@ -1735,7 +1739,7 @@ const siteTitle = useMemo(() => {
                           return (
                             <Button
                               key={`footer-link-${idx}-${linkIdx}`}
-                              sx={{ justifyContent: "flex-start", color: footerTextColor, textTransform: "none" }}
+                              sx={{ justifyContent: "flex-start", color: footerLinkColor, textTransform: "none" }}
                               {...commonProps}
                             >
                               {link.label || link.href}
@@ -1752,22 +1756,22 @@ const siteTitle = useMemo(() => {
                 <Stack
                   direction={{ xs: "column", md: "row" }}
                   spacing={2}
-                  sx={{ borderTop: "1px solid rgba(255,255,255,0.12)", pt: 2, mt: 2, flexWrap: "wrap" }}
-                >
-                  {footerLegalLinks.map((link, idx) => {
-                    const href = normalizeHref(link.href || "");
-                    const external = isExternalHref(href);
-                    const commonProps = external
+                      sx={{ borderTop: "1px solid rgba(255,255,255,0.12)", pt: 2, mt: 2, flexWrap: "wrap" }}
+                    >
+                      {footerLegalLinks.map((link, idx) => {
+                        const href = normalizeHref(link.href || "");
+                        const external = isExternalHref(href);
+                        const commonProps = external
                       ? { component: "a", href, target: "_blank", rel: "noreferrer" }
                       : { component: RouterLink, to: href };
                     return (
-                      <Button
-                        key={`footer-legal-${idx}`}
-                        sx={{ color: footerTextColor, textTransform: "none", padding: 0, minWidth: "auto" }}
-                        {...commonProps}
-                      >
-                        {link.label || link.href}
-                      </Button>
+                          <Button
+                            key={`footer-legal-${idx}`}
+                            sx={{ color: footerLinkColor, textTransform: "none", padding: 0, minWidth: "auto" }}
+                            {...commonProps}
+                          >
+                            {link.label || link.href}
+                          </Button>
                     );
                   })}
                 </Stack>

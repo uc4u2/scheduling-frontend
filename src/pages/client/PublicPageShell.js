@@ -373,6 +373,15 @@ function ShellInner({
       cssVars[key] = value;
     }
   });
+  // If no explicit link colour was provided by the page style,
+  // align link colour with the nav accent so header/footer links
+  // don't stay stuck on the default blue.
+  if (!cssVars["--page-link-color"]) {
+    const navAccent = navTokens?.active_text || navTokens?.text;
+    if (navAccent) {
+      cssVars["--page-link-color"] = navAccent;
+    }
+  }
 
   // Derive homepage Page Style to drive background for builtin pages
   const homePageStyle = useMemo(() => {
