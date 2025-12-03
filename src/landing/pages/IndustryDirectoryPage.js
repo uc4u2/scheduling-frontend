@@ -20,7 +20,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ExploreIcon from "@mui/icons-material/TravelExplore";
-import axios from "axios";
+import api from "../../utils/api";
 import { PROFESSION_OPTIONS } from "../../constants/professions";
 import Meta from "../../components/Meta";
 import JsonLd from "../../components/seo/JsonLd";
@@ -54,8 +54,8 @@ const IndustryDirectoryPage = () => {
     setError("");
     const params = {};
     if (filter !== "all") params.industry = filter;
-    axios
-      .get("/public/industry-directory", { params })
+    api
+      .get("/public/industry-directory", { params, noCompanyHeader: true })
       .then((res) => {
         if (!active) return;
         const list = Array.isArray(res.data?.companies) ? res.data.companies : [];
