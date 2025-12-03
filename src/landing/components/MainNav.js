@@ -33,7 +33,7 @@ const marketingLinks = [
 ];
 
 const loggedInLinks = [
-  { label: "Employee Dashboard", to: "/recruiter?tab=calendar", icon: <DashboardIcon fontSize="small" /> },
+  { label: "Employee Dashboard", to: "/recruiter?tab=availability", icon: <DashboardIcon fontSize="small" /> },
   { label: "Management Dashboard", to: "/manager/dashboard", icon: <WorkspacesIcon fontSize="small" /> },
 ];
 

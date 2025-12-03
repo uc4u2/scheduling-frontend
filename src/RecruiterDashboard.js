@@ -377,35 +377,6 @@ const RecruiterDashboard = ({ token }) => {
     >
       <RecruiterTabs localTab={activeTab} onLocalTabChange={handleLocalTabChange} />
 
-      <Paper sx={{ mb: 3, p: 2 }} elevation={1}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="subtitle1" fontWeight={600}>
-              Need a focused clock view?
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Use the new My Time or View My Shift tabs to open the streamlined clock-in workspace.
-            </Typography>
-          </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Button
-              variant="outlined"
-              onClick={() => navigate("/recruiter/my-time")}
-              fullWidth={isSmDown}
-            >
-              My Time
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => navigate("/recruiter/my-shifts")}
-              fullWidth={isSmDown}
-            >
-              View My Shift
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
-
       {/* --- OTHER PANELS ABOVE (unchanged) --- */}
       <Grid container spacing={2}>
         {/* --- left column (panels) ------------------------------------------------ */}
@@ -563,10 +534,12 @@ const RecruiterDashboard = ({ token }) => {
               <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
                 Your Availability Slots
               </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={2}
-                sx={{ mt: 1 }}
+                sx={{ mb: 2 }}
               >
                 <TextField
                   select
@@ -594,8 +567,6 @@ const RecruiterDashboard = ({ token }) => {
                   fullWidth={isSmDown}
                 />
               </Stack>
-            </AccordionSummary>
-            <AccordionDetails>
               {nonBookedFilteredSlots.length > 0 && (
                 <Stack
                   direction={{ xs: "column", sm: "row" }}

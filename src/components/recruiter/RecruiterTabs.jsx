@@ -4,9 +4,7 @@ import { Tabs, Tab } from "@mui/material";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 const TAB_CONFIG = [
-  { value: "calendar", label: "Calendar", path: "/recruiter?tab=calendar" },
   { value: "availability", label: "My Availability", path: "/recruiter?tab=availability" },
-  { value: "shifts", label: "Shift View", path: "/recruiter?tab=shifts" },
   { value: "invitations", label: "Invitations", path: "/recruiter/invitations" },
   { value: "candidate-forms", label: "Candidate Forms", path: "/recruiter/invitations?section=forms" },
   { value: "questionnaires", label: "Questionnaires", path: "/recruiter/questionnaires" },
@@ -15,7 +13,7 @@ const TAB_CONFIG = [
   { value: "view-my-shift", label: "View My Shift", path: "/recruiter/my-shifts" },
 ];
 
-const LOCAL_TABS = new Set(["calendar", "availability", "shifts"]);
+const LOCAL_TABS = new Set(["availability"]);
 
 const getPathValue = (locationPathname, searchParams, fallback) => {
   if (locationPathname.startsWith("/recruiter/invitations")) {
@@ -37,7 +35,7 @@ const getPathValue = (locationPathname, searchParams, fallback) => {
   return fallback;
 };
 
-const RecruiterTabs = ({ localTab = "calendar", onLocalTabChange }) => {
+const RecruiterTabs = ({ localTab = "availability", onLocalTabChange }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

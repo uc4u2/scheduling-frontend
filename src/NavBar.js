@@ -54,7 +54,7 @@ const marketingLinks = [
 ];
 
 const authenticatedLinks = [
-  { label: "Employee Dashboard", translationKey: "nav.recruiterDashboard", to: "/recruiter?tab=calendar", icon: <DashboardIcon fontSize="small" /> },
+  { label: "Employee Dashboard", translationKey: "nav.recruiterDashboard", to: "/recruiter?tab=availability", icon: <DashboardIcon fontSize="small" /> },
   { label: "Management Dashboard", translationKey: "nav.managerDashboard", to: "/manager/dashboard", icon: <WorkspacesIcon fontSize="small" /> },
 ];
 
