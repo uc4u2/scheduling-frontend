@@ -236,6 +236,7 @@ const IndustryDirectoryPage = () => {
                       preview?.hero?.image?.url_public ||
                       preview?.hero?.image?.href ||
                       preview?.hero?.image?.src ||
+                      company.logo_url ||
                       null;
                 const accent =
                   preview?.page_style?.linkColor ||
