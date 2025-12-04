@@ -116,10 +116,6 @@ const EmployeeProfileForm = ({ token }) => {
   const [perPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
 
-const API_URL =
-  (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
-  API_BASE_URL ||
-  "https://scheduling-application.onrender.com";
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 const FRONTEND_ORIGIN =
   (typeof window !== "undefined" && window.location.origin) ||
