@@ -186,6 +186,8 @@ const FRONTEND_ORIGIN =
         address_zip: data.address?.zip || "",
         company_id: data.company_id,
         allow_public_booking: data.allow_public_booking,
+        public_bio: data.public_bio || "",
+        role: data.role || "",
       };
       setEmployee(flatData);
       setErrorKey("");
@@ -447,85 +449,23 @@ const FRONTEND_ORIGIN =
 
             <Grid item xs={12} md={6}>
               <TextField
+                label="Public title / role"
+                name="role"
+                value={employee.role || ""}
+                onChange={handleChange}
+                fullWidth
+                helperText="Shown on public pages like services and the meeting link."
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
                 label={t("manager.employeeProfiles.form.fields.email")}
                 name="email"
                 value={employee.email || ""}
                 onChange={handleChange}
                 fullWidth
               />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                  borderRadius: 2,
-                }}
-              >
-                <Avatar
-                  src={employee.profile_image_url || ""}
-                  alt={employee.first_name || "Employee"}
-                  sx={{ width: 72, height: 72 }}
-                />
-                <Stack spacing={1} flex={1}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Employee profile image
-                    </Typography>
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={() => setShowImageHelp((s) => !s)}
-                    >
-                      {showImageHelp ? "Hide info" : "Upload tips"}
-                    </Button>
-                  </Stack>
-                  {showImageHelp && (
-                    <Typography variant="caption" color="text.secondary">
-                      Upload a clear headshot (JPG/PNG/WebP, up to 10MB). This appears on booking pages so clients can recognize the provider.
-                    </Typography>
-                  )}
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      component="label"
-                      startIcon={<UploadIcon fontSize="small" />}
-                      disabled={uploadingImage || !employee}
-                    >
-                      {uploadingImage ? t("common.uploading", "Uploading…") : t("common.upload", "Upload")}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        hidden
-                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
-                      />
-                    </Button>
-                    <Tooltip title={employee.profile_image_url ? "Remove image" : "No image set"}>
-                      <span>
-                        <Button
-                          variant="text"
-                          size="small"
-                          startIcon={<DeleteOutlineIcon fontSize="small" />}
-                          disabled={!employee.profile_image_url}
-                          onClick={handleImageRemove}
-                        >
-                          {t("common.remove", "Remove")}
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  </Stack>
-                  {uploadError && (
-                    <Typography variant="caption" color="error">
-                      {uploadError}
-                    </Typography>
-                  )}
-                </Stack>
-              </Paper>
             </Grid>
 
             <Grid item xs={12} md={6}>
@@ -538,22 +478,6 @@ const FRONTEND_ORIGIN =
               />
             </Grid>
 
-
-            <Grid item xs={12} md={6}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={Boolean(employee.allow_public_booking)}
-                    onChange={(e) =>
-                      setEmployee((prev) =>
-                        prev ? { ...prev, allow_public_booking: e.target.checked } : prev
-                      )
-                    }
-                  />
-                }
-                label="Allow public bookings (shareable link)"
-              />
-            </Grid>
 
             <Grid item xs={12} md={6}>
               <TextField
@@ -746,6 +670,106 @@ const FRONTEND_ORIGIN =
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
               Public booking link
             </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="flex-start" sx={{ mb: 2 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(employee.allow_public_booking)}
+                    onChange={(e) =>
+                      setEmployee((prev) =>
+                        prev ? { ...prev, allow_public_booking: e.target.checked } : prev
+                      )
+                    }
+                  />
+                }
+                label="Allow public bookings (shareable link)"
+              />
+              <Box flex={1} />
+            </Stack>
+
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                borderRadius: 2,
+                mb: 2,
+              }}
+            >
+              <Avatar
+                src={employee.profile_image_url || ""}
+                alt={employee.first_name || "Employee"}
+                sx={{ width: 72, height: 72 }}
+              />
+              <Stack spacing={1} flex={1}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    Public profile image
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => setShowImageHelp((s) => !s)}
+                  >
+                    {showImageHelp ? "Hide info" : "Upload tips"}
+                  </Button>
+                </Stack>
+                {showImageHelp && (
+                  <Typography variant="caption" color="text.secondary">
+                    Upload a clear headshot (JPG/PNG/WebP, up to 5MB). This appears on booking pages so clients can recognize the provider.
+                  </Typography>
+                )}
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    component="label"
+                    startIcon={<UploadIcon fontSize="small" />}
+                    disabled={uploadingImage || !employee}
+                  >
+                    {uploadingImage ? t("common.uploading", "Uploading…") : t("common.upload", "Upload")}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+                    />
+                  </Button>
+                  <Tooltip title={employee.profile_image_url ? "Remove image" : "No image set"}>
+                    <span>
+                      <Button
+                        variant="text"
+                        size="small"
+                        startIcon={<DeleteOutlineIcon fontSize="small" />}
+                        disabled={!employee.profile_image_url}
+                        onClick={handleImageRemove}
+                      >
+                        {t("common.remove", "Remove")}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </Stack>
+                {uploadError && (
+                  <Typography variant="caption" color="error">
+                    {uploadError}
+                  </Typography>
+                )}
+              </Stack>
+            </Paper>
+
+            <TextField
+              label="Public bio / introduction"
+              name="public_bio"
+              value={employee.public_bio || ""}
+              onChange={handleChange}
+              fullWidth
+              multiline
+              minRows={3}
+              sx={{ mb: 2 }}
+              placeholder="Short intro that appears on the meeting page and services."
+            />
             {employee.allow_public_booking ? (
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
                 <TextField
