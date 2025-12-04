@@ -90,6 +90,7 @@ const IndustryDirectoryPage = () => {
             const res = await api.get(`/api/public/${encodeURIComponent(slug)}/website`, {
               params: { fields: "preview" },
               noCompanyHeader: true,
+              noAuth: true,
             });
             return [slug, res.data?.preview || null];
           } catch (e) {

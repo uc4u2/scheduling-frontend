@@ -112,7 +112,7 @@ api.interceptors.request.use((config) => {
   // Bearer token
   const token =
     typeof localStorage !== "undefined" && localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token && !config.noAuth) config.headers.Authorization = `Bearer ${token}`;
 
   // Don’t attach company for public routes or when explicitly disabled
   const fullUrl =
