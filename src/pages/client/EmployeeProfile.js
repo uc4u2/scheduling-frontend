@@ -10,7 +10,11 @@ import {
   ListItem,
   ListItemText,
   Alert,
+  TextField,
+  Stack,
+  IconButton,
 } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EmployeeAvailabilityCalendar from "./EmployeeAvailabilityCalendar";
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -52,6 +56,7 @@ const EmployeeProfile = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingServices, setLoadingServices] = useState(true);
   const [error, setError] = useState("");
+  const [companySlug, setCompanySlug] = useState("");
 
   useEffect(() => {
     if (!effectiveSlug) return;
@@ -61,7 +66,10 @@ const EmployeeProfile = () => {
       .get(
         `${API_BASE}/public/${effectiveSlug}/artists/${employeeId}${departmentId ? `?department_id=${departmentId}` : ""}`
       )
-      .then((res) => setProfile(res.data))
+      .then((res) => {
+        setProfile(res.data);
+        setCompanySlug(res.data?.company?.slug || effectiveSlug || "");
+      })
       .catch(() => {
         setError("Failed to load employee profile.");
         setProfile(null);
@@ -214,6 +222,36 @@ const EmployeeProfile = () => {
             />
           </Box>
         )}
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Public booking link
+          </Typography>
+          {profile?.allow_public_booking ? (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <TextField
+                fullWidth
+                size="small"
+                value={`${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || "<slug>"}/meet/${profile?.id}`}
+                InputProps={{ readOnly: true }}
+              />
+              <IconButton
+                onClick={() =>
+                  navigator.clipboard.writeText(
+                    `${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || ""}/meet/${profile?.id}`
+                  )
+                }
+                title="Copy link"
+                size="small"
+              >
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          ) : (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              Public booking is disabled for this employee.
+            </Alert>
+          )}
+        </Box>
       </Box>
     );
   }

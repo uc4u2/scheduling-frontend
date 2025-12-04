@@ -69,6 +69,7 @@ import RecruiterDashboard from "./RecruiterDashboard";
 import RecruiterInvitationsPage from "./pages/recruiter/RecruiterInvitationsPage";
 import RecruiterQuestionnairesPage from "./pages/recruiter/RecruiterQuestionnairesPage";
 import RecruiterUpcomingMeetingsPage from "./pages/recruiter/RecruiterUpcomingMeetingsPage";
+import RecruiterPublicLinkPage from "./pages/recruiter/PublicLinkPage";
 import RecruiterMyTimePage from "./pages/recruiter/RecruiterMyTimePage";
 import RecruiterMyShiftsPage from "./pages/recruiter/RecruiterMyShiftsPage";
 import ManagerDashboard from "./ManagerDashboard";
@@ -121,6 +122,7 @@ import ClientPackages from "./pages/client/ClientPackages";
 import ClientProfileSettings from "./pages/client/ClientProfileSettings";
 import ClientReviews from "./pages/client/ClientReviews";
 import ClientSupport from "./pages/client/ClientSupport";
+import MeetWithArtistPage from "./pages/client/MeetWithArtistPage";
 import ClientCancelBooking from "./pages/client/ClientCancelBooking";
 import { ClientRescheduleGateway, ClientCancelGateway } from "./pages/client/ClientBookingGateways";
 import CandidateIntakePage from "./pages/CandidateIntakePage";
@@ -415,6 +417,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/:slug/appointment-cancel/:bookingId" element={<ClientCancelBooking />} />
           <Route path="/:slug/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking />} />
           <Route path="/book-slot/:recruiterId/:token" element={<CandidateBooking />} />
+          <Route path="/:slug/meet/:artistId" element={<MeetWithArtistPage />} />
           <Route path="/settings/payments/stripe/return" element={<StripeConnectReturn />} />
 <Route path="/settings/payments/stripe/refresh" element={<StripeConnectReturn />} />
           {/* Website templates (manager) */}
@@ -434,7 +437,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/manage/website/builder" element={<AutoSiteBuilder />} />
           <Route path="/recruiter/invitations" element={<RecruiterInvitationsPage token={token} />} />
           <Route path="/recruiter/questionnaires" element={<RecruiterQuestionnairesPage token={token} />} />
-        <Route path="/recruiter/upcoming-meetings" element={<RecruiterUpcomingMeetingsPage token={token} />} />
+          <Route path="/recruiter/upcoming-meetings" element={<RecruiterUpcomingMeetingsPage token={token} />} />
+          <Route path="/recruiter/public-link" element={<RecruiterPublicLinkPage />} />
         <Route path="/recruiter/my-time" element={<RecruiterMyTimePage />} />
         <Route path="/recruiter/my-shifts" element={<RecruiterMyShiftsPage />} />
         <Route path="/recruiter/*" element={<RecruiterDashboard token={token} />} />

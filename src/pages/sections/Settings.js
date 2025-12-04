@@ -271,6 +271,48 @@ const Settings = () => {
   const companyProfessionLabel = resolveProfessionLabel(defaultProfession) || notSetLabel;
   const effectiveProfessionLabel = resolveProfessionLabel(effectiveProfession) || companyProfessionLabel;
 
+  const CancellationCard = (
+    <SectionCard
+      title={t("settings.workspace.cancellation.title", "Cancellation & Reschedule")}
+      description={t("settings.workspace.cancellation.description", "Set company-wide windows for cancel and reschedule. Public meeting links respect these windows.")}
+      actions={
+        <Button variant="contained" onClick={save} disabled={saving}>
+          {saving ? t("settings.common.saving") : t("settings.common.save")}
+        </Button>
+      }
+    >
+      <Stack spacing={2}>
+        <TextField
+          label={t("settings.workspace.cancellation.window", "Cancellation window (hours)")}
+          type="number"
+          value={cancelWindow}
+          onChange={(e) => setCancelWindow(e.target.value)}
+        />
+        <TextField
+          label={t("settings.workspace.cancellation.max", "Max cancellations per month")}
+          type="number"
+          value={maxCancels}
+          onChange={(e) => setMaxCancels(e.target.value)}
+        />
+        <TextField
+          label={t("settings.workspace.cancellation.rescheduleWindow", "Reschedule window (hours)")}
+          type="number"
+          value={resWindow}
+          onChange={(e) => setResWindow(e.target.value)}
+        />
+        <TextField
+          label={t("settings.workspace.cancellation.maxReschedules", "Max reschedules per month")}
+          type="number"
+          value={maxReschedules}
+          onChange={(e) => setMaxReschedules(e.target.value)}
+        />
+        <Alert severity="info">
+          Public "Meet with me" bookings and service bookings use these windows for cancel/reschedule links. Update once and all flows stay consistent.
+        </Alert>
+      </Stack>
+    </SectionCard>
+  );
+
   /* ---------- sections ---------- */
   const GeneralCard = (
       <SectionCard
@@ -307,7 +349,6 @@ const Settings = () => {
       </Stack>
     </SectionCard>
   );
-
   const PolicyCard = (
     <SectionCard
       title={t("settings.policy.title")}

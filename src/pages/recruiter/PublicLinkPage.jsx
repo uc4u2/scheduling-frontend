@@ -1,0 +1,97 @@
+import React, { useEffect, useState } from "react";
+import { Box, Button, CircularProgress, Stack, TextField, Typography, Alert } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { api } from "../../utils/api";
+import ManagementFrame from "../../components/ui/ManagementFrame";
+
+export default function RecruiterPublicLinkPage() {
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [slug, setSlug] = useState("");
+  const [rid, setRid] = useState("");
+  const [allowed, setAllowed] = useState(false);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        setLoading(true);
+        setErr("");
+        // First try auth/me (works for logged-in recruiter)
+        const { data: me } = await api.get("/auth/me", { noCompanyHeader: true });
+
+        const recruiterId =
+          me?.id ||
+          me?.recruiter_id ||
+          me?.profile?.id ||
+          me?.profile?.recruiter_id ||
+          null;
+
+        let companySlug =
+          me?.company?.slug ||
+          me?.profile?.company?.slug ||
+          me?.company_slug ||
+          "";
+
+        // If slug missing, try company/me
+        if (!companySlug) {
+          try {
+            const { data: cmp } = await api.get("/api/company/me", { noCompanyHeader: true });
+            companySlug = cmp?.slug || companySlug;
+          } catch {}
+        }
+
+        if (!recruiterId || !companySlug) {
+          throw new Error("Missing recruiter or company slug");
+        }
+
+        const allow = Boolean(me?.allow_public_booking);
+
+        setSlug(companySlug);
+        setRid(recruiterId);
+        setAllowed(allow);
+      } catch (e) {
+        setErr("Failed to load your profile.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMe();
+  }, []);
+
+  const origin =
+    (typeof window !== "undefined" && window.location.origin) ||
+    (process.env.REACT_APP_FRONTEND_URL || "").replace(/\/$/, "") ||
+    "http://localhost:3000";
+  const link = slug && rid ? `${origin}/${slug}/meet/${rid}` : "";
+
+  return (
+    <ManagementFrame title="Public Booking Link" subtitle="Copy your shareable meeting link.">
+      {loading ? (
+        <Box sx={{ py: 4, textAlign: "center" }}>
+          <CircularProgress />
+        </Box>
+      ) : err ? (
+        <Alert severity="error">{err}</Alert>
+      ) : !allowed ? (
+        <Alert severity="warning">
+          Your manager has disabled public bookings for your profile.
+        </Alert>
+      ) : (
+        <Stack spacing={2} sx={{ maxWidth: 640 }}>
+          <Typography variant="body1">
+            Share this link on LinkedIn, email signatures, or anywhere else to let clients book a meeting with you directly.
+          </Typography>
+          <TextField fullWidth size="small" value={link || "Unavailable"} InputProps={{ readOnly: true }} />
+          <Button
+            variant="contained"
+            startIcon={<ContentCopyIcon />}
+            disabled={!link}
+            onClick={() => link && navigator.clipboard.writeText(link)}
+          >
+            Copy link
+          </Button>
+        </Stack>
+      )}
+    </ManagementFrame>
+  );
+}

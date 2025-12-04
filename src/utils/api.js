@@ -591,6 +591,30 @@ export const publicSite = {
       .get(`/api/public/${encodeURIComponent(slug)}/website`, { noCompanyHeader: true })
       .then((r) => r.data),
 
+  getArtist: (slug, artistId) =>
+    api
+      .get(`/public/${encodeURIComponent(slug)}/artists/${artistId}`, {
+        noCompanyHeader: true,
+        noAuth: true,
+      })
+      .then((r) => r.data),
+
+  getArtistAvailability: (slug, artistId) =>
+    api
+      .get(`/public/${encodeURIComponent(slug)}/availability-by-artist/${artistId}`, {
+        noCompanyHeader: true,
+        noAuth: true,
+      })
+      .then((r) => r.data),
+
+  bookArtistMeeting: (slug, artistId, payload) =>
+    api
+      .post(`/api/public/${encodeURIComponent(slug)}/artists/${artistId}/appointments`, payload, {
+        noCompanyHeader: true,
+        noAuth: true,
+      })
+      .then((r) => r.data),
+
   sendContact: async (slug, payload, formKey = (process.env.REACT_APP_CONTACT_FORM_KEY || 'contact')) => {
     const key = encodeURIComponent(formKey || 'contact');
     const url = `/api/public/${encodeURIComponent(slug)}/form/${key}`;

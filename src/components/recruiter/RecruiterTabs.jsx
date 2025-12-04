@@ -11,6 +11,7 @@ const TAB_CONFIG = [
   { value: "upcoming-meetings", label: "Upcoming Meetings", path: "/recruiter/upcoming-meetings" },
   { value: "my-time", label: "My Time", path: "/recruiter/my-time" },
   { value: "view-my-shift", label: "View My Shift", path: "/recruiter/my-shifts" },
+  { value: "public-link", label: "Public Booking Link", path: "/recruiter/public-link" },
 ];
 
 const LOCAL_TABS = new Set(["availability"]);

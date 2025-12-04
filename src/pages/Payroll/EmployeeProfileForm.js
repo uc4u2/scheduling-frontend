@@ -13,6 +13,8 @@ import {
   Stack,
   Avatar,
   Tooltip,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import axios from "axios";
 import { API_BASE_URL } from "../../utils/api";
@@ -120,6 +122,10 @@ const API_URL =
   API_BASE_URL ||
   "https://scheduling-application.onrender.com";
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
+const FRONTEND_ORIGIN =
+  (typeof window !== "undefined" && window.location.origin) ||
+  (process.env.REACT_APP_FRONTEND_URL || "").replace(/\/$/, "") ||
+  "http://localhost:3000";
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -179,6 +185,7 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
         address_state: data.address?.state || "",
         address_zip: data.address?.zip || "",
         company_id: data.company_id,
+        allow_public_booking: data.allow_public_booking,
       };
       setEmployee(flatData);
       setErrorKey("");
@@ -531,6 +538,23 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
               />
             </Grid>
 
+
+            <Grid item xs={12} md={6}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(employee.allow_public_booking)}
+                    onChange={(e) =>
+                      setEmployee((prev) =>
+                        prev ? { ...prev, allow_public_booking: e.target.checked } : prev
+                      )
+                    }
+                  />
+                }
+                label="Allow public bookings (shareable link)"
+              />
+            </Grid>
+
             <Grid item xs={12} md={6}>
               <TextField
                 select
@@ -695,7 +719,6 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
                 fullWidth
               />
             </Grid>
-
             <Grid item xs={12} md={2}>
               <TextField
                 label={postalLabel}
@@ -709,24 +732,50 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
                       .replace(/[^A-Z0-9]/g, "")
                       .replace(/^(.{3})(.{0,3})$/, "$1 $2")
                       .trim();
-                  } else if (employee?.country === "USA") {
-                    value = raw.replace(/[^0-9-]/g, "");
-                    if (value.length > 5 && !value.includes("-")) {
-                      value = `${value.slice(0, 5)}-${value.slice(5, 9)}`;
-                    }
                   }
                   setEmployee((prev) => (prev ? { ...prev, address_zip: value } : prev));
                 }}
                 fullWidth
-                inputProps={{
-                  maxLength: isCanada ? 7 : 10,
-                  pattern: isCanada ? "[A-Z][0-9][A-Z] [0-9][A-Z][0-9]" : "\\d{5}(-\\d{4})?",
-                  title: postalTitle,
-                }}
                 helperText={postalHelper}
+                title={postalTitle}
               />
             </Grid>
           </Grid>
+
+          <Paper variant="outlined" sx={{ p: 2, mt: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+              Public booking link
+            </Typography>
+            {employee.allow_public_booking ? (
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={`${FRONTEND_ORIGIN}/${employee.company_slug || employee.company?.slug || "<slug>"}/meet/${employee.id}`}
+                  InputProps={{ readOnly: true }}
+                />
+                <Tooltip title="Copy link">
+                  <span>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() =>
+                        navigator.clipboard.writeText(
+                          `${FRONTEND_ORIGIN}/${employee.company_slug || employee.company?.slug || ""}/meet/${employee.id}`
+                        )
+                      }
+                    >
+                      Copy
+                    </Button>
+                  </span>
+                </Tooltip>
+              </Stack>
+            ) : (
+              <Alert severity="warning" sx={{ mt: 1 }}>
+                Enable "Allow public bookings" to expose a shareable link.
+              </Alert>
+            )}
+          </Paper>
 
           <Box sx={{ mt: 3 }}>
             <Button variant="contained" onClick={handleSubmit}>
