@@ -43,6 +43,7 @@ const industryLabel = (value) =>
 
 const IndustryDirectoryPage = () => {
   const [companies, setCompanies] = useState([]);
+  const [previews, setPreviews] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
@@ -74,6 +75,42 @@ const IndustryDirectoryPage = () => {
       active = false;
     };
   }, [filter]);
+
+  // Lazy-load hero previews for visible companies
+  useEffect(() => {
+    let active = true;
+    const loadPreviews = async () => {
+      const slugs = companies.map((c) => c.slug).filter(Boolean);
+      const pending = slugs.filter((s) => previews[s] === undefined);
+      if (!pending.length) return;
+      const limited = pending.slice(0, 30); // keep it light
+      const results = await Promise.all(
+        limited.map(async (slug) => {
+          try {
+            const res = await api.get(`/api/public/${encodeURIComponent(slug)}/website`, {
+              params: { fields: "preview" },
+              noCompanyHeader: true,
+            });
+            return [slug, res.data?.preview || null];
+          } catch (e) {
+            return [slug, null];
+          }
+        })
+      );
+      if (!active) return;
+      setPreviews((prev) => {
+        const next = { ...prev };
+        results.forEach(([slug, data]) => {
+          next[slug] = data;
+        });
+        return next;
+      });
+    };
+    loadPreviews();
+    return () => {
+      active = false;
+    };
+  }, [companies, previews]);
 
   const filtered = useMemo(() => {
     if (filter === "all") return companies;
@@ -189,7 +226,67 @@ const IndustryDirectoryPage = () => {
           )}
           {filtered.map((company) => (
             <Grid item xs={12} sm={6} md={4} key={company.slug}>
-              <Card sx={{ height: "100%", display: "flex", flexDirection: "column", boxShadow: 4 }}>
+              {(() => {
+                const preview = previews[company.slug];
+                const accent =
+                  preview?.page_style?.linkColor ||
+                  preview?.primary_color ||
+                  theme.palette.primary.main;
+                const heroImage = preview?.hero?.image;
+                return (
+              <Card sx={{ height: "100%", display: "flex", flexDirection: "column", boxShadow: 4, overflow: "hidden" }}>
+                <Box sx={{ position: "relative", height: 160, backgroundColor: theme.palette.grey[100] }}>
+                  {preview === undefined && (
+                    <Stack
+                      sx={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}
+                      spacing={1}
+                    >
+                      <CircularProgress size={18} />
+                      <Typography variant="caption" color="text.secondary">
+                        Loading preview…
+                      </Typography>
+                    </Stack>
+                  )}
+                  {preview && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        backgroundImage: heroImage
+                          ? `linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%), url(${heroImage})`
+                          : "none",
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        backgroundColor: accent,
+                        transition: "transform 180ms ease",
+                        "&:hover": { transform: "scale(1.01)" },
+                      }}
+                    />
+                  )}
+                  <Stack
+                    spacing={0.5}
+                    sx={{
+                      position: "absolute",
+                      bottom: 12,
+                      left: 12,
+                      right: 12,
+                      color: "#fff",
+                      textShadow: "0 8px 24px rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    <Typography variant="subtitle2" sx={{ opacity: 0.9 }}>
+                      {industryLabel(company.industry)}
+                    </Typography>
+                    <Typography variant="h6" fontWeight={800}>
+                      {company.name}
+                    </Typography>
+                    {preview?.hero?.heading && (
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        {preview.hero.heading}
+                      </Typography>
+                    )}
+                  </Stack>
+                </Box>
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
                     <Avatar
@@ -221,6 +318,8 @@ const IndustryDirectoryPage = () => {
                   </Button>
                 </CardActions>
               </Card>
+                );
+              })()}
             </Grid>
           ))}
 
