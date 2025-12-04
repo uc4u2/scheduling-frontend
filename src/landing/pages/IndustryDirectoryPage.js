@@ -241,9 +241,13 @@ const IndustryDirectoryPage = () => {
                   preview?.page_style?.linkColor ||
                   preview?.primary_color ||
                   theme.palette.primary.main;
+                const heroHeading =
+                  preview?.hero?.heading ||
+                  company.tagline ||
+                  company.name;
                 return (
               <Card sx={{ height: "100%", display: "flex", flexDirection: "column", boxShadow: 4, overflow: "hidden" }}>
-                <Box sx={{ position: "relative", height: 160, backgroundColor: theme.palette.grey[100] }}>
+                <Box sx={{ position: "relative", height: 180, backgroundColor: theme.palette.grey[100] }}>
                   {preview === undefined && (
                     <Stack
                       sx={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}
@@ -261,11 +265,11 @@ const IndustryDirectoryPage = () => {
                         position: "absolute",
                         inset: 0,
                         backgroundImage: heroImage
-                          ? `linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 100%), url(${heroImage})`
+                          ? `linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.65) 100%), url(${heroImage})`
                           : "none",
                         backgroundSize: "cover",
                         backgroundPosition: "center",
-                        backgroundColor: accent,
+                        backgroundColor: heroImage ? undefined : accent,
                         transition: "transform 180ms ease",
                         "&:hover": { transform: "scale(1.01)" },
                       }}
@@ -288,9 +292,9 @@ const IndustryDirectoryPage = () => {
                     <Typography variant="h6" fontWeight={800}>
                       {company.name}
                     </Typography>
-                    {preview?.hero?.heading && (
+                    {heroHeading && (
                       <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                        {preview.hero.heading}
+                        {heroHeading}
                       </Typography>
                     )}
                   </Stack>
