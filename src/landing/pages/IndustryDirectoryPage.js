@@ -229,11 +229,18 @@ const IndustryDirectoryPage = () => {
             <Grid item xs={12} sm={6} md={4} key={company.slug}>
               {(() => {
                 const preview = previews[company.slug];
+                const heroImage =
+                  typeof preview?.hero?.image === "string"
+                    ? preview.hero.image
+                    : preview?.hero?.image?.url ||
+                      preview?.hero?.image?.url_public ||
+                      preview?.hero?.image?.href ||
+                      preview?.hero?.image?.src ||
+                      null;
                 const accent =
                   preview?.page_style?.linkColor ||
                   preview?.primary_color ||
                   theme.palette.primary.main;
-                const heroImage = preview?.hero?.image;
                 return (
               <Card sx={{ height: "100%", display: "flex", flexDirection: "column", boxShadow: 4, overflow: "hidden" }}>
                 <Box sx={{ position: "relative", height: 160, backgroundColor: theme.palette.grey[100] }}>
