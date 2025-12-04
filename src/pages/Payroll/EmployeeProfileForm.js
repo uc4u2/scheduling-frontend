@@ -132,7 +132,7 @@ const FRONTEND_ORIGIN =
       }
     };
     fetchDepartments();
-  }, [API_URL, token]);
+  }, []);
 
   useEffect(() => {
     setPage(1);
@@ -159,7 +159,7 @@ const FRONTEND_ORIGIN =
       }
     };
     fetchRecruiters();
-  }, [API_URL, token, searchQuery, departmentFilter, page, perPage]);
+  }, [searchQuery, departmentFilter, page, perPage]);
 
   const handleSelect = async (id) => {
     setSelectedId(id);
@@ -227,7 +227,7 @@ const FRONTEND_ORIGIN =
       // prepend the API host so the public site doesn't try to fetch it from www.schedulaa.com.
       if (rawUrl && !/^https?:\/\//i.test(rawUrl)) {
         try {
-          const apiOrigin = new URL(API_URL).origin;
+          const apiOrigin = new URL(window.location.origin).origin;
           finalUrl = `${apiOrigin}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
         } catch (e) {
           finalUrl = rawUrl;
