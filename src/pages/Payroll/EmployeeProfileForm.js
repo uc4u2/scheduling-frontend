@@ -16,8 +16,7 @@ import {
   FormControlLabel,
   Switch,
 } from "@mui/material";
-import axios from "axios";
-import { API_BASE_URL } from "../../utils/api";
+import { api } from "../../utils/api";
 import { getAuthedCompanyId } from "../../utils/authedCompany";
 import UploadIcon from "@mui/icons-material/Upload";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -130,9 +129,7 @@ const FRONTEND_ORIGIN =
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/departments`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.get("/api/departments");
         setDepartments(res.data || []);
       } catch (err) {
         console.error("Failed to load departments", err);
@@ -148,15 +145,14 @@ const FRONTEND_ORIGIN =
   useEffect(() => {
     const fetchRecruiters = async () => {
       try {
-        const res = await axios.get(`${API_URL}/manager/recruiters`, {
-          headers: { Authorization: `Bearer ${token}` },
-          params: {
-            q: searchQuery,
-            department_id: departmentFilter,
-            page,
-            per_page: perPage,
-          },
-        });
+      const res = await api.get("/manager/recruiters", {
+        params: {
+          q: searchQuery,
+          department_id: departmentFilter,
+          page,
+          per_page: perPage,
+        },
+      });
         setRecruiters(res.data.recruiters || []);
         const total = res.data.total || 0;
         setTotalPages(Math.max(1, Math.ceil(total / perPage)));
@@ -174,9 +170,7 @@ const FRONTEND_ORIGIN =
     if (!id) return;
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/api/recruiters/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get(`/api/recruiters/${id}`);
       const data = res.data;
       const flatData = {
         ...data,
@@ -220,11 +214,9 @@ const FRONTEND_ORIGIN =
       form.append("file", file);
       if (companyId) form.append("company_id", companyId);
       // Use existing website media upload (supports auth + company scoping)
-      const res = await axios.post(`${API_URL}/api/website/media/upload`, form, {
+      const res = await api.post(`/api/website/media/upload`, form, {
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
-          ...(companyId ? { "X-Company-Id": companyId } : {}),
         },
       });
       const rawUrl =
@@ -276,9 +268,7 @@ const FRONTEND_ORIGIN =
   const handleSubmit = async () => {
     if (!employee || !selectedId) return;
     try {
-      await axios.put(`${API_URL}/api/recruiters/${selectedId}`, employee, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.put(`/api/recruiters/${selectedId}`, employee);
       setMessageKey("manager.employeeProfiles.messages.updateSuccess");
       setErrorKey("");
     } catch (err) {
