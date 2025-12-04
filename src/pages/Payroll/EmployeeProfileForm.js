@@ -264,7 +264,19 @@ const FRONTEND_ORIGIN =
   const handleSubmit = async () => {
     if (!employee || !selectedId) return;
     try {
-      await api.put(`/api/recruiters/${selectedId}`, employee);
+      const res = await api.put(`/api/recruiters/${selectedId}`, employee);
+      if (res?.data) {
+        // update local state with saved values to reflect toggles immediately
+        const data = res.data;
+        const flatData = {
+          ...data,
+          address_street: data.address?.street || "",
+          address_city: data.address?.city || "",
+          address_state: data.address?.state || "",
+          address_zip: data.address?.zip || "",
+        };
+        setEmployee(flatData);
+      }
       setMessageKey("manager.employeeProfiles.messages.updateSuccess");
       setErrorKey("");
     } catch (err) {
