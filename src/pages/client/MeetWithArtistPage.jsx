@@ -191,10 +191,14 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [monthView, setMonthView] = useState(() => new Date());
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("");
+  const [website, setWebsite] = useState("");
   const [note, setNote] = useState("");
+
 
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState("");
@@ -369,23 +373,32 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
       });
       return;
     }
-    if (!name.trim() || !email.trim()) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !country.trim() || !website.trim()) {
       setSnack({
         open: true,
-        message: "Name and email are required.",
+        message: "All fields are required.",
         severity: "warning",
       });
       return;
+    }
+
+    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    const noteParts = [
+      `Country/Region: ${country.trim()}`,
+      `Website: ${website.trim()}`,
+    ];
+    if (note.trim()) {
+      noteParts.push(note.trim());
     }
 
     setBooking(true);
     setError("");
     try {
       await publicSite.bookArtistMeeting(slug, artistId, {
-        name: name.trim(),
+        name: fullName,
         email: email.trim(),
         phone: phone.trim(),
-        note: note.trim(),
+        note: noteParts.join("\n"),
         availability_id: selectedSlot.id,
       });
 
@@ -856,27 +869,57 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
                       <Grid container spacing={2}>
                         <Grid item xs={12} sm={6}>
                           <TextField
-                            label="Full name"
+                            label="First name"
+                            required
                             fullWidth
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Last name"
+                            required
+                            fullWidth
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
                           />
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <TextField
                             label="Email"
+                            required
                             fullWidth
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                           />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid item xs={12} sm={6}>
                           <TextField
-                            label="Phone (optional)"
+                            label="WhatsApp Phone Number"
+                            required
                             fullWidth
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Country/Region"
+                            required
+                            fullWidth
+                            value={country}
+                            onChange={(e) => setCountry(e.target.value)}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Website URL"
+                            required
+                            fullWidth
+                            value={website}
+                            onChange={(e) => setWebsite(e.target.value)}
                           />
                         </Grid>
                         <Grid item xs={12}>
