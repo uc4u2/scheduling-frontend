@@ -55,7 +55,7 @@ const RecruiterCandidates = ({ token }) => {
   const [candidate, setCandidate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  // Update phone: try both data.phone and data.candidate_phone
+  // Update phone: try both data.phone, custom_data.phone and data.candidate_phone
   const [phone, setPhone] = useState("");
   const [country, setCountry] = useState("");
   const [website, setWebsite] = useState("");
@@ -89,9 +89,10 @@ const RecruiterCandidates = ({ token }) => {
         setCandidate(data);
         setName(data.name || "");
         // Try both "phone" and "candidate_phone" keys
-        setPhone(data.phone || data.candidate_phone || "");
-        setCountry((data.custom_data && data.custom_data.country) || "");
-        setWebsite((data.custom_data && (data.custom_data.website || data.custom_data.url)) || "");
+        const cd = (data.custom_data && typeof data.custom_data === "object") ? data.custom_data : {};
+        setPhone(cd.phone || data.phone || data.candidate_phone || "");
+        setCountry(cd.country || "");
+        setWebsite(cd.website || cd.url || "");
         setNotes(data.notes || "");
         setAddress(data.address || "");
         setStatus(data.status || "");
@@ -387,7 +388,16 @@ const RecruiterCandidates = ({ token }) => {
                   <Typography><strong>Full Name:</strong> {candidate.name}</Typography>
                   <Typography><strong>Email:</strong> {candidate.email}</Typography>
                   <Typography>
-                    <strong>Phone:</strong> {phone ? phone : "N/A"}
+                    <strong>WhatsApp Phone:</strong> {phone ? phone : "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Client Note:</strong> {notes || "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Country/Region:</strong> {country || "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Website:</strong> {website || "N/A"}
                   </Typography>
                   <Typography><strong>Address:</strong> {candidate.address || "N/A"}</Typography>
                   <Typography><strong>Recruiter ID:</strong> {candidate.recruiter_id}</Typography>
@@ -946,7 +956,4 @@ const RecruiterCandidates = ({ token }) => {
   );
 };
 export default RecruiterCandidates;
-
-
-
 
