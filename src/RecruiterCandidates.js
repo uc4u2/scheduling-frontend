@@ -57,6 +57,8 @@ const RecruiterCandidates = ({ token }) => {
   const [name, setName] = useState("");
   // Update phone: try both data.phone and data.candidate_phone
   const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("");
+  const [website, setWebsite] = useState("");
   const [notes, setNotes] = useState("");
   const [address, setAddress] = useState("");
   const [status, setStatus] = useState("");
@@ -88,6 +90,8 @@ const RecruiterCandidates = ({ token }) => {
         setName(data.name || "");
         // Try both "phone" and "candidate_phone" keys
         setPhone(data.phone || data.candidate_phone || "");
+        setCountry((data.custom_data && data.custom_data.country) || "");
+        setWebsite((data.custom_data && (data.custom_data.website || data.custom_data.url)) || "");
         setNotes(data.notes || "");
         setAddress(data.address || "");
         setStatus(data.status || "");
@@ -315,6 +319,7 @@ const RecruiterCandidates = ({ token }) => {
           linkedin,
           other_link: otherLink.startsWith("http") ? otherLink : `https://${otherLink}`,
           job_applied: position,
+          custom_data: { country, website },
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -538,6 +543,20 @@ const RecruiterCandidates = ({ token }) => {
                 fullWidth
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                sx={{ fontFamily: "Poppins, sans-serif" }}
+              />
+              <TextField
+                label="Country/Region"
+                fullWidth
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                sx={{ fontFamily: "Poppins, sans-serif" }}
+              />
+              <TextField
+                label="Website URL"
+                fullWidth
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               />
               <TextField
@@ -927,8 +946,6 @@ const RecruiterCandidates = ({ token }) => {
   );
 };
 export default RecruiterCandidates;
-
-
 
 
 
