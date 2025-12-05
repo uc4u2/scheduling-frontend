@@ -222,16 +222,11 @@ const FRONTEND_ORIGIN =
         res.data?.url ||
         res.data?.url_public;
 
+      // Ensure relative paths use the API host (Render), not the static site host.
       let finalUrl = rawUrl;
-      // If backend returned a relative path (e.g., /api/website/media/file/1/xyz.png),
-      // prepend the API host so the public site doesn't try to fetch it from www.schedulaa.com.
       if (rawUrl && !/^https?:\/\//i.test(rawUrl)) {
-        try {
-          const apiOrigin = new URL(window.location.origin).origin;
-          finalUrl = `${apiOrigin}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
-        } catch (e) {
-          finalUrl = rawUrl;
-        }
+        const apiOrigin = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
+        finalUrl = apiOrigin ? `${apiOrigin}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}` : rawUrl;
       }
 
       if (finalUrl) {
