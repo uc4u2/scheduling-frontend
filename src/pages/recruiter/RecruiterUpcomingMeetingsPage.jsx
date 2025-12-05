@@ -9,6 +9,12 @@ import {
   Divider,
   CircularProgress,
   Avatar,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Pagination,
 } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -65,6 +71,11 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
 
   const [candidateBlocks, setCandidateBlocks] = useState([]);
   const [clientBlocks, setClientBlocks] = useState([]);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [perPage, setPerPage] = useState(10);
+  const [candidatePage, setCandidatePage] = useState(1);
+  const [clientPage, setClientPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -98,6 +109,12 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
   useEffect(() => {
     fetchMeetings();
   }, [fetchMeetings]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCandidatePage(1);
+    setClientPage(1);
+  }, [startDate, endDate, perPage]);
 
   const handleCopyLink = useCallback(
     (link) => {
@@ -201,6 +218,38 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
     );
   };
 
+  const filterByDate = useCallback(
+    (blocks = []) => {
+      const startCutoff = startDate ? new Date(startDate) : null;
+      const endCutoff = endDate ? new Date(`${endDate}T23:59:59`) : null;
+      return blocks.filter((b) => {
+        const d = b.startDate;
+        if (!d) return true;
+        if (startCutoff && d < startCutoff) return false;
+        if (endCutoff && d > endCutoff) return false;
+        return true;
+      });
+    },
+    [startDate, endDate]
+  );
+
+  const paginate = (blocks, page) => {
+    const total = blocks.length;
+    const pageCount = Math.max(1, Math.ceil(total / perPage));
+    const safePage = Math.min(page, pageCount);
+    const offset = (safePage - 1) * perPage;
+    return {
+      pageCount,
+      page: safePage,
+      items: blocks.slice(offset, offset + perPage),
+    };
+  };
+
+  const filteredCandidateBlocks = filterByDate(candidateBlocks);
+  const filteredClientBlocks = filterByDate(clientBlocks);
+  const pagedCandidates = paginate(filteredCandidateBlocks, candidatePage);
+  const pagedClients = paginate(filteredClientBlocks, clientPage);
+
   const renderClientCard = (block) => {
     const timeRange = formatRange(block.startIso, block.endIso, dateFormatter, block.timezone);
     return (
@@ -237,6 +286,19 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
               </Stack>
             )}
           </Stack>
+          {block.candidate_email && (
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                size="small"
+                variant="contained"
+                color="secondary"
+                endIcon={<LaunchIcon fontSize="small" />}
+                href={`/recruiter/candidates/${encodeURIComponent(block.candidate_email)}`}
+              >
+                View Candidate
+              </Button>
+            </Stack>
+          )}
         </Stack>
       </Box>
     );
@@ -254,6 +316,53 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
           {error}
         </Alert>
       )}
+
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 2.5, md: 3 },
+          borderRadius: 3,
+          border: `1px solid ${alpha(theme.palette.grey[400], 0.4)}`,
+          background: alpha(theme.palette.background.paper, 0.7),
+          mb: 2,
+        }}
+      >
+        <Stack spacing={2} direction={{ xs: "column", md: "row" }} alignItems="flex-start">
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} flex={1}>
+            <TextField
+              label="From date"
+              type="date"
+              size="small"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              label="To date"
+              type="date"
+              size="small"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel id="per-page-label">Rows per page</InputLabel>
+            <Select
+              labelId="per-page-label"
+              value={perPage}
+              label="Rows per page"
+              onChange={(e) => setPerPage(Number(e.target.value) || 10)}
+            >
+              {[10, 20, 50].map((v) => (
+                <MenuItem key={v} value={v}>
+                  {v} per page
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
+      </Paper>
 
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
@@ -296,13 +405,22 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
                   spacing={2.5}
                   divider={<Divider flexItem sx={{ borderColor: alpha(theme.palette.primary.main, 0.12) }} />}
                 >
-                  {candidateBlocks.map(renderCandidateCard)}
+                  {pagedCandidates.items.map(renderCandidateCard)}
                 </Stack>
               ) : (
                 <Alert severity="info" variant="outlined">
                   No upcoming candidate interviews.
                 </Alert>
               )}
+              <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 1 }}>
+                <Pagination
+                  count={pagedCandidates.pageCount}
+                  page={pagedCandidates.page}
+                  onChange={(_e, p) => setCandidatePage(p)}
+                  size="small"
+                  color="primary"
+                />
+              </Box>
             </Stack>
           </Paper>
 
@@ -341,13 +459,22 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
                   spacing={2.5}
                   divider={<Divider flexItem sx={{ borderColor: alpha(theme.palette.secondary.main, 0.12) }} />}
                 >
-                  {clientBlocks.map(renderClientCard)}
+                  {pagedClients.items.map(renderClientCard)}
                 </Stack>
               ) : (
                 <Alert severity="info" variant="outlined">
                   No upcoming client appointments.
                 </Alert>
               )}
+              <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 1 }}>
+                <Pagination
+                  count={pagedClients.pageCount}
+                  page={pagedClients.page}
+                  onChange={(_e, p) => setClientPage(p)}
+                  size="small"
+                  color="secondary"
+                />
+              </Box>
             </Stack>
           </Paper>
         </Stack>
