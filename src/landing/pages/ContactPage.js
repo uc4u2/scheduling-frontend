@@ -27,10 +27,13 @@ import FloatingBlob from "../../components/ui/FloatingBlob";
 import { publicSite } from "../../utils/api";
 import automationJourney from "../../assets/marketing/automation-journey.png";
 
-const DEFAULT_CONTACT_EMAIL =
+const rawEnvContactEmail =
   process.env.REACT_APP_CONTACT_ADMIN_EMAIL ||
   (typeof window !== "undefined" && window.__ENV__?.CONTACT_EMAIL) ||
-  "admin@schedulaa.com";
+  "";
+const DEFAULT_CONTACT_EMAIL = /local-admin/i.test(rawEnvContactEmail || "")
+  ? "admin@schedulaa.com"
+  : (rawEnvContactEmail || "admin@schedulaa.com");
 const DEFAULT_DIRECT_LINES = [
   `Sales: +1 (514) 000-0000`,
   `Admin: ${DEFAULT_CONTACT_EMAIL}`,

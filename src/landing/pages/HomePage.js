@@ -548,9 +548,14 @@ const HomePage = () => {
     return [
       ...cards,
       {
-        heading: "Time tracking + payroll exports",
-        body: "Approved hours arrive with unpaid breaks deducted, OT/missed-break markers attached, and IP/device hints for audits—ready for payroll CSV/PDF.",
-        link: { label: "See time tracking & breaks", to: "/features#time-tracking-smart-breaks" },
+        heading: "Send profession-aware invites",
+        body: "Employees pick a profession template (20+ options), inject client name and booking link, and send invites that unlock any available slot—no back-and-forth.",
+        link: { label: "Open invitations (login)", to: "/employee/invitations" },
+      },
+      {
+        heading: "Public booking links",
+        body: "Staff share a “Book with me” link backed by live availability. Confirmations include host/client time labels, Jitsi link, and cancel/reschedule controls.",
+        link: { label: "Enable public link (login)", to: "/employee/public-link" },
       },
     ];
   }, [seoSection.cards]);
