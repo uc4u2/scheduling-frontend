@@ -78,6 +78,15 @@ const bookingHubConfig = {
       linkLabel: "See live availability",
     },
     {
+      icon: "meeting",
+      label: "Public links",
+      title: "Shareable “Book with me” pages",
+      description:
+        "Let staff publish a public link for consults or interviews. Availability comes from their schedule, confirmations include Jitsi + cancel/reschedule links, and bookings flow into the Upcoming Meetings panel.",
+      link: "/recruiter/public-link",
+      linkLabel: "Open public-link settings",
+    },
+    {
       icon: "calendar",
       label: "Calendars",
       title: "Manager & team calendars",
@@ -110,6 +119,22 @@ const bookingHubConfig = {
       image: {
         src: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1200&auto=format&fit=crop",
         alt: "Schedulaa service selection screen",
+      },
+    },
+    {
+      overline: "Meet with me",
+      title: "Public staff booking links without paid services",
+      body:
+        "Employees can toggle a public link from their dashboard, set recurring availability, and share it anywhere. Clients pick a time in their local timezone; confirmations include your timezone label, Jitsi link, and cancel/reschedule controls.",
+      points: [
+        "Host-facing availability powers both invites and public links.",
+        "No payment required — ideal for interviews and consults.",
+        "Upcoming Meetings shows public bookings with candidate details.",
+      ],
+      links: [{ label: "Enable public bookings (login required)", href: "/recruiter/public-link" }],
+      image: {
+        src: "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?q=80&w=1200&auto=format&fit=crop",
+        alt: "Public booking link example",
       },
     },
     {

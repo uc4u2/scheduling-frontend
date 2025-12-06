@@ -69,6 +69,8 @@ const sections = [
       { label: "Schedulaa vs Square Appointments", to: "/compare/square-appointments" },
       { label: "Schedulaa vs Xero", to: "/compare/xero" },
       { label: "Schedulaa vs Deputy", to: "/compare/deputy" },
+      { label: "Schedulaa vs Homebase", to: "/compare/homebase" },
+      { label: "Schedulaa vs When I Work", to: "/compare/when-i-work" },
     ],
   },
   {

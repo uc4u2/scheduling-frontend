@@ -4,7 +4,7 @@ import { Tabs, Tab } from "@mui/material";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 const TAB_CONFIG = [
-  { value: "availability", label: "My Availability", path: "/recruiter?tab=availability" },
+  { value: "availability", label: "My Availability", path: "/employee?tab=availability" },
   { value: "invitations", label: "Invitations", path: "/recruiter/invitations" },
   { value: "candidate-forms", label: "Candidate Forms", path: "/recruiter/invitations?section=forms" },
   { value: "questionnaires", label: "Questionnaires", path: "/recruiter/questionnaires" },

@@ -270,7 +270,7 @@ const Login = ({ setToken }) => {
         });
         navigate(url);
       } else if (targetRole === "recruiter") {
-        navigate("/recruiter");
+        navigate("/employee");
       } else {
         navigate(site ? `/dashboard?site=${encodeURIComponent(site)}` : "/dashboard");
       }

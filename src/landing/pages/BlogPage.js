@@ -5,6 +5,8 @@ import {
   Stack,
   Divider,
   Button,
+  Paper,
+  Chip,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -21,6 +23,7 @@ import HeroShowcase from "../components/HeroShowcase";
 import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import FloatingBlob from "../../components/ui/FloatingBlob";
 import heroShowcaseMedia from "../../assets/marketing/hero-dashboard.svg";
+import blogPosts from "./blog/posts";
 
 const highlightItems = [
   {
@@ -86,18 +89,16 @@ const BLOG_LISTING_SCHEMA = {
       url: "https://www.schedulaa.com/og/logo.png",
     },
   },
-  blogPost: [
-    {
-      "@type": "BlogPosting",
-      headline: "Designing a Client Journey with Schedulaa",
-      description: "Guide prospects from first visit to loyal customer using Schedulaa’s website builder, booking engine, automation, and analytics.",
-      url: "https://www.schedulaa.com/blog/client-journey",
-      image: "https://www.schedulaa.com/og/blog.jpg",
-      datePublished: "2025-11-04",
-      dateModified: "2025-11-04",
-      author: { "@type": "Organization", name: "Schedulaa" },
-    },
-  ],
+  blogPost: blogPosts.map((post) => ({
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.description,
+    url: `https://www.schedulaa.com/blog/${post.slug}`,
+    image: "https://www.schedulaa.com/og/blog.jpg",
+    datePublished: post.datePublished,
+    dateModified: post.dateModified || post.datePublished,
+    author: { "@type": "Organization", name: "Schedulaa" },
+  })),
 };
 
 const BlogPage = () => {
@@ -136,6 +137,10 @@ const BlogPage = () => {
     description: item.description,
     icon: item.icon,
   }));
+
+  const sortedPosts = [...blogPosts].sort(
+    (a, b) => new Date(b.datePublished) - new Date(a.datePublished)
+  );
 
   return (
     <Box sx={{ position: "relative", overflow: "hidden" }}>
@@ -210,6 +215,68 @@ const BlogPage = () => {
               </Button>
             </Stack>
           </Stack>
+        </Stack>
+      </Box>
+
+      <Box sx={{ px: { xs: 2, md: 6 }, pb: { xs: 8, md: 10 } }}>
+        <Typography variant="h5" fontWeight={800} sx={{ mb: 3 }}>
+          Latest articles
+        </Typography>
+        <Stack spacing={2.5}>
+          {sortedPosts.map((post) => (
+            <Paper
+              key={post.slug}
+              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                border: (t) => `1px solid ${alpha(t.palette.divider, 0.8)}`,
+                backgroundColor: (t) => alpha(t.palette.background.paper, 0.9),
+              }}
+            >
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  {post.category && <Chip size="small" label={post.category} />}
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(post.datePublished).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </Typography>
+                </Stack>
+                <Typography
+                  component={Link}
+                  to={`/blog/${post.slug}`}
+                  variant="h6"
+                  sx={{ fontWeight: 700, textDecoration: "none", color: "inherit" }}
+                >
+                  {post.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {post.description}
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Button
+                    component={Link}
+                    to={`/blog/${post.slug}`}
+                    variant="text"
+                    color="primary"
+                    sx={{ textTransform: "none" }}
+                  >
+                    Read article
+                  </Button>
+                  {post.tags && (
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                      {post.tags.slice(0, 3).map((tag) => (
+                        <Chip key={tag} size="small" label={tag} variant="outlined" />
+                      ))}
+                    </Stack>
+                  )}
+                </Stack>
+              </Stack>
+            </Paper>
+          ))}
         </Stack>
       </Box>
 

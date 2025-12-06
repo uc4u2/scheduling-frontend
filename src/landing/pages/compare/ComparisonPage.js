@@ -141,11 +141,11 @@ const ComparisonPage = () => {
     metaDescription,
     heroTitle,
     heroSubtitle,
-    intro,
+    intro = [],
     executiveOverview,
-    differentiators,
+    differentiators = [],
     summaryTable,
-    fitMatrix,
+    fitMatrix = [],
     testimonial,
     conclusion,
     competitorName,
@@ -216,7 +216,10 @@ const ComparisonPage = () => {
           )}
         </Stack>
 
-        <ComparisonTable headers={executiveOverview.headers} rows={executiveOverview.rows} />
+        <ComparisonTable
+          headers={(executiveOverview && executiveOverview.headers) || []}
+          rows={(executiveOverview && executiveOverview.rows) || []}
+        />
 
         <Box component="section" sx={{ mt: 6 }}>
           <Typography variant="h4" fontWeight={800} gutterBottom>
@@ -246,7 +249,9 @@ const ComparisonPage = () => {
           </Grid>
         </Box>
 
-        <ComparisonTable headers={summaryTable.headers} rows={summaryTable.rows} />
+        {summaryTable?.headers?.length ? (
+          <ComparisonTable headers={summaryTable.headers} rows={summaryTable.rows || []} />
+        ) : null}
 
         <Box component="section" sx={{ mt: 6 }}>
           <Typography variant="h4" fontWeight={800} gutterBottom>
@@ -261,7 +266,7 @@ const ComparisonPage = () => {
             }}
           >
             <Stack spacing={2}>
-              {fitMatrix.map((row) => (
+              {(fitMatrix || []).map((row) => (
                 <Box key={row.scenario}>
                   <Typography variant="subtitle1" fontWeight={600}>
                     If you are…
@@ -278,26 +283,30 @@ const ComparisonPage = () => {
           </Paper>
         </Box>
 
-        <Box component="section" sx={{ mt: 6 }}>
-          <Paper
-            elevation={0}
-            sx={{
-              borderRadius: 5,
-              p: { xs: 3, md: 4 },
-              background: (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.25 : 0.08),
-            }}
-          >
-            <Typography variant="subtitle1" fontWeight={700}>
-              Real-world perspective
-            </Typography>
-            <Typography variant="h5" fontWeight={600} sx={{ mt: 1 }}>
-              “{testimonial.quote}”
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-              — {testimonial.attribution}
-            </Typography>
-          </Paper>
-        </Box>
+        {testimonial?.quote ? (
+          <Box component="section" sx={{ mt: 6 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 5,
+                p: { xs: 3, md: 4 },
+                background: (theme) => alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.25 : 0.08),
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight={700}>
+                Real-world perspective
+              </Typography>
+              <Typography variant="h5" fontWeight={600} sx={{ mt: 1 }}>
+                “{testimonial.quote}”
+              </Typography>
+              {testimonial.attribution && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+                  — {testimonial.attribution}
+                </Typography>
+              )}
+            </Paper>
+          </Box>
+        ) : null}
 
         <Divider sx={{ my: 6 }} />
 

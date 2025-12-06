@@ -4980,6 +4980,329 @@
         },
         "conclusion": "Xero remains a leading choice for cloud accounting and payroll remittance. Schedulaa focuses on the operational reality of service businesses — from booking and staffing to payroll-ready data and branded portals. Most service brands run daily operations in Schedulaa and sync the results to Xero (or QuickBooks) to keep the books clean."
       },
+      "hubspot-meetings": {
+        "competitor": "HubSpot Meetings",
+        "metaTitle": "Schedulaa vs HubSpot Meetings | Public Booking Links with Operations Behind Them",
+        "metaDescription": "Compare Schedulaa public booking links with HubSpot Meetings. See how live availability, Jitsi links, cancel/reschedule, and candidate profiles stay in sync with scheduling and payroll.",
+        "heroTitle": "Schedulaa vs HubSpot Meetings — Public Links, Operationally Connected",
+        "heroSubtitle": "HubSpot Meetings captures leads. Schedulaa ties public links to staff availability, Jitsi links, cancel/reschedule controls, and candidate profiles.",
+        "intro": [
+          "Both tools let you share a personal booking link. The difference is what happens after someone books.",
+          "Schedulaa uses the same availability staff use for shifts, applies break/PTO rules, and updates candidate profiles. HubSpot Meetings focuses on calendar slots without operational context."
+        ],
+        "executiveOverview": {
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "HubSpot Meetings"
+          ],
+          "rows": [
+            {
+              "label": "Availability source",
+              "schedulaa": "Shared with staff scheduling (break/PTO-aware).",
+              "competitor": "Connected calendar availability only."
+            },
+            {
+              "label": "Client experience",
+              "schedulaa": "Local timezone picker + host timezone label.",
+              "competitor": "Local timezone picker."
+            },
+            {
+              "label": "Video links",
+              "schedulaa": "Automatic Jitsi link per booking.",
+              "competitor": "Requires separate video integration."
+            },
+            {
+              "label": "Cancel / reschedule",
+              "schedulaa": "Built-in links in confirmations.",
+              "competitor": "Requires workflow configuration."
+            },
+            {
+              "label": "Candidate/client profile",
+              "schedulaa": "Booking enriches candidate workspace (contact info, notes, latest booking time).",
+              "competitor": "Lead capture only; no scheduling-to-profile enrichment."
+            },
+            {
+              "label": "Paid services",
+              "schedulaa": "Use services/checkout for paid flows; public link is free consult/interview.",
+              "competitor": "No native paid services flow."
+            },
+            {
+              "label": "Operations linkage",
+              "schedulaa": "Bookings appear in Upcoming Meetings + live roster; time is removed from free slots.",
+              "competitor": "Creates calendar events; ops/scheduling handled elsewhere."
+            },
+            {
+              "label": "Exports to payroll/accounting",
+              "schedulaa": "Hours/meetings can flow into ops + exports (QuickBooks/Xero).",
+              "competitor": "No direct payroll/export linkage."
+            },
+            {
+              "label": "Pricing model",
+              "schedulaa": "Included with platform; one login for ops + booking links.",
+              "competitor": "Included in HubSpot Sales/Service plans."
+            }
+          ]
+        },
+        "differentiators": [
+          {
+            "title": "One availability for clients and staff",
+            "body": "The same availability powers public links, invitations, and shift planning. No double-booking or surprise conflicts."
+          },
+          {
+            "title": "Built-in confirmations with Jitsi + cancel/resched",
+            "body": "Every booking ships with a Jitsi link, host/client time labels, and cancel/reschedule controls—no extra workflow setup."
+          },
+          {
+            "title": "Candidate enrichment",
+            "body": "Public bookings enrich the candidate profile (contact, country, website, latest meeting time) so recruiters have context instantly."
+          },
+          {
+            "title": "Ops-to-payroll continuity",
+            "body": "Meetings sit beside shifts and bookings; managers see them in Upcoming Meetings, and exports stay clean for finance."
+          }
+        ],
+        "summaryTable": {
+          "headers": [
+            "Feature Group",
+            "Schedulaa",
+            "HubSpot Meetings"
+          ],
+          "rows": [
+            {
+              "label": "Public booking link",
+              "schedulaa": "Yes, backed by staff availability and break/PTO rules.",
+              "competitor": "Yes, calendar-based."
+            },
+            {
+              "label": "Video link automation",
+              "schedulaa": "Auto Jitsi link in confirmations.",
+              "competitor": "Requires integration/config."
+            },
+            {
+              "label": "Cancel/reschedule links",
+              "schedulaa": "Included in every confirmation.",
+              "competitor": "Requires workflow setup."
+            },
+            {
+              "label": "Profile enrichment",
+              "schedulaa": "Candidate profile updated with booking details.",
+              "competitor": "Lead capture; no ops profile enrichment."
+            },
+            {
+              "label": "Ops + payroll linkage",
+              "schedulaa": "Shows in Upcoming Meetings/live roster; hours can export to accounting.",
+              "competitor": "Not linked to scheduling or payroll."
+            },
+            {
+              "label": "Paid services",
+              "schedulaa": "Handled via Services/Checkout (separate from free public link).",
+              "competitor": "Not supported natively."
+            }
+          ]
+        },
+        "fitMatrix": [
+          {
+            "scenario": "You need a quick lead-capture link tied to CRM only.",
+            "recommendation": "HubSpot Meetings"
+          },
+          {
+            "scenario": "You want a public link that respects staff availability and updates candidate profiles.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "You run interviews/consults plus paid services from one platform.",
+            "recommendation": "Schedulaa"
+          }
+        ],
+        "conclusion": "Use HubSpot Meetings when you just need a lightweight calendar link inside a CRM. Use Schedulaa when you need public booking links that stay in sync with staff availability, generate Jitsi + cancel/reschedule links automatically, and enrich candidate profiles while keeping operations and payroll aligned."
+      },
+      "homebase": {
+        "competitor": "Homebase",
+        "metaTitle": "Schedulaa vs Homebase | Booking, Break Enforcement, and Payroll vs Shift Scheduling",
+        "metaDescription": "Compare Schedulaa and Homebase. See why service teams that run bookings, break rules, and payroll choose Schedulaa over a shift-only scheduler.",
+        "heroTitle": "Schedulaa vs Homebase — Which Operations Platform Fits Your Service Team?",
+        "heroSubtitle": "Homebase is great for storefront shift scheduling. Schedulaa unifies client booking, smart breaks, time tracking, and US/CA payroll for service teams.",
+        "intro": [
+          "Homebase is a popular scheduling/time-clock tool for retail and restaurants. Schedulaa goes further for service teams that juggle bookings, break rules, attendance, and payroll in one workflow.",
+          "If you run appointments, need break enforcement, and want payroll-ready exports, Schedulaa keeps those pieces connected."
+        ],
+        "executiveOverview": {
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "Homebase"
+          ],
+          "rows": [
+            {
+              "label": "Core Purpose",
+              "schedulaa": "All-in-one operations OS: booking, scheduling, breaks, time tracking, US/CA payroll, QuickBooks/Xero exports.",
+              "competitor": "Scheduling and time tracking for hourly shift teams."
+            },
+            {
+              "label": "Target Industry",
+              "schedulaa": "Service teams: salons, clinics, wellness, cleaning, tutors, agencies.",
+              "competitor": "Retail, restaurants, hospitality."
+            },
+            {
+              "label": "Client Booking",
+              "schedulaa": "Built-in booking pages, intake, confirmations, Jitsi links, staff invites.",
+              "competitor": "Not supported."
+            },
+            {
+              "label": "Break Enforcement",
+              "schedulaa": "Paid/unpaid rules, staggered breaks, live monitoring.",
+              "competitor": "Basic break recording."
+            },
+            {
+              "label": "Payroll & Compliance",
+              "schedulaa": "US + Canada payroll workflows; exports to QuickBooks/Xero.",
+              "competitor": "US payroll add-on; no Canada payroll; limited accounting links."
+            },
+            {
+              "label": "Branding & Website",
+              "schedulaa": "Website builder, custom domain, branded booking checkout.",
+              "competitor": "Not included."
+            },
+            {
+              "label": "Notifications & Automation",
+              "schedulaa": "Confirmations, reschedules, cancellations, break alerts, swap approvals.",
+              "competitor": "Shift reminders and late alerts."
+            },
+            {
+              "label": "Pricing Model",
+              "schedulaa": "Flat tiers + $9 per extra staff; built for 3–100 employees.",
+              "competitor": "Per-location pricing; payroll as add-on."
+            }
+          ]
+        },
+        "differentiators": [
+          {
+            "title": "Service-first workflows",
+            "body": "Schedulaa links client bookings to staff availability, break rules, and payroll outputs. Homebase doesn’t handle client booking."
+          },
+          {
+            "title": "Break compliance",
+            "body": "Staggered, paid/unpaid, and monitored breaks are built in. Homebase records breaks but doesn’t enforce complex rules."
+          },
+          {
+            "title": "Payroll coverage",
+            "body": "Schedulaa supports US + Canada with exports to accounting. Homebase payroll is US-only."
+          },
+          {
+            "title": "Brand + website",
+            "body": "Schedulaa ships a booking-ready site on your domain. Homebase has no website or client-facing booking."
+          }
+        ],
+        "fitMatrix": [
+          {
+            "scenario": "Retail or restaurant needing only scheduling/time clocks.",
+            "recommendation": "Homebase"
+          },
+          {
+            "scenario": "Service team needing booking + scheduling + payroll in one flow.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "Multi-location service brand that needs break enforcement and branded booking.",
+            "recommendation": "Schedulaa"
+          }
+        ],
+        "conclusion": "Homebase is strong for storefront shift scheduling. Schedulaa is better for service teams that need booking, break enforcement, attendance, and payroll tied together under their own brand."
+      },
+      "when-i-work": {
+        "competitor": "When I Work",
+        "metaTitle": "Schedulaa vs When I Work | Booking + Break Compliance vs Shift Scheduling",
+        "metaDescription": "Compare Schedulaa and When I Work. Learn why teams that run bookings, smart breaks, and US/CA payroll choose Schedulaa over a scheduling-only tool.",
+        "heroTitle": "Schedulaa vs When I Work — The Right Choice for Modern Service Teams",
+        "heroSubtitle": "When I Work excels at scheduling shift workers. Schedulaa unifies booking, smart breaks, attendance, and payroll with branded client experiences.",
+        "intro": [
+          "When I Work is a respected scheduling/time-tracking app. Schedulaa is an operations platform for teams that also manage clients, bookings, and payroll.",
+          "If you need client-facing booking plus break enforcement and payroll, Schedulaa keeps it all in one place."
+        ],
+        "executiveOverview": {
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "When I Work"
+          ],
+          "rows": [
+            {
+              "label": "Core Purpose",
+              "schedulaa": "Operations OS: booking, scheduling, breaks, time tracking, US/CA payroll, websites, accounting exports.",
+              "competitor": "Shift scheduling and attendance for hourly teams."
+            },
+            {
+              "label": "Target Industry",
+              "schedulaa": "Service teams: beauty, wellness, clinics, tutoring, cleaning, agencies.",
+              "competitor": "Retail, restaurants, hospitality."
+            },
+            {
+              "label": "Client Booking",
+              "schedulaa": "Complete booking system with intake, confirmations, video links.",
+              "competitor": "Not included."
+            },
+            {
+              "label": "Break Enforcement",
+              "schedulaa": "Advanced break rules, staggered breaks, compliance visibility.",
+              "competitor": "Basic break recording; no automated enforcement."
+            },
+            {
+              "label": "Payroll",
+              "schedulaa": "US + Canada payroll workflows; QuickBooks/Xero exports.",
+              "competitor": "Payroll add-on, US-focused."
+            },
+            {
+              "label": "Branding",
+              "schedulaa": "Website builder + branded booking under your domain.",
+              "competitor": "No website or booking tools."
+            },
+            {
+              "label": "Automation",
+              "schedulaa": "Confirmations, cancellations, break alerts, PTO workflows, swap approvals.",
+              "competitor": "Shift reminders and team messaging."
+            },
+            {
+              "label": "Pricing",
+              "schedulaa": "Flat tiers + $9 per additional staff; predictable for 3–100 employees.",
+              "competitor": "Per-user pricing; add-ons for payroll."
+            }
+          ]
+        },
+        "differentiators": [
+          {
+            "title": "Booking + scheduling together",
+            "body": "Schedulaa serves teams managing clients and staff in one platform. When I Work is scheduling-only."
+          },
+          {
+            "title": "Smart breaks and compliance",
+            "body": "Staggered, paid/unpaid, enforced breaks keep coverage intact. When I Work records breaks but doesn’t enforce them."
+          },
+          {
+            "title": "Payroll reach",
+            "body": "Schedulaa covers US and Canada with exports to accounting. When I Work payroll is US-focused."
+          },
+          {
+            "title": "Branded experience",
+            "body": "Schedulaa includes a website and booking pages on your domain. When I Work has no client-facing booking."
+          }
+        ],
+        "fitMatrix": [
+          {
+            "scenario": "Restaurant/retail needing straightforward scheduling + time tracking.",
+            "recommendation": "When I Work"
+          },
+          {
+            "scenario": "Service team running bookings, breaks, and payroll together.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "Teams wanting branded client experiences plus staff scheduling.",
+            "recommendation": "Schedulaa"
+          }
+        ],
+        "conclusion": "When I Work is solid for shift scheduling. Schedulaa is the better fit for service teams that need booking, smart breaks, attendance, and payroll linked to one operational workflow."
+      },
       "deputy": {
         "competitor": "Deputy",
         "metaTitle": "Schedulaa vs Deputy | Operations OS vs Workforce Scheduling",

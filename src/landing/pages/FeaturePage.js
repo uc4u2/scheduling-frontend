@@ -454,6 +454,60 @@ const FeaturePage = () => {
       <Box
         component="section"
         sx={{
+          mt: { xs: 6, md: 8 },
+          px: { xs: 2, md: 6 },
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 3, md: 4 },
+            borderRadius: 3,
+            border: (t) => `1px solid ${t.palette.divider}`,
+            backgroundColor: (t) => alpha(t.palette.background.paper, 0.8),
+          }}
+        >
+          <Stack spacing={2}>
+            <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.5} alignItems="flex-start">
+              <Box>
+                <Typography variant="overline" color="primary" fontWeight={700}>
+                  Public booking links
+                </Typography>
+                <Typography variant="h5" fontWeight={800} gutterBottom>
+                  “Book with me” links that use live availability
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Let staff publish a shareable link from their profile (login required). Availability comes from their schedule; confirmations include your timezone label, Jitsi link, and cancel/reschedule controls.
+                </Typography>
+              </Box>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button component={Link} to="/recruiter/public-link" variant="contained">
+                  Enable public bookings
+                </Button>
+                <Button component={Link} to="/photoartist/meet/2" variant="outlined">
+                  Preview public page
+                </Button>
+              </Stack>
+            </Stack>
+            <Stack spacing={1} component="ul" sx={{ m: 0, pl: 2 }}>
+              {[
+                "Host sets recurring availability; public page respects it in real time.",
+                "Clients see times in their local timezone and in the host’s labeled timezone.",
+                "No payment required—ideal for consults and interviews.",
+                "Upcoming Meetings shows public bookings alongside other appointments.",
+              ].map((item) => (
+                <Typography key={item} component="li" variant="body2" color="text.secondary">
+                  {item}
+                </Typography>
+              ))}
+            </Stack>
+          </Stack>
+        </Paper>
+      </Box>
+
+      <Box
+        component="section"
+        sx={{
           position: "relative",
           px: { xs: 2, md: 6 },
           py: { xs: 8, md: 12 },

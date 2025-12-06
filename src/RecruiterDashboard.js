@@ -61,11 +61,11 @@ const RecruiterDashboard = ({ token }) => {
     const queryValue = searchParams.get("tab");
     if (queryValue && !LOCAL_TABS.includes(queryValue)) {
       if (queryValue === "invitations") {
-        navigate("/recruiter/invitations", { replace: true });
+        navigate("/employee/invitations", { replace: true });
       } else if (queryValue === "candidate-forms") {
-        navigate("/recruiter/invitations?section=forms", { replace: true });
+        navigate("/employee/invitations?section=forms", { replace: true });
       } else if (queryValue === "upcoming-meetings") {
-        navigate("/recruiter/upcoming-meetings", { replace: true });
+        navigate("/employee/upcoming-meetings", { replace: true });
       } else {
         const params = new URLSearchParams(searchParams);
         params.set("tab", LOCAL_TABS[0]);
@@ -642,7 +642,7 @@ const RecruiterDashboard = ({ token }) => {
                                 <Typography variant="body2">
                                   <strong>Email:</strong>{" "}
                                   <Link
-                                    to={`/recruiter/candidates/${encodeURIComponent(slot.candidate_email)}`}
+                                    to={`/employee/candidates/${encodeURIComponent(slot.candidate_email)}`}
                                     style={{ color: "#1976d2", textDecoration: "underline" }}
                                   >
                                     {slot.candidate_email}
