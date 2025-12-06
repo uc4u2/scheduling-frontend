@@ -32,6 +32,8 @@ import { useTheme } from "@mui/material/styles";
 import axios from "axios";
 import { useSnackbar } from "notistack";
 import { downloadQuestionnaireFile } from "./utils/questionnaireUploads";
+import PublicBookingInfoCard from "./components/PublicBookingInfoCard";
+import { isoFromParts } from "./utils/datetime";
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const statusOptions = ["booked", "interviewed", "rejected", "hired", "on-hold"];
 const RecruiterCandidates = ({ token }) => {
@@ -55,10 +57,8 @@ const RecruiterCandidates = ({ token }) => {
   const [candidate, setCandidate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  // Update phone: try both data.phone, custom_data.phone and data.candidate_phone
+  // Update phone: try both data.phone and data.candidate_phone
   const [phone, setPhone] = useState("");
-  const [country, setCountry] = useState("");
-  const [website, setWebsite] = useState("");
   const [notes, setNotes] = useState("");
   const [address, setAddress] = useState("");
   const [status, setStatus] = useState("");
@@ -89,10 +89,7 @@ const RecruiterCandidates = ({ token }) => {
         setCandidate(data);
         setName(data.name || "");
         // Try both "phone" and "candidate_phone" keys
-        const cd = (data.custom_data && typeof data.custom_data === "object") ? data.custom_data : {};
-        setPhone(cd.phone || data.phone || data.candidate_phone || "");
-        setCountry(cd.country || "");
-        setWebsite(cd.website || cd.url || "");
+        setPhone(data.phone || data.candidate_phone || "");
         setNotes(data.notes || "");
         setAddress(data.address || "");
         setStatus(data.status || "");
@@ -153,6 +150,18 @@ const RecruiterCandidates = ({ token }) => {
   const missingRequired = profileSummary?.missing_required || [];
   const submissionHistory = useMemo(() => candidate?.submission_history || [], [candidate]);
   const bookingHistory = useMemo(() => candidate?.booking_history || [], [candidate]);
+  const sortedBookingHistory = useMemo(() => {
+    if (!bookingHistory?.length) return [];
+    return [...bookingHistory].sort((a, b) => {
+      const da = new Date(`${a.date || ""}T${a.start_time || "00:00"}`);
+      const db = new Date(`${b.date || ""}T${b.start_time || "00:00"}`);
+      return db - da;
+    });
+  }, [bookingHistory]);
+  const primaryBooking = useMemo(() => {
+    if (bookingSummary) return bookingSummary;
+    return sortedBookingHistory[0] || null;
+  }, [bookingSummary, sortedBookingHistory]);
   const timelineEvents = useMemo(() => {
     if (candidate?.timeline?.length) {
       return candidate.timeline;
@@ -184,6 +193,16 @@ const RecruiterCandidates = ({ token }) => {
       return value;
     }
     return date.toLocaleDateString();
+  };
+
+  const formatBookingDateTime = (booking) => {
+    if (!booking) return "N/A";
+    const { date, start_time, timezone } = booking;
+    if (!date) return "N/A";
+    const tz = timezone || "UTC";
+    const iso = isoFromParts(date, start_time || "00:00", tz);
+    const local = iso ? new Date(iso).toLocaleString() : `${date} ${start_time || ""}`;
+    return `${local}${timezone ? ` (${timezone})` : ""}`;
   };
 
   const formatKeyLabel = (key) => {
@@ -320,7 +339,6 @@ const RecruiterCandidates = ({ token }) => {
           linkedin,
           other_link: otherLink.startsWith("http") ? otherLink : `https://${otherLink}`,
           job_applied: position,
-          custom_data: { country, website },
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -388,16 +406,7 @@ const RecruiterCandidates = ({ token }) => {
                   <Typography><strong>Full Name:</strong> {candidate.name}</Typography>
                   <Typography><strong>Email:</strong> {candidate.email}</Typography>
                   <Typography>
-                    <strong>WhatsApp Phone:</strong> {phone ? phone : "N/A"}
-                  </Typography>
-                  <Typography>
-                    <strong>Client Note:</strong> {notes || "N/A"}
-                  </Typography>
-                  <Typography>
-                    <strong>Country/Region:</strong> {country || "N/A"}
-                  </Typography>
-                  <Typography>
-                    <strong>Website:</strong> {website || "N/A"}
+                    <strong>Phone:</strong> {phone ? phone : "N/A"}
                   </Typography>
                   <Typography><strong>Address:</strong> {candidate.address || "N/A"}</Typography>
                   <Typography><strong>Recruiter ID:</strong> {candidate.recruiter_id}</Typography>
@@ -419,7 +428,14 @@ const RecruiterCandidates = ({ token }) => {
                   <Typography><strong>Interview Stage:</strong> {candidate.interview_stage || "N/A"}</Typography>
                   <Typography>
                     <strong>Interview Date:</strong>{" "}
-                    {candidate.interview_date ? new Date(candidate.interview_date).toLocaleString() : "N/A"}
+                    {(() => {
+                      if (candidate.interview_date) {
+                        const d = new Date(candidate.interview_date);
+                        if (!Number.isNaN(d.getTime())) return d.toLocaleString();
+                      }
+                      if (primaryBooking) return formatBookingDateTime(primaryBooking);
+                      return "N/A";
+                    })()}
                   </Typography>
                 </Paper>
               </Grid>
@@ -481,9 +497,9 @@ const RecruiterCandidates = ({ token }) => {
                   </Typography>
                   <Typography>
                     <strong>Meeting Link:</strong>{" "}
-                    {candidate.meeting_link ? (
+                    {candidate.meeting_link || primaryBooking?.meeting_link || primaryBooking?.meeting_url ? (
                       <Link
-                        href={candidate.meeting_link}
+                        href={candidate.meeting_link || primaryBooking.meeting_link || primaryBooking.meeting_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         sx={{ color: theme.palette.primary.main }}
@@ -507,6 +523,14 @@ const RecruiterCandidates = ({ token }) => {
                     ) : "N/A"}
                   </Typography>
                 </Paper>
+              </Grid>
+              {/* Public booking details */}
+              <Grid item xs={12}>
+                <PublicBookingInfoCard
+                  candidate={candidate}
+                  publicHistory={candidate.public_history || []}
+                  publicMeetingLink={candidate.public_meeting_link || ""}
+                />
               </Grid>
             </Grid>
             <Divider sx={{ my: 4 }}>
@@ -553,20 +577,6 @@ const RecruiterCandidates = ({ token }) => {
                 fullWidth
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                sx={{ fontFamily: "Poppins, sans-serif" }}
-              />
-              <TextField
-                label="Country/Region"
-                fullWidth
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                sx={{ fontFamily: "Poppins, sans-serif" }}
-              />
-              <TextField
-                label="Website URL"
-                fullWidth
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               />
               <TextField
@@ -898,7 +908,7 @@ const RecruiterCandidates = ({ token }) => {
         </Accordion>
       )}
 
-      {bookingHistory.length > 0 && (
+      {sortedBookingHistory.length > 0 && (
         <Accordion sx={{ mt: 3 }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="h4" sx={{ fontWeight: 700, ...headerStyle }}>
@@ -920,7 +930,7 @@ const RecruiterCandidates = ({ token }) => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {bookingHistory.map((entry) => (
+                {sortedBookingHistory.map((entry) => (
                   <TableRow key={entry.id} hover>
                     <TableCell>#{entry.id}</TableCell>
                     <TableCell>{formatDateOnly(entry.date)}</TableCell>
@@ -956,4 +966,3 @@ const RecruiterCandidates = ({ token }) => {
   );
 };
 export default RecruiterCandidates;
-

@@ -398,6 +398,8 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
         name: fullName,
         email: email.trim(),
         phone: phone.trim(),
+        country: country.trim(),
+        website: website.trim(),
         note: noteParts.join("\n"),
         availability_id: selectedSlot.id,
       });
