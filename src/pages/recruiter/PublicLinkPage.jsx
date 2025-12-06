@@ -9,6 +9,7 @@ export default function RecruiterPublicLinkPage() {
   const [err, setErr] = useState("");
   const [slug, setSlug] = useState("");
   const [rid, setRid] = useState("");
+  const [token, setToken] = useState("");
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
@@ -45,10 +46,22 @@ export default function RecruiterPublicLinkPage() {
         }
 
         const allow = Boolean(me?.allow_public_booking);
+        let pubToken = me?.public_meet_token || "";
+
+        // If token missing, fetch detail profile
+        if (!pubToken && recruiterId) {
+          try {
+            const { data: rec } = await api.get(`/api/recruiters/${recruiterId}`);
+            pubToken = rec?.public_meet_token || "";
+          } catch {
+            /* ignore */
+          }
+        }
 
         setSlug(companySlug);
         setRid(recruiterId);
         setAllowed(allow);
+        setToken(pubToken);
       } catch (e) {
         setErr("Failed to load your profile.");
       } finally {
@@ -62,7 +75,21 @@ export default function RecruiterPublicLinkPage() {
     (typeof window !== "undefined" && window.location.origin) ||
     (process.env.REACT_APP_FRONTEND_URL || "").replace(/\/$/, "") ||
     "http://localhost:3000";
-  const link = slug && rid ? `${origin}/${slug}/meet/${rid}` : "";
+  const link = slug && (token || rid) ? `${origin}/${slug}/meet/${token || rid}` : "";
+
+  const regenerate = async () => {
+    if (!rid) return;
+    try {
+      setErr("");
+      setLoading(true);
+      const { data } = await api.post(`/api/recruiters/${rid}/public-link/rotate`);
+      setToken(data?.public_meet_token || "");
+    } catch {
+      setErr("Failed to generate a new link.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ManagementFrame title="Public Booking Link" subtitle="Copy your shareable meeting link.">
@@ -89,6 +116,9 @@ export default function RecruiterPublicLinkPage() {
             onClick={() => link && navigator.clipboard.writeText(link)}
           >
             Copy link
+          </Button>
+          <Button variant="outlined" onClick={regenerate} disabled={!rid || loading}>
+            Generate new link
           </Button>
         </Stack>
       )}

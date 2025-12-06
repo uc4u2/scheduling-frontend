@@ -176,7 +176,7 @@ function normalizeSlots(raw, fallbackTz) {
 
 /* ---------- main content (rendered inside PublicPageShell) ---------- */
 
-const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
+const MeetWithArtistPageContent = ({ slug, artistKey, pageKey }) => {
   const siteContext = usePublicSite();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -198,6 +198,13 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
   const [country, setCountry] = useState("");
   const [website, setWebsite] = useState("");
   const [note, setNote] = useState("");
+  const [honeypot, setHoneypot] = useState("");
+  const [challenge, setChallenge] = useState(() => {
+    const a = Math.floor(Math.random() * 4) + 2;
+    const b = Math.floor(Math.random() * 4) + 2;
+    return { a, b };
+  });
+  const [challengeAnswer, setChallengeAnswer] = useState("");
 
 
   const [booking, setBooking] = useState(false);
@@ -207,6 +214,17 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
     message: "",
     severity: "success",
   });
+
+  const refreshChallenge = () => {
+    const a = Math.floor(Math.random() * 4) + 2;
+    const b = Math.floor(Math.random() * 4) + 2;
+    setChallenge({ a, b });
+    setChallengeAnswer("");
+  };
+
+  useEffect(() => {
+    refreshChallenge();
+  }, []);
 
   const todayStart = useMemo(() => {
     const d = new Date();
@@ -258,15 +276,15 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
 
   /* Load artist + availability */
   useEffect(() => {
-    if (!slug || !artistId) return;
+    if (!slug || !artistKey) return;
 
     let alive = true;
     setLoading(true);
     setError("");
 
     Promise.all([
-      publicSite.getArtist(slug, artistId),
-      publicSite.getArtistAvailability(slug, artistId),
+      publicSite.getArtist(slug, artistKey),
+      publicSite.getArtistAvailability(slug, artistKey),
     ])
       .then(([artistData, availData]) => {
         if (!alive) return;
@@ -309,7 +327,7 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
     return () => {
       alive = false;
     };
-  }, [slug, artistId]);
+  }, [slug, artistKey]);
 
   const selectedSlotsForDate = useMemo(
     () => (selectedDate && slotsByDate[selectedDate]) || [],
@@ -381,6 +399,14 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
       });
       return;
     }
+    if (challengeAnswer === "") {
+      setSnack({
+        open: true,
+        message: "Please solve the quick math check.",
+        severity: "warning",
+      });
+      return;
+    }
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
     const noteParts = [
@@ -394,7 +420,7 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
     setBooking(true);
     setError("");
     try {
-      await publicSite.bookArtistMeeting(slug, artistId, {
+      await publicSite.bookArtistMeeting(slug, artistKey, {
         name: fullName,
         email: email.trim(),
         phone: phone.trim(),
@@ -402,6 +428,10 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
         website: website.trim(),
         note: noteParts.join("\n"),
         availability_id: selectedSlot.id,
+        challenge_a: challenge.a,
+        challenge_b: challenge.b,
+        challenge_answer: challengeAnswer,
+        hp: honeypot,
       });
 
       setSnack({
@@ -410,6 +440,7 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
         severity: "success",
       });
       setNote("");
+      refreshChallenge();
     } catch (err) {
       const msg =
         err?.response?.data?.error ||
@@ -930,15 +961,33 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
                             fullWidth
                             multiline
                             minRows={3}
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                          />
-                        </Grid>
-                        {error && (
-                          <Grid item xs={12}>
-                            <Alert severity="error">{error}</Alert>
-                          </Grid>
-                        )}
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        label={`Security check: ${challenge.a} + ${challenge.b} = ?`}
+                        required
+                        fullWidth
+                        value={challengeAnswer}
+                        onChange={(e) => setChallengeAnswer(e.target.value)}
+                        helperText="Helps us prevent bots from booking."
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6} sx={{ display: "none" }}>
+                      <TextField
+                        label="Leave blank"
+                        value={honeypot}
+                        onChange={(e) => setHoneypot(e.target.value)}
+                        fullWidth
+                      />
+                    </Grid>
+                    {error && (
+                      <Grid item xs={12}>
+                        <Alert severity="error">{error}</Alert>
+                      </Grid>
+                    )}
                         <Grid item xs={12}>
                           <Box sx={{ textAlign: "right", mt: 1 }}>
                             <Button
@@ -991,7 +1040,7 @@ const MeetWithArtistPageContent = ({ slug, artistId, pageKey }) => {
 /* ---------- outer wrapper (like ServiceList) ---------- */
 
 const MeetWithArtistPage = () => {
-  const { slug: routeSlug, artistId } = useParams();
+  const { slug: routeSlug, artistId: artistParam } = useParams();
   const [searchParams] = useSearchParams();
 
   const pageKey = useMemo(() => {
@@ -1024,7 +1073,7 @@ const MeetWithArtistPage = () => {
     >
       <MeetWithArtistPageContent
         slug={slug}
-        artistId={artistId}
+        artistKey={artistParam}
         pageKey={pageKey}
       />
     </PublicPageShell>

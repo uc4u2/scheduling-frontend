@@ -231,13 +231,13 @@ const EmployeeProfile = () => {
               <TextField
                 fullWidth
                 size="small"
-                value={`${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || "<slug>"}/meet/${profile?.id}`}
+                value={`${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || "<slug>"}/meet/${profile?.public_meet_token || profile?.id}`}
                 InputProps={{ readOnly: true }}
               />
               <IconButton
                 onClick={() =>
                   navigator.clipboard.writeText(
-                    `${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || ""}/meet/${profile?.id}`
+                    `${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || ""}/meet/${profile?.public_meet_token || profile?.id}`
                   )
                 }
                 title="Copy link"

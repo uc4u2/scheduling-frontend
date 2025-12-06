@@ -19,6 +19,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
+import Snackbar from "@mui/material/Snackbar";
 import axios from "axios";
 import { getUserTimezone } from "./utils/timezone";
 import { Link as RouterLink } from "react-router-dom";
@@ -192,9 +193,21 @@ const passwordStrength = useMemo(() => {
       >
 
         {submitState.status === "success" && (
-          <Alert icon={<CheckCircleIcon fontSize="inherit" />} severity="success" sx={{ mb: 2 }}>
-            {submitState.message}
-          </Alert>
+          <Snackbar
+            open
+            autoHideDuration={4000}
+            onClose={() => setSubmitState({ status: "idle", message: "" })}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          >
+            <Alert
+              onClose={() => setSubmitState({ status: "idle", message: "" })}
+              severity="success"
+              icon={<CheckCircleIcon fontSize="inherit" />}
+              sx={{ width: "100%" }}
+            >
+              {submitState.message}
+            </Alert>
+          </Snackbar>
         )}
         {submitState.status === "error" && submitState.message && (
           <Alert severity="error" sx={{ mb: 2 }}>

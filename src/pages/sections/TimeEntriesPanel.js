@@ -28,6 +28,7 @@ import {
   Tooltip,
   Typography,
   Switch,
+  Avatar,
 } from "@mui/material";
 import { DateTime } from "luxon";
 import { timeTracking } from "../../utils/api";
@@ -97,6 +98,16 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   });
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+  const recruiterMap = useMemo(() => {
+    const map = {};
+    (employees || []).forEach((r) => {
+      if (!r || typeof r !== "object") return;
+      const id = r.id || r.recruiter_id;
+      if (!id) return;
+      map[id] = r;
+    });
+    return map;
+  }, [employees]);
 
   const statusOptions = useMemo(
     () => [
@@ -222,12 +233,17 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       try {
         const res = await fetch(`${API_URL}/manager/recruiters`, { headers });
         const data = await res.json();
+        const normalize = (arr = []) =>
+          arr.map((r) => {
+            const role = ["recruiter", "manager"].includes(r.role) ? r.role : "recruiter";
+            return { ...r, role };
+          });
         if (Array.isArray(data?.recruiters)) {
-          setEmployees(data.recruiters);
+          setEmployees(normalize(data.recruiters));
         } else if (Array.isArray(data)) {
-          setEmployees(data);
+          setEmployees(normalize(data));
         } else if (recruiters.length) {
-          setEmployees(recruiters);
+          setEmployees(normalize(recruiters));
         }
       } catch {
         if (recruiters.length) {
@@ -713,7 +729,23 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {entries.map((entry) => (
+                {entries.map((entry) => {
+                  const r =
+                    entry.recruiter ||
+                    recruiterMap[entry.recruiter_id] ||
+                    {};
+                  const name =
+                    r.name ||
+                    r.full_name ||
+                    `${(r.first_name || "").trim()} ${(r.last_name || "").trim()}`.trim() ||
+                    entry.recruiter?.name ||
+                    entry.recruiter?.full_name ||
+                    entry.recruiter?.email ||
+                    `#${entry.recruiter_id}`;
+                  const email = r.email || entry.recruiter?.email;
+                  const avatarSrc = r.profile_image_url || r.avatar || undefined;
+                  const avatarAlt = name || email || "Employee";
+                  return (
                   <TableRow key={entry.id} hover>
                     <TableCell padding="checkbox">
                       <Checkbox
@@ -732,16 +764,25 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                         }}
                         sx={{ p: 0, textTransform: "none" }}
                       >
-                        <Box textAlign="left">
-                          <Typography fontWeight={600}>
-                            {entry.recruiter?.name ||
-                              entry.recruiter?.full_name ||
-                              `#${entry.recruiter_id}`}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {entry.recruiter?.email}
-                          </Typography>
-                        </Box>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Avatar
+                            src={avatarSrc}
+                            alt={avatarAlt}
+                            sx={{ width: 36, height: 36 }}
+                          >
+                            {(name || avatarAlt || "E").charAt(0)}
+                          </Avatar>
+                          <Box textAlign="left">
+                            <Typography fontWeight={600}>
+                              {name}
+                            </Typography>
+                            {email && (
+                              <Typography variant="caption" color="text.secondary">
+                                {email}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Stack>
                       </Button>
                     </TableCell>
                     <TableCell>{entry.date}</TableCell>
@@ -884,7 +925,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                       </Stack>
                     </TableCell>
                   </TableRow>
-                ))}
+                );
+              })}
               </TableBody>
             </Table>
           )}
@@ -1055,10 +1097,21 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                           : theme.palette.divider,
                     }}
                   >
-                    <Typography fontWeight={600}>{active.employee_name}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Clocked in {formatRosterClock(active.clock_in, active.timezone)}
-                    </Typography>
+                    <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mb: 0.5 }}>
+                      <Avatar
+                        src={active.profile_image_url || active.avatar || undefined}
+                        alt={active.employee_name || "Employee"}
+                        sx={{ width: 40, height: 40 }}
+                      >
+                        {(active.employee_name || "E").charAt(0)}
+                      </Avatar>
+                      <Box>
+                        <Typography fontWeight={600}>{active.employee_name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Clocked in {formatRosterClock(active.clock_in, active.timezone)}
+                        </Typography>
+                      </Box>
+                    </Stack>
                     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
                       <Chip
                         size="small"

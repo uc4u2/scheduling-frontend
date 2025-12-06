@@ -178,6 +178,7 @@ const FRONTEND_ORIGIN =
         allow_public_booking: data.allow_public_booking,
         public_bio: data.public_bio || "",
         role: data.role || "",
+        public_meet_token: data.public_meet_token || "",
       };
       setEmployee(flatData);
       setErrorKey("");
@@ -768,7 +769,7 @@ const FRONTEND_ORIGIN =
                 <TextField
                   fullWidth
                   size="small"
-                  value={`${FRONTEND_ORIGIN}/${employee.company_slug || employee.company?.slug || "<slug>"}/meet/${employee.id}`}
+                  value={`${FRONTEND_ORIGIN}/${employee.company_slug || employee.company?.slug || "<slug>"}/meet/${employee.public_meet_token || employee.id}`}
                   InputProps={{ readOnly: true }}
                 />
                 <Tooltip title="Copy link">
@@ -778,7 +779,7 @@ const FRONTEND_ORIGIN =
                       size="small"
                       onClick={() =>
                         navigator.clipboard.writeText(
-                          `${FRONTEND_ORIGIN}/${employee.company_slug || employee.company?.slug || ""}/meet/${employee.id}`
+                          `${FRONTEND_ORIGIN}/${employee.company_slug || employee.company?.slug || ""}/meet/${employee.public_meet_token || employee.id}`
                         )
                       }
                     >

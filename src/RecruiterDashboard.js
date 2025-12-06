@@ -34,6 +34,7 @@ import SecondEmployeeShiftView from "./pages/sections/SecondEmployeeShiftView";
 import MySetmoreCalendar from "./MySetmoreCalendar";
 import ManagementFrame from "./components/ui/ManagementFrame";
 import RecruiterTabs from "./components/recruiter/RecruiterTabs";
+import NavBar from "./NavBar";
 const PAGE_SIZE = 20; // number of slots per page
 const LOCAL_TABS = ["calendar", "availability", "shifts"];
 
@@ -368,13 +369,15 @@ const RecruiterDashboard = ({ token }) => {
   /*  RENDER                                                            */
   /* ------------------------------------------------------------------ */
   return (
-    <ManagementFrame
-      title="Employee Dashboard"
-      subtitle="Manage your availability, bookings, and invites."
-      fullWidth
-      sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
-      contentSx={{ p: { xs: 1.5, md: 2.5 } }}
-    >
+    <>
+      <NavBar token={token} />
+      <ManagementFrame
+        title="Employee Dashboard"
+        subtitle="Manage your availability, bookings, and invites."
+        fullWidth
+        sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
+        contentSx={{ p: { xs: 1.5, md: 2.5 } }}
+      >
       <RecruiterTabs localTab={activeTab} onLocalTabChange={handleLocalTabChange} />
 
       {/* --- OTHER PANELS ABOVE (unchanged) --- */}
@@ -825,6 +828,7 @@ const RecruiterDashboard = ({ token }) => {
         </DialogActions>
       </Dialog>
     </ManagementFrame>
+    </>
   );
 };
 export default RecruiterDashboard;

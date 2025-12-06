@@ -43,6 +43,7 @@ import {
   GlobalStyles,
   useTheme,
   useMediaQuery,
+  Avatar,
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowUp, InfoOutlined } from "@mui/icons-material";
 import * as XLSX from "xlsx";
@@ -822,6 +823,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       filteredShifts.map((s) => {
         const color = getColorForRecruiter(s.recruiter_id);
         const isOnLeave = s.on_leave === true;
+        const rec = recruiters.find((r) => r.id === s.recruiter_id);
         return {
           id: String(s.id),
           title: `${s.status || "assigned"}`,
@@ -836,7 +838,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             location: s.location,
             note: s.note,
             recruiter_id: s.recruiter_id,
-            recruiter_name: recruiters.find((r) => r.id === s.recruiter_id)?.name || `Emp ${s.recruiter_id}`,
+            recruiter_name: rec?.name || `Emp ${s.recruiter_id}`,
+            profile_image_url: rec?.profile_image_url || rec?.avatar || null,
             status: s.status,
             timezone: s.timezone,
             leave_reason: s.leave_reason || null,
@@ -859,7 +862,17 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         end: s.clock_out_display || s.clock_out,
         backgroundColor: getColorForRecruiter(s.recruiter_id),
         borderColor: getColorForRecruiter(s.recruiter_id),
-        textColor: "#000",
+        textColor: "#111",
+        extendedProps: {
+          recruiter_id: s.recruiter_id,
+          recruiter_name:
+            recruiters.find((r) => r.id === s.recruiter_id)?.name ||
+            `Emp ${s.recruiter_id}`,
+          profile_image_url:
+            recruiters.find((r) => r.id === s.recruiter_id)?.profile_image_url ||
+            recruiters.find((r) => r.id === s.recruiter_id)?.avatar ||
+            null,
+        },
         classNames: ["shift-event-month"],
       })),
     [filteredShifts, recruiters]
@@ -876,15 +889,18 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       .map((s) => {
         const startLabel = getShiftLocalStart(s);
         const endLabel = getShiftLocalEnd(s);
-        const name =
-          recruiters.find((r) => r.id === s.recruiter_id)?.name ||
-          s.recruiter_id;
+        const rec = recruiters.find((r) => r.id === s.recruiter_id);
+        const name = rec?.name || s.recruiter_id;
+        const avatarSrc = rec?.profile_image_url || rec?.avatar || null;
+        const avatarAlt = name || "Emp";
         return {
           key: `${s.id}-${s.clock_in_display || s.clock_in}`,
           id: s.id,
           recruiter_id: s.recruiter_id,
           label: `${startLabel}–${endLabel} • ${name} (${s.status})`,
           color: getColorForRecruiter(s.recruiter_id),
+          avatarSrc,
+          avatarAlt,
           raw: s,
           sortKey: `${getShiftLocalDate(s)} ${startLabel}`,
         };
@@ -1642,6 +1658,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const accent = xp._empColor || "#1976d2";
     const emp = xp.recruiter_name || `Emp ${xp.recruiter_id || ""}`;
     const status = (xp.status || "assigned").toUpperCase();
+    const viewType = arg.view && arg.view.type ? arg.view.type : "";
+    const showAvatar =
+      viewType.startsWith("timeGridDay") ||
+      viewType.startsWith("timeGridWeek") ||
+      viewType === "dayGridMonth";
 
     return (
       <div
@@ -1666,9 +1687,55 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           >
             {status}
           </span>
-          <span style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {emp}
-          </span>
+          {showAvatar && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#111" }}>
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundImage: xp.profile_image_url ? `url(${xp.profile_image_url})` : "none",
+                  backgroundColor: "#e0e0e0",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#444",
+                }}
+              >
+                {!xp.profile_image_url ? (emp || "E").charAt(0) : ""}
+              </span>
+              <span
+                style={{
+                  fontWeight: 700,
+                  fontSize: 12,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  color: "#111",
+                }}
+              >
+                {emp}
+              </span>
+            </span>
+          )}
+          {!showAvatar && (
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: 12,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                color: "#111",
+              }}
+            >
+              {emp}
+            </span>
+          )}
         </div>
         {xp.location ? (
           <div style={{ fontSize: 11, opacity: 0.9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -2073,6 +2140,37 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
               height="auto"
               dayMaxEvents={3}
               events={monthEvents}
+              eventContent={(arg) => {
+                const xp = arg.event.extendedProps || {};
+                const name = xp.recruiter_name || arg.event.title;
+                const avatar = xp.profile_image_url;
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 4px", color: "#111" }}>
+                    <span
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                        backgroundImage: avatar ? `url(${avatar})` : "none",
+                        backgroundColor: "#e0e0e0",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#444",
+                      }}
+                    >
+                      {!avatar ? (name || "E").charAt(0) : ""}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {name}
+                    </span>
+                  </div>
+                );
+              }}
               dateClick={handleMonthDateClick}
               eventClick={handleMonthEventClick}
               headerToolbar={{
@@ -2143,6 +2241,15 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                   <Chip
                     key={c.key}
                     label={c.label}
+                    icon={
+                      <Avatar
+                        src={c.avatarSrc || undefined}
+                        alt={c.avatarAlt || "Emp"}
+                        sx={{ width: 24, height: 24 }}
+                      >
+                        {String(c.avatarAlt || c.label || "E").charAt(0)}
+                      </Avatar>
+                    }
                     onClick={() => {
                       const s = c.raw;
                       setEditingShift(s);

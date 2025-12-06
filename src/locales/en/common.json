@@ -5303,6 +5303,142 @@
         ],
         "conclusion": "When I Work is solid for shift scheduling. Schedulaa is the better fit for service teams that need booking, smart breaks, attendance, and payroll linked to one operational workflow."
       },
+      "schedulaa-vs-acuity-scheduling": {
+        "competitor": "Acuity Scheduling",
+        "metaTitle": "Schedulaa vs Acuity Scheduling | Operations OS vs Booking-Only",
+        "metaDescription": "Compare Schedulaa and Acuity. Acuity is a polished booking tool; Schedulaa runs booking, scheduling, breaks, payroll (US/CA), websites, and analytics in one platform.",
+        "heroTitle": "Schedulaa vs Acuity Scheduling — Which Platform Fits Your Service Team?",
+        "heroSubtitle": "Acuity delivers beautiful booking. Schedulaa unifies booking, scheduling, break compliance, time tracking, payroll, websites, commerce, and analytics for multi-staff teams.",
+        "intro": [
+          "Acuity Scheduling is a clean, modern booking system for solo providers and small studios.",
+          "Schedulaa is an Operations OS for service teams that need booking plus staff scheduling, break enforcement, time tracking, PTO, payroll, websites, and analytics."
+        ],
+        "executiveOverview": {
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "Acuity Scheduling"
+          ],
+          "rows": [
+            {
+              "label": "Core Purpose",
+              "schedulaa": "Operations OS: booking, scheduling, breaks, time, leave, payroll, websites, commerce, analytics.",
+              "competitor": "Client booking system with payments and reminders."
+            },
+            {
+              "label": "Target Users",
+              "schedulaa": "Service teams with 3–100 staff, often multi-location.",
+              "competitor": "Solo providers, freelancers, small studios."
+            },
+            {
+              "label": "Internal Scheduling",
+              "schedulaa": "Shift templates, recurring availability, swaps, PTO, multi-location.",
+              "competitor": "Calendars only; no shift engine."
+            },
+            {
+              "label": "Breaks & Compliance",
+              "schedulaa": "Fixed/windowed/staggered breaks with enforcement and alerts.",
+              "competitor": "Not supported."
+            },
+            {
+              "label": "Time Tracking",
+              "schedulaa": "Clock-in/out tied to shifts, audit logs, overtime flags.",
+              "competitor": "Not supported."
+            },
+            {
+              "label": "Payroll",
+              "schedulaa": "US + Canada payroll, W-2/T4/ROE, QB/Xero export.",
+              "competitor": "Not supported."
+            },
+            {
+              "label": "Website / Branding",
+              "schedulaa": "Built-in builder, custom domains, booking widgets.",
+              "competitor": "Uses Squarespace for site design; booking widget available."
+            },
+            {
+              "label": "Products / POS",
+              "schedulaa": "Products, mixed carts, taxes, refunds, coupons.",
+              "competitor": "Packages/subscriptions/gift certificates; no full POS."
+            },
+            {
+              "label": "Multi-Location",
+              "schedulaa": "Branch-aware booking + scheduling + analytics.",
+              "competitor": "Not designed for multi-location operations."
+            },
+            {
+              "label": "Automations",
+              "schedulaa": "Confirmations, cancellations, break alerts, shift/PTO flows, follow-ups.",
+              "competitor": "Reminders, follow-ups, Zapier."
+            },
+            {
+              "label": "Pricing Focus",
+              "schedulaa": "Flat tiers plus per-staff add-on; built for teams.",
+              "competitor": "Per calendar count; rises as staff grow."
+            }
+          ]
+        },
+        "differentiators": [
+          {
+            "title": "Booking vs operations",
+            "body": "Acuity schedules clients. Schedulaa runs booking, staffing, breaks, time, and payroll in one workflow."
+          },
+          {
+            "title": "Staff scheduling + breaks",
+            "body": "Schedulaa offers shift templates, swaps, PTO, and break enforcement. Acuity does not handle internal staffing."
+          },
+          {
+            "title": "Payroll and compliance",
+            "body": "US + Canada payroll, W-2/T4/ROE, and accounting exports are built in. Acuity has no payroll or compliance."
+          },
+          {
+            "title": "Commerce depth",
+            "body": "Schedulaa supports products, mixed carts, taxes, and refunds. Acuity limits commerce to packages/subscriptions/gift certificates."
+          },
+          {
+            "title": "Multi-location readiness",
+            "body": "Schedulaa unifies branches for booking, scheduling, and analytics. Acuity is not built for multi-location operations."
+          }
+        ],
+        "summaryTable": {
+          "headers": [
+            "Feature Group",
+            "Schedulaa",
+            "Acuity Scheduling"
+          ],
+          "rows": [
+            { "label": "Client Booking", "schedulaa": "✔", "competitor": "✔" },
+            { "label": "Website Builder", "schedulaa": "✔ (integrated)", "competitor": "✔ (via Squarespace templates)" },
+            { "label": "Internal Staff Scheduling", "schedulaa": "✔", "competitor": "✘ (calendars only)" },
+            { "label": "Break Enforcement", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Time Tracking", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Payroll (US + CA)", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "W-2 / T4 / ROE", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "QuickBooks/Xero Export", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Products + POS", "schedulaa": "✔", "competitor": "Limited (packages only)" },
+            { "label": "Multi-Location Support", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Shift Swaps", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Analytics", "schedulaa": "✔", "competitor": "Partial" },
+            { "label": "Automations", "schedulaa": "Advanced", "competitor": "Basic" },
+            { "label": "Staff Portal", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Compliance", "schedulaa": "✔", "competitor": "✘" }
+          ]
+        },
+        "fitMatrix": [
+          {
+            "scenario": "You are a solo provider wanting a beautiful booking experience.",
+            "recommendation": "Acuity Scheduling"
+          },
+          {
+            "scenario": "You have 3–100 staff and need booking, scheduling, breaks, and payroll together.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "You run multiple locations and need branch-aware scheduling and analytics.",
+            "recommendation": "Schedulaa"
+          }
+        ],
+        "conclusion": "Acuity Scheduling is exceptional for simple, elegant client booking. Schedulaa is the better long-term choice for teams that need booking plus staffing, break compliance, time tracking, payroll, websites, and analytics in one platform."
+      },
       "deputy": {
         "competitor": "Deputy",
         "metaTitle": "Schedulaa vs Deputy | Operations OS vs Workforce Scheduling",

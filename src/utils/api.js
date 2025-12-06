@@ -591,29 +591,41 @@ export const publicSite = {
       .get(`/api/public/${encodeURIComponent(slug)}/website`, { noCompanyHeader: true })
       .then((r) => r.data),
 
-  getArtist: (slug, artistId) =>
-    api
-      .get(`/public/${encodeURIComponent(slug)}/artists/${artistId}`, {
-        noCompanyHeader: true,
-        noAuth: true,
-      })
-      .then((r) => r.data),
+  getArtist: (slug, artistIdOrToken) => {
+    const key = String(artistIdOrToken || "").trim();
+    const isId = /^[0-9]+$/.test(key);
+    const path = isId
+      ? `/public/${encodeURIComponent(slug)}/artists/${key}`
+      : `/public/${encodeURIComponent(slug)}/artists/by-token/${encodeURIComponent(key)}`;
+    return api
+      .get(path, { noCompanyHeader: true, noAuth: true })
+      .then((r) => r.data);
+  },
 
-  getArtistAvailability: (slug, artistId) =>
-    api
-      .get(`/public/${encodeURIComponent(slug)}/availability-by-artist/${artistId}`, {
-        noCompanyHeader: true,
-        noAuth: true,
-      })
-      .then((r) => r.data),
+  getArtistAvailability: (slug, artistIdOrToken) => {
+    const key = String(artistIdOrToken || "").trim();
+    const isId = /^[0-9]+$/.test(key);
+    const path = isId
+      ? `/public/${encodeURIComponent(slug)}/availability-by-artist/${key}`
+      : `/public/${encodeURIComponent(slug)}/availability-by-token/${encodeURIComponent(key)}`;
+    return api
+      .get(path, { noCompanyHeader: true, noAuth: true })
+      .then((r) => r.data);
+  },
 
-  bookArtistMeeting: (slug, artistId, payload) =>
-    api
-      .post(`/api/public/${encodeURIComponent(slug)}/artists/${artistId}/appointments`, payload, {
+  bookArtistMeeting: (slug, artistIdOrToken, payload) => {
+    const key = String(artistIdOrToken || "").trim();
+    const isId = /^[0-9]+$/.test(key);
+    const path = isId
+      ? `/api/public/${encodeURIComponent(slug)}/artists/${key}/appointments`
+      : `/api/public/${encodeURIComponent(slug)}/artists/by-token/${encodeURIComponent(key)}/appointments`;
+    return api
+      .post(path, payload, {
         noCompanyHeader: true,
         noAuth: true,
       })
-      .then((r) => r.data),
+      .then((r) => r.data);
+  },
 
   sendContact: async (slug, payload, formKey = (process.env.REACT_APP_CONTACT_FORM_KEY || 'contact')) => {
     const key = encodeURIComponent(formKey || 'contact');

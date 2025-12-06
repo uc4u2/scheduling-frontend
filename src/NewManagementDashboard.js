@@ -160,6 +160,7 @@ const menuConfig = [
     icon: <CalendarToday />,
     children: [
       { labelKey: "manager.menu.shiftManagement", key: "team", icon: <People /> },
+      { label: "Shift Monitoring", key: "shift-monitoring", icon: <History /> },
       { labelKey: "manager.menu.timeTracking", key: "time-tracking", icon: <History /> },
       { labelKey: "manager.menu.leaves", key: "leaves", icon: <Assignment /> },
       { labelKey: "manager.menu.swapApprovals", key: "swap-approvals", icon: <Assignment /> },
@@ -1477,11 +1478,42 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
           </ManagementFrame>
         );
 
+      case "shift-monitoring":
+        return (
+          <ManagementFrame
+            title="Shift Monitoring"
+            subtitle="Coming soon"
+          >
+            <Paper
+              sx={{
+                p: 4,
+                borderRadius: 3,
+                border: "1px dashed",
+                borderColor: "divider",
+                bgcolor: "action.hover",
+                textAlign: "center",
+              }}
+              elevation={0}
+            >
+              <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
+                Coming soon
+              </Typography>
+              <Typography color="text.secondary">
+                We&apos;re finalizing the new monitoring view. Check back soon.
+              </Typography>
+            </Paper>
+          </ManagementFrame>
+        );
+
       case "team":
         return (
           <ManagementFrame
             title="Shift Management"
             subtitle={isMobileViewport ? "" : "Create, assign, and manage employee shifts."}
+            fullWidth
+            contentSx={{
+              p: { xs: 1.5, md: 2.5 },
+            }}
           >
             <Team token={token} />
           </ManagementFrame>
@@ -1756,7 +1788,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                       <ListItemButton
                         key={child.key}
                         selected={selectedView === child.key}
+                        disabled={child.key === "shift-monitoring"}
                         onClick={() => {
+                          if (child.key === "shift-monitoring") return;
                           const empKeys = ["emp-active", "emp-add", "emp-compare"];
                           const next = empKeys.includes(child.key) ? "employee-management" : child.key;
                           handleNavSelect(next);
@@ -1778,7 +1812,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                         </ListItemIcon>
                         {drawerExpanded && (
                           <ListItemText
-                            primary={child.label}
+                            primary={
+                              child.key === "shift-monitoring"
+                                ? `${child.label} (Coming soon)`
+                                : child.label
+                            }
                             primaryTypographyProps={{ sx: { whiteSpace: "nowrap", overflow: "visible" } }}
                           />
                         )}

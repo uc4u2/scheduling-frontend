@@ -71,6 +71,7 @@ const sections = [
       { label: "Schedulaa vs Deputy", to: "/compare/deputy" },
       { label: "Schedulaa vs Homebase", to: "/compare/homebase" },
       { label: "Schedulaa vs When I Work", to: "/compare/when-i-work" },
+      { label: "Schedulaa vs Acuity Scheduling", to: "/compare/schedulaa-vs-acuity-scheduling" },
     ],
   },
   {
