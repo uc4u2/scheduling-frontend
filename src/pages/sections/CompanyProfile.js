@@ -104,6 +104,7 @@ export default function CompanyProfile({ token }) {
     tax_region_code: "",
     charge_currency_mode: "PLATFORM_FIXED",
     display_currency: "USD",
+    trusted_ips: [],
   });
 
   // Departments
@@ -344,6 +345,15 @@ export default function CompanyProfile({ token }) {
     setForm((prev) => ({ ...prev, [field]: Boolean(checked) }));
   };
 
+  const handleTrustedIpsChange = (event) => {
+    const raw = event.target.value || "";
+    const parsed = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    setForm((prev) => ({ ...prev, trusted_ips: parsed }));
+  };
+
   const provinceList = useMemo(() => {
     switch ((form.country_code || '').toUpperCase()) {
       case 'CA':
@@ -518,6 +528,20 @@ return (
                   }}
                   inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
                   helperText={t("manager.companyProfile.form.hints.businessNumberDigits")}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Trusted IPs (comma-separated)"
+                  value={
+                    Array.isArray(form.trusted_ips)
+                      ? form.trusted_ips.join(", ")
+                      : form.trusted_ips || ""
+                  }
+                  onChange={handleTrustedIpsChange}
+                  helperText="Optional: only these IPs will count as trusted for clock-ins (for anomaly checks)."
                 />
               </Grid>
               <Grid item xs={12} md={6}>
@@ -969,5 +993,3 @@ return (
     </>
   );
 }
-
-

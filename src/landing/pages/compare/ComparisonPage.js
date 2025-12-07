@@ -145,6 +145,8 @@ const ComparisonPage = () => {
     executiveOverview,
     differentiators = [],
     summaryTable,
+    complianceSafeguards,
+    featureGrid,
     fitMatrix = [],
     testimonial,
     conclusion,
@@ -251,6 +253,24 @@ const ComparisonPage = () => {
 
         {summaryTable?.headers?.length ? (
           <ComparisonTable headers={summaryTable.headers} rows={summaryTable.rows || []} />
+        ) : null}
+
+        {complianceSafeguards?.headers?.length ? (
+          <Box component="section" sx={{ mt: 6 }}>
+            <Typography variant="h4" fontWeight={800} gutterBottom>
+              Compliance & HR safeguards
+            </Typography>
+            <ComparisonTable headers={complianceSafeguards.headers} rows={complianceSafeguards.rows || []} />
+          </Box>
+        ) : null}
+
+        {featureGrid?.headers?.length ? (
+          <Box component="section" sx={{ mt: 6 }}>
+            <Typography variant="h4" fontWeight={800} gutterBottom>
+              At-a-glance feature comparison
+            </Typography>
+            <ComparisonTable headers={featureGrid.headers} rows={featureGrid.rows || []} />
+          </Box>
         ) : null}
 
         <Box component="section" sx={{ mt: 6 }}>

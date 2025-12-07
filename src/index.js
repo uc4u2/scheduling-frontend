@@ -6,16 +6,24 @@ import "./i18n";
 import "./utils/resizeObserverErrorGuard";
 
 import { ThemeProvider, CssBaseline } from "@mui/material";
-import { coolTheme } from "./theme"; // Use the updated theme
+import { coolTheme } from "./theme"; // existing theme
+import themeV2 from "./themeV2"; // enterprise variant
+
+const useV2 =
+  process.env.REACT_APP_SCHEDULAA_THEME_V2 === "true" ||
+  (typeof window !== "undefined" &&
+    window.localStorage &&
+    window.localStorage.getItem("schedulaa_theme_version") === "v2");
+
+const activeTheme = useV2 ? themeV2 : coolTheme;
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-    <ThemeProvider theme={coolTheme}>
+    <ThemeProvider theme={activeTheme}>
       <CssBaseline />
       <App />
     </ThemeProvider>
   </React.StrictMode>
 );
-
 

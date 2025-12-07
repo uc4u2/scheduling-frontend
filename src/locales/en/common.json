@@ -5151,13 +5151,36 @@
             },
             {
               "label": "Break Enforcement",
-              "schedulaa": "Paid/unpaid rules, staggered breaks, live monitoring.",
-              "competitor": "Basic break recording."
+              "schedulaa": [
+                "Paid/unpaid rules",
+                "Staggered + enforced timing",
+                "Live break monitoring",
+                "Break compliance % reporting",
+                "Break deviation analytics",
+                "Missing break alerts",
+                "Break anomaly detection"
+              ],
+              "competitor": [
+                "Basic break recording",
+                "No enforcement rules",
+                "No compliance analytics"
+              ]
             },
             {
               "label": "Payroll & Compliance",
-              "schedulaa": "US + Canada payroll workflows; exports to QuickBooks/Xero.",
-              "competitor": "US payroll add-on; no Canada payroll; limited accounting links."
+              "schedulaa": [
+                "US + Canada payroll workflows",
+                "Regular/OT hour buckets",
+                "Shift deviation → payroll corrections",
+                "Break compliance → labor law protection",
+                "Exports to QuickBooks / Xero",
+                "Support for W-2, T4, ROE files"
+              ],
+              "competitor": [
+                "US payroll add-on",
+                "No Canadian payroll",
+                "No break compliance or deviation analytics"
+              ]
             },
             {
               "label": "Branding & Website",
@@ -5192,6 +5215,14 @@
           {
             "title": "Brand + website",
             "body": "Schedulaa ships a booking-ready site on your domain. Homebase has no website or client-facing booking."
+          },
+          {
+            "title": "Shift deviation reporting",
+            "body": "Schedulaa shows late starts, early finishes, and long/short shifts vs schedule for every shift. Homebase has no shift deviation analytics."
+          },
+          {
+            "title": "Fraud prevention",
+            "body": "Schedulaa logs IP and timezone on every punch to flag remote/suspicious clock-ins. Homebase does not include IP auditing."
           }
         ],
         "fitMatrix": [
@@ -5206,8 +5237,47 @@
           {
             "scenario": "Multi-location service brand that needs break enforcement and branded booking.",
             "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "A business that must prove labor compliance (breaks, overtime, audit logs).",
+            "recommendation": "Schedulaa"
           }
         ],
+        "complianceSafeguards": {
+          "headers": [
+            "Compliance & HR Safeguards",
+            "Schedulaa",
+            "Homebase"
+          ],
+          "rows": [
+            { "label": "Break compliance %", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Missing break detection", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Shift deviation analysis", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Audit-ready PDF/CSV", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "IP logging / fraud detection", "schedulaa": "✔", "competitor": "✘" }
+          ]
+        },
+        "featureGrid": {
+          "headers": [
+            "Feature",
+            "Schedulaa",
+            "Homebase"
+          ],
+          "rows": [
+            { "label": "Client booking", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Break enforcement", "schedulaa": "✔", "competitor": "Limited" },
+            { "label": "Break compliance %", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Shift deviation", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "IP fraud checks", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Payroll (US/CA)", "schedulaa": "✔", "competitor": "US only" },
+            { "label": "QuickBooks/Xero export", "schedulaa": "✔", "competitor": "Limited" },
+            { "label": "Website builder", "schedulaa": "✔", "competitor": "✘" },
+            { "label": "Scheduling", "schedulaa": "✔", "competitor": "✔" },
+            { "label": "Time tracking", "schedulaa": "✔", "competitor": "✔" },
+            { "label": "Swap approvals", "schedulaa": "✔", "competitor": "✔" },
+            { "label": "Multi-location", "schedulaa": "✔", "competitor": "✔" }
+          ]
+        },
         "conclusion": "Homebase is strong for storefront shift scheduling. Schedulaa is better for service teams that need booking, break enforcement, attendance, and payroll tied together under their own brand."
       },
       "when-i-work": {
@@ -5483,13 +5553,36 @@
             },
             {
               "label": "Analytics",
-              "schedulaa": "Revenue, payroll, staff performance, cancellations, multi-branch.",
-              "competitor": "Labor + schedule analytics only."
+              "schedulaa": [
+                "Revenue & payroll analytics",
+                "Staff performance tracking",
+                "Cancellations & rebook funnels",
+                "Multi-branch dashboards",
+                "Shift deviation reporting (late starts, early finishes, long shifts)",
+                "Break compliance % + missing-break alerts",
+                "IP/anomaly detection"
+              ],
+              "competitor": [
+                "Labor & scheduling analytics",
+                "No break compliance",
+                "No deviation analytics",
+                "No fraud/IP logging",
+                "No revenue or client analytics"
+              ]
             },
             {
               "label": "Shift Management",
-              "schedulaa": "Scheduling, swaps, leave approvals, department views.",
-              "competitor": "Scheduling, swaps, leave approvals."
+              "schedulaa": [
+                "Scheduling, swaps, leave approvals, department views",
+                "Break enforcement with smart break rules",
+                "Shift deviation monitoring",
+                "Live roster with anomalies & break overage alerts"
+              ],
+              "competitor": [
+                "Scheduling, swaps, leave approvals",
+                "Break recording only (no enforcement)",
+                "No shift deviation dashboard"
+              ]
             },
             {
               "label": "Time Clock",
@@ -5501,6 +5594,33 @@
               "schedulaa": "Multi-tenant, white-label, branch landing pages, legal pages.",
               "competitor": "Single account per brand; no public website layer."
             }
+          ]
+        },
+        "complianceSafeguards": {
+          "headers": [
+            "Break Compliance & Labor Protection",
+            "Schedulaa",
+            "Deputy"
+          ],
+          "rows": [
+            { "label": "Break enforcement (paid/unpaid)", "schedulaa": "✔", "competitor": "Limited (no enforcement)" },
+            { "label": "Staggered break rules", "schedulaa": "✔", "competitor": "✖" },
+            { "label": "Break compliance %", "schedulaa": "✔", "competitor": "✖" },
+            { "label": "Missing-break alerts", "schedulaa": "✔", "competitor": "✖" },
+            { "label": "Break deviation tracking", "schedulaa": "✔", "competitor": "✖" }
+          ]
+        },
+        "featureGrid": {
+          "headers": [
+            "Feature",
+            "Schedulaa",
+            "Deputy"
+          ],
+          "rows": [
+            { "label": "Break Compliance & Enforcement", "schedulaa": "✔", "competitor": "✖" },
+            { "label": "Shift Deviation Insights", "schedulaa": "✔", "competitor": "✖" },
+            { "label": "IP Logging / Fraud Detection", "schedulaa": "✔", "competitor": "✖" },
+            { "label": "End-to-End Booking → Payroll", "schedulaa": "✔", "competitor": "✖" }
           ]
         },
         "summaryTable": {
@@ -5582,6 +5702,14 @@
           {
             "title": "Xero-ready exports",
             "body": "Schedulaa syncs revenue and payroll journals directly to Xero. Deputy exports timesheets that still require another system to process."
+          },
+          {
+            "title": "Shift deviation analytics",
+            "body": "Schedulaa flags late starts, early outs, extended shifts, and overnight overruns. Deputy doesn’t provide per-shift deviation insights without expensive enterprise add-ons."
+          },
+          {
+            "title": "Fraud prevention & security",
+            "body": "Schedulaa logs IP/timezone on every punch to flag suspicious remote clock-ins. Deputy has no IP-based auditing."
           }
         ],
         "fitMatrix": [

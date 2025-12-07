@@ -48,6 +48,56 @@ const statusColor = {
   rejected: "error",
 };
 
+const palette = {
+  accent: "#FF7A3C",
+  success: "#21A179",
+  warning: "#FFB020",
+  error: "#E53935",
+  info: "#4C6FFF",
+  neutralText: "#64748B",
+  neutralBg: "#EEF2F7",
+};
+
+const SummaryCard = ({ label, value, icon }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 2,
+      borderRadius: 3,
+      border: (theme) => `1px solid ${theme.palette.divider}`,
+      background: "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,247,250,0.9))",
+      flex: 1,
+      minWidth: 180,
+    }}
+  >
+    <Stack direction="row" spacing={1.5} alignItems="center">
+      <Box
+        sx={{
+          width: 40,
+          height: 40,
+          borderRadius: "14px",
+          bgcolor: `${palette.accent}1A`,
+          color: palette.accent,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: 700,
+        }}
+      >
+        {icon || "•"}
+      </Box>
+      <Box>
+        <Typography variant="body2" color="text.secondary">
+          {label}
+        </Typography>
+        <Typography variant="h6" fontWeight={800}>
+          {value}
+        </Typography>
+      </Box>
+    </Stack>
+  </Paper>
+);
+
 const TimeEntriesPanel = ({ recruiters = [] }) => {
   const viewerTimezone = getUserTimezone();
   const today = useMemo(() => new Date(), []);
@@ -131,10 +181,71 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     const onBreak = roster.filter((person) => person.break_in_progress).length;
     return { active, onBreak };
   }, [roster]);
+  const pendingCount = useMemo(
+    () => entries.filter((e) => e.status === "completed").length,
+    [entries]
+  );
+  const hoursToday = useMemo(() => {
+    const targetDate = filters.startDate === filters.endDate ? filters.startDate : null;
+    return entries.reduce((sum, e) => {
+      if (targetDate && e.date !== targetDate) return sum;
+      const hrs = Number(e.hours_worked_rounded ?? e.hours_worked ?? 0);
+      return sum + (Number.isFinite(hrs) ? hrs : 0);
+    }, 0);
+  }, [entries, filters.startDate, filters.endDate]);
+  const clockedInCount = rosterStats.active;
+  const onBreakCount = rosterStats.onBreak;
   const detailEmployeeName = useMemo(() => {
     if (!detailEmployee) return "";
-    return detailEmployee.name || detailEmployee.full_name || detailEmployee.email || `#${detailEmployee.id}`;
+    const idLabel = detailEmployee.id ? `#${detailEmployee.id}` : "";
+    const full = `${detailEmployee.first_name || ""} ${detailEmployee.last_name || ""}`.trim();
+    return detailEmployee.name || detailEmployee.full_name || full || detailEmployee.email || idLabel;
   }, [detailEmployee]);
+  const detailStats = useMemo(() => {
+    if (!Array.isArray(detailEntries) || !detailEntries.length) {
+      return {
+        total: 0,
+        breakCompliance: null,
+        breakNonCompliant: 0,
+        unusualIPs: 0,
+        rejected: 0,
+        approved: 0,
+        inProgress: 0,
+        anomalies: 0,
+        maxBreakMissing: 0,
+      };
+    }
+    let breakNon = 0;
+    let unusual = 0;
+    let rejected = 0;
+    let approved = 0;
+    let inProgress = 0;
+    let anomalies = 0;
+    let maxBreakMissing = 0;
+    detailEntries.forEach((e) => {
+      if (e.break_non_compliant) breakNon += 1;
+      if (e.clock_in_unusual || e.clock_out_unusual) unusual += 1;
+      if (e.status === "rejected") rejected += 1;
+      if (e.status === "approved") approved += 1;
+      if (e.status === "in_progress") inProgress += 1;
+      const missing = Number(e.break_missing_minutes || 0);
+      if (missing > maxBreakMissing) maxBreakMissing = missing;
+    });
+    anomalies = breakNon + unusual + rejected;
+    const total = detailEntries.length;
+    const breakCompliance = total ? Math.round(((total - breakNon) / total) * 100) : null;
+    return {
+      total,
+      breakCompliance,
+      breakNonCompliant: breakNon,
+      unusualIPs: unusual,
+      rejected,
+      approved,
+      inProgress,
+      anomalies,
+      maxBreakMissing,
+    };
+  }, [detailEntries]);
 
   const handleChange = (key) => (event) => {
     const value = event.target.value;
@@ -335,6 +446,50 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       return iso;
     }
   };
+  const anomalyChips = (entry) => {
+    const chips = [];
+    if (entry.device_new) {
+      chips.push(
+        <Chip
+          key="device_new"
+          size="small"
+          label="New device"
+          sx={{ bgcolor: "rgba(76,111,255,0.12)", color: palette.info, fontWeight: 600 }}
+        />
+      );
+    }
+    if (entry.location_new) {
+      chips.push(
+        <Chip
+          key="location_new"
+          size="small"
+          label="New location"
+          sx={{ bgcolor: "rgba(255,176,32,0.14)", color: "#B9780C", fontWeight: 600 }}
+        />
+      );
+    }
+    if (entry.multi_ip_same_day) {
+      chips.push(
+        <Chip
+          key="multi_ip"
+          size="small"
+          label="Multiple IPs"
+          sx={{ bgcolor: "rgba(255,122,60,0.12)", color: palette.accent, fontWeight: 600 }}
+        />
+      );
+    }
+    if (entry.outside_trusted) {
+      chips.push(
+        <Chip
+          key="outside_trusted"
+          size="small"
+          label="Outside trusted IPs"
+          sx={{ bgcolor: "rgba(229,57,53,0.12)", color: palette.error, fontWeight: 600 }}
+        />
+      );
+    }
+    return chips;
+  };
   const rosterUpdatedLabel = useMemo(() => {
     if (!rosterUpdatedAt) return null;
     try {
@@ -410,15 +565,26 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   };
 
   const openHistoryDetail = (entry) => {
-    const recruiter =
-      entry.recruiter ||
-      {
-        id: entry.recruiter_id,
-        name: entry.recruiter?.full_name,
-        full_name: entry.recruiter?.full_name,
-        email: entry.recruiter?.email,
-      };
-    setDetailEmployee(recruiter);
+    const base = entry.recruiter || {};
+    const id = base.id || entry.recruiter_id;
+    const first = base.first_name || entry.first_name || "";
+    const last = base.last_name || entry.last_name || "";
+    const full = base.full_name || `${first} ${last}`.trim();
+    const name =
+      base.name ||
+      full ||
+      base.email ||
+      entry.recruiter?.email ||
+      (id ? `#${id}` : "");
+    const email = base.email || entry.recruiter?.email || entry.email;
+    setDetailEmployee({
+      id,
+      name,
+      full_name: full,
+      first_name: first,
+      last_name: last,
+      email,
+    });
     setDetailOpen(true);
   };
 
@@ -449,25 +615,105 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     }
   };
 
-  const downloadDetailCsv = async () => {
-    if (!detailEmployee) return;
-    try {
-      const params = new URLSearchParams({
-        recruiter_id: detailEmployee.id,
-        start_date: detailFilters.startDate,
-        end_date: detailFilters.endDate,
-        format: "csv",
-      });
-      if (detailFilters.status && detailFilters.status !== "all") {
-        params.set("status", detailFilters.status);
+  const downloadDetailCsv = () => {
+    if (!detailEmployee || !detailEntries.length) {
+      setSnackbar({ open: true, severity: "error", message: "Nothing to download." });
+      return;
+    }
+
+    const csvEscape = (val) => {
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
       }
-      const res = await fetch(`${API_URL}/manager/time-entries/history?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      });
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
+      return str;
+    };
+
+    const lines = [];
+    lines.push("Summary,,,,,,,,,,,");
+    lines.push(
+      [
+        "Employee",
+        csvEscape(detailEmployeeName || detailEmployee.email || detailEmployee.id),
+        "", "", "", "", "", "", "", "", "",
+      ].join(",")
+    );
+    lines.push(
+      [
+        "Range",
+        `${csvEscape(detailFilters.startDate)} to ${csvEscape(detailFilters.endDate)}`,
+        "", "", "", "", "", "", "", "", "",
+      ].join(",")
+    );
+    lines.push(
+      ["Hours", csvEscape(detailSummary?.hours_worked ?? 0), "", "", "", "", "", "", "", "", ""].join(",")
+    );
+    lines.push(
+      ["Overtime", csvEscape(detailSummary?.overtime_hours ?? 0), "", "", "", "", "", "", "", "", ""].join(",")
+    );
+    const padSummary = (label, value) => [label, value, ...Array(12).fill("")].join(",");
+    lines.push(padSummary("Break minutes", csvEscape(detailSummary?.break_minutes ?? 0)));
+    lines.push(padSummary("Missed breaks", csvEscape(detailSummary?.missed_breaks ?? 0)));
+    if (detailStats.breakCompliance !== null) {
+      lines.push(padSummary("Break compliance", csvEscape(`${detailStats.breakCompliance}%`)));
+    }
+    lines.push(padSummary("Anomalies", csvEscape(detailStats.anomalies)));
+    lines.push(padSummary("Unusual IPs", csvEscape(detailStats.unusualIPs)));
+    if (detailStats.maxBreakMissing > 0) {
+      lines.push(padSummary("Max break missing", csvEscape(`${detailStats.maxBreakMissing}m`)));
+    }
+    lines.push(new Array(18).fill("").join(",")); // blank line before detail rows
+    lines.push(
+      [
+        "Employee",
+        "Date",
+        "Clock In",
+        "Clock Out",
+        "Timezone",
+        "Hours",
+        "Break minutes",
+        "Break required",
+        "Break missing",
+        "Shift deviation (m)",
+        "Status",
+        "Device new",
+        "New location",
+        "Multi IP (day)",
+        "Outside trusted",
+        "Approved by",
+        "Clock-in IP",
+        "Clock-out IP",
+      ].join(",")
+    );
+
+    detailEntries.forEach((entry) => {
+      lines.push(
+        [
+          csvEscape(detailEmployeeName || detailEmployee.email || detailEmployee.id),
+          csvEscape(entry.date),
+          csvEscape(formatClockShort(entry.clock_in, entry.timezone)),
+          csvEscape(formatClockShort(entry.clock_out, entry.timezone)),
+          csvEscape(entry.timezone || ""),
+          csvEscape(entry.hours_worked_rounded ?? entry.hours_worked),
+          csvEscape(entry.break_minutes || 0),
+          csvEscape(entry.break_required_minutes || 0),
+          csvEscape(entry.break_missing_minutes || 0),
+          csvEscape(entry.shift_deviation_minutes ?? ""),
+          csvEscape(entry.status),
+          csvEscape(entry.device_new ? "1" : "0"),
+          csvEscape(entry.location_new ? "1" : "0"),
+          csvEscape(entry.multi_ip_same_day ? "1" : "0"),
+          csvEscape(entry.outside_trusted ? "1" : "0"),
+          csvEscape(entry.approved_by_name || ""),
+          csvEscape(entry.clock_in_ip || ""),
+          csvEscape(entry.clock_out_ip || ""),
+        ].join(",")
+      );
+    });
+
+    try {
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -478,6 +724,58 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       window.URL.revokeObjectURL(url);
     } catch {
       setSnackbar({ open: true, severity: "error", message: "Unable to download CSV." });
+    }
+  };
+
+  const downloadDetailPdf = async () => {
+    if (!detailEmployee || !detailEntries.length) {
+      setSnackbar({ open: true, severity: "error", message: "Nothing to download." });
+      return;
+    }
+    const recruiterId =
+      detailEmployee.id ||
+      detailEmployee.recruiter_id ||
+      (detailEntries.length ? detailEntries[0].recruiter_id : null);
+    if (!recruiterId) {
+      setSnackbar({ open: true, severity: "error", message: "Missing employee id for export." });
+      return;
+    }
+    try {
+      const params = new URLSearchParams({
+        recruiter_id: recruiterId,
+        start_date: detailFilters.startDate,
+        end_date: detailFilters.endDate,
+        format: "pdf",
+      });
+      if (detailFilters.status && detailFilters.status !== "all") {
+        params.set("status", detailFilters.status);
+      }
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
+      const res = await fetch(`${API_URL}/manager/time-entries/history?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const msg = await res.text().catch(() => "Download failed");
+        setSnackbar({ open: true, severity: "error", message: msg || "Unable to download PDF." });
+        return;
+      }
+      const ct = res.headers.get("content-type") || "";
+      const blob = await res.blob();
+      if (blob.size === 0 || (ct && !ct.includes("pdf"))) {
+        setSnackbar({ open: true, severity: "error", message: "PDF export returned an empty file." });
+        return;
+      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `time_entries_${detailEmployeeName || "employee"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setSnackbar({ open: true, severity: "success", message: "PDF downloaded." });
+    } catch (err) {
+      setSnackbar({ open: true, severity: "error", message: "Unable to download PDF." });
     }
   };
 
@@ -562,376 +860,442 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
 
   return (
     <>
-      <Paper elevation={1} sx={{ p: 3, borderRadius: 3, mt: 4 }}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", md: "center" }}
-        >
-          <Box>
-            <Typography variant="h6" fontWeight={700}>
-              Time tracking approvals
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Review employee punches, approve them for payroll, or send them back with notes.
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={fetchEntries}
-              disabled={loading}
-            >
-              Refresh
-            </Button>
+      <Grid container spacing={3} sx={{ mt: 2 }}>
+        <Grid item xs={12}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <SummaryCard label="Clocked in now" value={clockedInCount} />
+            <SummaryCard label="On break now" value={onBreakCount} />
+            <SummaryCard label="Pending approvals" value={pendingCount} />
+            <SummaryCard label="Hours (range)" value={hoursToday.toFixed(2)} />
           </Stack>
-        </Stack>
-
-        <Grid container spacing={2} sx={{ mt: 2 }}>
-          <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Status"
-              value={filters.status}
-              onChange={handleChange("status")}
-            >
-              {statusOptions.map((opt) => (
-                <MenuItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Department"
-              value={filters.departmentId}
-              onChange={handleDepartmentChange}
-            >
-              <MenuItem value="">All departments</MenuItem>
-              {departmentOptions.map((dept) => (
-                <MenuItem key={dept.id} value={dept.id}>
-                  {dept.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Employee"
-              value={filters.recruiterId}
-              onChange={handleChange("recruiterId")}
-              helperText="Choose one employee or leave as All employees to see everyone."
-            >
-              <MenuItem value="">All employees (show everyone)</MenuItem>
-              {visibleEmployees.map((rec) => {
-                const displayName =
-                  rec.name ||
-                  rec.full_name ||
-                  [rec.first_name, rec.last_name].filter(Boolean).join(" ") ||
-                  (rec.email ? rec.email : `#${rec.id}`);
-                return (
-                  <MenuItem key={rec.id} value={rec.id}>
-                    {displayName}
-                  </MenuItem>
-                );
-              })}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              type="date"
-              fullWidth
-              label="From"
-              InputLabelProps={{ shrink: true }}
-              value={filters.startDate}
-              onChange={handleChange("startDate")}
-            />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <TextField
-              type="date"
-              fullWidth
-              label="To"
-              InputLabelProps={{ shrink: true }}
-              value={filters.endDate}
-              onChange={handleChange("endDate")}
-            />
-          </Grid>
         </Grid>
 
-        {selectedCount > 0 && (
-          <Box
-            sx={{
-              mt: 2,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 1,
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              {selectedCount} entr{selectedCount === 1 ? "y" : "ies"} selected.
-            </Typography>
-            <Stack direction="row" spacing={1}>
-              <Button size="small" onClick={() => setSelectedIds([])}>
-                Clear
-              </Button>
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => setBulkDialogOpen(true)}
-              >
-                Apply template
-              </Button>
+        <Grid item xs={12}>
+          <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", md: "center" }}
+            >
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Time tracking approvals
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Review employee punches, approve them for payroll, or send them back with notes.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={fetchEntries}
+                  disabled={loading}
+                >
+                  Refresh
+                </Button>
+              </Stack>
             </Stack>
-          </Box>
-        )}
 
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
+            <Grid container spacing={2} sx={{ mt: 2 }}>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Status"
+                  value={filters.status}
+                  onChange={handleChange("status")}
+                >
+                  {statusOptions.map((opt) => (
+                    <MenuItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Department"
+                  value={filters.departmentId}
+                  onChange={handleDepartmentChange}
+                >
+                  <MenuItem value="">All departments</MenuItem>
+                  {departmentOptions.map((dept) => (
+                    <MenuItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Employee"
+                  value={filters.recruiterId}
+                  onChange={handleChange("recruiterId")}
+                  helperText="Choose one employee or leave as All employees to see everyone."
+                >
+                  <MenuItem value="">All employees (show everyone)</MenuItem>
+                  {visibleEmployees.map((rec) => {
+                    const displayName =
+                      rec.name ||
+                      rec.full_name ||
+                      [rec.first_name, rec.last_name].filter(Boolean).join(" ") ||
+                      (rec.email ? rec.email : `#${rec.id}`);
+                    return (
+                      <MenuItem key={rec.id} value={rec.id}>
+                        {displayName}
+                      </MenuItem>
+                    );
+                  })}
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  type="date"
+                  fullWidth
+                  label="From"
+                  InputLabelProps={{ shrink: true }}
+                  value={filters.startDate}
+                  onChange={handleChange("startDate")}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField
+                  type="date"
+                  fullWidth
+                  label="To"
+                  InputLabelProps={{ shrink: true }}
+                  value={filters.endDate}
+                  onChange={handleChange("endDate")}
+                />
+              </Grid>
+            </Grid>
 
-        <Box sx={{ mt: 2 }}>
-          {loading ? (
-            <Box display="flex" justifyContent="center" py={4}>
-              <CircularProgress size={28} />
-            </Box>
-          ) : entries.length === 0 ? (
-            <Typography color="text.secondary">No time entries found for this filter.</Typography>
-          ) : (
-            <Table size="small" sx={{ mt: 1 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell padding="checkbox">
-                    <Checkbox
-                      indeterminate={selectedCount > 0 && selectedCount < entries.length}
-                      checked={entries.length > 0 && selectedCount === entries.length}
-                      onChange={handleSelectAll}
-                    />
-                  </TableCell>
-                  <TableCell>Employee</TableCell>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Clocked</TableCell>
-                  <TableCell>Hours</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {entries.map((entry) => {
-                  const r =
-                    entry.recruiter ||
-                    recruiterMap[entry.recruiter_id] ||
-                    {};
-                  const name =
-                    r.name ||
-                    r.full_name ||
-                    `${(r.first_name || "").trim()} ${(r.last_name || "").trim()}`.trim() ||
-                    entry.recruiter?.name ||
-                    entry.recruiter?.full_name ||
-                    entry.recruiter?.email ||
-                    `#${entry.recruiter_id}`;
-                  const email = r.email || entry.recruiter?.email;
-                  const avatarSrc = r.profile_image_url || r.avatar || undefined;
-                  const avatarAlt = name || email || "Employee";
-                  return (
-                  <TableRow key={entry.id} hover>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={selectedIds.includes(entry.id)}
-                        onChange={handleSelectOne(entry.id)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          openHistoryDetail({
-                            ...entry.recruiter,
-                            id: entry.recruiter_id,
-                          });
-                        }}
-                        sx={{ p: 0, textTransform: "none" }}
-                      >
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Avatar
-                            src={avatarSrc}
-                            alt={avatarAlt}
-                            sx={{ width: 36, height: 36 }}
-                          >
-                            {(name || avatarAlt || "E").charAt(0)}
-                          </Avatar>
-                          <Box textAlign="left">
-                            <Typography fontWeight={600}>
-                              {name}
-                            </Typography>
-                            {email && (
-                              <Typography variant="caption" color="text.secondary">
-                                {email}
-                              </Typography>
-                            )}
-                          </Box>
-                        </Stack>
-                      </Button>
-                    </TableCell>
-                    <TableCell>{entry.date}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        In: {formatClock(entry.clock_in, entry.timezone)}
-                      </Typography>
-                      <Typography variant="body2">
-                        Out: {formatClock(entry.clock_out, entry.timezone)}
-                      </Typography>
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap" mt={0.5}>
-                        {entry.clock_in_ip && (
-                          <Tooltip title={entry.clock_in_device_hint || "Clock-in device"}>
-                            <Chip
-                              label={`In · ${entry.clock_in_ip}`}
-                              color={entry.clock_in_unusual ? "error" : "default"}
-                              size="small"
-                              variant={entry.clock_in_unusual ? "filled" : "outlined"}
-                            />
-                          </Tooltip>
-                        )}
-                        {entry.clock_out_ip && (
-                          <Tooltip title={entry.clock_out_device_hint || "Clock-out device"}>
-                            <Chip
-                              label={`Out · ${entry.clock_out_ip}`}
-                              color={entry.clock_out_unusual ? "error" : "default"}
-                              size="small"
-                              variant={entry.clock_out_unusual ? "filled" : "outlined"}
-                            />
-                          </Tooltip>
-                        )}
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      <Stack spacing={0.5}>
-                        <Typography>{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
-                        {entry.break_schedule_label && (
-                          <Chip
-                            size="small"
-                            variant="outlined"
-                            color="info"
-                            label={`Scheduled ${entry.break_schedule_label}`}
-                          />
-                        )}
-                        {entry.break_plan_max_simultaneous && (
-                          <Chip
-                            size="small"
-                            variant="outlined"
-                            label={`Max ${entry.break_plan_max_simultaneous} on break`}
-                          />
-                        )}
-                        {entry.break_non_compliant ? (
-                          <Chip
-                            size="small"
-                            color="error"
-                            label={`Break missing ${entry.break_missing_minutes}m`}
-                          />
-                        ) : entry.break_taken_minutes ? (
-                          <Chip
-                            size="small"
-                            color="success"
-                            variant="outlined"
-                            label={`Break ${entry.break_taken_minutes}m`}
-                          />
-                        ) : null}
-                        {entry.break_auto_enforced && (
-                          <Tooltip title={entry.break_auto_reason || "Break auto-enforced"}>
+            {selectedCount > 0 && (
+              <Box
+                sx={{
+                  mt: 2,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 1,
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  {selectedCount} entr{selectedCount === 1 ? "y" : "ies"} selected.
+                </Typography>
+                <Stack direction="row" spacing={1}>
+                  <Button size="small" onClick={() => setSelectedIds([])}>
+                    Clear
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => setBulkDialogOpen(true)}
+                  >
+                    Apply template
+                  </Button>
+                </Stack>
+              </Box>
+            )}
+
+            {error && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            <Box sx={{ mt: 2 }}>
+              {loading ? (
+                <Box display="flex" justifyContent="center" py={4}>
+                  <CircularProgress size={28} />
+                </Box>
+              ) : entries.length === 0 ? (
+                <Typography color="text.secondary">No time entries found for this filter.</Typography>
+              ) : (
+                <Table size="small" sx={{ mt: 1 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          indeterminate={selectedCount > 0 && selectedCount < entries.length}
+                          checked={entries.length > 0 && selectedCount === entries.length}
+                          onChange={handleSelectAll}
+                        />
+                      </TableCell>
+                      <TableCell>Employee</TableCell>
+                      <TableCell>Date</TableCell>
+                      <TableCell>Clocked</TableCell>
+                      <TableCell>Hours</TableCell>
+                      <TableCell>Anomalies</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell align="right">Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {entries.map((entry) => {
+                      const r =
+                        entry.recruiter ||
+                        recruiterMap[entry.recruiter_id] ||
+                        {};
+                      const name =
+                        r.name ||
+                        r.full_name ||
+                        `${(r.first_name || "").trim()} ${(r.last_name || "").trim()}`.trim() ||
+                        entry.recruiter?.name ||
+                        entry.recruiter?.full_name ||
+                        entry.recruiter?.email ||
+                        `#${entry.recruiter_id}`;
+                      const email = r.email || entry.recruiter?.email;
+                      const avatarSrc = r.profile_image_url || r.avatar || undefined;
+                      const avatarAlt = name || email || "Employee";
+                      const breakChips = (
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" mt={0.5} useFlexGap>
+                          {entry.break_schedule_label && (
                             <Chip
                               size="small"
-                              color="warning"
-                              label={
-                                entry.break_auto_reason
-                                  ? `Auto break · ${entry.break_auto_reason}`
-                                  : "Auto break enforced"
-                              }
+                              variant="outlined"
+                              color="info"
+                              label={`Scheduled ${entry.break_schedule_label}`}
                             />
-                          </Tooltip>
-                        )}
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={entry.status}
-                        color={statusColor[entry.status] || "default"}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <Button
-                          size="small"
-                          variant="outlined"
-                      disabled={
-                        entry.status !== "completed" ||
-                        actionId === entry.id ||
-                        entry.is_locked
-                      }
-                          onClick={() => handleApprove(entry.id)}
-                        >
-                          Approve
-                        </Button>
-                        {entry.status === "in_progress" && (
-                          <Tooltip title="Force clock-out when the employee forgot to punch out. Logs your name.">
-                            <span>
-                              <Button
+                          )}
+                          {entry.break_plan_max_simultaneous && (
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              label={`Max ${entry.break_plan_max_simultaneous} on break`}
+                            />
+                          )}
+                          {entry.break_non_compliant ? (
+                            <Chip
+                              size="small"
+                              sx={{
+                                bgcolor: "rgba(229,57,53,0.10)",
+                                color: palette.error,
+                                fontWeight: 600,
+                              }}
+                              label={`Break missing ${entry.break_missing_minutes}m`}
+                            />
+                          ) : entry.break_taken_minutes ? (
+                            <Chip
+                              size="small"
+                              sx={{
+                                bgcolor: "rgba(33,161,121,0.12)",
+                                color: palette.success,
+                                fontWeight: 600,
+                              }}
+                              label={`Break ${entry.break_taken_minutes}m`}
+                            />
+                          ) : null}
+                          {entry.break_auto_enforced && (
+                            <Tooltip title={entry.break_auto_reason || "Break auto-enforced"}>
+                              <Chip
                                 size="small"
-                                color="warning"
-                                variant="outlined"
-                                startIcon={<LogoutIcon fontSize="small" />}
-                                disabled={actionId === entry.id || entry.is_locked}
-                                onClick={() => handleForceClockOut(entry.id)}
-                              >
-                                Force out
-                              </Button>
-                            </span>
-                          </Tooltip>
-                        )}
-                        <Button
-                          size="small"
-                          color="error"
-                          disabled={actionId === entry.id || entry.is_locked}
-                          onClick={() => openRejectDialog(entry.id)}
-                        >
-                          Reject
-                        </Button>
-                        <Tooltip title="Delete this entry">
-                          <span>
+                                sx={{
+                                  bgcolor: "rgba(255,176,32,0.14)",
+                                  color: "#B9780C",
+                                  fontWeight: 600,
+                                }}
+                                label={
+                                  entry.break_auto_reason
+                                    ? `Auto break · ${entry.break_auto_reason}`
+                                    : "Auto break enforced"
+                                }
+                              />
+                            </Tooltip>
+                          )}
+                        </Stack>
+                      );
+                      return (
+                        <TableRow key={entry.id} hover>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={selectedIds.includes(entry.id)}
+                              onChange={handleSelectOne(entry.id)}
+                            />
+                          </TableCell>
+                          <TableCell>
                             <Button
                               size="small"
-                              color="error"
-                              variant="text"
-                              startIcon={<DeleteIcon fontSize="small" />}
-                              disabled={actionId === entry.id}
-                              onClick={() => handleDelete(entry.id)}
+                              onClick={() => {
+                                openHistoryDetail({
+                                  ...entry.recruiter,
+                                  id: entry.recruiter_id,
+                                });
+                              }}
+                              sx={{ p: 0, textTransform: "none" }}
                             >
-                              Delete
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Avatar
+                                  src={avatarSrc}
+                                  alt={avatarAlt}
+                                  sx={{ width: 36, height: 36 }}
+                                >
+                                  {(name || avatarAlt || "E").charAt(0)}
+                                </Avatar>
+                                <Box textAlign="left">
+                                  <Typography fontWeight={600}>
+                                    {name}
+                                  </Typography>
+                                  {email && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      {email}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Stack>
                             </Button>
-                          </span>
-                        </Tooltip>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              </TableBody>
-            </Table>
-          )}
-        </Box>
-      </Paper>
+                          </TableCell>
+                          <TableCell>{entry.date}</TableCell>
+                          <TableCell>
+                            <Stack spacing={0.5}>
+                              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                <Chip size="small" variant="outlined" label="In" />
+                                <Typography variant="body2">{formatClock(entry.clock_in, entry.timezone)}</Typography>
+                                {entry.clock_in_ip && (
+                                  <Tooltip title={entry.clock_in_device_hint || "Clock-in device"}>
+                                    <Chip
+                                      label={entry.clock_in_ip}
+                                      color={entry.clock_in_unusual ? "error" : "default"}
+                                      size="small"
+                                      variant={entry.clock_in_unusual ? "filled" : "outlined"}
+                                    />
+                                  </Tooltip>
+                                )}
+                              </Stack>
+                              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                <Chip size="small" variant="outlined" label="Out" />
+                                <Typography variant="body2">{formatClock(entry.clock_out, entry.timezone)}</Typography>
+                                {entry.clock_out_ip && (
+                                  <Tooltip title={entry.clock_out_device_hint || "Clock-out device"}>
+                                    <Chip
+                                      label={entry.clock_out_ip}
+                                      color={entry.clock_out_unusual ? "error" : "default"}
+                                      size="small"
+                                      variant={entry.clock_out_unusual ? "filled" : "outlined"}
+                                    />
+                                  </Tooltip>
+                                )}
+                              </Stack>
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Stack spacing={0.5}>
+                              <Typography>{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
+                              {breakChips}
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                              {anomalyChips(entry)}
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Stack spacing={0.5}>
+                              <Chip
+                                label={entry.status}
+                                size="small"
+                                sx={{
+                                  bgcolor:
+                                    entry.status === "in_progress"
+                                      ? "rgba(255,122,60,0.12)"
+                                      : entry.status === "approved"
+                                      ? "rgba(33,161,121,0.12)"
+                                      : entry.status === "rejected"
+                                      ? "rgba(229,57,53,0.12)"
+                                      : palette.neutralBg,
+                                  color:
+                                    entry.status === "in_progress"
+                                      ? palette.accent
+                                      : entry.status === "approved"
+                                      ? palette.success
+                                      : entry.status === "rejected"
+                                      ? palette.error
+                                      : palette.neutralText,
+                                  fontWeight: 600,
+                                }}
+                              />
+                            </Stack>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={
+                                  entry.status !== "completed" ||
+                                  actionId === entry.id ||
+                                  entry.is_locked
+                                }
+                                onClick={() => handleApprove(entry.id)}
+                                sx={{
+                                  borderColor: palette.accent,
+                                  color: palette.accent,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Approve
+                              </Button>
+                              {entry.status === "in_progress" && (
+                                <Tooltip title="Force clock-out when the employee forgot to punch out. Logs your name.">
+                                  <span>
+                                    <Button
+                                      size="small"
+                                      sx={{
+                                        borderColor: palette.warning,
+                                        color: palette.warning,
+                                        fontWeight: 600,
+                                      }}
+                                      variant="outlined"
+                                      startIcon={<LogoutIcon fontSize="small" />}
+                                      disabled={actionId === entry.id || entry.is_locked}
+                                      onClick={() => handleForceClockOut(entry.id)}
+                                    >
+                                      Force out
+                                    </Button>
+                                  </span>
+                                </Tooltip>
+                              )}
+                              <Button
+                                size="small"
+                                color="error"
+                                disabled={actionId === entry.id || entry.is_locked}
+                                onClick={() => openRejectDialog(entry.id)}
+                              >
+                                Reject
+                              </Button>
+                              <Tooltip title="Delete this entry">
+                                <span>
+                                  <Button
+                                    size="small"
+                                    color="error"
+                                    variant="text"
+                                    startIcon={<DeleteIcon fontSize="small" />}
+                                    disabled={actionId === entry.id}
+                                    onClick={() => handleDelete(entry.id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                </span>
+                              </Tooltip>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
 
       <Dialog
         open={rejectState.open}
@@ -1118,11 +1482,38 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                         color={statusColor[active.status] || "default"}
                         label={active.status}
                       />
-                      {active.break_in_progress ? (
-                        <Chip size="small" color="warning" label="On break" />
-                      ) : (
-                        <Chip size="small" variant="outlined" label="On shift" />
-                      )}
+                      {(() => {
+                        if (active.break_in_progress) {
+                          const elapsed = Number.isFinite(active.break_elapsed_minutes)
+                            ? `${active.break_elapsed_minutes}m`
+                            : null;
+                          const required = Number.isFinite(active.break_required_minutes)
+                            ? `${active.break_required_minutes}m`
+                            : null;
+                          const overage =
+                            Number.isFinite(active.break_elapsed_minutes) &&
+                            Number.isFinite(active.break_required_minutes) &&
+                            active.break_elapsed_minutes > active.break_required_minutes;
+
+                          const label = overage
+                            ? `On break · ${active.break_elapsed_minutes}m (over)`
+                            : required && elapsed
+                            ? `On break · ${elapsed} / ${required}`
+                            : elapsed
+                            ? `On break · ${elapsed}`
+                            : "On break";
+
+                          return (
+                            <Chip
+                              size="small"
+                              color={overage ? "error" : "warning"}
+                              label={label}
+                              variant={overage ? "filled" : "outlined"}
+                            />
+                          );
+                        }
+                        return <Chip size="small" variant="outlined" label="On shift" />;
+                      })()}
                       {active.break_slot?.start && active.break_slot?.end && (
                         <Chip
                           size="small"
@@ -1224,6 +1615,32 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
               variant="outlined"
               color={detailSummary?.missed_breaks ? "error" : "default"}
             />
+            {detailStats.breakCompliance !== null && (
+              <Chip
+                label={`Break compliance: ${detailStats.breakCompliance}%`}
+                color={detailStats.breakCompliance < 90 ? "warning" : "success"}
+                variant="outlined"
+              />
+            )}
+            <Chip
+              label={`Anomalies: ${detailStats.anomalies}`}
+              color={detailStats.anomalies ? "error" : "default"}
+              variant={detailStats.anomalies ? "filled" : "outlined"}
+            />
+            {detailStats.unusualIPs > 0 && (
+              <Chip
+                label={`Unusual IPs: ${detailStats.unusualIPs}`}
+                color="warning"
+                variant="outlined"
+              />
+            )}
+            {detailStats.maxBreakMissing > 0 && (
+              <Chip
+                label={`Max break missing: ${detailStats.maxBreakMissing}m`}
+                color="error"
+                variant="outlined"
+              />
+            )}
           </Stack>
 
           {detailError && (
@@ -1248,6 +1665,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                     <TableCell>Date</TableCell>
                     <TableCell>Clocked</TableCell>
                     <TableCell>Hours</TableCell>
+                    <TableCell>Deviation</TableCell>
                     <TableCell>Breaks</TableCell>
                     <TableCell>Status</TableCell>
                   </TableRow>
@@ -1269,6 +1687,26 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                       </TableCell>
                       <TableCell>{entry.hours_worked_rounded ?? entry.hours_worked}h</TableCell>
                       <TableCell>
+                        {entry.shift_deviation_minutes !== null && entry.shift_deviation_minutes !== undefined ? (
+                          <Chip
+                            size="small"
+                            label={`${entry.shift_deviation_minutes}m`}
+                            color={
+                              entry.shift_deviation_minutes > 0
+                                ? "success"
+                                : entry.shift_deviation_minutes < 0
+                                ? "warning"
+                                : "default"
+                            }
+                            variant="outlined"
+                          />
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            —
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Chip
                           size="small"
                           label={`${entry.break_minutes || 0}m`}
@@ -1288,6 +1726,9 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                             By {entry.approved_by_name}
                           </Typography>
                         )}
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
+                          {anomalyChips(entry)}
+                        </Stack>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1299,6 +1740,9 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         <DialogActions>
           <Button onClick={downloadDetailCsv} disabled={!detailEntries.length}>
             Download CSV
+          </Button>
+          <Button onClick={downloadDetailPdf} disabled={!detailEntries.length}>
+            Download PDF
           </Button>
           <Button onClick={() => setDetailOpen(false)}>Close</Button>
         </DialogActions>

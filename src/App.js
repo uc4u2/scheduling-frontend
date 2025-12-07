@@ -12,6 +12,11 @@ import {
   goldTheme, skyTheme, lavenderTheme, mintTheme, coralTheme,
   crimsonTheme, charcoalTheme, coffeeTheme, sunflowerTheme, eggplantTheme,
   emeraldNightTheme,
+  slateDuskTheme,
+  tealTwilightTheme,
+  cinderBlueTheme,
+  amberSmokeTheme,
+  plumMistTheme,
 } from "./theme";
 
 import { getTenantHostMode } from "./utils/tenant";
@@ -155,6 +160,11 @@ const themeMap = {
   coral: coralTheme, crimson: crimsonTheme, charcoal: charcoalTheme,
   coffee: coffeeTheme, sunflower: sunflowerTheme, eggplant: eggplantTheme,
   emeraldNight: emeraldNightTheme,
+  slateDusk: slateDuskTheme,
+  tealTwilight: tealTwilightTheme,
+  cinderBlue: cinderBlueTheme,
+  amberSmoke: amberSmokeTheme,
+  plumMist: plumMistTheme,
 };
 
 const MARKETING_PATHS = [

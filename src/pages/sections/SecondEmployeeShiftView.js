@@ -36,11 +36,15 @@ import {
   TableCell,
   TableRow,
   useMediaQuery,
+  LinearProgress,
 } from "@mui/material";
 import { format, parseISO, differenceInMinutes, addDays } from "date-fns";
 import { useTheme } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
+import LocalCafeIcon from "@mui/icons-material/LocalCafe";
+import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -118,6 +122,8 @@ const SecondEmployeeShiftView = () => {
     const end = format(new Date(), "yyyy-MM-dd");
     return { startDate: end, endDate: end, status: "all" };
   });
+  const [lastUpdated, setLastUpdated] = useState(DateTime.now());
+  const targetWeeklyHours = timeSummary?.policy?.target_weekly_hours || 40;
 
  // ───────────────────────────────────────────────────────
 //  Fetch helpers
@@ -272,6 +278,11 @@ useEffect(() => {
   loadTimeHistory();
 }, [loadTimeHistory, historyFilters.startDate, historyFilters.endDate, historyFilters.status]);
 
+useEffect(() => {
+  const id = setInterval(() => setLastUpdated(DateTime.now()), 30000);
+  return () => clearInterval(id);
+}, []);
+
 // ───────────────────────────────────────────────────────
 //  Leave-request logic
 
@@ -409,25 +420,73 @@ useEffect(() => {
       : `⏱️ ${h}h ${m}m`;
   };
 
-const todayShift = useMemo(() => {
-  if (!shifts.length) return null;
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-  const match = shifts.find((shift) => {
-    try {
-      const shiftDate = format(parseISO(shift.clock_in), "yyyy-MM-dd");
-      const shiftStatus = (shift.status || "").toLowerCase();
-      return (
-        shiftDate === todayStr &&
-        (shiftStatus === "in_progress" ||
-          shiftStatus === "assigned" ||
-          shiftStatus === "pending")
-      );
-    } catch {
-      return false;
+  const [overrideShiftId, setOverrideShiftId] = useState(null);
+
+  const todayShift = useMemo(() => {
+    if (!shifts.length) return null;
+    const now = DateTime.now().setZone(viewerTimezone);
+
+    const mapped = shifts
+      .map((shift) => {
+        try {
+          const start = shift.clock_in ? DateTime.fromISO(shift.clock_in, { setZone: true }) : null;
+          const end = shift.clock_out ? DateTime.fromISO(shift.clock_out, { setZone: true }) : null;
+          return {
+            ...shift,
+            _start: start,
+            _end: end,
+            _status: (shift.status || "").toLowerCase(),
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    // If user manually picked a shift, honor it if found
+    if (overrideShiftId) {
+      const manual = mapped.find((s) => s.id === overrideShiftId);
+      if (manual) return manual;
     }
-  });
-  return match || null;
-}, [shifts]);
+
+    const activeStatuses = ["in_progress", "assigned", "pending"];
+    const active = mapped
+      .filter((s) => activeStatuses.includes(s._status))
+      .map((s) => {
+        const start = s._start;
+        const end = s._end || (start ? start.plus({ hours: 12 }) : null);
+        const spansNow = start && end && now >= start && now <= end;
+        return { ...s, _spansNow: spansNow, _start: start };
+      });
+
+    // Prefer a shift that spans "now"
+    const spanning = active.filter((s) => s._spansNow);
+    if (spanning.length) {
+      return spanning.sort((a, b) => (b._start?.toMillis() || 0) - (a._start?.toMillis() || 0))[0];
+    }
+
+    // Otherwise, pick the latest in-progress shift
+    const inProgress = active.filter((s) => s._status === "in_progress");
+    if (inProgress.length) {
+      return inProgress.sort((a, b) => (b._start?.toMillis() || 0) - (a._start?.toMillis() || 0))[0];
+    }
+
+    // Finally, choose the nearest upcoming shift (today) if any
+    const startOfDay = now.startOf("day");
+    const endOfDay = now.endOf("day");
+    const todayUpcoming = active.filter(
+      (s) => s._start && s._start >= startOfDay && s._start <= endOfDay
+    );
+    if (todayUpcoming.length) {
+      return todayUpcoming.sort((a, b) => {
+        const aStart = a._start ? a._start.toMillis() : 0;
+        const bStart = b._start ? b._start.toMillis() : 0;
+        return aStart - bStart;
+      })[0];
+    }
+
+    return null;
+  }, [shifts, viewerTimezone, overrideShiftId]);
 
 useEffect(() => {
   setTodayCardCollapsed(false);
@@ -435,24 +494,36 @@ useEffect(() => {
   const formatHoursValue = useCallback((value) => `${Number(value || 0).toFixed(1)}h`, []);
   const summaryMetrics = useMemo(() => {
     if (!timeSummary) return [];
+    const hoursWorked = Number(timeSummary?.hours?.worked || 0);
+    const overtimeHours = Number(timeSummary?.hours?.overtime || 0);
+    const remainingHours = Math.max(targetWeeklyHours - hoursWorked, 0);
+    const hoursProgress = targetWeeklyHours ? Math.min(100, (hoursWorked / targetWeeklyHours) * 100) : 0;
     return [
       {
         label: "Hours this week",
-        value: formatHoursValue(timeSummary?.hours?.worked),
-        helper: `${formatHoursValue(timeSummary?.hours?.overtime)} overtime`,
+        value: formatHoursValue(hoursWorked),
+        helper: `${formatHoursValue(overtimeHours)} overtime`,
+        icon: <AccessTimeFilledIcon fontSize="small" />,
+        progress: hoursProgress,
+        progressHelper:
+          overtimeHours > 0
+            ? `${formatHoursValue(overtimeHours)} overtime`
+            : `${formatHoursValue(remainingHours)} remaining`,
       },
       {
         label: "Breaks",
         value: `${timeSummary?.breaks?.taken || 0}`,
         helper: `${timeSummary?.breaks?.missed || 0} missed`,
+        icon: <LocalCafeIcon fontSize="small" />,
       },
       {
         label: "Shifts tracked",
         value: `${timeSummary?.shifts?.count || 0}`,
         helper: `${timeSummary?.breaks?.minutes || 0} break mins`,
+        icon: <EventAvailableIcon fontSize="small" />,
       },
     ];
-  }, [timeSummary, formatHoursValue]);
+  }, [timeSummary, formatHoursValue, targetWeeklyHours]);
 
   const swapStatusChip = (shift) => {
   if (!shift.swap_status) return null;
@@ -832,6 +903,20 @@ useEffect(() => {
     shiftTimezone,
   ]);
 
+const headerStatusLabel = useMemo(() => {
+  if (isInProgress) return "On shift · in_progress";
+  if (todayShift) return `On shift · ${todayShift.status || "scheduled"}`;
+  return "Off shift";
+}, [isInProgress, todayShift]);
+const headerChipColor = isInProgress ? "primary" : todayShift ? "default" : "default";
+const lastUpdatedLabel = useMemo(() => {
+  try {
+    return lastUpdated.setZone(shiftTimezone || viewerTimezone).toFormat("hh:mm a");
+  } catch {
+    return null;
+  }
+}, [lastUpdated, shiftTimezone, viewerTimezone]);
+
 const breakTimelineMeta = useMemo(() => {
   if (!breakStartDt) return null;
   try {
@@ -893,6 +978,41 @@ return (
     >
       <Stack
         direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between"
+      >
+        <Box>
+          <Typography variant="h6" fontWeight={700}>
+            My Time & Clock
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Track your current shift, live clock, and break status.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Chip size="small" color={headerChipColor} label={headerStatusLabel} />
+          {lastUpdatedLabel && (
+            <Typography variant="caption" color="text.secondary">
+              Last updated {lastUpdatedLabel} · auto-refreshing
+            </Typography>
+          )}
+        </Stack>
+      </Stack>
+    </Paper>
+
+    <Paper
+      elevation={0}
+      sx={{
+        mb: 2,
+        p: 3,
+        borderRadius: 3,
+        border: (theme) => `1px solid ${theme.palette.divider}`,
+        background: (theme) => theme.palette.background.paper,
+      }}
+    >
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
         spacing={1}
         alignItems={{ xs: "flex-start", sm: "center" }}
         justifyContent="space-between"
@@ -915,15 +1035,40 @@ return (
                   boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
                 })}
               >
-                <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.2 }}>
-                  {metric.value}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {metric.label}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {metric.helper}
-                </Typography>
+                <Stack direction="row" spacing={1.25} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 2,
+                      bgcolor: "rgba(255,122,60,0.12)",
+                      color: "#FF7A3C",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {metric.icon || <AccessTimeFilledIcon fontSize="small" />}
+                  </Box>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700} sx={{ lineHeight: 1.2 }}>
+                      {metric.value}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {metric.label}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {metric.progressHelper || metric.helper}
+                    </Typography>
+                  </Box>
+                </Stack>
+                {metric.progress !== undefined && (
+                  <LinearProgress
+                    variant="determinate"
+                    value={metric.progress}
+                    sx={{ mt: 1.5, height: 6, borderRadius: 999 }}
+                  />
+                )}
               </Box>
             </Grid>
           ))}
@@ -1071,7 +1216,17 @@ return (
             </TableHead>
             <TableBody>
               {historyEntries.map((entry) => (
-                <TableRow key={entry.id}>
+                <TableRow
+                  key={entry.id}
+                  hover
+                  sx={{ cursor: entry.status === "in_progress" || entry.status === "assigned" ? "pointer" : "default" }}
+                  onClick={() => {
+                    if (entry.id && (entry.status === "in_progress" || entry.status === "assigned" || entry.status === "pending")) {
+                      setOverrideShiftId(entry.id);
+                      setTodayCardCollapsed(false);
+                    }
+                  }}
+                >
                   <TableCell>
                     <Typography fontWeight={600}>{entry.date}</Typography>
                     <Typography variant="caption" color="text.secondary">

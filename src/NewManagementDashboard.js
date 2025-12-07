@@ -83,6 +83,7 @@ import SecondMasterCalendar from "./pages/sections/SecondMasterCalendar";
 
 import Team from "./pages/sections/Team";
 import TimeEntriesPanel from "./pages/sections/TimeEntriesPanel";
+import FraudAnomaliesPanel from "./pages/sections/FraudAnomaliesPanel";
 import LeaveRequests from "./pages/sections/LeaveRequests";
 import Meetings from "./pages/sections/Meetings";
 import ROE from "./pages/sections/ROE";
@@ -162,6 +163,7 @@ const menuConfig = [
       { labelKey: "manager.menu.shiftManagement", key: "team", icon: <People /> },
       { label: "Shift Monitoring", key: "shift-monitoring", icon: <History /> },
       { labelKey: "manager.menu.timeTracking", key: "time-tracking", icon: <History /> },
+      { label: "Fraud / Anomalies", key: "time-tracking-fraud", icon: <History /> },
       { labelKey: "manager.menu.leaves", key: "leaves", icon: <Assignment /> },
       { labelKey: "manager.menu.swapApprovals", key: "swap-approvals", icon: <Assignment /> },
     ],
@@ -1473,8 +1475,26 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
           <ManagementFrame
             title="Time Tracking"
             subtitle="Approve employee punches and keep payroll-ready records."
+            fullWidth
+            contentSx={{
+              p: { xs: 1.5, md: 2.5 },
+            }}
           >
             <TimeEntriesPanel />
+          </ManagementFrame>
+        );
+
+      case "time-tracking-fraud":
+        return (
+          <ManagementFrame
+            title="Fraud / Anomalies"
+            subtitle="Detect new devices, new locations, multi-IP, and off-trusted-network clock-ins."
+            fullWidth
+            contentSx={{
+              p: { xs: 1.5, md: 2.5 },
+            }}
+          >
+            <FraudAnomaliesPanel />
           </ManagementFrame>
         );
 

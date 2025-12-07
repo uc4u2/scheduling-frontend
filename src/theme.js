@@ -223,6 +223,56 @@ export const darkTheme = createTheme({
     background: { default: "#121212", paper: "#1e1e1e" },
     text: { primary: "#ffffff", secondary: "#aaaaaa" },
   },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1e1e1e",
+          color: "#ffffff",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(255,255,255,0.07)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1e1e1e",
+          color: "#ffffff",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(255,255,255,0.07)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1e1e1e",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(255,255,255,0.18)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(255,255,255,0.35)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#90caf9",
+            boxShadow: "0 0 0 1px rgba(144,202,249,0.35)",
+          },
+        },
+        input: { color: "#ffffff" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: {
+          backgroundColor: "#1e1e1e",
+          boxShadow: "none",
+        },
+      },
+    },
+  },
 });
 
 export const navyTheme = createTheme({
@@ -233,6 +283,56 @@ export const navyTheme = createTheme({
     secondary: { main: "#64ffda" },
     background: { default: "#0a192f", paper: "#112240" },
     text: { primary: "#ccd6f6", secondary: "#8892b0" },
+  },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#112240",
+          color: "#ccd6f6",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+          border: "1px solid rgba(100,255,218,0.15)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#112240",
+          color: "#ccd6f6",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+          border: "1px solid rgba(100,255,218,0.15)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#0a192f",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(204,214,246,0.25)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(100,255,218,0.45)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#64ffda",
+            boxShadow: "0 0 0 1px rgba(100,255,218,0.35)",
+          },
+        },
+        input: { color: "#ccd6f6" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: {
+          backgroundColor: "#0a192f",
+          boxShadow: "none",
+        },
+      },
+    },
   },
 });
 
@@ -301,6 +401,56 @@ export const emeraldNightTheme = createTheme({
     secondary: { main: "#1de9b6" },
     background: { default: "#071312", paper: "#0d1c1a" },
     text: { primary: "#e6fff7", secondary: "#8fdace" },
+  },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#0d1c1a",
+          color: "#e6fff7",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(230,255,247,0.07)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#0d1c1a",
+          color: "#e6fff7",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(230,255,247,0.07)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#0d1c1a",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(230,255,247,0.18)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(230,255,247,0.35)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#1de9b6",
+            boxShadow: "0 0 0 1px rgba(29,233,182,0.35)",
+          },
+        },
+        input: { color: "#e6fff7" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: {
+          backgroundColor: "#0d1c1a",
+          boxShadow: "none",
+        },
+      },
+    },
   },
 });
 export const goldTheme = createTheme({
@@ -378,6 +528,56 @@ export const charcoalTheme = createTheme({
     background: { default: "#181818", paper: "#222" },
     text: { primary: "#F5F5F5", secondary: "#BDBDBD" },
   },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#222",
+          color: "#F5F5F5",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+          border: "1px solid rgba(245,245,245,0.08)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#222",
+          color: "#F5F5F5",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+          border: "1px solid rgba(245,245,245,0.08)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#181818",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(245,245,245,0.18)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(245,245,245,0.35)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#616161",
+            boxShadow: "0 0 0 1px rgba(97,97,97,0.35)",
+          },
+        },
+        input: { color: "#F5F5F5" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: {
+          backgroundColor: "#181818",
+          boxShadow: "none",
+        },
+      },
+    },
+  },
 });
 
 export const coffeeTheme = createTheme({
@@ -411,11 +611,348 @@ export const eggplantTheme = createTheme({
     background: { default: "#2D1538", paper: "#3D2460" },
     text: { primary: "#F3E5F5", secondary: "#B388FF" },
   },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#3D2460",
+          color: "#F3E5F5",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+          border: "1px solid rgba(243,229,245,0.12)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#3D2460",
+          color: "#F3E5F5",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.45)",
+          border: "1px solid rgba(243,229,245,0.12)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#2D1538",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(243,229,245,0.25)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(155,89,182,0.45)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#9B59B6",
+            boxShadow: "0 0 0 1px rgba(155,89,182,0.35)",
+          },
+        },
+        input: { color: "#F3E5F5" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: {
+          backgroundColor: "#2D1538",
+          boxShadow: "none",
+        },
+      },
+    },
+  },
 });
 
+// -------- Semi-dark palettes --------
+export const slateDuskTheme = createTheme({
+  ...commonSettings,
+  palette: {
+    mode: "dark",
+    primary: { main: "#5C6B7A" },
+    secondary: { main: "#A7B6C7" },
+    background: { default: "#161C22", paper: "#1F262E" },
+    text: { primary: "#E4E9EF", secondary: "#9FA9B5" },
+  },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1F262E",
+          color: "#E4E9EF",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(228,233,239,0.08)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1F262E",
+          color: "#E4E9EF",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(228,233,239,0.08)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#161C22",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(228,233,239,0.18)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(228,233,239,0.35)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#A7B6C7",
+            boxShadow: "0 0 0 1px rgba(167,182,199,0.35)",
+          },
+        },
+        input: { color: "#E4E9EF" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: { backgroundColor: "#161C22", boxShadow: "none" },
+      },
+    },
+  },
+});
 
+export const tealTwilightTheme = createTheme({
+  ...commonSettings,
+  palette: {
+    mode: "dark",
+    primary: { main: "#2A9D8F" },
+    secondary: { main: "#56C2B7" },
+    background: { default: "#10201F", paper: "#152A29" },
+    text: { primary: "#E6F4F2", secondary: "#99C8C2" },
+  },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#152A29",
+          color: "#E6F4F2",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(230,244,242,0.08)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#152A29",
+          color: "#E6F4F2",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(230,244,242,0.08)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#10201F",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(230,244,242,0.18)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(86,194,183,0.45)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#56C2B7",
+            boxShadow: "0 0 0 1px rgba(86,194,183,0.35)",
+          },
+        },
+        input: { color: "#E6F4F2" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: { backgroundColor: "#10201F", boxShadow: "none" },
+      },
+    },
+  },
+});
 
+export const cinderBlueTheme = createTheme({
+  ...commonSettings,
+  palette: {
+    mode: "dark",
+    primary: { main: "#4A6FA5" },
+    secondary: { main: "#91B4F2" },
+    background: { default: "#131926", paper: "#1A2131" },
+    text: { primary: "#E7ECF8", secondary: "#A8B5D1" },
+  },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1A2131",
+          color: "#E7ECF8",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.40)",
+          border: "1px solid rgba(231,236,248,0.10)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1A2131",
+          color: "#E7ECF8",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.40)",
+          border: "1px solid rgba(231,236,248,0.10)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#131926",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(231,236,248,0.18)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(145,180,242,0.45)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#91B4F2",
+            boxShadow: "0 0 0 1px rgba(145,180,242,0.35)",
+          },
+        },
+        input: { color: "#E7ECF8" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: { backgroundColor: "#131926", boxShadow: "none" },
+      },
+    },
+  },
+});
 
+export const amberSmokeTheme = createTheme({
+  ...commonSettings,
+  palette: {
+    mode: "dark",
+    primary: { main: "#D48C2E" },
+    secondary: { main: "#F2BD6D" },
+    background: { default: "#1C1812", paper: "#231F18" },
+    text: { primary: "#F6E9D8", secondary: "#C2AE8A" },
+  },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#231F18",
+          color: "#F6E9D8",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.40)",
+          border: "1px solid rgba(246,233,216,0.10)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#231F18",
+          color: "#F6E9D8",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.40)",
+          border: "1px solid rgba(246,233,216,0.10)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1C1812",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(246,233,216,0.18)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(212,140,46,0.45)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#D48C2E",
+            boxShadow: "0 0 0 1px rgba(212,140,46,0.35)",
+          },
+        },
+        input: { color: "#F6E9D8" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: { backgroundColor: "#1C1812", boxShadow: "none" },
+      },
+    },
+  },
+});
+
+export const plumMistTheme = createTheme({
+  ...commonSettings,
+  palette: {
+    mode: "dark",
+    primary: { main: "#9B6BB3" },
+    secondary: { main: "#C3A2DA" },
+    background: { default: "#1A1320", paper: "#21162B" },
+    text: { primary: "#F1E6F7", secondary: "#BDA6CC" },
+  },
+  components: {
+    ...commonSettings.components,
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#21162B",
+          color: "#F1E6F7",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.40)",
+          border: "1px solid rgba(241,230,247,0.10)",
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#21162B",
+          color: "#F1E6F7",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.40)",
+          border: "1px solid rgba(241,230,247,0.10)",
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1A1320",
+          boxShadow: "none",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(241,230,247,0.18)",
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(155,107,179,0.45)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#9B6BB3",
+            boxShadow: "0 0 0 1px rgba(155,107,179,0.35)",
+          },
+        },
+        input: { color: "#F1E6F7" },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        outlined: { backgroundColor: "#1A1320", boxShadow: "none" },
+      },
+    },
+  },
+});
 
 
 

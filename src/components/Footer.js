@@ -108,6 +108,11 @@ const themeNames = [
   "coffee",
   "sunflower",
   "eggplant",
+  "slateDusk",
+  "tealTwilight",
+  "cinderBlue",
+  "amberSmoke",
+  "plumMist",
 ];
 
 const themeLabels = {
@@ -130,6 +135,11 @@ const themeLabels = {
   coffee: "Coffee",
   sunflower: "Sunflower",
   eggplant: "Eggplant",
+  slateDusk: "Slate Dusk",
+  tealTwilight: "Teal Twilight",
+  cinderBlue: "Cinder Blue",
+  amberSmoke: "Amber Smoke",
+  plumMist: "Plum Mist",
 };
 
 const Footer = () => {

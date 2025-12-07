@@ -70,6 +70,27 @@ const COLORS = [
   "#90A4AE", "#F06292"
 ];
 const getColorForRecruiter = (recruiterId) => COLORS[Math.abs(parseInt(recruiterId, 10) || 0) % COLORS.length];
+const getReadableTextColor = (hex) => {
+  if (!hex || typeof hex !== "string") return "#111";
+  const h = hex.replace("#", "");
+  const bigint = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
+  if (Number.isNaN(bigint)) return "#111";
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  // Perceived luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#111" : "#fff";
+};
+const hexToRgba = (hex, alpha = 0.15) => {
+  if (!hex || typeof hex !== "string") return `rgba(0,0,0,${alpha})`;
+  const h = hex.replace("#", "");
+  const bigint = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+};
 
 // ------------------------------------------------------------------------------------
 // Constants & utils
@@ -824,14 +845,15 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         const color = getColorForRecruiter(s.recruiter_id);
         const isOnLeave = s.on_leave === true;
         const rec = recruiters.find((r) => r.id === s.recruiter_id);
+        const bgTint = hexToRgba(color, 0.14);
         return {
           id: String(s.id),
           title: `${s.status || "assigned"}`,
           start: s.clock_in_display || s.clock_in,
           end: s.clock_out_display || s.clock_out,
-          backgroundColor: isOnLeave ? "#f0f0f0" : (s.status === "accepted" ? "#e6f4ea" : "#e8f0fe"),
+          backgroundColor: isOnLeave ? "#f0f0f0" : bgTint,
           borderColor: isOnLeave ? "#ccc" : color,
-          textColor: isOnLeave ? "#999" : "#111",
+          textColor: isOnLeave ? "#666" : "#111",
           editable: !isOnLeave,
           classNames: [isOnLeave ? "shift-leave" : "shift-event"],
           extendedProps: {
@@ -919,6 +941,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     if (info.event.start) {
       setSelectedDate(format(info.event.start, "yyyy-MM-dd"));
     }
+  };
+  const handleMoreLinkClick = (info) => {
+    // When "+N more" is clicked, focus the day rail below
+    if (info?.date) {
+      setSelectedDate(format(info.date, "yyyy-MM-dd"));
+    }
+    return "none"; // disable FullCalendar default popover
   };
 
   const handleEventDrop = (dropInfo) => {
@@ -1663,6 +1692,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       viewType.startsWith("timeGridDay") ||
       viewType.startsWith("timeGridWeek") ||
       viewType === "dayGridMonth";
+    const startTime = arg.timeText || "";
+    const endTime = arg.event.end
+      ? format(arg.event.end, timeFmt12h ? "hh:mmaaa" : "HH:mm")
+      : "";
 
     return (
       <div
@@ -1670,6 +1703,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           padding: "4px 6px 6px",
           borderLeft: `4px solid ${accent}`,
           lineHeight: 1.2,
+          background: hexToRgba(accent, 0.12),
+          borderRadius: 10,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
@@ -1737,6 +1772,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             </span>
           )}
         </div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: "#111", marginBottom: 2 }}>
+          {startTime}
+          {endTime ? ` – ${endTime}` : ""}
+        </div>
         {xp.location ? (
           <div style={{ fontSize: 11, opacity: 0.9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {xp.location}
@@ -1754,6 +1793,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const loc = xp.location ? `\nLocation: ${xp.location}` : "";
     const note = xp.note ? `\nNote: ${xp.note}` : "";
     info.el.setAttribute("title", `${emp}\n${start}–${end}${loc}${note}`);
+    const accent = xp._empColor || "#1976d2";
+    info.el.style.borderRadius = "12px";
+    info.el.style.boxShadow = "0 4px 10px rgba(15,23,42,0.12)";
+    info.el.style.borderLeft = `4px solid ${accent}`;
+    info.el.style.background = hexToRgba(accent, 0.16);
   };
 
   // shared props for Week/Day calendars
@@ -1772,6 +1816,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     slotLabelInterval: "01:00",
     slotMinTime: workHoursOnly ? "08:00:00" : "00:00:00",
     slotMaxTime: workHoursOnly ? "20:00:00" : "24:00:00",
+    businessHours: [
+      {
+        daysOfWeek: showWeekends ? [0,1,2,3,4,5,6] : [1,2,3,4,5],
+        startTime: "08:00",
+        endTime: "18:00",
+      },
+    ],
     eventTimeFormat,
     slotLabelFormat,
     eventContent: renderEventContent,
@@ -1803,6 +1854,20 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           ".fc .fc-timegrid-event": {
             borderRadius: 8,
             boxShadow: "0 1px 0 rgba(0,0,0,0.08)",
+          },
+          ".fc .fc-timegrid-col.fc-day-today": {
+            background: "linear-gradient(180deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.01) 100%)",
+          },
+          ".fc .fc-timegrid-now-indicator-line": {
+            borderColor: "#e53935",
+            borderWidth: "2px",
+          },
+          ".fc .fc-timegrid-now-indicator-arrow": {
+            borderColor: "transparent transparent #e53935 transparent",
+            borderWidth: "0 6px 8px 6px",
+          },
+          ".fc .fc-timegrid-slot-lane:nth-of-type(odd)": {
+            backgroundColor: "rgba(0,0,0,0.015)",
           },
           ".fc .fc-timegrid-event .fc-event-time": {
             fontWeight: 700,
@@ -2139,13 +2204,29 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
               initialView="dayGridMonth"
               height="auto"
               dayMaxEvents={3}
+              moreLinkClick={handleMoreLinkClick}
+              moreLinkText={(n) => `+${n} more`}
               events={monthEvents}
               eventContent={(arg) => {
                 const xp = arg.event.extendedProps || {};
                 const name = xp.recruiter_name || arg.event.title;
                 const avatar = xp.profile_image_url;
+                const color = getColorForRecruiter(xp.recruiter_id || arg.event.id);
+                const bg = hexToRgba(color, 0.12);
+                const textColor = getReadableTextColor(color);
                 return (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 4px", color: "#111" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "2px 4px",
+                      color: textColor,
+                      borderLeft: `4px solid ${color}`,
+                      borderRadius: 6,
+                      background: bg,
+                    }}
+                  >
                     <span
                       style={{
                         width: 20,
@@ -2160,12 +2241,12 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                         justifyContent: "center",
                         fontSize: 10,
                         fontWeight: 700,
-                        color: "#444",
+                        color: textColor,
                       }}
                     >
                       {!avatar ? (name || "E").charAt(0) : ""}
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: textColor }}>
                       {name}
                     </span>
                   </div>
@@ -2401,6 +2482,29 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
               initialView={innerCalView}
             />
           </Paper>
+
+          {/* Legend for visible employees (Week/Day views) */}
+          {viewMode !== "month" && (
+            <Stack direction="row" spacing={1} sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
+              {recruiters
+                .filter(
+                  (r) =>
+                    selectedRecruiters.length === 0 ||
+                    selectedRecruiters.includes(r.id)
+                )
+                .map((r) => (
+                  <Chip
+                    key={`legend-week-${r.id}`}
+                    label={r.name}
+                    sx={{
+                      bgcolor: getColorForRecruiter(r.id),
+                      border: "1px solid rgba(0,0,0,0.2)",
+                      color: "#111",
+                    }}
+                  />
+                ))}
+            </Stack>
+          )}
 
           {/* Floating panel for pending update */}
           {pendingEventUpdate && (
