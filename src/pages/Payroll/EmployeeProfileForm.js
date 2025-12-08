@@ -15,7 +15,15 @@ import {
   Tooltip,
   FormControlLabel,
   Switch,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Link,
+  Chip,
+  IconButton,
 } from "@mui/material";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { api } from "../../utils/api";
 import { getAuthedCompanyId } from "../../utils/authedCompany";
 import UploadIcon from "@mui/icons-material/Upload";
@@ -106,6 +114,9 @@ const EmployeeProfileForm = ({ token }) => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [showImageHelp, setShowImageHelp] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState("");
   const companyId = employee?.company_id || getAuthedCompanyId() || "";
 
   const [departments, setDepartments] = useState([]);
@@ -182,11 +193,27 @@ const FRONTEND_ORIGIN =
       };
       setEmployee(flatData);
       setErrorKey("");
+      await fetchDocuments(id);
     } catch (err) {
       console.error("Failed to fetch employee", err);
       setErrorKey("manager.employeeProfiles.messages.profileLoadFailed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDocuments = async (empId) => {
+    if (!empId) return;
+    setDocLoading(true);
+    try {
+      const res = await api.get(`/manager/employees/${empId}/documents`);
+      setDocuments(res.data?.documents || []);
+      setDocError("");
+    } catch (err) {
+      console.error("Failed to load documents", err);
+      setDocError("Unable to load documents for this employee.");
+    } finally {
+      setDocLoading(false);
     }
   };
 
@@ -792,6 +819,113 @@ const FRONTEND_ORIGIN =
               <Alert severity="warning" sx={{ mt: 1 }}>
                 Enable "Allow public bookings" to expose a shareable link.
               </Alert>
+            )}
+          </Paper>
+
+          <Paper variant="outlined" sx={{ p: 2, mt: 3, borderRadius: 2 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+              <Stack spacing={0.5}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip size="small" label="Onboarding" color="primary" variant="outlined" />
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Documents (Zapier / e-sign)
+                  </Typography>
+                  <Tooltip title="How to wire this with Zapier and e-sign tools">
+                    <IconButton size="small" onClick={() => setShowImageHelp((s) => !s)}>
+                      <HelpOutlineIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  Signed contracts and onboarding files pushed via Zapier attach_document appear here.
+                </Typography>
+              </Stack>
+              <Button variant="outlined" size="small" onClick={() => fetchDocuments(selectedId)} disabled={docLoading}>
+                {docLoading ? "Refreshing..." : "Refresh"}
+              </Button>
+            </Stack>
+            <Divider sx={{ mb: 2 }} />
+            {showImageHelp && (
+              <Paper
+                variant="outlined"
+                sx={{ p: 2, mb: 2, borderRadius: 2, backgroundColor: (t) => t.palette.grey[showImageHelp ? 100 : 50] }}
+              >
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Quick guide: send contracts via Zapier and e-sign
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    1) In Zapier, create a Zap: Trigger = Webhooks by Zapier → Catch Hook. Copy the Hook URL.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    2) In Schedulaa: Settings → Zapier → Event hooks. Paste the URL. Event type = onboarding.started. Save.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    3) In that Zap, add your e-sign app (SignWell, DocuSign, Zoho Sign) to send a template using the employee name/email from the payload.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    4) Create a second Zap: Trigger = your e-sign app “Document completed”. Action = Schedulaa → attach_document (POST /zapier/employees/:id/documents) with employee_id, file_url, name, signed_at.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    5) Back in Schedulaa, click “Send via Zapier” on the employee. Contracts go out; once signed, the PDF will appear in this list.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Tip: Share this employee’s ID with your Zap so the attach_document action targets the correct profile.
+                  </Typography>
+                </Stack>
+              </Paper>
+            )}
+            {docError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {docError}
+              </Alert>
+            )}
+            {docLoading ? (
+              <Stack alignItems="center" sx={{ py: 2 }}>
+                <CircularProgress size={24} />
+              </Stack>
+            ) : documents.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No documents yet. Use the Zapier action attach_document after your e-sign tool finishes to store signed PDFs on this employee.
+              </Typography>
+            ) : (
+              <List dense>
+                {documents.map((doc, idx) => (
+                  <React.Fragment key={doc.id || idx}>
+                    <ListItem alignItems="flex-start" sx={{ py: 1 }}>
+                      <ListItemText
+                        primary={
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                              {doc.name}
+                            </Typography>
+                            {doc.provider ? <Chip size="small" label={doc.provider} variant="outlined" /> : null}
+                            {doc.signed_at ? (
+                              <Chip
+                                size="small"
+                                color="success"
+                                label={`Signed ${new Date(doc.signed_at).toLocaleDateString()}`}
+                                variant="outlined"
+                              />
+                            ) : null}
+                          </Stack>
+                        }
+                        secondary={
+                          <Stack spacing={0.5}>
+                            <Link href={doc.file_url} target="_blank" rel="noopener noreferrer" sx={{ wordBreak: "break-all" }}>
+                              Open document
+                            </Link>
+                            <Typography variant="caption" color="text.secondary">
+                              Added {doc.created_at ? new Date(doc.created_at).toLocaleString() : "—"}
+                            </Typography>
+                          </Stack>
+                        }
+                      />
+                    </ListItem>
+                    <Divider component="li" />
+                  </React.Fragment>
+                ))}
+              </List>
             )}
           </Paper>
 

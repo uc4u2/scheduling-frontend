@@ -55,6 +55,7 @@ const sections = [
           { label: "FAQ", to: "/faq" },
           { label: "Help Center", to: "/client/support" },
           { label: "Documentation", to: "/docs" },
+          { label: "Zapier automation", to: "/zapier" },
           { label: "QuickBooks onboarding", to: "/docs?topic=quickbooks-onboarding" },
           { label: "Xero onboarding", to: "/docs?topic=xero-onboarding" },
         ],

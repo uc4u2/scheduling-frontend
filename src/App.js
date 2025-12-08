@@ -30,6 +30,7 @@ import HomePage from "./landing/pages/HomePage";
 import PricingPage from "./landing/pages/PricingPage";
 import FeaturePage from "./landing/pages/FeaturePage";
 import WorkforcePage from "./landing/pages/WorkforcePage";
+import ZapierPage from "./landing/pages/ZapierPage";
 import DocsPage from "./landing/pages/DocsPage";
 import StatusPage from "./landing/pages/StatusPage";
 import BlogPage from "./landing/pages/BlogPage";
@@ -183,6 +184,7 @@ const MARKETING_PATHS = [
   '/marketing/email-campaigns',
   '/marketing/analytics-dashboard',
   '/marketing/clients-360',
+  '/zapier',
   '/payroll',
   '/payroll/canada',
   '/payroll/usa',
@@ -364,16 +366,18 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/marketing/email-campaigns" element={<MarketingCampaignsPage />} />
             <Route path="/marketing/analytics-dashboard" element={<MarketingAnalyticsPage />} />
             <Route path="/marketing/clients-360" element={<MarketingClientsPage />} />
+            <Route path="/zapier" element={<ZapierPage />} />
             <Route path="/industries" element={<IndustryDirectoryPage />} />
             <Route path="/payroll" element={<PayrollOverviewPage />} />
             <Route path="/payroll/canada" element={<CanadaPayrollPage />} />
             <Route path="/payroll/usa" element={<USPayrollPage />} />
             <Route path="/payroll/tools/roe" element={<ROEToolPage />} />
             <Route path="/payroll/tools/t4" element={<T4ToolPage />} />
-            <Route path="/payroll/tools/w2" element={<W2ToolPage />} />
-            <Route path="/payslips" element={<PayslipPortalPage />} />
-            <Route path="/xero/callback" element={<XeroCallback />} />
-            <Route path="/docs" element={<DocsPage />} />
+          <Route path="/payroll/tools/w2" element={<W2ToolPage />} />
+          <Route path="/payslips" element={<PayslipPortalPage />} />
+          <Route path="/settings/zapier" element={<Navigate to="/manager/dashboard?view=zapier" replace />} />
+          <Route path="/xero/callback" element={<XeroCallback />} />
+          <Route path="/docs" element={<DocsPage />} />
             <Route path="/help/domains" element={<DomainHelpPage />} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/blog/client-journey" element={<ClientJourneyPage />} />

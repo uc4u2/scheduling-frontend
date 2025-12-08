@@ -453,10 +453,10 @@ useEffect(() => {
     const active = mapped
       .filter((s) => activeStatuses.includes(s._status))
       .map((s) => {
-        const start = s._start;
-        const end = s._end || (start ? start.plus({ hours: 12 }) : null);
-        const spansNow = start && end && now >= start && now <= end;
-        return { ...s, _spansNow: spansNow, _start: start };
+        const startDt = s._start;
+        const end = s._end || (startDt ? startDt.plus({ hours: 12 }) : null);
+        const spansNow = startDt && end && now >= startDt && now <= end;
+        return { ...s, _spansNow: spansNow, _start: startDt };
       });
 
     // Prefer a shift that spans "now"

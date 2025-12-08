@@ -59,6 +59,7 @@ import {
   ReceiptLong,
   History,
   Settings,
+  Api as ApiIcon,
   Business,
   Paid,
   Summarize,
@@ -75,6 +76,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import AllEmployeeSlotsCalendar from "./pages/sections/AllEmployeeSlotsCalendar";
 import SecondNewManagementDashboard from "./pages/sections/management/SecondNewManagementDashboard";
+import ZapierIntegrationPage from "./pages/settings/ZapierIntegrationPage";
 
 // Sections imports
 import Overview from "./pages/sections/Overview";
@@ -198,6 +200,9 @@ const menuConfig = [
 
   // Services & Bookings
   { label: "Services & Bookings", key: "advanced-management", icon: <Dashboard /> },
+
+  // Integrations
+  { label: "Zapier", key: "zapier", icon: <ApiIcon /> },
 
   // Settings last
   { labelKey: "manager.menu.settings", key: "settings", icon: <Settings /> },
@@ -1669,6 +1674,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
       case "payroll-raw":
         return <PayrollRawPage />;
+
+      case "zapier":
+        return <ZapierIntegrationPage />;
 
       case "CompanyProfile":
         return <CompanyProfile token={token} />;
