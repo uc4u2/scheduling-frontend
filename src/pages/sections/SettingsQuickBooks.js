@@ -26,6 +26,10 @@ import {
   TableRow,
   TextField,
   Typography,
+  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -36,7 +40,9 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LaunchIcon from "@mui/icons-material/Launch";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SectionCard from "../../components/ui/SectionCard";
+import IntegrationsOverviewCard from "../../components/integrations/IntegrationsOverviewCard";
 import { quickbooksIntegration } from "../../utils/api";
 import api from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
@@ -892,52 +898,101 @@ const SettingsQuickBooks = () => {
         )}
       </SectionCard>
 
-      <SectionCard
-        title={t("settings.quickbooks.help.title", "Need a hand with QuickBooks mapping?")}
-        description={t(
-          "settings.quickbooks.help.subtitle",
-          "Quick reminders so finance teams can sync payroll and revenue without guesswork."
-        )}
-        actions={
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Button
-              variant="contained"
-              startIcon={<HelpOutlineIcon />}
-              onClick={() => setGuideOpen(true)}
-            >
-              {t("settings.quickbooks.help.openGuide", "View setup guide")}
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<LaunchIcon />}
-              onClick={() => navigate("/manager/payroll")}
-            >
-              {t("settings.quickbooks.help.openPayroll", "Go to payroll preview")}
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<LaunchIcon />}
-              onClick={() => navigate("/docs?topic=quickbooks-onboarding")}
-            >
-              {t("settings.quickbooks.help.openDocs", "QuickBooks onboarding guide")}
-            </Button>
-          </Stack>
-        }
-      >
-        <Stack spacing={1}>
-          {helpChecklist.map((item, index) => (
-            <Typography key={index} variant="body2">
-              • {item}
-            </Typography>
-          ))}
-          <Typography variant="caption" color="text.secondary">
-            {t(
-              "settings.quickbooks.help.footer",
-              "Integration complete = payroll badge green + revenue badge green + Sync to QuickBooks button active."
-            )}
+      <Accordion disableGutters>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            Schedulaa integrations overview
           </Typography>
-        </Stack>
-      </SectionCard>
+        </AccordionSummary>
+        <AccordionDetails>
+          <IntegrationsOverviewCard />
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion disableGutters>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            Recommended workflows with QuickBooks + Zapier
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Use QuickBooks for official accounting, and Zapier for real-time analytics and operational automation.
+            </Typography>
+            <Stack component="ul" spacing={0.5} sx={{ pl: 2 }}>
+              <Typography component="li" variant="body2">
+                Post balanced payroll and revenue journals from Schedulaa into QuickBooks using the mappings below.
+              </Typography>
+              <Typography component="li" variant="body2">
+                Use the Zapier <code>payroll.details</code> event to send detailed per-employee payroll rows (hours, gross, net, taxes, deductions) to Google Sheets, Excel, or BI tools.
+              </Typography>
+              <Typography component="li" variant="body2">
+                Send timeclock and break compliance events to Slack or HR systems for monitoring and audits.
+              </Typography>
+              <Typography component="li" variant="body2">
+                Combine QuickBooks journals with Zapier exports to give accountants both accurate books and flexible reporting.
+              </Typography>
+            </Stack>
+          </Paper>
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion disableGutters>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            {t("settings.quickbooks.help.title", "Need a hand with QuickBooks mapping?")}
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <SectionCard
+            title=""
+            description={t(
+              "settings.quickbooks.help.subtitle",
+              "Quick reminders so finance teams can sync payroll and revenue without guesswork."
+            )}
+            actions={
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button
+                  variant="contained"
+                  startIcon={<HelpOutlineIcon />}
+                  onClick={() => setGuideOpen(true)}
+                >
+                  {t("settings.quickbooks.help.openGuide", "View setup guide")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<LaunchIcon />}
+                  onClick={() => navigate("/manager/payroll")}
+                >
+                  {t("settings.quickbooks.help.openPayroll", "Go to payroll preview")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<LaunchIcon />}
+                  onClick={() => navigate("/docs?topic=quickbooks-onboarding")}
+                >
+                  {t("settings.quickbooks.help.openDocs", "QuickBooks onboarding guide")}
+                </Button>
+              </Stack>
+            }
+          >
+            <Stack spacing={1}>
+              {helpChecklist.map((item, index) => (
+                <Typography key={index} variant="body2">
+                  • {item}
+                </Typography>
+              ))}
+              <Typography variant="caption" color="text.secondary">
+                {t(
+                  "settings.quickbooks.help.footer",
+                  "Integration complete = payroll badge green + revenue badge green + Sync to QuickBooks button active."
+                )}
+              </Typography>
+            </Stack>
+          </SectionCard>
+        </AccordionDetails>
+      </Accordion>
 
       {status?.connected && (
         <>
@@ -1057,6 +1112,9 @@ const SettingsQuickBooks = () => {
                 </FormControl>
               </Grid>
             </Grid>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              Schedulaa posts balanced journal entries (debits = credits). Use "Lock exports before" to protect closed periods, and rely on Integration Activity as your audit log (who exported what, when, and to which external ID).
+            </Typography>
           </SectionCard>
 
           {renderTrackingSection(

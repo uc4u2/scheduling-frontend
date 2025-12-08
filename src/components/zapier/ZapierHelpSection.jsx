@@ -177,6 +177,15 @@ const ZapierHelpSection = () => {
           employee)” event. Schedulaa will send the same data you see in Payroll → Payroll Detail / Raw Data to your
           Zapier hook as JSON.
         </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <strong>For accountants:</strong> Use the <code>payroll.details</code> event to send per-employee payroll rows
+          into Google Sheets, Excel, or BI tools. Combine this with QuickBooks or Xero journals for full reconciliation
+          and management reporting.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          Mapping and posting to ledgers happens in the QuickBooks and Xero tabs under Workspace Settings. Zapier is
+          your automation and analytics layer on top.
+        </Typography>
       </Paper>
     </Box>
   );

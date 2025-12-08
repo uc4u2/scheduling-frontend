@@ -26,6 +26,10 @@ import {
   TableRow,
   TextField,
   Typography,
+  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -36,7 +40,9 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LaunchIcon from "@mui/icons-material/Launch";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SectionCard from "../../components/ui/SectionCard";
+import IntegrationsOverviewCard from "../../components/integrations/IntegrationsOverviewCard";
 import { xeroIntegration } from "../../utils/api";
 import api from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
@@ -779,6 +785,46 @@ const SettingsXero = () => {
         )}
       </SectionCard>
 
+      <Accordion disableGutters>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            Schedulaa integrations overview
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <IntegrationsOverviewCard />
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion disableGutters>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            Recommended workflows with Xero + Zapier
+          </Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              Use Xero for official accounting, and Zapier for automation and analytics.
+            </Typography>
+            <Stack component="ul" spacing={0.5} sx={{ pl: 2 }}>
+              <Typography component="li" variant="body2">
+                Post balanced payroll and revenue journals from Schedulaa into Xero using the mappings below.
+              </Typography>
+              <Typography component="li" variant="body2">
+                Use the Zapier <code>payroll.details</code> event to send detailed per-employee payroll rows (hours, gross, net, taxes, deductions) to Google Sheets, Excel, or BI tools.
+              </Typography>
+              <Typography component="li" variant="body2">
+                Send timeclock, break compliance, and PTO events to Slack/HR systems for monitoring and audits.
+              </Typography>
+              <Typography component="li" variant="body2">
+                Combine Xero journals with Zapier exports for complete reconciliation and management reporting.
+              </Typography>
+            </Stack>
+          </Paper>
+        </AccordionDetails>
+      </Accordion>
+
       {status?.connected && (
         <>
           <SectionCard
@@ -833,7 +879,8 @@ const SettingsXero = () => {
                 )}
               </Alert>
             ) : (
-              <Grid container spacing={2}>
+              <>
+                <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth size="small" disabled={!canManageIntegrations}>
                     <InputLabel>{t("settings.xero.defaults.category", "Tracking category")}</InputLabel>
@@ -933,7 +980,11 @@ const SettingsXero = () => {
                     </Select>
                   </FormControl>
                 </Grid>
-              </Grid>
+                </Grid>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  Journals stay balanced (debits = credits). Use lock dates to protect closed periods, and review Integration Activity as your audit log (who exported what, when, and to which Xero ID).
+                </Typography>
+              </>
             )}
           </SectionCard>
 
@@ -941,45 +992,54 @@ const SettingsXero = () => {
         </>
       )}
 
-      <SectionCard
-        title={t("settings.xero.help.title", "Need a hand with Xero mapping?")}
-        description={t(
-          "settings.xero.help.subtitle",
-          "Quick reminders so finance teams can sync payroll and revenue without guesswork."
-        )}
-        actions={
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Button
-              variant="contained"
-              startIcon={<HelpOutlineIcon />}
-              onClick={() => setGuideOpen(true)}
-            >
-              {t("settings.xero.help.openGuide", "View setup guide")}
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<LaunchIcon />}
-              onClick={() => navigate("/manager/payroll")}
-            >
-              {t("settings.xero.help.openPayroll", "Go to payroll preview")}
-            </Button>
-          </Stack>
-        }
-      >
-        <Stack spacing={1}>
-          {helpChecklist.map((item, index) => (
-            <Typography key={index} variant="body2">
-              • {item}
-            </Typography>
-          ))}
-          <Typography variant="caption" color="text.secondary">
-            {t(
-              "settings.xero.help.footer",
-              "Integration complete = payroll badge green + revenue badge green + Sync to Xero button active."
-            )}
+      <Accordion disableGutters>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            {t("settings.xero.help.title", "Need a hand with Xero mapping?")}
           </Typography>
-        </Stack>
-      </SectionCard>
+        </AccordionSummary>
+        <AccordionDetails>
+          <SectionCard
+            title=""
+            description={t(
+              "settings.xero.help.subtitle",
+              "Quick reminders so finance teams can sync payroll and revenue without guesswork."
+            )}
+            actions={
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button
+                  variant="contained"
+                  startIcon={<HelpOutlineIcon />}
+                  onClick={() => setGuideOpen(true)}
+                >
+                  {t("settings.xero.help.openGuide", "View setup guide")}
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<LaunchIcon />}
+                  onClick={() => navigate("/manager/payroll")}
+                >
+                  {t("settings.xero.help.openPayroll", "Go to payroll preview")}
+                </Button>
+              </Stack>
+            }
+          >
+            <Stack spacing={1}>
+              {helpChecklist.map((item, index) => (
+                <Typography key={index} variant="body2">
+                  • {item}
+                </Typography>
+              ))}
+              <Typography variant="caption" color="text.secondary">
+                {t(
+                  "settings.xero.help.footer",
+                  "Integration complete = payroll badge green + revenue badge green + Sync to Xero button active."
+                )}
+              </Typography>
+            </Stack>
+          </SectionCard>
+        </AccordionDetails>
+      </Accordion>
 
       {status?.connected && (
         <Stack spacing={3}>
