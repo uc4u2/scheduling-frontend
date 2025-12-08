@@ -22,6 +22,7 @@ import {
   Link,
   Chip,
   IconButton,
+  InputAdornment,
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { api } from "../../utils/api";
@@ -117,6 +118,11 @@ const EmployeeProfileForm = ({ token }) => {
   const [documents, setDocuments] = useState([]);
   const [docLoading, setDocLoading] = useState(false);
   const [docError, setDocError] = useState("");
+  const [docUploading, setDocUploading] = useState(false);
+  const [docUploadError, setDocUploadError] = useState("");
+  const [docUploadSuccess, setDocUploadSuccess] = useState(false);
+  const MAX_DOC_BYTES = 2 * 1024 * 1024;
+  const allowedDocExtensions = [".pdf", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"];
   const companyId = employee?.company_id || getAuthedCompanyId() || "";
 
   const [departments, setDepartments] = useState([]);
@@ -214,6 +220,66 @@ const FRONTEND_ORIGIN =
       setDocError("Unable to load documents for this employee.");
     } finally {
       setDocLoading(false);
+    }
+  };
+
+  const handleDocumentUpload = async (file) => {
+    if (!file || !employee || !selectedId) {
+      setDocUploadError("Select an employee and choose a file to upload.");
+      return;
+    }
+    if (documents.length >= 7) {
+      setDocUploadError("You have reached the 7 document limit for this employee.");
+      return;
+    }
+    const ext = `.${(file.name || "").split(".").pop().toLowerCase()}`;
+    if (!allowedDocExtensions.includes(ext)) {
+      setDocUploadError("File type not allowed. Use PDF, DOC/DOCX, CSV/XLS/XLSX, or PNG/JPG.");
+      return;
+    }
+    if (file.size > MAX_DOC_BYTES) {
+      setDocUploadError("File is too large. Max 2MB.");
+      return;
+    }
+    setDocUploading(true);
+    setDocUploadError("");
+    setDocUploadSuccess(false);
+    try {
+      // Reuse website media upload for storage
+      const form = new FormData();
+      form.append("file", file);
+      if (companyId) form.append("company_id", companyId);
+      const uploadRes = await api.post("/api/website/media/upload", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const rawUrl =
+        uploadRes.data?.items?.[0]?.url_public ||
+        uploadRes.data?.items?.[0]?.file_url ||
+        uploadRes.data?.items?.[0]?.url ||
+        uploadRes.data?.url ||
+        uploadRes.data?.url_public;
+      if (!rawUrl) {
+        throw new Error("Missing upload URL");
+      }
+      const apiOrigin = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
+      const finalUrl = /^https?:\/\//i.test(rawUrl)
+        ? rawUrl
+        : apiOrigin
+        ? `${apiOrigin}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`
+        : rawUrl;
+
+      await api.post(`/manager/employees/${selectedId}/documents`, {
+        name: file.name,
+        file_url: finalUrl,
+        provider: "manual_upload",
+      });
+      setDocUploadSuccess(true);
+      await fetchDocuments(selectedId);
+    } catch (err) {
+      console.error("Failed to upload document", err);
+      setDocUploadError("Upload failed. Please try again.");
+    } finally {
+      setDocUploading(false);
     }
   };
 
@@ -840,9 +906,25 @@ const FRONTEND_ORIGIN =
                   Signed contracts and onboarding files pushed via Zapier attach_document appear here.
                 </Typography>
               </Stack>
-              <Button variant="outlined" size="small" onClick={() => fetchDocuments(selectedId)} disabled={docLoading}>
-                {docLoading ? "Refreshing..." : "Refresh"}
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  component="label"
+                  disabled={docUploading || !employee}
+                >
+                  {docUploading ? "Uploading…" : "Upload signed doc"}
+                  <input
+                    type="file"
+                    hidden
+                    accept="application/pdf,.doc,.docx,.csv,.xls,.xlsx,.png,.jpg,.jpeg"
+                    onChange={(e) => e.target.files?.[0] && handleDocumentUpload(e.target.files[0])}
+                  />
+                </Button>
+                <Button variant="outlined" size="small" onClick={() => fetchDocuments(selectedId)} disabled={docLoading}>
+                  {docLoading ? "Refreshing..." : "Refresh"}
+                </Button>
+              </Stack>
             </Stack>
             <Divider sx={{ mb: 2 }} />
             {showImageHelp && (
@@ -880,6 +962,16 @@ const FRONTEND_ORIGIN =
                 {docError}
               </Alert>
             )}
+            {docUploadError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {docUploadError}
+              </Alert>
+            )}
+            {docUploadSuccess && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                Document uploaded.
+              </Alert>
+            )}
             {docLoading ? (
               <Stack alignItems="center" sx={{ py: 2 }}>
                 <CircularProgress size={24} />
@@ -889,44 +981,62 @@ const FRONTEND_ORIGIN =
                 No documents yet. Use the Zapier action attach_document after your e-sign tool finishes to store signed PDFs on this employee.
               </Typography>
             ) : (
-              <List dense>
-                {documents.map((doc, idx) => (
-                  <React.Fragment key={doc.id || idx}>
-                    <ListItem alignItems="flex-start" sx={{ py: 1 }}>
-                      <ListItemText
-                        primary={
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                              {doc.name}
-                            </Typography>
-                            {doc.provider ? <Chip size="small" label={doc.provider} variant="outlined" /> : null}
-                            {doc.signed_at ? (
-                              <Chip
-                                size="small"
-                                color="success"
-                                label={`Signed ${new Date(doc.signed_at).toLocaleDateString()}`}
-                                variant="outlined"
-                              />
-                            ) : null}
-                          </Stack>
-                        }
-                        secondary={
-                          <Stack spacing={0.5}>
-                            <Link href={doc.file_url} target="_blank" rel="noopener noreferrer" sx={{ wordBreak: "break-all" }}>
-                              Open document
-                            </Link>
-                            <Typography variant="caption" color="text.secondary">
-                              Added {doc.created_at ? new Date(doc.created_at).toLocaleString() : "—"}
-                            </Typography>
-                          </Stack>
-                        }
-                      />
-                    </ListItem>
-                    <Divider component="li" />
-                  </React.Fragment>
-                ))}
-              </List>
-            )}
+                <List dense>
+                  {documents.map((doc, idx) => (
+                    <React.Fragment key={doc.id || idx}>
+                      <ListItem alignItems="flex-start" sx={{ py: 1, gap: 1 }}>
+                        <ListItemText
+                          primary={
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                              <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                {doc.name}
+                              </Typography>
+                              {doc.provider ? <Chip size="small" label={doc.provider} variant="outlined" /> : null}
+                              {doc.signed_at ? (
+                                <Chip
+                                  size="small"
+                                  color="success"
+                                  label={`Signed ${new Date(doc.signed_at).toLocaleDateString()}`}
+                                  variant="outlined"
+                                />
+                              ) : null}
+                            </Stack>
+                          }
+                          secondary={
+                            <Stack spacing={0.5}>
+                              <Link href={doc.file_url} target="_blank" rel="noopener noreferrer" sx={{ wordBreak: "break-all" }}>
+                                Open document
+                              </Link>
+                              <Typography variant="caption" color="text.secondary">
+                                Added {doc.created_at ? new Date(doc.created_at).toLocaleString() : "—"}
+                              </Typography>
+                            </Stack>
+                          }
+                        />
+                        {doc.id ? (
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="text"
+                            onClick={async () => {
+                              try {
+                                await api.delete(`/manager/employees/${selectedId}/documents/${doc.id}`);
+                                await fetchDocuments(selectedId);
+                              } catch (err) {
+                                console.error("Failed to delete document", err);
+                                setDocError("Delete failed. Please try again.");
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        ) : null}
+                      </ListItem>
+                      <Divider component="li" />
+                    </React.Fragment>
+                  ))}
+                </List>
+              )}
           </Paper>
 
           <Box sx={{ mt: 3 }}>
