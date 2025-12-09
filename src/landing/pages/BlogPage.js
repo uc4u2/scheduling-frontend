@@ -15,6 +15,7 @@ import PaymentsIcon from "@mui/icons-material/Payments";
 import LanguageIcon from "@mui/icons-material/Language";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import InsightsIcon from "@mui/icons-material/Insights";
+import IntegrationInstructionsIcon from "@mui/icons-material/IntegrationInstructions";
 
 import { Link } from "react-router-dom";
 import Meta from "../../components/Meta";
@@ -62,6 +63,12 @@ const highlightItems = [
       "Unify scheduling, payroll, marketing, and revenue data to understand performance in real time and support leadership decisions.",
     icon: <InsightsIcon fontSize="small" />, 
   },
+  {
+    title: "Automation & integrations",
+    description:
+      "Connect Schedulaa to Zapier, QuickBooks, Xero, and BI tools so bookings, shifts, timeclock, breaks, and payroll all feed your existing finance and ops stack.",
+    icon: <IntegrationInstructionsIcon fontSize="small" />,
+  },
 ];
 
 const articleParagraphs = [
@@ -73,6 +80,7 @@ const articleParagraphs = [
   "Payroll workflows span the regions we support across the US and Canada, track shifts and leave, flag unsupported local levies, and surface the insights teams need before payday.",
   "All of this runs inside a single platform with auditing, role-aware access, and a support team that lives the same rollout playbooks documented in our help center.",
   "Thousands of operators are already replacing fractured stacks with Schedulaa. Less tab hopping, fewer CSVs, more time spent on clients and growth.",
+  "Automation sits on top of that foundation. Zapier streams bookings, shifts, timeclock events, break compliance, PTO, and payroll details into CRMs, Slack/Teams, Sheets, and BI tools, while QuickBooks and Xero exports keep your ledgers clean and reconciled.",
 ];
 
 const BLOG_LISTING_SCHEMA = {
@@ -146,11 +154,11 @@ const BlogPage = () => {
     <Box sx={{ position: "relative", overflow: "hidden" }}>
       <Meta
         title="The Future of Business Automation | Schedulaa Blog"
-        description="How Schedulaa is redefining all-in-one management for modern teams with unified booking, payroll, websites, and analytics."
+        description="How Schedulaa is redefining all-in-one management with unified booking, payroll, websites, analytics, and deep integrations to Zapier, QuickBooks, and Xero."
         canonical="https://www.schedulaa.com/blog"
         og={{
           title: "The Future of Business Automation",
-          description: "Schedulaa brings booking, payroll, websites, and analytics together so teams can scale without the chaos of disconnected tools.",
+          description: "Schedulaa brings booking, payroll, websites, analytics, and integrations with Zapier, QuickBooks, and Xero together so teams can scale without the chaos of disconnected tools.",
           image: "https://www.schedulaa.com/og/blog.jpg",
         }}
       />

@@ -557,6 +557,14 @@ const HomePage = () => {
         body: "Staff share a “Book with me” link backed by live availability. Confirmations include host/client time labels, Jitsi link, and cancel/reschedule controls.",
         link: { label: "Enable public link (login)", to: "/employee/public-link" },
       },
+      {
+        heading: "Automation & integrations",
+        body: "Stream bookings, shifts, timeclock events, break compliance, PTO, and payroll data from Schedulaa into 6,000+ Zapier apps while posting balanced payroll and revenue journals to QuickBooks and Xero.",
+        link: {
+          label: "View Zapier & accounting integrations",
+          to: "/docs#integrations",
+        },
+      },
     ];
   }, [seoSection.cards]);
 
@@ -648,7 +656,7 @@ const HomePage = () => {
                 color: alpha(theme.palette.common.white, 0.78),
               }}
             >
-              Schedulaa combines scheduling, time tracking, payroll, marketing, and website building into a single SaaS platform for service businesses across the US and Canada.
+              Schedulaa combines scheduling, time tracking, payroll, marketing, and website building into a single platform—then connects it to 6,000+ apps via Zapier plus native QuickBooks and Xero exports so finance, HR, and operations share one source of truth.
             </Typography>
 
             <Stack

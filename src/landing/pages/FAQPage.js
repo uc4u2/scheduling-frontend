@@ -22,6 +22,7 @@ import RequestQuoteIcon from "@mui/icons-material/RequestQuote";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import IntegrationInstructionsIcon from "@mui/icons-material/IntegrationInstructions";
 import { Link } from "react-router-dom";
 
 import Meta from "../../components/Meta";
@@ -205,6 +206,36 @@ const FAQ_SECTIONS = [
         question: "Who sends receipts and how are cross-border orders handled?",
         answer:
           "Stripe issues branded receipts automatically. Taxes are calculated based on the buyer location and the regions you registered-if you aren't registered somewhere, Stripe won't collect there.",
+      },
+    ],
+  },
+  {
+    key: "integrations",
+    title: "Integrations & Zapier",
+    icon: IntegrationInstructionsIcon,
+    description:
+      "How Schedulaa connects to Zapier, QuickBooks, Xero, and other tools your team already uses.",
+    cta: { label: "See integrations & Zapier", to: "/docs#integrations" },
+    items: [
+      {
+        question: "Do I need Zapier to use Schedulaa?",
+        answer:
+          "No. You can run scheduling, time tracking, payroll, websites, and analytics entirely inside Schedulaa. Zapier is an optional automation layer that lets you stream events into 6,000+ apps and create bookings, employees, and shifts from external systems.",
+      },
+      {
+        question: "How does Zapier relate to QuickBooks and Xero?",
+        answer:
+          "QuickBooks and Xero handle your accounting journals—Schedulaa posts balanced payroll and revenue entries directly. Zapier sits alongside those exports so you can send detailed payroll rows, timeclock punches, break events, and PTO changes into Sheets, BI tools, CRMs, or HR platforms for analysis and workflow automation.",
+      },
+      {
+        question: "What does a typical Zap look like?",
+        answer:
+          "A common pattern is: 1) use Webhooks by Zapier to catch a Schedulaa event such as booking.created, shift.published, or payroll.details, 2) add actions like Slack/Teams alerts, Google Sheets rows, or CRM updates, and 3) optionally use Schedulaa actions like create_booking or attach_document to complete the loop.",
+      },
+      {
+        question: "Do I need a paid Zapier plan?",
+        answer:
+          "Most production workflows that use Webhooks by Zapier or higher-volume tasks will require a paid Zapier plan. New accounts usually start with a trial, but long-term usage and certain apps are billed by Zapier directly.",
       },
     ],
   },

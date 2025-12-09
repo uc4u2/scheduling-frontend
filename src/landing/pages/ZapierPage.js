@@ -127,7 +127,7 @@ const automations = [
 const ZapierPage = () => {
   const title = "Zapier for Schedulaa — automate bookings, scheduling, break compliance, and payroll";
   const description =
-    "Connect Schedulaa to 6,000+ apps with Zapier. Stream bookings, shifts, timeclock, break compliance, PTO, onboarding, and payroll data into Slack, Sheets, CRMs, or BI—and create bookings, employees, and shifts from any workflow.";
+    "Connect Schedulaa to 6,000+ apps with Zapier. Stream bookings, shifts, timeclock, break compliance, PTO, onboarding, and payroll data into Slack, Sheets, CRMs, or BI—and create bookings, employees, and shifts from any workflow. Zapier complements native QuickBooks and Xero exports so accounting and automation stay in sync.";
 
   return (
     <>
@@ -209,6 +209,9 @@ const ZapierPage = () => {
             <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 900 }}>
               These triggers and actions are already available in your Schedulaa Zapier panel. They mirror the live data
               powering bookings, shift operations, break compliance, PTO, onboarding, and payroll.
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 900 }}>
+              Zapier is your automation and analytics layer; QuickBooks and Xero remain your system of record for accounting journals.
             </Typography>
           </Stack>
           <Grid container spacing={3}>

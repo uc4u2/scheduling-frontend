@@ -64,13 +64,13 @@ const DEFAULT_CONTENT = {
         key: "unify",
         title: "Unify the toolset",
         description:
-          "Scheduling, payroll, websites, commerce, and analytics live in one system.",
+          "Scheduling, payroll, websites, commerce, analytics, and automations share one system—with native QuickBooks/Xero exports and Zapier integration for everything else.",
       },
       {
         key: "trust",
         title: "Earn trust every payday",
         description:
-          "Compliance-ready payroll and audit trails keep teams confident on every run.",
+          "Compliance-ready payroll, balanced QuickBooks/Xero journals, Zapier-powered audit trails, and detailed reports keep teams confident on every run.",
       },
       {
         key: "global",
@@ -114,7 +114,7 @@ const DEFAULT_CONTENT = {
   mission: {
     title: "Mission",
     body:
-      "We give every creative team, salon, studio, and recruiter a single operating system for booking, payroll, marketing, HR, and commerce so they can focus on clients instead of juggling software.",
+      "We give every creative team, salon, studio, and recruiter a single operating system for booking, payroll, marketing, HR, and commerce—with automation via Zapier and native QuickBooks/Xero exports—so they can focus on clients instead of juggling software.",
   },
   leadership: {
     title: "Leadership",

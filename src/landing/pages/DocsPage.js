@@ -308,7 +308,7 @@ const DocsPage = () => {
       <Box sx={{ px: { xs: 2, md: 6 }, py: { xs: 4, md: 6 } }}>
         <Stack spacing={2} maxWidth={840}>
           <Typography variant="body1" color="text.secondary">
-            Schedulaa documentation covers everything from website setup and Stripe payments to payroll exports and analytics. It also outlines the upcoming public API and SSO integrations so you know what's on the roadmap.
+            Schedulaa documentation covers everything from website setup and Stripe payments to payroll exports, Zapier automations, and accounting integrations with QuickBooks and Xero. It also outlines the upcoming public API and SSO integrations so you know what's on the roadmap.
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button component={Link} to="/features" variant="contained" color="primary" sx={{ textTransform: "none", borderRadius: 999 }}>
@@ -796,7 +796,7 @@ const DocsPage = () => {
               {integrationsContent?.title || ""}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {integrationsContent?.description || ""}
+              {integrationsContent?.description || "Configure Zapier, QuickBooks, Xero, and other integrations so that bookings, shifts, timeclock events, payroll, and revenue exports flow cleanly into your finance, HR, and analytics stack."}
             </Typography>
             <Grid container spacing={{ xs: 3, md: 4 }}>
               {integrationItems.map((integration) => (
