@@ -83,7 +83,7 @@ const DemoPage = () => {
     <Box sx={{ position: "relative", overflow: "hidden" }}>
       <Meta
         title="Schedulaa Demo Login | Test the Manager Dashboard"
-        description="Use the shared manager credentials to explore scheduling, payroll, and automation inside the Schedulaa staging environment."
+        description="Use the shared manager credentials to explore scheduling, payroll, compliance, automation, and integrations to Zapier, QuickBooks, and Xero inside the Schedulaa staging environment."
         canonical="https://www.schedulaa.com/demo"
         og={{
           title: "Schedulaa Demo Login",
@@ -122,8 +122,7 @@ const DemoPage = () => {
               Experience the Schedulaa manager dashboard in minutes
             </Typography>
             <Typography variant="body1" color="text.secondary" maxWidth={760}>
-              Use the shared staging login to explore scheduling, payroll, compliance, and automation workflows end-to-end. OTP checks are bypassed
-              for the demo inbox so you can jump straight into the product.
+              Use the shared staging login to explore scheduling, time tracking, payroll, compliance, Zapier automations, and accounting exports end-to-end. OTP checks are bypassed for the demo inbox so you can jump straight into the product.
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <Button
@@ -253,15 +252,24 @@ const DemoPage = () => {
                         <CheckCircleOutlineIcon color="primary" />
                       </ListItemIcon>
                       <ListItemText
-                        primary="3. Explore manager workflows"
-                        secondary="Open Scheduling, Payroll, Websites, and Analytics to see connected data."
-                      />
-                    </ListItem>
-                  </List>
-                </Stack>
-              </Paper>
-            </Grid>
-          </Grid>
+                    primary="3. Explore manager workflows"
+                    secondary="Open Scheduling, Payroll, Websites, and Analytics to see connected data."
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircleOutlineIcon color="primary" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="4. Visit Settings → Zapier and Payroll → Preview"
+                    secondary="Trigger test events, inspect Zapier payload samples, and review how finalized payroll exports map to QuickBooks and Xero."
+                  />
+                </ListItem>
+              </List>
+            </Stack>
+          </Paper>
+        </Grid>
+      </Grid>
 
           <Grid container spacing={3} alignItems="stretch">
             <Grid item xs={12}>

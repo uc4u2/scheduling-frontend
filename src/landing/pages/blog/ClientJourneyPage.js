@@ -43,7 +43,14 @@ const ARTICLE_SECTIONS = [
     ],
   },
   {
-    title: "5. Close the loop with payroll and compliance",
+    title: "5. Automate the back office with Zapier and exports",
+    paragraphs: [
+      "Behind the scenes, every step of the journey throws off operational data: bookings, shifts, timeclock punches, breaks, PTO, and invoices. Schedulaa streams those events into Zapier so you can update CRMs, trigger internal tasks, or maintain live spreadsheets and dashboards without manual exports.",
+      "When it’s time to close the books, payroll-ready hours and mapped revenue accounts feed exports to QuickBooks or Xero. Operations stays in Schedulaa; accounting and analytics stay in the tools your finance team already trusts.",
+    ],
+  },
+  {
+    title: "6. Close the loop with payroll and compliance",
     paragraphs: [
       "Once the week wraps up, payroll, ROEs, T4s, and W-2s pull straight from timesheets and booking data. No exporting CSVs, no manual tax lookups. Reports, tip tracking, and stat holiday automation complete the customer journey by rewarding the team that delivered the experience.",
       "When customers, staff, and managers trust the system, you free up time to focus on referrals, campaigns, and higher-value services that expand your brand.",

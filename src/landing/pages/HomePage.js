@@ -557,14 +557,6 @@ const HomePage = () => {
         body: "Staff share a “Book with me” link backed by live availability. Confirmations include host/client time labels, Jitsi link, and cancel/reschedule controls.",
         link: { label: "Enable public link (login)", to: "/employee/public-link" },
       },
-      {
-        heading: "Automation & integrations",
-        body: "Stream bookings, shifts, timeclock events, break compliance, PTO, and payroll data from Schedulaa into 6,000+ Zapier apps while posting balanced payroll and revenue journals to QuickBooks and Xero.",
-        link: {
-          label: "View Zapier & accounting integrations",
-          to: "/docs#integrations",
-        },
-      },
     ];
   }, [seoSection.cards]);
 

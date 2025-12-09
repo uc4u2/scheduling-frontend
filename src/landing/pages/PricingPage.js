@@ -40,13 +40,13 @@ const ASSURANCE_ICON_MAP = {
 const DEFAULT_META = {
   title: "Schedulaa Pricing | Launch on your own domain with automatic SSL",
   description:
-    "Compare Starter, Pro, and Business plans. Custom domains with automatic SSL are included on Pro and Business; Starter can add it for $5/month.",
+    "Compare Starter, Pro, and Business plans. All plans include a custom domain with automatic SSL, plus unified booking, scheduling, payroll, and automation.",
   canonical: "https://www.schedulaa.com/pricing",
   keywords: "Schedulaa pricing, booking software pricing, payroll SaaS pricing, website builder plans",
   og: {
     title: "Schedulaa Pricing",
     description:
-      "Plans for every stage. Launch on your own domain with automatic SSL included on Pro and Business.",
+      "Plans for every stage. Launch on your own domain with automatic SSL included on every plan.",
     image: "https://www.schedulaa.com/og/pricing.jpg",
   },
 };
@@ -58,7 +58,7 @@ const DEFAULT_HERO = {
     "Launch on your own domain with automatic SSL.",
   ],
   subtitle:
-    "Custom domains (TXT/CNAME) with automatic SSL are now included on Pro and Business. Starter can add it as an add-on for $5/month.",
+    "Custom domains (TXT/CNAME) with automatic SSL are now included on every plan. Start with Starter for website + booking, then add staff, payroll, and automations on Pro and Business.",
   primaryCta: { label: "Start free trial" },
   secondaryCta: { label: "Compare plans" },
   badge: {
@@ -71,18 +71,20 @@ const DEFAULT_HERO = {
 const DEFAULT_PLANS = [
   {
     key: "starter",
-    name: "Starter",
-    price: "$19.99/mo",
-    description:
-      "Launch your website and start taking bookings and payments — perfect for solo professionals.",
-    features: [
-      "Website builder with branded pages and templates.",
-      "Online booking, confirmations, and client portal.",
-      "Stripe Checkout with Automatic Tax compliance.",
-      "1 staff seat and 1 location included.",
-      "CSV and PDF reports for revenue and appointments.",
-      "Custom domain + automatic SSL (add-on $5/mo).",
-    ],
+  name: "Starter",
+  price: "$19.99/mo",
+  description:
+    "Launch your website and start taking bookings and payments — perfect for solo professionals.",
+  features: [
+    "Website builder with branded pages and templates.",
+    "Online booking, confirmations, and client portal.",
+    "Public “Book with me” link for solo professionals.",
+    "Stripe Checkout with Automatic Tax compliance.",
+    "1 staff seat and 1 location included.",
+    "CSV and PDF reports for revenue and appointments.",
+    "Custom domain + automatic SSL included on this plan.",
+    "Onboarding workflows available as your team grows.",
+  ],
     ctaLabel: "Start free trial",
     ctaTo: HERO_PRIMARY_CTA_TO,
   },
@@ -90,17 +92,19 @@ const DEFAULT_PLANS = [
     key: "pro",
     name: "Pro",
     price: "$49.99/mo",
-    description:
-      "For small teams that need staff scheduling, marketing automation, and analytics.",
-    features: [
-      "Everything in Starter.",
-      "Custom domain + automatic SSL included.",
-      "Up to 5 staff seats and 1 location included.",
-      "Payroll processing included with Employee Payslip Portal (self-serve PDF downloads).",
-      "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
-      "Advanced Analytics (bookings, revenue, client segments).",
-      "Automated Canadian stat holiday pay and accruals.",
-      "Priority support (business hours).",
+  description:
+    "For small teams that need staff scheduling, marketing automation, and analytics.",
+  features: [
+    "Everything in Starter.",
+    "Custom domain + automatic SSL included.",
+    "Up to 5 staff seats and 1 location included.",
+    "Zapier automation for bookings, shifts, timeclock, breaks, PTO, onboarding, and payroll events.",
+    "QuickBooks and Xero exports for payroll and revenue.",
+    "Payroll processing included with Employee Payslip Portal (self-serve PDF downloads).",
+    "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
+    "Advanced Analytics (bookings, revenue, client segments).",
+    "Automated Canadian stat holiday pay and accruals.",
+    "Priority support (business hours).",
     ],
     ctaLabel: "Start Pro",
     ctaTo: HERO_PRIMARY_CTA_TO,
@@ -116,7 +120,7 @@ const DEFAULT_PLANS = [
     features: [
       "Everything in Pro.",
       "10 staff seats and up to 2 locations included.",
-      "Add additional staff seats for $9/mo each.",
+      "Add additional staff seats for $9/mo each (scales with your team).",
       "Compliance Documents Pack: W-2 (US), T4 (CA), ROE (CA) creation & export (PDF/XML).",
       "Advanced payroll exports, audits, and tax reports.",
       "Role-based access (managers / staff / finance).",
@@ -134,16 +138,13 @@ const DEFAULT_ADDONS = {
   title: "Popular add-ons",
   headers: { addon: "Add-on", price: "Price" },
   items: [
-    { key: "customDomain", name: "Custom domain + automatic SSL", price: "$5/mo" },
     { key: "extraSeat", name: "Additional staff seat", price: "$9/mo" },
-    { key: "smsPack", name: "SMS reminder pack (100 msgs)", price: "$5/mo" },
-    { key: "whiteGlove", name: "Dedicated onboarding (one-time)", price: "$99" },
   ],
 };
 
 const VALUE_NOTE = `
-<strong>Bundle value:</strong> Subscribe to <strong>Payroll + Scheduling</strong> and your branded website is included for free.
-If you only need Website or Booking, <strong>Starter</strong> covers it; <strong>Pro</strong> adds marketing and analytics, and <strong>Business</strong> adds full payroll compliance documents.
+<strong>Bundle value:</strong> Subscribe to <strong>Payroll + Scheduling</strong> and your branded website on your own domain (with automatic SSL) is included for free.
+If you only need Website or Booking, <strong>Starter</strong> covers it; <strong>Pro</strong> adds staff scheduling, payroll, and automations, and <strong>Business</strong> adds full payroll compliance documents and multi-location controls.
 `;
 
 const DEFAULT_CTA = {

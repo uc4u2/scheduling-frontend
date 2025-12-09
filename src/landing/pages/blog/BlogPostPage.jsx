@@ -152,7 +152,7 @@ const BlogPostPage = () => {
             Ready to run operations from one workspace?
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 640, mx: "auto", mb: 3 }}>
-            Launch booking, scheduling, payroll exports, and public booking links in one place. Keep data clean for clients, staff, and finance.
+            Launch booking, scheduling, time tracking, and payroll in one place, then connect Zapier and QuickBooks/Xero so operations, finance, and HR all work from the same data.
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center">
             <Button component={Link} to="/register" variant="contained" size="large" sx={{ textTransform: "none", borderRadius: 999 }}>

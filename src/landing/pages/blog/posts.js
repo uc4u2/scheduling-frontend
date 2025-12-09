@@ -336,6 +336,7 @@ const blogPosts = [
           "- Account/ledger mappings in settings so exports land in the right buckets.",
           "- Audit trails for approvals, so finance trusts the numbers.",
           "It's intentionally light-touch: exports and mappings, not deep bi-directional sync.",
+          "For teams that need deeper analysis, Schedulaa also exposes detailed per-employee payroll rows, timeclock punches, and break events via Zapier. The payroll.details event streams the same data you see in Payroll → Payroll Detail / Raw Data into Google Sheets, Excel, BI tools, or custom accounting workflows—while QuickBooks/Xero remain the system of record for journals.",
         ],
       },
       {

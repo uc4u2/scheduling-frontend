@@ -30,7 +30,7 @@ const CATEGORY_CONTENT = {
     meta: {
       title: "Automation Guides | Schedulaa Blog",
       description:
-        "Automation strategies for unifying booking, marketing, analytics, and websites so teams operate from one platform.",
+        "Automation strategies for unifying booking, scheduling, marketing, analytics, and websites with Zapier so teams operate from one platform.",
       canonical: "https://www.schedulaa.com/blog/category/automation",
       keywords: "Schedulaa automation, business automation guides, scheduling automation, marketing automation playbook",
     },
@@ -44,7 +44,7 @@ const CATEGORY_CONTENT = {
       {
         title: "Surface analytics automatically",
         description:
-          "Automate KPI refreshes so leadership views bookings, revenue, tips, and card-on-file metrics without manual exports.",
+          "Use Zapier and scheduled exports to refresh KPIs so leadership views bookings, revenue, tips, and card-on-file metrics without manual CSV work.",
         icon: <InsightsIcon fontSize="small" />,
       },
       {
@@ -56,7 +56,7 @@ const CATEGORY_CONTENT = {
     ],
     paragraphs: [
       "Our automation content dives into how Schedulaa keeps marketing, analytics, and customer communications in sync with your scheduling data.",
-      "Every workflow uses the same data foundation as your booking site, payroll exports, and client messaging so configuration stays simple and powerful.",
+      "Every workflow uses the same data foundation as your booking site, payroll exports, and client messaging, with Zapier and native QuickBooks/Xero exports carrying that data into your CRM, finance stack, and BI tools.",
     ],
   },
   payroll: {
@@ -66,7 +66,7 @@ const CATEGORY_CONTENT = {
     meta: {
       title: "Payroll Operations | Schedulaa Blog",
       description:
-        "US and Canadian payroll best practices, tax automation tips, and how Schedulaa streamlines compliance.",
+        "US and Canadian payroll best practices, tax automation tips, and how Schedulaa streamlines compliance and exports to QuickBooks and Xero.",
       canonical: "https://www.schedulaa.com/blog/category/payroll",
       keywords: "Schedulaa payroll, Canada payroll software, US payroll automation, ROE generator tips",
     },
@@ -80,7 +80,7 @@ const CATEGORY_CONTENT = {
       {
         title: "Scheduling → payroll handoff",
         description:
-          "Use shift data and leave requests to prep payroll quickly, highlight overtime, and flag missing information.",
+          "Use shift data and leave requests to prep payroll quickly, highlight overtime, flag missing information, and export clean results into QuickBooks or Xero.",
         icon: <ScheduleIcon fontSize="small" />,
       },
       {

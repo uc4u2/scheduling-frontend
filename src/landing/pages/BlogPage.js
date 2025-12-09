@@ -60,7 +60,7 @@ const highlightItems = [
   {
     title: "Data visibility and analytics",
     description:
-      "Unify scheduling, payroll, marketing, and revenue data to understand performance in real time and support leadership decisions.",
+      "Unify scheduling, payroll, marketing, and revenue data, then use Zapier and exports to push it into Sheets, BI tools, and accounting so leaders see the full picture.",
     icon: <InsightsIcon fontSize="small" />, 
   },
   {
@@ -72,14 +72,14 @@ const highlightItems = [
 ];
 
 const articleParagraphs = [
-  "Businesses burn hours jumping between booking apps, payroll exports, marketing platforms, and website builders. Schedulaa merges those critical systems into one secure command center built for teams that need clarity and control.",
+  "Businesses burn hours jumping between booking apps, payroll exports, marketing platforms, and website builders. Schedulaa merges those critical systems into one secure command center and connects them to Zapier, QuickBooks, and Xero so teams stay aligned.",
   "Our platform brings enterprise-grade structure to small and mid-sized operators. Scheduling, payroll, reviews, analytics, and your marketing site share the same data foundation so decisions are instant and context stays intact.",
   "Inside the Website Builder you can select any page, edit sections, adjust global styles, reuse uploaded assets, and publish changes when they are ready. DNS instructions are generated automatically so connecting your custom domain and SSL is painless.",
   "Marketing automation is built in. Preview segmented campaigns, personalize copy without touching HTML, track UTM performance, and send broadcast, win-back, VIP, or no-show flows that actually convert.",
   "Checkout stays compliant by design. Connect Stripe, enable Automatic Tax, and manage regional registrations so every transaction reflects the right rules without extra software.",
   "Payroll workflows span the regions we support across the US and Canada, track shifts and leave, flag unsupported local levies, and surface the insights teams need before payday.",
   "All of this runs inside a single platform with auditing, role-aware access, and a support team that lives the same rollout playbooks documented in our help center.",
-  "Thousands of operators are already replacing fractured stacks with Schedulaa. Less tab hopping, fewer CSVs, more time spent on clients and growth.",
+  "All of this runs inside a single platform with auditing, role-aware access, and integrations for Zapier, QuickBooks, and Xero. Thousands of operators are already replacing fractured stacks with Schedulaa—less tab hopping, fewer CSVs, and more time spent on clients and growth.",
   "Automation sits on top of that foundation. Zapier streams bookings, shifts, timeclock events, break compliance, PTO, and payroll details into CRMs, Slack/Teams, Sheets, and BI tools, while QuickBooks and Xero exports keep your ledgers clean and reconciled.",
 ];
 
@@ -167,7 +167,7 @@ const BlogPage = () => {
       <HeroShowcase
         eyebrow="Blog"
         title={["The future of", "business automation."]}
-        subtitle="How Schedulaa is redefining all-in-one management for modern teams with unified booking, payroll, websites, and analytics."
+        subtitle="How Schedulaa is redefining all-in-one management for modern teams with unified booking, payroll, websites, analytics, and integrations to Zapier, QuickBooks, and Xero."
         primaryCTA={{ label: "Start free", to: "/register" }}
         secondaryCTA={{ label: "Talk to sales", to: "/contact", variant: "outlined" }}
         media={{ src: heroShowcaseMedia, alt: "Schedulaa product hero" }}
