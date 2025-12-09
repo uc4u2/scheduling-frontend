@@ -3,7 +3,9 @@ import React, { useEffect, useState } from "react";
 import { Box, Table, TableHead, TableRow, TableCell, TableBody, Typography } from "@mui/material";
 import axios from "axios";
 
-const AuditHistory = ({ recordType, recordId, compact }) => {
+const API = process.env.REACT_APP_API_URL || "";
+
+const AuditHistory = ({ recordType, recordId, compact, token }) => {
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
@@ -12,8 +14,14 @@ const AuditHistory = ({ recordType, recordId, compact }) => {
       // For most, action format: e.g. "Paystub 123" or "ROE 4"
       params.action = `${recordType.charAt(0).toUpperCase() + recordType.slice(1)} ${recordId}`;
     }
-    axios.get(`/audit/history`, { params })
-      .then(res => setRows(res.data));
+    axios
+      .get(`${API}/audit/history`, {
+        params,
+        ...(token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {}),
+      })
+      .then((res) => setRows(res.data));
     // eslint-disable-next-line
   }, [recordType, recordId]);
 

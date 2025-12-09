@@ -46,6 +46,7 @@ const CRA_BOXES = [
   ["box22", "Tax"],
   ["box24", "EI ins. earnings"],
   ["box26", "CPP/QPP earnings"],
+  ["box40", "Taxable benefits"],
   ["box44", "Union dues"],
   ["box46", "Charitable"],
 ];
@@ -71,6 +72,7 @@ const T4 = ({ token, isManager = false }) => {
 
   const [showAudit, setShowAudit] = useState({ open: false, id: null });
   const [editSlip, setEditSlip] = useState(null);
+  const [validation, setValidation] = useState({});
 
   const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const auth = { headers: { Authorization: `Bearer ${token}` } };
@@ -106,12 +108,15 @@ const T4 = ({ token, isManager = false }) => {
       : recruiters;
   }, [recruiters, selectedDepartment]);
 
-  const fetchSlipsAndSummary = async () => {
+  const fetchSlipsAndSummary = async (opts = {}) => {
+    const { ignoreEmployeeFilter = false } = opts;
     setLoading(true);
     try {
       const qs = new URLSearchParams({
         year,
-        ...(selectedEmployee ? { employee_id: selectedEmployee } : {}),
+        ...(selectedEmployee && !ignoreEmployeeFilter
+          ? { employee_id: selectedEmployee }
+          : {}),
       }).toString();
       const listReq = axios.get(`${API}/yearend/t4/list?${qs}`, auth);
       const sumReq = isManager
@@ -148,6 +153,13 @@ const T4 = ({ token, isManager = false }) => {
     setSelectedEmployee("");    // Reset employee when department changes
   };
 
+  const formatEmployeeName = (r) =>
+    r.full_name ||
+    r.name ||
+    [r.first_name, r.last_name].filter(Boolean).join(" ").trim() ||
+    r.email ||
+    "-";
+
   /* Reset selectedEmployee if not in filtered recruiters */
   useEffect(() => {
     if (
@@ -164,7 +176,9 @@ const T4 = ({ token, isManager = false }) => {
     try {
       await axios.post(`${API}/yearend/t4/generate`, { year }, auth);
       setMsg("Batch generation started.");
-      fetchSlipsAndSummary();
+      // clear employee filter so newly generated slips show
+      setSelectedEmployee("");
+      fetchSlipsAndSummary({ ignoreEmployeeFilter: true });
     } catch {
       setErr("Generation failed.");
     }
@@ -213,13 +227,24 @@ const T4 = ({ token, isManager = false }) => {
   const exportXmlSingle = async (id, preview = false) => {
     try {
       const { data } = await axios.get(
-        `${API}/yearend/t4/${id}/export-xml`,
+        `${API}/yearend/t4/slip/${id}/export-xml`,
         { ...auth, responseType: preview ? "text" : "blob" }
       );
       if (preview) setXmlText(typeof data === "string" ? data : data);
       else setXmlUrl(URL.createObjectURL(new Blob([data])));
     } catch {
       setErr("XML export failed.");
+    }
+  };
+
+  const runValidation = async (id) => {
+    try {
+      const { data } = await axios.get(`${API}/yearend/t4/${id}/validate`, auth);
+      setValidation((prev) => ({ ...prev, [id]: data }));
+      return data;
+    } catch {
+      setErr("Validation failed.");
+      return null;
     }
   };
 
@@ -235,12 +260,10 @@ const T4 = ({ token, isManager = false }) => {
 
   const handleIssue = async (row) => {
     try {
-      const { data: full } = await axios.get(
-        `${API}/yearend/t4/${row.id}`,
-        auth
-      );
-      if (!validateBeforeIssue(full)) {
-        alert("Mandatory CRA boxes are empty. Please review before issuing.");
+      const result = await runValidation(row.id);
+      if (!result) return;
+      if (!result.valid) {
+        setErr("Cannot issue T4. Please fix CRA validation errors (SIN / province / BN / caps).");
         return;
       }
       await updateStatus(row.id, "issued");
@@ -267,7 +290,9 @@ const T4 = ({ token, isManager = false }) => {
       slips.map((s) => ({
         ...s,
         employee:
-          recruiters.find((r) => r.id === s.employee_id)?.name ||
+          formatEmployeeName(
+            recruiters.find((r) => r.id === s.employee_id) || {}
+          ) ||
           s.employee_name ||
           "-",
         json_boxes: s.json_boxes || {}, // may be omitted in list payload
@@ -347,7 +372,7 @@ const T4 = ({ token, isManager = false }) => {
               </MenuItem>
               {filteredRecruiters.map((r) => (
                 <MenuItem key={r.id} value={String(r.id)}>
-                  {r.name} ({r.email})
+                  {formatEmployeeName(r)} ({r.email})
                 </MenuItem>
               ))}
             </TextField>
@@ -433,7 +458,8 @@ const T4 = ({ token, isManager = false }) => {
                   ID
                 </TableCell>
                 <TableCell sx={{ width: 220 }}>Employee</TableCell>
-                {CRA_BOXES.slice(0, 4).map(([code]) => (
+                {/* show 14,16,18,22,24,26 */}
+                {CRA_BOXES.slice(0, 6).map(([code]) => (
                   <TableCell key={code} align="center" sx={{ width: 90 }}>
                     {code.toUpperCase()}
                   </TableCell>
@@ -454,7 +480,7 @@ const T4 = ({ token, isManager = false }) => {
                 <TableRow key={row.id} hover>
                   <TableCell align="center">{row.id}</TableCell>
                   <TableCell>{row.employee}</TableCell>
-                  {CRA_BOXES.slice(0, 4).map(([code]) => (
+                  {CRA_BOXES.slice(0, 6).map(([code]) => (
                     <TableCell key={code} align="center">
                       {row.json_boxes?.[code] ?? "-"}
                     </TableCell>
@@ -474,6 +500,15 @@ const T4 = ({ token, isManager = false }) => {
                     >
                       {row.status}
                     </strong>
+                    {validation[row.id] && (
+                      <Typography variant="caption" display="block">
+                        {validation[row.id].valid
+                          ? "CRA check: OK"
+                          : `CRA check: ${validation[row.id].errors?.length || 0} errors, ${
+                              validation[row.id].warnings?.length || 0
+                            } warnings`}
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell align="center">
                     {new Date(row.created_at).toLocaleDateString()}
@@ -561,15 +596,18 @@ const T4 = ({ token, isManager = false }) => {
                           <Button
                             size="small"
                             color="warning"
-                            onClick={() => updateStatus(row.id, "rejected")}
-                          >
-                            Reject
-                          </Button>
-                          {row.status !== "issued" && (
-                            <Button
-                              size="small"
-                              color="error"
-                              onClick={() => deleteSlip(row)}
+                          onClick={() => updateStatus(row.id, "rejected")}
+                        >
+                          Reject
+                        </Button>
+                        <Button size="small" onClick={() => runValidation(row.id)}>
+                          Validate
+                        </Button>
+                        {row.status !== "issued" && (
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => deleteSlip(row)}
                             >
                               Delete
                             </Button>
@@ -658,11 +696,15 @@ const T4 = ({ token, isManager = false }) => {
         fullWidth
       >
         <DialogTitle>T4 Audit History</DialogTitle>
-        <DialogContent>
-          {showAudit.id && (
-            <AuditHistory recordType="t4" recordId={showAudit.id} />
-          )}
-        </DialogContent>
+          <DialogContent>
+            {showAudit.id && (
+              <AuditHistory
+                recordType="t4"
+                recordId={showAudit.id}
+                token={token}
+              />
+            )}
+          </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowAudit({ open: false, id: null })}>
             Close
@@ -732,6 +774,3 @@ const T4 = ({ token, isManager = false }) => {
 };
 
 export default T4;
-
-
-
