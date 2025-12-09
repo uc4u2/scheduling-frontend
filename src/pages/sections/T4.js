@@ -450,27 +450,35 @@ const T4 = ({ token, isManager = false }) => {
       {loading ? (
         <Skeleton height={400} variant="rectangular" />
       ) : (
-        <TableContainer component={Paper} variant="outlined">
+        <TableContainer
+          component={Paper}
+          variant="outlined"
+          sx={{ width: "100%", overflowX: "auto" }}
+        >
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell align="center" sx={{ width: 60 }}>
+                <TableCell align="center" sx={{ minWidth: 60, whiteSpace: "nowrap" }}>
                   ID
                 </TableCell>
-                <TableCell sx={{ width: 220 }}>Employee</TableCell>
+                <TableCell sx={{ minWidth: 180, whiteSpace: "nowrap" }}>Employee</TableCell>
                 {/* show 14,16,18,22,24,26 */}
                 {CRA_BOXES.slice(0, 6).map(([code]) => (
-                  <TableCell key={code} align="center" sx={{ width: 90 }}>
+                  <TableCell
+                    key={code}
+                    align="center"
+                    sx={{ minWidth: 80, whiteSpace: "nowrap" }}
+                  >
                     {code.toUpperCase()}
                   </TableCell>
                 ))}
-                <TableCell align="center" sx={{ width: 90 }}>
+                <TableCell align="center" sx={{ minWidth: 90, whiteSpace: "nowrap" }}>
                   Status
                 </TableCell>
-                <TableCell align="center" sx={{ width: 90 }}>
+                <TableCell align="center" sx={{ minWidth: 90, whiteSpace: "nowrap" }}>
                   Created
                 </TableCell>
-                <TableCell align="center" sx={{ width: 450 }}>
+                <TableCell align="center" sx={{ minWidth: 260 }}>
                   Actions
                 </TableCell>
               </TableRow>
