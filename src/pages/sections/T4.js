@@ -50,6 +50,16 @@ const CRA_BOXES = [
   ["box44", "Union dues"],
   ["box46", "Charitable"],
 ];
+const TABLE_BOXES = [
+  "box14",
+  "box16",
+  "box18",
+  "box22",
+  "box24",
+  "box26",
+  "box40",
+  "box44",
+];
 
 const T4 = ({ token, isManager = false }) => {
   /* ── State ────────────────────────────────────────────── */
@@ -462,8 +472,7 @@ const T4 = ({ token, isManager = false }) => {
                   ID
                 </TableCell>
                 <TableCell sx={{ minWidth: 180, whiteSpace: "nowrap" }}>Employee</TableCell>
-                {/* show 14,16,18,22,24,26 */}
-                {CRA_BOXES.slice(0, 6).map(([code]) => (
+                {TABLE_BOXES.map((code) => (
                   <TableCell
                     key={code}
                     align="center"
@@ -488,7 +497,7 @@ const T4 = ({ token, isManager = false }) => {
                 <TableRow key={row.id} hover>
                   <TableCell align="center">{row.id}</TableCell>
                   <TableCell>{row.employee}</TableCell>
-                  {CRA_BOXES.slice(0, 6).map(([code]) => (
+                  {TABLE_BOXES.map((code) => (
                     <TableCell key={code} align="center">
                       {row.json_boxes?.[code] ?? "-"}
                     </TableCell>
@@ -730,26 +739,29 @@ const T4 = ({ token, isManager = false }) => {
         <DialogTitle>View / Edit T4 Boxes</DialogTitle>
         <DialogContent dividers>
           {editSlip && (
-            <Grid container spacing={2}>
-              {CRA_BOXES.map(([code, label]) => (
-                <Grid item xs={12} sm={6} key={code}>
-                  <TextField
-                    label={`${code.toUpperCase()} – ${label}`}
-                    value={editSlip.json_boxes?.[code] ?? ""}
-                    onChange={(e) =>
-                      setEditSlip((s) => ({
-                        ...s,
-                        json_boxes: { ...s.json_boxes, [code]: e.target.value },
-                      }))
-                    }
-                    fullWidth
-                    disabled={
-                      !isManager || editSlip.status === "issued"
-                    }
-                  />
-                </Grid>
-              ))}
-            </Grid>
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Edit CRA box values. Box 40 = taxable benefits, Box 44 = union dues.
+              </Typography>
+              <Grid container spacing={2}>
+                {CRA_BOXES.map(([code, label]) => (
+                  <Grid item xs={12} sm={6} key={code}>
+                    <TextField
+                      label={`${code.toUpperCase()} – ${label}`}
+                      value={editSlip.json_boxes?.[code] ?? ""}
+                      onChange={(e) =>
+                        setEditSlip((s) => ({
+                          ...s,
+                          json_boxes: { ...s.json_boxes, [code]: e.target.value },
+                        }))
+                      }
+                      fullWidth
+                      disabled={!isManager || editSlip.status === "issued"}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            </>
           )}
         </DialogContent>
         <DialogActions>

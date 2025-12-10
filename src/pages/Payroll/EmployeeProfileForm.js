@@ -15,6 +15,7 @@ import {
   Tooltip,
   FormControlLabel,
   Switch,
+  Checkbox,
   List,
   ListItem,
   ListItemText,
@@ -196,6 +197,9 @@ const FRONTEND_ORIGIN =
         public_bio: data.public_bio || "",
         role: data.role || "",
         public_meet_token: data.public_meet_token || "",
+        cpp_exempt: Boolean(data.cpp_exempt),
+        ei_exempt: Boolean(data.ei_exempt),
+        union_member: Boolean(data.union_member),
       };
       setEmployee(flatData);
       setErrorKey("");
@@ -353,16 +357,29 @@ const FRONTEND_ORIGIN =
   const handleSubmit = async () => {
     if (!employee || !selectedId) return;
     try {
-      const res = await api.put(`/api/recruiters/${selectedId}`, employee);
+      // Ensure flags are sent explicitly; preserve current state if the API omits them
+      const payload = {
+        ...employee,
+        cpp_exempt: Boolean(employee.cpp_exempt),
+        ei_exempt: Boolean(employee.ei_exempt),
+        union_member: Boolean(employee.union_member),
+      };
+
+      const res = await api.put(`/api/recruiters/${selectedId}`, payload);
       if (res?.data) {
         // update local state with saved values to reflect toggles immediately
         const data = res.data;
         const flatData = {
+          // merge API response but preserve toggles if the API omits them
+          ...employee,
           ...data,
           address_street: data.address?.street || "",
           address_city: data.address?.city || "",
           address_state: data.address?.state || "",
           address_zip: data.address?.zip || "",
+          cpp_exempt: data.cpp_exempt !== undefined ? Boolean(data.cpp_exempt) : Boolean(employee.cpp_exempt),
+          ei_exempt: data.ei_exempt !== undefined ? Boolean(data.ei_exempt) : Boolean(employee.ei_exempt),
+          union_member: data.union_member !== undefined ? Boolean(data.union_member) : Boolean(employee.union_member),
         };
         setEmployee(flatData);
       }
@@ -752,6 +769,68 @@ const FRONTEND_ORIGIN =
               />
             </Grid>
           </Grid>
+
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+              Payroll &amp; compliance
+            </Typography>
+            <Grid container spacing={1}>
+              <Grid item xs={12} md={4}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={Boolean(employee.cpp_exempt)}
+                      onChange={(e) =>
+                        setEmployee((prev) => (prev ? { ...prev, cpp_exempt: e.target.checked } : prev))
+                      }
+                    />
+                  }
+                  label="CPP exempt (Canada)"
+                />
+                <Tooltip title="Employee does not contribute to CPP for this job (e.g., already collecting CPP). CPP will not be withheld or reported.">
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                    Hover for details
+                  </Typography>
+                </Tooltip>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={Boolean(employee.ei_exempt)}
+                      onChange={(e) =>
+                        setEmployee((prev) => (prev ? { ...prev, ei_exempt: e.target.checked } : prev))
+                      }
+                    />
+                  }
+                  label="EI exempt (Canada)"
+                />
+                <Tooltip title="Employee is exempt from EI. EI will not be withheld or reported for this employee.">
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                    Hover for details
+                  </Typography>
+                </Tooltip>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={Boolean(employee.union_member)}
+                      onChange={(e) =>
+                        setEmployee((prev) => (prev ? { ...prev, union_member: e.target.checked } : prev))
+                      }
+                    />
+                  }
+                  label="Union member"
+                />
+                <Tooltip title="For reporting and pre-filling union dues. Does not change pay by itself.">
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                    Hover for details
+                  </Typography>
+                </Tooltip>
+              </Grid>
+            </Grid>
+          </Box>
 
           <Paper variant="outlined" sx={{ p: 2, mt: 3, borderRadius: 2 }}>
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>

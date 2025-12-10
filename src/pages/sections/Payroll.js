@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import {
   Drawer,
+  Tabs,
+  Tab,
   Tooltip,
   IconButton,
   Divider,
@@ -30,6 +32,7 @@ import PayslipModal from "./PayslipModal";
 import { savePayroll, exportPayroll } from "./netpay";
 import { vacationIncludedByDefault, defaultVacationPercent } from "./utils/payrollRules";
 import ManagementFrame from "../../components/ui/ManagementFrame";
+import PayrollScenarios from "./PayrollScenarios";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -67,6 +70,7 @@ export default function Payroll({ token }) {
   const [viewMode, setViewMode] = useState("preview");
   const [autoRecalc, setAutoRecalc] = useState(true);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [guideTab, setGuideTab] = useState("overview");
 
   /* ── domain state ── */
   const [recruiters, setRecruiters] = useState([]);
@@ -577,73 +581,119 @@ return (
    {/* Guide Drawer */}
 <Drawer anchor="right" open={guideOpen} onClose={() => setGuideOpen(false)}>
   <Box sx={{ width: 600, p: 3 }}>
-    <Typography variant="h5" gutterBottom>🇺🇸 U.S. Payroll Coverage (2025)</Typography>
-    <Typography variant="body1" gutterBottom>
-      Our payroll system supports accurate tax and compliance processing in most U.S. states, including:
+    <Typography variant="h5" gutterBottom>
+      Payroll Coverage & Help
     </Typography>
-    <ul>
-      <li>✅ Federal Income Tax (IRS brackets)</li>
-      <li>✅ State Income Tax (where applicable)</li>
-      <li>✅ FICA: Social Security & Medicare</li>
-      <li>✅ SUI/SUTA: State Unemployment Insurance (employer-paid)</li>
-      <li>✅ PTO & Time Tracking support</li>
-      <li>✅ Payroll exports (PDF / CSV / XLSX)</li>
-      <li>✅ Year-end forms: W-2 generation / export</li>
-      <li>❌ Local/City Income Taxes (e.g., NYC, STL, CO local): Not supported</li>
-      <li>❌ Special Payroll Taxes (e.g., OR Transit, WA Paid Family): Not supported</li>
-      <li>❌ Wage Garnishments: Not automated (must be handled externally)</li>
-    </ul>
-
-    <Typography variant="subtitle1" sx={{ mt: 2 }}><strong>📍 States Fully Supported (2025)</strong></Typography>
-    <Typography variant="body2">
-      Our platform is legally operable and tax-compliant in the following U.S. states:
-    </Typography>
-    <Box sx={{ fontSize: 14, mt: 1, mb: 2 }}>
-      ✓ Alabama, Arizona, Arkansas, <strong>California***</strong>, Colorado, Connecticut, Delaware, District of Columbia (DC), Florida, Georgia, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, <strong>Maryland**</strong>, Massachusetts, Michigan, Minnesota, Mississippi, <strong>Missouri**</strong>, Montana, Nebraska, Nevada, <strong>New Hampshire*</strong>, <strong>New Jersey**</strong>, New Mexico, North Carolina, North Dakota, <strong>Ohio**</strong>, Oklahoma, <strong>Oregon**</strong>, <strong>Pennsylvania**</strong>, South Carolina, South Dakota, <strong>Tennessee*</strong>, Texas, Utah, Vermont, Virginia, <strong>Washington**</strong>, West Virginia, Wisconsin, Wyoming
-    </Box>
-
-    <Typography variant="caption" color="text.secondary" component="div">
-      <strong>*</strong> TN & NH: No earned income tax. Only dividend/interest tax applies<br />
-      <strong>**</strong> These states may impose local/city taxes (e.g., St. Louis, NYC, county levies). Our system does <em>not</em> support local tax compliance.<br />
-      <strong>***</strong> California: SDI (State Disability Insurance) is not withheld by default and must be handled externally if required by your organization.<br />
-    </Typography>
-
-    <Divider sx={{ my: 3 }} />
-
-    <Typography variant="h5" gutterBottom>🇨🇦 Canadian Payroll Coverage (2025)</Typography>
-    <Typography variant="body1" gutterBottom>
-      Schedulaa’s CRA-compliant engine covers all provinces <strong>except Québec</strong>.
-    </Typography>
-    <Typography variant="subtitle1" gutterBottom>Supported</Typography>
-    <ul>
-      <li>✅ Federal & provincial income tax (outside QC)</li>
-      <li>✅ CPP (Canada Pension Plan)</li>
-      <li>✅ EI (Employment Insurance)</li>
-      <li>✅ Vacation pay & accrual logic</li>
-      <li>✅ Automated statutory holiday pay calculation</li>
-      <li>✅ Paid vs unpaid leave tracking</li>
-      <li>✅ BPA (Basic Personal Amount) with pro-rata and YTD tracking</li>
-      <li>✅ T4 generation / export</li>
-      <li>✅ ROE (Record of Employment) creation / review / export (PDF & XML)</li>
-    </ul>
-    <Typography variant="subtitle1" gutterBottom>Not supported / not automated</Typography>
-    <ul>
-      <li>❌ Québec payroll (QPP, RQAP/QPIP programs)</li>
-      <li>❌ Fringe benefit taxation that requires bureau-specific handling</li>
-    </ul>
-
-    <Divider sx={{ my: 3 }} />
-
-    <Typography variant="h6" gutterBottom>⚠️ Known Limitations</Typography>
     <Typography variant="body2" color="text.secondary" gutterBottom>
-      The following features are not yet automated and may require external handling:
+      What we support, how calculations work, and step-by-step + scenario guidance.
     </Typography>
-    <ul>
-      <li>❌ Local/city taxes in U.S. jurisdictions</li>
-      <li>❌ Wage garnishments and legal holds</li>
-      <li>❌ Fringe benefit taxation</li>
-      <li>❌ Québec payroll (QPP, RQAP/QPIP)</li>
-    </ul>
+    <Tabs
+      value={guideTab}
+      onChange={(_, v) => setGuideTab(v)}
+      sx={{ mb: 2 }}
+      textColor="primary"
+      indicatorColor="primary"
+    >
+      <Tab value="overview" label="Guide" />
+      <Tab value="scenarios" label="Scenarios" />
+    </Tabs>
+    <Divider sx={{ mb: 2 }} />
+
+    {guideTab === "overview" && (
+      <>
+        <Typography variant="h5" gutterBottom>🇺🇸 U.S. Payroll Coverage (2025)</Typography>
+        <Typography variant="body1" gutterBottom>
+          Supported (core compliance):
+        </Typography>
+        <ul>
+          <li>✅ Federal income tax</li>
+          <li>✅ State income tax (where applicable)</li>
+          <li>✅ FICA: Social Security & Medicare</li>
+          <li>✅ SUI/SUTA (employer unemployment)</li>
+          <li>✅ PTO & time tracking</li>
+          <li>✅ Shift premiums (taxable earnings)</li>
+          <li>✅ Simple union dues (employee deduction)</li>
+          <li>✅ Simple garnishments (flat amounts; no automatic %-of-disposable-income logic)</li>
+          <li>✅ Payroll exports (PDF / CSV / XLSX)</li>
+          <li>✅ W-2 generation / export</li>
+        </ul>
+        <Typography variant="body1" gutterBottom>Not supported / not automated:</Typography>
+        <ul>
+          <li>❌ Local/city taxes (e.g., NYC, STL, CO locals)</li>
+          <li>❌ Special payroll taxes (e.g., OR transit, WA Paid Family)</li>
+          <li>❌ Automated garnishment workflows (court-order logic/remittance must be external)</li>
+        </ul>
+        <Typography variant="subtitle1" sx={{ mt: 2 }}><strong>📍 States Fully Supported (2025)</strong></Typography>
+        <Typography variant="body2">
+          ✓ AL, AZ, AR, CA***, CO, CT, DE, DC, FL, GA, ID, IL, IN, IA, KS, KY, LA, ME, MD**, MA, MI, MN, MS, MO**, MT, NE, NV, NH*, NJ**, NM, NC, ND, OH**, OK, OR**, PA**, SC, SD, TN*, TX, UT, VT, VA, WA**, WV, WI, WY
+        </Typography>
+        <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 1 }}>
+          * TN & NH: No earned income tax (only dividend/interest tax).<br />
+          ** Local taxes may apply (not supported). (Examples: MD county tax, MO St. Louis/KC, NJ locals/transit, OH municipalities, OR TriMet/Metro, PA local EIT, WA certain cities.)<br />
+          *** CA: SDI not withheld by default; handle externally if required.
+        </Typography>
+        <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 1.5 }}>
+          Note: Schedulaa calculates federal and state taxes in supported states. Local/city/municipal taxes are not automatically calculated and must be handled externally where applicable.
+        </Typography>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="h5" gutterBottom>🇨🇦 Canadian Payroll Coverage (2025)</Typography>
+        <Typography variant="body1" gutterBottom>
+          Supported (ex‑Québec):
+        </Typography>
+        <ul>
+          <li>✅ Federal & provincial income tax (outside QC)</li>
+          <li>✅ CPP (with CPP-exempt employees)</li>
+          <li>✅ EI (with EI-exempt employees)</li>
+          <li>✅ Vacation pay & accrual</li>
+          <li>✅ Statutory holiday pay</li>
+          <li>✅ Paid vs unpaid leave</li>
+          <li>✅ BPA with YTD tracking</li>
+          <li>✅ T4: 14, 16/26, 18/24, 22, 40 (taxable benefits), 44 (union dues)</li>
+          <li>✅ ROE (PDF/XML)</li>
+          <li>✅ Simple union dues & garnishments</li>
+          <li>✅ Non-taxable reimbursements (recorded, excluded from gross/taxes)</li>
+        </ul>
+        <Typography variant="body1" gutterBottom>Not supported / not automated:</Typography>
+        <ul>
+          <li>❌ Québec payroll (QPP, RQAP/QPIP)</li>
+          <li>❌ Advanced, plan-specific fringe benefit taxation beyond standard Box 40 treatment</li>
+          <li>❌ Automated garnishment workflows</li>
+        </ul>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="h6" gutterBottom>How Schedulaa Payroll Works (US & Canada)</Typography>
+        <Typography variant="body2" gutterBottom>
+          Payroll combines: (1) Employee profile (country/location, rate, CPP/EI flags, union member), (2) Time & leave (approved shifts, paid/unpaid leave, stat holidays), (3) Manager overrides (bonus, commission, tips, shift premium, allowances, union dues, garnishment, insurance, retirement, non-tax reimbursements).
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          Gross = base earnings + vacation + taxable extras (incl. shift premium). Deductions = taxes + statutory + retirement + union dues + garnishment + other deductions. Net pay = Gross − Deductions + Non-taxable reimbursements.
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          Year-end: W-2 (US) for core boxes; T4 (CA) includes 14/16/18/22/24/26/40/44; ROE for insurable earnings/hours.
+        </Typography>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="h6" gutterBottom>Step-by-Step: Running Payroll</Typography>
+        <ol style={{ paddingLeft: 18 }}>
+          <li><strong>Set up employees:</strong> Country/location, rate; (CA) CPP/EI exempt if applicable; union member if applicable.</li>
+          <li><strong>Approve time & leave:</strong> Shifts clock-in/out, paid vs unpaid leave, stat holidays.</li>
+          <li><strong>Load preview:</strong> Pick employee, region, period, pay frequency; click Load preview.</li>
+          <li><strong>Adjust earnings:</strong> Bonus, commission, tips, shift premium, allowances, vacation override, non-taxable reimbursement.</li>
+          <li><strong>Adjust deductions:</strong> Taxes (auto), CPP/QPP/EI/RQAP or FICA/Medicare (auto), insurance, retirement, union dues, garnishment, other deductions.</li>
+          <li><strong>Validate & finalize:</strong> Preview payslip; finalize & send—writes FinalizedPayroll and saves overrides.</li>
+          <li><strong>Raw data & exports:</strong> Filter by employee/department/region; export CSV/XLSX with all earnings/deductions.</li>
+          <li><strong>Year-end:</strong> T4 (boxes 14/16/18/22/24/26/40/44), W-2 core boxes, ROE (CA) as needed.</li>
+        </ol>
+      </>
+    )}
+
+    {guideTab === "scenarios" && (
+      <PayrollScenarios />
+    )}
 
     <Box textAlign="center" sx={{ mt: 4 }}>
       <Button onClick={() => setGuideOpen(false)} variant="contained" color="primary">

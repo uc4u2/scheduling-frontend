@@ -85,6 +85,10 @@ export function recalcNetPay(data, region = "ca") {
   const dental_insurance = num(data?.dental_insurance);
   const life_insurance = num(data?.life_insurance);
   const deduction = num(data?.deduction);
+  const shift_premium = num(data?.shift_premium);
+  const union_dues = num(data?.union_dues);
+  const garnishment = num(data?.garnishment);
+  const non_taxable_reimbursement = num(data?.non_taxable_reimbursement);
   const includeVac = data?.include_vacation_in_gross ?? vacationIncludedByDefault(region, province);
   const parental_top_up = num(data?.parental_top_up);
 
@@ -108,7 +112,8 @@ export function recalcNetPay(data, region = "ca") {
     travel_allowance +
     family_bonus +
     tax_credit +
-    parental_top_up;
+    parental_top_up +
+    shift_premium;
 
   const grossBase =
     Number(grossBeforeVacation || 0) +
@@ -140,11 +145,13 @@ export function recalcNetPay(data, region = "ca") {
     medical_insurance,
     dental_insurance,
     life_insurance,
-    deduction
+    deduction,
+    union_dues,
+    garnishment
   ];
 
   const totalDeductions = deductionItems.reduce((s, v) => s + num(v), 0);
-  const netPay = +(gross - totalDeductions).toFixed(2);
+  const netPay = +(gross - totalDeductions + non_taxable_reimbursement).toFixed(2);
 
   return {
     gross_pay:        round(gross),

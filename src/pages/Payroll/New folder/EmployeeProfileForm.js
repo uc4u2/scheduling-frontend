@@ -11,6 +11,9 @@ import {
   Alert,
   CircularProgress
 } from "@mui/material";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Tooltip from "@mui/material/Tooltip";
 import axios from "axios";
 import LaunchIcon from "@mui/icons-material/Launch";
 import { Link as RouterLink } from "react-router-dom";
@@ -62,6 +65,10 @@ const EmployeeProfileForm = ({ token }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setEmployee({ ...employee, [name]: value });
+  };
+
+  const handleCheckboxChange = (name) => (e) => {
+    setEmployee({ ...employee, [name]: Boolean(e.target.checked) });
   };
 
   const handleSubmit = async () => {
@@ -198,6 +205,62 @@ const EmployeeProfileForm = ({ token }) => {
               />
             </Grid>
           </Grid>
+
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Payroll &amp; compliance
+            </Typography>
+            <Grid container spacing={1}>
+              <Grid item xs={12} md={4}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={Boolean(employee.cpp_exempt)}
+                      onChange={handleCheckboxChange("cpp_exempt")}
+                    />
+                  }
+                  label="CPP exempt (Canada)"
+                />
+                <Tooltip title="Employee does not contribute to CPP for this job (e.g., already collecting CPP). CPP will not be withheld or reported.">
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                    Hover for details
+                  </Typography>
+                </Tooltip>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={Boolean(employee.ei_exempt)}
+                      onChange={handleCheckboxChange("ei_exempt")}
+                    />
+                  }
+                  label="EI exempt (Canada)"
+                />
+                <Tooltip title="Employee is exempt from EI. EI will not be withheld or reported for this employee.">
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                    Hover for details
+                  </Typography>
+                </Tooltip>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={Boolean(employee.union_member)}
+                      onChange={handleCheckboxChange("union_member")}
+                    />
+                  }
+                  label="Union member"
+                />
+                <Tooltip title="For reporting and pre-filling union dues. Does not change pay by itself.">
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                    Hover for details
+                  </Typography>
+                </Tooltip>
+              </Grid>
+            </Grid>
+          </Box>
 
           <Box sx={{ mt: 3 }}>
             <Button variant="contained" onClick={handleSubmit}>

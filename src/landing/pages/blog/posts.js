@@ -347,6 +347,310 @@ const blogPosts = [
       },
     ],
   },
+  {
+    slug: "canada-us-payroll-one-system",
+    title: "One System for Canadian and U.S. Payroll: CPP/EI and FICA in a Single Workflow",
+    description:
+      "How Schedulaa runs Canada (ex-Québec) and U.S. payroll in one Operations OS, with scheduling and time tracking as the source of truth.",
+    datePublished: "2025-03-11",
+    dateModified: "2025-03-11",
+    category: "Payroll",
+    tags: ["payroll", "canada", "usa", "compliance"],
+    heroOverline: "Cross-border payroll",
+    sections: [
+      {
+        heading: "Why cross-border payroll usually hurts",
+        paragraphs: [
+          "Teams often juggle one tool for Canadian payroll, another for U.S. payroll, plus separate scheduling/time systems and spreadsheets in between. Results: inconsistent tax rules, remote-worker confusion, and no single view of labor cost.",
+        ],
+      },
+      {
+        heading: "How Schedulaa keeps two engines in one OS",
+        paragraphs: [
+          "Employee profiles store country and work location. Payroll Preview loads the correct engine automatically: CPP/EI/BPA with ROE/T4 for Canada (ex-Québec) and IRS/FICA/state logic with W-2 for the U.S. You approve shifts and leave once; the right rules apply per employee.",
+        ],
+      },
+      {
+        heading: "Canadian coverage (ex-Québec)",
+        paragraphs: [
+          "Federal/provincial tax, CPP (with exemptions), EI (with exemptions), vacation/stat holiday pay, BPA with YTD tracking, T4 boxes 14/16/18/22/24/26/40/44, and ROE exports.",
+        ],
+      },
+      {
+        heading: "U.S. coverage",
+        paragraphs: [
+          "Federal income tax, state income tax, FICA (Social Security + Medicare), SUI/SUTA, and W-2 generation. Local/city taxes are not automated.",
+        ],
+      },
+      {
+        heading: "Remote workers & examples",
+        paragraphs: [
+          "Engines follow where staff work: an Ontario stylist runs on CPP/EI; a Texas agent runs on federal + FICA with no state tax. Schedulaa handles mixed teams without duplicate setups.",
+          "Links: /payroll, /payroll/canada, /payroll/usa",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "salon-spa-payroll-canada-us",
+    title: "Salon & Spa Payroll in Canada and the U.S. (Without Spreadsheets)",
+    description:
+      "Tips, commissions, shift premiums, vacation, CPP/EI, and FICA handled in one flow for beauty teams.",
+    datePublished: "2025-03-12",
+    dateModified: "2025-03-12",
+    category: "Payroll",
+    tags: ["payroll", "salon", "spa", "beauty"],
+    heroOverline: "Beauty payroll",
+    sections: [
+      {
+        heading: "Why salons struggle with payroll",
+        paragraphs: [
+          "Variable hours, tips/commissions, multiple rates, weekend premiums, vacation/holiday rules, and cross-border teams make spreadsheets brittle.",
+        ],
+      },
+      {
+        heading: "Schedulaa’s beauty-focused flow",
+        paragraphs: [
+          "Approved shifts bring regular/OT/holiday hours, breaks, and paid vs unpaid leave. Tips, commissions, and bonuses are first-class taxable earnings. Shift premium is its own field. Non-taxable reimbursements stay out of gross.",
+        ],
+      },
+      {
+        heading: "Canada (ex-Québec)",
+        paragraphs: [
+          "Vacation %, stat holiday pay, CPP/EI (with exemptions), BPA, T4 boxes 14/16/18/22/24/26/40/44, ROE exports.",
+        ],
+      },
+      {
+        heading: "United States",
+        paragraphs: [
+          "Federal + state tax, FICA, SUI/SUTA, W-2 exports. Local/city taxes not automated (rare in most salons).",
+        ],
+      },
+      {
+        heading: "Example and next steps",
+        paragraphs: [
+          "Stylists in Toronto and Miami can be paid from one pipeline: shifts → tips/commission/premiums → CPP/EI or FICA → payslip → T4/W-2.",
+          "CTA: /payroll",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "shift-premiums-tips-union-dues",
+    title: "Shift Premiums, Tips, and Union Dues: Paying Service Teams Fairly in Schedulaa",
+    description:
+      "Why extras like tips, shift premiums, and union dues need first-class fields instead of “other” buckets.",
+    datePublished: "2025-03-13",
+    dateModified: "2025-03-13",
+    category: "Payroll",
+    tags: ["payroll", "tips", "union", "shift-premium"],
+    heroOverline: "Service payroll",
+    sections: [
+      {
+        heading: "Why hourly-only breaks in real life",
+        paragraphs: [
+          "Night/weekend premiums, tips, commissions, and union dues are everyday realities for service teams. Hiding them in generic boxes hurts audits and morale.",
+        ],
+      },
+      {
+        heading: "Shift premium as a first-class earning",
+        paragraphs: [
+          "Enter the premium total; Schedulaa treats it as taxable, in gross, and in T4/W-2 wages. Staff see it clearly on payslips.",
+        ],
+      },
+      {
+        heading: "Tips, commissions, bonuses",
+        paragraphs: [
+          "Tips flow into gross and W-2/T4 wages. Commission and bonuses stay separate for reporting clarity but are fully taxable.",
+        ],
+      },
+      {
+        heading: "Union dues and simple garnishments",
+        paragraphs: [
+          "Union dues reduce net and map to T4 Box 44. Simple garnishments are flat deductions; remittance stays external by design.",
+        ],
+      },
+      {
+        heading: "Allowances vs reimbursements",
+        paragraphs: [
+          "Travel/allowances are taxable. Non-taxable reimbursements (headsets, uniforms) stay out of gross and are added only to net pay.",
+        ],
+      },
+      {
+        heading: "See it in Schedulaa",
+        paragraphs: [
+          "Use the in-app payroll help/scenarios to see how each field behaves.",
+          "Links: /payroll, /docs#payroll",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "roe-t4-w2-year-end-guide",
+    title: "ROE, T4, and W-2 in Plain English: A Year-End Guide for Service Businesses",
+    description:
+      "What ROE, T4, and W-2 mean, and how Schedulaa builds them from finalized payroll without extra spreadsheets.",
+    datePublished: "2025-03-14",
+    dateModified: "2025-03-14",
+    category: "Year-end",
+    tags: ["payroll", "roe", "t4", "w2", "year-end"],
+    heroOverline: "Year-end",
+    sections: [
+      {
+        heading: "What these forms are",
+        paragraphs: [
+          "ROE: insurable earnings/hours for Service Canada. T4: CRA slip for Canadian income/CPP/EI/tax/benefits/union dues. W-2: IRS/SSA slip for U.S. wages and taxes.",
+        ],
+      },
+      {
+        heading: "Built from FinalizedPayroll",
+        paragraphs: [
+          "Schedulaa uses finalized runs (hours, tips, premiums, benefits, union dues) to fill ROE/T4/W-2. No retyping.",
+        ],
+      },
+      {
+        heading: "Sanity-check before exporting",
+        paragraphs: [
+          "Review insurable/pensionable earnings, union dues, and taxable benefits in payroll detail. Use the validators in the ROE/T4/W-2 tools.",
+        ],
+      },
+      {
+        heading: "Where to generate",
+        paragraphs: [
+          "Use /payroll/tools for ROE/T4/W-2 exports.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "call-center-payroll-night-shifts",
+    title: "Call Center Payroll: Night Shifts, Overtime, and Remote Agents in Schedulaa",
+    description:
+      "How to pay call center teams with night premiums, overtime, union dues, garnishments, and remote tax rules.",
+    datePublished: "2025-03-15",
+    dateModified: "2025-03-15",
+    category: "Payroll",
+    tags: ["payroll", "call-center", "overtime", "remote-work"],
+    heroOverline: "Call center",
+    sections: [
+      {
+        heading: "Why call centers struggle",
+        paragraphs: [
+          "Night/overnight coverage, overtime, remote staff in multiple states/provinces, and occasional union/garnishment needs make payroll messy without an operations-first system.",
+        ],
+      },
+      {
+        heading: "Scheduling + time = source of truth",
+        paragraphs: [
+          "Schedulaa uses approved shifts to split regular vs OT and track breaks. Shift premiums, tips, and commissions are layered in as taxable earnings.",
+        ],
+      },
+      {
+        heading: "Deductions and remittances",
+        paragraphs: [
+          "Union dues reduce net and map to T4 Box 44 for Canadian agents. Garnishments are flat deductions; remittance remains external.",
+        ],
+      },
+      {
+        heading: "Remote agents",
+        paragraphs: [
+          "Taxes follow the agent’s work location: U.S. federal + state + FICA, or Canadian federal/provincial with CPP/EI. Local/city taxes are not automated.",
+        ],
+      },
+      {
+        heading: "Links",
+        paragraphs: [
+          "See U.S.: /payroll/usa. See Canada: /payroll/canada.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "non-taxable-reimbursements-vs-allowances",
+    title: "Non-Taxable Reimbursements vs Allowances: Paying Staff Back the Right Way",
+    description:
+      "Avoid over-taxing staff by separating taxable allowances from true reimbursements in Schedulaa.",
+    datePublished: "2025-03-16",
+    dateModified: "2025-03-16",
+    category: "Payroll",
+    tags: ["payroll", "reimbursement", "allowance", "tax"],
+    heroOverline: "Reimbursements",
+    sections: [
+      {
+        heading: "Allowances vs reimbursements",
+        paragraphs: [
+          "Allowances (per diems, stipends) are taxable and belong in gross. True reimbursements (receipt-backed expenses) should not increase taxable income.",
+        ],
+      },
+      {
+        heading: "How Schedulaa treats allowances",
+        paragraphs: [
+          "Use Travel Allowance or shift premium/bonus for taxable extras. They flow into gross pay, CPP/EI or FICA bases, and T4/W-2 wages.",
+        ],
+      },
+      {
+        heading: "How Schedulaa treats reimbursements",
+        paragraphs: [
+          "Use Non-taxable Reimbursement for equipment, uniforms, or travel receipts. It does not increase gross or taxes; it is added to net pay only.",
+        ],
+      },
+      {
+        heading: "Practical examples",
+        paragraphs: [
+          "Headsets, uniforms, towels/consumables, parking, small tools. Pay them back without inflating taxable income.",
+        ],
+      },
+      {
+        heading: "Links",
+        paragraphs: [
+          "/payroll, /docs#payroll",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "schedulaa-vs-gusto",
+    title: "Schedulaa vs Gusto: When You Need Operations + Payroll, Not Just HR",
+    description:
+      "Compare an operations-first platform with scheduling/time tracking + cross-border payroll to a U.S.-only payroll/HR provider.",
+    datePublished: "2025-03-17",
+    dateModified: "2025-03-17",
+    category: "Comparison",
+    tags: ["comparison", "gusto", "payroll", "operations"],
+    heroOverline: "Comparisons",
+    sections: [
+      {
+        heading: "What Gusto does well",
+        paragraphs: [
+          "U.S. payroll with broad state/local coverage, HR workflows, and benefits marketplace.",
+        ],
+      },
+      {
+        heading: "What Schedulaa does differently",
+        paragraphs: [
+          "Operations-first OS with scheduling, time tracking, tips, shift premium, union dues, simple garnishments, non-taxable reimbursements, and Canada (ex-Québec) + U.S. payroll engines.",
+        ],
+      },
+      {
+        heading: "When to choose Schedulaa",
+        paragraphs: [
+          "Service teams across Canada/U.S. that need shifts, hours, and payroll in one flow; branded portals; ROE/T4/W-2 exports.",
+        ],
+      },
+      {
+        heading: "When to choose Gusto",
+        paragraphs: [
+          "U.S.-only companies that prioritize deep HR and benefits and already use a separate scheduling tool.",
+        ],
+      },
+      {
+        heading: "Links",
+        paragraphs: [
+          "/compare/gusto, /payroll",
+        ],
+      },
+    ],
+  },
 ];
 
 export default blogPosts;

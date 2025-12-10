@@ -84,20 +84,21 @@ const overviewConfig = {
       { name: "Payroll", href: `${BASE_URL}/payroll` },
     ]),
   ],
-  hero: {
-    badge: "Scheduling + payroll + docs",
-    title: "Payroll that stays in sync with operations",
-    subtitle:
-      "Pull real-time hours from scheduling and time tracking, apply CRA or IRS logic, and ship payslips plus ROE/T4/W-2 documents without leaving Schedulaa.",
-    bullets: [
-      "Regional engines for Canada (CPP, EI, BPA) and the USA (FICA plus state tax logic).",
-      "ROE, T4, W-2, and payslip exports backed by our public docs.",
+    hero: {
+      badge: "Scheduling + payroll + docs",
+      title: "Payroll that stays in sync with operations",
+      subtitle:
+      "Pull real-time hours from scheduling and time tracking, apply CRA or IRS logic, layer in shift premiums, union dues, garnishments, and non-taxable reimbursements, then ship payslips plus ROE/T4/W-2 without leaving Schedulaa.",
+      bullets: [
+      "Regional engines for Canada (CPP/EI/BPA, CPP/EI exemptions) and the USA (FICA plus state tax logic).",
+      "Taxable extras like shift premium, tips, commission, bonus plus deductions like union dues and garnishments—net pay matches the preview.",
+      "ROE, T4 (with Box 40/44), W-2, and payslip exports backed by our public docs.",
       "Employee self-serve portal plus automated notifications.",
-    ],
-    primaryCta: { label: "See payroll workspace", href: REGISTER_URL },
-    secondaryCta: { label: "Read the docs", href: "/docs#payroll" },
-    notice: "Includes calculators, payslip portals, and compliance exports for Canada and the United States.",
-  },
+      ],
+      primaryCta: { label: "See payroll workspace", href: REGISTER_URL },
+      secondaryCta: { label: "Read the docs", href: "/docs#payroll" },
+      notice: "Includes calculators, payslip portals, and compliance exports for Canada and the United States; local/city taxes and specialized fringe rules remain external.",
+    },
   featuresHeading: "Platform",
   featuresTitle: "One place for calculations, slips, and employee updates",
   featuresIntro:
@@ -117,7 +118,7 @@ const overviewConfig = {
       label: "Compliance",
       title: "Canada & USA tax engines",
       description:
-        "Switch between Canadian CPP/EI/BPA logic or U.S. FICA and state tax rules. Both engines pull the same UI but respect regional settings.",
+        "Switch between Canadian CPP/EI/BPA logic (with CPP/EI exemptions) or U.S. FICA and state tax rules. Both engines support shift premium, tips, commission, bonus, union dues, garnishments, and non-taxable reimbursements while respecting regional settings.",
       link: "/payroll/canada",
       linkLabel: "See regional calculators",
     },
@@ -139,7 +140,7 @@ const overviewConfig = {
         "The same workflow steps shown in the public documentation live inside the app: preview, adjust, finalize, publish. Nothing is hidden behind engineering-only tooling, so onboarding teams can trust it.",
       points: [
         "Docs include screenshots for every step in the payroll preview.",
-        "Marketing site links to ROE/T4/W-2 tool guides for additional depth.",
+        "Marketing site links to ROE/T4/W-2 (including Box 40/44) guides for additional depth.",
         "Managers can reference help articles directly from the interface.",
       ],
     },
@@ -147,7 +148,7 @@ const overviewConfig = {
       overline: "Employee experience",
       title: "Self-serve slips and notifications",
       body:
-        "Employees log in via the payslip portal, download historical slips, and confirm delivery. Finance teams choose between email, SMS, or in-app alerts.",
+        "Employees log in via the payslip portal, download historical slips, and confirm delivery. Finance teams choose between email, SMS, or in-app alerts; taxable and non-taxable items are labeled clearly.",
       points: [
         "Portal inherits your brand colors from the website builder.",
         "Access is scoped at the employee level for security.",
@@ -161,12 +162,12 @@ const overviewConfig = {
     {
       title: "Import hours & review context",
       description:
-        "Pull hours from scheduling, sync bonuses or commissions, and compare to historic pay runs before doing any math.",
+        "Pull hours from scheduling, sync bonuses, tips, commissions, or shift premium, and compare to historic pay runs before doing any math.",
     },
     {
       title: "Apply deductions with the right engine",
       description:
-        "Choose Canada or USA in the preview panel. CRA and IRS rules, plus vacation pay and benefits, are applied instantly.",
+        "Choose Canada or USA in the preview panel. CRA and IRS rules, plus vacation pay, benefits, union dues, garnishments, and non-taxable reimbursements, are applied instantly.",
     },
     {
       title: "Finalize and export",
@@ -177,6 +178,16 @@ const overviewConfig = {
       title: "Publish to the portal",
       description:
         "Notify employees, post slips in the portal, and keep everything searchable for future audits.",
+    },
+    {
+      title: "Spot-check for year-end readiness",
+      description:
+        "Confirm union dues, taxable benefits, and exemptions are reflected correctly so T4/W-2 totals align with what finance expects at year-end.",
+    },
+    {
+      title: "Share with finance & ops",
+      description:
+        "Hand off clean exports to accounting or BI, with the same gross, deduction, and net figures your managers saw in preview.",
     },
   ],
   callouts: [
@@ -226,6 +237,7 @@ const overviewConfig = {
   cta: sharedCta,
   secondaryLinks: [
     { label: "Docs: payroll preview", href: "/docs#payroll" },
+    { label: "Compare: Schedulaa vs Gusto", href: "/compare/gusto" },
     ...sharedSecondaryLinks,
   ],
   nextSteps: {

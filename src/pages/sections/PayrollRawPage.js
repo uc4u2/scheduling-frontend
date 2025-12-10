@@ -267,6 +267,20 @@ export default function PayrollRawPage() {
                 <TableCell align="right">Holiday Pay</TableCell>
                 <TableCell align="right">Bonus</TableCell>
                 <TableCell align="right">Commission</TableCell>
+                <TableCell align="right">Tip</TableCell>
+                <TableCell align="right">Shift Prem.</TableCell>
+                <TableCell align="right">Travel Allow.</TableCell>
+                <TableCell align="right">Tax Credit</TableCell>
+                <TableCell align="right">Family Bonus</TableCell>
+                <TableCell align="right">Parental Ins.</TableCell>
+                <TableCell align="right">Medical Ins.</TableCell>
+                <TableCell align="right">Dental Ins.</TableCell>
+                <TableCell align="right">Life Ins.</TableCell>
+                <TableCell align="right">Ret (Emp)</TableCell>
+                <TableCell align="right">Union Dues</TableCell>
+                <TableCell align="right">Garnishment</TableCell>
+                <TableCell align="right">Reimb. (Non-tax)</TableCell>
+                <TableCell align="right">Other Deduction</TableCell>
                 <TableCell align="right">Gross</TableCell>
                 <TableCell align="right">Vacation</TableCell>
                 <TableCell align="right">Fed Tax</TableCell>
@@ -275,8 +289,6 @@ export default function PayrollRawPage() {
                 <TableCell align="right">EI/RQAP</TableCell>
                 <TableCell align="right">FICA</TableCell>
                 <TableCell align="right">Medicare</TableCell>
-                <TableCell align="right">Ret (Emp)</TableCell>
-                <TableCell align="right">Ret (Er)</TableCell>
                 <TableCell align="right">Total Deductions</TableCell>
                 <TableCell align="right">Net Pay</TableCell>
               </TableRow>
@@ -300,6 +312,20 @@ export default function PayrollRawPage() {
                   <TableCell align="right">{row.holiday_pay}</TableCell>
                   <TableCell align="right">{row.bonus}</TableCell>
                   <TableCell align="right">{row.commission}</TableCell>
+                  <TableCell align="right">{row.tip}</TableCell>
+                  <TableCell align="right">{row.shift_premium}</TableCell>
+                  <TableCell align="right">{row.travel_allowance}</TableCell>
+                  <TableCell align="right">{row.tax_credit}</TableCell>
+                  <TableCell align="right">{row.family_bonus}</TableCell>
+                  <TableCell align="right">{row.parental_insurance}</TableCell>
+                  <TableCell align="right">{row.medical_insurance}</TableCell>
+                  <TableCell align="right">{row.dental_insurance}</TableCell>
+                  <TableCell align="right">{row.life_insurance}</TableCell>
+                  <TableCell align="right">{row.retirement_amount}</TableCell>
+                  <TableCell align="right">{row.union_dues}</TableCell>
+                  <TableCell align="right">{row.garnishment}</TableCell>
+                  <TableCell align="right">{row.non_taxable_reimbursement}</TableCell>
+                  <TableCell align="right">{row.deduction}</TableCell>
                   <TableCell align="right">{row.gross_pay}</TableCell>
                   <TableCell align="right">{row.vacation_pay}</TableCell>
                   <TableCell align="right">{row.federal_tax_amount}</TableCell>
@@ -308,8 +334,6 @@ export default function PayrollRawPage() {
                   <TableCell align="right">{row.ei_amount || row.rqap_amount || row.ei || row.rqap}</TableCell>
                   <TableCell align="right">{row.fica_amount || row.fica}</TableCell>
                   <TableCell align="right">{row.medicare_amount || row.medicare}</TableCell>
-                  <TableCell align="right">{row.retirement_amount}</TableCell>
-                  <TableCell align="right">{row.retirement_employer}</TableCell>
                   <TableCell align="right">{row.total_deductions}</TableCell>
                   <TableCell align="right">
                     <strong>{row.net_pay}</strong>
@@ -386,10 +410,12 @@ export default function PayrollRawPage() {
                   ["Bonus", detailRow.bonus],
                   ["Commission", detailRow.commission],
                   ["Tips", detailRow.tip],
+                  ["Shift premium", detailRow.shift_premium],
                   ["Travel allowance", detailRow.travel_allowance],
                   ["Tax credit", detailRow.tax_credit],
                   ["Family bonus", detailRow.family_bonus],
                   ["Parental insurance", detailRow.parental_insurance],
+                  ["Non-taxable reimbursement", detailRow.non_taxable_reimbursement],
                 ]
                   .filter(([, v]) => Number(v) !== 0)
                   .map(([label, v]) => (
@@ -424,6 +450,8 @@ export default function PayrollRawPage() {
                   ["Dental insurance", detailRow.dental_insurance],
                   ["Life insurance", detailRow.life_insurance],
                   ["Retirement (employee)", detailRow.retirement_amount],
+                  ["Union dues", detailRow.union_dues],
+                  ["Garnishment", detailRow.garnishment],
                   ["Other deduction", detailRow.deduction],
                 ]
                   .filter(([, v]) => Number(v) !== 0)

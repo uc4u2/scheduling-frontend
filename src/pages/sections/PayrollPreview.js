@@ -25,9 +25,12 @@ import {
   Chip,
   Stack,
   Tooltip,
+  IconButton,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { xeroIntegration, quickbooksIntegration } from "../../utils/api";
+import PayrollPreviewHelp from "./PayrollPreviewHelp";
 
 
 
@@ -98,6 +101,10 @@ function recalcNetPay(data) {
     life_insurance = 0,
     retirement_amount = 0,
     deduction = 0,
+    shift_premium = 0,
+    union_dues = 0,
+    garnishment = 0,
+    non_taxable_reimbursement = 0,
     federal_tax_amount = 0,
     provincial_tax_amount = 0,
     state_tax_amount = 0,
@@ -131,7 +138,8 @@ function recalcNetPay(data) {
     Number(travel_allowance || 0) +
     Number(family_bonus || 0) +
     Number(tax_credit || 0) +
-    Number(data.parental_top_up || 0);
+    Number(data.parental_top_up || 0) +
+    Number(shift_premium || 0);
 
   const grossBase =
     Number(grossBeforeVacation || 0) +
@@ -154,10 +162,12 @@ function recalcNetPay(data) {
     dental_insurance,
     life_insurance,
     deduction,
+    union_dues,
+    garnishment,
   ];
 
   const totalDeductions = deductionItems.reduce((s, v) => s + (Number(v) || 0), 0);
-  const netPay = +(gross - totalDeductions).toFixed(2);
+  const netPay = +(gross - totalDeductions + Number(non_taxable_reimbursement || 0)).toFixed(2);
 
   return {
     gross_pay: gross,
@@ -211,6 +221,7 @@ export default function PayrollPreview({
 
   const [xeroStatus, setXeroStatus] = useState(null);
   const [xeroValidation, setXeroValidation] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [xeroSyncing, setXeroSyncing] = useState(false);
   const [quickbooksStatus, setQuickbooksStatus] = useState(null);
   const [quickbooksValidation, setQuickbooksValidation] = useState(null);
@@ -373,6 +384,10 @@ useEffect(() => {
     family_bonus: parseFloat(payroll.family_bonus || 0),
     deduction: parseFloat(payroll.deduction || 0),
     parental_top_up: parseFloat(payroll.parental_top_up || 0),
+    shift_premium: parseFloat(payroll.shift_premium || 0),
+    union_dues: parseFloat(payroll.union_dues || 0),
+    garnishment: parseFloat(payroll.garnishment || 0),
+    non_taxable_reimbursement: parseFloat(payroll.non_taxable_reimbursement || 0),
   };
 
   fetchPayrollPreview(payload, token)
@@ -498,6 +513,10 @@ const handleRecalculate = () => {
     family_bonus: payroll.family_bonus,
     deduction: payroll.deduction,
     parental_top_up: parseFloat(payroll.parental_top_up || 0),
+    shift_premium: parseFloat(payroll.shift_premium || 0),
+    union_dues: parseFloat(payroll.union_dues || 0),
+    garnishment: parseFloat(payroll.garnishment || 0),
+    non_taxable_reimbursement: parseFloat(payroll.non_taxable_reimbursement || 0),
   };
 
   console.log("📤 Sending manual recalc payload:", payload);
@@ -689,10 +708,16 @@ const handleRecalculate = () => {
   ──────────────────────────────────────────────── */
   return (
     <Box sx={{ mt: 3 }}>
-      <Typography variant="h5" gutterBottom>
-      Payroll Preview for {payroll.employee_name || payroll.name || selectedRecruiter?.name || "--"}
-
-      </Typography>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+        <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>
+          Payroll Preview for {payroll.employee_name || payroll.name || selectedRecruiter?.name || "--"}
+        </Typography>
+        <Tooltip title="Field-by-field help">
+          <IconButton size="small" onClick={() => setHelpOpen(true)}>
+            <HelpOutlineIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
 
       <Divider sx={{ my: 2 }} />
       
@@ -784,12 +809,32 @@ const handleRecalculate = () => {
           "medical_insurance",
           "dental_insurance",
           "life_insurance",
-          "retirement_amount", "deduction"
+          "retirement_amount",
+          "deduction",
+          "shift_premium",
+          "union_dues",
+          "garnishment",
 
         ].map((key) => (
           <Grid item xs={12} md={3} key={key}>
             <TextField
               label={
+                {
+                  shift_premium: "Shift Premium ($)",
+                  union_dues: "Union Dues ($)",
+                  garnishment: "Garnishment ($)",
+                  vacation_pay: "Vacation Pay ($)",
+                  travel_allowance: "Travel Allowance ($)",
+                  parental_insurance: "Parental Insurance ($)",
+                  parental_top_up: "Parental Leave Top-up ($)",
+                  family_bonus: "Family Bonus ($)",
+                  tax_credit: "Tax Credit ($)",
+                  medical_insurance: "Medical Insurance ($)",
+                  dental_insurance: "Dental Insurance ($)",
+                  life_insurance: "Life Insurance ($)",
+                  retirement_amount: "Retirement (employee) ($)",
+                  deduction: "Other Deduction ($)",
+                }[key] ||
                 key
                   .replace(/_/g, " ")
                   .replace(/\b\w/g, (l) => l.toUpperCase()) + " ($)"
@@ -798,20 +843,31 @@ const handleRecalculate = () => {
               value={payroll[key] || 0}
               onChange={(e) => handleFieldChange(key, e.target.value)}
               fullWidth
+              helperText={
+                {
+                  shift_premium: "Taxable extra pay for night/evening/weekend work.",
+                  union_dues: "Employee-paid union dues. Reduces net; goes to T4 Box 44.",
+                  garnishment: "Flat legal deduction (e.g., child support). No remittance automation.",
+                  non_taxable_reimbursement: "Reimbursed to employee but not taxed.",
+                }[key] || ""
+              }
             />
           </Grid>
         ))}
+
+        <Grid item xs={12} md={3}>
+          <TextField
+            label="Non-taxable Reimbursement ($)"
+            type="number"
+            value={payroll.non_taxable_reimbursement || 0}
+            onChange={(e) => handleFieldChange("non_taxable_reimbursement", e.target.value)}
+            fullWidth
+            helperText="Repay expenses without taxing them. Added to net pay only."
+          />
+        </Grid>
       </Grid>
-       
-      <Grid item xs={12} md={3}>
-  <TextField
-    label="Parental Top-up ($)"
-    type="number"
-    value={payroll.parental_top_up || 0}
-    onChange={e => handleFieldChange("parental_top_up", e.target.value)}
-    fullWidth
-  />
-</Grid>
+      
+      
 
 
  {/* -------------------------------------------------- 
@@ -1150,6 +1206,9 @@ const handleRecalculate = () => {
       >
         {savingFinalized ? <CircularProgress size={18} /> : "Finalize & Save"}
       </Button>
+
+      {/* Help Drawer */}
+      <PayrollPreviewHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
 
 {/* Template save / load */}
 <Box sx={{ display: "flex", gap: 1, my: 2 }}>

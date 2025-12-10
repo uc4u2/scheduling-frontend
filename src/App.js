@@ -352,7 +352,8 @@ const AppContent = ({ token, setToken }) => {
           <Route element={<PublicLayout token={token} setToken={setToken} />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/pricing" element={<PricingPage />} />
-            <Route path="/compare/:vendor" element={<ComparisonPage />} />
+          <Route path="/compare/:vendor" element={<ComparisonPage />} />
+            <Route path="/payroll/gusto" element={<Navigate to="/compare/gusto" replace />} />
             <Route path="/features" element={<FeaturePage />} />
             <Route path="/platform" element={<PlatformPage />} />
             <Route path="/website-builder" element={<WebsiteBuilderPage />} />

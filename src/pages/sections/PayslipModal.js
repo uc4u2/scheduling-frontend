@@ -73,6 +73,8 @@ export default function PayslipModal({ open, onClose, payroll = {}, month }) {
     { label: "Travel Allowance", key: "travel_allowance" },
     // --- Add the parental top-up row here ---
     { label: "Parental Leave Top-Up", key: "parental_top_up" },
+    { label: "Shift Premium", key: "shift_premium" },
+    { label: "Non-taxable Reimbursement", key: "non_taxable_reimbursement" },
   ];
 
   /* deductions / taxes */
@@ -250,6 +252,20 @@ export default function PayslipModal({ open, onClose, payroll = {}, month }) {
                     {label}: {money(row[key])}
                   </Typography>
                 )
+            )}
+          </>
+        )}
+
+        {/*  Legal deductions (union dues / garnishment) */}
+        {(isNonZero(row.union_dues) || isNonZero(row.garnishment)) && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography sx={{ fontWeight: 500 }}>Legal Deductions</Typography>
+            {isNonZero(row.union_dues) && (
+              <Typography>Union Dues: {money(row.union_dues)}</Typography>
+            )}
+            {isNonZero(row.garnishment) && (
+              <Typography>Garnishment: {money(row.garnishment)}</Typography>
             )}
           </>
         )}
