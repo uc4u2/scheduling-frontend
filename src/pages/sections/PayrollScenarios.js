@@ -97,7 +97,7 @@ const scenarios = [
       "Employee is on approved parental leave. If the employer pays a top-up (e.g., $200 per pay), enter this in Parental Leave Top-up. It is taxable, increases employment income, and flows to W-2/T4 wages. Parental leave hours themselves are tracked separately for ROE in Canada.",
     fields: ["parental_leave_hours", "parental_top_up"],
     story:
-      "Real-life example: Éric in Ontario is on parental leave receiving EI benefits, and his employer has a policy to top up his income by $200 every pay period for the first three months. The manager enters 200 in Parental Leave Top-up each pay. Schedulaa adds the $200 to his taxable income, applies the correct tax/CPP/EI, and tracks parental leave hours separately so an ROE can be generated later if needed.",
+      "Real-life example (Canada): Éric in Ontario is on parental leave receiving EI benefits, and his employer has a policy to top up his income by $200 every pay period for the first three months. The manager enters 200 in Parental Leave Top-up each pay. Schedulaa adds the $200 to his taxable income, applies the correct tax/CPP/EI, and tracks parental leave hours separately so an ROE can be generated later if needed. Real-life example (U.S.): Danielle in California is on bonding leave and her employer pays a $200 top-up on top of the state Paid Family Leave benefit. The manager enters 200 in Parental Leave Top-up; Schedulaa treats it as taxable wages and applies federal/state/FICA/Medicare while the state benefit itself is handled outside the system.",
   },
   {
     title: "Medical/dental/life insurance",

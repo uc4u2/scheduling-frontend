@@ -15,6 +15,76 @@ const blogPosts = [
     sections: [],
   },
   {
+    slug: "adp-alternative-canada-us-service-teams",
+    title: "An ADP Alternative for Canadian + U.S. Service Teams",
+    description:
+      "Why service teams with cross-border staff can run payroll, T4/ROE, and W-2 in one operations-first OS instead of an enterprise stack.",
+    datePublished: "2025-12-10",
+    dateModified: "2025-12-10",
+    category: "Payroll",
+    tags: ["payroll", "canada", "usa", "comparison"],
+    heroOverline: "Payroll",
+    sections: [
+      {
+        heading: "Why ADP became the default",
+        paragraphs: [
+          "ADP won enterprise payroll because it handles multiple regions, filings, and deep HR modules. For 2,000-person companies with large HR teams, that makes sense. For 50–200 person service teams, it can feel like heavy setup, long contracts, and modules you never use.",
+        ],
+      },
+      {
+        heading: "Where Schedulaa is different",
+        paragraphs: [
+          "Schedulaa is operations-first: shifts, time tracking, and bookings feed payroll. Instead of stitching scheduling + a U.S. payroll app + a separate Canadian provider, you run one OS that understands tips, shift premiums, union dues, garnishments, and reimbursements.",
+        ],
+      },
+      {
+        heading: "Cross-border without enterprise overhead",
+        paragraphs: [
+          "Schedulaa has two built-in engines: Canada (ex-Québec) with CPP/EI/BPA, vacation/holiday rules, T4 (14/16/18/22/24/26/40/44) and ROE exports; and the U.S. with federal/state income tax, FICA, SUI, and W-2 export. Employee work location (country + province/state) drives the right engine automatically.",
+        ],
+      },
+      {
+        heading: "Scenario 1: U.S. agency hiring a Canadian designer",
+        paragraphs: [
+          "A California agency hires a designer in Ontario. The designer’s shifts live in the same calendar as U.S. staff, but payroll runs with the Canadian engine: CPP/EI/BPA, provincial tax, and year-end T4/ROE. U.S. teammates still receive W-2s—same dashboard, two engines.",
+        ],
+      },
+      {
+        heading: "Scenario 2: Canadian med-spa with a U.S. receptionist",
+        paragraphs: [
+          "Clinics in Toronto and Vancouver employ a remote receptionist in Florida. Her hours live in the same schedule as Canadian techs. Payroll applies federal + FICA (no state tax in FL) and produces a W-2 for her, while Canadian staff continue on CPP/EI with T4/ROE.",
+        ],
+      },
+      {
+        heading: "Scenario 3: Mixed call center across Canada and the U.S.",
+        paragraphs: [
+          "Agents in Ontario, BC, Texas, and Georgia share one roster. Break enforcement and overtime rules stay consistent. Canadian agents get T4/ROE from CPP/EI rules; U.S. agents get W-2 from FICA/state rules. Finance downloads one export with all teams included.",
+        ],
+      },
+      {
+        heading: "Where ADP is still the better choice",
+        paragraphs: [
+          "If you have hundreds or thousands of employees, need deep HR and benefits, or want ADP to manage global filings across many countries, ADP is still the safer enterprise option.",
+        ],
+      },
+      {
+        heading: "Why Schedulaa is a realistic ADP alternative",
+        paragraphs: [
+          "Schedulaa fits service teams with 10–250 staff who want cross-border payroll tied to actual shifts, breaks, PTO, and tips. You get CRA + IRS engines, T4/ROE/W-2 exports, and a branded payslip portal without enterprise overhead.",
+        ],
+      },
+      {
+        heading: "See Schedulaa in action",
+        paragraphs: [
+          "Explore payroll: /payroll",
+          "Review Canadian coverage (ex-Québec): /payroll/canada",
+          "Review U.S. coverage: /payroll/usa",
+          "Talk to us: /contact",
+        ],
+      },
+    ],
+  },
+  {
     slug: "fix-scheduling-chaos",
     title: "How Service Teams Can Finally Fix Scheduling Chaos (Without Using 5 Different Apps)",
     description:

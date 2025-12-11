@@ -4382,8 +4382,8 @@
             },
             {
               "label": "Regions & coverage",
-              "schedulaa": "Canada (ex-Québec) and U.S. states with federal + state tax engines, ROE/T4/W-2 exports. No local/city tax automation.",
-              "competitor": "U.S. payroll with broad state and local tax coverage; no Canadian T4/ROE support."
+              "schedulaa": "Canada (ex-Québec) and supported U.S. states with federal + state tax engines and ROE/T4/W-2 exports. Local/city payroll taxes are not automated and must be handled externally.",
+              "competitor": "U.S. payroll with broad state + local/city tax support and electronic filings. No Canadian T4/ROE support."
             },
             {
               "label": "Time tracking & scheduling",
@@ -4399,6 +4399,11 @@
               "label": "Benefits & HR",
               "schedulaa": "Light HR and benefits tracking. No built-in health insurance marketplace; focus stays on operations and payroll.",
               "competitor": "Strong U.S. HR and benefits administration with integrated health, 401(k), and compliance tools."
+            },
+            {
+              "label": "Automation & integrations",
+              "schedulaa": "Zapier integration with triggers for bookings, shifts, breaks, leave, timeclock, and payroll events, plus QuickBooks/Xero exports.",
+              "competitor": "Native integrations for payroll/HR, but no schedule- or break-driven automation layer."
             },
             {
               "label": "Industry fit",
@@ -4435,6 +4440,10 @@
             "body": "Schedulaa is built for salons, spas, clinics, call centers, and field crews that need booking, staffing, and payroll in sync — not just HR forms and benefits."
           },
           {
+            "title": "Automation-driven operations",
+            "body": "Schedulaa connects schedule, break logic, leave events, and payroll status to Zapier so teams can automate alerts, calendar syncs, document workflows, and finance hand-offs. Gusto automates payroll and filings, but not the upstream operations."
+          },
+          {
             "title": "When to keep Gusto",
             "body": "If you want advanced U.S.-only HR, benefits, and compliance filings, Gusto is the better fit. If you want operations + payroll across Canada and the U.S., Schedulaa is."
           }
@@ -4460,6 +4469,11 @@
               "label": "Operations Automation",
               "schedulaa": "Automates schedule → time → payroll.",
               "competitor": "Automates payroll, HR tasks, and filings for U.S."
+            },
+            {
+              "label": "Automation & Integrations",
+              "schedulaa": "Zapier integration with triggers for bookings, leave, shift swaps, timeclock, breaks, and payroll events plus QuickBooks/Xero exports.",
+              "competitor": "Integrations for payroll/HR tasks, but no schedule- or break-driven automation layer."
             },
             {
               "label": "Branding & Domain",
@@ -4491,7 +4505,156 @@
           "quote": "We needed payroll that actually understood our shifts, overtime, and tips. Schedulaa lets us run payroll off the same screen we use to staff our teams.",
           "attribution": "Photo Artisto Studios, Toronto"
         },
-        "conclusion": "Gusto remains an excellent option if your company is U.S.-only and needs deeper HR and benefits control. Schedulaa is the better fit when your real pain sits in operations: scheduling shifts, tracking hours, and paying teams correctly across Canada and the U.S. from one Operations OS."
+        "conclusion": "Gusto remains an excellent option if your company is U.S.-only and needs deeper HR and benefits control. Schedulaa is the better fit when your real pain sits in operations: scheduling shifts, tracking hours, and paying teams correctly across Canada and the U.S. from one Operations OS. Want to see how our tax engines work? Visit the Payroll page for coverage details and scenarios."
+      },
+      "adp": {
+        "competitor": "ADP",
+        "metaTitle": "Schedulaa vs ADP — Cross-Border Payroll for Service Teams",
+        "metaDescription": "Compare Schedulaa and ADP. See how an operations-first OS with scheduling, time tracking, and cross-border payroll serves Canadian and U.S. service teams.",
+        "heroTitle": "Schedulaa vs ADP — Cross-Border Payroll for Service Teams",
+        "heroSubtitle": "ADP is built for large enterprises. Schedulaa gives Canadian and U.S. service teams the same cross-border payroll power in an operations-first OS.",
+        "intro": [
+          "Both Schedulaa and ADP can handle payroll across regions, but they start from different places.",
+          "ADP is payroll/HR built for enterprises. Schedulaa is operations-first — shifts, time tracking, and cross-border payroll for Canadian and U.S. service teams in one OS."
+        ],
+        "executiveOverview": {
+          "headers": [
+            "Category",
+            "Schedulaa",
+            "ADP"
+          ],
+          "rows": [
+            {
+              "label": "Core purpose",
+              "schedulaa": "All-in-one Operations OS combining scheduling, time tracking, and cross-border payroll.",
+              "competitor": "Payroll, HR, and benefits platform built for larger organizations."
+            },
+            {
+              "label": "Regions & coverage",
+              "schedulaa": "Canada (ex-Québec) and supported U.S. states with federal + state tax engines and ROE/T4/W-2 exports. Local/city payroll taxes are not automated and must be handled externally.",
+              "competitor": "U.S. and global payroll with full tax filing (including many local/city taxes) under enterprise contracts."
+            },
+            {
+              "label": "Time tracking & scheduling",
+              "schedulaa": "Built-in scheduling, break enforcement, and time tracking that feed directly into payroll.",
+              "competitor": "Time tracking/scheduling via add-ons or integrations; not tightly linked to shifts."
+            },
+            {
+              "label": "Tips, shift premium, union dues, garnishments",
+              "schedulaa": "First-class fields for tips, shift premiums, bonuses, commission, union dues, simple garnishments, and non-taxable reimbursements.",
+              "competitor": "Configurable earnings/deductions but not anchored to an operations/scheduling engine."
+            },
+            {
+              "label": "Benefits & HR",
+              "schedulaa": "Light HR tracking; operations-first focus.",
+              "competitor": "Enterprise HR modules, benefits, and compliance workflows."
+            },
+            {
+              "label": "Automation & integrations",
+              "schedulaa": "Zapier integration with triggers for bookings, shifts, breaks, leave, timeclock, and payroll events, plus QuickBooks/Xero exports.",
+              "competitor": "Integrates with many HR/finance systems; most automations require enterprise setup or partner support."
+            },
+            {
+              "label": "Industry fit",
+              "schedulaa": "Best for salons, spas, clinics, call centers, and field teams that need booking + scheduling + payroll in sync.",
+              "competitor": "Best for larger, multi-entity companies needing deep HR and global compliance."
+            },
+            {
+              "label": "Brand & portals",
+              "schedulaa": "Branded employee payslip portal that inherits your Schedulaa site colors.",
+              "competitor": "ADP-branded employee and manager portals."
+            },
+            {
+              "label": "Automation",
+              "schedulaa": "Automates schedule → time tracking → payroll → payslips and year-end exports.",
+              "competitor": "Automates payroll filings and HR workflows for larger teams."
+            }
+          ]
+        },
+        "differentiators": [
+          {
+            "title": "Operations-first, not HR-first",
+            "body": "Schedulaa starts with schedules, shifts, and time tracking for service teams. Payroll runs on top of verified hours and tips, not manual spreadsheets."
+          },
+          {
+            "title": "Canada + U.S. payroll in one OS",
+            "body": "Schedulaa supports CRA-style CPP/EI/BPA logic (ex-Québec) and IRS/FICA/state logic for U.S. states in the same platform. ADP focuses on broader enterprise HR."
+          },
+          {
+            "title": "Shift-connected earnings",
+            "body": "Shift premiums, overtime, tips, commission, and vacation are tied to real-time scheduling data. Managers see the same story in both the schedule and the payslip."
+          },
+          {
+            "title": "Service-team workflows",
+            "body": "Built for salons, spas, clinics, call centers, and field crews that need booking, staffing, and payroll in sync — not just HR forms and benefits."
+          },
+          {
+            "title": "Automation-ready with Zapier",
+            "body": "Schedulaa exposes Zapier triggers and actions for bookings, leave, timeclock, breaks, and payroll events so service teams can connect to 6,000+ apps without custom development. ADP is powerful, but most automations require heavier enterprise implementations."
+          },
+          {
+            "title": "Lower complexity for SMBs",
+            "body": "ADP excels for large enterprises with deep HR needs. Schedulaa keeps cross-border payroll and operations approachable for 10–250 person service teams."
+          }
+        ],
+        "summaryTable": {
+          "headers": [
+            "Feature Group",
+            "Schedulaa",
+            "ADP"
+          ],
+          "rows": [
+            {
+              "label": "Booking & Scheduling",
+              "schedulaa": "Integrated shifts and public booking.",
+              "competitor": "Not provided; relies on integrations."
+            },
+            {
+              "label": "Payroll & Compliance",
+              "schedulaa": "Built-in CA (ex-Québec) + U.S. engines with ROE/T4/W-2 exports.",
+              "competitor": "Enterprise payroll and filings for U.S. and global teams."
+            },
+            {
+              "label": "Operations Automation",
+              "schedulaa": "Automates schedule → time → payroll.",
+              "competitor": "Automates payroll filings and HR workflows."
+            },
+            {
+              "label": "Automation & Integrations",
+              "schedulaa": "Zapier integration with triggers for bookings, leave, shift swaps, timeclock, breaks, and payroll events plus QuickBooks/Xero exports.",
+              "competitor": "Integrations with HR/finance systems; automations often require enterprise implementation."
+            },
+            {
+              "label": "Branding & Domain",
+              "schedulaa": "Branded portals with your own domain.",
+              "competitor": "ADP-branded portals."
+            },
+            {
+              "label": "Benefits & HR",
+              "schedulaa": "Light HR tracking; benefits handled externally.",
+              "competitor": "Deep HR stack with benefits and compliance tooling."
+            }
+          ]
+        },
+        "fitMatrix": [
+          {
+            "scenario": "Canadian or U.S. service business needing scheduling, time tracking, and payroll in one place.",
+            "recommendation": "Schedulaa"
+          },
+          {
+            "scenario": "U.S.-only or global enterprise needing deep HR modules, benefits, and filings at scale.",
+            "recommendation": "ADP"
+          },
+          {
+            "scenario": "Growing service team reducing tools and keeping ops + payroll tightly connected across regions.",
+            "recommendation": "Schedulaa"
+          }
+        ],
+        "testimonial": {
+          "quote": "Schedulaa lets us run cross-border payroll off the same screen we use to staff our teams. It’s built for how service work actually happens.",
+          "attribution": "Photo Artisto Studios, Toronto"
+        },
+        "conclusion": "ADP remains a strong enterprise option if you need deep HR and multi-country filings. Schedulaa is the better fit when your real pain sits in operations — scheduling shifts, tracking hours, and paying teams correctly across Canada and the U.S. from one Operations OS. Want to see how our tax engines work? Visit the Payroll page for coverage details and scenarios."
       },
       "quickbooks-payroll": {
         "competitor": "QuickBooks Payroll",

@@ -192,6 +192,8 @@ const MARKETING_PATHS = [
   '/payroll/tools/t4',
   '/payroll/tools/w2',
   '/payslips',
+  '/compare/adp',
+  '/compare/gusto',
   '/about',
   '/contact',
   '/demo',
@@ -354,6 +356,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/pricing" element={<PricingPage />} />
           <Route path="/compare/:vendor" element={<ComparisonPage />} />
             <Route path="/payroll/gusto" element={<Navigate to="/compare/gusto" replace />} />
+            <Route path="/payroll/adp" element={<Navigate to="/compare/adp" replace />} />
             <Route path="/features" element={<FeaturePage />} />
             <Route path="/platform" element={<PlatformPage />} />
             <Route path="/website-builder" element={<WebsiteBuilderPage />} />

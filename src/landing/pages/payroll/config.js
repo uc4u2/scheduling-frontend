@@ -84,21 +84,22 @@ const overviewConfig = {
       { name: "Payroll", href: `${BASE_URL}/payroll` },
     ]),
   ],
-    hero: {
-      badge: "Scheduling + payroll + docs",
-      title: "Payroll that stays in sync with operations",
-      subtitle:
-      "Pull real-time hours from scheduling and time tracking, apply CRA or IRS logic, layer in shift premiums, union dues, garnishments, and non-taxable reimbursements, then ship payslips plus ROE/T4/W-2 without leaving Schedulaa.",
-      bullets: [
+  hero: {
+    badge: "Scheduling + payroll + docs",
+    title: "Payroll that stays in sync with operations",
+    subtitle:
+      "Pull real-time hours from scheduling and time tracking, apply CRA or IRS logic, layer in tips, bonus, commission, shift premiums, union dues, garnishments, and non-taxable reimbursements, then ship payslips plus ROE/T4/W-2 without leaving Schedulaa.",
+    bullets: [
       "Regional engines for Canada (CPP/EI/BPA, CPP/EI exemptions) and the USA (FICA plus state tax logic).",
       "Taxable extras like shift premium, tips, commission, bonus plus deductions like union dues and garnishments—net pay matches the preview.",
       "ROE, T4 (with Box 40/44), W-2, and payslip exports backed by our public docs.",
       "Employee self-serve portal plus automated notifications.",
-      ],
-      primaryCta: { label: "See payroll workspace", href: REGISTER_URL },
-      secondaryCta: { label: "Read the docs", href: "/docs#payroll" },
-      notice: "Includes calculators, payslip portals, and compliance exports for Canada and the United States; local/city taxes and specialized fringe rules remain external.",
-    },
+    ],
+    primaryCta: { label: "See payroll workspace", href: REGISTER_URL },
+    secondaryCta: { label: "Read the docs", href: "/docs#payroll" },
+    notice:
+      "Includes calculators, payslip portals, and compliance exports for Canada and the United States; local/city taxes and specialized fringe rules remain external.",
+  },
   featuresHeading: "Platform",
   featuresTitle: "One place for calculations, slips, and employee updates",
   featuresIntro:
@@ -109,7 +110,7 @@ const overviewConfig = {
       label: "Workflow",
       title: "Ops-connected pay runs",
       description:
-        "Import actual hours, overtime, and tips from the scheduling suite before calculating deductions. Every step is logged for finance and HR audits.",
+        "Import actual hours, overtime, and tips from the scheduling suite before calculating deductions. When a run moves to payroll.ready or payroll.finalized, Zapier events can notify finance, push exports, or trigger downstream workflows. Every step is logged for finance and HR audits.",
       link: "/features",
       linkLabel: "Tour the platform",
     },
@@ -134,25 +135,36 @@ const overviewConfig = {
   ],
   highlights: [
     {
+      overline: "Coverage at a glance",
+      title: "Engines for Canada (ex-Québec) and supported U.S. states",
+      body:
+        "Two regional engines, one workspace. Employees automatically use the right CRA or IRS/FICA/state logic based on their work location—no duplicate setups.",
+      points: [
+        "CA: Federal & provincial tax, CPP/EI (with exemptions), vacation/stat holidays, T4 boxes 14/16/18/22/24/26/40/44, ROE.",
+        "US: Federal income tax, supported state income tax, FICA, SUI/SUTA, W-2 exports.",
+        "Local/city/municipal payroll taxes remain external where they apply.",
+      ],
+    },
+    {
       overline: "Documented flows",
       title: "Guided payroll that mirrors our Docs",
       body:
-        "The same workflow steps shown in the public documentation live inside the app: preview, adjust, finalize, publish. Nothing is hidden behind engineering-only tooling, so onboarding teams can trust it.",
+        "Preview → adjust → finalize → publish exactly as shown in the public docs. No hidden steps—new managers can follow the same playbook used by finance.",
       points: [
-        "Docs include screenshots for every step in the payroll preview.",
-        "Marketing site links to ROE/T4/W-2 (including Box 40/44) guides for additional depth.",
-        "Managers can reference help articles directly from the interface.",
+        "Screenshots for every preview step live in the docs.",
+        "Direct links to ROE/T4/W-2 (incl. Box 40/44) guides for deeper review.",
+        "Inline help inside the app keeps managers on the rails.",
       ],
     },
     {
       overline: "Employee experience",
       title: "Self-serve slips and notifications",
       body:
-        "Employees log in via the payslip portal, download historical slips, and confirm delivery. Finance teams choose between email, SMS, or in-app alerts; taxable and non-taxable items are labeled clearly.",
+        "Branded portal + alerts: employees download slips anytime; finance chooses email, SMS, or in-app notifications. Taxable vs non-taxable items are labeled clearly.",
       points: [
-        "Portal inherits your brand colors from the website builder.",
-        "Access is scoped at the employee level for security.",
-        "Internal links route to /payroll/tools for region-specific exports.",
+        "Branded portal inherits your site colors automatically.",
+        "Scoped access per employee keeps data secure.",
+        "Shortcuts to /payroll/tools for region-specific exports.",
       ],
     },
   ],
@@ -238,6 +250,7 @@ const overviewConfig = {
   secondaryLinks: [
     { label: "Docs: payroll preview", href: "/docs#payroll" },
     { label: "Compare: Schedulaa vs Gusto", href: "/compare/gusto" },
+    { label: "Compare: Schedulaa vs ADP", href: "/compare/adp" },
     ...sharedSecondaryLinks,
   ],
   nextSteps: {

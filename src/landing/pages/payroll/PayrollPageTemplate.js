@@ -2,7 +2,7 @@ import React from "react";
 import {
   Box,
   Container,
- Typography,
+  Typography,
   Stack,
   Grid,
   Card,
@@ -11,8 +11,17 @@ import {
   Chip,
   Divider,
   Link as MuiLink,
+  Avatar,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import { motion } from "framer-motion";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -21,8 +30,11 @@ import AssessmentIcon from "@mui/icons-material/Assessment";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import { Link } from "react-router-dom";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import Meta from "../../../components/Meta";
 import JsonLd from "../../../components/seo/JsonLd";
+import FloatingBlob from "../../../components/ui/FloatingBlob";
 
 const iconMap = {
   compliance: <SecurityIcon fontSize="small" />,
@@ -30,6 +42,15 @@ const iconMap = {
   document: <InsertDriveFileIcon fontSize="small" />,
   timeline: <TimelineIcon fontSize="small" />,
   info: <InfoOutlinedIcon fontSize="small" />,
+};
+
+const MotionCard = motion(Card);
+
+const fadeIn = {
+  initial: { opacity: 0, y: 16 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, amount: 0.2 },
+  transition: { duration: 0.35, ease: "easeOut" },
 };
 
 const PayrollPageTemplate = ({ config }) => {
@@ -67,7 +88,16 @@ const PayrollPageTemplate = ({ config }) => {
       : null;
 
   return (
-    <Box sx={{ backgroundColor: theme.palette.background.default, pb: { xs: 10, md: 14 } }}>
+    <Box
+      sx={{
+        background: theme.palette.mode === "dark"
+          ? theme.palette.background.default
+          : `radial-gradient(circle at 20% 20%, ${alpha(theme.palette.primary.main, 0.08)}, transparent 35%),
+             radial-gradient(circle at 80% 0%, ${alpha(theme.palette.secondary.main, 0.08)}, transparent 32%),
+             ${theme.palette.background.default}`,
+        pb: { xs: 10, md: 14 },
+      }}
+    >
       <Meta
         title={meta.title}
         description={meta.description}
@@ -92,8 +122,26 @@ const PayrollPageTemplate = ({ config }) => {
             )})`,
             color: theme.palette.common.white,
             boxShadow: `0 28px 60px ${alpha(theme.palette.primary.main, 0.28)}`,
+            position: "relative",
+            overflow: "hidden",
           }}
         >
+          <FloatingBlob
+            size={260}
+            opacity={0.24}
+            top={-60}
+            right={-40}
+            color={theme.palette.secondary.light}
+            enableMotion
+          />
+          <FloatingBlob
+            size={180}
+            opacity={0.28}
+            bottom={-50}
+            left={-30}
+            color={theme.palette.primary.light}
+            enableMotion
+          />
           <Stack spacing={3} maxWidth={740}>
             {hero.badge && (
               <Chip
@@ -190,17 +238,24 @@ const PayrollPageTemplate = ({ config }) => {
           <Grid container spacing={3} sx={{ mt: { xs: 4, md: 6 } }}>
             {features.map((feature) => (
               <Grid item xs={12} sm={6} md={4} key={feature.title}>
-                <Card
-                  variant="outlined"
+                <MotionCard
+                  {...fadeIn}
+                  elevation={0}
                   sx={{
                     height: "100%",
-                    borderRadius: 3,
-                    borderColor: alpha(theme.palette.primary.main, 0.18),
+                    borderRadius: 2,
                     display: "flex",
                     flexDirection: "column",
                     gap: 2,
                     p: 3,
+                    border: `1px solid ${alpha(theme.palette.text.primary, 0.05)}`,
+                    background: "transparent",
                     boxShadow: "none",
+                    transition: "transform 0.18s ease, box-shadow 0.18s ease",
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: theme.shadows[2],
+                    },
                   }}
                 >
                   <Chip
@@ -229,8 +284,8 @@ const PayrollPageTemplate = ({ config }) => {
                     >
                       {feature.linkLabel}
                     </Button>
-                  )}
-                </Card>
+                    )}
+                  </MotionCard>
               </Grid>
             ))}
           </Grid>
@@ -238,87 +293,110 @@ const PayrollPageTemplate = ({ config }) => {
       )}
 
       {highlights.length > 0 && (
-        <Container maxWidth="lg" sx={{ mt: { xs: 9, md: 12 } }}>
-          <Grid container spacing={6} alignItems="center">
-            {highlights.map((row, index) => (
-              <React.Fragment key={row.title}>
-                <Grid item xs={12} md={6} order={{ xs: 1, md: index % 2 === 0 ? 1 : 2 }}>
-                  <Stack spacing={2}>
-                    <Typography variant="overline" sx={{ letterSpacing: 2, color: theme.palette.text.secondary }}>
-                      {row.overline}
-                    </Typography>
-                    <Typography variant="h3" sx={{ fontWeight: 800 }}>
+        <Box
+          sx={{
+            mt: { xs: 9, md: 12 },
+            py: { xs: 4, md: 6 },
+            background:
+              theme.palette.mode === "dark"
+                ? `radial-gradient(circle at 18% 20%, ${alpha(theme.palette.primary.light, 0.08)}, transparent 45%),
+                   radial-gradient(circle at 80% 0%, ${alpha(theme.palette.secondary.light, 0.08)}, transparent 40%)`
+                : `radial-gradient(circle at 18% 20%, ${alpha(theme.palette.primary.main, 0.06)}, transparent 45%),
+                   radial-gradient(circle at 82% 5%, ${alpha(theme.palette.secondary.main, 0.06)}, transparent 42%)`,
+          }}
+        >
+          <Container maxWidth="lg">
+            <Grid container spacing={3} sx={{ mt: { xs: 2, md: 3 } }}>
+              {highlights.map((row) => (
+                <Grid item xs={12} md={4} key={row.title}>
+                  <MotionCard
+                    {...fadeIn}
+                    elevation={0}
+                    sx={{
+                      height: "100%",
+                      borderRadius: 2,
+                      p: 3,
+                      borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                      background: "transparent",
+                      boxShadow: "none",
+                      transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                      position: "relative",
+                      overflow: "visible",
+                      "&:hover": {
+                        transform: "translateY(-2px)",
+                        boxShadow: theme.shadows[2],
+                      },
+                    }}
+                  >
+                    <Chip
+                      label={row.overline}
+                      size="small"
+                      sx={{
+                        mb: 1,
+                        fontWeight: 600,
+                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                        color: theme.palette.primary.main,
+                        letterSpacing: 0.4,
+                      }}
+                    />
+                    <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
                       {row.title}
                     </Typography>
-                    <Typography variant="body1" sx={{ color: theme.palette.text.secondary }}>
+                    <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
                       {row.body}
                     </Typography>
-                    {row.points && (
-                      <Stack spacing={1.25}>
+                    {row.points && row.points.length > 0 && (
+                      <List dense sx={{ mt: 1 }}>
                         {row.points.map((point) => (
-                          <Stack key={point} direction="row" spacing={1.25} alignItems="center">
-                            <CheckCircleOutlineIcon fontSize="small" color="primary" />
-                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                              {point}
-                            </Typography>
-                          </Stack>
+                          <ListItem key={point} disableGutters sx={{ alignItems: "flex-start" }}>
+                            <ListItemIcon sx={{ minWidth: 24, mt: 0.2 }}>
+                              <CheckCircleRoundedIcon fontSize="small" color="primary" />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={
+                                <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                                  {point}
+                                </Typography>
+                              }
+                            />
+                          </ListItem>
                         ))}
-                      </Stack>
+                      </List>
                     )}
-                    {row.links && (
-                      <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={1.5}
-                        sx={{ width: "100%", "& > *": { width: { xs: "100%", sm: "auto" } } }}
-                      >
+                    {row.links && row.links.length > 0 && (
+                      <Stack direction="row" spacing={1.25} sx={{ mt: 2 }}>
                         {row.links.map((link) => (
                           <Button
                             key={link.href}
                             component={Link}
                             to={link.href}
-                            variant="outlined"
                             size="small"
                             endIcon={<ArrowForwardIcon fontSize="small" />}
-                            sx={{ textTransform: "none", fontWeight: 600 }}
+                            sx={{ textTransform: "none", fontWeight: 600, px: 0 }}
                           >
                             {link.label}
                           </Button>
                         ))}
                       </Stack>
                     )}
-                  </Stack>
+                  </MotionCard>
                 </Grid>
-                {row.image?.src && (
-                  <Grid item xs={12} md={6} order={{ xs: 2, md: index % 2 === 0 ? 2 : 1 }}>
-                    <Box
-                      component="img"
-                      src={row.image.src}
-                      alt={row.image.alt || row.title}
-                      sx={{
-                        width: "100%",
-                        borderRadius: 4,
-                        boxShadow: theme.shadows[10],
-                      }}
-                    />
-                  </Grid>
-                )}
-              </React.Fragment>
-            ))}
-          </Grid>
-        </Container>
+              ))}
+            </Grid>
+          </Container>
+        </Box>
       )}
 
       {steps.length > 0 && (
         <Container maxWidth="lg" sx={{ mt: { xs: 9, md: 12 } }}>
           <Box
             sx={{
-              borderRadius: 4,
+              borderRadius: 5,
               p: { xs: 4, md: 6 },
-              backgroundColor:
-                theme.palette.mode === "dark"
-                  ? alpha(theme.palette.grey[900], 0.7)
-                  : alpha(theme.palette.primary.light, 0.1),
-              border: `1px solid ${alpha(theme.palette.primary.main, 0.16)}`,
+              position: "relative",
+              overflow: "visible",
+              background: "transparent",
+              border: "none",
             }}
           >
             <Stack spacing={4}>
@@ -338,32 +416,43 @@ const PayrollPageTemplate = ({ config }) => {
               <Grid container spacing={3}>
                 {steps.map((step, index) => (
                   <Grid item xs={12} md={4} key={step.title}>
-                    <Card
-                      variant="outlined"
+                    <MotionCard
+                      {...fadeIn}
+                      elevation={0}
                       sx={{
                         height: "100%",
-                        borderRadius: 3,
-                        borderColor: alpha(theme.palette.primary.main, 0.18),
+                        borderRadius: 2,
                         p: 3,
+                        borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+                        background: "transparent",
+                        boxShadow: "none",
+                        transition: "transform 0.18s ease, box-shadow 0.18s ease",
+                        "&:hover": {
+                          transform: "translateY(-2px)",
+                          boxShadow: theme.shadows[2],
+                        },
                       }}
                     >
-                      <Chip
-                        label={`Step ${index + 1}`}
+                      <Avatar
                         sx={{
-                          alignSelf: "flex-start",
-                          fontWeight: 600,
-                          backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                          color: theme.palette.primary.main,
+                          bgcolor: theme.palette.primary.main,
+                          color: theme.palette.common.white,
+                          width: 34,
+                          height: 34,
+                          fontSize: 15,
+                          fontWeight: 700,
                           mb: 2,
                         }}
-                      />
+                      >
+                        {index + 1}
+                      </Avatar>
                       <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
                         {step.title}
                       </Typography>
                       <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
                         {step.description}
                       </Typography>
-                    </Card>
+                    </MotionCard>
                   </Grid>
                 ))}
               </Grid>
@@ -377,17 +466,21 @@ const PayrollPageTemplate = ({ config }) => {
           <Grid container spacing={3}>
             {callouts.map((callout) => (
               <Grid item xs={12} sm={6} md={6} key={callout.title}>
-                <Card
+                <MotionCard
+                  {...fadeIn}
+                  elevation={0}
                   sx={{
                     height: "100%",
                     borderRadius: 3,
-                    backgroundColor:
-                      theme.palette.mode === "dark"
-                        ? alpha(theme.palette.primary.main, 0.16)
-                        : alpha(theme.palette.primary.light, 0.15),
-                    border: "none",
+                    background: "transparent",
+                    border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
                     boxShadow: "none",
                     p: 4,
+                    transition: "transform 0.18s ease, box-shadow 0.18s ease",
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: theme.shadows[2],
+                    },
                   }}
                 >
                   <Stack spacing={2}>
@@ -426,7 +519,7 @@ const PayrollPageTemplate = ({ config }) => {
                       </Stack>
                     )}
                   </Stack>
-                </Card>
+                </MotionCard>
               </Grid>
             ))}
           </Grid>
@@ -435,66 +528,64 @@ const PayrollPageTemplate = ({ config }) => {
 
       {nextSteps?.links?.length > 0 && (
         <Container maxWidth="lg" sx={{ mt: { xs: 9, md: 12 } }}>
-          <Card
-            variant="outlined"
-            sx={{
-              borderRadius: 4,
-              p: { xs: 4, md: 6 },
-              borderColor: alpha(theme.palette.primary.main, 0.18),
-              boxShadow: "none",
-            }}
-          >
-            <Stack spacing={2}>
-              <Typography variant="overline" sx={{ letterSpacing: 2, color: theme.palette.text.secondary }}>
-                {nextSteps.overline || "Next steps"}
+          <Box sx={{ textAlign: "center", mb: 3 }}>
+            <Typography variant="overline" sx={{ letterSpacing: 2, color: theme.palette.text.secondary }}>
+              {nextSteps.overline || "Next steps"}
+            </Typography>
+            <Typography variant="h3" sx={{ fontWeight: 800, mt: 0.5 }}>
+              {nextSteps.title || "Explore the rest of payroll"}
+            </Typography>
+            {nextSteps.description && (
+              <Typography variant="body1" sx={{ color: theme.palette.text.secondary, maxWidth: 720, mx: "auto", mt: 1 }}>
+                {nextSteps.description}
               </Typography>
-              <Typography variant="h3" sx={{ fontWeight: 800 }}>
-                {nextSteps.title || "Explore the rest of payroll"}
-              </Typography>
-              {nextSteps.description && (
-                <Typography variant="body1" sx={{ color: theme.palette.text.secondary, maxWidth: 720 }}>
-                  {nextSteps.description}
-                </Typography>
-              )}
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                {nextSteps.links.map((link) => (
-                  <Grid item xs={12} sm={6} md={3} key={link.href}>
-                    <Card
-                      variant="outlined"
-                      sx={{
-                        height: "100%",
-                        borderRadius: 3,
-                        borderColor: alpha(theme.palette.primary.main, 0.12),
-                        boxShadow: "none",
-                      }}
-                    >
-                      <CardContent>
-                        <Stack spacing={1.5}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                            {link.label}
-                          </Typography>
-                          {link.description && (
-                            <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-                              {link.description}
-                            </Typography>
-                          )}
-                          <Button
-                            component={Link}
-                            to={link.href}
-                            size="small"
-                            endIcon={<ArrowForwardIcon fontSize="small" />}
-                            sx={{ alignSelf: "flex-start", fontWeight: 600, textTransform: "none" }}
-                          >
-                            {link.cta || "Open"}
-                          </Button>
-                        </Stack>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
+            )}
+          </Box>
+
+          <Grid container spacing={2}>
+            {nextSteps.links.map((link) => (
+              <Grid item xs={12} sm={6} md={3} key={link.href}>
+                <MotionCard
+                  {...fadeIn}
+                  elevation={0}
+                  sx={{
+                    height: "100%",
+                    borderRadius: 2,
+                    border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
+                    background: "transparent",
+                    boxShadow: "none",
+                    transition: "transform 0.18s ease, box-shadow 0.18s ease",
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: theme.shadows[2],
+                    },
+                  }}
+                >
+                  <CardContent>
+                    <Stack spacing={1.5}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        {link.label}
+                      </Typography>
+                      {link.description && (
+                        <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                          {link.description}
+                        </Typography>
+                      )}
+                      <Button
+                        component={Link}
+                        to={link.href}
+                        size="small"
+                        endIcon={<ArrowForwardIcon fontSize="small" />}
+                        sx={{ alignSelf: "flex-start", fontWeight: 600, textTransform: "none" }}
+                      >
+                        {link.cta || "Open"}
+                      </Button>
+                    </Stack>
+                  </CardContent>
+                </MotionCard>
               </Grid>
-            </Stack>
-          </Card>
+            ))}
+          </Grid>
         </Container>
       )}
 
@@ -515,15 +606,27 @@ const PayrollPageTemplate = ({ config }) => {
           </Stack>
           <Stack spacing={4} sx={{ mt: { xs: 4, md: 6 } }}>
             {faq.map((item) => (
-              <Box key={item.question}>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  {item.question}
-                </Typography>
-                <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mt: 1.5 }}>
-                  {item.answer}
-                </Typography>
-                <Divider sx={{ mt: 3, opacity: 0.16 }} />
-              </Box>
+              <Accordion
+                key={item.question}
+                disableGutters
+                elevation={0}
+                sx={{
+                  border: `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
+                  borderRadius: 2,
+                  "&:before": { display: "none" },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    {item.question}
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+                    {item.answer}
+                  </Typography>
+                </AccordionDetails>
+              </Accordion>
             ))}
           </Stack>
         </Container>
