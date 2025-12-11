@@ -104,7 +104,7 @@ export default function DownloadPayrollButton({
         "travel_allowance","family_bonus","parental_insurance","tax_credit",
         "medical_insurance","dental_insurance","life_insurance",
         "retirement_amount","deduction",
-        "shift_premium","union_dues","garnishment","non_taxable_reimbursement",
+        "shift_premium","parental_top_up","union_dues","garnishment","non_taxable_reimbursement",
         /* new numeric fields to sync preview → backend */
         "regular_hours","overtime_hours","regular_pay","overtime_pay",
         "gross_pay","vacation_pay","total_deductions","net_pay"

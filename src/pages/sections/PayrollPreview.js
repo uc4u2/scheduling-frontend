@@ -457,6 +457,11 @@ useEffect(() => {
   payroll.life_insurance,
   payroll.retirement_amount,
   payroll.deduction,
+  payroll.shift_premium,
+  payroll.union_dues,
+  payroll.garnishment,
+  payroll.non_taxable_reimbursement,
+  payroll.parental_top_up,
 ]);
 
 /* Manual “Recalculate Now” */

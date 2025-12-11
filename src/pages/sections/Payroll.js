@@ -332,6 +332,10 @@ useEffect(() => {
         family_bonus:
           payroll?.family_bonus ?? generatedRecord.family_bonus ?? 0,
         tax_credit: payroll?.tax_credit ?? generatedRecord.tax_credit ?? 0,
+        parental_top_up:
+          payroll?.parental_top_up ?? generatedRecord.parental_top_up ?? 0,
+        shift_premium:
+          payroll?.shift_premium ?? generatedRecord.shift_premium ?? 0,
 
         /* ➖ insurance & retirement overrides (deduction side) */
         medical_insurance:
@@ -343,6 +347,14 @@ useEffect(() => {
         retirement_amount:
           payroll?.retirement_amount ?? generatedRecord.retirement_amount ?? 0,
         deduction: payroll?.deduction ?? generatedRecord.deduction ?? 0,
+        union_dues:
+          payroll?.union_dues ?? generatedRecord.union_dues ?? 0,
+        garnishment:
+          payroll?.garnishment ?? generatedRecord.garnishment ?? 0,
+        non_taxable_reimbursement:
+          payroll?.non_taxable_reimbursement ??
+          generatedRecord.non_taxable_reimbursement ??
+          0,
       };
 
       const calcRes = await axios.post(`${API_URL}/payroll/calculate`, base, {
@@ -427,7 +439,9 @@ useEffect(() => {
 
     if (["vacation_percent", "bonus", "tip", "commission",
       "parental_insurance", "travel_allowance",
-      "family_bonus", "tax_credit", "deduction"].includes(field)) {
+      "family_bonus", "tax_credit", "deduction",
+      "parental_top_up", "shift_premium", "union_dues",
+      "garnishment", "non_taxable_reimbursement"].includes(field)) {
  
       const newCalc = recalcNetPay(updated, region);
       Object.assign(updated, {

@@ -270,6 +270,7 @@ export default function PayrollRawPage() {
                 <TableCell align="right">Tip</TableCell>
                 <TableCell align="right">Shift Prem.</TableCell>
                 <TableCell align="right">Travel Allow.</TableCell>
+                <TableCell align="right">Parental Top-up</TableCell>
                 <TableCell align="right">Tax Credit</TableCell>
                 <TableCell align="right">Family Bonus</TableCell>
                 <TableCell align="right">Parental Ins.</TableCell>
@@ -315,6 +316,7 @@ export default function PayrollRawPage() {
                   <TableCell align="right">{row.tip}</TableCell>
                   <TableCell align="right">{row.shift_premium}</TableCell>
                   <TableCell align="right">{row.travel_allowance}</TableCell>
+                  <TableCell align="right">{row.parental_top_up}</TableCell>
                   <TableCell align="right">{row.tax_credit}</TableCell>
                   <TableCell align="right">{row.family_bonus}</TableCell>
                   <TableCell align="right">{row.parental_insurance}</TableCell>
@@ -412,6 +414,7 @@ export default function PayrollRawPage() {
                   ["Tips", detailRow.tip],
                   ["Shift premium", detailRow.shift_premium],
                   ["Travel allowance", detailRow.travel_allowance],
+                  ["Parental leave top-up", detailRow.parental_top_up],
                   ["Tax credit", detailRow.tax_credit],
                   ["Family bonus", detailRow.family_bonus],
                   ["Parental insurance", detailRow.parental_insurance],
