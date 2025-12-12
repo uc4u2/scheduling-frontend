@@ -26,6 +26,10 @@ import {
   DialogContent,
   DialogActions
 } from "@mui/material";
+import Accordion from "@mui/material/Accordion";
+import AccordionSummary from "@mui/material/AccordionSummary";
+import AccordionDetails from "@mui/material/AccordionDetails";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
@@ -105,6 +109,7 @@ export default function CompanyProfile({ token }) {
     charge_currency_mode: "PLATFORM_FIXED",
     display_currency: "USD",
     trusted_ips: [],
+    default_pay_frequency: "",
   });
 
   // Departments
@@ -123,6 +128,15 @@ export default function CompanyProfile({ token }) {
   const [viewerCheckBusy, setViewerCheckBusy] = useState(false);
   const [showProfilePrompt, setShowProfilePrompt] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const PAY_FREQUENCY_OPTIONS = useMemo(
+    () => [
+      { value: "weekly", label: "Weekly" },
+      { value: "biweekly", label: "Bi-weekly" },
+      { value: "semi-monthly", label: "Semi-monthly" },
+      { value: "monthly", label: "Monthly" },
+    ],
+    []
+  );
 
   /* ---------- config ---------- */
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -520,100 +534,6 @@ return (
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label={t("manager.companyProfile.form.fields.businessNumber")}
-                  value={form.business_number || ""}
-                  onChange={(event) => {
-                    const cleaned = (event.target.value || "").replace(/\D/g, "");
-                    setForm((prev) => ({ ...prev, business_number: cleaned }));
-                  }}
-                  inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
-                  helperText={t("manager.companyProfile.form.hints.businessNumberDigits")}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Trusted IPs (comma-separated)"
-                  value={
-                    Array.isArray(form.trusted_ips)
-                      ? form.trusted_ips.join(", ")
-                      : form.trusted_ips || ""
-                  }
-                  onChange={handleTrustedIpsChange}
-                  helperText="Optional: only these IPs will count as trusted for clock-ins (for anomaly checks)."
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label={t("manager.companyProfile.form.fields.employerNumber")}
-                  value={form.employer_number || ""}
-                  onChange={(event) => {
-                    const cleaned = (event.target.value || "").replace(/\D/g, "");
-                    setForm((prev) => ({ ...prev, employer_number: cleaned }));
-                  }}
-                  inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
-                  helperText={t("manager.companyProfile.form.hints.employerNumberDigits")}
-                />
-              </Grid>
-              {form.country_code === "US" && (
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label={t("manager.companyProfile.form.fields.federalEmployerId")}
-                    value={form.federal_employer_id || ""}
-                    onChange={handleChange("federal_employer_id")}
-                    required
-                  />
-                </Grid>
-              )}
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label={t("manager.companyProfile.form.fields.payrollProgram")}
-                  value={form.payroll_program || ""}
-                  onChange={handleChange("payroll_program")}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label={t("manager.companyProfile.form.fields.craContactPerson")}
-                  value={form.contact_person || ""}
-                  onChange={handleChange("contact_person")}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label={t("manager.companyProfile.form.fields.craContactPhone")}
-                  value={form.contact_phone || ""}
-                  onChange={handleChange("contact_phone")}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label={t("manager.companyProfile.form.fields.naicsCode")}
-                  value={form.naics_code || ""}
-                  onChange={handleChange("naics_code")}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label={t("manager.companyProfile.form.fields.craContactEmail")}
-                  value={form.contact_email || ""}
-                  onChange={handleChange("contact_email")}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
                   label={t("manager.companyProfile.form.fields.email")}
                   type="email"
                   value={form.email}
@@ -632,11 +552,20 @@ return (
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
+                  label={t("manager.companyProfile.form.fields.naicsCode")}
+                  value={form.naics_code || ""}
+                  onChange={handleChange("naics_code")}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
                   label={t("manager.companyProfile.form.fields.website")}
                   value={form.website}
                   onChange={handleChange("website")}
                 />
               </Grid>
+
 
               {/* Address */}
               <Grid item xs={12}>
@@ -705,109 +634,247 @@ return (
                 />
               </Grid>
 
-              {/* Payments & Tax */}
+              {/* Payroll Settings accordion */}
               <Grid item xs={12}>
-                <Typography variant="subtitle2" sx={{ mt: 3 }}>
-                  Payments & Tax
-                </Typography>
+                <Accordion defaultExpanded={false}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Payroll Settings (optional)
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Only needed if you run payroll. These fields seed payroll preview, exports, and year-end forms.
+                      </Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Grid container spacing={2}>
+                      {/* US payroll */}
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label={t("manager.companyProfile.form.fields.federalEmployerId")}
+                          value={form.federal_employer_id || ""}
+                          onChange={handleChange("federal_employer_id")}
+                          helperText="Used for W-2 and payroll exports."
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <FormControl fullWidth>
+                          <InputLabel>Default Pay Frequency</InputLabel>
+                          <Select
+                            label="Default Pay Frequency"
+                            value={form.default_pay_frequency || ""}
+                            onChange={handleChange("default_pay_frequency")}
+                          >
+                            <MenuItem value="">Bi-weekly (default)</MenuItem>
+                            {PAY_FREQUENCY_OPTIONS.map((opt) => (
+                              <MenuItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                          <Typography variant="caption" color="text.secondary">
+                            Seeds Payroll Preview. Managers can override per run.
+                          </Typography>
+                        </FormControl>
+                      </Grid>
+
+                      {/* Canada payroll */}
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label={t("manager.companyProfile.form.fields.businessNumber")}
+                          value={form.business_number || ""}
+                          onChange={(event) => {
+                            const cleaned = (event.target.value || "").replace(/\D/g, "");
+                            setForm((prev) => ({ ...prev, business_number: cleaned }));
+                          }}
+                          inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
+                          helperText="Used for T4/ROE exports and CRA payroll setup."
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label={t("manager.companyProfile.form.fields.payrollProgram")}
+                          value={form.payroll_program || ""}
+                          onChange={handleChange("payroll_program")}
+                          helperText="CRA payroll program/account (e.g., RP0001)."
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label={t("manager.companyProfile.form.fields.employerNumber")}
+                          value={form.employer_number || ""}
+                          onChange={(event) => {
+                            const cleaned = (event.target.value || "").replace(/\D/g, "");
+                            setForm((prev) => ({ ...prev, employer_number: cleaned }));
+                          }}
+                          inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
+                          helperText={t("manager.companyProfile.form.hints.employerNumberDigits")}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label={t("manager.companyProfile.form.fields.craContactPerson")}
+                          value={form.contact_person || ""}
+                          onChange={handleChange("contact_person")}
+                          helperText="CRA payroll contact."
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label={t("manager.companyProfile.form.fields.craContactPhone")}
+                          value={form.contact_phone || ""}
+                          onChange={handleChange("contact_phone")}
+                        />
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          fullWidth
+                          label={t("manager.companyProfile.form.fields.craContactEmail")}
+                          value={form.contact_email || ""}
+                          onChange={handleChange("contact_email")}
+                        />
+                      </Grid>
+
+                      {/* Timeclock audit */}
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          label="Trusted IPs (comma-separated)"
+                          value={
+                            Array.isArray(form.trusted_ips)
+                              ? form.trusted_ips.join(", ")
+                              : form.trusted_ips || ""
+                          }
+                          onChange={handleTrustedIpsChange}
+                          helperText="Used for timeclock anomaly checks and audit logs."
+                        />
+                      </Grid>
+                    </Grid>
+                  </AccordionDetails>
+                </Accordion>
               </Grid>
 
+              {/* Payments & Tax (accordion) */}
               <Grid item xs={12}>
-                <Alert
-                  severity={stripePaymentsEnabled ? "info" : "warning"}
-                  sx={{ mt: 1 }}
-                >
-                  {stripePaymentsEnabled ? (
-                    <>
-                      {t("manager.companyProfile.payments.stripeTax.enabledIntro")} {'{'}' '{'}'}
-                      <Link
-                        href={STRIPE_TAX_DASHBOARD_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                <Accordion defaultExpanded={false}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Payments & Tax
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Manage Stripe payments, tax settings, display currency, and brand logo from the Checkout Pro & Payments settings tab.
+                      </Typography>
+                    </Box>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={2}>
+                      <Alert
+                        severity={stripePaymentsEnabled ? "info" : "warning"}
+                        sx={{ mt: 1 }}
                       >
-                        {t("manager.companyProfile.payments.stripeTax.dashboardLink")}
-                      </Link>
-                      .
-                    </>
-                  ) : (
-                    <>{t("manager.companyProfile.payments.stripeTax.enablePrompt")}</>
-                  )}
-                </Alert>
-              </Grid>
+                        {stripePaymentsEnabled ? (
+                          <>
+                            {t("manager.companyProfile.payments.stripeTax.enabledIntro")}{" "}
+                            <Link
+                              href={STRIPE_TAX_DASHBOARD_URL}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {t("manager.companyProfile.payments.stripeTax.dashboardLink")}
+                            </Link>
+                            .
+                          </>
+                        ) : (
+                          <>{t("manager.companyProfile.payments.stripeTax.enablePrompt")}</>
+                        )}
+                      </Alert>
 
-              <Grid item xs={12}>
-                <Stack spacing={2}>
-                  <Typography variant="subtitle2">{t("manager.companyProfile.sections.paymentsTax")}</Typography>
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={2}
-                    alignItems={{ xs: 'flex-start', sm: 'center' }}
-                  >
-                    <Stack spacing={0.5}>
-                      <Typography variant="body2">
-                        {t("manager.companyProfile.payments.stripePayments")}: <strong>{stripePaymentsEnabled ? t("common.enabled") : t("common.disabled")}</strong>
-                      </Typography>
-                      <Typography variant="body2">
-                        {t("manager.companyProfile.payments.cardsOnFile")}: <strong>{allowCardOnFileEnabled ? t("manager.companyProfile.payments.allowed") : t("common.disabled")}</strong>
-                      </Typography>
-                      <Typography variant="body2">
-                        {t("manager.companyProfile.payments.pricesIncludeTax")}: <strong>{form.prices_include_tax ? t("common.yes") : t("common.no")}</strong>
-                      </Typography>
-                      <Typography variant="body2">
-                        {t("manager.companyProfile.payments.chargeCurrencyMode")}: <strong>{chargeCurrencyLabel}</strong>
-                      </Typography>
-                      <Typography variant="body2">
-                        {t("manager.companyProfile.payments.taxCountry")}: <strong>{taxCountryLabel}</strong>
-                      </Typography>
-                      <Typography variant="body2">
-                        {t("manager.companyProfile.payments.taxRegion")}: <strong>{form.tax_region_code || t("manager.companyProfile.payments.notSet")}</strong>
-                      </Typography>
-                      <Typography variant="body2">
-                        {t("manager.companyProfile.payments.displayCurrency")}: <strong>{displayCurrencyLabel}</strong>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={2}
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                      >
+                        <Stack spacing={0.5}>
+                          <Typography variant="body2">
+                            {t("manager.companyProfile.payments.stripePayments")}: <strong>{stripePaymentsEnabled ? t("common.enabled") : t("common.disabled")}</strong>
+                          </Typography>
+                          <Typography variant="body2">
+                            {t("manager.companyProfile.payments.cardsOnFile")}: <strong>{allowCardOnFileEnabled ? t("manager.companyProfile.payments.allowed") : t("common.disabled")}</strong>
+                          </Typography>
+                          <Typography variant="body2">
+                            {t("manager.companyProfile.payments.pricesIncludeTax")}: <strong>{form.prices_include_tax ? t("common.yes") : t("common.no")}</strong>
+                          </Typography>
+                          <Typography variant="body2">
+                            {t("manager.companyProfile.payments.chargeCurrencyMode")}: <strong>{chargeCurrencyLabel}</strong>
+                          </Typography>
+                          <Typography variant="body2">
+                            {t("manager.companyProfile.payments.taxCountry")}: <strong>{taxCountryLabel}</strong>
+                          </Typography>
+                          <Typography variant="body2">
+                            {t("manager.companyProfile.payments.taxRegion")}: <strong>{form.tax_region_code || t("manager.companyProfile.payments.notSet")}</strong>
+                          </Typography>
+                          <Typography variant="body2">
+                            {t("manager.companyProfile.payments.displayCurrency")}: <strong>{displayCurrencyLabel}</strong>
+                          </Typography>
+                        </Stack>
+                        <Button
+                          variant="outlined"
+                          onClick={() => navigate("/settings?tab=checkout")}
+                        >
+                          {t("manager.companyProfile.actions.manageStripeSettings")}
+                        </Button>
+                      </Stack>
+
+                      {form.logo_url ? (
+                        <Box>
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            {t("manager.companyProfile.branding.currentLogo")}
+                          </Typography>
+                          <Box
+                            sx={{
+                              p: 1,
+                              border: "1px solid #ccc",
+                              textAlign: "center",
+                              height: 80,
+                              width: { xs: "100%", sm: 240 },
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              borderRadius: 1,
+                              backgroundColor: "background.paper",
+                            }}
+                          >
+                            <img
+                              src={form.logo_url}
+                              alt="Logo preview"
+                              style={{ maxHeight: "60px", maxWidth: "100%" }}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "https://via.placeholder.com/150x50?text=Logo";
+                              }}
+                            />
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          {t("manager.companyProfile.branding.noLogo")}
+                        </Typography>
+                      )}
+
+                      <Typography variant="caption" color="text.secondary">
+                        {t("manager.companyProfile.payments.manageHint")}
                       </Typography>
                     </Stack>
-                    <Button
-                      variant="outlined"
-                      onClick={() => navigate('/settings?tab=checkout')}
-                    >
-                      {t("manager.companyProfile.actions.manageStripeSettings")}
-                    </Button>
-                  </Stack>
-                  {form.logo_url ? (
-                    <Box>
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        {t("manager.companyProfile.branding.currentLogo")}
-                      </Typography>
-                      <Box
-                        sx={{
-                          p: 1,
-                          border: '1px solid #ccc',
-                          textAlign: 'center',
-                          height: 80,
-                          width: { xs: '100%', sm: 240 },
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: 1,
-                          backgroundColor: 'background.paper',
-                        }}
-                      >
-                        <img
-                          src={form.logo_url}
-                          alt="Logo preview"
-                          style={{ maxHeight: '60px', maxWidth: '100%' }}
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = 'https://via.placeholder.com/150x50?text=Logo'
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  ) : null}
-                  <Typography variant="caption" color="text.secondary">
-                    {t("manager.companyProfile.payments.manageHint")}
-                  </Typography>
-                </Stack>
+                  </AccordionDetails>
+                </Accordion>
               </Grid>
               {/* Save Button */}
               <Grid item xs={12}>

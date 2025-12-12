@@ -192,14 +192,19 @@ const ComparisonPage = () => {
           <Typography variant="h3" fontWeight={800}>
             {heroTitle}
           </Typography>
-          <Typography variant="subtitle1" color="text.secondary" maxWidth={760} mx="auto">
-            {heroSubtitle}
-          </Typography>
+          {normalizedSlug !== "paychex" && heroSubtitle ? (
+            <Typography variant="subtitle1" color="text.secondary" maxWidth={760} mx="auto">
+              {heroSubtitle}
+            </Typography>
+          ) : null}
         </Stack>
 
         <Stack spacing={2.5} mt={4}>
-          {intro.map((paragraph) => (
-            <Typography key={paragraph} variant="body1" color="text.secondary">
+          {[
+            ...(normalizedSlug === "paychex" && heroSubtitle ? [heroSubtitle] : []),
+            ...intro,
+          ].map((paragraph) => (
+            <Typography key={paragraph} variant="body1" color="text.secondary" textAlign="left">
               {paragraph}
             </Typography>
           ))}

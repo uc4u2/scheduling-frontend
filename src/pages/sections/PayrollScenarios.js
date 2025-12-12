@@ -54,7 +54,7 @@ const scenarios = [
   {
     title: "Union dues",
     detail:
-      "Employee pays $45 in union dues this period. Enter 45 in Union Dues. This reduces net pay. For Canadian employees, the total union dues across the year flow into T4 Box 44.",
+      "Employee pays $45 in union dues this period. Enter 45 in Union Dues. This reduces net pay. For Canadian employees, the total union dues across the year flow into T4 Box 44. If dues are the same every pay, set a default in Employee Profile → Payroll & compliance so it auto-fills.",
     fields: ["union_dues"],
     story:
       "Real-life example: Amrita works in a unionized call center in Ontario. Her union dues are $45 per pay period. On each payroll, the manager enters 45 in Union Dues. Schedulaa reduces her net pay by $45, tracks the dues in Raw Data, and at year-end the total dues for the year appear in T4 Box 44 for her and the accountant.",
@@ -62,7 +62,7 @@ const scenarios = [
   {
     title: "Garnishment",
     detail:
-      "Flat legal deduction (e.g., $75 child support) for this pay. Enter 75 in Garnishment. This reduces net pay, appears on Raw Data and payslips, but Schedulaa does not automate court-order logic or remittance—those payments still need to be sent externally.",
+      "Flat legal deduction (e.g., $75 child support) for this pay. Enter 75 in Garnishment. This reduces net pay, appears on Raw Data and payslips, but Schedulaa does not automate court-order logic or remittance—those payments still need to be sent externally. If the same amount recurs, store it as the employee’s default garnishment so it auto-fills each period.",
     fields: ["garnishment"],
     story:
       "Real-life example: James is a warehouse employee in Georgia with a court order to pay $80 per pay period in child support. The company handles court remittances manually. Each payroll, the HR manager enters 80 in Garnishment. Schedulaa subtracts $80 from James’s net pay and shows it clearly as “Garnishment” in the Raw Data and payslip, but the actual payment to the court is still sent outside the system.",
@@ -102,7 +102,7 @@ const scenarios = [
   {
     title: "Medical/dental/life insurance",
     detail:
-      "If the employee contributes $30 medical / $10 dental / $5 life this period, enter each amount in the respective fields. These reduce net pay. In many Canadian setups, employer-paid portions are counted as taxable benefits and end up in T4 Box 40.",
+      "If the employee contributes $30 medical / $10 dental / $5 life this period, enter each amount in the respective fields. These reduce net pay. In many Canadian setups, employer-paid portions are counted as taxable benefits and end up in T4 Box 40. If the amounts recur, set defaults in Employee Profile so they auto-fill each pay period.",
     fields: ["medical_insurance", "dental_insurance", "life_insurance"],
     story:
       "Real-life example: Mei in California participates in the company’s health plan and pays $30 medical, $10 dental, and $5 life per pay period as employee contributions. The manager enters 30, 10, and 5 in the respective fields. Schedulaa reduces Mei’s net pay by $45, and in Canada, the employer-paid portion of similar benefits can be reported as taxable benefits in Box 40 on the T4.",
@@ -110,7 +110,7 @@ const scenarios = [
   {
     title: "Retirement contributions",
     detail:
-      "Employee RRSP/401k contribution (e.g., $50) goes in Retirement (employee). Employer match goes in the employer retirement/RRSP fields. The employee portion reduces net pay. In Canada, the employer portion may be treated as a taxable benefit for T4 Box 40 depending on your plan design.",
+      "Employee RRSP/401k contribution (e.g., $50) goes in Retirement (employee). Employer match goes in the employer retirement/RRSP fields. The employee portion reduces net pay. In Canada, the employer portion may be treated as a taxable benefit for T4 Box 40 depending on your plan design. If the employee amount recurs, set a default in Employee Profile so it auto-fills each pay run.",
     fields: ["retirement_amount", "retirement_employer", "rrsp", "rrsp_employer"],
     story:
       "Real-life example: Oscar in British Columbia contributes $50 to his group RRSP each pay period, and his employer matches $25. The manager enters 50 in Retirement (employee) and 25 in the employer RRSP field. Schedulaa reduces Oscar’s net pay by $50 and records the employer contribution for reporting. At year-end, the accountant can use this data for RRSP receipts and any taxable benefit treatment in T4 Box 40.",

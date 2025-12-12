@@ -77,7 +77,9 @@ export default function Payroll({ token }) {
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
   const [region, setRegion] = useState("ca");
   const [month, setMonth] = useState(dayjs().format("YYYY-MM"));
-  const [payFrequency, setPayFrequency] = useState("weekly");
+  const [payFrequency, setPayFrequency] = useState("biweekly");
+  const [payFreqTouched, setPayFreqTouched] = useState(false);
+  const [recruiterProfile, setRecruiterProfile] = useState(null);
   
 
   const [payroll, setPayroll] = useState(null);
@@ -104,6 +106,48 @@ export default function Payroll({ token }) {
 useEffect(() => {
   fetchRecruiters();
 }, []);
+useEffect(() => {
+  // load company defaults
+  const loadPrefs = async () => {
+    try {
+      // Prefer company profile (adds default_pay_frequency) and fall back silently
+      const res = await axios.get(`${API_URL}/admin/company-profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const defaultPayFreq =
+        res.data?.default_pay_frequency || res.data?.company_default_pay_frequency;
+      if (defaultPayFreq && !payFreqTouched) {
+        setPayFrequency(defaultPayFreq);
+      }
+    } catch (err) {
+      console.error("Failed to load company defaults", err?.response?.data || err.message);
+    }
+  };
+  loadPrefs();
+}, [token, payFreqTouched]);
+
+useEffect(() => {
+  if (!selectedRecruiter) {
+    setRecruiterProfile(null);
+    return;
+  }
+  let active = true;
+  const loadProfile = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/recruiters/${selectedRecruiter}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (active) setRecruiterProfile(res.data);
+    } catch (err) {
+      console.error("Failed to load recruiter profile", err);
+      if (active) setRecruiterProfile(null);
+    }
+  };
+  loadProfile();
+  return () => {
+    active = false;
+  };
+}, [selectedRecruiter, token]);
 
 useEffect(() => {
   if (viewMode === "history" && selectedRecruiter) {
@@ -194,6 +238,20 @@ useEffect(() => {
   const applyDefaultDeductions = (data) => {
     const isEmpty = (v) => v === undefined || v === null || v === 0;
     const updated = { ...data };
+    const recurringDefaults = {
+      garnishment: recruiterProfile?.default_garnishment,
+      union_dues: recruiterProfile?.default_union_dues,
+      medical_insurance: recruiterProfile?.default_medical_insurance,
+      dental_insurance: recruiterProfile?.default_dental_insurance,
+      life_insurance: recruiterProfile?.default_life_insurance,
+      retirement_amount: recruiterProfile?.default_retirement_amount,
+      deduction: recruiterProfile?.default_deduction,
+    };
+    Object.entries(recurringDefaults).forEach(([key, value]) => {
+      if (isEmpty(updated[key]) && value !== undefined && value !== null) {
+        updated[key] = value;
+      }
+    });
 
     if (region === "qc") {
       if (isEmpty(updated.ei)) updated.ei = 1.32;
@@ -223,15 +281,19 @@ useEffect(() => {
   };
 
   const runBackendCalculate = async (payload = {}) => {
+    const location =
+      region === "us"
+        ? { state: payload.state || payroll?.state }
+        : { province: payload.province || payroll?.province };
     const body = {
       recruiter_id: selectedRecruiter,
       region,
       month,
       pay_frequency: payFrequency,
+      ...location,
       ...payload, // ✅ correct spread
     };
-    
-  
+
     const res = await axios.post(`${API_URL}/payroll/calculate`, body, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -239,6 +301,58 @@ useEffect(() => {
     return res.data;
   };
   
+  const recurringDefaultMap = {
+    garnishment: Number(recruiterProfile?.default_garnishment ?? 0) || 0,
+    union_dues: Number(recruiterProfile?.default_union_dues ?? 0) || 0,
+    medical_insurance: Number(recruiterProfile?.default_medical_insurance ?? 0) || 0,
+    dental_insurance: Number(recruiterProfile?.default_dental_insurance ?? 0) || 0,
+    life_insurance: Number(recruiterProfile?.default_life_insurance ?? 0) || 0,
+    retirement_amount: Number(recruiterProfile?.default_retirement_amount ?? 0) || 0,
+    deduction: Number(recruiterProfile?.default_deduction ?? 0) || 0,
+  };
+
+  const resetOneOffFields = [
+    "bonus",
+    "attendance_bonus",
+    "performance_bonus",
+    "commission",
+    "tip",
+    "travel_allowance",
+    "shift_premium",
+    "parental_top_up",
+    "parental_insurance",
+    "family_bonus",
+    "tax_credit",
+    "non_taxable_reimbursement",
+  ];
+
+  useEffect(() => {
+    if (!selectedRecruiter) return;
+    setPayroll((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev };
+      resetOneOffFields.forEach((key) => {
+        next[key] = 0;
+      });
+      Object.entries(recurringDefaultMap).forEach(([key, value]) => {
+        next[key] = value ?? 0;
+      });
+      return next;
+    });
+  }, [selectedRecruiter, startDate, endDate, region, payFrequency, recruiterProfile]);
+
+  // When recruiter profile arrives later, inject recurring defaults into current payroll
+  useEffect(() => {
+    if (!recruiterProfile || !payroll) return;
+    setPayroll((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev };
+      Object.entries(recurringDefaultMap).forEach(([key, value]) => {
+        next[key] = value ?? 0;
+      });
+      return next;
+    });
+  }, [recruiterProfile]);
 
   // ─────────────────────────────────────────────────────────
   // Handlers
@@ -267,8 +381,9 @@ useEffect(() => {
           start_date: startDate,
           end_date: endDate,
           pay_frequency: payFrequency,
-          province: payroll?.province || "ON",
-          state: payroll?.state || "CA",
+          ...(region === "us"
+            ? { state: payroll?.state || "CA" }
+            : { province: payroll?.province || "ON" }),
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -298,8 +413,9 @@ useEffect(() => {
 
         /* where & when */
         region,
-        province: payroll?.province || generatedRecord.province || "ON",
-        state: payroll?.state || generatedRecord.state || "CA",
+        ...(region === "us"
+          ? { state: payroll?.state || generatedRecord.state || "CA" }
+          : { province: payroll?.province || generatedRecord.province || "ON" }),
         start_date: startDate,
         end_date: endDate,
         pay_frequency: payFrequency,
@@ -339,18 +455,31 @@ useEffect(() => {
 
         /* ➖ insurance & retirement overrides (deduction side) */
         medical_insurance:
-          payroll?.medical_insurance ?? generatedRecord.medical_insurance ?? 0,
+          payroll?.medical_insurance ??
+          generatedRecord.medical_insurance ??
+          recurringDefaultMap.medical_insurance ??
+          0,
         dental_insurance:
-          payroll?.dental_insurance ?? generatedRecord.dental_insurance ?? 0,
+          payroll?.dental_insurance ??
+          generatedRecord.dental_insurance ??
+          recurringDefaultMap.dental_insurance ??
+          0,
         life_insurance:
-          payroll?.life_insurance ?? generatedRecord.life_insurance ?? 0,
+          payroll?.life_insurance ??
+          generatedRecord.life_insurance ??
+          recurringDefaultMap.life_insurance ??
+          0,
         retirement_amount:
-          payroll?.retirement_amount ?? generatedRecord.retirement_amount ?? 0,
-        deduction: payroll?.deduction ?? generatedRecord.deduction ?? 0,
+          payroll?.retirement_amount ??
+          generatedRecord.retirement_amount ??
+          recurringDefaultMap.retirement_amount ??
+          0,
+        deduction:
+          payroll?.deduction ?? generatedRecord.deduction ?? recurringDefaultMap.deduction ?? 0,
         union_dues:
-          payroll?.union_dues ?? generatedRecord.union_dues ?? 0,
+          payroll?.union_dues ?? generatedRecord.union_dues ?? recurringDefaultMap.union_dues ?? 0,
         garnishment:
-          payroll?.garnishment ?? generatedRecord.garnishment ?? 0,
+          payroll?.garnishment ?? generatedRecord.garnishment ?? recurringDefaultMap.garnishment ?? 0,
         non_taxable_reimbursement:
           payroll?.non_taxable_reimbursement ??
           generatedRecord.non_taxable_reimbursement ??
@@ -441,7 +570,8 @@ useEffect(() => {
       "parental_insurance", "travel_allowance",
       "family_bonus", "tax_credit", "deduction",
       "parental_top_up", "shift_premium", "union_dues",
-      "garnishment", "non_taxable_reimbursement"].includes(field)) {
+      "garnishment", "non_taxable_reimbursement",
+      "medical_insurance", "dental_insurance", "life_insurance", "retirement_amount"].includes(field)) {
  
       const newCalc = recalcNetPay(updated, region);
       Object.assign(updated, {
@@ -637,6 +767,9 @@ return (
           <li>❌ Special payroll taxes (e.g., OR transit, WA Paid Family)</li>
           <li>❌ Automated garnishment workflows (court-order logic/remittance must be external)</li>
         </ul>
+        <Typography variant="body2" gutterBottom>
+          Company default pay frequency and employee recurring deduction defaults help prevent setup mistakes across pay runs.
+        </Typography>
         <Typography variant="subtitle1" sx={{ mt: 2 }}><strong>📍 States Fully Supported (2025)</strong></Typography>
         <Typography variant="body2">
           ✓ AL, AZ, AR, CA***, CO, CT, DE, DC, FL, GA, ID, IL, IN, IA, KS, KY, LA, ME, MD**, MA, MI, MN, MS, MO**, MT, NE, NV, NH*, NJ**, NM, NC, ND, OH**, OK, OR**, PA**, SC, SD, TN*, TX, UT, VT, VA, WA**, WV, WI, WY
@@ -675,12 +808,15 @@ return (
           <li>❌ Advanced, plan-specific fringe benefit taxation beyond standard Box 40 treatment</li>
           <li>❌ Automated garnishment workflows</li>
         </ul>
+        <Typography variant="body2" gutterBottom>
+          Company default pay frequency and employee recurring deduction defaults help prevent setup mistakes across pay runs.
+        </Typography>
 
         <Divider sx={{ my: 3 }} />
 
         <Typography variant="h6" gutterBottom>How Schedulaa Payroll Works (US & Canada)</Typography>
         <Typography variant="body2" gutterBottom>
-          Payroll combines: (1) Employee profile (country/location, rate, CPP/EI flags, union member), (2) Time & leave (approved shifts, paid/unpaid leave, stat holidays), (3) Manager overrides (bonus, commission, tips, shift premium, allowances, union dues, garnishment, insurance, retirement, non-tax reimbursements).
+          Payroll combines: (1) Company settings (default pay frequency), (2) Employee profile (country/location, rate, CPP/EI flags, union member, recurring payroll defaults like union dues/garnishment/insurance/retirement), (3) Time & leave (approved shifts, paid/unpaid leave, stat holidays), (4) Manager overrides (bonus, commission, tips, shift premium, allowances, one-off reimbursements, per-period adjustments). Every finalize is logged in the Payroll Audit Log (who finalized/overwrote and when).
         </Typography>
         <Typography variant="body2" gutterBottom>
           Gross = base earnings + vacation + taxable extras (incl. shift premium). Deductions = taxes + statutory + retirement + union dues + garnishment + other deductions. Net pay = Gross − Deductions + Non-taxable reimbursements.
@@ -695,13 +831,25 @@ return (
         <ol style={{ paddingLeft: 18 }}>
           <li><strong>Set up employees:</strong> Country/location, rate; (CA) CPP/EI exempt if applicable; union member if applicable.</li>
           <li><strong>Approve time & leave:</strong> Shifts clock-in/out, paid vs unpaid leave, stat holidays.</li>
-          <li><strong>Load preview:</strong> Pick employee, region, period, pay frequency; click Load preview.</li>
+          <li><strong>Load preview:</strong> Pick employee, region, period, pay frequency; click Load preview. Pay frequency is prefilled from Company Profile defaults. Recurring deductions (union dues, garnishment, insurance, retirement, other deduction) can auto-fill from the Employee Profile.</li>
           <li><strong>Adjust earnings:</strong> Bonus, commission, tips, shift premium, allowances, vacation override, non-taxable reimbursement.</li>
           <li><strong>Adjust deductions:</strong> Taxes (auto), CPP/QPP/EI/RQAP or FICA/Medicare (auto), insurance, retirement, union dues, garnishment, other deductions.</li>
           <li><strong>Validate & finalize:</strong> Preview payslip; finalize & send—writes FinalizedPayroll and saves overrides.</li>
           <li><strong>Raw data & exports:</strong> Filter by employee/department/region; export CSV/XLSX with all earnings/deductions.</li>
           <li><strong>Year-end:</strong> T4 (boxes 14/16/18/22/24/26/40/44), W-2 core boxes, ROE (CA) as needed.</li>
         </ol>
+
+        <Divider sx={{ my: 2 }} />
+        <Typography variant="h6" gutterBottom>New pay periods start fresh</Typography>
+        <Typography variant="body2" gutterBottom>
+          New pay periods start clean: one-off fields like tips, bonus, commission, shift premium, and reimbursements default to 0 each run. Recurring deductions (union dues, garnishment, insurance, retirement, other deductions) can be set as Employee Profile defaults and will auto-fill each period. Once finalized, each period is saved as its own snapshot for accurate year-end totals.
+        </Typography>
+
+        <Divider sx={{ my: 2 }} />
+        <Typography variant="h6" gutterBottom>Audit & corrections</Typography>
+        <Typography variant="body2" gutterBottom>
+          If a period is re-finalized, the latest finalize becomes the authoritative snapshot for exports. You can view who finalized/overwrote a period (and what changed) in Payroll Finalization Audit.
+        </Typography>
       </>
     )}
 
@@ -731,29 +879,30 @@ return (
       <ToggleButton value="history">History</ToggleButton>
     </ToggleButtonGroup>
 
-    <PayrollFilters
-      recruiters={recruiters}
-      selectedRecruiter={selectedRecruiter}
-      setSelectedRecruiter={setSelectedRecruiter}
-      region={region}
-      setRegion={setRegion}
-      startDate={startDate}
-      setStartDate={setStartDate}
-      endDate={endDate}
-      setEndDate={setEndDate}
-      year={year}
-      setYear={setYear}
-      month={month}
-      setMonth={setMonth}
-      onPreview={handlePreview}
-      loading={loading}
-      viewMode={viewMode}
-      setPayroll={setPayroll}
-      payroll={payroll}
-      handleFieldChange={handleFieldChange}
-      payFrequency={payFrequency}
-      setPayFrequency={setPayFrequency}
-    />
+      <PayrollFilters
+        recruiters={recruiters}
+        selectedRecruiter={selectedRecruiter}
+        setSelectedRecruiter={setSelectedRecruiter}
+        region={region}
+        setRegion={setRegion}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        year={year}
+        setYear={setYear}
+        month={month}
+        setMonth={setMonth}
+        onPreview={handlePreview}
+        loading={loading}
+        viewMode={viewMode}
+        setPayroll={setPayroll}
+        payroll={payroll}
+        handleFieldChange={handleFieldChange}
+        payFrequency={payFrequency}
+        setPayFrequency={setPayFrequency}
+        setPayFreqTouched={setPayFreqTouched}
+      />
 
     {viewMode === "preview" && payroll && (
       <PayrollPreview

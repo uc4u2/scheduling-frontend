@@ -26,6 +26,7 @@ import {
   Stack,
   Tooltip,
   IconButton,
+  FormHelperText,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -351,8 +352,9 @@ useEffect(() => {
   const payload = {
     recruiter_id: payroll.recruiter_id,
     region: payroll.region || region || "ca",
-    province: payroll.province,
-    state: payroll.state,
+    ...(region === "us"
+      ? { state: payroll.state }
+      : { province: payroll.province }),
     rate: parseFloat(payroll.rate || 0),
     hours_worked: parseFloat(payroll.hours_worked || 0),
     start_date: payroll.start_date,
@@ -483,8 +485,9 @@ const handleRecalculate = () => {
   const payload = {
     recruiter_id: payroll.recruiter_id,
     region: payroll.region || region || "ca",
-    province: payroll.province,
-    state: payroll.state,
+    ...(region === "us"
+      ? { state: payroll.state }
+      : { province: payroll.province }),
     rate: payroll.rate,
     vacation_percent:
     payroll.vacation_percent ?? defaultVacationPercent(region, payroll.province),
@@ -802,61 +805,50 @@ const handleRecalculate = () => {
 
         {/* Optional earnings / allowances */}
         {[
-          "vacation_pay",
-          "commission",
-          "bonus",
-          "tip",
-          "parental_insurance",
-          "travel_allowance",
-          "parental_top_up",
-          "family_bonus",
-          "tax_credit",
-          "medical_insurance",
-          "dental_insurance",
-          "life_insurance",
-          "retirement_amount",
-          "deduction",
-          "shift_premium",
-          "union_dues",
-          "garnishment",
-
-        ].map((key) => (
+          { key: "vacation_pay", label: "Vacation Pay ($)" },
+          { key: "commission", label: "Commission ($)" },
+          { key: "bonus", label: "Bonus ($)" },
+          { key: "tip", label: "Tip / Gratuity ($)" },
+          { key: "parental_insurance", label: "Parental Insurance ($)" },
+          { key: "travel_allowance", label: "Travel Allowance ($)" },
+          { key: "parental_top_up", label: "Parental Leave Top-up ($)" },
+          { key: "family_bonus", label: "Family Bonus ($)" },
+          { key: "tax_credit", label: "Tax Credit ($)" },
+          { key: "medical_insurance", label: "Medical Insurance ($)", badge: true },
+          { key: "dental_insurance", label: "Dental Insurance ($)", badge: true },
+          { key: "life_insurance", label: "Life Insurance ($)", badge: true },
+          { key: "retirement_amount", label: "Retirement (employee) ($)", badge: true },
+          { key: "deduction", label: "Other Deduction ($)", badge: true },
+          { key: "shift_premium", label: "Shift Premium ($)" },
+          { key: "union_dues", label: "Union Dues ($)", badge: true },
+          { key: "garnishment", label: "Garnishment ($)", badge: true },
+        ].map(({ key, label, badge }) => (
           <Grid item xs={12} md={3} key={key}>
-            <TextField
-              label={
-                {
-                  shift_premium: "Shift Premium ($)",
-                  union_dues: "Union Dues ($)",
-                  garnishment: "Garnishment ($)",
-                  vacation_pay: "Vacation Pay ($)",
-                  travel_allowance: "Travel Allowance ($)",
-                  parental_insurance: "Parental Insurance ($)",
-                  parental_top_up: "Parental Leave Top-up ($)",
-                  family_bonus: "Family Bonus ($)",
-                  tax_credit: "Tax Credit ($)",
-                  medical_insurance: "Medical Insurance ($)",
-                  dental_insurance: "Dental Insurance ($)",
-                  life_insurance: "Life Insurance ($)",
-                  retirement_amount: "Retirement (employee) ($)",
-                  deduction: "Other Deduction ($)",
-                }[key] ||
-                key
-                  .replace(/_/g, " ")
-                  .replace(/\b\w/g, (l) => l.toUpperCase()) + " ($)"
-              }
-              type="number"
-              value={payroll[key] || 0}
-              onChange={(e) => handleFieldChange(key, e.target.value)}
-              fullWidth
-              helperText={
-                {
-                  shift_premium: "Taxable extra pay for night/evening/weekend work.",
-                  union_dues: "Employee-paid union dues. Reduces net; goes to T4 Box 44.",
-                  garnishment: "Flat legal deduction (e.g., child support). No remittance automation.",
-                  non_taxable_reimbursement: "Reimbursed to employee but not taxed.",
-                }[key] || ""
-              }
-            />
+            <Stack spacing={0.5}>
+              <TextField
+                label={label}
+                type="number"
+                value={payroll[key] || 0}
+                onChange={(e) => handleFieldChange(key, e.target.value)}
+                fullWidth
+                helperText={
+                  {
+                    shift_premium: "Taxable extra pay for night/evening/weekend work.",
+                    union_dues: "Employee-paid union dues. Reduces net; goes to T4 Box 44.",
+                    garnishment: "Flat legal deduction (e.g., child support). No remittance automation.",
+                    non_taxable_reimbursement: "Reimbursed to employee but not taxed.",
+                  }[key] || ""
+                }
+                InputProps={{ inputProps: { step: "0.01" } }}
+              />
+              {badge ? (
+                <Tooltip title="Edit Employee Profile → Payroll & compliance">
+                  <FormHelperText sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Chip size="small" label="Default from Employee Profile" variant="outlined" />
+                  </FormHelperText>
+                </Tooltip>
+              ) : null}
+            </Stack>
           </Grid>
         ))}
 

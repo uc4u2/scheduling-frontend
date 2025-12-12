@@ -24,6 +24,8 @@ import {
   Stack,
 } from "@mui/material";
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
+import { formatDateTimeInTz } from "../../utils/datetime";
+import { getUserTimezone } from "../../utils/timezone";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -31,6 +33,11 @@ export default function PayrollRawPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
   const departments = useDepartments();
   const employees = useEmployeesByDepartment();
+  const userTz = getUserTimezone();
+  const coerceUtcIso = (iso) => {
+    if (!iso) return iso;
+    return /[zZ]|[+-]\d{2}:?\d{2}/.test(iso) ? iso : `${iso}Z`;
+  };
 
   // Filters
   const [recruiterId, setRecruiterId] = useState("");
@@ -58,6 +65,7 @@ export default function PayrollRawPage() {
         page: currentPage,
         page_size: pageSize,
         finalized_only: true,
+        latest_only: true,
         start_date: startDate,
         end_date: endDate,
       };
@@ -505,8 +513,12 @@ export default function PayrollRawPage() {
                 <Typography variant="body2">Payroll ID: {detailRow.id}</Typography>
                 <Typography variant="body2">BPA applied: ${detailRow.bpa_applied}</Typography>
                 <Typography variant="body2">BPA remaining: ${detailRow.bpa_remaining}</Typography>
-                <Typography variant="body2">Created at: {detailRow.created_at || "-"}</Typography>
-                <Typography variant="body2">Finalized at: {detailRow.finalized_at || "-"}</Typography>
+                <Typography variant="body2">
+                  Created at: {detailRow.created_at ? formatDateTimeInTz(coerceUtcIso(detailRow.created_at), userTz) : "-"}
+                </Typography>
+                <Typography variant="body2">
+                  Finalized at: {detailRow.finalized_at ? formatDateTimeInTz(coerceUtcIso(detailRow.finalized_at), userTz) : "-"}
+                </Typography>
                 <Typography variant="body2">
                   QuickBooks synced: {detailRow.synced_quickbooks ? "Yes" : "No"} {detailRow.quickbooks_journal_id ? `(${detailRow.quickbooks_journal_id})` : ""}
                 </Typography>

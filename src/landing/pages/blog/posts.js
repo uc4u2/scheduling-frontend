@@ -2,6 +2,114 @@
 // Each post can be rendered by BlogPostPage via slug.
 const blogPosts = [
   {
+    slug: "modern-payroll-for-service-businesses",
+    title: "Modern Payroll for Service Businesses: Why Teams Choose Schedulaa",
+    description:
+      "Learn how Schedulaa runs modern payroll for service teams across the U.S. and Canada. From scheduling and break enforcement to payroll preview, audit logs, and W-2/T4 exports - all in one operations platform.",
+    datePublished: "2025-12-12",
+    dateModified: "2025-12-12",
+    category: "Payroll",
+    tags: ["payroll", "operations", "canada", "usa", "compliance"],
+    heroOverline: "Payroll",
+    sections: [
+      {
+        heading: "Payroll Is Not Just About Paying People",
+        paragraphs: [
+          "Most payroll software starts at the end of the process: here are the hours, now calculate taxes.",
+          "In real service businesses - salons, clinics, call centers, field teams - payroll problems start earlier: shifts were scheduled incorrectly, breaks were missed or misclassified, overtime stayed hidden until payday, tips and premiums sat outside payroll, and managers copied last period's numbers and made mistakes.",
+          "Schedulaa was built to solve payroll from the source, not just the output.",
+        ],
+      },
+      {
+        heading: "What Makes Schedulaa Different",
+        paragraphs: [
+          "Schedulaa is not just payroll software. It is an operations OS where payroll is the final step of a verified workflow.",
+          "Payroll runs on the same data that powers scheduling, breaks, and time tracking, so errors are caught before pay day.",
+        ],
+      },
+      {
+        heading: "Payroll built on real operational data",
+        paragraphs: [
+          "Schedulaa calculates payroll using approved shifts and timeclock data, paid versus unpaid leave, statutory holidays, break compliance signals, overtime from actual hours, and tips, commissions, shift premiums, and allowances.",
+          "Payroll preview is generated only after operational data is validated, which dramatically reduces errors before they happen.",
+        ],
+      },
+      {
+        heading: "One Payroll System for the U.S. and Canada",
+        paragraphs: [
+          "United States (2025): federal income tax, state income tax where applicable, FICA, SUI/SUTA, PTO and time tracking, shift premiums, union dues and garnishments (flat amounts), W-2 generation and exports, plus payroll exports in PDF, CSV, and XLSX. Local and city taxes are transparently flagged as not automated.",
+          "Canada (ex-Quebec, 2025): federal and provincial income tax, CPP with CPP-exempt employees, EI with EI-exempt employees, vacation pay and accrual, statutory holiday pay, paid versus unpaid leave, BPA with YTD tracking, T4 generation (Boxes 14, 16/26, 18/24, 22, 40, 44), ROE (PDF and XML), union dues and garnishments, and non-taxable reimbursements.",
+          "Canadian and U.S. teams can run payroll in one system with the correct tax engine per employee.",
+        ],
+      },
+      {
+        heading: "Payroll Defaults That Prevent Mistakes",
+        paragraphs: [
+          "Company-level payroll defaults include pay frequency (weekly, bi-weekly, semi-monthly, monthly) and are automatically prefilled in payroll preview.",
+          "Employee-level recurring defaults are set once in the employee profile for union dues, garnishments, medical, dental, life deductions, retirement contributions, and other recurring deductions.",
+          "One-off fields like tips, bonuses, premiums, and reimbursements start at zero each new period to avoid accidental carry-over. Managers can override per period, and each finalized period is stored independently for year-end accuracy.",
+        ],
+      },
+      {
+        heading: "Payroll Preview That Matches Final Results",
+        paragraphs: [
+          "Schedulaa's payroll preview is not a guess. Preview, finalize, PDF, raw data, and year-end exports all use the same finalized data.",
+          "Managers see net pay update live as fields change, and the preview matches payslip and exports exactly after finalization.",
+        ],
+      },
+      {
+        heading: "Audit-Ready Payroll Corrections",
+        paragraphs: [
+          "Schedulaa includes a Payroll Finalization Audit Log that shows who finalized or re-finalized a period, when it happened, and what changed, with before-and-after differences and the exact PDF snapshot for each finalization.",
+          "If one manager finalizes a pay period and another corrects it later, the system keeps the authoritative version and shows both events in audit history for compliance and internal controls.",
+        ],
+      },
+      {
+        heading: "Benefits Tracking (Without Becoming a Broker)",
+        paragraphs: [
+          "Schedulaa does not sell or administer insurance plans. It tracks employee benefit deductions, records taxable benefits (Canada Box 40), and includes benefits accurately in payroll exports and year-end forms without forcing businesses into a PEO or co-employment model.",
+        ],
+      },
+      {
+        heading: "Designed for Service Businesses",
+        paragraphs: [
+          "Schedulaa is built for salons and spas, clinics and med-spas, call centers and support teams, cleaning and field service companies, and multi-location operators.",
+          "These teams need scheduling and payroll in one flow, break enforcement and coverage visibility, tips and variable pay handled cleanly, and audit-ready payroll without enterprise overhead.",
+        ],
+      },
+      {
+        heading: "How Schedulaa Compares to Traditional Payroll Providers",
+        paragraphs: [
+          "Paychex or ADP: strong on filings, benefits, and compliance, with heavy setup and enterprise contracts; payroll-first, operations second.",
+          "Schedulaa: operations-first and payroll-ready, with scheduling, breaks, time, and payroll in one system; cross-border (U.S. and Canada) in one workflow with transparent limits and no hidden compliance claims.",
+          "Paychex pays people. Schedulaa makes sure they are paid correctly.",
+        ],
+      },
+      {
+        heading: "When to Choose Schedulaa",
+        paragraphs: [
+          "Choose Schedulaa if you run a service business with real schedules and shifts, payroll accuracy depends on operational data, you want fewer tools and fewer mistakes, you need U.S. and/or Canadian payroll in one platform, and you value auditability and clarity over complexity.",
+        ],
+      },
+      {
+        heading: "Final Thought",
+        paragraphs: [
+          "Payroll should not be a black box. Schedulaa turns payroll into a verifiable, auditable outcome of how work actually happened - not just a calculation at the end of the month.",
+          "If you want payroll that matches reality, not just regulations, Schedulaa is built for you.",
+        ],
+      },
+      {
+        heading: "Ready to see it in action?",
+        paragraphs: [
+          "Explore payroll features: /payroll",
+          "Review U.S. payroll coverage: /payroll/usa",
+          "Review Canadian payroll coverage: /payroll/canada",
+          "Open the payroll documentation: /docs#payroll",
+        ],
+      },
+    ],
+  },
+  {
     slug: "client-journey",
     title: "Designing a Client Journey with Schedulaa",
     description:

@@ -75,6 +75,7 @@ const sections = [
       { label: "Schedulaa vs Acuity Scheduling", to: "/compare/schedulaa-vs-acuity-scheduling" },
       { label: "Schedulaa vs Gusto", to: "/compare/gusto" },
       { label: "Schedulaa vs ADP", to: "/compare/adp" },
+      { label: "Schedulaa vs Paychex", to: "/compare/paychex" },
     ],
   },
   {

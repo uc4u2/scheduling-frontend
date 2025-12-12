@@ -15,6 +15,9 @@ import {
   Tooltip,
   FormControlLabel,
   Switch,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   Checkbox,
   List,
   ListItem,
@@ -25,6 +28,7 @@ import {
   IconButton,
   InputAdornment,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { api } from "../../utils/api";
 import { getAuthedCompanyId } from "../../utils/authedCompany";
@@ -122,6 +126,7 @@ const EmployeeProfileForm = ({ token }) => {
   const [docUploading, setDocUploading] = useState(false);
   const [docUploadError, setDocUploadError] = useState("");
   const [docUploadSuccess, setDocUploadSuccess] = useState(false);
+  const [payrollExpanded, setPayrollExpanded] = useState(true);
   const MAX_DOC_BYTES = 2 * 1024 * 1024;
   const allowedDocExtensions = [".pdf", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"];
   const companyId = employee?.company_id || getAuthedCompanyId() || "";
@@ -200,6 +205,15 @@ const FRONTEND_ORIGIN =
         cpp_exempt: Boolean(data.cpp_exempt),
         ei_exempt: Boolean(data.ei_exempt),
         union_member: Boolean(data.union_member),
+        default_garnishment: data.default_garnishment ?? 0,
+        default_union_dues: data.default_union_dues ?? 0,
+        default_medical_insurance: data.default_medical_insurance ?? 0,
+        default_dental_insurance: data.default_dental_insurance ?? 0,
+        default_life_insurance: data.default_life_insurance ?? 0,
+        default_retirement_amount: data.default_retirement_amount ?? 0,
+        default_deduction: data.default_deduction ?? 0,
+        default_pay_frequency: data.default_pay_frequency || "",
+        default_pay_cycle: data.default_pay_cycle || "",
       };
       setEmployee(flatData);
       setErrorKey("");
@@ -364,6 +378,24 @@ const FRONTEND_ORIGIN =
         ei_exempt: Boolean(employee.ei_exempt),
         union_member: Boolean(employee.union_member),
       };
+      const recurringKeys = [
+        "default_garnishment",
+        "default_union_dues",
+        "default_medical_insurance",
+        "default_dental_insurance",
+        "default_life_insurance",
+        "default_retirement_amount",
+        "default_deduction",
+        "default_pay_frequency",
+        "default_pay_cycle",
+      ];
+      recurringKeys.forEach((key) => {
+        if (key.startsWith("default_") && key !== "default_pay_frequency" && key !== "default_pay_cycle") {
+          payload[key] = employee[key] === "" || employee[key] === null ? 0 : Number(employee[key] || 0);
+        } else {
+          payload[key] = employee[key] || "";
+        }
+      });
 
       const res = await api.put(`/api/recruiters/${selectedId}`, payload);
       if (res?.data) {
@@ -380,6 +412,28 @@ const FRONTEND_ORIGIN =
           cpp_exempt: data.cpp_exempt !== undefined ? Boolean(data.cpp_exempt) : Boolean(employee.cpp_exempt),
           ei_exempt: data.ei_exempt !== undefined ? Boolean(data.ei_exempt) : Boolean(employee.ei_exempt),
           union_member: data.union_member !== undefined ? Boolean(data.union_member) : Boolean(employee.union_member),
+          default_garnishment:
+            data.default_garnishment !== undefined ? data.default_garnishment : employee.default_garnishment,
+          default_union_dues:
+            data.default_union_dues !== undefined ? data.default_union_dues : employee.default_union_dues,
+          default_medical_insurance:
+            data.default_medical_insurance !== undefined
+              ? data.default_medical_insurance
+              : employee.default_medical_insurance,
+          default_dental_insurance:
+            data.default_dental_insurance !== undefined
+              ? data.default_dental_insurance
+              : employee.default_dental_insurance,
+          default_life_insurance:
+            data.default_life_insurance !== undefined ? data.default_life_insurance : employee.default_life_insurance,
+          default_retirement_amount:
+            data.default_retirement_amount !== undefined
+              ? data.default_retirement_amount
+              : employee.default_retirement_amount,
+          default_deduction:
+            data.default_deduction !== undefined ? data.default_deduction : employee.default_deduction,
+          default_pay_frequency: data.default_pay_frequency ?? employee.default_pay_frequency,
+          default_pay_cycle: data.default_pay_cycle ?? employee.default_pay_cycle,
         };
         setEmployee(flatData);
       }
@@ -424,6 +478,16 @@ const FRONTEND_ORIGIN =
     page,
     total: totalPages,
   });
+
+  const recurringDefaultFields = [
+    { name: "default_garnishment", label: "Default Garnishment ($)" },
+    { name: "default_union_dues", label: "Default Union Dues ($)" },
+    { name: "default_medical_insurance", label: "Default Medical Insurance ($)" },
+    { name: "default_dental_insurance", label: "Default Dental Insurance ($)" },
+    { name: "default_life_insurance", label: "Default Life Insurance ($)" },
+    { name: "default_retirement_amount", label: "Default Retirement Contribution ($)" },
+    { name: "default_deduction", label: "Default Other Deduction ($)" },
+  ];
 
   return (
     <ManagementFrame
@@ -770,68 +834,6 @@ const FRONTEND_ORIGIN =
             </Grid>
           </Grid>
 
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-              Payroll &amp; compliance
-            </Typography>
-            <Grid container spacing={1}>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={Boolean(employee.cpp_exempt)}
-                      onChange={(e) =>
-                        setEmployee((prev) => (prev ? { ...prev, cpp_exempt: e.target.checked } : prev))
-                      }
-                    />
-                  }
-                  label="CPP exempt (Canada)"
-                />
-                <Tooltip title="Employee does not contribute to CPP for this job (e.g., already collecting CPP). CPP will not be withheld or reported.">
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
-                    Hover for details
-                  </Typography>
-                </Tooltip>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={Boolean(employee.ei_exempt)}
-                      onChange={(e) =>
-                        setEmployee((prev) => (prev ? { ...prev, ei_exempt: e.target.checked } : prev))
-                      }
-                    />
-                  }
-                  label="EI exempt (Canada)"
-                />
-                <Tooltip title="Employee is exempt from EI. EI will not be withheld or reported for this employee.">
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
-                    Hover for details
-                  </Typography>
-                </Tooltip>
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={Boolean(employee.union_member)}
-                      onChange={(e) =>
-                        setEmployee((prev) => (prev ? { ...prev, union_member: e.target.checked } : prev))
-                      }
-                    />
-                  }
-                  label="Union member"
-                />
-                <Tooltip title="For reporting and pre-filling union dues. Does not change pay by itself.">
-                  <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
-                    Hover for details
-                  </Typography>
-                </Tooltip>
-              </Grid>
-            </Grid>
-          </Box>
-
           <Paper variant="outlined" sx={{ p: 2, mt: 3, borderRadius: 2 }}>
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
               Public booking link
@@ -1117,6 +1119,107 @@ const FRONTEND_ORIGIN =
                 </List>
               )}
           </Paper>
+
+          <Accordion
+            expanded={payrollExpanded}
+            onChange={(_, expanded) => setPayrollExpanded(expanded)}
+            sx={{ mt: 3, borderRadius: 2 }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Stack spacing={0.25}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Payroll &amp; compliance
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Exemptions plus recurring payroll defaults for new pay periods.
+                </Typography>
+              </Stack>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={1} sx={{ mb: 2 }}>
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={Boolean(employee.cpp_exempt)}
+                        onChange={(e) =>
+                          setEmployee((prev) => (prev ? { ...prev, cpp_exempt: e.target.checked } : prev))
+                        }
+                      />
+                    }
+                    label="CPP exempt (Canada)"
+                  />
+                  <Tooltip title="Employee does not contribute to CPP for this job (e.g., already collecting CPP). CPP will not be withheld or reported.">
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                      Hover for details
+                    </Typography>
+                  </Tooltip>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={Boolean(employee.ei_exempt)}
+                        onChange={(e) =>
+                          setEmployee((prev) => (prev ? { ...prev, ei_exempt: e.target.checked } : prev))
+                        }
+                      />
+                    }
+                    label="EI exempt (Canada)"
+                  />
+                  <Tooltip title="Employee is exempt from EI. EI will not be withheld or reported for this employee.">
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                      Hover for details
+                    </Typography>
+                  </Tooltip>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={Boolean(employee.union_member)}
+                        onChange={(e) =>
+                          setEmployee((prev) => (prev ? { ...prev, union_member: e.target.checked } : prev))
+                        }
+                      />
+                    }
+                    label="Union member"
+                  />
+                  <Tooltip title="For reporting and pre-filling union dues. Does not change pay by itself.">
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                      Hover for details
+                    </Typography>
+                  </Tooltip>
+                </Grid>
+              </Grid>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                Recurring payroll defaults (per pay period)
+              </Typography>
+              <Grid container spacing={2}>
+                {recurringDefaultFields.map((field) => (
+                  <Grid item xs={12} md={4} key={field.name}>
+                    <TextField
+                      type="number"
+                      inputProps={{ step: "0.01", min: "0" }}
+                      label={field.label}
+                      name={field.name}
+                      value={employee[field.name] ?? ""}
+                      onChange={(e) =>
+                        setEmployee((prev) =>
+                          prev ? { ...prev, [field.name]: e.target.value === "" ? "" : Number(e.target.value) } : prev
+                        )
+                      }
+                      fullWidth
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                These values auto-fill payroll preview each period. Managers can override per period before finalizing.
+              </Typography>
+            </AccordionDetails>
+          </Accordion>
 
           <Box sx={{ mt: 3 }}>
             <Button variant="contained" onClick={handleSubmit}>

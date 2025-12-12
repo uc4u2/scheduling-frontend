@@ -98,6 +98,7 @@ import OnboardingPage from "./pages/sections/management/OnboardingPage";
 import AttendanceReportPage from "./pages/sections/management/AttendanceReportPage";
 import CompanyProfile from "./pages/sections/CompanyProfile";
 import PayrollRawPage from "./pages/sections/PayrollRawPage";
+import PayrollAuditPage from "./pages/sections/PayrollAuditPage";
 import Payroll from "./pages/sections/Payroll";
 import EmployeeProfileForm from "./pages/Payroll/EmployeeProfileForm";
 import PayrollDownloadPage from "./pages/sections/PayrollDownloadPage";
@@ -513,6 +514,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/payroll/download/:id" element={<PayrollDownloadPage />} />
           <Route path="/payroll/portal" element={<EmployeePayslipPortal token={token} />} />
           <Route path="/manager/payroll/raw" element={<PayrollRawPage />} />
+          <Route path="/manager/payroll/audit" element={<PayrollAuditPage />} />
 
           {/* Misc */}
           <Route path="/calendar" element={<CalendarView />} />

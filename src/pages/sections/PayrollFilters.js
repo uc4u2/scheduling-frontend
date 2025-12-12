@@ -91,6 +91,7 @@ export default function PayrollFilters({
   handleFieldChange,
   payFrequency            = "weekly",
   setPayFrequency,
+  setPayFreqTouched,
 }) {
   /* ───────── API helpers ───────── */
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -230,6 +231,13 @@ export default function PayrollFilters({
                   name: `${rec.first_name} ${rec.last_name}`,
                   rate: rec.hourly_rate || 0,
                   province: recProv,
+                  garnishment: Number(rec.default_garnishment ?? 0) || 0,
+                  union_dues: Number(rec.default_union_dues ?? 0) || 0,
+                  medical_insurance: Number(rec.default_medical_insurance ?? 0) || 0,
+                  dental_insurance: Number(rec.default_dental_insurance ?? 0) || 0,
+                  life_insurance: Number(rec.default_life_insurance ?? 0) || 0,
+                  retirement_amount: Number(rec.default_retirement_amount ?? 0) || 0,
+                  deduction: Number(rec.default_deduction ?? 0) || 0,
                 }));
               }}
             >
@@ -329,6 +337,7 @@ export default function PayrollFilters({
                 fullWidth
                 onChange={(e) => {
                   setPayFrequency?.(e.target.value);
+                  setPayFreqTouched?.(true);
                   handleFieldChange("pay_frequency", e.target.value);
                 }}
               >
