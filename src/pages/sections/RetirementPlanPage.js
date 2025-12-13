@@ -33,12 +33,13 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 export default function RetirementPlanPage({ token }) {
   const [country, setCountry] = useState("us");
   const [plan, setPlan] = useState({
+    id: null,
     plan_type: "401k_traditional",
-    enable_ytd_caps: true,
-    annual_employee_limit: 23000,
+    enable_ytd_caps: false,
+    annual_employee_limit: "",
     employer_match_percent: "",
     employee_contrib_method: "percent",
-    employee_contrib_percent_default: 5,
+    employee_contrib_percent_default: "",
     employee_contrib_flat_default: "",
   });
   const [saving, setSaving] = useState(false);
@@ -62,11 +63,13 @@ export default function RetirementPlanPage({ token }) {
         }));
       } else {
         setPlan((prev) => ({
-          ...prev,
+          id: null,
           plan_type: c === "ca" ? "rrsp_group" : "401k_traditional",
           enable_ytd_caps: false,
           annual_employee_limit: "",
           employer_match_percent: "",
+          employee_contrib_percent_default: "",
+          employee_contrib_flat_default: "",
         }));
       }
     } catch (err) {
@@ -147,6 +150,11 @@ export default function RetirementPlanPage({ token }) {
   };
 
   const capsError = plan.enable_ytd_caps && (plan.annual_employee_limit === "" || plan.annual_employee_limit === null);
+  const hasInputs =
+    plan.id ||
+    [plan.employee_contrib_percent_default, plan.employee_contrib_flat_default, plan.annual_employee_limit, plan.employer_match_percent].some(
+      (v) => v !== "" && v !== null
+    );
 
   return (
     <ManagementFrame title="Retirement Plans" subtitle="Configure company retirement plan defaults (enterprise mode).">
@@ -158,6 +166,16 @@ export default function RetirementPlanPage({ token }) {
               In Enterprise mode, Schedulaa calculates 401(k) automatically using plan defaults, employee elections, and annual IRS limits. Contributions are capped and W-2s are updated. Enable Enterprise in Company Profile → Payroll Settings; configure plan details here (Manager → Payroll → Retirement Plans).
             </Typography>
           </Alert>
+          {country === "us" && !plan?.id && (
+            <Alert severity="warning">
+              401(k) is currently OFF. Payroll will not calculate retirement until a plan is saved.
+            </Alert>
+          )}
+          {country === "us" && plan?.id && (
+            <Alert severity="success">
+              401(k) is active for U.S. payroll.
+            </Alert>
+          )}
 
           <Accordion defaultExpanded={false}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -415,7 +433,7 @@ export default function RetirementPlanPage({ token }) {
           {message && <Alert severity={severity}>{message}</Alert>}
           {country !== "ca" && (
             <Box>
-              <Button variant="contained" onClick={handleSave} disabled={saving}>
+              <Button variant="contained" onClick={handleSave} disabled={saving || !hasInputs}>
                 {saving ? "Saving..." : "Save plan"}
               </Button>
             </Box>
