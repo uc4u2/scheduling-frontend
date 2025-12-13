@@ -21,6 +21,8 @@ import {
   TableRow,
   TableCell
 } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
+import Stack from "@mui/material/Stack";
 import { HelpOutline } from "@mui/icons-material";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -246,8 +248,12 @@ useEffect(() => {
       life_insurance: recruiterProfile?.default_life_insurance,
       retirement_amount: recruiterProfile?.default_retirement_amount,
       deduction: recruiterProfile?.default_deduction,
+      parental_insurance: recruiterProfile?.default_parental_insurance,
     };
     Object.entries(recurringDefaults).forEach(([key, value]) => {
+      if (key === "parental_insurance" && region !== "ca" && region !== "qc") {
+        return;
+      }
       if (isEmpty(updated[key]) && value !== undefined && value !== null) {
         updated[key] = value;
       }
@@ -714,11 +720,21 @@ return (
     title="Payroll Management"
     subtitle="Review, calculate, save and export payroll."
     headerActions={
-      <Tooltip title="Payroll Guide">
-        <IconButton onClick={() => setGuideOpen(true)}>
-          <HelpOutline />
-        </IconButton>
-      </Tooltip>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <Button
+          component={RouterLink}
+          to="/manager/payroll/retirement"
+          variant="outlined"
+          size="small"
+        >
+          Retirement plan settings
+        </Button>
+        <Tooltip title="Payroll Guide">
+          <IconButton onClick={() => setGuideOpen(true)}>
+            <HelpOutline />
+          </IconButton>
+        </Tooltip>
+      </Stack>
     }
   >
 
@@ -761,6 +777,23 @@ return (
           <li>✅ Payroll exports (PDF / CSV / XLSX)</li>
           <li>✅ W-2 generation / export</li>
         </ul>
+        <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}><strong>🧾 Enterprise 401(k) (U.S.)</strong></Typography>
+        <Typography variant="body2" gutterBottom>
+          Schedulaa supports enterprise-grade 401(k) for U.S. payroll.
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          Company defaults: set in Payroll → Retirement Plans (percent/flat method, default rate, annual IRS limit, cap enforcement, optional employer match).
+          Employees follow the company default unless overridden.
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          Employee overrides: optional per-employee elections in Employee Profile → Employee 401(k) Settings. Blank = company default applies. Overrides can include rate and effective start date; they affect only that employee.
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          Caps & reporting: employee contributions cap automatically at the IRS limit; contributions stop when capped and resume next year. W-2 reporting is automatic: Box 1 reduced by deferrals, Box 3 & 5 unchanged, Box 12 (code D) shows total employee deferral.
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          Important: If no retirement plan is configured, no 401(k) contributions occur. 401(k) is optional; leaving everything blank results in normal payroll.
+        </Typography>
         <Typography variant="body1" gutterBottom>Not supported / not automated:</Typography>
         <ul>
           <li>❌ Local/city taxes (e.g., NYC, STL, CO locals)</li>
@@ -802,6 +835,19 @@ return (
           <li>✅ Simple union dues & garnishments</li>
           <li>✅ Non-taxable reimbursements (recorded, excluded from gross/taxes)</li>
         </ul>
+        <Typography variant="subtitle1" gutterBottom sx={{ mt: 1 }}><strong>🧾 RRSP (Canada)</strong></Typography>
+        <Typography variant="body2" gutterBottom>
+          RRSP in Canada is employee-based (no company-wide default).
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          RRSP contributions are set per employee in Employee Profile. Leaving RRSP fields blank means the employee does not contribute.
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          Employer RRSP: employer match can be recorded per employee if offered. Employer-paid RRSP may be treated as taxable benefits and reported in T4 Box 40 depending on plan design.
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          Important: Schedulaa does not enforce a company-wide RRSP cap. Enterprise retirement plans apply to U.S. 401(k) only.
+        </Typography>
         <Typography variant="body1" gutterBottom>Not supported / not automated:</Typography>
         <ul>
           <li>❌ Québec payroll (QPP, RQAP/QPIP)</li>
@@ -817,6 +863,9 @@ return (
         <Typography variant="h6" gutterBottom>How Schedulaa Payroll Works (US & Canada)</Typography>
         <Typography variant="body2" gutterBottom>
           Payroll combines: (1) Company settings (default pay frequency), (2) Employee profile (country/location, rate, CPP/EI flags, union member, recurring payroll defaults like union dues/garnishment/insurance/retirement), (3) Time & leave (approved shifts, paid/unpaid leave, stat holidays), (4) Manager overrides (bonus, commission, tips, shift premium, allowances, one-off reimbursements, per-period adjustments). Every finalize is logged in the Payroll Audit Log (who finalized/overwrote and when).
+        </Typography>
+        <Typography variant="body2" gutterBottom>
+          Retirement defaults vs employee overrides: United States (401(k)) — Company retirement plans define defaults for all employees; Employee Profile retirement fields are optional overrides only. Canada (RRSP) — No company default exists; Employee Profile RRSP fields are the primary setup. Leaving retirement fields blank always results in no retirement contribution.
         </Typography>
         <Typography variant="body2" gutterBottom>
           Gross = base earnings + vacation + taxable extras (incl. shift premium). Deductions = taxes + statutory + retirement + union dues + garnishment + other deductions. Net pay = Gross − Deductions + Non-taxable reimbursements.
@@ -842,7 +891,7 @@ return (
         <Divider sx={{ my: 2 }} />
         <Typography variant="h6" gutterBottom>New pay periods start fresh</Typography>
         <Typography variant="body2" gutterBottom>
-          New pay periods start clean: one-off fields like tips, bonus, commission, shift premium, and reimbursements default to 0 each run. Recurring deductions (union dues, garnishment, insurance, retirement, other deductions) can be set as Employee Profile defaults and will auto-fill each period. Once finalized, each period is saved as its own snapshot for accurate year-end totals.
+          New pay periods start clean: one-off fields like tips, bonus, commission, shift premium, and reimbursements default to 0 each run. Recurring deductions (union dues, garnishment, insurance, retirement, other deductions) can be set as Employee Profile defaults and will auto-fill each period. For retirement: U.S. 401(k) defaults are applied automatically from the company plan; Canada RRSP amounts apply only if entered in the Employee Profile. Once finalized, each period is saved as its own snapshot for accurate year-end totals.
         </Typography>
 
         <Divider sx={{ my: 2 }} />

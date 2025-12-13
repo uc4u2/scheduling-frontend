@@ -24,7 +24,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Divider,
 } from "@mui/material";
 import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
@@ -110,6 +111,7 @@ export default function CompanyProfile({ token }) {
     display_currency: "USD",
     trusted_ips: [],
     default_pay_frequency: "",
+    retirement_engine_mode: "enterprise",
   });
 
   // Departments
@@ -121,6 +123,8 @@ export default function CompanyProfile({ token }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, messageKey: "", fallback: "", severity: "info" });
+  const isUS = (form.country_code || "").toUpperCase().startsWith("US");
+  const isCA = (form.country_code || "").toUpperCase().startsWith("CA");
 
   // Public viewer check
   const [viewerCheckMsg, setViewerCheckMsg] = useState("");
@@ -145,6 +149,52 @@ export default function CompanyProfile({ token }) {
   /* ---------- helpers ---------- */
   const showMessage = (messageKey, severity = "info", fallback = "") =>
     setSnackbar({ open: true, messageKey, fallback, severity });
+
+  // Clear hidden fields when country changes (avoid validation/UX noise)
+  useEffect(() => {
+    setForm((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (isUS) {
+        ["business_number", "payroll_program", "employer_number", "contact_person", "contact_phone", "contact_email"].forEach((k) => {
+          if (next[k]) {
+            next[k] = "";
+            changed = true;
+          }
+        });
+      } else if (isCA) {
+        if (next.federal_employer_id) {
+          next.federal_employer_id = "";
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUS, isCA]);
+
+  // Clear hidden fields when country changes (avoid validation noise)
+  useEffect(() => {
+    setForm((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (isUS) {
+        ["business_number", "payroll_program", "employer_number", "contact_person", "contact_phone", "contact_email"].forEach((k) => {
+          if (next[k]) {
+            next[k] = "";
+            changed = true;
+          }
+        });
+      } else if (isCA) {
+        if (next.federal_employer_id) {
+          next.federal_employer_id = "";
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUS, isCA]);
 
   /* ────────────────────────────────────────────────────────────────
      Departments – load list & add new one
@@ -248,7 +298,7 @@ export default function CompanyProfile({ token }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!ignore && data && typeof data === 'object') {
-          setForm((prev) => ({ ...prev, ...data }));
+          setForm((prev) => ({ ...prev, ...data, retirement_engine_mode: "enterprise" }));
         }
         if (!ignore) {
           setProfileLoaded(true);
@@ -326,7 +376,8 @@ export default function CompanyProfile({ token }) {
     try {
       setSaving(true);
       const method = form.id ? "put" : "post";
-      const { data: updated } = await axios[method](endpoint, form, {
+      const payload = { ...form, retirement_engine_mode: "enterprise" };
+      const { data: updated } = await axios[method](endpoint, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (updated && typeof updated === "object") {
@@ -423,7 +474,7 @@ export default function CompanyProfile({ token }) {
   };
 
 /* ---------- render ---------- */
-return (
+  return (
     <>
       <Dialog
         open={showProfilePrompt}
@@ -645,20 +696,30 @@ return (
                       <Typography variant="body2" color="text.secondary">
                         Only needed if you run payroll. These fields seed payroll preview, exports, and year-end forms.
                       </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Fields shown here depend on your company country.
+                      </Typography>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
                     <Grid container spacing={2}>
                       {/* US payroll */}
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label={t("manager.companyProfile.form.fields.federalEmployerId")}
-                          value={form.federal_employer_id || ""}
-                          onChange={handleChange("federal_employer_id")}
-                          helperText="Used for W-2 and payroll exports."
-                        />
-                      </Grid>
+                      {isUS && (
+                        <>
+                          <Grid item xs={12}>
+                            <Divider textAlign="left">United States payroll identifiers</Divider>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={t("manager.companyProfile.form.fields.federalEmployerId")}
+                              value={form.federal_employer_id || ""}
+                              onChange={handleChange("federal_employer_id")}
+                              helperText="Used for W-2 and payroll exports."
+                            />
+                          </Grid>
+                        </>
+                      )}
                       <Grid item xs={12} md={6}>
                         <FormControl fullWidth>
                           <InputLabel>Default Pay Frequency</InputLabel>
@@ -667,80 +728,107 @@ return (
                             value={form.default_pay_frequency || ""}
                             onChange={handleChange("default_pay_frequency")}
                           >
-                            <MenuItem value="">Bi-weekly (default)</MenuItem>
-                            {PAY_FREQUENCY_OPTIONS.map((opt) => (
-                              <MenuItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                          <Typography variant="caption" color="text.secondary">
-                            Seeds Payroll Preview. Managers can override per run.
-                          </Typography>
-                        </FormControl>
-                      </Grid>
+                      <MenuItem value="">Bi-weekly (default)</MenuItem>
+                      {PAY_FREQUENCY_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <Typography variant="caption" color="text.secondary">
+                      Seeds Payroll Preview. Managers can override per run.
+                    </Typography>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Typography variant="subtitle2" fontWeight={700}>
+                      Retirement calculation
+                    </Typography>
+                    <Typography variant="body2">
+                      United States: Enterprise 401(k) is applied automatically (plan defaults + elections, caps, correct wage bases/W-2 Box 12D).<br />
+                      Canada: Standard RRSP is used (enterprise 401(k) does not apply).
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Schedulaa picks the right engine by country; no toggle needed. Configure U.S. plans at{" "}
+                      <Link component="button" variant="caption" onClick={() => navigate("/manager/payroll/retirement")}>
+                        Payroll → Retirement Plans
+                      </Link>. Learn more:{" "}
+                      <Link href="/help/enterprise-retirement" target="_blank" rel="noopener">
+                        Enterprise Retirement help
+                      </Link>.
+                    </Typography>
+                          </Paper>
+                        </Grid>
 
                       {/* Canada payroll */}
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label={t("manager.companyProfile.form.fields.businessNumber")}
-                          value={form.business_number || ""}
-                          onChange={(event) => {
-                            const cleaned = (event.target.value || "").replace(/\D/g, "");
-                            setForm((prev) => ({ ...prev, business_number: cleaned }));
-                          }}
-                          inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
-                          helperText="Used for T4/ROE exports and CRA payroll setup."
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label={t("manager.companyProfile.form.fields.payrollProgram")}
-                          value={form.payroll_program || ""}
-                          onChange={handleChange("payroll_program")}
-                          helperText="CRA payroll program/account (e.g., RP0001)."
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label={t("manager.companyProfile.form.fields.employerNumber")}
-                          value={form.employer_number || ""}
-                          onChange={(event) => {
-                            const cleaned = (event.target.value || "").replace(/\D/g, "");
-                            setForm((prev) => ({ ...prev, employer_number: cleaned }));
-                          }}
-                          inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
-                          helperText={t("manager.companyProfile.form.hints.employerNumberDigits")}
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label={t("manager.companyProfile.form.fields.craContactPerson")}
-                          value={form.contact_person || ""}
-                          onChange={handleChange("contact_person")}
-                          helperText="CRA payroll contact."
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label={t("manager.companyProfile.form.fields.craContactPhone")}
-                          value={form.contact_phone || ""}
-                          onChange={handleChange("contact_phone")}
-                        />
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <TextField
-                          fullWidth
-                          label={t("manager.companyProfile.form.fields.craContactEmail")}
-                          value={form.contact_email || ""}
-                          onChange={handleChange("contact_email")}
-                        />
-                      </Grid>
+                      {isCA && (
+                        <>
+                          <Grid item xs={12}>
+                            <Divider textAlign="left">Canada payroll identifiers</Divider>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={t("manager.companyProfile.form.fields.businessNumber")}
+                              value={form.business_number || ""}
+                              onChange={(event) => {
+                                const cleaned = (event.target.value || "").replace(/\D/g, "");
+                                setForm((prev) => ({ ...prev, business_number: cleaned }));
+                              }}
+                              inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
+                              helperText="Used for T4/ROE exports and CRA payroll setup."
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={t("manager.companyProfile.form.fields.payrollProgram")}
+                              value={form.payroll_program || ""}
+                              onChange={handleChange("payroll_program")}
+                              helperText="CRA payroll program/account (e.g., RP0001)."
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={t("manager.companyProfile.form.fields.employerNumber")}
+                              value={form.employer_number || ""}
+                              onChange={(event) => {
+                                const cleaned = (event.target.value || "").replace(/\D/g, "");
+                                setForm((prev) => ({ ...prev, employer_number: cleaned }));
+                              }}
+                              inputProps={{ inputMode: "numeric", pattern: "\\d+" }}
+                              helperText={t("manager.companyProfile.form.hints.employerNumberDigits")}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={t("manager.companyProfile.form.fields.craContactPerson")}
+                              value={form.contact_person || ""}
+                              onChange={handleChange("contact_person")}
+                              helperText="CRA payroll contact."
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={t("manager.companyProfile.form.fields.craContactPhone")}
+                              value={form.contact_phone || ""}
+                              onChange={handleChange("contact_phone")}
+                            />
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <TextField
+                              fullWidth
+                              label={t("manager.companyProfile.form.fields.craContactEmail")}
+                              value={form.contact_email || ""}
+                              onChange={handleChange("contact_email")}
+                            />
+                          </Grid>
+                        </>
+                      )}
 
                       {/* Timeclock audit */}
                       <Grid item xs={12}>

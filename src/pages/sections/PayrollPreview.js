@@ -932,13 +932,13 @@ const handleRecalculate = () => {
   </Grid>
 
   <Grid item xs={12} md={3}>
-  <TextField
-    label="Retirement Contribution ($)"
-    type="number"
-    value={payroll.retirement_amount || 0}
-    onChange={(e) => handleFieldChange("retirement_amount", e.target.value)}
-    fullWidth
-  />
+    <TextField
+      label="Retirement Contribution ($)"
+      value={payroll.retirement_amount || 0}
+      InputProps={{ readOnly: true }}
+      helperText="Edited above in Payroll Overrides"
+      fullWidth
+    />
 </Grid>
 
 
@@ -987,9 +987,9 @@ const handleRecalculate = () => {
   <Grid item xs={12} md={3}>
     <TextField
       label="Other Deduction ($)"
-      type="number"
       value={payroll.deduction || 0}
-      onChange={(e) => handleFieldChange("deduction", e.target.value)}
+      InputProps={{ readOnly: true }}
+      helperText="Edited above in Payroll Overrides"
       fullWidth
     />
   </Grid>
@@ -1009,6 +1009,71 @@ const handleRecalculate = () => {
           />
         </Grid>
       </Grid>
+
+      {/* Enterprise 401(k) summary (read-only) */}
+      {region === "us" && payroll && typeof payroll.taxable_wages_federal !== "undefined" && (
+        <Box sx={{ my: 2 }}>
+          <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+            401(k) (enterprise, read-only)
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Calculated automatically from plan + employee election.
+          </Typography>
+          {(
+            payroll?.retirement_cap_warning ||
+            payroll?.deductions_json?.retirement_cap_warning
+          ) && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              {(() => {
+                const warn = payroll.retirement_cap_warning || payroll.deductions_json?.retirement_cap_warning || {};
+                return `401(k) capped this period. The employee reached the annual limit; contributions resume next year. Desired: $${Number(warn.desired || 0).toFixed(2)} • Applied: $${Number(warn.applied || 0).toFixed(2)} • Remaining cap: $${Number(warn.remaining_cap || 0).toFixed(2)}`;
+              })()}
+            </Alert>
+          )}
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={3}>
+              <TextField
+                label="Employee deferral applied ($)"
+                value={formatCurrency(payroll.us_401k_employee_applied || 0)}
+                InputProps={{ readOnly: true }}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                label="Employer match ($)"
+                value={formatCurrency(payroll.us_401k_employer_applied || 0)}
+                InputProps={{ readOnly: true }}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                label="Federal taxable wages (Box 1 base)"
+                value={formatCurrency(payroll.taxable_wages_federal || payroll.gross_pay || 0)}
+                InputProps={{ readOnly: true }}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                label="SS wages (Box 3 base)"
+                value={formatCurrency(payroll.taxable_wages_ss || payroll.gross_pay || 0)}
+                InputProps={{ readOnly: true }}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                label="Medicare wages (Box 5 base)"
+                value={formatCurrency(payroll.taxable_wages_medicare || payroll.gross_pay || 0)}
+                InputProps={{ readOnly: true }}
+                fullWidth
+              />
+            </Grid>
+          </Grid>
+        </Box>
+      )}
 
       {/* BPA flags */}
       {payroll?.flags && (

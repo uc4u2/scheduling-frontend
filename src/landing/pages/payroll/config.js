@@ -66,7 +66,7 @@ const overviewConfig = {
       operatingSystem: "Web",
       url: `${BASE_URL}/payroll`,
       description:
-        "Schedulaa unifies scheduling, HR, and payroll automation. Switch between Canadian and US compliance engines and share payslips instantly.",
+        "Schedulaa unifies scheduling, HR, and payroll automation. Employees automatically use the correct Canadian or US compliance engine and can access payslips instantly.",
       provider: {
         "@type": "Organization",
         name: "Schedulaa",
@@ -110,7 +110,7 @@ const overviewConfig = {
       label: "Workflow",
       title: "Ops-connected pay runs",
       description:
-        "Import actual hours, overtime, and tips from the scheduling suite before calculating deductions. When a run moves to payroll.ready or payroll.finalized, Zapier events can notify finance, push exports, or trigger downstream workflows. Every step is logged for finance and HR audits.",
+        "Import actual hours, overtime, and tips from the scheduling suite before calculating deductions. The correct country engine applies automatically per employee. When a run moves to payroll.ready or payroll.finalized, Zapier events can notify finance, push exports, or trigger downstream workflows. Every step is logged for finance and HR audits, including overwrite history when a period is re-finalized.",
       link: "/features",
       linkLabel: "Tour the platform",
     },
@@ -119,9 +119,18 @@ const overviewConfig = {
       label: "Compliance",
       title: "Canada & USA tax engines",
       description:
-        "Switch between Canadian CPP/EI/BPA logic (with CPP/EI exemptions) or U.S. FICA and state tax rules. Both engines support shift premium, tips, commission, bonus, union dues, garnishments, and non-taxable reimbursements while respecting regional settings.",
+        "Employees automatically run on Canadian CPP/EI/BPA logic (with CPP/EI exemptions) or U.S. FICA and state tax rules based on work location. Both engines support shift premium, tips, commission, bonus, union dues, garnishments, and non-taxable reimbursements while respecting regional settings.",
       link: "/payroll/canada",
       linkLabel: "See regional calculators",
+    },
+    {
+      icon: "retirement",
+      label: "Enterprise Retirement (U.S. 401(k))",
+      title: "401(k) deferrals, caps, and W-2 alignment",
+      description:
+        "Automatic 401(k) and Roth 401(k) calculations with annual caps, employer match limits, and applicable wage bases. Post-finalization exports surface W-2 Box 12D codes so year-end filings align with what payroll produced.",
+      link: "/payroll/usa",
+      linkLabel: "Review U.S. payroll coverage",
     },
     {
       icon: "document",
@@ -170,6 +179,7 @@ const overviewConfig = {
   ],
   stepsHeading: "How payroll runs inside Schedulaa",
   stepsTitle: "From schedule to finalized slips in four steps",
+  stepsIntro: "Local and city payroll taxes are handled externally.",
   steps: [
     {
       title: "Import hours & review context",
@@ -179,7 +189,7 @@ const overviewConfig = {
     {
       title: "Apply deductions with the right engine",
       description:
-        "Choose Canada or USA in the preview panel. CRA and IRS rules, plus vacation pay, benefits, union dues, garnishments, and non-taxable reimbursements, are applied instantly.",
+        "The correct country rules apply automatically by employee location. CRA or IRS logic, plus vacation pay, benefits, union dues, garnishments, and non-taxable reimbursements, are applied instantly.",
     },
     {
       title: "Finalize and export",
@@ -557,14 +567,21 @@ const usaConfig = {
       label: "Tax engine",
       title: "Federal and state withholding",
       description:
-        "Calculate federal income tax, FICA, and Medicare, plus state income tax for the main jurisdictions. Employer unemployment contributions display alongside employee deductions.",
+        "Automatically apply federal income tax, FICA/Medicare, and the correct state withholding per employee based on work location. Employer unemployment contributions display alongside employee deductions.",
+    },
+    {
+      icon: "retirement",
+      label: "Enterprise Retirement (U.S. 401(k))",
+      title: "401(k) and Roth 401(k) with wage bases and caps",
+      description:
+        "Calculate 401(k) and Roth 401(k) deferrals with annual caps, employer match limits, and applicable wage bases. Post-finalization exports surface W-2 Box 12D codes so filings stay aligned with payroll data.",
     },
     {
       icon: "timeline",
       label: "Workflow",
       title: "Multi-state previews",
       description:
-        "Preview each employee's deductions per jurisdiction before you finalize, edit wages and taxable benefits, and rerun the calculation in seconds.",
+        "Preview each employee's deductions with the correct jurisdictions applied automatically, edit wages and taxable benefits, rerun the calculation in seconds, and keep payroll audit/overwrite history when a period is re-finalized.",
     },
     {
       icon: "document",
@@ -669,7 +686,7 @@ const usaConfig = {
   ],
   cta: sharedCta,
   secondaryLinks: sharedSecondaryLinks,
-  notice: "Employer unemployment contributions are surfaced for reference. Local/city income taxes are not automated yet.",
+  notice: "Local and city payroll taxes are handled externally.",
 };
 
 const roeConfig = {

@@ -99,6 +99,7 @@ import AttendanceReportPage from "./pages/sections/management/AttendanceReportPa
 import CompanyProfile from "./pages/sections/CompanyProfile";
 import PayrollRawPage from "./pages/sections/PayrollRawPage";
 import PayrollAuditPage from "./pages/sections/PayrollAuditPage";
+import RetirementPlanPage from "./pages/sections/RetirementPlanPage";
 import Payroll from "./pages/sections/Payroll";
 import EmployeeProfileForm from "./pages/Payroll/EmployeeProfileForm";
 import PayrollDownloadPage from "./pages/sections/PayrollDownloadPage";
@@ -148,6 +149,7 @@ import EnterpriseAnalytics from "./pages/sections/management/EnterpriseAnalytics
 import MarketingCouponBridge from "./pages/client/MarketingCouponBridge";
 import LayoutTuningLab from "./pages/sections/management/LayoutTuningLab";
 import DomainHelpPage from "./landing/pages/help/DomainHelpPage";
+import EnterpriseRetirementHelp from "./pages/help/EnterpriseRetirementHelp";
 import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 
 export const ThemeModeContext = createContext({
@@ -382,8 +384,9 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/payslips" element={<PayslipPortalPage />} />
           <Route path="/settings/zapier" element={<Navigate to="/manager/dashboard?view=zapier" replace />} />
           <Route path="/xero/callback" element={<XeroCallback />} />
-          <Route path="/docs" element={<DocsPage />} />
+            <Route path="/docs" element={<DocsPage />} />
             <Route path="/help/domains" element={<DomainHelpPage />} />
+            <Route path="/help/enterprise-retirement" element={<EnterpriseRetirementHelp />} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/blog/client-journey" element={<ClientJourneyPage />} />
             <Route path="/blog/category/:slug" element={<BlogCategoryPage />} />
@@ -488,6 +491,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/manager/add-member" element={<AddRecruiter />} />
           <Route path="/manager/add-recruiter" element={<AddRecruiter />} />
           <Route path="/manager/payroll" element={<Payroll token={token} />} />
+          <Route path="/manager/payroll/retirement" element={<RetirementPlanPage token={token} />} />
           <Route path="/manager/employee-profiles" element={<EmployeeProfileForm token={token} />} />
           <Route path="/manager/service-management" element={<ServiceManagement />} />
           <Route path="/manager/employee-availability" element={<EmployeeAvailabilityManagement />} />

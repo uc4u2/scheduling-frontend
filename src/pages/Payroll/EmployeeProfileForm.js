@@ -27,8 +27,12 @@ import {
   Chip,
   IconButton,
   InputAdornment,
+  FormControl,
+  InputLabel,
+  Select,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { api } from "../../utils/api";
 import { getAuthedCompanyId } from "../../utils/authedCompany";
@@ -127,6 +131,15 @@ const EmployeeProfileForm = ({ token }) => {
   const [docUploadError, setDocUploadError] = useState("");
   const [docUploadSuccess, setDocUploadSuccess] = useState(false);
   const [payrollExpanded, setPayrollExpanded] = useState(true);
+  const [retirementPlan, setRetirementPlan] = useState(null);
+  const [retirementElection, setRetirementElection] = useState({
+    contrib_percent: "",
+    contrib_flat: "",
+    contrib_type: "traditional",
+    effective_start_date: "",
+  });
+  const isUS = (employee?.country || "").toUpperCase().startsWith("US");
+  const isCA = (employee?.country || "").toUpperCase().startsWith("CA");
   const MAX_DOC_BYTES = 2 * 1024 * 1024;
   const allowedDocExtensions = [".pdf", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"];
   const companyId = employee?.company_id || getAuthedCompanyId() || "";
@@ -212,17 +225,75 @@ const FRONTEND_ORIGIN =
         default_life_insurance: data.default_life_insurance ?? 0,
         default_retirement_amount: data.default_retirement_amount ?? 0,
         default_deduction: data.default_deduction ?? 0,
+        default_parental_insurance: data.default_parental_insurance ?? 0,
         default_pay_frequency: data.default_pay_frequency || "",
         default_pay_cycle: data.default_pay_cycle || "",
       };
       setEmployee(flatData);
       setErrorKey("");
+      // Load retirement plan/election (enterprise)
+      loadRetirementPlan(flatData.country);
+      loadRetirementElection(id, flatData.country);
       await fetchDocuments(id);
     } catch (err) {
       console.error("Failed to fetch employee", err);
       setErrorKey("manager.employeeProfiles.messages.profileLoadFailed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRetirementPlan = async (country) => {
+    const c = (country || "").toLowerCase().startsWith("us")
+      ? "us"
+      : (country || "").toLowerCase().startsWith("ca")
+      ? "ca"
+      : "";
+    if (!c) {
+      setRetirementPlan(null);
+      return;
+    }
+    try {
+      const res = await api.get(`/automation/retirement/plan`, {
+        params: { country: c },
+      });
+      setRetirementPlan(res.data && Object.keys(res.data).length ? res.data : null);
+    } catch (err) {
+      console.error("Failed to load retirement plan", err?.response?.data || err.message);
+      setRetirementPlan(null);
+    }
+  };
+
+  const loadRetirementElection = async (empId, country) => {
+    const isUS = (country || "").toLowerCase() === "usa" || (country || "").toLowerCase() === "us";
+    if (!empId || !isUS) {
+      setRetirementElection({
+        contrib_percent: "",
+        contrib_flat: "",
+        contrib_type: "traditional",
+        effective_start_date: "",
+      });
+      return;
+    }
+    try {
+      const res = await api.get(`/automation/retirement/elections`, {
+        params: { employee_id: empId },
+      });
+      const data = res.data || {};
+      setRetirementElection({
+        contrib_percent: data.contrib_percent ?? "",
+        contrib_flat: data.contrib_flat ?? "",
+        contrib_type: data.contrib_type || "traditional",
+        effective_start_date: data.effective_start_date || "",
+      });
+    } catch (err) {
+      console.error("Failed to load retirement election", err?.response?.data || err.message);
+      setRetirementElection({
+        contrib_percent: "",
+        contrib_flat: "",
+        contrib_type: "traditional",
+        effective_start_date: "",
+      });
     }
   };
 
@@ -386,6 +457,7 @@ const FRONTEND_ORIGIN =
         "default_life_insurance",
         "default_retirement_amount",
         "default_deduction",
+        "default_parental_insurance",
         "default_pay_frequency",
         "default_pay_cycle",
       ];
@@ -432,10 +504,30 @@ const FRONTEND_ORIGIN =
               : employee.default_retirement_amount,
           default_deduction:
             data.default_deduction !== undefined ? data.default_deduction : employee.default_deduction,
+          default_parental_insurance:
+            data.default_parental_insurance !== undefined
+              ? data.default_parental_insurance
+              : employee.default_parental_insurance,
           default_pay_frequency: data.default_pay_frequency ?? employee.default_pay_frequency,
           default_pay_cycle: data.default_pay_cycle ?? employee.default_pay_cycle,
         };
         setEmployee(flatData);
+      }
+      // Save retirement election (US only) if plan exists
+      if (employee.country === "USA" && retirementPlan?.id) {
+        try {
+          await api.post("/automation/retirement/elections", {
+            employee_id: selectedId,
+            plan_id: retirementPlan.id,
+            contrib_percent:
+              retirementElection.contrib_percent === "" ? null : Number(retirementElection.contrib_percent),
+            contrib_flat: retirementElection.contrib_flat === "" ? null : Number(retirementElection.contrib_flat),
+            contrib_type: retirementElection.contrib_type || "traditional",
+            effective_start_date: retirementElection.effective_start_date || null,
+          });
+        } catch (err) {
+          console.error("Failed to save retirement election", err?.response?.data || err.message);
+        }
       }
       setMessageKey("manager.employeeProfiles.messages.updateSuccess");
       setErrorKey("");
@@ -487,6 +579,9 @@ const FRONTEND_ORIGIN =
     { name: "default_life_insurance", label: "Default Life Insurance ($)" },
     { name: "default_retirement_amount", label: "Default Retirement Contribution ($)" },
     { name: "default_deduction", label: "Default Other Deduction ($)" },
+    ...(employee?.country === "Canada"
+      ? [{ name: "default_parental_insurance", label: "Default Parental Insurance ($)" }]
+      : []),
   ];
 
   return (
@@ -684,50 +779,6 @@ const FRONTEND_ORIGIN =
 
             <Grid item xs={12} md={6}>
               <TextField
-                label={t("manager.employeeProfiles.form.fields.rrspContribution")}
-                name="rrsp_percent"
-                type="number"
-                value={employee.rrsp_percent || ""}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                label={t("manager.employeeProfiles.form.fields.rrspMatch")}
-                name="rrsp_employer_percent"
-                type="number"
-                value={employee.rrsp_employer_percent || ""}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                label={t("manager.employeeProfiles.form.fields.retirementContribution")}
-                name="retirement_percent"
-                type="number"
-                value={employee.retirement_percent || ""}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                label={t("manager.employeeProfiles.form.fields.retirementMatch")}
-                name="retirement_employer_percent"
-                type="number"
-                value={employee.retirement_employer_percent || ""}
-                onChange={handleChange}
-                fullWidth
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
                 label={t("manager.employeeProfiles.form.fields.insuranceNumber")}
                 name="insurance_number"
                 value={employee.insurance_number || ""}
@@ -832,6 +883,75 @@ const FRONTEND_ORIGIN =
                 title={postalTitle}
               />
             </Grid>
+          </Grid>
+
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            {isCA && (
+              <>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label={t("manager.employeeProfiles.form.fields.rrspContribution")}
+                    name="rrsp_percent"
+                    type="number"
+                    inputProps={{ min: 0, max: 100 }}
+                    value={
+                      employee.rrsp_percent !== undefined && employee.rrsp_percent !== null
+                        ? Math.max(0, employee.rrsp_percent)
+                        : ""
+                    }
+                    onChange={handleChange}
+                    fullWidth
+                    error={
+                      employee.rrsp_percent !== undefined &&
+                      employee.rrsp_percent !== null &&
+                      employee.rrsp_percent !== "" &&
+                      (Number(employee.rrsp_percent) < 0 || Number(employee.rrsp_percent) > 100)
+                    }
+                    helperText=""
+                    InputProps={{
+                      endAdornment: (
+                        <Tooltip title="Percent of pay contributed to RRSP. 0–100%. Leave blank if no RRSP contribution.">
+                          <IconButton size="small">
+                            <InfoOutlinedIcon fontSize="inherit" />
+                          </IconButton>
+                        </Tooltip>
+                      ),
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label={t("manager.employeeProfiles.form.fields.rrspMatch")}
+                    name="rrsp_employer_percent"
+                    type="number"
+                    inputProps={{ min: 0, max: 100 }}
+                    value={
+                      employee.rrsp_employer_percent !== undefined && employee.rrsp_employer_percent !== null
+                        ? Math.max(0, employee.rrsp_employer_percent)
+                        : ""
+                    }
+                    onChange={handleChange}
+                    fullWidth
+                    error={
+                      employee.rrsp_employer_percent !== undefined &&
+                      employee.rrsp_employer_percent !== null &&
+                      employee.rrsp_employer_percent !== "" &&
+                      (Number(employee.rrsp_employer_percent) < 0 || Number(employee.rrsp_employer_percent) > 100)
+                    }
+                    helperText=""
+                    InputProps={{
+                      endAdornment: (
+                        <Tooltip title="Optional employer RRSP match for reporting. Paid by the company; does not reduce employee net pay. 0–100%. Leave blank if no match.">
+                          <IconButton size="small">
+                            <InfoOutlinedIcon fontSize="inherit" />
+                          </IconButton>
+                        </Tooltip>
+                      ),
+                    }}
+                  />
+                </Grid>
+              </>
+            )}
           </Grid>
 
           <Paper variant="outlined" sx={{ p: 2, mt: 3, borderRadius: 2 }}>
@@ -1136,6 +1256,85 @@ const FRONTEND_ORIGIN =
               </Stack>
             </AccordionSummary>
             <AccordionDetails>
+              <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                <Typography fontWeight={700} gutterBottom>
+                  TL;DR (When should I use this?)
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  US (401k): Leave blank unless this employee should differ from the company default. Canada (RRSP): Fill only if the employee participates in RRSP.
+                </Typography>
+                <Typography fontWeight={700} gutterBottom>
+                  Employee Retirement Settings – Manager Guide
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  Managed by you (not employees). Fields shown depend on the employee’s country.
+                </Typography>
+
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 1 }}>
+                  🇺🇸 United States — 401(k)
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 1.5, mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={700}>Do I need to fill this?</Typography>
+                  <Typography variant="body2">❌ No, not usually. Leave blank to use the company default.</Typography>
+                </Paper>
+                <Typography variant="body2" gutterBottom>
+                  This is the employee’s 401(k) election. Optional; use only if this employee should differ from the company default.
+                  Company defaults live in Payroll → Retirement Plans. Blank here means the company default applies.
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  Fill this only if the employee requests a different rate/date or should not follow the default.
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Field explanations (US)
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  401(k) Contribution (%) — percent withheld from gross. Example: company default 5%, enter 6% → only this employee uses 6%. Blank → company default.
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  Employer 401(k) Match (%) — reporting only; does not reduce net pay. Blank → no match tracked.
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  Caps apply automatically at the IRS limit; preview shows a warning when capped; contributions resume next year.
+                  W-2 is handled automatically (Box 1 reduced; Box 3/5 unchanged; Box 12 code D = total deferral).
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  Want to change the default for everyone? Go to Payroll → Retirement Plans.
+                </Typography>
+
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 2 }}>
+                  🇨🇦 Canada — RRSP
+                </Typography>
+                <Paper variant="outlined" sx={{ p: 1.5, mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={700}>Do I need to fill this?</Typography>
+                  <Typography variant="body2">✅ Only if the employee contributes to RRSP. Blank means no RRSP contribution.</Typography>
+                </Paper>
+                <Typography variant="body2" gutterBottom>
+                  This sets the employee’s RRSP contribution. No company-wide RRSP default exists.
+                  Blank means no RRSP contribution (no fallback).
+                </Typography>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Field explanations (Canada)
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  RRSP Contribution (%) — percent of pay to RRSP. Blank → no contribution.
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  Employer RRSP Match (%) — optional; for payroll/reporting if offered.
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  RRSP room is per-employee (CRA). Schedulaa does not enforce a company-wide RRSP cap. Enterprise retirement plans apply to U.S. 401(k) only.
+                </Typography>
+
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mt: 2 }}>
+                  Quick comparison
+                </Typography>
+                <Typography variant="body2">
+                  🇺🇸 USA — Defaults live in Payroll → Retirement Plans; this section is an optional override (often left blank).
+                  <br />
+                  🇨🇦 Canada — No company default; set RRSP here only if the employee participates.
+                </Typography>
+              </Paper>
+
               <Grid container spacing={1} sx={{ mb: 2 }}>
                 <Grid item xs={12} md={4}>
                   <FormControlLabel
@@ -1218,6 +1417,110 @@ const FRONTEND_ORIGIN =
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                 These values auto-fill payroll preview each period. Managers can override per period before finalizing.
               </Typography>
+
+              {isUS && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                    Employee 401(k) Settings
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    401(k) election for this employee. Blank uses the company default (Payroll → Retirement Plans). Fill only if this employee should differ from the default.
+                  </Typography>
+                  {!retirementPlan && (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      No retirement plan configured for US. Configure at Settings → Retirement Plans.
+                    </Alert>
+                  )}
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={3}>
+                      <TextField
+                        label="Contribution %"
+                        type="number"
+                        value={retirementElection.contrib_percent}
+                        onChange={(e) =>
+                          setRetirementElection((prev) => ({
+                            ...prev,
+                            contrib_percent: e.target.value,
+                          }))
+                        }
+                        fullWidth
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <TextField
+                        label="Contribution flat ($)"
+                        type="number"
+                        value={retirementElection.contrib_flat}
+                        onChange={(e) =>
+                          setRetirementElection((prev) => ({
+                            ...prev,
+                            contrib_flat: e.target.value,
+                          }))
+                        }
+                        fullWidth
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <FormControl fullWidth>
+                        <InputLabel>Type</InputLabel>
+                        <Select
+                          label="Type"
+                          value={retirementElection.contrib_type || "traditional"}
+                          onChange={(e) =>
+                            setRetirementElection((prev) => ({
+                              ...prev,
+                              contrib_type: e.target.value,
+                            }))
+                          }
+                        >
+                          <MenuItem value="traditional">Traditional</MenuItem>
+                          <MenuItem value="roth">Roth</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <TextField
+                        label="Effective start date"
+                        type="date"
+                        value={retirementElection.effective_start_date || ""}
+                        onChange={(e) =>
+                          setRetirementElection((prev) => ({
+                            ...prev,
+                            effective_start_date: e.target.value,
+                          }))
+                        }
+                        InputLabelProps={{ shrink: true }}
+                        helperText="Election applies starting this date."
+                        fullWidth
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <TextField
+                        label="Employer match %"
+                        type="number"
+                        inputProps={{ min: 0, max: 100 }}
+                        value={
+                          employee.retirement_employer_percent !== undefined && employee.retirement_employer_percent !== null
+                            ? Math.max(0, employee.retirement_employer_percent)
+                            : ""
+                        }
+                        onChange={handleChange}
+                        fullWidth
+                        InputProps={{
+                          endAdornment: (
+                            <Tooltip title="Employer 401(k) match percent (reporting only; does not affect net pay). Leave blank if none.">
+                              <IconButton size="small">
+                                <InfoOutlinedIcon fontSize="inherit" />
+                              </IconButton>
+                            </Tooltip>
+                          ),
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                </>
+              )}
             </AccordionDetails>
           </Accordion>
 

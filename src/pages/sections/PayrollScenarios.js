@@ -171,6 +171,22 @@ const scenarios = [
     story:
       "Real-life example: Priya works at a 24/7 call center in New Jersey. In one bi-weekly period she works 64 total hours: 48 regular weekday hours, 8 weekend hours with a $1.50/hour premium, earns $200 in bonus, and $80 in tips. Time tracking already holds the 64 hours, and the overtime split is handled automatically by Schedulaa. At payroll time, the manager enters 12 (8 × 1.5) in Shift Premium, 200 in Bonus, and 80 in Tips. If Priya also belongs to a union, the manager enters her $35 union dues. All of this flows through gross, deductions, net pay, and later into her W-2 or T4 as appropriate.",
   },
+  {
+    title: "US 401(k) — Enterprise default with cap enforcement",
+    detail:
+      "Company sets a 401(k) default (e.g., 5% percent method, $23k annual limit, caps on). Employees follow it unless overridden. Schedulaa auto-withholds the default, tracks YTD, stops at the IRS cap, shows a cap warning, and resumes next year. W-2 Box 12 code D and wage bases are updated automatically.",
+    fields: ["retirement_plan", "us_401k_employee_applied", "taxable_wages_federal", "w2_box12D"],
+    story:
+      "Example: Gross $2,000 → 5% deferral = $100. If remaining annual cap is $200 and the calculated deferral would be $300, Schedulaa applies $200 and stops 401(k) for the rest of the year. W-2: Box 1 reduced; Box 3/5 unchanged; Box 12 (D) shows total deferral. Manager action: configure the plan once; leave employee 401(k) blank to use the default.",
+  },
+  {
+    title: "US 401(k) — Employee election overrides default",
+    detail:
+      "Company default is 5%, caps on. A single employee wants a different rate. Enter their election (e.g., 6% with a start date) in Employee 401(k) Settings. Everyone else keeps the 5% default; caps still apply automatically.",
+    fields: ["employee_retirement_election", "us_401k_employee_applied"],
+    story:
+      "Example: Gross $2,000 → 6% deferral = $120. If remaining annual cap is $200 and desired deferral is $300, Schedulaa applies $200 and stops for the year. The election affects only this employee; leaving it blank uses the company default. W-2 Box 12 (D) shows the employee’s actual deferral.",
+  },
 ];
 
 export default function PayrollScenarios() {

@@ -22,6 +22,7 @@ import {
   Drawer,
   Divider,
   Stack,
+  Alert,
 } from "@mui/material";
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
 import { formatDateTimeInTz } from "../../utils/datetime";
@@ -285,6 +286,9 @@ export default function PayrollRawPage() {
                 <TableCell align="right">Medical Ins.</TableCell>
                 <TableCell align="right">Dental Ins.</TableCell>
                 <TableCell align="right">Life Ins.</TableCell>
+                <TableCell align="right">401k Emp</TableCell>
+                <TableCell align="right">401k Match</TableCell>
+                <TableCell align="right">Fed Wages</TableCell>
                 <TableCell align="right">Ret (Emp)</TableCell>
                 <TableCell align="right">Union Dues</TableCell>
                 <TableCell align="right">Garnishment</TableCell>
@@ -331,6 +335,9 @@ export default function PayrollRawPage() {
                   <TableCell align="right">{row.medical_insurance}</TableCell>
                   <TableCell align="right">{row.dental_insurance}</TableCell>
                   <TableCell align="right">{row.life_insurance}</TableCell>
+                  <TableCell align="right">{row.us_401k_employee_applied}</TableCell>
+                  <TableCell align="right">{row.us_401k_employer_applied}</TableCell>
+                  <TableCell align="right">{row.taxable_wages_federal}</TableCell>
                   <TableCell align="right">{row.retirement_amount}</TableCell>
                   <TableCell align="right">{row.union_dues}</TableCell>
                   <TableCell align="right">{row.garnishment}</TableCell>
@@ -440,6 +447,16 @@ export default function PayrollRawPage() {
                 <Typography variant="body2" color="text.secondary">
                   Vacation taxable?: {detailRow.include_vacation_in_gross ? "Yes" : "No"}
                 </Typography>
+                {detailRow.taxable_wages_federal ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Taxable wages (Fed/SS/Med): ${detailRow.taxable_wages_federal} / ${detailRow.taxable_wages_ss} / ${detailRow.taxable_wages_medicare}
+                  </Typography>
+                ) : null}
+                {detailRow.w2_box12_d ? (
+                  <Typography variant="body2" color="text.secondary">
+                    W-2 Box 12 (D): ${detailRow.w2_box12_d}
+                  </Typography>
+                ) : null}
               </Stack>
             </Box>
 
@@ -457,6 +474,8 @@ export default function PayrollRawPage() {
                   ["RQAP", detailRow.rqap_amount],
                   ["FICA", detailRow.fica_amount],
                   ["Medicare", detailRow.medicare_amount],
+                  ["401k (employee applied)", detailRow.us_401k_employee_applied],
+                  ["401k (employer applied)", detailRow.us_401k_employer_applied],
                   ["Health insurance", detailRow.medical_insurance],
                   ["Dental insurance", detailRow.dental_insurance],
                   ["Life insurance", detailRow.life_insurance],
@@ -494,6 +513,7 @@ export default function PayrollRawPage() {
                   ["FICA employer", detailRow.fica_employer],
                   ["Medicare employer", detailRow.medicare_employer],
                   ["Retirement (employer)", detailRow.retirement_employer],
+                  ["401k (employer applied)", detailRow.us_401k_employer_applied],
                 ]
                   .filter(([, v]) => Number(v) !== 0)
                   .map(([label, v]) => (
@@ -510,6 +530,11 @@ export default function PayrollRawPage() {
                 Audit & sync
               </Typography>
               <Stack spacing={0.5}>
+                {detailRow.retirement_cap_warning && (
+                  <Alert severity="warning">
+                    401(k) capped this period. Remaining cap applied. Details: {JSON.stringify(detailRow.retirement_cap_warning)}
+                  </Alert>
+                )}
                 <Typography variant="body2">Payroll ID: {detailRow.id}</Typography>
                 <Typography variant="body2">BPA applied: ${detailRow.bpa_applied}</Typography>
                 <Typography variant="body2">BPA remaining: ${detailRow.bpa_remaining}</Typography>

@@ -57,7 +57,7 @@ export default function PayrollAuditPage() {
 
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(50);
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(false);
   const [snapshot, setSnapshot] = useState(null);
@@ -97,7 +97,7 @@ export default function PayrollAuditPage() {
   useEffect(() => {
     fetchRows(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recruiterId, region, startDate, endDate, overwritesOnly]);
+  }, [recruiterId, region, startDate, endDate, overwritesOnly, pageSize]);
 
   const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
 
@@ -289,17 +289,38 @@ export default function PayrollAuditPage() {
       )}
 
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          Total {totalRows} rows
-        </Typography>
-        <Pagination
-          count={pageCount}
-          page={page}
-          onChange={(_, p) => {
-            setPage(p);
-            fetchRows(p);
-          }}
-        />
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Typography variant="body2" color="text.secondary">
+            Showing {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, totalRows)} of {totalRows}
+          </Typography>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel>Page size</InputLabel>
+            <Select
+              label="Page size"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setPage(1);
+              }}
+            >
+              {[10, 20, 50, 100].map((n) => (
+                <MenuItem key={n} value={n}>
+                  {n}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Pagination
+            count={pageCount}
+            page={page}
+            onChange={(_, p) => {
+              setPage(p);
+              fetchRows(p);
+            }}
+            showFirstButton
+            showLastButton
+          />
+        </Stack>
       </Stack>
       <Dialog
         open={!!snapshot || !!diff}

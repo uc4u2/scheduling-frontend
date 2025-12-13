@@ -29,6 +29,7 @@ import SecurityIcon from "@mui/icons-material/Security";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import TimelineIcon from "@mui/icons-material/Timeline";
+import SavingsOutlinedIcon from "@mui/icons-material/SavingsOutlined";
 import { Link } from "react-router-dom";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
@@ -42,6 +43,7 @@ const iconMap = {
   document: <InsertDriveFileIcon fontSize="small" />,
   timeline: <TimelineIcon fontSize="small" />,
   info: <InfoOutlinedIcon fontSize="small" />,
+  retirement: <SavingsOutlinedIcon fontSize="small" />,
 };
 
 const MotionCard = motion(Card);

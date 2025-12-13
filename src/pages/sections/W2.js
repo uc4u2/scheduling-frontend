@@ -454,6 +454,9 @@ const W2 = ({ token }) => {
       <Typography variant="h4" gutterBottom>
         W-2 Forms (USA)
       </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Schedulaa assigns payroll to a tax year using the pay period end date. Cross‑year periods with an end date in January appear in that new year’s W‑2.
+      </Typography>
 
       {/* Toasts */}
       {err && (
@@ -838,7 +841,6 @@ const W2 = ({ token }) => {
 };
 
 export default W2;
-
 
 
 
