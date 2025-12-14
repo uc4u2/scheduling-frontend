@@ -958,6 +958,10 @@ const FRONTEND_ORIGIN =
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
               Public booking link
             </Typography>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              This toggle controls the employee’s personal “Book with me” link (public meeting page).
+              It does <strong>not</strong> control whether services on your services page can be booked.
+            </Alert>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="flex-start" sx={{ mb: 2 }}>
               <FormControlLabel
                 control={

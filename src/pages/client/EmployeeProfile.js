@@ -223,34 +223,32 @@ const EmployeeProfile = () => {
           </Box>
         )}
         <Box sx={{ mt: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Public booking link
-          </Typography>
           {profile?.allow_public_booking ? (
-            <Stack direction="row" spacing={1} alignItems="center">
-              <TextField
-                fullWidth
-                size="small"
-                value={`${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || "<slug>"}/meet/${profile?.public_meet_token || profile?.id}`}
-                InputProps={{ readOnly: true }}
-              />
-              <IconButton
-                onClick={() =>
-                  navigator.clipboard.writeText(
-                    `${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || ""}/meet/${profile?.public_meet_token || profile?.id}`
-                  )
-                }
-                title="Copy link"
-                size="small"
-              >
-                <ContentCopyIcon fontSize="small" />
-              </IconButton>
-            </Stack>
-          ) : (
-            <Alert severity="warning" sx={{ mt: 1 }}>
-              Public booking is disabled for this employee.
-            </Alert>
-          )}
+            <>
+              <Typography variant="h6" gutterBottom>
+                Public booking link
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <TextField
+                  fullWidth
+                  size="small"
+                  value={`${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || "<slug>"}/meet/${profile?.public_meet_token || profile?.id}`}
+                  InputProps={{ readOnly: true }}
+                />
+                <IconButton
+                  onClick={() =>
+                    navigator.clipboard.writeText(
+                      `${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || ""}/meet/${profile?.public_meet_token || profile?.id}`
+                    )
+                  }
+                  title="Copy link"
+                  size="small"
+                >
+                  <ContentCopyIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            </>
+          ) : null}
         </Box>
       </Box>
     );

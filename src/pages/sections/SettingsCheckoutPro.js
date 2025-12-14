@@ -23,7 +23,11 @@ import {
   FormLabel,
   Radio,
   Drawer,            // 👈 added
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import axios from "axios";
 import {
   getCurrencyOptions,
@@ -64,6 +68,7 @@ export default function SettingsCheckoutPro() {
 
   const [paymentMode, setPaymentMode] = useState("offline");
   const [publishableKey, setPublishableKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
   const [chargeCurrencyMode, setChargeCurrencyMode] = useState("PLATFORM_FIXED");
   const [taxCountry, setTaxCountry] = useState("");
@@ -77,6 +82,28 @@ export default function SettingsCheckoutPro() {
 
   const enableStripe = paymentMode === "pay_now";
   const allowCardOnFile = paymentMode !== "offline";
+  const isProdEnv = process.env.NODE_ENV === "production";
+
+  const trimmedKey = (publishableKey || "").trim();
+  const pkRegex = /^pk_(test|live)_[A-Za-z0-9]+/i;
+  const secretLike = /^sk_|^whsec_/i.test(trimmedKey);
+  let keyError = "";
+  const stripeKeyRequired = allowCardOnFile;
+  if (stripeKeyRequired) {
+    if (!trimmedKey) {
+      keyError = "Publishable key is required when Stripe payments are enabled.";
+    } else if (secretLike) {
+      keyError = "Use your Stripe publishable key (pk_test_ or pk_live_), not a secret or webhook key.";
+    } else if (!pkRegex.test(trimmedKey)) {
+      keyError = "Invalid publishable key format. Expected pk_test_… or pk_live_…";
+    }
+  } else if (trimmedKey && secretLike) {
+    keyError = "Use your Stripe publishable key (pk_test_ or pk_live_), not a secret or webhook key.";
+  }
+  const keyWarning = stripeKeyRequired && isProdEnv && trimmedKey.startsWith("pk_test_")
+    ? "Production requires a pk_live_ publishable key."
+    : "";
+  const disableSave = saving || (!!keyError && stripeKeyRequired);
 
   useEffect(() => {
     let ignore = false;
@@ -319,7 +346,28 @@ export default function SettingsCheckoutPro() {
                 value={publishableKey}
                 onChange={(e) => setPublishableKey(e.target.value)}
                 placeholder={t("settings.checkout.publishableKey.placeholder")}
+                type={showKey ? "text" : "password"}
+                error={!!keyError}
+                helperText={keyError || keyWarning || "Use your Stripe publishable key (pk_test_… or pk_live_…)."}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle publishable key visibility"
+                        onClick={() => setShowKey((prev) => !prev)}
+                        edge="end"
+                      >
+                        {showKey ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
+              {keyWarning && (
+                <Alert sx={{ mt: 1 }} severity="warning">
+                  {keyWarning}
+                </Alert>
+              )}
             </Grid>
 
             <Grid item xs={12}>
@@ -430,7 +478,7 @@ export default function SettingsCheckoutPro() {
           </Grid>
 
           <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-            <Button variant="contained" disabled={saving} onClick={onSave}>
+            <Button variant="contained" disabled={disableSave} onClick={onSave}>
               {saving ? t("settings.common.saving") : t("settings.checkout.buttons.save")}
             </Button>
             <Button variant="outlined" onClick={() => setGuideOpen(true)}>{t("settings.checkout.buttons.openTaxHelp")}</Button>
