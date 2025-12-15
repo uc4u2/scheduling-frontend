@@ -1229,9 +1229,6 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       case "overview":
         return (
           <ManagementFrame>
-            <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-              Dashboard Overview
-            </Typography>
             <Overview token={token} />
 
             <Typography variant="h6" sx={{ mt: 3, mb: 1.5, fontWeight: 700 }}>

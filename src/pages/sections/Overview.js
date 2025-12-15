@@ -88,6 +88,7 @@ const Overview = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [range, setRange] = useState("today"); // "today" | "week"
 
   /* helper: always return array */
   const asArray = (val, key) => {
@@ -170,12 +171,135 @@ const Overview = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ───────────── render below (unchanged from previous file) ──────────── */
+  /* derived KPI summaries */
+  const liveWorkforce = React.useMemo(() => {
+    const statuses = todayStatus || [];
+    const normalize = (s) => (s || "").toLowerCase();
+    const clockedIn = statuses.filter((s) => ["present", "clocked_in", "working"].includes(normalize(s.status))).length;
+    const onBreak = statuses.filter((s) => ["break", "on_break"].includes(normalize(s.status))).length;
+    const missing = statuses.filter((s) => ["absent", "late", "missing"].includes(normalize(s.status))).length;
+    const scheduled = statuses.length;
+    return { clockedIn, onBreak, missing, scheduled };
+  }, [todayStatus]);
+
+  const weekStatusIsPlaceholder = todayStatus?.week_is_placeholder === true;
+  const weekAvailIsPlaceholder = availability?.week_is_placeholder === true;
+
+  const hasWeekStatus = Array.isArray(todayStatus?.week) && !weekStatusIsPlaceholder;
+  const hasWeekAvailability =
+    availability &&
+    !weekAvailIsPlaceholder &&
+    (availability.week_gaps !== undefined ||
+      availability.week_understaffed !== undefined ||
+      availability.week_ok !== undefined);
+  const hasWeek = hasWeekStatus || hasWeekAvailability;
+
+  const pickRange = (arr) => {
+    if (range === "week" && hasWeekStatus) return arr.week;
+    return arr;
+  };
+
+  const compliance = React.useMemo(() => {
+    const statuses = pickRange(todayStatus) || [];
+    const missedBreaks = statuses.filter((s) => s?.missed_break || s?.break_missed || (s?.status || "").toLowerCase() === "missed_break").length;
+    const overtimeRisk = statuses.filter((s) => s?.overtime_risk || s?.ot_risk).length;
+    const anomalies = statuses.reduce((acc, s) => acc + (Number(s?.anomalies || s?.anomaly_count || 0) || 0), 0);
+    const late = statuses.filter((s) => (s?.status || "").toLowerCase() === "late").length;
+    const missing = statuses.filter((s) => (s?.status || "").toLowerCase() === "absent").length;
+    const earlyLeave = statuses.filter((s) => (s?.status || "").toLowerCase() === "early_leave").length;
+    return { missedBreaks, overtimeRisk, anomalies, late, missing, earlyLeave };
+  }, [todayStatus, range]);
+
+  const payrollReadiness = React.useMemo(() => {
+    const statuses = pickRange(todayStatus) || [];
+    const approved = statuses.filter((s) => s?.approved || s?.punch_approved).length;
+    const pending = statuses.filter((s) => s?.approved === false || s?.punch_approved === false).length;
+    const total = approved + pending;
+    const pctApproved = total ? Math.round((approved / total) * 100) : 0;
+    const hoursWeek = statuses.reduce((acc, s) => acc + (Number(s?.hours_week || s?.hours_this_week || 0) || 0), 0);
+    return { pctApproved, pending, hoursWeek };
+  }, [todayStatus, range]);
+
+  const coverageHealth = React.useMemo(() => {
+    const gapsToday = availability?.low ?? 0;
+    const understaffedToday = availability?.understaffed ?? 0;
+    const swaps = pendingSwaps || 0;
+    const weekGaps = range === "week" && !weekAvailIsPlaceholder ? (availability?.week_gaps ?? 0) : 0;
+    const weekUnder = range === "week" && !weekAvailIsPlaceholder ? (availability?.week_understaffed ?? 0) : 0;
+    return {
+      gapsToday: range === "week" ? weekGaps : gapsToday,
+      understaffed: range === "week" ? weekUnder : understaffedToday,
+      swaps,
+    };
+  }, [availability, pendingSwaps, range, weekAvailIsPlaceholder]);
+
+  const managerActions = React.useMemo(() => {
+    return {
+      swapsPending: pendingSwaps || 0,
+      approvalsNeeded: awaitingManagerSwaps || 0,
+    };
+  }, [pendingSwaps, awaitingManagerSwaps]);
+
+  const goToManagerActions = () => {
+    if (managerActions.approvalsNeeded > 0) {
+      navigate("/manager/shifts?view=approvals");
+    } else {
+      navigate("/manager/shifts?view=swaps");
+    }
+  };
+
+  React.useEffect(() => {
+    if (range === "week" && !hasWeek) {
+      setRange("today");
+    }
+  }, [range, hasWeek]);
+
+  /* ───────────── render ──────────── */
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        Dashboard Overview
-      </Typography>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 2,
+          mb: 2,
+        }}
+      >
+        <Box>
+          <Typography variant="h4" fontWeight={700}>
+            Dashboard Overview
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Real-time operations, compliance, and payroll visibility.
+          </Typography>
+        </Box>
+        <Box sx={{ flex: 1 }} />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Button
+            size="small"
+            variant={range === "today" ? "contained" : "outlined"}
+            onClick={() => setRange("today")}
+          >
+            Today
+          </Button>
+          <Button
+            size="small"
+            variant={range === "week" ? "contained" : "outlined"}
+            disabled={!hasWeek}
+            onClick={() => setRange("week")}
+          >
+            This Week
+          </Button>
+          {!hasWeek && (
+            <Typography variant="caption" color="text.secondary">
+              {weekStatusIsPlaceholder || weekAvailIsPlaceholder
+                ? "Week view coming soon."
+                : "Week metrics not available yet."}
+            </Typography>
+          )}
+        </Box>
+      </Box>
       <Divider sx={{ mb: 3 }} />
 
       {error && <Alert severity="error">{error}</Alert>}
@@ -185,16 +309,56 @@ const Overview = () => {
         </Box>
       ) : (
         <>
-          {/* metric grid */}
+          {/* NEW KPI row */}
           <Grid container spacing={3}>
+            <Grid item xs={12} md={6} lg={3}>
+              {renderCard(
+                <PeopleIcon />,
+                "Live Workforce",
+                `In: ${liveWorkforce.clockedIn} • Break: ${liveWorkforce.onBreak} • Missing: ${liveWorkforce.missing} • Scheduled: ${liveWorkforce.scheduled}`,
+                "#1976d2",
+                () => navigate("/manager/time-tracking?filter=missing")
+              )}
+            </Grid>
+            <Grid item xs={12} md={6} lg={3}>
+              {renderCard(
+                <WarningAmberIcon />,
+                "Compliance Alerts",
+                `Missed breaks: ${compliance.missedBreaks} • OT risk: ${compliance.overtimeRisk} • Anomalies: ${compliance.anomalies} • Late: ${compliance.late} • Missing: ${compliance.missing} • Early leave: ${compliance.earlyLeave}`,
+                compliance.missedBreaks || compliance.overtimeRisk ? "#d32f2f" : "#f57c00",
+                () => navigate("/manager/attendance-summaries?view=issues")
+              )}
+            </Grid>
+            <Grid item xs={12} md={6} lg={3}>
+              {renderCard(
+                <PendingActionsIcon />,
+                "Payroll Readiness",
+                `Approved: ${payrollReadiness.pctApproved}% • Pending: ${payrollReadiness.pending} • Hours (${range === "week" ? "wk" : "day"}): ${payrollReadiness.hoursWeek.toFixed(1)}`,
+                "#00796b",
+                () => navigate("/manager/payroll?view=approvals")
+              )}
+            </Grid>
+            <Grid item xs={12} md={6} lg={3}>
+              {renderCard(
+                <SwapHorizIcon />,
+                "Pending Manager Actions",
+                `Swap requests: ${managerActions.swapsPending} • Approvals needed: ${managerActions.approvalsNeeded}`,
+                managerActions.swapsPending || managerActions.approvalsNeeded ? "#d32f2f" : "#455a64",
+                goToManagerActions
+              )}
+            </Grid>
+          </Grid>
+
+          {/* ORIGINAL metric grid (call-center focus) */}
+          <Grid container spacing={3} sx={{ mt: 1 }}>
             <Grid item xs={12} md={6} lg={3}>
               {renderCard(<PeopleIcon />, "Team Members", teamCount)}
             </Grid>
             <Grid item xs={12} md={6} lg={3}>
               {renderCard(
                 <EventIcon />,
-                "Upcoming Meetings",
-                meetings.length,
+                "Shifts Today",
+                todayStatus.length,
                 "#00796b"
               )}
             </Grid>
@@ -216,10 +380,35 @@ const Overview = () => {
             </Grid>
             <Grid item xs={12} md={6} lg={3}>
               {renderCard(
+                <BusinessCenterIcon />,
+                "Departments",
+                departments,
+                "#455a64"
+              )}
+            </Grid>
+          </Grid>
+
+          {/* Service/booking metrics (for booking-heavy orgs) */}
+          <Typography variant="subtitle1" sx={{ mt: 3, mb: 1, fontWeight: 700 }}>
+            Service & Booking Metrics
+          </Typography>
+          <Grid container spacing={3} sx={{ mt: 0 }}>
+            <Grid item xs={12} md={6} lg={3}>
+              {renderCard(
+                <EventIcon />,
+                "Booking Availability",
+                `Low availability: ${availability.low}`,
+                "#d32f2f",
+                () => navigate("/manager/availability")
+              )}
+            </Grid>
+            <Grid item xs={12} md={6} lg={3}>
+              {renderCard(
                 <SwapHorizIcon />,
                 "Swap Requests",
                 pendingSwaps,
-                "#6a1b9a"
+                "#6a1b9a",
+                () => navigate("/manager/shifts?view=swaps")
               )}
             </Grid>
             <Grid item xs={12} md={6} lg={3}>
@@ -227,23 +416,17 @@ const Overview = () => {
                 <PendingActionsIcon />,
                 "Awaiting Approval",
                 awaitingManagerSwaps,
-                "#c2185b"
-              )}
-            </Grid>
-            <Grid item xs={12} md={6} lg={3}>
-              {renderCard(
-                <WarningAmberIcon />,
-                "Coverage Gaps",
-                availability.low,
-                "#d32f2f"
+                "#c2185b",
+                () => navigate("/manager/shifts?view=approvals")
               )}
             </Grid>
             <Grid item xs={12} md={6} lg={3}>
               {renderCard(
                 <BusinessCenterIcon />,
-                "Departments",
-                departments,
-                "#455a64"
+                "Advanced Booking Analytics",
+                "Utilization trend • No-show rate",
+                "#1976d2",
+                () => navigate("/manager/analytics")
               )}
             </Grid>
           </Grid>
