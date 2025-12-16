@@ -19,14 +19,29 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import api from "../../utils/api";
 
 const HOOK_EVENT_OPTIONS = [
-  { key: "booking.created", label: "When a new booking is created" },
-  { key: "booking.cancelled", label: "When a booking is cancelled" },
-  { key: "booking.no_show", label: "When a client does not show up" },
-  { key: "timeclock.clock_in", label: "When a staff member clocks in" },
-  { key: "shift.published", label: "When a shift is published" },
-  { key: "payroll.finalized", label: "When payroll is finalized" },
-  { key: "payroll.details", label: "When payroll details are ready (one row per employee)" },
+  { group: "Bookings", key: "booking.created", label: "When a new booking is created" },
+  { group: "Bookings", key: "public_booking.created", label: 'When a public "book with me" link is used' },
+  { group: "Bookings", key: "booking.cancelled", label: "When a booking is cancelled" },
+  { group: "Bookings", key: "booking.updated", label: "When a booking is rescheduled/updated" },
+  { group: "Bookings", key: "booking.no_show", label: "When a client does not show up" },
+  { group: "Leave", key: "leave.approved", label: "When a leave request is approved" },
+  { group: "Shifts", key: "swap.requested", label: "When a shift swap is requested" },
+  { group: "Time", key: "timeclock.clock_in", label: "When a staff member clocks in" },
+  { group: "Time", key: "break.missed", label: "When a break is missed/short" },
+  { group: "Time", key: "break.enforced", label: "When a break is auto-ended" },
+  { group: "Shifts", key: "shift.published", label: "When a shift is published" },
+  { group: "Payroll", key: "payroll.finalized", label: "When payroll is finalized" },
+  { group: "Payroll", key: "payroll.details", label: "When payroll details are ready (one row per employee)" },
+  { group: "Payments", key: "payroll.payment_requested", label: "When a payroll payment is requested" },
+  { group: "Payments", key: "payroll.payment_status_updated", label: "When a payroll payment status changes" },
 ];
+
+const PRESETS = {
+  booking: ["booking.created", "booking.cancelled", "booking.no_show"],
+  ops: ["timeclock.clock_in", "break.missed", "shift.published"],
+  payroll: ["payroll.finalized", "payroll.details"],
+  payments: ["payroll.payment_requested"],
+};
 
 const ZapierHooksPanel = () => {
   const [hooks, setHooks] = useState([]);
@@ -116,7 +131,8 @@ const ZapierHooksPanel = () => {
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
         Paste your Zapier Catch Hook URL and choose which Schedulaa event should trigger it. Optionally add a secret to
-        sign payloads (HMAC).
+        sign payloads (HMAC). Only events listed here will be sent to your Zapier webhook URL. You can point multiple
+        hooks to the same Catch Hook URL.
       </Typography>
       <Chip label="Trigger" size="small" color="primary" variant="outlined" sx={{ mb: 2 }} />
 
@@ -127,18 +143,28 @@ const ZapierHooksPanel = () => {
           label="Event type"
           value={form.event_type}
           onChange={handleChange("event_type")}
-          sx={{ maxWidth: 280 }}
+          SelectProps={{ MenuProps: { disablePortal: true } }}
+          sx={{ maxWidth: 320 }}
         >
-          {HOOK_EVENT_OPTIONS.map((opt) => (
-            <MenuItem key={opt.key} value={opt.key}>
-              <Box>
-                <Typography variant="body2">{opt.label}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {opt.key}
+          {["Bookings", "Shifts", "Time", "Leave", "Payroll", "Payments"]
+            .filter((group) => HOOK_EVENT_OPTIONS.some((opt) => opt.group === group))
+            .map((group) => [
+              <MenuItem key={`${group}-header`} disabled dense>
+                <Typography variant="caption" color="primary">
+                  {group}
                 </Typography>
-              </Box>
-            </MenuItem>
-          ))}
+              </MenuItem>,
+              ...HOOK_EVENT_OPTIONS.filter((opt) => opt.group === group).map((opt) => (
+                <MenuItem key={opt.key} value={opt.key}>
+                  <Box>
+                    <Typography variant="body2">{opt.label}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {opt.key}
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              )),
+            ])}
           <MenuItem value="__more" disabled>
             More events coming soon
           </MenuItem>

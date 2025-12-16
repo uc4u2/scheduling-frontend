@@ -198,6 +198,34 @@ const eventExamples = [
     },
   },
   {
+    key: "payroll.payment_requested",
+    label: "When a payroll payment is requested",
+    payload: {
+      event_type: "payroll.payment_requested",
+      company: { company_id: 1, name: "Schedulaa", default_currency: "USD" },
+      payment_request: {
+        payment_id: 123,
+        finalized_payroll_id: 456,
+        status: "requested",
+        currency: "USD",
+        amount_net: 1200.5,
+      },
+      period: { start_date: "2025-11-19", end_date: "2025-12-02", region: "us", pay_frequency: "biweekly" },
+      employee: { employee_id: 7, full_name: "Test User", external_payroll_employee_id: "ADP123" },
+      links: { payroll_audit_url: "https://www.schedulaa.com/manager/payroll/audit?employee_id=7" },
+    },
+  },
+  {
+    key: "payroll.payment_status_updated",
+    label: "When a payroll payment status changes",
+    payload: {
+      event_type: "payroll.payment_status_updated",
+      payment_request: { payment_id: 123, finalized_payroll_id: 456, status: "paid", partner_reference: "ADP-001" },
+      period: { start_date: "2025-11-19", end_date: "2025-12-02", region: "us", pay_frequency: "biweekly" },
+      employee: { employee_id: 7, full_name: "Test User" },
+    },
+  },
+  {
     key: "payroll.finalized",
     label: "When payroll is finalized/exported",
     payload: {
@@ -910,6 +938,82 @@ const ZapierIntegrationPage = () => {
           }}
         >
           <ZapierHooksPanel />
+        </Paper>
+
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            mt: 3,
+            borderRadius: 3,
+            border: (theme) => `1px solid ${theme.palette.divider}`,
+            backgroundColor: (theme) => (theme.palette.mode === "light" ? "#f9fafb" : "transparent"),
+          }}
+        >
+          <Accordion defaultExpanded={false}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle2">Payroll Payments via Zapier (How it works)</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                When a manager clicks <strong>Request payment</strong>, Schedulaa automatically emits{" "}
+                <code>payroll.payment_requested</code>. Your Zap should start with <strong>Webhooks by Zapier → Catch Hook</strong>.
+                To receive it, add an Event hook above with “When a payroll payment is requested” and paste your Catch Hook URL.
+                Multiple hooks can point to the same Catch Hook URL.
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Your Zap then creates the payment in your provider (ADP/Gusto/Wagepoint/etc.) and POSTs back to:
+              </Typography>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  border: (theme) => `1px solid ${theme.palette.divider}`,
+                  backgroundColor: (theme) => (theme.palette.mode === "light" ? "#fff" : "transparent"),
+                  mb: 1,
+                }}
+              >
+                <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                  POST /integrations/zapier/payroll/payment-status
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Headers: Authorization: Bearer &lt;zapier_api_key&gt;
+                </Typography>
+              </Box>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Callback body example:
+              </Typography>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  border: (theme) => `1px solid ${theme.palette.divider}`,
+                  backgroundColor: (theme) => (theme.palette.mode === "light" ? "#fff" : "transparent"),
+                  fontFamily: "monospace",
+                  fontSize: 13,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+{`{
+  "payment_id": 123,
+  "finalized_payroll_id": 456,
+  "status": "paid",
+  "partner": "adp",
+  "partner_reference": "ADP-001",
+  "paid_at": "2025-12-13T03:10:00Z"
+}`}
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 1 }}>
+                Status options: requested, sent_to_zapier, processing, paid, failed, rejected, canceled.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                To receive payment requests in Zapier:
+                <br />• Create a Catch Hook in Zapier
+                <br />• Paste the hook URL in Event hooks above
+                <br />• Select “When a payroll payment is requested”
+              </Typography>
+            </AccordionDetails>
+          </Accordion>
         </Paper>
       </Box>
 

@@ -27,9 +27,13 @@ import {
   Tooltip,
   IconButton,
   FormHelperText,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { xeroIntegration, quickbooksIntegration } from "../../utils/api";
 import PayrollPreviewHelp from "./PayrollPreviewHelp";
 
@@ -198,6 +202,19 @@ const getIntegrationStatusChip = (status) => {
   return { color: "default", label: status === "pending" ? "Pending" : status || "Pending" };
 };
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
+const paymentStatusMeta = (status) => {
+  const s = (status || "not_requested").toLowerCase();
+  if (s === "paid") return { color: "success", label: "Paid" };
+  if (s === "processing" || s === "sent_to_zapier")
+    return { color: "info", label: s === "sent_to_zapier" ? "Sent to Zapier" : "Processing" };
+  if (s === "requested") return { color: "warning", label: "Requested" };
+  if (s === "failed" || s === "rejected") return { color: "error", label: "Failed" };
+  if (s === "canceled") return { color: "default", label: "Canceled" };
+  return { color: "default", label: "Not requested" };
+};
+
 /* ──────────────────────────────────────────────────────────
    Component
    ────────────────────────────────────────────────────────── */
@@ -227,10 +244,41 @@ export default function PayrollPreview({
   const [quickbooksStatus, setQuickbooksStatus] = useState(null);
   const [quickbooksValidation, setQuickbooksValidation] = useState(null);
   const [quickbooksSyncing, setQuickbooksSyncing] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [mappingLoading, setMappingLoading] = useState(false);
+  const [paymentPartner, setPaymentPartner] = useState("");
+  const [companyProfile, setCompanyProfile] = useState(null);
+  const [finalizedIdOverride, setFinalizedIdOverride] = useState(null);
+  const finalizedId =
+    finalizedIdOverride ||
+    payroll?.finalized_payroll_id ||
+    payroll?.finalized_id ||
+    payroll?.finalized_payroll?.id ||
+    null;
+  const hasFinalized = Boolean(
+    finalizedId || payroll?.finalized === true || payroll?.finalized_at
+  );
 
   useEffect(() => {
     let active = true;
     const load = async () => {
+      // Company defaults (provider/currency/label)
+      try {
+        const res = await axios.get(`${API_URL}/admin/company-profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (active) {
+          setCompanyProfile(res.data);
+          if (!paymentPartner && res.data?.payroll_payment_provider) {
+            setPaymentPartner(res.data.payroll_payment_provider);
+          }
+        }
+      } catch (err) {
+        if (active) setCompanyProfile(null);
+        console.error("Company profile load error", err?.response?.data || err.message);
+      }
+
       try {
         const statusData = await xeroIntegration.status();
         if (active) setXeroStatus(statusData);
@@ -255,12 +303,69 @@ export default function PayrollPreview({
       } catch {
         if (active) setQuickbooksValidation(null);
       }
+
+      // Payment status (only when finalized payroll exists)
+      if (finalizedId) {
+        try {
+          setPaymentLoading(true);
+        const res = await axios.get(`${API_URL}/automation/payroll/payment/status`, {
+          params: { finalized_payroll_id: finalizedId },
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const p = res.data?.payment || res.data || {};
+        if (active) {
+          setPaymentStatus(p);
+          setPaymentPartner(p.partner || "");
+        }
+        } catch (err) {
+          if (active) setPaymentStatus(null);
+          console.error("Payment status error", err?.response?.data || err.message);
+        } finally {
+          if (active) setPaymentLoading(false);
+        }
+      } else {
+        setPaymentStatus(null);
+      }
     };
     load();
     return () => {
       active = false;
     };
-  }, []);
+  }, [finalizedId, paymentPartner, token]);
+
+  // If we don't have a finalized ID but the period is known, try to resolve it via raw endpoint
+  useEffect(() => {
+    const tryResolveFinalized = async () => {
+      if (
+        finalizedId ||
+        !payroll?.recruiter_id ||
+        !payroll?.start_date ||
+        !payroll?.end_date
+      ) {
+        return;
+      }
+      try {
+        const res = await axios.get(`${API_URL}/automation/payroll/raw`, {
+          params: {
+            recruiter_id: payroll.recruiter_id,
+            start_date: payroll.start_date,
+            end_date: payroll.end_date,
+            region: payroll.region || region,
+            finalized_only: true,
+            latest_only: true,
+            page_size: 1,
+            page: 1,
+          },
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const maybeId = res.data?.rows?.[0]?.id;
+        if (maybeId) setFinalizedIdOverride(maybeId);
+      } catch (err) {
+        console.warn("Could not resolve finalized payroll id", err?.response?.data || err.message);
+      }
+    };
+    tryResolveFinalized();
+  }, [finalizedId, payroll?.recruiter_id, payroll?.start_date, payroll?.end_date, payroll?.region, region, token]);
 
   /* Local state */
   const [calculatedNetPay, setCalculatedNetPay] = useState(0);
@@ -313,6 +418,99 @@ const saveFinalizedPayroll = async () => {
     setSavingFinalized(false);
   }
 };
+
+  const requestPayment = async () => {
+    if (!finalizedId) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "Finalize payroll first before requesting payment.",
+      });
+      return;
+    }
+    try {
+      setPaymentLoading(true);
+      const res = await axios.post(
+        `${API_URL}/automation/payroll/payment/request`,
+        {
+          finalized_payroll_id: finalizedId,
+          partner: paymentPartner || undefined,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const p = res.data?.payment || res.data || {};
+      setPaymentStatus(p);
+      setSnackbar({ open: true, severity: "success", message: "Payment request sent via Zapier." });
+    } catch (err) {
+      console.error(err);
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: err?.response?.data?.error || "Payment request failed.",
+      });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const refreshPaymentStatus = async () => {
+    if (!finalizedId) return;
+    try {
+      setPaymentLoading(true);
+      const res = await axios.get(`${API_URL}/automation/payroll/payment/status`, {
+        params: { finalized_payroll_id: finalizedId },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const p = res.data?.payment || res.data || {};
+      setPaymentStatus(p);
+      if (p.partner) setPaymentPartner(p.partner);
+    } catch (err) {
+      setPaymentStatus(null);
+      console.error("Payment status error", err?.response?.data || err.message);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const requestEmployeeMapping = async () => {
+    if (!payroll?.recruiter_id) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: "Select an employee first.",
+      });
+      return;
+    }
+    try {
+      setMappingLoading(true);
+      await axios.post(
+        `${API_URL}/automation/payroll/employee-mapping/request`,
+        {
+          employee_id: payroll.recruiter_id,
+          provider:
+            paymentPartner ||
+            companyProfile?.payroll_payment_provider ||
+            "zapier",
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSnackbar({
+        open: true,
+        severity: "success",
+        message: "Mapping sync requested via Zapier.",
+      });
+      await refreshPaymentStatus();
+    } catch (err) {
+      console.error(err);
+      setSnackbar({
+        open: true,
+        severity: "error",
+        message: err?.response?.data?.error || "Mapping request failed.",
+      });
+    } finally {
+      setMappingLoading(false);
+    }
+  };
 
 
  /* ─────────────────────────
@@ -1259,15 +1457,134 @@ const handleRecalculate = () => {
         ]}
       />
 
+      {/* Actions */}
       <Button
         variant="contained"
         color="primary"
-        sx={{ ml: 2 }}
+        sx={{ ml: 2, mt: 2 }}
         disabled={savingFinalized}
         onClick={saveFinalizedPayroll}
       >
         {savingFinalized ? <CircularProgress size={18} /> : "Finalize & Save"}
       </Button>
+
+      {/* Payments accordion (secondary) */}
+      <Accordion sx={{ mt: 2 }} defaultExpanded={false}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1">Advanced: Payments via Zapier</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          {!hasFinalized ? (
+            <Alert severity="info">Finalize payroll to request payment.</Alert>
+          ) : (
+            <>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                <Chip
+                  size="small"
+                  color={paymentStatusMeta(paymentStatus?.status).color}
+                  label={paymentStatusMeta(paymentStatus?.status).label}
+                />
+                {companyProfile?.payroll_default_currency && (
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={`Currency: ${companyProfile.payroll_default_currency}`}
+                  />
+                )}
+                {paymentStatus?.partner && (
+                  <Chip size="small" variant="outlined" label={`Provider: ${paymentStatus.partner}`} />
+                )}
+                <Box flexGrow={1} />
+                {paymentLoading && <CircularProgress size={18} />}
+              </Stack>
+
+              <Grid container spacing={2} sx={{ mb: 1 }}>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth>
+                    <InputLabel id="payment-provider-label">Payroll provider</InputLabel>
+                    <Select
+                      labelId="payment-provider-label"
+                      label="Payroll provider"
+                      value={paymentPartner || ""}
+                      onChange={(e) => setPaymentPartner(e.target.value)}
+                    >
+                      {companyProfile?.payroll_payment_provider && (
+                        <MenuItem value={companyProfile.payroll_payment_provider}>
+                          {companyProfile.payroll_payment_provider}
+                        </MenuItem>
+                      )}
+                      <MenuItem value="zapier">Zapier</MenuItem>
+                      <MenuItem value="adp">ADP</MenuItem>
+                      <MenuItem value="gusto">Gusto</MenuItem>
+                      <MenuItem value="paychex">Paychex</MenuItem>
+                      <MenuItem value="manual">Manual</MenuItem>
+                      <MenuItem value="other">Other</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    {companyProfile?.payroll_provider_employee_id_label || "External employee ID"}:
+                  </Typography>
+                  <Typography variant="body1">
+                    {paymentStatus?.external_employee_id ||
+                      payroll?.external_payroll_employee_id ||
+                      payroll?.employee?.external_payroll_employee_id ||
+                      "Not linked yet"}
+                  </Typography>
+                  {!(paymentStatus?.external_employee_id || payroll?.external_payroll_employee_id) && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      sx={{ mt: 0.5, textTransform: "none" }}
+                      onClick={requestEmployeeMapping}
+                      disabled={mappingLoading}
+                    >
+                      {mappingLoading ? <CircularProgress size={16} /> : "Sync via Zapier"}
+                    </Button>
+                  )}
+                </Grid>
+              </Grid>
+
+              {paymentStatus?.partner_reference && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  Reference: {paymentStatus.partner_reference}
+                </Typography>
+              )}
+              {paymentStatus?.paid_at && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  Paid at: {paymentStatus.paid_at}
+                </Typography>
+              )}
+              {paymentStatus?.last_error && (
+                <Alert severity="warning" sx={{ mb: 1 }}>
+                  {paymentStatus.last_error}
+                </Alert>
+              )}
+
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={
+                    !hasFinalized ||
+                    paymentLoading ||
+                    ["paid", "processing", "sent_to_zapier"].includes(
+                      (paymentStatus?.status || "").toLowerCase()
+                    )
+                  }
+                  onClick={requestPayment}
+                >
+                  {paymentLoading ? <CircularProgress size={18} /> : "Request payment via Zapier"}
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  Payment requests emit <code>payroll.payment_requested</code>. Provider callbacks update this status.
+                </Typography>
+              </Stack>
+            </>
+          )}
+        </AccordionDetails>
+      </Accordion>
 
       {/* Help Drawer */}
       <PayrollPreviewHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
