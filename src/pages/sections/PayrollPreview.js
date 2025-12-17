@@ -207,6 +207,8 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const paymentStatusMeta = (status) => {
   const s = (status || "not_requested").toLowerCase();
   if (s === "paid") return { color: "success", label: "Paid" };
+  if (s === "posted_quickbooks") return { color: "success", label: "Posted to QuickBooks" };
+  if (s === "posted_xero") return { color: "success", label: "Posted to Xero" };
   if (s === "processing" || s === "sent_to_zapier")
     return { color: "info", label: s === "sent_to_zapier" ? "Sent to Zapier" : "Processing" };
   if (s === "requested") return { color: "warning", label: "Requested" };
@@ -250,6 +252,7 @@ export default function PayrollPreview({
   const [paymentPartner, setPaymentPartner] = useState("");
   const [companyProfile, setCompanyProfile] = useState(null);
   const [finalizedIdOverride, setFinalizedIdOverride] = useState(null);
+  const [showWorkflowHelp, setShowWorkflowHelp] = useState(false);
   const finalizedId =
     finalizedIdOverride ||
     payroll?.finalized_payroll_id ||
@@ -1471,13 +1474,17 @@ const handleRecalculate = () => {
       {/* Payments accordion (secondary) */}
       <Accordion sx={{ mt: 2 }} defaultExpanded={false}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography variant="subtitle1">Advanced: Payments via Zapier</Typography>
+          <Typography variant="subtitle1">Advanced: Send payroll workflow</Typography>
         </AccordionSummary>
         <AccordionDetails>
           {!hasFinalized ? (
             <Alert severity="info">Finalize payroll to request payment.</Alert>
           ) : (
             <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Send payroll data to accounting systems or automation workflows. This does not initiate bank payments or direct deposit.
+              </Typography>
+
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                 <Chip
                   size="small"
@@ -1492,7 +1499,7 @@ const handleRecalculate = () => {
                   />
                 )}
                 {paymentStatus?.partner && (
-                  <Chip size="small" variant="outlined" label={`Provider: ${paymentStatus.partner}`} />
+                  <Chip size="small" variant="outlined" label={`Target: ${paymentStatus.partner}`} />
                 )}
                 <Box flexGrow={1} />
                 {paymentLoading && <CircularProgress size={18} />}
@@ -1501,10 +1508,10 @@ const handleRecalculate = () => {
               <Grid container spacing={2} sx={{ mb: 1 }}>
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
-                    <InputLabel id="payment-provider-label">Payroll provider</InputLabel>
+                    <InputLabel id="payment-provider-label">Workflow target</InputLabel>
                     <Select
                       labelId="payment-provider-label"
-                      label="Payroll provider"
+                      label="Workflow target"
                       value={paymentPartner || ""}
                       onChange={(e) => setPaymentPartner(e.target.value)}
                     >
@@ -1513,37 +1520,45 @@ const handleRecalculate = () => {
                           {companyProfile.payroll_payment_provider}
                         </MenuItem>
                       )}
-                      <MenuItem value="zapier">Zapier</MenuItem>
-                      <MenuItem value="adp">ADP</MenuItem>
-                      <MenuItem value="gusto">Gusto</MenuItem>
-                      <MenuItem value="paychex">Paychex</MenuItem>
-                      <MenuItem value="manual">Manual</MenuItem>
-                      <MenuItem value="other">Other</MenuItem>
+                      <MenuItem value="quickbooks">QuickBooks — posts balanced payroll journal (native export)</MenuItem>
+                      <MenuItem value="xero">Xero — posts balanced payroll journal (native export)</MenuItem>
+                      <MenuItem value="zapier">Zapier / automation (approvals, CSV/SFTP, payouts, custom)</MenuItem>
+                      <MenuItem value="stripe">Payout – Stripe/Wise</MenuItem>
+                      <MenuItem value="approval">Approval – Slack/Email</MenuItem>
+                      <MenuItem value="manual">Manual / Other</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="body2" color="text.secondary">
-                    {companyProfile?.payroll_provider_employee_id_label || "External employee ID"}:
-                  </Typography>
-                  <Typography variant="body1">
-                    {paymentStatus?.external_employee_id ||
-                      payroll?.external_payroll_employee_id ||
-                      payroll?.employee?.external_payroll_employee_id ||
-                      "Not linked yet"}
-                  </Typography>
-                  {!(paymentStatus?.external_employee_id || payroll?.external_payroll_employee_id) && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      sx={{ mt: 0.5, textTransform: "none" }}
-                      onClick={requestEmployeeMapping}
-                      disabled={mappingLoading}
-                    >
-                      {mappingLoading ? <CircularProgress size={16} /> : "Sync via Zapier"}
-                    </Button>
-                  )}
-                </Grid>
+                {paymentPartner === "zapier" || paymentPartner === "manual" || paymentPartner === "stripe" || paymentPartner === "approval" ? (
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">
+                      {companyProfile?.payroll_provider_employee_id_label || "External employee ID"}:
+                    </Typography>
+                    <Typography variant="body1">
+                      {paymentStatus?.external_employee_id ||
+                        payroll?.external_payroll_employee_id ||
+                        payroll?.employee?.external_payroll_employee_id ||
+                        "Not linked yet"}
+                    </Typography>
+                    {!(paymentStatus?.external_employee_id || payroll?.external_payroll_employee_id) && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        sx={{ mt: 0.5, textTransform: "none" }}
+                        onClick={requestEmployeeMapping}
+                        disabled={mappingLoading}
+                      >
+                        {mappingLoading ? <CircularProgress size={16} /> : "Sync via Zapier"}
+                      </Button>
+                    )}
+                  </Grid>
+                ) : (
+                  <Grid item xs={12} md={6}>
+                    <Alert severity="info">
+                      Runs native {paymentPartner?.toUpperCase()} export. Zapier not used.
+                    </Alert>
+                  </Grid>
+                )}
               </Grid>
 
               {paymentStatus?.partner_reference && (
@@ -1575,12 +1590,62 @@ const handleRecalculate = () => {
                   }
                   onClick={requestPayment}
                 >
-                  {paymentLoading ? <CircularProgress size={18} /> : "Request payment via Zapier"}
+                  {paymentLoading ? <CircularProgress size={18} /> : "Send payroll to Zapier"}
                 </Button>
-                <Typography variant="caption" color="text.secondary">
-                  Payment requests emit <code>payroll.payment_requested</code>. Provider callbacks update this status.
-                </Typography>
+                <Tooltip
+                  title="Zapier can sync QuickBooks/Xero, start approvals (Slack/Email), export CSV/SFTP, or trigger payout rails like Stripe/Wise."
+                  placement="top"
+                >
+                  <Typography variant="caption" color="text.secondary" sx={{ cursor: "help" }}>
+                    Sends <code>payroll.payment_requested</code> to Zapier. Use Zapier to drive accounting, approvals, or payouts; callbacks update status here.
+                  </Typography>
+                </Tooltip>
               </Stack>
+
+              <Box sx={{ mt: 2 }}>
+                {!showWorkflowHelp && (
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => setShowWorkflowHelp(true)}
+                    sx={{ textTransform: "none", px: 0 }}
+                  >
+                    Need a walkthrough? (preview → finalize → send workflow)
+                  </Button>
+                )}
+                {showWorkflowHelp && (
+                  <Accordion defaultExpanded>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="body2" fontWeight={600}>
+                        Workflow walkthrough
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        1) Load preview and review totals. Fix hours/bonuses if needed.
+                        <br />
+                        2) Click <strong>Finalize &amp; Save</strong> (or Finalize + Send).
+                        <br />
+                        3) Pick a workflow target (QuickBooks/Xero = native export; Zapier = custom automation).
+                        <br />
+                        4) Click <strong>Send payroll workflow</strong>. Status updates appear here (posted/paid/processing/failed).
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        Zapier setup (summary):
+                        <br />• In Zapier, create <strong>Webhooks by Zapier → Catch Hook</strong>.
+                        <br />• In Schedulaa → Settings → Zapier → Event hooks: add
+                        <code> payroll.payment_requested</code> with your Catch Hook URL.
+                        <br />• Build your Zap steps (QB/Xero journal, Slack approval, CSV/SFTP, payouts).
+                        <br />• (Optional) POST back to update status in Schedulaa.
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Native targets (QuickBooks/Xero): we use your existing accounting integration; Zapier is not used.
+                        Zapier/Other targets: we emit <code>payroll.payment_requested</code> so you can automate finance steps in Zapier.
+                      </Typography>
+                    </AccordionDetails>
+                  </Accordion>
+                )}
+              </Box>
             </>
           )}
         </AccordionDetails>

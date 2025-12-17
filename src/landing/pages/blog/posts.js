@@ -2,6 +2,49 @@
 // Each post can be rendered by BlogPostPage via slug.
 const blogPosts = [
   {
+    slug: "enterprise-payroll-workflows-qb-xero-zapier",
+    title: "New: Enterprise payroll workflows (QB/Xero journals + Zapier automation)",
+    description:
+      "Schedulaa now routes finalized payroll into QuickBooks/Xero accounting journals or Zapier-powered finance workflows—without moving money or initiating direct deposits.",
+    datePublished: "2025-12-16",
+    dateModified: "2025-12-16",
+    category: "Product",
+    tags: ["payroll", "quickbooks", "xero", "zapier", "automation"],
+    heroOverline: "Product",
+    sections: [
+      {
+        heading: "Why this matters",
+        paragraphs: [
+          "Finance teams need payroll totals in the ledger without CSV juggling or risky manual entry. Schedulaa now ships finalized payroll straight into QuickBooks or Xero as balanced journals, or emits a Zapier event for custom approval and payout workflows.",
+        ],
+      },
+      {
+        heading: "Two lanes that keep you in control",
+        paragraphs: [
+          "Native exports: Choose QuickBooks or Xero to post a balanced payroll journal for reconciliation—no Zapier required.",
+          "Automation lane: Select Zapier/Other to emit payroll.payment_requested. Use Zapier to drive approvals, journals, CSV/SFTP exports, or payouts via Stripe/Wise/partners.",
+          "Schedulaa never moves money; it keeps payroll calculations, slips, and audit trails authoritative, while letting you run payouts in your chosen stack.",
+        ],
+      },
+      {
+        heading: "What’s included in the payloads",
+        paragraphs: [
+          "Gross, deductions, and net totals for the pay period (with per-employee detail available in Zapier workflows).",
+          "Breakdown fields for tips, bonuses, premiums, reimbursements, garnishments, and retirement/benefits.",
+          "Metadata to map employees (IDs/emails), period dates, currency (USD/CAD), and the chosen workflow target.",
+        ],
+      },
+      {
+        heading: "How to use it today",
+        paragraphs: [
+          "Finalize payroll → open “Send payroll workflow” → pick QuickBooks/Xero to post accounting journals, or Zapier/Other for automation.",
+          "If using Zapier: add a Catch Hook, subscribe to payroll.payment_requested in Event hooks, then build your finance flow (approvals, journals, CSV, payouts).",
+          "Workflow statuses come back into Schedulaa (processing/posted/failed) for audit clarity.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "modern-payroll-for-service-businesses",
     title: "Modern Payroll for Service Businesses: Why Teams Choose Schedulaa",
     description:

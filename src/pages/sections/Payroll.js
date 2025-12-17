@@ -887,11 +887,32 @@ return (
           <li><strong>Raw data & exports:</strong> Filter by employee/department/region; export CSV/XLSX with all earnings/deductions.</li>
           <li><strong>Year-end:</strong> T4 (boxes 14/16/18/22/24/26/40/44), W-2 core boxes, ROE (CA) as needed.</li>
         </ol>
+        <Typography variant="body2" gutterBottom>
+          Payroll workflows send finalized data to accounting or automation tools; employee payments and tax remittances remain external to Schedulaa.
+        </Typography>
 
         <Divider sx={{ my: 2 }} />
         <Typography variant="h6" gutterBottom>New pay periods start fresh</Typography>
         <Typography variant="body2" gutterBottom>
           New pay periods start clean: one-off fields like tips, bonus, commission, shift premium, and reimbursements default to 0 each run. Recurring deductions (union dues, garnishment, insurance, retirement, other deductions) can be set as Employee Profile defaults and will auto-fill each period. For retirement: U.S. 401(k) defaults are applied automatically from the company plan; Canada RRSP amounts apply only if entered in the Employee Profile. Once finalized, each period is saved as its own snapshot for accurate year-end totals.
+        </Typography>
+
+        <Divider sx={{ my: 2 }} />
+        <Typography variant="h6" gutterBottom>Finance automation (QuickBooks/Xero + Zapier)</Typography>
+        <Typography variant="body2" gutterBottom>
+          • If workflow target is QuickBooks or Xero: Schedulaa runs the native export; Zapier is not used. Status will show as posted/exported.
+          <br />• If workflow target is Zapier/Approvals/CSV/SFTP/Stripe-Wise/Other: Schedulaa emits <code>payroll.payment_requested</code>. Your Zap handles accounting/approvals/exports/payouts and can POST back to update status here.
+          <br />• Status chip: processing (in progress), paid/posted (success), failed (error message shown).
+          <br />• Setup: For QuickBooks/Xero, configure mapping in Settings → QuickBooks/Xero. For Zapier/Other workflows, go to the Zapier tab, create an API key, and add an Event hook for “When a payroll payment is requested”.
+        </Typography>
+
+        <Divider sx={{ my: 2 }} />
+        <Typography variant="h6" gutterBottom>Payroll exports & workflows (important)</Typography>
+        <Typography variant="body2" gutterBottom>
+          When payroll is finalized, Schedulaa can export payroll data to accounting systems or automation workflows.
+          <br />• QuickBooks / Xero (native): posts a balanced payroll journal for accounting and reconciliation.
+          <br />• Zapier: emits a payroll workflow event for custom automation (approvals, journals, CSVs, BI, or downstream systems).
+          <br />These workflows do not initiate bank payments or direct deposit. Payroll calculations, slips, and compliance documents remain the source of truth inside Schedulaa.
         </Typography>
 
         <Divider sx={{ my: 2 }} />

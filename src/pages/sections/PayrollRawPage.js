@@ -301,9 +301,10 @@ export default function PayrollRawPage() {
                 <TableCell align="right">CPP/QPP</TableCell>
                 <TableCell align="right">EI/RQAP</TableCell>
                 <TableCell align="right">FICA</TableCell>
-                <TableCell align="right">Medicare</TableCell>
-                <TableCell align="right">Total Deductions</TableCell>
-                <TableCell align="right">Net Pay</TableCell>
+              <TableCell align="right">Medicare</TableCell>
+              <TableCell align="right">Total Deductions</TableCell>
+              <TableCell align="right">Net Pay</TableCell>
+              <TableCell align="right">Payment Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -354,6 +355,9 @@ export default function PayrollRawPage() {
                   <TableCell align="right">{row.total_deductions}</TableCell>
                   <TableCell align="right">
                     <strong>{row.net_pay}</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    {(row.payment_status || "not_requested").toString().replace("_", " ")}
                   </TableCell>
                 </TableRow>
               ))}

@@ -3529,7 +3529,8 @@
                   "Finalize the pay run in Schedulaa, load it in Payroll Preview, and click Sync to QuickBooks.",
                   "Schedulaa posts a balanced Journal Entry (wages/vacation/tips/commissions debited; income tax, CPP/EI, FICA/Medicare, tips payable, and net pay credited).",
                   "Class/Location tags are attached automatically when departments are mapped.",
-                  "No manual edits are required inside QuickBooks."
+                  "No manual edits are required inside QuickBooks.",
+                  "If you prefer Zapier-driven payroll workflows instead of native sync, add an Event hook for “When a payroll payment is requested” and handle journals/approvals in Zapier."
                 ]
               },
               {
@@ -3626,7 +3627,8 @@
                 "items": [
                   "Finalize payroll in Schedulaa, load the run, and click Sync to Xero.",
                   "Schedulaa sends a balanced journal (wages + employer portions + deductions + net pay + tips payable).",
-                  "Tracking categories are attached per department or fall back to your default tracking selection."
+                  "Tracking categories are attached per department or fall back to your default tracking selection.",
+                  "If you want Zapier to orchestrate payroll instead of native sync, add an Event hook for “When a payroll payment is requested” and let Zapier create journals/approvals."
                 ]
               },
               {

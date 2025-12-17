@@ -189,14 +189,6 @@ const BlogPage = () => {
         </Button>
       </Stack>
 
-      <FeatureCardShowcase
-        eyebrow="What's inside"
-        title="One platform, endless possibilities"
-        subtitle="Schedulaa unites booking, payroll, websites, analytics, and automation so your team can operate from one command center."
-        cards={highlightCards}
-        cardContentAlign="center"
-      />
-
       <Box component="article" sx={{ px: { xs: 2, md: 6 }, py: { xs: 8, md: 12 }, maxWidth: 960, mx: "auto" }}>
         <Stack spacing={4}>
           {articleParagraphs.map((paragraph, index) => (
@@ -225,6 +217,14 @@ const BlogPage = () => {
           </Stack>
         </Stack>
       </Box>
+
+      <FeatureCardShowcase
+        eyebrow="What's inside"
+        title="One platform, endless possibilities"
+        subtitle="Schedulaa unites booking, payroll, websites, analytics, and automation so your team can operate from one command center."
+        cards={highlightCards}
+        cardContentAlign="center"
+      />
 
       <Box sx={{ px: { xs: 2, md: 6 }, pb: { xs: 8, md: 10 } }}>
         <Typography variant="h5" fontWeight={800} sx={{ mb: 3 }}>
