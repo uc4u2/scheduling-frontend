@@ -130,6 +130,9 @@ const EmployeeProfileForm = ({ token }) => {
   const [docUploading, setDocUploading] = useState(false);
   const [docUploadError, setDocUploadError] = useState("");
   const [docUploadSuccess, setDocUploadSuccess] = useState(false);
+  const [onboardingSending, setOnboardingSending] = useState(false);
+  const [onboardingSendError, setOnboardingSendError] = useState("");
+  const [onboardingSendSuccess, setOnboardingSendSuccess] = useState(false);
   const [payrollExpanded, setPayrollExpanded] = useState(true);
   const [retirementPlan, setRetirementPlan] = useState(null);
   const [retirementElection, setRetirementElection] = useState({
@@ -369,6 +372,24 @@ const FRONTEND_ORIGIN =
       setDocUploadError("Upload failed. Please try again.");
     } finally {
       setDocUploading(false);
+    }
+  };
+
+  const handleSendOnboardingViaZapier = async () => {
+    if (!employee || !selectedId) return;
+    setOnboardingSendError("");
+    setOnboardingSendSuccess(false);
+    setOnboardingSending(true);
+    try {
+      await api.post(`/manager/employees/${selectedId}/onboarding/zapier`, {
+        context: { source: "employee_profile" },
+      });
+      setOnboardingSendSuccess(true);
+    } catch (err) {
+      console.error("Failed to send onboarding via Zapier", err);
+      setOnboardingSendError(err?.response?.data?.error || "Failed to send onboarding event to Zapier.");
+    } finally {
+      setOnboardingSending(false);
     }
   };
 
@@ -1112,6 +1133,18 @@ const FRONTEND_ORIGIN =
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={1}>
+                <Tooltip title="Triggers onboarding.started for this employee (Zapier can send contracts and start onboarding workflows)">
+                  <span>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={onboardingSending || !employee}
+                      onClick={handleSendOnboardingViaZapier}
+                    >
+                      {onboardingSending ? "Sending…" : "Send via Zapier"}
+                    </Button>
+                  </span>
+                </Tooltip>
                 <Button
                   variant="outlined"
                   size="small"
@@ -1132,6 +1165,16 @@ const FRONTEND_ORIGIN =
               </Stack>
             </Stack>
             <Divider sx={{ mb: 2 }} />
+            {onboardingSendError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {onboardingSendError}
+              </Alert>
+            )}
+            {onboardingSendSuccess && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                Onboarding event sent. Your Zapier hook should receive <b>onboarding.started</b> for this employee.
+              </Alert>
+            )}
             {showImageHelp && (
               <Paper
                 variant="outlined"
@@ -1139,25 +1182,49 @@ const FRONTEND_ORIGIN =
               >
                 <Stack spacing={1}>
                   <Typography variant="subtitle2" fontWeight={600}>
-                    Quick guide: send contracts via Zapier and e-sign
+                    Quick guide: send contracts via Zapier + e-sign (DocuSign/SignWell/Zoho Sign)
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    1) In Zapier, create a Zap: Trigger = Webhooks by Zapier → Catch Hook. Copy the Hook URL.
+                    This section stores signed PDFs on the employee profile after your e-sign tool finishes. Employees don’t upload these themselves.
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    2) In Schedulaa: Settings → Zapier → Event hooks. Paste the URL. Event type = onboarding.started. Save.
+                    Step 0 — Create (or copy) your Schedulaa Zapier API key
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    3) In that Zap, add your e-sign app (SignWell, DocuSign, Zoho Sign) to send a template using the employee name/email from the payload.
+                    In Schedulaa → Zapier tab → Zapier API keys, create/copy the key. You’ll use it only for Zapier actions/callbacks (Zapier → Schedulaa).
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    4) Create a second Zap: Trigger = your e-sign app “Document completed”. Action = Schedulaa → attach_document (POST /zapier/employees/:id/documents) with employee_id, file_url, name, signed_at.
+                    Step 1 — Create a Zapier trigger (Schedulaa → Zapier)
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    5) Back in Schedulaa, click “Send via Zapier” on the employee. Contracts go out; once signed, the PDF will appear in this list.
+                    In Zapier, create a Zap with Webhooks by Zapier → Catch Hook. Copy the Hook URL.
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Tip: Share this employee’s ID with your Zap so the attach_document action targets the correct profile.
+                    Step 2 — Register the hook in Schedulaa
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    In Schedulaa → Zapier tab → Event hooks, paste the Hook URL and select event type <b>onboarding.started</b>. Save.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Step 3 — Trigger it for the right employee
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    On this Employee Profile, click <b>Send via Zapier</b>. Schedulaa sends <b>onboarding.started</b> for this employee (name/email/employee_id) to your Zapier hook.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Step 4 — Send the contract from Zapier
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Add your e-sign app action (DocuSign/SignWell/Zoho Sign) and send the template using the employee name/email from the webhook payload.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Step 5 — When signed, attach the PDF back to this employee
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Create a second Zap: Trigger = your e-sign app “Document completed” → Action = Schedulaa <b>attach_document</b>. Use your Zapier API key from Step 0, and send: employee_id, file_url, name, signed_at.
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Tip: The employee_id is shown on this page and in the onboarding.started payload, so the signed PDF attaches to the correct profile.
                   </Typography>
                 </Stack>
               </Paper>

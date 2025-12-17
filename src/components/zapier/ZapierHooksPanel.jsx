@@ -24,6 +24,8 @@ const HOOK_EVENT_OPTIONS = [
   { group: "Bookings", key: "booking.cancelled", label: "When a booking is cancelled" },
   { group: "Bookings", key: "booking.updated", label: "When a booking is rescheduled/updated" },
   { group: "Bookings", key: "booking.no_show", label: "When a client does not show up" },
+  { group: "Onboarding", key: "onboarding.started", label: "When onboarding is started for an employee (e-sign/contracts)" },
+  { group: "Onboarding", key: "onboarding.document_signed", label: "When an onboarding document is attached/signed" },
   { group: "Leave", key: "leave.approved", label: "When a leave request is approved" },
   { group: "Shifts", key: "swap.requested", label: "When a shift swap is requested" },
   { group: "Time", key: "timeclock.clock_in", label: "When a staff member clocks in" },
@@ -146,7 +148,7 @@ const ZapierHooksPanel = () => {
           SelectProps={{ MenuProps: { disablePortal: true } }}
           sx={{ maxWidth: 320 }}
         >
-          {["Bookings", "Shifts", "Time", "Leave", "Payroll", "Payments"]
+          {["Bookings", "Onboarding", "Shifts", "Time", "Leave", "Payroll", "Payments"]
             .filter((group) => HOOK_EVENT_OPTIONS.some((opt) => opt.group === group))
             .map((group) => [
               <MenuItem key={`${group}-header`} disabled dense>
