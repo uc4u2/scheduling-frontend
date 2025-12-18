@@ -1371,7 +1371,7 @@ return (
               <Button variant="outlined" onClick={downloadPayslipsZip} disabled={exporting}>
                 Download payslips ZIP (PDF)
               </Button>
-              <Tooltip title="Exports earnings + pay period info for payroll provider import. Taxes and net pay are calculated by your payroll provider.">
+              <Tooltip title="Exports paid earnings + pay period info for payroll provider import. Gross pay in this file equals the sum of earnings columns. Vacation accrual is excluded unless paid out. Taxes and net pay are calculated by your payroll provider.">
                 <span>
                   <Button variant="outlined" onClick={downloadProviderImportCsv} disabled={exporting}>
                     Download provider import CSV
