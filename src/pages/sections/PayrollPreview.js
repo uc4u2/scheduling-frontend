@@ -277,9 +277,9 @@ export default function PayrollPreview({
       "end_date";
     const offset =
       Number(
-        companyPayDateOffsetDays ??
+        (companyPayDateOffsetDays ??
           companyProfile?.payroll_pay_date_offset_days ??
-          0
+          0)
       ) || 0;
 
     if (String(rule) === "offset_days") {
@@ -1042,25 +1042,38 @@ const handleRecalculate = () => {
         </Grid>
 
         {/* Optional earnings / allowances */}
-        {[
-          { key: "vacation_pay", label: "Vacation Pay ($)" },
-          { key: "commission", label: "Commission ($)" },
-          { key: "bonus", label: "Bonus ($)" },
-          { key: "tip", label: "Tip / Gratuity ($)" },
-          { key: "parental_insurance", label: "Parental Insurance ($)" },
-          { key: "travel_allowance", label: "Travel Allowance ($)" },
-          { key: "parental_top_up", label: "Parental Leave Top-up ($)" },
-          { key: "family_bonus", label: "Family Bonus ($)" },
-          { key: "tax_credit", label: "Tax Credit ($)" },
-          { key: "medical_insurance", label: "Medical Insurance ($)", badge: true },
-          { key: "dental_insurance", label: "Dental Insurance ($)", badge: true },
-          { key: "life_insurance", label: "Life Insurance ($)", badge: true },
-          { key: "retirement_amount", label: "Retirement (employee) ($)", badge: true },
-          { key: "deduction", label: "Other Deduction ($)", badge: true },
-          { key: "shift_premium", label: "Shift Premium ($)" },
-          { key: "union_dues", label: "Union Dues ($)", badge: true },
-          { key: "garnishment", label: "Garnishment ($)", badge: true },
-        ].map(({ key, label, badge }) => (
+        {(() => {
+          const includeVacationInGross =
+            payroll.include_vacation_in_gross === true ||
+            payroll.include_vacation_in_gross === 1 ||
+            payroll.include_vacation_in_gross === "true";
+          const vacationPayLabel = includeVacationInGross
+            ? "Vacation Pay ($)"
+            : "Vacation Pay (accrued — not paid this period) ($)";
+          const vacationPayHelper = includeVacationInGross
+            ? "Paid out this period."
+            : "Accrued this period; not included in net pay.";
+
+          return [
+            { key: "vacation_pay", label: vacationPayLabel, helperText: vacationPayHelper },
+            { key: "commission", label: "Commission ($)" },
+            { key: "bonus", label: "Bonus ($)" },
+            { key: "tip", label: "Tip / Gratuity ($)" },
+            { key: "parental_insurance", label: "Parental Insurance ($)" },
+            { key: "travel_allowance", label: "Travel Allowance ($)" },
+            { key: "parental_top_up", label: "Parental Leave Top-up ($)" },
+            { key: "family_bonus", label: "Family Bonus ($)" },
+            { key: "tax_credit", label: "Tax Credit ($)" },
+            { key: "medical_insurance", label: "Medical Insurance ($)", badge: true },
+            { key: "dental_insurance", label: "Dental Insurance ($)", badge: true },
+            { key: "life_insurance", label: "Life Insurance ($)", badge: true },
+            { key: "retirement_amount", label: "Retirement (employee) ($)", badge: true },
+            { key: "deduction", label: "Other Deduction ($)", badge: true },
+            { key: "shift_premium", label: "Shift Premium ($)" },
+            { key: "union_dues", label: "Union Dues ($)", badge: true },
+            { key: "garnishment", label: "Garnishment ($)", badge: true },
+          ];
+        })().map(({ key, label, badge, helperText }) => (
           <Grid item xs={12} md={3} key={key}>
             <Stack spacing={0.5}>
               <TextField
@@ -1070,18 +1083,20 @@ const handleRecalculate = () => {
                 onChange={(e) => handleFieldChange(key, e.target.value)}
                 fullWidth
                 helperText={
-                  {
-                    shift_premium: "Taxable extra pay for night/evening/weekend work.",
-                    union_dues: "Employee-paid union dues. Reduces net; goes to T4 Box 44.",
-                    garnishment: "Flat legal deduction (e.g., child support). No remittance automation.",
-                    non_taxable_reimbursement: "Reimbursed to employee but not taxed.",
-                  }[key] || ""
+                  helperText != null
+                    ? helperText
+                    : {
+                        shift_premium: "Taxable extra pay for night/evening/weekend work.",
+                        union_dues: "Employee-paid union dues. Reduces net; goes to T4 Box 44.",
+                        garnishment: "Flat legal deduction (e.g., child support). No remittance automation.",
+                        non_taxable_reimbursement: "Reimbursed to employee but not taxed.",
+                      }[key] || ""
                 }
                 InputProps={{ inputProps: { step: "0.01" } }}
               />
               {badge ? (
                 <Tooltip title="Edit Employee Profile → Payroll & compliance">
-                  <FormHelperText sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <FormHelperText component="div" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                     <Chip size="small" label="Default from Employee Profile" variant="outlined" />
                   </FormHelperText>
                 </Tooltip>
