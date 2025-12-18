@@ -223,6 +223,8 @@ const paymentStatusMeta = (status) => {
 export default function PayrollPreview({
   payroll,
   region,
+  companyPayDateRule,
+  companyPayDateOffsetDays,
   autoRecalc,
   setAutoRecalc,
   handleFieldChange,
@@ -262,6 +264,34 @@ export default function PayrollPreview({
   const hasFinalized = Boolean(
     finalizedId || payroll?.finalized === true || payroll?.finalized_at
   );
+
+  const computePayDate = () => {
+    const endDate = payroll?.end_date;
+    if (!endDate) return "";
+    const fromFinalized = payroll?.pay_date;
+    if (fromFinalized) return String(fromFinalized).slice(0, 10);
+
+    const rule =
+      companyPayDateRule ||
+      companyProfile?.payroll_pay_date_rule ||
+      "end_date";
+    const offset =
+      Number(
+        companyPayDateOffsetDays ??
+          companyProfile?.payroll_pay_date_offset_days ??
+          0
+      ) || 0;
+
+    if (String(rule) === "offset_days") {
+      const d = new Date(`${endDate}T00:00:00Z`);
+      if (!Number.isNaN(d.getTime())) {
+        d.setUTCDate(d.getUTCDate() + Math.max(0, Math.min(14, offset)));
+        return d.toISOString().slice(0, 10);
+      }
+    }
+    return String(endDate).slice(0, 10);
+  };
+  const payDateDisplay = computePayDate();
 
   useEffect(() => {
     let active = true;
@@ -928,6 +958,13 @@ const handleRecalculate = () => {
         </Tooltip>
       </Stack>
 
+      {(payroll?.start_date || payroll?.end_date) && (
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Period: {payroll?.start_date || "--"} → {payroll?.end_date || "--"}
+          {payDateDisplay ? ` • Pay date: ${payDateDisplay}` : ""}
+        </Typography>
+      )}
+
       <Divider sx={{ my: 2 }} />
       
       {payroll.on_parental_leave && (
@@ -1522,14 +1559,13 @@ const handleRecalculate = () => {
                       )}
                       <MenuItem value="quickbooks">QuickBooks — posts balanced payroll journal (native export)</MenuItem>
                       <MenuItem value="xero">Xero — posts balanced payroll journal (native export)</MenuItem>
-                      <MenuItem value="zapier">Zapier / automation (approvals, CSV/SFTP, payouts, custom)</MenuItem>
-                      <MenuItem value="stripe">Payout – Stripe/Wise</MenuItem>
+                      <MenuItem value="zapier">Zapier / automation (approvals, journals, CSV/SFTP, custom)</MenuItem>
                       <MenuItem value="approval">Approval – Slack/Email</MenuItem>
                       <MenuItem value="manual">Manual / Other</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
-                {paymentPartner === "zapier" || paymentPartner === "manual" || paymentPartner === "stripe" || paymentPartner === "approval" ? (
+                {paymentPartner === "zapier" || paymentPartner === "manual" || paymentPartner === "approval" ? (
                   <Grid item xs={12} md={6}>
                     <Typography variant="body2" color="text.secondary">
                       {companyProfile?.payroll_provider_employee_id_label || "External employee ID"}:
@@ -1590,14 +1626,14 @@ const handleRecalculate = () => {
                   }
                   onClick={requestPayment}
                 >
-                  {paymentLoading ? <CircularProgress size={18} /> : "Send payroll to Zapier"}
+                  {paymentLoading ? <CircularProgress size={18} /> : "Send payroll workflow"}
                 </Button>
                 <Tooltip
-                  title="Zapier can sync QuickBooks/Xero, start approvals (Slack/Email), export CSV/SFTP, or trigger payout rails like Stripe/Wise."
+                  title="Zapier can sync accounting (QuickBooks/Xero), start approvals (Slack/Email), export CSV/SFTP, or trigger custom workflows."
                   placement="top"
                 >
                   <Typography variant="caption" color="text.secondary" sx={{ cursor: "help" }}>
-                    Sends <code>payroll.payment_requested</code> to Zapier. Use Zapier to drive accounting, approvals, or payouts; callbacks update status here.
+                    Runs the selected workflow target. Zapier targets emit <code>payroll.payment_requested</code>; native targets run the built-in export.
                   </Typography>
                 </Tooltip>
               </Stack>

@@ -15,7 +15,7 @@ const TermsPage = () => (
           Terms of Service
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: November 2025
+          Last updated: December 2025
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -35,6 +35,9 @@ const TermsPage = () => (
         <Typography variant="body1" color="text.secondary">
           You may use Schedulaa to run scheduling, payroll, website, and commerce workflows for your business. Prohibited activities include illegal content, harassment, spam, infringement, reverse engineering, or circumventing security. We may suspend or terminate accounts that violate these Terms or applicable law.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          You may not impersonate Schedulaa or any official entity, use misleading company names, slugs, public URLs, or domains, or engage in activity that could reasonably harm Schedulaa's brand, reputation, or search visibility.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5" component="h2">4. Subscription and payment</Typography>
@@ -51,7 +54,16 @@ const TermsPage = () => (
       <Stack spacing={2}>
         <Typography variant="h5" component="h2">6. Content & intellectual property</Typography>
         <Typography variant="body1" color="text.secondary">
-          You retain ownership of content you upload. By using Schedulaa you grant us a limited license to host, store, and display that content for the purpose of operating the Services. Schedulaa, logos, designs, documentation, and software are owned by Photo Artisto Corp.
+          You retain ownership of content you upload. By using Schedulaa you grant us a limited license to host, store, and display that content for the purpose of operating the Services. You are solely responsible for all content you publish, including public-facing pages and websites. Schedulaa, logos, designs, documentation, and software are owned by Photo Artisto Corp.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          We do not guarantee search indexing, ranking, or visibility; search engines decide independently.
+        </Typography>
+      </Stack>
+      <Stack spacing={2}>
+        <Typography variant="h5" component="h2">6A. Company Pages, URLs, and Domains</Typography>
+        <Typography variant="body1" color="text.secondary">
+          Company pages, public URLs, hosted websites, and connected custom domains are user-generated and are not reviewed, monitored, or endorsed by Schedulaa. We may disable, remove, de-index, block, or restrict any company page, URL, slug, or domain at our sole discretion.
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -82,6 +94,9 @@ const TermsPage = () => (
         <Typography variant="h5" component="h2">11. Termination</Typography>
         <Typography variant="body1" color="text.secondary">
           You may cancel at any time. Fees already paid remain due. We may suspend or terminate access for violations of these Terms.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          We may take immediate action without notice, including removing content, disabling public pages or domains, or terminating accounts, when necessary to protect users, the platform, our SEO/brand, or to comply with law.
         </Typography>
       </Stack>
       <Stack spacing={2}>

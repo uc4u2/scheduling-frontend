@@ -7,6 +7,7 @@ import {
   IconButton,
   Divider,
   Box,
+  Grid,
   Typography,
   ToggleButton,
   ToggleButtonGroup,
@@ -15,6 +16,16 @@ import {
   Alert,
   CircularProgress,
   Button,
+  TextField,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Checkbox,
+  FormControlLabel,
   Table,
   TableHead,
   TableBody,
@@ -35,6 +46,7 @@ import { savePayroll, exportPayroll } from "./netpay";
 import { vacationIncludedByDefault, defaultVacationPercent } from "./utils/payrollRules";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import PayrollScenarios from "./PayrollScenarios";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -77,11 +89,25 @@ export default function Payroll({ token }) {
   /* ── domain state ── */
   const [recruiters, setRecruiters] = useState([]);
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [exportAllEmployees, setExportAllEmployees] = useState(true);
+  const [exportEmployeeIds, setExportEmployeeIds] = useState([]);
+  const [exporting, setExporting] = useState(false);
+  const [missingExternalEmployees, setMissingExternalEmployees] = useState([]);
+  const [providerCsvMismatchEmployees, setProviderCsvMismatchEmployees] = useState([]);
+  const [expensePreset, setExpensePreset] = useState("this_year");
+  const [expenseStartDate, setExpenseStartDate] = useState(dayjs().startOf("year").format("YYYY-MM-DD"));
+  const [expenseEndDate, setExpenseEndDate] = useState(dayjs().endOf("year").format("YYYY-MM-DD"));
+  const [expenseRegion, setExpenseRegion] = useState("all");
+  const [expenseLoading, setExpenseLoading] = useState(false);
+  const [expenseReport, setExpenseReport] = useState(null);
   const [region, setRegion] = useState("ca");
   const [month, setMonth] = useState(dayjs().format("YYYY-MM"));
   const [payFrequency, setPayFrequency] = useState("biweekly");
   const [payFreqTouched, setPayFreqTouched] = useState(false);
   const [recruiterProfile, setRecruiterProfile] = useState(null);
+  const [companyPayDateRule, setCompanyPayDateRule] = useState("end_date");
+  const [companyPayDateOffsetDays, setCompanyPayDateOffsetDays] = useState(0);
   
 
   const [payroll, setPayroll] = useState(null);
@@ -108,25 +134,31 @@ export default function Payroll({ token }) {
 useEffect(() => {
   fetchRecruiters();
 }, []);
-useEffect(() => {
-  // load company defaults
-  const loadPrefs = async () => {
-    try {
-      // Prefer company profile (adds default_pay_frequency) and fall back silently
-      const res = await axios.get(`${API_URL}/admin/company-profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const defaultPayFreq =
-        res.data?.default_pay_frequency || res.data?.company_default_pay_frequency;
-      if (defaultPayFreq && !payFreqTouched) {
-        setPayFrequency(defaultPayFreq);
+  useEffect(() => {
+    // load company defaults
+    const loadPrefs = async () => {
+      try {
+        // Prefer company profile (adds default_pay_frequency) and fall back silently
+        const res = await axios.get(`${API_URL}/admin/company-profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const defaultPayFreq =
+          res.data?.default_pay_frequency || res.data?.company_default_pay_frequency;
+        if (defaultPayFreq && !payFreqTouched) {
+          setPayFrequency(defaultPayFreq);
+        }
+        if (res.data?.payroll_pay_date_rule) {
+          setCompanyPayDateRule(res.data.payroll_pay_date_rule);
+        }
+        if (res.data?.payroll_pay_date_offset_days !== undefined && res.data?.payroll_pay_date_offset_days !== null) {
+          setCompanyPayDateOffsetDays(res.data.payroll_pay_date_offset_days);
+        }
+      } catch (err) {
+        console.error("Failed to load company defaults", err?.response?.data || err.message);
       }
-    } catch (err) {
-      console.error("Failed to load company defaults", err?.response?.data || err.message);
-    }
-  };
-  loadPrefs();
-}, [token, payFreqTouched]);
+    };
+    loadPrefs();
+  }, [token, payFreqTouched]);
 
 useEffect(() => {
   if (!selectedRecruiter) {
@@ -202,6 +234,246 @@ useEffect(() => {
     } catch (error) {
       console.error("Failed to fetch recruiters", error);
       showMessage("❌ Could not load recruiter list.", "error");
+    }
+  };
+
+  const filteredRecruiters = departmentFilter
+    ? recruiters.filter((r) => String(r.department_id) === String(departmentFilter))
+    : recruiters;
+
+  const effectiveExportEmployeeIds = exportAllEmployees
+    ? []
+    : exportEmployeeIds.length
+    ? exportEmployeeIds
+    : selectedRecruiter
+    ? [selectedRecruiter]
+    : [];
+
+  const buildExportParams = () => {
+    if (!region || !startDate || !endDate) return null;
+    return {
+      region,
+      start_date: startDate,
+      end_date: endDate,
+      department_id: departmentFilter || undefined,
+      employee_ids: effectiveExportEmployeeIds,
+    };
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const downloadFinalizedCsv = async () => {
+    const params = buildExportParams();
+    if (!params) {
+      showMessage("Select a region and pay period first.", "warning");
+      return;
+    }
+    setExporting(true);
+    try {
+      setMissingExternalEmployees([]);
+      const res = await axios.get(`${API_URL}/automation/payroll/export-finalized`, {
+        params: {
+          recruiter_id: params.employee_ids || [],
+          region: params.region,
+          start_date: params.start_date,
+          end_date: params.end_date,
+          format: "csv",
+        },
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      downloadBlob(res.data, `finalized_payroll_${params.region}_${params.start_date}_${params.end_date}.csv`);
+    } catch (err) {
+      console.error(err);
+      showMessage("Export failed.", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const downloadSummaryCsv = async () => {
+    const params = buildExportParams();
+    if (!params) {
+      showMessage("Select a region and pay period first.", "warning");
+      return;
+    }
+    setExporting(true);
+    try {
+      setMissingExternalEmployees([]);
+      const res = await axios.get(`${API_URL}/automation/payroll/export-finalized-summary-csv`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+        paramsSerializer: (p) => {
+          const sp = new URLSearchParams();
+          Object.entries(p).forEach(([k, v]) => {
+            if (v === undefined || v === null || v === "") return;
+            if (Array.isArray(v)) v.forEach((x) => sp.append(k, x));
+            else sp.set(k, v);
+          });
+          return sp.toString();
+        },
+      });
+      downloadBlob(res.data, `payroll_summary_${params.region}_${params.start_date}_${params.end_date}.csv`);
+    } catch (err) {
+      console.error(err);
+      showMessage("Summary export failed.", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const downloadPayslipsZip = async () => {
+    const params = buildExportParams();
+    if (!params) {
+      showMessage("Select a region and pay period first.", "warning");
+      return;
+    }
+    setExporting(true);
+    try {
+      const res = await axios.get(`${API_URL}/automation/payroll/export-finalized-payslips-zip`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+        paramsSerializer: (p) => {
+          const sp = new URLSearchParams();
+          Object.entries(p).forEach(([k, v]) => {
+            if (v === undefined || v === null || v === "") return;
+            if (Array.isArray(v)) v.forEach((x) => sp.append(k, x));
+            else sp.set(k, v);
+          });
+          return sp.toString();
+        },
+      });
+      downloadBlob(res.data, `payslips_${params.region}_${params.start_date}_${params.end_date}.zip`);
+    } catch (err) {
+      console.error(err);
+      showMessage("Payslip ZIP export failed.", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const downloadProviderImportCsv = async () => {
+    const params = buildExportParams();
+    if (!params) {
+      showMessage("Select a region and pay period first.", "warning");
+      return;
+    }
+    setExporting(true);
+    try {
+      setMissingExternalEmployees([]);
+      setProviderCsvMismatchEmployees([]);
+      const res = await axios.get(`${API_URL}/automation/payroll/export-finalized-provider-csv`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+        paramsSerializer: (p) => {
+          const sp = new URLSearchParams();
+          Object.entries(p).forEach(([k, v]) => {
+            if (v === undefined || v === null || v === "") return;
+            if (Array.isArray(v)) v.forEach((x) => sp.append(k, x));
+            else sp.set(k, v);
+          });
+          return sp.toString();
+        },
+      });
+      downloadBlob(res.data, `provider_import_${params.region}_${params.start_date}_${params.end_date}.csv`);
+    } catch (err) {
+      console.error(err);
+      try {
+        const blob = err?.response?.data;
+        if (blob instanceof Blob) {
+          const text = await blob.text();
+          const parsed = JSON.parse(text);
+          if (parsed?.error === "missing_external_employee_id" && Array.isArray(parsed?.employees)) {
+            setMissingExternalEmployees(parsed.employees);
+            showMessage("Provider export blocked: missing external employee IDs.", "warning");
+          } else if (
+            parsed?.error === "gross_pay_mismatch_sum_of_earnings" &&
+            Array.isArray(parsed?.employees)
+          ) {
+            setProviderCsvMismatchEmployees(parsed.employees);
+            showMessage("Provider export blocked: gross pay does not match earnings columns.", "warning");
+          } else if (parsed?.error === "no_provider_import_rows_after_filters") {
+            showMessage("No provider import rows found (all employees had 0 gross pay or were not finalized).", "warning");
+          } else {
+            showMessage(parsed?.error || "Provider CSV export failed.", "error");
+          }
+        } else {
+          showMessage("Provider CSV export failed.", "error");
+        }
+      } catch {
+        showMessage("Provider CSV export failed.", "error");
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const applyExpensePreset = (preset) => {
+    const now = dayjs();
+    if (preset === "this_year") {
+      setExpenseStartDate(now.startOf("year").format("YYYY-MM-DD"));
+      setExpenseEndDate(now.endOf("year").format("YYYY-MM-DD"));
+      return;
+    }
+    if (preset === "last_year") {
+      const last = now.subtract(1, "year");
+      setExpenseStartDate(last.startOf("year").format("YYYY-MM-DD"));
+      setExpenseEndDate(last.endOf("year").format("YYYY-MM-DD"));
+      return;
+    }
+    if (preset === "this_quarter") {
+      setExpenseStartDate(now.startOf("quarter").format("YYYY-MM-DD"));
+      setExpenseEndDate(now.endOf("quarter").format("YYYY-MM-DD"));
+      return;
+    }
+    if (preset === "last_quarter") {
+      const last = now.subtract(1, "quarter");
+      setExpenseStartDate(last.startOf("quarter").format("YYYY-MM-DD"));
+      setExpenseEndDate(last.endOf("quarter").format("YYYY-MM-DD"));
+      return;
+    }
+    // custom: do nothing
+  };
+
+  useEffect(() => {
+    applyExpensePreset(expensePreset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expensePreset]);
+
+  const formatMoney = (val) => (Number(val || 0)).toFixed(2);
+
+  const loadExpenseReport = async () => {
+    if (!expenseStartDate || !expenseEndDate) {
+      showMessage("Select a start and end date.", "warning");
+      return;
+    }
+    setExpenseLoading(true);
+    try {
+      const params = { start_date: expenseStartDate, end_date: expenseEndDate };
+      if (expenseRegion && expenseRegion !== "all") params.region = expenseRegion;
+      if (departmentFilter) params.department_id = departmentFilter;
+      const res = await axios.get(`${API_URL}/automation/payroll/company-expense-report`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setExpenseReport(res.data || null);
+    } catch (err) {
+      console.error(err);
+      showMessage("Failed to generate expense report.", "error");
+    } finally {
+      setExpenseLoading(false);
     }
   };
 
@@ -953,6 +1225,12 @@ return (
         recruiters={recruiters}
         selectedRecruiter={selectedRecruiter}
         setSelectedRecruiter={setSelectedRecruiter}
+        departmentFilter={departmentFilter}
+        setDepartmentFilter={(v) => {
+          setDepartmentFilter(v);
+          setExportEmployeeIds([]);
+          setExportAllEmployees(true);
+        }}
         region={region}
         setRegion={setRegion}
         startDate={startDate}
@@ -978,6 +1256,8 @@ return (
       <PayrollPreview
         payroll={payroll}
         region={region}
+        companyPayDateRule={companyPayDateRule}
+        companyPayDateOffsetDays={companyPayDateOffsetDays}
         autoRecalc={autoRecalc}
         setAutoRecalc={setAutoRecalc}
         handleFieldChange={handleFieldChange}
@@ -992,6 +1272,382 @@ return (
         snackbar={snackbar}
         setSnackbar={setSnackbar}
       />
+    )}
+
+    {viewMode === "preview" && (
+      <Accordion sx={{ mt: 2 }} defaultExpanded={false}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1">Advanced: Exports</Typography>
+        </AccordionSummary>
+      <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Download finalized payroll exports for the selected pay period. These exports do not initiate bank payments or direct deposit.
+          </Typography>
+
+          <Stack spacing={2}>
+            {missingExternalEmployees.length > 0 && (
+              <Alert severity="warning">
+                Missing external employee IDs for provider import:
+                <Box component="ul" sx={{ m: 0, pl: 3 }}>
+                  {missingExternalEmployees.slice(0, 10).map((e) => (
+                    <li key={e.employee_id || e.employee_email || e.employee_name}>
+                      {(e.employee_name || `Employee #${e.employee_id}`) + (e.employee_email ? ` (${e.employee_email})` : "")}
+                    </li>
+                  ))}
+                  {missingExternalEmployees.length > 10 && (
+                    <li>…and {missingExternalEmployees.length - 10} more</li>
+                  )}
+                </Box>
+              </Alert>
+            )}
+            {providerCsvMismatchEmployees.length > 0 && (
+              <Alert severity="warning">
+                Provider import export blocked: gross pay does not match the sum of earnings columns.
+                <Box component="ul" sx={{ m: 0, pl: 3 }}>
+                  {providerCsvMismatchEmployees.slice(0, 10).map((e) => (
+                    <li key={e.employee_id || e.employee_email || e.employee_name}>
+                      {(e.employee_name || `Employee #${e.employee_id}`) +
+                        (e.employee_email ? ` (${e.employee_email})` : "") +
+                        (e.gross_pay !== undefined && e.sum_earnings !== undefined
+                          ? ` — gross ${e.gross_pay}, earnings sum ${e.sum_earnings}`
+                          : "")}
+                    </li>
+                  ))}
+                  {providerCsvMismatchEmployees.length > 10 && (
+                    <li>…and {providerCsvMismatchEmployees.length - 10} more</li>
+                  )}
+                </Box>
+              </Alert>
+            )}
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={exportAllEmployees}
+                  onChange={(e) => {
+                    setExportAllEmployees(e.target.checked);
+                    if (e.target.checked) setExportEmployeeIds([]);
+                  }}
+                />
+              }
+              label={departmentFilter ? "All employees in selected department" : "All employees"}
+            />
+
+            {!exportAllEmployees && (
+              <FormControl fullWidth>
+                <InputLabel id="export-employees-label">Employees</InputLabel>
+                <Select
+                  labelId="export-employees-label"
+                  label="Employees"
+                  multiple
+                  value={exportEmployeeIds}
+                  onChange={(e) => setExportEmployeeIds(e.target.value)}
+                  renderValue={(selected) =>
+                    (selected || [])
+                      .map((id) => {
+                        const r = filteredRecruiters.find((x) => String(x.id) === String(id));
+                        return r ? `${r.first_name} ${r.last_name}` : id;
+                      })
+                      .join(", ")
+                  }
+                >
+                  {filteredRecruiters.map((r) => (
+                    <MenuItem key={r.id} value={String(r.id)}>
+                      <Checkbox checked={exportEmployeeIds.includes(String(r.id))} />
+                      {r.first_name} {r.last_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+              <Button variant="contained" onClick={downloadSummaryCsv} disabled={exporting}>
+                {exporting ? <CircularProgress size={18} /> : "Download payroll summary CSV"}
+              </Button>
+              <Button variant="outlined" onClick={downloadFinalizedCsv} disabled={exporting}>
+                Accountant CSV (full raw export)
+              </Button>
+              <Button variant="outlined" onClick={downloadPayslipsZip} disabled={exporting}>
+                Download payslips ZIP (PDF)
+              </Button>
+              <Tooltip title="Exports earnings + pay period info for payroll provider import. Taxes and net pay are calculated by your payroll provider.">
+                <span>
+                  <Button variant="outlined" onClick={downloadProviderImportCsv} disabled={exporting}>
+                    Download provider import CSV
+                  </Button>
+                </span>
+              </Tooltip>
+            </Stack>
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
+    )}
+
+    {viewMode === "preview" && (
+      <Accordion sx={{ mt: 2 }} defaultExpanded={false}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="subtitle1">Company Payroll Reports</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Company-level payroll expense totals from finalized payroll only (gross, employer taxes, employer benefits, and withholding totals) for a date range.
+          </Typography>
+          {!!departmentFilter && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Department filter is active and will be applied to this report.
+            </Alert>
+          )}
+
+          <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel id="expense-preset-label">Range</InputLabel>
+                <Select
+                  labelId="expense-preset-label"
+                  label="Range"
+                  value={expensePreset}
+                  onChange={(e) => setExpensePreset(e.target.value)}
+                >
+                  <MenuItem value="this_quarter">This quarter</MenuItem>
+                  <MenuItem value="last_quarter">Last quarter</MenuItem>
+                  <MenuItem value="this_year">This year</MenuItem>
+                  <MenuItem value="last_year">Last year</MenuItem>
+                  <MenuItem value="custom">Custom</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Start date"
+                InputLabelProps={{ shrink: true }}
+                value={expenseStartDate}
+                onChange={(e) => {
+                  setExpensePreset("custom");
+                  setExpenseStartDate(e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                type="date"
+                label="End date"
+                InputLabelProps={{ shrink: true }}
+                value={expenseEndDate}
+                onChange={(e) => {
+                  setExpensePreset("custom");
+                  setExpenseEndDate(e.target.value);
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel id="expense-region-label">Region</InputLabel>
+                <Select
+                  labelId="expense-region-label"
+                  label="Region"
+                  value={expenseRegion}
+                  onChange={(e) => setExpenseRegion(e.target.value)}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="us">US</MenuItem>
+                  <MenuItem value="ca">CA</MenuItem>
+                  <MenuItem value="qc">QC</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={9}>
+              <Stack direction="row" spacing={1} justifyContent="flex-start">
+                <Button variant="contained" onClick={loadExpenseReport} disabled={expenseLoading}>
+                  {expenseLoading ? <CircularProgress size={18} /> : "Generate report"}
+                </Button>
+                <Button
+                  variant="outlined"
+                  disabled={!expenseReport || expenseLoading}
+                  onClick={() => {
+                    try {
+                      const blob = new Blob([JSON.stringify(expenseReport, null, 2)], { type: "application/json" });
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `company_payroll_expense_${expenseRegion}_${expenseStartDate}_${expenseEndDate}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      window.URL.revokeObjectURL(url);
+                    } catch (e) {
+                      console.error("Failed to download report JSON", e);
+                    }
+                  }}
+                >
+                  Download JSON
+                </Button>
+                <Button
+                  variant="outlined"
+                  disabled={!expenseReport || expenseLoading}
+                  onClick={async () => {
+                    try {
+                      const params = {
+                        start_date: expenseStartDate,
+                        end_date: expenseEndDate,
+                        format: "csv",
+                      };
+                      if (expenseRegion && expenseRegion !== "all") params.region = expenseRegion;
+                      if (departmentFilter) params.department_id = departmentFilter;
+                      const resp = await axios.get(`${API_URL}/automation/payroll/company-expense-report`, {
+                        params,
+                        headers: { Authorization: `Bearer ${token}` },
+                        responseType: "blob",
+                      });
+                      const url = window.URL.createObjectURL(resp.data);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `company_payroll_expense_${expenseRegion}_${expenseStartDate}_${expenseEndDate}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      window.URL.revokeObjectURL(url);
+                    } catch (e) {
+                      console.error("Failed to download report CSV", e);
+                    }
+                  }}
+                >
+                  Download CSV
+                </Button>
+              </Stack>
+            </Grid>
+          </Grid>
+
+          {expenseReport && (
+            <Stack spacing={2}>
+              {expenseReport?.warnings?.includes(
+                "multiple_currencies_present_totals_are_reported_per_currency_not_summed"
+              ) && (
+                <Alert severity="warning">
+                  Multiple currencies detected. Totals are shown per currency and are not summed into a single number.
+                </Alert>
+              )}
+
+              <Typography variant="caption" color="text.secondary">
+                Rows: {expenseReport?.counts?.finalized_rows || 0} • Employees:{" "}
+                {expenseReport?.counts?.unique_employees || 0}
+              </Typography>
+
+              {expenseReport?.by_currency &&
+                Object.entries(expenseReport.by_currency).map(([currency, block]) => {
+                  const breakdown = block?.breakdown_by_region || {};
+                  const regionCount = Object.keys(breakdown).length;
+                  return (
+                    <Paper key={currency} variant="outlined" sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                        {currency} totals
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={4}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Total company cost
+                          </Typography>
+                          <Typography variant="h6">
+                            {currency} {formatMoney(block?.totals?.total_company_cost)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Gross + employer taxes + employer benefits
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Gross wages (finalized)
+                          </Typography>
+                          <Typography variant="h6">
+                            {currency} {formatMoney(block?.totals?.gross_pay)}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Employer taxes
+                          </Typography>
+                          <Typography variant="h6">
+                            {currency} {formatMoney(block?.totals?.employer_taxes)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            FICA/Medicare/CPP/QPP/EI/RQAP (if stored)
+                          </Typography>
+                        </Grid>
+
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Employer benefits
+                          </Typography>
+                          <Typography variant="h6">
+                            {currency} {formatMoney(block?.totals?.employer_benefits)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            RRSP/401(k) employer contributions (if stored)
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Employee withholdings
+                          </Typography>
+                          <Typography variant="h6">
+                            {currency} {formatMoney(block?.totals?.employee_withholdings)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Total deductions withheld from employees
+                          </Typography>
+                        </Grid>
+
+                        {regionCount > 1 && (
+                          <Grid item xs={12}>
+                            <Divider sx={{ my: 1 }} />
+                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                              Breakdown by region
+                            </Typography>
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell>Region</TableCell>
+                                  <TableCell align="right">Gross</TableCell>
+                                  <TableCell align="right">Employer taxes</TableCell>
+                                  <TableCell align="right">Employer benefits</TableCell>
+                                  <TableCell align="right">Withholdings</TableCell>
+                                  <TableCell align="right">Rows</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {Object.entries(breakdown).map(([reg, b]) => (
+                                  <TableRow key={`${currency}-${reg}`}>
+                                    <TableCell>{String(reg).toUpperCase()}</TableCell>
+                                    <TableCell align="right">
+                                      {currency} {formatMoney(b.gross_pay)}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      {currency} {formatMoney(b.employer_taxes)}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      {currency} {formatMoney(b.employer_benefits)}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      {currency} {formatMoney(b.employee_withholdings)}
+                                    </TableCell>
+                                    <TableCell align="right">{b.finalized_rows || 0}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Paper>
+                  );
+                })}
+            </Stack>
+          )}
+        </AccordionDetails>
+      </Accordion>
     )}
 
     {viewMode === "history" && selectedRecruiter && (

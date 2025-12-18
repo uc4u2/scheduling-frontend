@@ -89,9 +89,11 @@ const Settings = () => {
       xero: 7,
       quickbooks: 8,
       qb: 8,
-      checkout: 9,
-      payments: 9,
-      'checkout-pro': 9,
+      'integration-activity': 10,
+      activity: 10,
+      checkout: 11,
+      payments: 11,
+      'checkout-pro': 11,
     };
     return map[tabParam] ?? 0;
   }, [tabParam]);

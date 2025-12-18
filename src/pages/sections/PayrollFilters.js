@@ -92,6 +92,8 @@ export default function PayrollFilters({
   payFrequency            = "weekly",
   setPayFrequency,
   setPayFreqTouched,
+  departmentFilter: departmentFilterProp,
+  setDepartmentFilter: setDepartmentFilterProp,
 }) {
   /* ───────── API helpers ───────── */
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
@@ -104,7 +106,14 @@ export default function PayrollFilters({
 
   /* ⇢ NEW – departments */
   const [departments, setDepartments] = useState([]);
-  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [departmentFilterLocal, setDepartmentFilterLocal] = useState("");
+
+  const departmentFilter =
+    departmentFilterProp !== undefined ? departmentFilterProp : departmentFilterLocal;
+  const setDepartmentFilter =
+    setDepartmentFilterProp !== undefined
+      ? setDepartmentFilterProp
+      : setDepartmentFilterLocal;
 
   /* fetch departments once */
   useEffect(() => {

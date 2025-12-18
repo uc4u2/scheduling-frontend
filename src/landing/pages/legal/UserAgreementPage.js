@@ -28,7 +28,7 @@ const UserAgreementPage = () => (
           Schedulaa User Agreement
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: November 2025
+          Last updated: December 2025
         </Typography>
         <Typography variant="body1" color="text.secondary">
           This User Agreement (“Agreement”) governs your access to and use of Schedulaa, operated by Photo Artisto Corp.,
@@ -57,6 +57,7 @@ const UserAgreementPage = () => (
           list: [
             "Use the Services only for lawful business purposes.",
             "Do not upload malicious code, violate privacy, infringe IP, or try to bypass security.",
+            "Prohibited use further includes impersonation of Schedulaa or third parties, misleading use of company names, URLs, slugs, or domains, abuse of public-facing Company Pages, or any activity that may reasonably harm the reputation, brand, trust, or search engine visibility of Schedulaa.",
             "Schedulaa may suspend or terminate access for misuse or non-compliance.",
           ],
         },
@@ -147,7 +148,14 @@ const UserAgreementPage = () => (
             "You are responsible for the accuracy, legality, and licensing of all copy, media, templates, and domains you publish via Schedulaa.",
             "Do not upload content that infringes third-party IP, violates privacy or publicity rights, or contains regulated advice without proper credentials.",
             "Schedulaa may remove or disable content that violates this Agreement or receives credible legal complaints, and may request proof of licensing for logos, photos, or fonts.",
+            "This responsibility applies to all public-facing Company Pages, hosted websites, subpaths, slugs, and any custom domains connected through the Services.",
+            "Schedulaa does not guarantee search engine indexing, ranking, or visibility of Company Pages or subscriber content. Search engine treatment is determined solely by third-party search providers and is outside Schedulaa's control.",
           ],
+        },
+        {
+          title: "17A. Public Company Pages, URLs, and Domains",
+          body:
+            "Schedulaa may provide subscribers with public-facing company pages, URLs, subpaths, or websites hosted under the schedulaa.com domain, as well as the ability to connect custom domains (\"Company Pages\").\n\nAll content published on Company Pages is created, controlled, and maintained solely by the subscriber. Such content does not represent the views of Schedulaa, and Schedulaa does not review, endorse, monitor, or assume responsibility for Company Page content.\n\nSchedulaa reserves the right, at its sole discretion and at any time, to suspend, restrict, modify, de-index, disconnect, or permanently remove any Company Page, URL, slug, or domain association that it reasonably believes:\n(a) violates this Agreement or applicable law;\n(b) infringes the rights of third parties;\n(c) is misleading, abusive, deceptive, or harmful; or\n(d) may damage the reputation, brand, security, operations, or search engine standing of Schedulaa.\n\nSubscribers acknowledge that Company Pages hosted under schedulaa.com are part of Schedulaa's domain infrastructure and that Schedulaa retains full authority to manage, restrict, or remove such pages to protect the platform and its users.",
         },
         {
           title: "18. Beta & Experimental Features",
@@ -162,6 +170,7 @@ const UserAgreementPage = () => (
           list: [
             "You may cancel your subscription at any time; fees already paid remain non-refundable.",
             "Schedulaa may suspend or terminate access for non-payment, misuse, or violations of this Agreement.",
+            "Schedulaa may take immediate action without prior notice, including content removal, page disabling, domain disconnection, account suspension, or termination, where such action is reasonably necessary to comply with law, protect users or the public, preserve platform integrity, or prevent legal, reputational, operational, or search engine harm to Schedulaa.",
             "Data may be deleted after a reasonable retention period per our Privacy Policy.",
           ],
         },
@@ -191,7 +200,7 @@ const UserAgreementPage = () => (
             {section.title}
           </Typography>
           {section.body && (
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" color="text.secondary" sx={{ whiteSpace: "pre-line" }}>
               {section.body}
             </Typography>
           )}

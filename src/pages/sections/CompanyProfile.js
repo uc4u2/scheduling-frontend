@@ -112,6 +112,8 @@ export default function CompanyProfile({ token }) {
     trusted_ips: [],
     default_pay_frequency: "",
     retirement_engine_mode: "enterprise",
+    payroll_pay_date_rule: "end_date",
+    payroll_pay_date_offset_days: 0,
   });
 
   // Departments
@@ -367,19 +369,29 @@ export default function CompanyProfile({ token }) {
   };
 
   /* ---------- submit ---------- */
-  const handleSubmit = async () => {
+	  const handleSubmit = async () => {
     const { name, email } = form;
     if (!name || !email) {
       showMessage("manager.companyProfile.messages.nameEmailRequired", "warning");
       return;
     }
-    try {
-      setSaving(true);
-      const method = form.id ? "put" : "post";
-      const payload = { ...form, retirement_engine_mode: "enterprise" };
-      const { data: updated } = await axios[method](endpoint, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+	    try {
+	      setSaving(true);
+	      const method = form.id ? "put" : "post";
+	      const payload = { ...form, retirement_engine_mode: "enterprise" };
+	      const payRule = String(payload.payroll_pay_date_rule || "end_date");
+	      if (payRule !== "offset_days") {
+	        payload.payroll_pay_date_offset_days = null;
+	      } else {
+	        const raw = payload.payroll_pay_date_offset_days;
+	        const num = raw === "" || raw === null || raw === undefined ? null : Number(raw);
+	        payload.payroll_pay_date_offset_days = Number.isFinite(num)
+	          ? Math.max(0, Math.min(14, Math.trunc(num)))
+	          : null;
+	      }
+	      const { data: updated } = await axios[method](endpoint, payload, {
+	        headers: { Authorization: `Bearer ${token}` },
+	      });
       if (updated && typeof updated === "object") {
         setForm((prev) => ({ ...prev, ...updated }));
       }
@@ -720,30 +732,71 @@ export default function CompanyProfile({ token }) {
                           </Grid>
                         </>
                       )}
-                      <Grid item xs={12} md={6}>
-                        <FormControl fullWidth>
-                          <InputLabel>Default Pay Frequency</InputLabel>
-                          <Select
-                            label="Default Pay Frequency"
-                            value={form.default_pay_frequency || ""}
-                            onChange={handleChange("default_pay_frequency")}
-                          >
-                      <MenuItem value="">Bi-weekly (default)</MenuItem>
-                      {PAY_FREQUENCY_OPTIONS.map((opt) => (
-                        <MenuItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                    <Typography variant="caption" color="text.secondary">
-                      Seeds Payroll Preview. Managers can override per run.
-                    </Typography>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="subtitle2" fontWeight={700}>
-                      Retirement calculation
+	                      <Grid item xs={12} md={6}>
+	                        <FormControl fullWidth>
+	                          <InputLabel>Default Pay Frequency</InputLabel>
+	                          <Select
+	                            label="Default Pay Frequency"
+	                            value={form.default_pay_frequency || ""}
+	                            onChange={handleChange("default_pay_frequency")}
+	                          >
+	                      <MenuItem value="">Bi-weekly (default)</MenuItem>
+	                      {PAY_FREQUENCY_OPTIONS.map((opt) => (
+	                        <MenuItem key={opt.value} value={opt.value}>
+	                          {opt.label}
+	                        </MenuItem>
+	                      ))}
+	                    </Select>
+	                    <Typography variant="caption" color="text.secondary">
+	                      Seeds Payroll Preview. Managers can override per run.
+	                    </Typography>
+	                  </FormControl>
+	                </Grid>
+	                      <Grid item xs={12} md={6}>
+	                        <FormControl fullWidth>
+	                          <InputLabel>Default Pay Date</InputLabel>
+	                          <Select
+	                            label="Default Pay Date"
+	                            value={form.payroll_pay_date_rule || "end_date"}
+	                            onChange={handleChange("payroll_pay_date_rule")}
+	                          >
+	                            <MenuItem value="end_date">Same as period end</MenuItem>
+	                            <MenuItem value="offset_days">Days after period end</MenuItem>
+	                          </Select>
+	                          <Typography variant="caption" color="text.secondary">
+	                            Used for exports and workflow events. Finalized runs store the pay date for audit.
+	                          </Typography>
+	                        </FormControl>
+	                      </Grid>
+	                      {String(form.payroll_pay_date_rule || "end_date") === "offset_days" && (
+	                        <Grid item xs={12} md={6}>
+	                          <TextField
+	                            fullWidth
+	                            type="number"
+	                            label="Pay date offset (days)"
+	                            value={
+	                              form.payroll_pay_date_offset_days === null ||
+	                              form.payroll_pay_date_offset_days === undefined
+	                                ? ""
+	                                : form.payroll_pay_date_offset_days
+	                            }
+	                            onChange={(e) => {
+	                              const raw = e.target.value;
+	                              const num = raw === "" ? "" : Number(raw);
+	                              setForm((prev) => ({
+	                                ...prev,
+	                                payroll_pay_date_offset_days: num,
+	                              }));
+	                            }}
+	                            inputProps={{ min: 0, max: 14, step: 1 }}
+	                            helperText="0–14 days after period end (example: 3)."
+	                          />
+	                        </Grid>
+	                      )}
+	                <Grid item xs={12} md={6}>
+	                  <Paper variant="outlined" sx={{ p: 2 }}>
+	                    <Typography variant="subtitle2" fontWeight={700}>
+	                      Retirement calculation
                     </Typography>
                     <Typography variant="body2">
                       United States: Enterprise 401(k) is applied automatically (plan defaults + elections, caps, correct wage bases/W-2 Box 12D).<br />
