@@ -1249,19 +1249,9 @@ const handleRecalculate = () => {
 </Grid>
 
       {/* --------------------------------------------------
-         Net Pay + BPA / bracketing info
+         BPA / bracketing info
       -------------------------------------------------- */}
       <Divider sx={{ my: 3 }} />
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={3}>
-          <TextField
-            label="Net Pay ($)"
-            value={formatCurrency(calculatedNetPay)}
-            InputProps={{ readOnly: true }}
-            fullWidth
-          />
-        </Grid>
-      </Grid>
 
       {/* Enterprise 401(k) summary (read-only) */}
       {region === "us" && payroll && typeof payroll.taxable_wages_federal !== "undefined" && (

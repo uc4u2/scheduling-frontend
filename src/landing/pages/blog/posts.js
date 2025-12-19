@@ -6,8 +6,8 @@ const blogPosts = [
     title: "New: Enterprise payroll workflows (QB/Xero journals + Zapier automation)",
     description:
       "Schedulaa now routes finalized payroll into QuickBooks/Xero accounting journals or Zapier-powered finance workflows—without moving money or initiating direct deposits.",
-    datePublished: "2025-12-16",
-    dateModified: "2025-12-16",
+    datePublished: "2025-12-16T12:00:00Z",
+    dateModified: "2025-12-16T12:00:00Z",
     category: "Product",
     tags: ["payroll", "quickbooks", "xero", "zapier", "automation"],
     heroOverline: "Product",
@@ -40,6 +40,120 @@ const blogPosts = [
           "Finalize payroll → open “Send payroll workflow” → pick QuickBooks/Xero to post accounting journals, or Zapier/Other for automation.",
           "If using Zapier: add a Catch Hook, subscribe to payroll.payment_requested in Event hooks, then build your finance flow (approvals, journals, CSV, payouts).",
           "Workflow statuses come back into Schedulaa (processing/posted/failed) for audit clarity.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "smarter-invoice-system-service-businesses",
+    title: "A Smarter Invoice System for Modern Service Businesses",
+    description:
+      "Payroll-linked invoicing for outsourcing, staffing, and enterprise teams in the US and Canada.",
+    datePublished: "2025-12-14T12:00:00Z",
+    dateModified: "2025-12-14T12:00:00Z",
+    category: "Product",
+    tags: ["invoicing", "billing", "payroll", "outsourcing", "tax"],
+    heroOverline: "Product",
+    sections: [
+      {
+        heading: "From Outsourcing Agencies to Enterprise Teams",
+        paragraphs: [
+          "Schedulaa introduces a payroll-aware invoice system designed for modern service businesses operating in the United States and Canada.",
+          "From outsourcing agencies to enterprise service teams, Schedulaa delivers accurate client billing, enterprise-grade invoices, and clean audit trails without relying on spreadsheets, disconnected accounting tools, or manual reconciliation.",
+          "Schedulaa's invoicing system is built for service businesses that need invoices to reflect real operational data, including approved time, finalized payroll, management fees, and regional tax rules.",
+          "Unlike traditional invoicing software, Schedulaa connects time tracking, payroll, approvals, and billing in one system. This makes it ideal for outsourcing agencies, staffing firms, recruiter networks, and multi-location service businesses operating across the US and Canada.",
+          "Most invoice tools were not designed for how service businesses actually work today.",
+          "They assume you sell products, send simple one-off service invoices, or run payroll separately and figure out billing later.",
+          "Schedulaa was built differently.",
+        ],
+        image: {
+          src: "https://images.unsplash.com/photo-6_xAz8XY34A?auto=format&fit=crop&w=1200&q=80",
+          alt: "Team reviewing service billing and payroll data",
+        },
+      },
+      {
+        heading: "The Problem With Traditional Invoicing Tools",
+        paragraphs: [
+          "Accounting-first tools (QuickBooks, Xero, FreshBooks): invoices are disconnected from scheduling and payroll. Payroll costs are invisible to billing, and outsourcing agencies must calculate margins manually.",
+          "Payroll systems: they calculate pay correctly but stop before client billing. They do not support client-ready invoices, PO numbers, or service period context.",
+          "Generic invoicing apps: these tools lack country-aware tax handling, payment terms, and any connection to real work performed. Audit trails are weak or nonexistent.",
+        ],
+      },
+      {
+        heading: "What Makes Schedulaa Invoices Different",
+        paragraphs: [
+          "Schedulaa invoices are context-aware. They understand who worked, what was approved, which country you are operating in, and how payroll, fees, and services relate.",
+          "You do not just create an invoice. You generate one from real operational data.",
+        ],
+      },
+      {
+        heading: "Payroll-Aware Invoicing (The Key Difference)",
+        paragraphs: [
+          "Schedulaa invoices are payroll-linked.",
+          "That means invoices can be generated directly from finalized payroll, not estimates or manually re-entered numbers.",
+          "Approved hours, overtime, premiums, and payroll adjustments already exist inside Schedulaa. Invoicing simply builds on top of that trusted data.",
+          "This eliminates double data entry, billing disputes, margin miscalculations, and where did this number come from conversations with clients.",
+        ],
+      },
+      {
+        heading: "Two Invoice Types - One Unified System",
+        paragraphs: [
+          "Payroll Billing Invoices are designed for outsourcing and staffing models. They pull gross payroll from finalized, approved time, optionally break billing down per employee, add transparent outsourcing and management fees, and generate clean client-ready PDFs suitable for enterprise AP teams.",
+          "Simple / Manual Invoices are designed for consultants and service businesses. They include country-aware tax handling (US Sales Tax or Canada GST/HST), automatic tax calculation, PO numbers and payment terms (Net 7, 15, 30), auto-calculated due dates, and professional PDF output.",
+          "Tax Handling in the United States and Canada: Schedulaa applies country-appropriate tax labels and calculations. United States uses Sales Tax (%), and Canada uses GST/HST (%). Invoices show tax rates and totals per invoice. Local, city, or industry-specific tax requirements can be handled according to your accountant's guidance without changing systems.",
+        ],
+        image: {
+          src: "https://images.unsplash.com/photo-vAMtkjXw0oQ?auto=format&fit=crop&w=1200&q=80",
+          alt: "Invoice review for enterprise billing",
+        },
+      },
+      {
+        heading: "Who Can Use This Invoice System",
+        paragraphs: [
+          "Schedulaa’s invoice system is built for service businesses that need invoices to reflect real work, real payroll, and real operations, not just line items.",
+          "Outsourcing and staffing agencies can bill clients based on actual finalized payroll, break invoices down per employee or per assignment, and add transparent outsourcing and management fees. This makes it easy to separate labor cost from agency margin while keeping payroll, compliance, and invoicing fully aligned.",
+          "Creative and service agencies can invoice by project, retainer, or services delivered, while supporting PO numbers, payment terms (Net 7 / 15 / 30), automatic tax calculation, and enterprise-ready PDFs. This is ideal for agencies working with corporate clients, brands, or long-term contracts.",
+          "Multi-location service businesses benefit from centralized invoicing across branches and departments, with consistent tax handling and invoice formatting. Whether managing salons, clinics, studios, or training centers, invoices remain standardized while respecting local regions and teams.",
+          "Recruiter networks and talent operations teams can clearly separate labor cost from agency or placement fees, generate invoices per recruiter or department, and maintain a clean audit trail that aligns payroll, assignments, and client billing.",
+          "Consultants, professionals, and growing teams can start with simple manual invoices and evolve into payroll-linked billing as they scale. This allows independent consultants, coaches, and small firms to use one system from their first invoice through multi-employee operations.",
+          "Cross-border and international service teams operating between the United States and Canada can issue country-aware invoices with correct tax labels (Sales Tax or GST/HST), payment terms, and compliance-friendly documentation without maintaining separate invoicing systems per country.",
+        ],
+      },
+      {
+        heading: "Audit and Enterprise Controls",
+        paragraphs: [
+          "Schedulaa invoices include controls expected by enterprise finance teams: immutable finalized invoices, clear service periods and billing references, per-employee or aggregate line items, stored invoice history with export support, and alignment between payroll, billing, and revenue records.",
+          "This makes Schedulaa suitable for enterprise AP workflows, audits, and long-term client contracts, not just ad hoc invoicing.",
+        ],
+      },
+      {
+        heading: "More Than Invoicing — An Operational Billing System",
+        paragraphs: [
+          "Unlike traditional invoicing tools, Schedulaa treats invoices as part of the operations workflow. Billing is connected to scheduling, time tracking, payroll approvals, and service delivery. This reduces disputes, improves accuracy, and gives finance teams confidence that every invoice reflects verified data, not manual estimates.",
+        ],
+      },
+      {
+        heading: "How This Compares to Traditional Tools",
+        paragraphs: [
+          "QuickBooks / Xero: accounting-first invoices with no understanding of payroll or staffing context.",
+          "Payroll systems: calculate pay correctly but stop before client billing.",
+          "Generic invoicing apps: disconnected from time, approvals, and real work.",
+          "Schedulaa bridges the gap by connecting operations, payroll, and invoicing in one system.",
+        ],
+      },
+      {
+        heading: "Part of a Bigger System: Schedulaa OS",
+        paragraphs: [
+          "Invoices do not live in isolation. Schedulaa connects booking and scheduling, time tracking and break compliance, payroll (US and Canada), websites and branded booking, payments and payouts, analytics, and automation.",
+          "Everything shares context so invoices always reflect reality.",
+        ],
+      },
+      {
+        heading: "Built for Real Operations, Not Just Accounting",
+        paragraphs: [
+          "Schedulaa is built for enterprise service teams, not just finance departments. Whether you manage a salon group, staffing agency, recruiter network, creative studio, or distributed service business, your invoices should understand how your business actually runs.",
+          "What is coming next includes deeper accounting exports, automated invoice workflows, tighter payroll reporting, and expanded enterprise controls.",
+          "Invoicing is no longer an afterthought. It is part of the operations workflow.",
         ],
       },
     ],

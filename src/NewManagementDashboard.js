@@ -104,6 +104,7 @@ import SavedPayrollsPortal from "./pages/sections/SavedPayrollsPortal";
 import AddRecruiter from "./AddRecruiter";
 import WebsiteSuite from "./pages/sections/management/WebsiteSuite";
 import ManagementFrame from "./components/ui/ManagementFrame";
+import ManagerInvoicesPage from "./pages/sections/ManagerInvoicesPage";
 import { getUserTimezone } from "./utils/timezone";
 import TeamActivity from "./TeamActivity";
 import EnhancedMasterCalendar from "./EnhancedMasterCalendar";
@@ -186,6 +187,7 @@ const menuConfig = [
       { labelKey: "manager.menu.w2", key: "W2", icon: <ReceiptLong /> },
       { labelKey: "manager.menu.payrollRaw", key: "payroll-raw", icon: <ReceiptLong /> },
       { label: "Payroll Audit", key: "payroll-audit", icon: <History /> },
+      { label: "Invoices", key: "invoices", icon: <ReceiptLong /> },
     ],
   },
 
@@ -1676,6 +1678,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
       case "payroll-audit":
         return <PayrollAuditPage />;
+
+      case "invoices":
+        return <ManagerInvoicesPage />;
 
       case "zapier":
         return <ZapierIntegrationPage />;

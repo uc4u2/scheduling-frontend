@@ -135,6 +135,19 @@ const BlogPostPage = () => {
                   {section.heading}
                 </Typography>
               )}
+              {section.image?.src ? (
+                <Box
+                  component="img"
+                  src={section.image.src}
+                  alt={section.image.alt || section.heading || "Blog visual"}
+                  sx={{
+                    width: "100%",
+                    borderRadius: 3,
+                    mb: 2.5,
+                    boxShadow: `0 18px 48px ${alpha(heroColor, 0.18)}`,
+                  }}
+                />
+              ) : null}
               <Stack spacing={2.25}>
                 {(section.paragraphs || []).map((paragraph, index) => (
                   <Typography key={index} variant="body1" color="text.secondary">
