@@ -63,6 +63,8 @@ const sections = [
   {
     title: "Compare",
     links: [
+      { label: "Compare hub", to: "/compare" },
+      { label: "Alternatives hub", to: "/alternatives" },
       { label: "Schedulaa vs Vagaro", to: "/compare/vagaro" },
       { label: "Schedulaa vs QuickBooks", to: "/compare/quickbooks" },
       { label: "Schedulaa vs QuickBooks Payroll", to: "/compare/quickbooks-payroll" },

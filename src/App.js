@@ -53,6 +53,8 @@ import MarketingCampaignsPage from "./landing/pages/marketing/MarketingCampaigns
 import MarketingAnalyticsPage from "./landing/pages/marketing/MarketingAnalyticsPage";
 import MarketingClientsPage from "./landing/pages/marketing/MarketingClientsPage";
 import ComparisonPage from "./landing/pages/compare/ComparisonPage";
+import CompareHubPage from "./landing/pages/compare/CompareHubPage";
+import AlternativesHubPage from "./landing/pages/compare/AlternativesHubPage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
 import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
@@ -357,7 +359,10 @@ const AppContent = ({ token, setToken }) => {
           <Route element={<PublicLayout token={token} setToken={setToken} />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/compare" element={<CompareHubPage />} />
           <Route path="/compare/:vendor" element={<ComparisonPage />} />
+          <Route path="/alternatives" element={<AlternativesHubPage />} />
+          <Route path="/alternatives/:vendor" element={<ComparisonPage pageType="alternatives" />} />
             <Route path="/payroll/gusto" element={<Navigate to="/compare/gusto" replace />} />
             <Route path="/payroll/adp" element={<Navigate to="/compare/adp" replace />} />
             <Route path="/features" element={<FeaturePage />} />

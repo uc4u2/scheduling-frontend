@@ -68,9 +68,9 @@ const ComparisonTable = ({ headers, rows }) => (
   </Box>
 );
 
-const ComparisonPage = () => {
+const ComparisonPage = ({ pageType = "compare" }) => {
   const { vendor } = useParams();
-  const normalizedSlug = vendor?.toLowerCase();
+  const rawSlug = vendor?.toLowerCase();
   const { t, i18n } = useTranslation();
   const fallbackT = useMemo(() => i18n.getFixedT("en"), [i18n]);
   const currentLanguage = i18n.language;
@@ -94,45 +94,60 @@ const ComparisonPage = () => {
     return overrides === undefined ? base : overrides;
   };
 
+  const resolveComparisonKey = (slug) => {
+    if (!slug) return null;
+    const direct = fallbackT(`landing.compare.${slug}`, {
+      returnObjects: true,
+      defaultValue: null,
+    });
+    if (direct) return slug;
+    if (pageType === "alternatives") {
+      const prefixed = `schedulaa-vs-${slug}`;
+      const prefixedData = fallbackT(`landing.compare.${prefixed}`, {
+        returnObjects: true,
+        defaultValue: null,
+      });
+      if (prefixedData) return prefixed;
+    }
+    return null;
+  };
+
+  const comparisonKey = useMemo(() => resolveComparisonKey(rawSlug), [rawSlug, pageType, fallbackT]);
+
   const comparison = useMemo(() => {
-    if (!normalizedSlug) return null;
-    const english = fallbackT(`landing.compare.${normalizedSlug}`, {
+    if (!comparisonKey) return null;
+    const english = fallbackT(`landing.compare.${comparisonKey}`, {
       returnObjects: true,
       defaultValue: null,
     });
     if (!english) return null;
-    const localized = t(`landing.compare.${normalizedSlug}`, {
+    const localized = t(`landing.compare.${comparisonKey}`, {
       returnObjects: true,
       defaultValue: null,
     });
     return mergeData(english, localized);
-  }, [normalizedSlug, t, fallbackT, currentLanguage]);
+  }, [comparisonKey, t, fallbackT, currentLanguage]);
 
-  const pageUrl = normalizedSlug
-    ? `https://www.schedulaa.com/compare/${normalizedSlug}`
-    : "https://www.schedulaa.com/compare";
-  const schemaEntries = useMemo(() => {
-    if (!comparison) return [];
-    const base = {
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      name: comparison.metaTitle || comparison.heroTitle,
-      description: comparison.metaDescription,
-      url: pageUrl,
-    };
-    const breadcrumb = {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: "https://www.schedulaa.com/" },
-        { "@type": "ListItem", position: 2, name: "Compare", item: "https://www.schedulaa.com/compare" },
-        { "@type": "ListItem", position: 3, name: comparison.heroTitle || comparison.metaTitle, item: pageUrl },
-      ],
-    };
-    return [base, breadcrumb];
-  }, [comparison, pageUrl]);
-
+  const pageUrl = comparisonKey
+    ? `https://www.schedulaa.com/${pageType}/${pageType === "alternatives" ? rawSlug : comparisonKey}`
+    : `https://www.schedulaa.com/${pageType}`;
   if (!comparison) {
+    if (pageType === "alternatives") {
+      return (
+        <Box sx={{ py: 12, textAlign: "center" }}>
+          <Meta title="Page not found | Schedulaa" robots="noindex, nofollow" />
+          <Typography variant="h4" fontWeight={700} gutterBottom>
+            Page not found
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            We could not find that alternatives page.
+          </Typography>
+          <Button component={RouterLink} to="/compare" sx={{ mt: 3 }} variant="contained">
+            View comparisons
+          </Button>
+        </Box>
+      );
+    }
     return <Navigate to="/pricing" replace />;
   }
 
@@ -152,27 +167,113 @@ const ComparisonPage = () => {
     conclusion,
     competitorName,
   } = comparison;
+  const displayCompetitor = competitorName || competitor;
+  const isAlternatives = pageType === "alternatives";
+  const alternativeSlug = comparisonKey?.startsWith("schedulaa-vs-")
+    ? comparisonKey.replace(/^schedulaa-vs-/, "")
+    : comparisonKey;
+  const altMetaTitle = displayCompetitor
+    ? `Best ${displayCompetitor} alternatives for service teams | Schedulaa`
+    : metaTitle;
+  const altMetaDescription = displayCompetitor
+    ? `Looking for ${displayCompetitor} alternatives? Compare Schedulaa with ${displayCompetitor} and see which platform fits operations, payroll, and compliance for service teams.`
+    : metaDescription;
+  const altHeroTitle = displayCompetitor
+    ? `${displayCompetitor} alternatives for modern service teams`
+    : heroTitle;
+  const altHeroSubtitle = displayCompetitor
+    ? `Compare Schedulaa with ${displayCompetitor} and see why service teams choose an operations-first platform.`
+    : heroSubtitle;
+  const altIntro = displayCompetitor
+    ? [
+        `Looking for ${displayCompetitor} alternatives? This guide compares Schedulaa and ${displayCompetitor} across booking, scheduling, payroll, and compliance for service teams.`,
+        "Schedulaa replaces disconnected tools with an operations OS that unifies service delivery, payroll, and billing in one workflow.",
+      ]
+    : intro;
+  const schemaEntries = useMemo(() => {
+    const base = {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: isAlternatives ? altMetaTitle : metaTitle,
+      description: isAlternatives ? altMetaDescription : metaDescription,
+      url: pageUrl,
+    };
+    const breadcrumb = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://www.schedulaa.com/" },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: isAlternatives ? "Alternatives" : "Compare",
+          item: `https://www.schedulaa.com/${pageType}`,
+        },
+        { "@type": "ListItem", position: 3, name: isAlternatives ? altHeroTitle : heroTitle, item: pageUrl },
+      ],
+    };
+    return [base, breadcrumb];
+  }, [altHeroTitle, altMetaDescription, altMetaTitle, heroTitle, isAlternatives, metaDescription, metaTitle, pageType, pageUrl]);
   const defaultOgImage = "https://www.schedulaa.com/og/compare.jpg";
   const pageOg = {
-    title: metaTitle,
-    description: metaDescription,
+    title: isAlternatives ? altMetaTitle : metaTitle,
+    description: isAlternatives ? altMetaDescription : metaDescription,
     image: comparison?.metaOgImage || defaultOgImage,
   };
 
   const downloadUrl =
-    normalizedSlug === "quickbooks-payroll"
+    comparisonKey === "quickbooks-payroll"
       ? "https://www.schedulaa.com/resources/schedulaa-vs-quickbooks-payroll.doc"
       : null;
   const downloadLabel =
-    normalizedSlug === "quickbooks-payroll"
+    comparisonKey === "quickbooks-payroll"
       ? "Download comparison (DOC)"
       : null;
+
+  const faqSchema = isAlternatives && displayCompetitor ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: `What are the best ${displayCompetitor} alternatives?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: `Schedulaa is a top ${displayCompetitor} alternative for service teams that need booking, scheduling, payroll, and compliance in one workflow.`,
+        },
+      },
+      {
+        "@type": "Question",
+        name: `Is Schedulaa a good alternative to ${displayCompetitor}?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Schedulaa connects operations, payroll, and billing so teams avoid disconnected tools and manual reconciliation.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: `${displayCompetitor} vs Schedulaa — what is the difference?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Schedulaa is an operations OS with scheduling, payroll, compliance, and analytics, while most competitors focus on a narrower part of the workflow.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: `Which teams choose ${displayCompetitor} alternatives?`,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Service businesses, staffing teams, and multi-location operators that need verified payroll data tied to scheduling and billing.",
+        },
+      },
+    ],
+  } : null;
 
   return (
     <Box sx={{ position: "relative", overflow: "hidden" }}>
       <Meta
-        title={metaTitle}
-        description={metaDescription}
+        title={isAlternatives ? altMetaTitle : metaTitle}
+        description={isAlternatives ? altMetaDescription : metaDescription}
         canonical={pageUrl}
         og={pageOg}
         twitter={pageOg}
@@ -180,6 +281,7 @@ const ComparisonPage = () => {
       {schemaEntries.map((schema, idx) => (
         <JsonLd key={idx} data={schema} />
       ))}
+      {faqSchema ? <JsonLd data={faqSchema} /> : null}
 
       <FloatingBlob enableMotion color="#0ea5e9" size={1040} opacity={0.1} duration={32} sx={{ top: -220, left: -200 }} />
       <FloatingBlob enableMotion color="#34d399" size={960} opacity={0.08} duration={30} sx={{ bottom: -260, right: -220 }} />
@@ -187,27 +289,44 @@ const ComparisonPage = () => {
       <Box sx={{ maxWidth: 1100, mx: "auto", px: { xs: 2, md: 6 }, py: { xs: 8, md: 12 }, position: "relative", zIndex: 1 }}>
         <Stack spacing={2} textAlign="center">
           <Typography variant="overline" color="primary" fontWeight={700} letterSpacing={0.4}>
-            Comparison guide
+            {isAlternatives ? "Alternatives guide" : "Comparison guide"}
           </Typography>
           <Typography variant="h3" fontWeight={800}>
-            {heroTitle}
+            {isAlternatives ? altHeroTitle : heroTitle}
           </Typography>
-          {normalizedSlug !== "paychex" && heroSubtitle ? (
+          {comparisonKey !== "paychex" && heroSubtitle ? (
             <Typography variant="subtitle1" color="text.secondary" maxWidth={760} mx="auto">
-              {heroSubtitle}
+              {isAlternatives ? altHeroSubtitle : heroSubtitle}
             </Typography>
           ) : null}
         </Stack>
 
         <Stack spacing={2.5} mt={4}>
           {[
-            ...(normalizedSlug === "paychex" && heroSubtitle ? [heroSubtitle] : []),
-            ...intro,
+            ...(comparisonKey === "paychex" && heroSubtitle ? [heroSubtitle] : []),
+            ...(isAlternatives ? altIntro : intro),
           ].map((paragraph) => (
             <Typography key={paragraph} variant="body1" color="text.secondary" textAlign="left">
               {paragraph}
             </Typography>
           ))}
+          <Typography variant="body2" color="text.secondary" textAlign="left">
+            {isAlternatives ? (
+              <>
+                Prefer side-by-side?{" "}
+                <MuiLink component={RouterLink} to={`/compare/${comparisonKey}`} underline="hover">
+                  View the comparison page.
+                </MuiLink>
+              </>
+            ) : (
+              <>
+                Looking for alternatives?{" "}
+                <MuiLink component={RouterLink} to={`/alternatives/${alternativeSlug}`} underline="hover">
+                  Explore alternatives.
+                </MuiLink>
+              </>
+            )}
+          </Typography>
           {downloadUrl && (
             <Button
               component="a"
@@ -230,7 +349,7 @@ const ComparisonPage = () => {
 
         <Box component="section" sx={{ mt: 6 }}>
           <Typography variant="h4" fontWeight={800} gutterBottom>
-            Key differentiators
+            {isAlternatives ? "Why teams choose Schedulaa" : "Key differentiators"}
           </Typography>
           <Grid container spacing={3}>
             {differentiators.map((item) => (
@@ -280,7 +399,7 @@ const ComparisonPage = () => {
 
         <Box component="section" sx={{ mt: 6 }}>
           <Typography variant="h4" fontWeight={800} gutterBottom>
-            Which platform fits you best?
+            {isAlternatives ? "Which alternative fits you best?" : "Which platform fits you best?"}
           </Typography>
           <Paper
             variant="outlined"
