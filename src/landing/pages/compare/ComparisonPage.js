@@ -131,31 +131,12 @@ const ComparisonPage = ({ pageType = "compare" }) => {
   const pageUrl = comparisonKey
     ? `https://www.schedulaa.com/${pageType}/${pageType === "alternatives" ? rawSlug : comparisonKey}`
     : `https://www.schedulaa.com/${pageType}`;
-  if (!comparison) {
-    if (pageType === "alternatives") {
-      return (
-        <Box sx={{ py: 12, textAlign: "center" }}>
-          <Meta title="Page not found | Schedulaa" robots="noindex, nofollow" />
-          <Typography variant="h4" fontWeight={700} gutterBottom>
-            Page not found
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            We could not find that alternatives page.
-          </Typography>
-          <Button component={RouterLink} to="/compare" sx={{ mt: 3 }} variant="contained">
-            View comparisons
-          </Button>
-        </Box>
-      );
-    }
-    return <Navigate to="/pricing" replace />;
-  }
-
+  const comparisonData = comparison || {};
   const {
-    metaTitle,
-    metaDescription,
-    heroTitle,
-    heroSubtitle,
+    metaTitle = "",
+    metaDescription = "",
+    heroTitle = "",
+    heroSubtitle = "",
     intro = [],
     executiveOverview,
     differentiators = [],
@@ -165,29 +146,45 @@ const ComparisonPage = ({ pageType = "compare" }) => {
     fitMatrix = [],
     testimonial,
     conclusion,
+    competitor,
     competitorName,
-  } = comparison;
+  } = comparisonData;
   const displayCompetitor = competitorName || competitor;
   const isAlternatives = pageType === "alternatives";
   const alternativeSlug = comparisonKey?.startsWith("schedulaa-vs-")
     ? comparisonKey.replace(/^schedulaa-vs-/, "")
     : comparisonKey;
+  const alternativesOverrides = useMemo(() => {
+    if (!isAlternatives || !alternativeSlug) return null;
+    const direct = fallbackT(`landing.alternatives.${alternativeSlug}`, {
+      returnObjects: true,
+      defaultValue: null,
+    });
+    if (direct) return direct;
+    return fallbackT(`landing.compare.${comparisonKey}.alternatives`, {
+      returnObjects: true,
+      defaultValue: null,
+    });
+  }, [alternativeSlug, comparisonKey, fallbackT, isAlternatives]);
   const altMetaTitle = displayCompetitor
-    ? `Best ${displayCompetitor} alternatives for service teams | Schedulaa`
+    ? alternativesOverrides?.metaTitle || `Best ${displayCompetitor} alternatives for service teams | Schedulaa`
     : metaTitle;
   const altMetaDescription = displayCompetitor
-    ? `Looking for ${displayCompetitor} alternatives? Compare Schedulaa with ${displayCompetitor} and see which platform fits operations, payroll, and compliance for service teams.`
+    ? alternativesOverrides?.metaDescription || `Looking for ${displayCompetitor} alternatives? Compare Schedulaa with ${displayCompetitor} and see which platform fits operations, payroll, and compliance for service teams.`
     : metaDescription;
   const altHeroTitle = displayCompetitor
-    ? `${displayCompetitor} alternatives for modern service teams`
+    ? alternativesOverrides?.heroTitle || `${displayCompetitor} alternatives for modern service teams`
     : heroTitle;
   const altHeroSubtitle = displayCompetitor
-    ? `Compare Schedulaa with ${displayCompetitor} and see why service teams choose an operations-first platform.`
+    ? alternativesOverrides?.heroSubtitle || `Compare Schedulaa with ${displayCompetitor} and see why service teams choose an operations-first platform.`
     : heroSubtitle;
   const altIntro = displayCompetitor
     ? [
         `Looking for ${displayCompetitor} alternatives? This guide compares Schedulaa and ${displayCompetitor} across booking, scheduling, payroll, and compliance for service teams.`,
         "Schedulaa replaces disconnected tools with an operations OS that unifies service delivery, payroll, and billing in one workflow.",
+        ...(alternativesOverrides?.whySwitch
+          ? [`Why teams switch from ${displayCompetitor}: ${alternativesOverrides.whySwitch}`]
+          : []),
       ]
     : intro;
   const schemaEntries = useMemo(() => {
@@ -220,6 +217,26 @@ const ComparisonPage = ({ pageType = "compare" }) => {
     description: isAlternatives ? altMetaDescription : metaDescription,
     image: comparison?.metaOgImage || defaultOgImage,
   };
+
+  if (!comparison) {
+    if (pageType === "alternatives") {
+      return (
+        <Box sx={{ py: 12, textAlign: "center" }}>
+          <Meta title="Page not found | Schedulaa" robots="noindex, nofollow" />
+          <Typography variant="h4" fontWeight={700} gutterBottom>
+            Page not found
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            We could not find that alternatives page.
+          </Typography>
+          <Button component={RouterLink} to="/compare" sx={{ mt: 3 }} variant="contained">
+            View comparisons
+          </Button>
+        </Box>
+      );
+    }
+    return <Navigate to="/pricing" replace />;
+  }
 
   const downloadUrl =
     comparisonKey === "quickbooks-payroll"
