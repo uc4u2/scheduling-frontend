@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Navigat
 import { ThemeProvider, CssBaseline, Box, Toolbar, Typography } from "@mui/material";
 import { createTheme } from "@mui/material/styles";
 import { SnackbarProvider } from "notistack";
+import RouteTracker from "./analytics/RouteTracker";
 
 // ðŸŽ¨ Themes
 import {
@@ -584,6 +585,7 @@ const App = () => {
       <ThemeProvider theme={baseTheme}>
         <CssBaseline />
         <Router>
+          <RouteTracker />
           <SnackbarProvider maxSnack={3} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
             <AppContent token={token} setToken={setToken} />
           </SnackbarProvider>

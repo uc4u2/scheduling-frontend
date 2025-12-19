@@ -26,6 +26,7 @@ import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import FloatingBlob from "../../components/ui/FloatingBlob";
 import { publicSite } from "../../utils/api";
 import automationJourney from "../../assets/marketing/automation-journey.png";
+import { trackEvent } from "../../analytics/ga";
 
 const rawEnvContactEmail =
   process.env.REACT_APP_CONTACT_ADMIN_EMAIL ||
@@ -336,6 +337,7 @@ const ContactPage = () => {
         throw lastError || new Error("Unable to send message");
       }
 
+      trackEvent({ action: "contact_submit", label: "marketing_contact" });
       setStatus(formContent.success || DEFAULT_CONTENT.form.success);
       setForm({ name: "", email: "", company: "", plan: planOptions[0] || "", message: "" });
     } catch (err) {

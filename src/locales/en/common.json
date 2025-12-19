@@ -3109,6 +3109,16 @@
               "Force clock-out and bulk apply break templates with full audit trails for payroll.",
               "Exports flow to payroll with unpaid breaks deducted and overtime markers included."
             ]
+          },
+          {
+            "icon": "09",
+            "title": "Payroll-Linked Invoicing",
+            "description": [
+              "Generate client invoices directly from finalized payroll and approved time.",
+              "Optional per-employee billing with transparent management fees.",
+              "Country-aware tax labels (US Sales Tax, CA GST/HST) and auto totals.",
+              "PO numbers, payment terms, and client-ready PDFs included."
+            ]
           }
         ]
       },

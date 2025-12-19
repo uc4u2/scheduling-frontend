@@ -4,6 +4,7 @@ import App from "./App";
 import "./index.css";
 import "./i18n";
 import "./utils/resizeObserverErrorGuard";
+import { initGA } from "./analytics/ga";
 
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import { coolTheme } from "./theme"; // existing theme
@@ -17,6 +18,8 @@ const useV2 =
 
 const activeTheme = useV2 ? themeV2 : coolTheme;
 
+initGA();
+
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
@@ -26,4 +29,3 @@ root.render(
     </ThemeProvider>
   </React.StrictMode>
 );
-

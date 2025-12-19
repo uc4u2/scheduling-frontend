@@ -41,6 +41,16 @@ export const featurePillars = [
   },
   {
     icon: "05",
+    title: "Payroll-Linked Invoicing",
+    description: [
+      "Generate client invoices directly from finalized payroll and approved time.",
+      "Optional per-employee billing with transparent management fees.",
+      "Country-aware tax labels (US Sales Tax, CA GST/HST) and auto totals.",
+      "PO numbers, payment terms, and client-ready PDFs included.",
+    ],
+  },
+  {
+    icon: "06",
     title: "eCommerce & Product Sales",
     description: [
       "Native product catalog for physical or digital items with rich detail pages.",
@@ -50,7 +60,7 @@ export const featurePillars = [
     ],
   },
   {
-    icon: "06",
+    icon: "07",
     title: "Automation & Integrations",
     description: [
       "Zapier integration to connect Schedulaa with QuickBooks, Xero, and more.",
@@ -60,7 +70,7 @@ export const featurePillars = [
     ],
   },
   {
-    icon: "07",
+    icon: "08",
     title: "Security, Compliance & Scale",
     description: [
       "Role-based access control for managers, admins, recruiters, and employees.",

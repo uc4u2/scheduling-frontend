@@ -67,7 +67,7 @@ const blogPosts = [
           "Schedulaa was built differently.",
         ],
         image: {
-          src: "https://images.unsplash.com/photo-6_xAz8XY34A?auto=format&fit=crop&w=1200&q=80",
+          src: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1200&auto=format&fit=crop",
           alt: "Team reviewing service billing and payroll data",
         },
       },
@@ -103,7 +103,7 @@ const blogPosts = [
           "Tax Handling in the United States and Canada: Schedulaa applies country-appropriate tax labels and calculations. United States uses Sales Tax (%), and Canada uses GST/HST (%). Invoices show tax rates and totals per invoice. Local, city, or industry-specific tax requirements can be handled according to your accountant's guidance without changing systems.",
         ],
         image: {
-          src: "https://images.unsplash.com/photo-vAMtkjXw0oQ?auto=format&fit=crop&w=1200&q=80",
+          src: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1200&auto=format&fit=crop",
           alt: "Invoice review for enterprise billing",
         },
       },
