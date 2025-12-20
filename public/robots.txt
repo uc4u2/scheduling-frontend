@@ -1,8 +1,9 @@
+# Auto-generated via scripts/generate-site-assets.js
 User-agent: *
+Allow: /
 Disallow: /client/
 Disallow: /recruiter/
 Disallow: /manager/
 Disallow: /admin/
-Disallow: /payroll/
 
 Sitemap: https://www.schedulaa.com/sitemap.xml
