@@ -293,11 +293,13 @@ const CandidateIntakePage = () => {
     fetchSubmission();
   }, [fetchSubmission]);
 
+  const bookingRequired = submission?.booking_required !== false;
+
   useEffect(() => {
-    if (submission?.recruiter_id) {
+    if (bookingRequired && submission?.recruiter_id) {
       fetchSlots(submission.recruiter_id);
     }
-  }, [submission?.recruiter_id, fetchSlots]);
+  }, [bookingRequired, submission?.recruiter_id, fetchSlots]);
 
   const sections = useMemo(() => buildSections(template), [template]);
   const isReadOnly = submission?.status === "submitted";
@@ -616,9 +618,9 @@ const CandidateIntakePage = () => {
   }, [submission?.recruiter_id, selectedSlot, candidateBasics, resumeFile, token, timezone]);
 
 
-const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async () => {
     if (!token) return;
-    if (!bookingSuccess && !isReadOnly) {
+    if (bookingRequired && !bookingSuccess && !isReadOnly) {
       setError("Please book an interview slot before submitting the form.");
       return;
     }
@@ -691,7 +693,7 @@ const handleSubmit = useCallback(async () => {
     } finally {
       setSubmitting(false);
     }
-  }, [token, responses, bookingSuccess, isReadOnly, questionnaires, submissionFiles]);
+  }, [token, responses, bookingRequired, bookingSuccess, isReadOnly, questionnaires, submissionFiles]);
 
   if (loading) {
     return (
@@ -917,7 +919,7 @@ const handleSubmit = useCallback(async () => {
                 </AccordionDetails>
               </Accordion>
 
-              {!isSmDown && bookingPanelsDesktop}
+              {bookingRequired && !isSmDown && bookingPanelsDesktop}
 
               <Box sx={{ mb: 2 }}>
                 <CandidateSlotPicker
@@ -1004,7 +1006,7 @@ const handleSubmit = useCallback(async () => {
 
           {isSmDown && (
             <Box sx={{ mt: 2 }}>
-              {bookingPanelsMobile}
+              {bookingRequired && bookingPanelsMobile}
             </Box>
           )}
 
