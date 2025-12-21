@@ -648,7 +648,17 @@ const handleSubmit = useCallback(async () => {
     setError("");
     setSuccess(false);
     try {
-      const data = await candidateIntakeApi.submit(token, { responses });
+      let data;
+      if (resumeFile) {
+        const formData = new FormData();
+        formData.append("responses", JSON.stringify(responses));
+        formData.append("resume", resumeFile);
+        data = await candidateIntakeApi.submit(token, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        data = await candidateIntakeApi.submit(token, { responses });
+      }
       if (data?.submission) {
         setSubmission(data.submission);
         if (Array.isArray(data.submission.files)) {
@@ -656,6 +666,9 @@ const handleSubmit = useCallback(async () => {
         }
       } else if (data) {
         setSubmission(data);
+      }
+      if (resumeFile) {
+        setResumeFile(null);
       }
       if (Array.isArray(data?.questionnaires)) {
         setQuestionnaires(data.questionnaires);
