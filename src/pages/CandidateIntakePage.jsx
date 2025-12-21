@@ -411,6 +411,12 @@ const CandidateIntakePage = () => {
       if (field === "candidatePhone") {
         return { ...prev, phone: value };
       }
+      if (field === "candidatePosition") {
+        return { ...prev, candidate_position: value, job_title: value };
+      }
+      if (field === "linkedin") {
+        return { ...prev, linkedin: value };
+      }
       return prev;
     });
   }, []);

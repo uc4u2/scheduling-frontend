@@ -423,10 +423,10 @@ export const website = {
       )
       .then((r) => r.data),
 
-  // Media library (MediaAsset-backed)
+  // Media library (WebsiteMedia-backed)
   listMedia: ({ offset = 0, limit = 30, companyId } = {}) =>
     api
-      .get("/api/media", {
+      .get("/api/website/media", {
         params: { offset, limit },
         ...withCompany(companyId),
       })
@@ -445,17 +445,20 @@ export const website = {
       return { items: [] };
     }
     fd.append("file", list[0]);
-    const res = await api.post("/api/media/upload", fd, {
+    const res = await api.post("/api/website/media", fd, {
       headers: { "Content-Type": "multipart/form-data" },
       ...withCompany(companyId),
     });
-    const item = res?.data?.item || res?.data;
-    const normalized = item ? normalizeMediaAsset(item, companyId) : null;
-    return { items: normalized ? [normalized] : [] };
+    const items = Array.isArray(res?.data?.items) ? res.data.items : [];
+    return {
+      items: items.map((item) => normalizeMediaAsset(item, companyId)).filter(Boolean),
+    };
   },
 
   deleteMedia: (mediaId, { companyId } = {}) =>
-    api.delete(`/api/media/${mediaId}`, withCompany(companyId)).then((r) => r.data),
+    api
+      .delete(`/api/website/media/${mediaId}`, withCompany(companyId))
+      .then((r) => r.data),
 
   mediaFileUrl: (companyId, storedNameOrUrl) => {
     if (!storedNameOrUrl) return "";
