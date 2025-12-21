@@ -9,6 +9,7 @@ import {
   Grid,
   TextField,
   Button,
+  Link,
   MenuItem,
   Stack,
   Accordion,
@@ -40,6 +41,8 @@ import {
   TableCell,
   TableBody,
   Collapse,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import ShiftSwapPanel from "./components/ShiftSwapPanel";
 
@@ -67,6 +70,7 @@ import {
   OpenInFull,
   CloseFullscreen,
   PersonAddAlt as PersonAddAltIcon,
+  InfoOutlined,
 } from "@mui/icons-material";
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 
@@ -210,6 +214,17 @@ const menuConfig = [
 
   // Settings last
   { labelKey: "manager.menu.settings", key: "settings", icon: <Settings /> },
+];
+
+const hrMenuConfig = [
+  {
+    labelKey: "manager.menu.employeeManagement",
+    key: "employee-group",
+    icon: <People />,
+    children: [
+      { labelKey: "manager.menu.employeeProfiles", key: "employee-profiles", icon: <FolderShared /> },
+    ],
+  },
 ];
 
 const getDepartmentArray = (raw) =>
@@ -687,10 +702,53 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const theme = useTheme();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const [currentUserInfo, setCurrentUserInfo] = useState(null);
+  const isManager = useMemo(() => {
+    if (currentUserInfo?.is_manager) return true;
+    const stored = (typeof window !== "undefined" && window.localStorage.getItem("role")) || "";
+    return String(stored).toLowerCase() === "manager";
+  }, [currentUserInfo]);
+  const canManageOnboarding = Boolean(currentUserInfo?.can_manage_onboarding);
+  const canManageOnboardingLimited = Boolean(currentUserInfo?.can_manage_onboarding_limited);
+  const canManageShifts = Boolean(currentUserInfo?.can_manage_shifts);
+  const canManagePayroll = Boolean(currentUserInfo?.can_manage_payroll);
+  const hasHrAccess = isManager || canManageOnboarding || canManageOnboardingLimited;
+  const hasSupervisorAccess = isManager || canManageShifts;
+  const hasPayrollAccess = isManager || canManagePayroll;
+
+  const filteredMenuConfig = useMemo(() => {
+    if (isManager) return menuConfig;
+    const allowedGroups = new Set();
+    if (hasHrAccess) allowedGroups.add("employee-group");
+    if (canManageShifts) allowedGroups.add("shifts-group");
+    if (canManagePayroll) allowedGroups.add("payroll-group");
+    return menuConfig
+      .filter((item) => allowedGroups.has(item.key))
+      .map((item) => {
+        if (item.key === "employee-group") {
+          return {
+            ...item,
+            children: (item.children || []).filter((child) => child.key === "employee-profiles"),
+          };
+        }
+        if (item.key === "shifts-group" && canManageShifts && !isManager) {
+          const children = item.children || [];
+          const hasMaster = children.some((child) => child.key === "master-calendar");
+          const extra = hasMaster
+            ? []
+            : [{ label: "Master Calendar", key: "master-calendar", icon: <CalendarToday /> }];
+          return {
+            ...item,
+            children: [...children, ...extra],
+          };
+        }
+        return item;
+      });
+  }, [isManager, hasHrAccess, canManageShifts, canManagePayroll]);
 
   const menuItems = useMemo(
     () =>
-      menuConfig.map((item) => {
+      filteredMenuConfig.map((item) => {
         const mappedItem = {
           ...item,
           label: item.labelKey ? t(item.labelKey) : item.label || "",
@@ -705,8 +763,23 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
         return mappedItem;
       }),
-    [t, i18n.language]
+    [t, i18n.language, filteredMenuConfig]
   );
+
+  const allowedViewKeys = useMemo(() => {
+    const keys = new Set();
+    filteredMenuConfig.forEach((item) => {
+      if (item.key === "employee-group") {
+        keys.add("employee-management");
+      }
+      if (item.children && item.children.length) {
+        item.children.forEach((child) => keys.add(child.key));
+      } else if (item.key) {
+        keys.add(item.key);
+      }
+    });
+    return Array.from(keys);
+  }, [filteredMenuConfig]);
   // Sidebar state
   const [selectedView, setSelectedView] = useState(() => {
     return initialView || localStorage.getItem("manager_selected_view") || "__landing__";
@@ -724,6 +797,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const [employees, setEmployees] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [conversionRequests, setConversionRequests] = useState([]);
+  const [conversionLoading, setConversionLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [confirmArchiveId, setConfirmArchiveId] = useState(null);
@@ -746,11 +821,33 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   }, [selectedView]);
 
   useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get(`${API_URL_LOCAL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCurrentUserInfo(res.data || null);
+      } catch {
+        setCurrentUserInfo(null);
+      }
+    };
+    if (token) fetchUser();
+  }, [API_URL_LOCAL, token]);
+
+  useEffect(() => {
     if (initialView && initialView !== selectedView) {
       setSelectedView(initialView);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialView]);
+
+  useEffect(() => {
+    if (isManager) return;
+    if (!allowedViewKeys.length) return;
+    if (!allowedViewKeys.includes(selectedView)) {
+      setSelectedView(allowedViewKeys[0]);
+    }
+  }, [isManager, allowedViewKeys, selectedView]);
 
   // Landing activity feed
   useEffect(() => {
@@ -764,8 +861,13 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         setActivityErr("Failed to load activity feed.");
       }
     };
-    if (token && (selectedView === "__landing__" || selectedView === "overview" || selectedView === "recent-bookings")) run();
-  }, [API_URL_LOCAL, token, selectedView]);
+    if (
+      token &&
+      isManager &&
+      (selectedView === "__landing__" || selectedView === "overview" || selectedView === "recent-bookings")
+    )
+      run();
+  }, [API_URL_LOCAL, token, selectedView, isManager]);
 
   // Employee management data loading
   useEffect(() => {
@@ -776,6 +878,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     if (token && selectedView === "employee-management") fetchEmployees();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, departmentFilter, selectedView]);
+
+  useEffect(() => {
+    if (token && selectedView === "employee-management" && isManager) fetchConversionRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, selectedView, isManager]);
 
   useEffect(() => {
     if (token && selectedView === "overview") {
@@ -816,6 +923,21 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     }
   };
 
+  const fetchConversionRequests = async () => {
+    try {
+      setConversionLoading(true);
+      const res = await axios.get(`${API_URL_LOCAL}/manager/candidates/conversion-requests`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { status: "pending" },
+      });
+      setConversionRequests(res.data?.results || []);
+    } catch {
+      setError("Failed to load conversion requests.");
+    } finally {
+      setConversionLoading(false);
+    }
+  };
+
   const handleRoleChange = async (id, newRole) => {
     try {
       await axios.patch(
@@ -835,6 +957,181 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       setMessage("Temporary password sent.");
     } catch {
       setError("Failed to reset password.");
+    }
+  };
+
+  const handleOnboardingToggle = async (id, enabled) => {
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === id
+          ? {
+              ...emp,
+              can_manage_onboarding: enabled,
+              can_manage_onboarding_limited: enabled ? false : emp.can_manage_onboarding_limited,
+            }
+          : emp
+      )
+    );
+    try {
+      await axios.patch(
+        `${API_URL_LOCAL}/manager/recruiters/${id}`,
+        {
+          can_manage_onboarding: enabled,
+          ...(enabled ? { can_manage_onboarding_limited: false } : {}),
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage("Onboarding access updated.");
+      fetchEmployees();
+    } catch {
+      setError("Failed to update onboarding access.");
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === id
+            ? {
+                ...emp,
+                can_manage_onboarding: !enabled,
+                can_manage_onboarding_limited: emp.can_manage_onboarding_limited,
+              }
+            : emp
+        )
+      );
+    }
+  };
+
+  const handleLimitedOnboardingToggle = async (id, enabled) => {
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === id
+          ? {
+              ...emp,
+              can_manage_onboarding_limited: enabled,
+              can_manage_onboarding: enabled ? false : emp.can_manage_onboarding,
+            }
+          : emp
+      )
+    );
+    try {
+      await axios.patch(
+        `${API_URL_LOCAL}/manager/recruiters/${id}`,
+        {
+          can_manage_onboarding_limited: enabled,
+          ...(enabled ? { can_manage_onboarding: false } : {}),
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage("Limited onboarding access updated.");
+      fetchEmployees();
+    } catch {
+      setError("Failed to update onboarding access.");
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === id
+            ? {
+                ...emp,
+                can_manage_onboarding_limited: !enabled,
+                can_manage_onboarding: emp.can_manage_onboarding,
+              }
+            : emp
+        )
+      );
+    }
+  };
+
+  const handleSupervisorAccessToggle = async (id, enabled) => {
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === id
+          ? {
+              ...emp,
+              can_manage_shifts: enabled,
+            }
+          : emp
+      )
+    );
+    try {
+      await axios.patch(
+        `${API_URL_LOCAL}/manager/recruiters/${id}`,
+        { can_manage_shifts: enabled },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage("Supervisor access updated.");
+      fetchEmployees();
+    } catch {
+      setError("Failed to update supervisor access.");
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === id
+            ? {
+                ...emp,
+                can_manage_shifts: !enabled,
+              }
+            : emp
+        )
+      );
+    }
+  };
+
+  const handlePayrollAccessToggle = async (id, enabled) => {
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === id
+          ? {
+              ...emp,
+              can_manage_payroll: enabled,
+            }
+          : emp
+      )
+    );
+    try {
+      await axios.patch(
+        `${API_URL_LOCAL}/manager/recruiters/${id}`,
+        { can_manage_payroll: enabled },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage("Payroll access updated.");
+      fetchEmployees();
+    } catch {
+      setError("Failed to update payroll access.");
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === id
+            ? {
+                ...emp,
+                can_manage_payroll: !enabled,
+              }
+            : emp
+        )
+      );
+    }
+  };
+
+  const handleApproveConversion = async (candidateId) => {
+    try {
+      await axios.post(
+        `${API_URL_LOCAL}/manager/candidates/${candidateId}/approve-conversion`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage("Conversion approved.");
+      fetchConversionRequests();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to approve conversion.");
+    }
+  };
+
+  const handleRejectConversion = async (candidateId) => {
+    const reason = window.prompt("Rejection reason (optional):") || "";
+    try {
+      await axios.post(
+        `${API_URL_LOCAL}/manager/candidates/${candidateId}/reject-conversion`,
+        { reason },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage("Conversion rejected.");
+      fetchConversionRequests();
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to reject conversion.");
     }
   };
 
@@ -930,7 +1227,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   // Renders content for selected menu item
   const renderView = () => {
-    switch (selectedView) {
+    const effectiveView = allowedViewKeys.includes(selectedView)
+      ? selectedView
+      : allowedViewKeys[0] || selectedView;
+    switch (effectiveView) {
       case "__landing__":
         return (
           <ManagementFrame>
@@ -1056,43 +1356,97 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       case "employee-management":
         return (
           <Box>
-
-            {error && (
-              <Typography color="error" sx={{ mb: 2 }}>
-                {error}
-              </Typography>
-            )}
-            {message && (
-              <Typography color="primary" sx={{ mb: 2 }}>
-                {message}
-              </Typography>
-            )}
-
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                mb: 2,
-                borderRadius: 2,
-                border: (theme) => `1px dashed ${theme.palette.divider}`,
-                backgroundColor: (theme) => theme.palette.background.default,
-              }}
-            >
-              <Typography fontWeight={600} gutterBottom>
-                Need to add a new team member?
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Use the dedicated Add Member workspace for the full onboarding form (address, department, payroll, compliance consent).
-              </Typography>
-              <Button
-                sx={{ mt: 2 }}
-                variant="contained"
-                onClick={() => navigate("/manager/add-member")}
-                startIcon={<PersonAddAltIcon />}
+            {isManager && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  mb: 2,
+                  borderRadius: 2,
+                  border: (theme) => `1px dashed ${theme.palette.divider}`,
+                  backgroundColor: (theme) => theme.palette.background.default,
+                }}
               >
-                Launch Add Member
-              </Button>
-            </Paper>
+                <Typography fontWeight={600} gutterBottom>
+                  Need to add a new team member?
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Use the dedicated Add Member workspace for the full onboarding form (address, department, payroll, compliance consent).
+                </Typography>
+                <Button
+                  sx={{ mt: 2 }}
+                  variant="contained"
+                  onClick={() => navigate("/manager/add-member")}
+                  startIcon={<PersonAddAltIcon />}
+                >
+                  Launch Add Member
+                </Button>
+              </Paper>
+            )}
+
+            {isManager && (
+              <Accordion defaultExpanded sx={{ mb: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="h6" sx={headerStyle}>
+                    Pending Employee Conversions
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  {conversionLoading ? (
+                    <Typography color="text.secondary">Loading conversion requests...</Typography>
+                  ) : conversionRequests.length === 0 ? (
+                    <Typography color="text.secondary">No pending conversion requests.</Typography>
+                  ) : (
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Candidate</TableCell>
+                          <TableCell>Email</TableCell>
+                          <TableCell>Requested</TableCell>
+                          <TableCell>Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {conversionRequests.map((req) => (
+                          <TableRow key={req.id} hover>
+                            <TableCell>{req.name || "—"}</TableCell>
+                            <TableCell>
+                              {req.email ? (
+                                <Link
+                                  href={`/recruiter/candidates/${encodeURIComponent(req.email)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{ color: theme.palette.primary.main }}
+                                >
+                                  {req.email}
+                                </Link>
+                              ) : (
+                                "—"
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {req.conversion_requested_at
+                                ? new Date(req.conversion_requested_at).toLocaleString()
+                                : "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                <Button size="small" variant="contained" onClick={() => handleApproveConversion(req.id)}>
+                                  Approve
+                                </Button>
+                                <Button size="small" variant="outlined" color="warning" onClick={() => handleRejectConversion(req.id)}>
+                                  Reject
+                                </Button>
+                              </Stack>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </AccordionDetails>
+              </Accordion>
+            )}
 
             {/* Active Employees */}
             <Accordion defaultExpanded>
@@ -1144,67 +1498,176 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                     .filter((e) => e.status !== "inactive")
                     .map((e) => (
                       <Grid item xs={12} sm={6} key={e.id}>
-                        <Paper
+                        <Accordion
                           elevation={1}
                           sx={{
-                            p: { xs: 1.5, sm: 2 },
                             borderRadius: 2,
+                            "&:before": { display: "none" },
                           }}
                         >
-                          <Typography fontWeight={600}>
-                            {e.first_name} {e.last_name}
-                          </Typography>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Stack spacing={0.5} sx={{ width: "100%" }}>
+                              <Typography fontWeight={600}>
+                                {e.first_name} {e.last_name}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {e.email} {e.timezone ? `• ${e.timezone}` : ""}
+                              </Typography>
+                            </Stack>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            {isManager ? (
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <TextField
+                                  select
+                                  size="small"
+                                  label="Role"
+                                  value={e.is_manager ? "manager" : "recruiter"}
+                                  onChange={(ev) => handleRoleChange(e.id, ev.target.value)}
+                                  sx={{ width: "60%" }}
+                                >
+                                  <MenuItem value="recruiter">Employee</MenuItem>
+                                  <MenuItem value="manager">Manager</MenuItem>
+                                </TextField>
+                                <Tooltip
+                                  title="Employee: standard staff account (calendar, shifts, time). Manager: full admin access across payroll, scheduling, and settings."
+                                  placement="top"
+                                >
+                                  <IconButton size="small" aria-label="Role help">
+                                    <InfoOutlined fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            ) : (
+                              <Typography variant="body2">
+                                Role: {e.is_manager ? "Manager" : "Employee"}
+                              </Typography>
+                            )}
 
-                          <Typography variant="body2">
-                            {e.email} | {e.timezone}
-                          </Typography>
+                            {isManager && (
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                                <Checkbox
+                                  size="small"
+                                  checked={Boolean(e.can_manage_onboarding)}
+                                  onChange={(ev) => handleOnboardingToggle(e.id, ev.target.checked)}
+                                />
+                                <Typography variant="body2">HR onboarding access</Typography>
+                                <Tooltip
+                                  title="Full HR access: view and edit employee profiles, manage onboarding documents, and edit candidate profiles."
+                                  placement="top"
+                                >
+                                  <IconButton size="small" aria-label="HR onboarding access help">
+                                    <InfoOutlined fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            )}
 
-                          <TextField
-                            select
-                            size="small"
-                            label="Role"
-                            value={e.role}
-                            onChange={(ev) => handleRoleChange(e.id, ev.target.value)}
-                            sx={{ mt: 1, width: "60%" }}
-                          >
-                            <MenuItem value="recruiter">Employee</MenuItem>
-                            <MenuItem value="manager">Manager</MenuItem>
-                          </TextField>
+                            {isManager && (
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Checkbox
+                                  size="small"
+                                  checked={Boolean(e.can_manage_onboarding_limited)}
+                                  onChange={(ev) =>
+                                    handleLimitedOnboardingToggle(e.id, ev.target.checked)
+                                  }
+                                  disabled={Boolean(e.can_manage_onboarding)}
+                                />
+                                <Typography variant="body2">Limited HR onboarding access</Typography>
+                                <Tooltip
+                                  title="Limited HR access: can access HR tabs (invitations, forms, questionnaires, meetings, candidate search, public link) and read candidate profiles. No access to employee profiles or candidate edits."
+                                  placement="top"
+                                >
+                                  <IconButton size="small" aria-label="Limited HR onboarding access help">
+                                    <InfoOutlined fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            )}
 
-                          <Stack
-                            direction={{ xs: "column", sm: "row" }}
-                            spacing={1}
-                            mt={2}
-                          >
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => handleResetPassword(e.id)}
-                              startIcon={<RestartAltIcon />}
-                              fullWidth={isMobileViewport}
+                            {isManager && (
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Checkbox
+                                  size="small"
+                                  checked={Boolean(e.can_manage_shifts)}
+                                  onChange={(ev) =>
+                                    handleSupervisorAccessToggle(e.id, ev.target.checked)
+                                  }
+                                />
+                                <Typography variant="body2">Supervisor access</Typography>
+                                <Tooltip
+                                  title="Shift & availability tools: Shift Management, Time Tracking, Fraud/Anomalies, Leaves, Swap Approvals, Master Calendar."
+                                  placement="top"
+                                >
+                                  <IconButton size="small" aria-label="Supervisor access help">
+                                    <InfoOutlined fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            )}
+
+                            {isManager && (
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Checkbox
+                                  size="small"
+                                  checked={Boolean(e.can_manage_payroll)}
+                                  onChange={(ev) =>
+                                    handlePayrollAccessToggle(e.id, ev.target.checked)
+                                  }
+                                />
+                                <Typography variant="body2">Payroll access</Typography>
+                                <Tooltip
+                                  title="Advanced Payroll tools: Payroll, Saved Payrolls, Tax, ROE, T4, W2, Invoices."
+                                  placement="top"
+                                >
+                                  <IconButton size="small" aria-label="Payroll access help">
+                                    <InfoOutlined fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            )}
+
+                            <Stack
+                              direction={{ xs: "column", sm: "row" }}
+                              spacing={1}
+                              mt={2}
                             >
-                              Reset Password
-                            </Button>
-                            <Button
-                              size="small"
-                              color="warning"
-                              variant="outlined"
-                              startIcon={<ArchiveIcon />}
-                              onClick={() => setConfirmArchiveId(e.id)}
-                              fullWidth={isMobileViewport}
-                            >
-                              Archive
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => navigate(`/recruiter-stats/${e.id}`)}
-                              fullWidth={isMobileViewport}
-                            >
-                              View Stats
-                            </Button>
-                          </Stack>
-                        </Paper>
+                              {isManager && (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => handleResetPassword(e.id)}
+                                  startIcon={<RestartAltIcon />}
+                                  fullWidth={isMobileViewport}
+                                >
+                                  Reset Password
+                                </Button>
+                              )}
+                              {isManager && (
+                                <Button
+                                  size="small"
+                                  color="warning"
+                                  variant="outlined"
+                                  startIcon={<ArchiveIcon />}
+                                  onClick={() => setConfirmArchiveId(e.id)}
+                                  fullWidth={isMobileViewport}
+                                >
+                                  Archive
+                                </Button>
+                              )}
+                              {isManager && (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => navigate(`/recruiter-stats/${e.id}`)}
+                                  fullWidth={isMobileViewport}
+                                >
+                                  View Stats
+                                </Button>
+                              )}
+                            </Stack>
+                          </AccordionDetails>
+                        </Accordion>
                       </Grid>
                     ))}
                 </Grid>
@@ -1221,6 +1684,27 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                 </Button>
               </DialogActions>
             </Dialog>
+            <Snackbar
+              open={Boolean(message || error)}
+              autoHideDuration={5000}
+              onClose={() => {
+                setMessage("");
+                setError("");
+              }}
+              anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+            >
+              <Alert
+                onClose={() => {
+                  setMessage("");
+                  setError("");
+                }}
+                severity={error ? "error" : "success"}
+                variant="filled"
+                sx={{ width: "100%" }}
+              >
+                {error || message}
+              </Alert>
+            </Snackbar>
           </Box>
         );
 
@@ -1534,9 +2018,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       case "team":
         return (
           <ManagementFrame
-            title="Shift Management"
-            subtitle={isMobileViewport ? "" : "Create, assign, and manage employee shifts."}
+            title={null}
+            subtitle={null}
             fullWidth
+            sx={{ mt: { xs: -15, md: -15 } }}
             contentSx={{
               p: { xs: 1.5, md: 2.5 },
             }}
@@ -1647,7 +2132,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         return <ShiftSwapPanel token={token} headerStyle={headerStyle} />;
 
       case "employee-profiles":
-        return <EmployeeProfileForm token={token} />;
+        return <EmployeeProfileForm token={token} isManager={isManager} />;
       case "add-member":
         return (
           <ManagementFrame

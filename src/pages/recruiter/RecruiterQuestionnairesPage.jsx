@@ -1,23 +1,33 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo } from "react";
+import { Navigate } from "react-router-dom";
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
 import ManagementFrame from "../../components/ui/ManagementFrame";
+import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
 import ProfessionSettings from "../sections/ProfessionSetting";
 import CandidateFormsPanel from "../../candidateForms/CandidateFormsPanel";
 import QUESTIONNAIRE_LIMITS, { QUESTIONNAIRE_ALLOWED_MIME } from "../../constants/questionnaireUploads";
 
 const RecruiterQuestionnairesPage = ({ token }) => {
+  const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
   const mimeTypes = useMemo(
     () => (Array.isArray(QUESTIONNAIRE_ALLOWED_MIME) ? QUESTIONNAIRE_ALLOWED_MIME : []),
     []
   );
 
+  if (!isLoading && !allowHrAccess) {
+    return <Navigate to="/employee?tab=calendar" replace />;
+  }
+
   return (
     <ManagementFrame
       title="Questionnaire Builder"
       subtitle="Create, publish, and maintain questionnaires for doctor onboarding and intake."
+      fullWidth
+      sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
+      contentSx={{ p: { xs: 1.5, md: 2.5 } }}
     >
-      <RecruiterTabs localTab="questionnaires" />
+      <RecruiterTabs localTab="questionnaires" allowHrAccess={allowHrAccess} isLoading={isLoading} />
 
       <Stack spacing={3}>
         <Paper sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }} elevation={0}>

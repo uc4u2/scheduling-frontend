@@ -33,7 +33,6 @@ const DEFAULTS = {
 /* ------------------------- Permission defaults ------------------------- */
 const PERM_DEFAULTS = {
   can_close_slots: false,         // allow employee to Close Rest of Day / Truncate
-  can_edit_availability: false,   // allow employee to edit individual availability slots
 };
 
 export default function SettingsArtistVisibility() {
@@ -70,7 +69,7 @@ export default function SettingsArtistVisibility() {
 
         if (!ignore) {
           setPolicy({ ...DEFAULTS, ...(vis.data || {}) });
-          setPerms({ ...PERM_DEFAULTS, ...(pr.data || {}) });
+          setPerms({ can_close_slots: !!(pr.data || {}).can_close_slots });
         }
       } catch (e) {
         console.error("Load settings failed:", e);
@@ -90,7 +89,9 @@ export default function SettingsArtistVisibility() {
         axios.post(`${API_URL}/admin/artist-visibility-settings`, policy, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.post(`${API_URL}/admin/availability-permissions`, perms, {
+        axios.post(`${API_URL}/admin/availability-permissions`, {
+          can_close_slots: perms.can_close_slots,
+        }, {
           headers: { Authorization: `Bearer ${token}` }
         }),
       ]);
@@ -278,12 +279,6 @@ export default function SettingsArtistVisibility() {
                   hint={t("settings.artist.permissions.closeSlots.hint")}
                   checked={perms.can_close_slots}
                   onChange={(v) => setPerms(p => ({ ...p, can_close_slots: v }))}
-                />
-                <Row
-                  label={t("settings.artist.permissions.editSlots.label")}
-                  hint={t("settings.artist.permissions.editSlots.hint")}
-                  checked={perms.can_edit_availability}
-                  onChange={(v) => setPerms(p => ({ ...p, can_edit_availability: v }))}
                 />
               </Grid>
             </Paper>

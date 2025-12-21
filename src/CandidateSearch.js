@@ -10,12 +10,28 @@ import {
   TableCell,
   TableBody,
   Paper,
-  Alert
+  Alert,
+  Chip
 } from '@mui/material';
 import axios from 'axios';
 
 const CandidateSearch = ({ token }) => {
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const toConversionLabel = (value) => {
+    const status = (value || '').toLowerCase();
+    if (!status || status === 'none') return 'Not requested';
+    if (status === 'pending') return 'Pending';
+    if (status === 'approved') return 'Approved';
+    if (status === 'rejected') return 'Rejected';
+    return status;
+  };
+  const toConversionColor = (value) => {
+    const status = (value || '').toLowerCase();
+    if (status === 'approved') return 'success';
+    if (status === 'rejected') return 'error';
+    if (status === 'pending') return 'warning';
+    return 'default';
+  };
   const [filters, setFilters] = useState({
     job_applied: '',
     recruiter_id: '',
@@ -95,6 +111,7 @@ const CandidateSearch = ({ token }) => {
               <TableCell>Email</TableCell>
               <TableCell>Job Applied</TableCell>
               <TableCell>Status</TableCell>
+              <TableCell>Conversion</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -105,6 +122,14 @@ const CandidateSearch = ({ token }) => {
                 <TableCell>{c.email}</TableCell>
                 <TableCell>{c.job_applied}</TableCell>
                 <TableCell>{c.status}</TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    label={toConversionLabel(c.conversion_status)}
+                    color={toConversionColor(c.conversion_status)}
+                    variant={c.conversion_status ? 'filled' : 'outlined'}
+                  />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

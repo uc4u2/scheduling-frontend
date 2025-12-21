@@ -12,17 +12,19 @@ import {
 import { useTheme, alpha } from "@mui/material/styles";
 import axios from "axios";
 import { useSnackbar } from "notistack";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 
 import EnhancedInvitationForm from "../../EnhancedInvitationForm";
 import CandidateFormsPanel from "../../candidateForms/CandidateFormsPanel";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
+import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
 
 const RecruiterInvitationsPage = ({ token }) => {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
   const [searchParams] = useSearchParams();
+  const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
 
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -67,12 +69,19 @@ const RecruiterInvitationsPage = ({ token }) => {
     }
   }, [API_URL, token, candidateName, candidateEmail, candidatePosition, enqueueSnackbar]);
 
+  if (!isLoading && !allowHrAccess) {
+    return <Navigate to="/employee?tab=calendar" replace />;
+  }
+
   return (
     <ManagementFrame
       title="Invitations & Candidate Forms"
       subtitle="Send custom invitations, follow up with candidates, and review form submissions in one place."
+      fullWidth
+      sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
+      contentSx={{ p: { xs: 1.5, md: 2.5 } }}
     >
-      <RecruiterTabs localTab="invitations" />
+      <RecruiterTabs localTab="invitations" allowHrAccess={allowHrAccess} isLoading={isLoading} />
 
       <Stack spacing={3}>
         <Paper

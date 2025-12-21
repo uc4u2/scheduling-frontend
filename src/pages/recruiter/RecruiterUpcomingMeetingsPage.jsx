@@ -26,9 +26,11 @@ import LaunchIcon from "@mui/icons-material/Launch";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import axios from "axios";
 import { useSnackbar } from "notistack";
+import { Navigate } from "react-router-dom";
 
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
+import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
 
 const formatRange = (startIso, endIso, formatter, timezone) => {
   if (!startIso) return "";
@@ -67,6 +69,7 @@ const mapBlocks = (blocks = []) =>
 const RecruiterUpcomingMeetingsPage = ({ token }) => {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
+  const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   const [candidateBlocks, setCandidateBlocks] = useState([]);
@@ -304,12 +307,19 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
     );
   };
 
+  if (!isLoading && !allowHrAccess) {
+    return <Navigate to="/employee?tab=calendar" replace />;
+  }
+
   return (
     <ManagementFrame
-      title="Upcoming Meetings"
-      subtitle="Stay ahead of scheduled candidate interviews and client appointments."
-    >
-      <RecruiterTabs localTab="upcoming-meetings" />
+        title="Upcoming Meetings"
+        subtitle="Stay ahead of scheduled candidate interviews and client appointments."
+        fullWidth
+        sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
+        contentSx={{ p: { xs: 1.5, md: 2.5 } }}
+      >
+        <RecruiterTabs localTab="upcoming-meetings" allowHrAccess={allowHrAccess} isLoading={isLoading} />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>

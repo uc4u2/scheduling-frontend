@@ -16,6 +16,10 @@ const ResetPassword = () => {
 
   // Check if it's a temporary password reset (e.g., from forced reset flow)
   const isTempReset = location.pathname.includes("/reset-password/temp");
+  const searchParams = new URLSearchParams(location.search);
+  const resetToken = searchParams.get("token");
+  const resetType = searchParams.get("type") || "client";
+  const isTokenReset = Boolean(resetToken);
   const currentPasswordFromState = location.state?.currentPassword || "";
 
   const [currentPassword, setCurrentPassword] = useState(currentPasswordFromState);
@@ -44,26 +48,35 @@ const ResetPassword = () => {
     }
 
     try {
-      // Make API call to change password endpoint
-      const res = await axios.post(
-        `${API_URL}/change-password`,
-        {
-          current_password: isTempReset ? currentPassword : undefined,
-          new_password: newPassword,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+      let res;
+      if (isTokenReset) {
+        const endpoint = resetType === "recruiter" ? "/recruiter/reset-password" : "/reset-password";
+        res = await axios.post(`${API_URL}${endpoint}`, {
+          token: resetToken,
+          password: newPassword,
+        });
+      } else {
+        // Make API call to change password endpoint
+        res = await axios.post(
+          `${API_URL}/change-password`,
+          {
+            current_password: isTempReset ? currentPassword : undefined,
+            new_password: newPassword,
           },
-        }
-      );
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+      }
 
       setMessage(res.data.message || "Password updated successfully.");
       setError("");
 
       // Redirect after success, with a delay for user to read message
       setTimeout(() => {
-        if (isTempReset) {
+        if (isTempReset || isTokenReset) {
           navigate("/login");
         } else {
           // Navigate to dashboard or wherever appropriate
@@ -79,12 +92,21 @@ const ResetPassword = () => {
   return (
     <Container sx={{ mt: 6, maxWidth: "sm" }}>
       <Typography variant="h4" gutterBottom fontWeight={700}>
-        {isTempReset ? "Set New Password (Temporary Reset)" : "Reset Your Password"}
+        {isTempReset
+          ? "Set New Password (Temporary Reset)"
+          : isTokenReset
+          ? "Set New Password"
+          : "Reset Your Password"}
       </Typography>
 
       {isTempReset && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You are using a temporary password. Please set a new password to continue.
+        </Alert>
+      )}
+      {isTokenReset && !isTempReset && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Set a new password to finish your reset.
         </Alert>
       )}
 

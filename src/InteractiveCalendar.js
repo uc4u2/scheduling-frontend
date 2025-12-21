@@ -49,7 +49,7 @@ const API_URL =
   (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
   API_BASE_URL;
 
-const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilters }) => {
+const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilters, readOnly = false }) => {
   const theme = useTheme();
 
   const calendarThemeVars = useMemo(() => {
@@ -639,14 +639,14 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
               right: "dayGridMonth,timeGridWeek,timeGridDay",
             }}
             events={filteredEvents}
-            editable
-            droppable
+            editable={!readOnly}
+            droppable={!readOnly}
             eventBackgroundColor={theme.palette.primary.main}
             eventBorderColor={theme.palette.primary.main}
             eventTextColor={eventTextColor}
-            eventDrop={handleEventDrop}
-            eventResize={handleEventResize}
-            eventResizableFromStart
+            eventDrop={readOnly ? undefined : handleEventDrop}
+            eventResize={readOnly ? undefined : handleEventResize}
+            eventResizableFromStart={!readOnly}
             eventClick={handleEventClick}
             eventContent={renderEventContent}
           />
@@ -911,6 +911,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
                   color="error"
                   variant="outlined"
                   onClick={handleCancelBooking}
+                  disabled={readOnly}
                 >
                   Cancel Booking
                 </Button>
@@ -920,6 +921,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
                   color="warning"
                   variant="outlined"
                   onClick={handleMarkNoShow}
+                  disabled={readOnly}
                 >
                   Mark No-Show
                 </Button>
@@ -936,7 +938,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
               <Button
                 variant="contained"
                 onClick={handleSaveMeeting}
-                disabled={isSubmitting}
+                disabled={isSubmitting || readOnly}
                 startIcon={
                   isSubmitting ? <CircularProgress size={20} /> : null
                 }
@@ -952,4 +954,3 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
 };
 
 export default InteractiveCalendar;
-

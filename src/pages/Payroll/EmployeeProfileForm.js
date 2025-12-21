@@ -111,7 +111,7 @@ const US_STATES = [
   "WY",
 ];
 
-const EmployeeProfileForm = ({ token }) => {
+const EmployeeProfileForm = ({ token, isManager = false }) => {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
 
@@ -160,6 +160,7 @@ const FRONTEND_ORIGIN =
   (typeof window !== "undefined" && window.location.origin) ||
   (process.env.REACT_APP_FRONTEND_URL || "").replace(/\/$/, "") ||
   "http://localhost:3000";
+
 
   useEffect(() => {
     const fetchDepartments = async () => {
@@ -235,8 +236,10 @@ const FRONTEND_ORIGIN =
       setEmployee(flatData);
       setErrorKey("");
       // Load retirement plan/election (enterprise)
-      loadRetirementPlan(flatData.country);
-      loadRetirementElection(id, flatData.country);
+      if (isManager) {
+        loadRetirementPlan(flatData.country);
+        loadRetirementElection(id, flatData.country);
+      }
       await fetchDocuments(id);
     } catch (err) {
       console.error("Failed to fetch employee", err);
@@ -340,6 +343,7 @@ const FRONTEND_ORIGIN =
       // Reuse website media upload for storage
       const form = new FormData();
       form.append("file", file);
+      form.append("context", "employee_profile");
       if (companyId) form.append("company_id", companyId);
       const uploadRes = await api.post("/api/website/media/upload", form, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -412,6 +416,7 @@ const FRONTEND_ORIGIN =
     try {
       const form = new FormData();
       form.append("file", file);
+      form.append("context", "employee_profile");
       if (companyId) form.append("company_id", companyId);
       // Use existing website media upload (supports auth + company scoping)
       const res = await api.post(`/api/website/media/upload`, form, {
@@ -535,7 +540,7 @@ const FRONTEND_ORIGIN =
         setEmployee(flatData);
       }
       // Save retirement election (US only) if plan exists
-      if (employee.country === "USA" && retirementPlan?.id) {
+      if (isManager && employee.country === "USA" && retirementPlan?.id) {
         try {
           await api.post("/automation/retirement/elections", {
             employee_id: selectedId,
@@ -610,46 +615,48 @@ const FRONTEND_ORIGIN =
       title={t("manager.employeeProfiles.title")}
       subtitle={t("manager.employeeProfiles.subtitle")}
     >
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2,
-          mb: 3,
-          borderRadius: 3,
-          border: (theme) => `1px solid ${theme.palette.divider}`,
-          backgroundColor: (theme) =>
-            theme.palette.mode === "dark"
-              ? theme.palette.background.paper
-              : theme.palette.grey[50],
-        }}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          alignItems={{ xs: "flex-start", md: "center" }}
-          justifyContent="space-between"
+      {isManager && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2,
+            mb: 3,
+            borderRadius: 3,
+            border: (theme) => `1px solid ${theme.palette.divider}`,
+            backgroundColor: (theme) =>
+              theme.palette.mode === "dark"
+                ? theme.palette.background.paper
+                : theme.palette.grey[50],
+          }}
         >
-          <Box>
-            <Typography variant="subtitle1" fontWeight={600}>
-              {t("manager.employeeProfiles.quickAddTitle", "Need to add someone new?")}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t(
-                "manager.employeeProfiles.quickAddSubtitle",
-                "Use the Add Team Member workflow for stronger validation, password rules, and onboarding controls."
-              )}
-            </Typography>
-          </Box>
-          <Button
-            component={RouterLink}
-            to="/manager/add-member"
-            variant="contained"
-            color="primary"
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            alignItems={{ xs: "flex-start", md: "center" }}
+            justifyContent="space-between"
           >
-            {t("manager.employeeProfiles.actions.launchAddMember", "Open Add Team Member")}
-          </Button>
-        </Stack>
-      </Paper>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600}>
+                {t("manager.employeeProfiles.quickAddTitle", "Need to add someone new?")}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t(
+                  "manager.employeeProfiles.quickAddSubtitle",
+                  "Use the Add Team Member workflow for stronger validation, password rules, and onboarding controls."
+                )}
+              </Typography>
+            </Box>
+            <Button
+              component={RouterLink}
+              to="/manager/add-member"
+              variant="contained"
+              color="primary"
+            >
+              {t("manager.employeeProfiles.actions.launchAddMember", "Open Add Team Member")}
+            </Button>
+          </Stack>
+        </Paper>
+      )}
 
       <TextField
         select
@@ -686,6 +693,7 @@ const FRONTEND_ORIGIN =
               ? recruiter.department_id === parseInt(departmentFilter, 10)
               : true
           )
+          .filter((recruiter) => (isManager ? true : recruiter.role !== "manager"))
           .map((recruiter) => (
             <MenuItem key={recruiter.id} value={recruiter.id}>
               {recruiter.first_name} {recruiter.last_name} ({recruiter.email})
@@ -1133,18 +1141,20 @@ const FRONTEND_ORIGIN =
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={1}>
-                <Tooltip title="Triggers onboarding.started for this employee (Zapier can send contracts and start onboarding workflows)">
-                  <span>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      disabled={onboardingSending || !employee}
-                      onClick={handleSendOnboardingViaZapier}
-                    >
-                      {onboardingSending ? "Sending…" : "Send via Zapier"}
-                    </Button>
-                  </span>
-                </Tooltip>
+                {isManager && (
+                  <Tooltip title="Triggers onboarding.started for this employee (Zapier can send contracts and start onboarding workflows)">
+                    <span>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        disabled={onboardingSending || !employee}
+                        onClick={handleSendOnboardingViaZapier}
+                      >
+                        {onboardingSending ? "Sending…" : "Send via Zapier"}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                )}
                 <Button
                   variant="outlined"
                   size="small"
@@ -1311,100 +1321,103 @@ const FRONTEND_ORIGIN =
               )}
           </Paper>
 
-          <Accordion
-            expanded={payrollExpanded}
-            onChange={(_, expanded) => setPayrollExpanded(expanded)}
-            sx={{ mt: 3, borderRadius: 2 }}
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Stack spacing={0.25}>
-                <Typography variant="subtitle1" fontWeight={700}>
-                  Payroll &amp; compliance
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Exemptions plus recurring payroll defaults for new pay periods.
-                </Typography>
-              </Stack>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                <Typography fontWeight={700} gutterBottom>
-                  TL;DR (When should I use this?)
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  US (401k): Leave blank unless this employee should differ from the company default. Canada (RRSP): Fill only if the employee participates in RRSP.
-                </Typography>
-                <Typography fontWeight={700} gutterBottom>
-                  Employee Retirement Settings – Manager Guide
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  Managed by you (not employees). Fields shown depend on the employee’s country.
-                </Typography>
+          {isManager && (
+            <Accordion
+              expanded={payrollExpanded}
+              onChange={(_, expanded) => setPayrollExpanded(expanded)}
+              sx={{ mt: 3, borderRadius: 2 }}
+            >
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Stack spacing={0.25}>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    Payroll &amp; compliance
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Exemptions plus recurring payroll defaults for new pay periods.
+                  </Typography>
+                </Stack>
+              </AccordionSummary>
+              <AccordionDetails>
+              {isManager && (
+                <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                  <Typography fontWeight={700} gutterBottom>
+                    TL;DR (When should I use this?)
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    US (401k): Leave blank unless this employee should differ from the company default. Canada (RRSP): Fill only if the employee participates in RRSP.
+                  </Typography>
+                  <Typography fontWeight={700} gutterBottom>
+                    Employee Retirement Settings – Manager Guide
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Managed by you (not employees). Fields shown depend on the employee’s country.
+                  </Typography>
 
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 1 }}>
-                  🇺🇸 United States — 401(k)
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 1.5, mb: 1 }}>
-                  <Typography variant="subtitle2" fontWeight={700}>Do I need to fill this?</Typography>
-                  <Typography variant="body2">❌ No, not usually. Leave blank to use the company default.</Typography>
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 1 }}>
+                    🇺🇸 United States — 401(k)
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 1.5, mb: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={700}>Do I need to fill this?</Typography>
+                    <Typography variant="body2">❌ No, not usually. Leave blank to use the company default.</Typography>
+                  </Paper>
+                  <Typography variant="body2" gutterBottom>
+                    This is the employee’s 401(k) election. Optional; use only if this employee should differ from the company default.
+                    Company defaults live in Payroll → Retirement Plans. Blank here means the company default applies.
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Fill this only if the employee requests a different rate/date or should not follow the default.
+                  </Typography>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Field explanations (US)
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    401(k) Contribution (%) — percent withheld from gross. Example: company default 5%, enter 6% → only this employee uses 6%. Blank → company default.
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Employer 401(k) Match (%) — reporting only; does not reduce net pay. Blank → no match tracked.
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Caps apply automatically at the IRS limit; preview shows a warning when capped; contributions resume next year.
+                    W-2 is handled automatically (Box 1 reduced; Box 3/5 unchanged; Box 12 code D = total deferral).
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Want to change the default for everyone? Go to Payroll → Retirement Plans.
+                  </Typography>
+
+                  <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 2 }}>
+                    🇨🇦 Canada — RRSP
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 1.5, mb: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={700}>Do I need to fill this?</Typography>
+                    <Typography variant="body2">✅ Only if the employee contributes to RRSP. Blank means no RRSP contribution.</Typography>
+                  </Paper>
+                  <Typography variant="body2" gutterBottom>
+                    This sets the employee’s RRSP contribution. No company-wide RRSP default exists.
+                    Blank means no RRSP contribution (no fallback).
+                  </Typography>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Field explanations (Canada)
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    RRSP Contribution (%) — percent of pay to RRSP. Blank → no contribution.
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    Employer RRSP Match (%) — optional; for payroll/reporting if offered.
+                  </Typography>
+                  <Typography variant="body2" gutterBottom>
+                    RRSP room is per-employee (CRA). Schedulaa does not enforce a company-wide RRSP cap. Enterprise retirement plans apply to U.S. 401(k) only.
+                  </Typography>
+
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mt: 2 }}>
+                    Quick comparison
+                  </Typography>
+                  <Typography variant="body2">
+                    🇺🇸 USA — Defaults live in Payroll → Retirement Plans; this section is an optional override (often left blank).
+                    <br />
+                    🇨🇦 Canada — No company default; set RRSP here only if the employee participates.
+                  </Typography>
                 </Paper>
-                <Typography variant="body2" gutterBottom>
-                  This is the employee’s 401(k) election. Optional; use only if this employee should differ from the company default.
-                  Company defaults live in Payroll → Retirement Plans. Blank here means the company default applies.
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  Fill this only if the employee requests a different rate/date or should not follow the default.
-                </Typography>
-                <Typography variant="subtitle2" fontWeight={700}>
-                  Field explanations (US)
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  401(k) Contribution (%) — percent withheld from gross. Example: company default 5%, enter 6% → only this employee uses 6%. Blank → company default.
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  Employer 401(k) Match (%) — reporting only; does not reduce net pay. Blank → no match tracked.
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  Caps apply automatically at the IRS limit; preview shows a warning when capped; contributions resume next year.
-                  W-2 is handled automatically (Box 1 reduced; Box 3/5 unchanged; Box 12 code D = total deferral).
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  Want to change the default for everyone? Go to Payroll → Retirement Plans.
-                </Typography>
-
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 2 }}>
-                  🇨🇦 Canada — RRSP
-                </Typography>
-                <Paper variant="outlined" sx={{ p: 1.5, mb: 1 }}>
-                  <Typography variant="subtitle2" fontWeight={700}>Do I need to fill this?</Typography>
-                  <Typography variant="body2">✅ Only if the employee contributes to RRSP. Blank means no RRSP contribution.</Typography>
-                </Paper>
-                <Typography variant="body2" gutterBottom>
-                  This sets the employee’s RRSP contribution. No company-wide RRSP default exists.
-                  Blank means no RRSP contribution (no fallback).
-                </Typography>
-                <Typography variant="subtitle2" fontWeight={700}>
-                  Field explanations (Canada)
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  RRSP Contribution (%) — percent of pay to RRSP. Blank → no contribution.
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  Employer RRSP Match (%) — optional; for payroll/reporting if offered.
-                </Typography>
-                <Typography variant="body2" gutterBottom>
-                  RRSP room is per-employee (CRA). Schedulaa does not enforce a company-wide RRSP cap. Enterprise retirement plans apply to U.S. 401(k) only.
-                </Typography>
-
-                <Typography variant="subtitle2" fontWeight={700} sx={{ mt: 2 }}>
-                  Quick comparison
-                </Typography>
-                <Typography variant="body2">
-                  🇺🇸 USA — Defaults live in Payroll → Retirement Plans; this section is an optional override (often left blank).
-                  <br />
-                  🇨🇦 Canada — No company default; set RRSP here only if the employee participates.
-                </Typography>
-              </Paper>
+              )}
 
               <Grid container spacing={1} sx={{ mb: 2 }}>
                 <Grid item xs={12} md={4}>
@@ -1489,7 +1502,7 @@ const FRONTEND_ORIGIN =
                 These values auto-fill payroll preview each period. Managers can override per period before finalizing.
               </Typography>
 
-              {isUS && (
+              {isManager && isUS && (
                 <>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="subtitle2" fontWeight={700} gutterBottom>
@@ -1592,8 +1605,9 @@ const FRONTEND_ORIGIN =
                   </Grid>
                 </>
               )}
-            </AccordionDetails>
-          </Accordion>
+              </AccordionDetails>
+            </Accordion>
+          )}
 
           <Box sx={{ mt: 3 }}>
             <Button variant="contained" onClick={handleSubmit}>

@@ -1,19 +1,33 @@
 import React from "react";
-import { Box, Typography, Stack, Paper } from "@mui/material";
+import { Typography, Stack, Paper } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
 import SecondEmployeeShiftView from "../sections/SecondEmployeeShiftView";
+import ManagementFrame from "../../components/ui/ManagementFrame";
+import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
 
-const RecruiterMyShiftsPage = () => {
+const RecruiterMyShiftsPage = ({ token }) => {
   const navigate = useNavigate();
+  const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
   const handleLocalTabChange = (value) => {
-    navigate(`/recruiter?tab=${value}`);
+    navigate(`/employee?tab=${value}`);
   };
 
   return (
-    <Box sx={{ p: { xs: 1.5, md: 3 } }}>
-      <RecruiterTabs localTab="view-my-shift" onLocalTabChange={handleLocalTabChange} />
-      <Paper sx={{ p: { xs: 2, md: 3 }, mt: 2 }}>
+    <ManagementFrame
+      title="View My Shift"
+      subtitle="Review scheduled shifts, clock-ins, and breaks."
+      fullWidth
+      sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
+      contentSx={{ p: { xs: 1.5, md: 2.5 } }}
+    >
+      <RecruiterTabs
+        localTab="view-my-shift"
+        onLocalTabChange={handleLocalTabChange}
+        allowHrAccess={allowHrAccess}
+        isLoading={isLoading}
+      />
+      <Paper sx={{ p: { xs: 2, md: 3 }, mt: 2 }} elevation={0}>
         <Stack spacing={2}>
           <Typography variant="h5" fontWeight={700}>
             View My Shift
@@ -25,7 +39,7 @@ const RecruiterMyShiftsPage = () => {
           <SecondEmployeeShiftView />
         </Stack>
       </Paper>
-    </Box>
+    </ManagementFrame>
   );
 };
 

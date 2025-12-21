@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { Box, Button, CircularProgress, Stack, TextField, Typography, Alert } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { api } from "../../utils/api";
 import ManagementFrame from "../../components/ui/ManagementFrame";
+import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
+import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
 
-export default function RecruiterPublicLinkPage() {
+export default function RecruiterPublicLinkPage({ token }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [slug, setSlug] = useState("");
   const [rid, setRid] = useState("");
-  const [token, setToken] = useState("");
+  const [publicToken, setPublicToken] = useState("");
   const [allowed, setAllowed] = useState(false);
+  const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -61,7 +65,7 @@ export default function RecruiterPublicLinkPage() {
         setSlug(companySlug);
         setRid(recruiterId);
         setAllowed(allow);
-        setToken(pubToken);
+        setPublicToken(pubToken);
       } catch (e) {
         setErr("Failed to load your profile.");
       } finally {
@@ -75,7 +79,7 @@ export default function RecruiterPublicLinkPage() {
     (typeof window !== "undefined" && window.location.origin) ||
     (process.env.REACT_APP_FRONTEND_URL || "").replace(/\/$/, "") ||
     "http://localhost:3000";
-  const link = slug && (token || rid) ? `${origin}/${slug}/meet/${token || rid}` : "";
+  const link = slug && (publicToken || rid) ? `${origin}/${slug}/meet/${publicToken || rid}` : "";
 
   const regenerate = async () => {
     if (!rid) return;
@@ -83,7 +87,7 @@ export default function RecruiterPublicLinkPage() {
       setErr("");
       setLoading(true);
       const { data } = await api.post(`/api/recruiters/${rid}/public-link/rotate`);
-      setToken(data?.public_meet_token || "");
+      setPublicToken(data?.public_meet_token || "");
     } catch {
       setErr("Failed to generate a new link.");
     } finally {
@@ -91,8 +95,19 @@ export default function RecruiterPublicLinkPage() {
     }
   };
 
+  if (!isLoading && !allowHrAccess) {
+    return <Navigate to="/employee?tab=calendar" replace />;
+  }
+
   return (
-    <ManagementFrame title="Public Booking Link" subtitle="Copy your shareable meeting link.">
+    <ManagementFrame
+      title="Public Booking Link"
+      subtitle="Copy your shareable meeting link."
+      fullWidth
+      sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
+      contentSx={{ p: { xs: 1.5, md: 2.5 } }}
+    >
+      <RecruiterTabs localTab="public-link" allowHrAccess={allowHrAccess} isLoading={isLoading} />
       {loading ? (
         <Box sx={{ py: 4, textAlign: "center" }}>
           <CircularProgress />

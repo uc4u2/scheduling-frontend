@@ -14,6 +14,7 @@ import {
   Chip,
   Grid,
   Link,
+  Tooltip,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -35,7 +36,16 @@ import { downloadQuestionnaireFile } from "./utils/questionnaireUploads";
 import PublicBookingInfoCard from "./components/PublicBookingInfoCard";
 import { isoFromParts } from "./utils/datetime";
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-const statusOptions = ["booked", "interviewed", "rejected", "hired", "on-hold"];
+const statusOptions = [
+  "Applied",
+  "Interview Scheduled",
+  "Interviewed",
+  "Approved",
+  "Offered",
+  "Placed",
+  "Rejected",
+  "On hold",
+];
 const RecruiterCandidates = ({ token }) => {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
@@ -66,9 +76,57 @@ const RecruiterCandidates = ({ token }) => {
   const [otherLink, setOtherLink] = useState("");
   const [position, setPosition] = useState("");
   const [resumeFilename, setResumeFilename] = useState("");
+  const [resumeUrl, setResumeUrl] = useState("");
+  const [downloadingResume, setDownloadingResume] = useState(false);
+  const [resumePolicy, setResumePolicy] = useState({ retention_limit: 3 });
+  const [savingResumePolicy, setSavingResumePolicy] = useState(false);
+  const [clearingResumeVersions, setClearingResumeVersions] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [downloadingAttachmentId, setDownloadingAttachmentId] = useState(null);
+  const [authInfo, setAuthInfo] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    axios
+      .get(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        if (!active) return;
+        setAuthInfo(res.data || {});
+      })
+      .catch(() => {
+        if (!active) return;
+        setAuthInfo({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    if (!authInfo?.is_manager) {
+      return;
+    }
+    let active = true;
+    axios
+      .get(`${API_URL}/manager/candidates/resume-policy`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        if (!active) return;
+        setResumePolicy(res.data || { retention_limit: 3 });
+      })
+      .catch(() => {
+        if (!active) return;
+        setResumePolicy({ retention_limit: 3 });
+      });
+    return () => {
+      active = false;
+    };
+  }, [API_URL, authInfo, token]);
+
+  const canEditCandidate = Boolean(authInfo?.is_manager || authInfo?.can_manage_onboarding);
+  const isReadOnly = authInfo ? !canEditCandidate : false;
   useEffect(() => {
     let isActive = true;
     const fetchCandidate = async () => {
@@ -97,6 +155,7 @@ const RecruiterCandidates = ({ token }) => {
         setOtherLink(data.other_link || "");
         setPosition(data.position || data.job_applied || "");
         setResumeFilename(data.resume_filename || "");
+        setResumeUrl(data.resume_url || "");
         setError("");
       } catch (err) {
         console.error(err);
@@ -172,6 +231,45 @@ const RecruiterCandidates = ({ token }) => {
     return [];
   }, [candidate, profileSummary]);
   const hasProfileSections = Boolean(profileSummary?.sections?.length);
+  const statusMenuOptions = useMemo(() => {
+    if (status && !statusOptions.includes(status)) {
+      return [status, ...statusOptions];
+    }
+    return statusOptions;
+  }, [status]);
+  const conversionStatus = (candidate?.conversion_status || "none").toLowerCase();
+  const conversionStateLabel = (() => {
+    if (conversionStatus === "pending") return "Pending manager approval";
+    if (conversionStatus === "approved") return "Approved";
+    if (conversionStatus === "rejected") return "Rejected";
+    return "Not requested";
+  })();
+  const canRequestConversion =
+    conversionStatus === "none" || conversionStatus === "requested" || conversionStatus === "rejected";
+
+  const requestConversion = async () => {
+    if (!candidate?.id) return;
+    try {
+      setMessage("");
+      setError("");
+      await axios.post(
+        `${API_URL}/recruiter/candidates/${candidate.id}/request-conversion`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage("Conversion request submitted for manager approval.");
+      setCandidate((prev) =>
+        prev
+          ? {
+              ...prev,
+              conversion_status: "pending",
+            }
+          : prev
+      );
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to request conversion.");
+    }
+  };
 
   const formatDateTime = (value) => {
     if (!value) {
@@ -234,6 +332,23 @@ const RecruiterCandidates = ({ token }) => {
     const display = Number.isInteger(value) ? value : value.toFixed(1);
     return `${display} ${units[index]}`;
   };
+  const resumeSizeLabel = formatBytes(candidate?.resume_file_size);
+  const resumeUploadedLabel = formatDateTime(candidate?.resume_uploaded_at);
+  const resumeScanStatus = (candidate?.resume_scan_status || "").toLowerCase();
+  const resumeScanLabel = resumeScanStatus || "unknown";
+  const resumeScanColor =
+    resumeScanStatus === "clean"
+      ? "success"
+      : resumeScanStatus === "blocked"
+      ? "error"
+      : resumeScanStatus
+      ? "warning"
+      : "default";
+  const resumeDownloadBlocked = resumeScanStatus && resumeScanStatus !== "clean";
+  const resumeVersions = useMemo(() => {
+    const versions = candidate?.resume_versions || candidate?.custom_data?.resume_versions || [];
+    return Array.isArray(versions) ? versions : [];
+  }, [candidate]);
   const resolveLink = (url) => {
     if (!url) {
       return null;
@@ -324,9 +439,134 @@ const RecruiterCandidates = ({ token }) => {
     [enqueueSnackbar, resolveLink]
   );
 
+  const handleResumeDownload = useCallback(async () => {
+      if (!encodedEmail) {
+        enqueueSnackbar("Resume is not available.", { variant: "warning" });
+        return;
+      }
+    setDownloadingResume(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/candidates/${encodedEmail}/resume-url`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const url = res?.data?.url;
+      if (!url) {
+        enqueueSnackbar("Resume is not available.", { variant: "warning" });
+        return;
+      }
+      setResumeUrl(url);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Failed to fetch resume URL.";
+      const friendly =
+        msg === "resume_scan_pending"
+          ? "Resume is still being scanned. Please try again shortly."
+          : msg === "resume_blocked_by_scan"
+          ? "Resume download blocked by antivirus scan."
+          : msg;
+      enqueueSnackbar(friendly, { variant: "error" });
+    } finally {
+      setDownloadingResume(false);
+    }
+  }, [API_URL, encodedEmail, enqueueSnackbar, token]);
+
+  const handleResumeVersionDownload = useCallback(
+    async (version) => {
+      if (!encodedEmail || !version) {
+        enqueueSnackbar("Resume is not available.", { variant: "warning" });
+        return;
+      }
+      const versionStatus = (version?.scan_status || "").toLowerCase();
+      if (versionStatus && versionStatus !== "clean") {
+        enqueueSnackbar("This resume version is not available until scanning completes.", { variant: "warning" });
+        return;
+      }
+      const versionKey = version?.object_key;
+      if (!versionKey && version?.url) {
+        window.open(version.url, "_blank", "noopener,noreferrer");
+        return;
+      }
+      setDownloadingResume(true);
+      try {
+        const res = await axios.get(`${API_URL}/api/candidates/${encodedEmail}/resume-url`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: versionKey ? { object_key: versionKey } : {},
+        });
+        const url = res?.data?.url;
+        if (!url) {
+          enqueueSnackbar("Resume is not available.", { variant: "warning" });
+          return;
+        }
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch (err) {
+        const msg = err?.response?.data?.error || "Failed to fetch resume URL.";
+        const friendly =
+          msg === "resume_scan_pending"
+            ? "Resume is still being scanned. Please try again shortly."
+            : msg === "resume_blocked_by_scan"
+            ? "Resume download blocked by antivirus scan."
+            : msg;
+        enqueueSnackbar(friendly, { variant: "error" });
+      } finally {
+        setDownloadingResume(false);
+      }
+    },
+    [API_URL, encodedEmail, enqueueSnackbar, token]
+  );
+
+  const handleResumePolicyChange = async (value) => {
+    if (!authInfo?.is_manager) return;
+    const retentionLimit = Number(value);
+    setResumePolicy((prev) => ({ ...prev, retention_limit: retentionLimit }));
+    setSavingResumePolicy(true);
+    try {
+      const res = await axios.put(
+        `${API_URL}/manager/candidates/resume-policy`,
+        { retention_limit: retentionLimit },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setResumePolicy(res.data || { retention_limit: retentionLimit });
+      enqueueSnackbar("Resume retention updated.", { variant: "success" });
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Failed to update resume retention.";
+      enqueueSnackbar(msg, { variant: "error" });
+    } finally {
+      setSavingResumePolicy(false);
+    }
+  };
+
+  const handleClearResumeVersions = async () => {
+    if (!authInfo?.is_manager || !candidate?.id) return;
+    if (!window.confirm("Delete all previous resume versions? This cannot be undone.")) {
+      return;
+    }
+    setClearingResumeVersions(true);
+    try {
+      await axios.post(
+        `${API_URL}/manager/candidates/${candidate.id}/resume-versions/cleanup`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setCandidate((prev) =>
+        prev ? { ...prev, resume_versions: [] } : prev
+      );
+      enqueueSnackbar("Previous resume versions deleted.", { variant: "success" });
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Failed to delete resume versions.";
+      enqueueSnackbar(msg, { variant: "error" });
+    } finally {
+      setClearingResumeVersions(false);
+    }
+  };
+
   const handleSave = async () => {
     try {
       if (!encodedEmail || !token) {
+        return;
+      }
+      if (!canEditCandidate) {
+        setMessage("");
+        setError("You have read-only access to this candidate profile.");
         return;
       }
       await axios.put(`${API_URL}/api/candidates/${encodedEmail}`,
@@ -510,18 +750,133 @@ const RecruiterCandidates = ({ token }) => {
                   </Typography>
                   <Typography>
                     <strong>Resume:</strong>{" "}
-                    {resumeFilename ? (
-                      <Link
-                        href={`http://localhost:5000/uploads/resume/${encodeURIComponent(resumeFilename)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        download
-                        sx={{ color: theme.palette.primary.main }}
-                      >
-                        Download Resume
-                      </Link>
+                    {resumeUrl || resumeFilename ? (
+                      <Tooltip title="The download link refreshes automatically each time you open it.">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<CloudDownloadIcon fontSize="small" />}
+                          onClick={handleResumeDownload}
+                          disabled={downloadingResume || resumeDownloadBlocked}
+                          sx={{ textTransform: "none" }}
+                        >
+                          {downloadingResume ? "Loading..." : "Download Resume"}
+                        </Button>
+                      </Tooltip>
                     ) : "N/A"}
                   </Typography>
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
+                    <Typography>
+                      <strong>Scan Status:</strong>
+                    </Typography>
+                    <Chip size="small" label={resumeScanLabel} color={resumeScanColor} />
+                  </Stack>
+                  {resumeScanStatus && resumeScanStatus !== "clean" && (
+                    <Typography variant="caption" color="text.secondary">
+                      Downloads are disabled until scanning is complete.
+                    </Typography>
+                  )}
+                  <Typography>
+                    <strong>Resume Type:</strong> {candidate.resume_mime || "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Resume Size:</strong> {resumeSizeLabel || "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Uploaded:</strong> {resumeUploadedLabel || "N/A"}
+                  </Typography>
+                  {authInfo?.is_manager && (
+                    <Stack spacing={1} sx={{ mt: 2 }}>
+                      <TextField
+                        select
+                        size="small"
+                        label="Resume retention (versions)"
+                        value={resumePolicy?.retention_limit ?? 3}
+                        onChange={(e) => handleResumePolicyChange(e.target.value)}
+                        disabled={savingResumePolicy}
+                        helperText="Applies company-wide for future uploads only."
+                      >
+                        {[0, 1, 2, 3, 5, 10].map((limit) => (
+                          <MenuItem key={limit} value={limit}>
+                            {limit === 0 ? "Disable versioning" : `${limit} versions`}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        onClick={handleClearResumeVersions}
+                        disabled={clearingResumeVersions || resumeVersions.length === 0}
+                        sx={{ textTransform: "none", alignSelf: "flex-start" }}
+                      >
+                        {clearingResumeVersions ? "Clearing..." : "Delete old versions"}
+                      </Button>
+                    </Stack>
+                  )}
+                  {resumeVersions.length > 0 && (
+                    <Box sx={{ mt: 1.5 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        Previous Versions
+                      </Typography>
+                      <List dense sx={{ mt: 0.5 }}>
+                        {resumeVersions.map((version, index) => {
+                          const name = version?.filename || `Resume v${resumeVersions.length - index}`;
+                          const uploaded = formatDateTime(version?.uploaded_at);
+                          const sizeLabel = formatBytes(version?.file_size);
+                          const versionStatus = (version?.scan_status || "").toLowerCase();
+                          const versionBlocked = versionStatus && versionStatus !== "clean";
+                          return (
+                            <ListItem
+                              key={`${version?.object_key || version?.url || name}-${index}`}
+                              disableGutters
+                              divider
+                              alignItems="flex-start"
+                            >
+                              <Stack
+                                direction={{ xs: "column", sm: "row" }}
+                                spacing={1}
+                                justifyContent="space-between"
+                                alignItems={{ xs: "flex-start", sm: "center" }}
+                                sx={{ width: "100%" }}
+                              >
+                                <Stack spacing={0.5}>
+                                  <Typography variant="body2">{name}</Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {uploaded || "—"}
+                                    {sizeLabel ? ` • ${sizeLabel}` : ""}
+                                  </Typography>
+                                  {versionStatus && (
+                                    <Chip
+                                      size="small"
+                                      label={`Scan: ${versionStatus}`}
+                                      color={
+                                        versionStatus === "clean"
+                                          ? "success"
+                                          : versionStatus === "blocked"
+                                          ? "error"
+                                          : "warning"
+                                      }
+                                    />
+                                  )}
+                                </Stack>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  startIcon={<CloudDownloadIcon fontSize="small" />}
+                                  onClick={() => handleResumeVersionDownload(version)}
+                                  disabled={downloadingResume || versionBlocked}
+                                  sx={{ textTransform: "none" }}
+                                >
+                                  Download
+                                </Button>
+                              </Stack>
+                            </ListItem>
+                          );
+                        })}
+                      </List>
+                    </Box>
+                  )}
                 </Paper>
               </Grid>
               {/* Public booking details */}
@@ -532,16 +887,90 @@ const RecruiterCandidates = ({ token }) => {
                   publicMeetingLink={candidate.public_meeting_link || ""}
                 />
               </Grid>
+              <Grid item xs={12}>
+                <Paper
+                  sx={{
+                    p: 3,
+                    borderLeft: `6px solid ${theme.palette.info.main}`,
+                    backgroundColor: theme.palette.background.paper,
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, ...headerStyle }}>
+                    Conversion to Employee
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Typography><strong>Status:</strong> {conversionStateLabel}</Typography>
+                      {conversionStatus !== "none" && (
+                        <Chip
+                          size="small"
+                          label={conversionStatus}
+                          color={
+                            conversionStatus === "approved"
+                              ? "success"
+                              : conversionStatus === "rejected"
+                              ? "error"
+                              : "warning"
+                          }
+                        />
+                      )}
+                    </Stack>
+                    {candidate.conversion_requested_at && (
+                      <Typography>
+                        <strong>Requested:</strong> {formatDateTime(candidate.conversion_requested_at)}
+                      </Typography>
+                    )}
+                    {candidate.conversion_reviewed_at && (
+                      <Typography>
+                        <strong>Reviewed:</strong> {formatDateTime(candidate.conversion_reviewed_at)}
+                      </Typography>
+                    )}
+                    {candidate.conversion_rejection_reason && (
+                      <Alert severity="error">
+                        Rejection reason: {candidate.conversion_rejection_reason}
+                      </Alert>
+                    )}
+                    {candidate.employee_recruiter_id && (
+                      <Typography>
+                        <strong>Employee profile:</strong>{" "}
+                        <Link
+                          href={`/manager/employee-profiles?employee_id=${candidate.employee_recruiter_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: theme.palette.primary.main }}
+                        >
+                          Open profile
+                        </Link>
+                      </Typography>
+                    )}
+                    {canRequestConversion && (
+                      <Button
+                        variant="contained"
+                        onClick={requestConversion}
+                        sx={{ alignSelf: "flex-start" }}
+                      >
+                        Request manager approval
+                      </Button>
+                    )}
+                  </Stack>
+                </Paper>
+              </Grid>
             </Grid>
             <Divider sx={{ my: 4 }}>
               <Chip label="Update Details" color="primary" />
             </Divider>
             <Stack spacing={3}>
+              {isReadOnly && (
+                <Alert severity="info">
+                  Read-only access: updates require full HR onboarding permissions.
+                </Alert>
+              )}
               <TextField
                 label="Full Name"
                 fullWidth
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                disabled={isReadOnly}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               />
               <TextField
@@ -549,6 +978,7 @@ const RecruiterCandidates = ({ token }) => {
                 fullWidth
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                disabled={isReadOnly}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               />
               <TextField
@@ -556,6 +986,7 @@ const RecruiterCandidates = ({ token }) => {
                 fullWidth
                 value={linkedin}
                 onChange={(e) => setLinkedin(e.target.value)}
+                disabled={isReadOnly}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               />
               <TextField
@@ -563,6 +994,7 @@ const RecruiterCandidates = ({ token }) => {
                 fullWidth
                 value={otherLink}
                 onChange={(e) => setOtherLink(e.target.value)}
+                disabled={isReadOnly}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               />
               <TextField
@@ -570,6 +1002,7 @@ const RecruiterCandidates = ({ token }) => {
                 fullWidth
                 value={position}
                 onChange={(e) => setPosition(e.target.value)}
+                disabled={isReadOnly}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               />
               <TextField
@@ -577,6 +1010,7 @@ const RecruiterCandidates = ({ token }) => {
                 fullWidth
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                disabled={isReadOnly}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               />
               <TextField
@@ -586,6 +1020,7 @@ const RecruiterCandidates = ({ token }) => {
                 minRows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                disabled={isReadOnly}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               />
               <TextField
@@ -594,6 +1029,7 @@ const RecruiterCandidates = ({ token }) => {
                 fullWidth
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
+                disabled={isReadOnly}
                 sx={{ fontFamily: "Poppins, sans-serif" }}
               >
                 {statusOptions.map((opt) => (
@@ -607,6 +1043,7 @@ const RecruiterCandidates = ({ token }) => {
                 size="large"
                 sx={{ mt: 1, fontFamily: "Poppins, sans-serif" }}
                 onClick={handleSave}
+                disabled={isReadOnly}
               >
                 Save Changes
               </Button>

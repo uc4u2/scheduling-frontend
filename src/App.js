@@ -82,6 +82,7 @@ import RecruiterUpcomingMeetingsPage from "./pages/recruiter/RecruiterUpcomingMe
 import RecruiterPublicLinkPage from "./pages/recruiter/PublicLinkPage";
 import RecruiterMyTimePage from "./pages/recruiter/RecruiterMyTimePage";
 import RecruiterMyShiftsPage from "./pages/recruiter/RecruiterMyShiftsPage";
+import RecruiterCandidateSearchPage from "./pages/recruiter/RecruiterCandidateSearchPage";
 import ManagerDashboard from "./ManagerDashboard";
 import CandidateBooking from "./CandidateBooking";
 import CancelBooking from "./CancelBooking";
@@ -251,6 +252,7 @@ const RESERVED_SLUG_PREFIXES = new Set([
   'reset-password',
   'security',
   'settings',
+  'employee',
   'terms',
 ]);
 
@@ -414,6 +416,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/login" element={<Login setToken={setToken} />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/reset-password/temp" element={<ResetPassword />} />
           <Route path="/apply/:token" element={<CandidateIntakePage />} />
@@ -471,12 +474,14 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/employee/questionnaires" element={<RecruiterQuestionnairesPage token={token} />} />
           <Route path="/recruiter/upcoming-meetings" element={<RecruiterUpcomingMeetingsPage token={token} />} />
           <Route path="/employee/upcoming-meetings" element={<RecruiterUpcomingMeetingsPage token={token} />} />
-          <Route path="/recruiter/public-link" element={<RecruiterPublicLinkPage />} />
-          <Route path="/employee/public-link" element={<RecruiterPublicLinkPage />} />
-        <Route path="/recruiter/my-time" element={<RecruiterMyTimePage />} />
-        <Route path="/employee/my-time" element={<RecruiterMyTimePage />} />
-        <Route path="/recruiter/my-shifts" element={<RecruiterMyShiftsPage />} />
-        <Route path="/employee/my-shifts" element={<RecruiterMyShiftsPage />} />
+          <Route path="/recruiter/public-link" element={<RecruiterPublicLinkPage token={token} />} />
+          <Route path="/employee/public-link" element={<RecruiterPublicLinkPage token={token} />} />
+          <Route path="/recruiter/candidate-search" element={<RecruiterCandidateSearchPage token={token} />} />
+          <Route path="/employee/candidate-search" element={<RecruiterCandidateSearchPage token={token} />} />
+        <Route path="/recruiter/my-time" element={<RecruiterMyTimePage token={token} />} />
+        <Route path="/employee/my-time" element={<RecruiterMyTimePage token={token} />} />
+        <Route path="/recruiter/my-shifts" element={<RecruiterMyShiftsPage token={token} />} />
+        <Route path="/employee/my-shifts" element={<RecruiterMyShiftsPage token={token} />} />
         <Route path="/recruiter/*" element={<RecruiterDashboard token={token} />} />
         <Route path="/employee/*" element={<RecruiterDashboard token={token} />} />
           <Route path="/recruiter/candidates/:email" element={<RecruiterCandidates token={token} />} />

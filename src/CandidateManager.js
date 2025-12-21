@@ -9,10 +9,27 @@ import {
   Box,
   Button,
   Divider,
+  Chip,
+  Stack,
 } from "@mui/material";
 import axios from "axios";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const toConversionLabel = (value) => {
+  const status = (value || "").toLowerCase();
+  if (!status || status === "none") return "Not requested";
+  if (status === "pending") return "Pending";
+  if (status === "approved") return "Approved";
+  if (status === "rejected") return "Rejected";
+  return status;
+};
+const toConversionColor = (value) => {
+  const status = (value || "").toLowerCase();
+  if (status === "approved") return "success";
+  if (status === "rejected") return "error";
+  if (status === "pending") return "warning";
+  return "default";
+};
 
 const CandidateManager = ({ token }) => {
   const [candidates, setCandidates] = useState([]);
@@ -80,9 +97,17 @@ const CandidateManager = ({ token }) => {
       {candidates.map((c) => (
         <Card key={c.id} sx={{ mb: 3 }}>
           <CardContent>
-            <Typography variant="subtitle1" gutterBottom>
-              {c.name} ({c.email})
-            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 1 }}>
+              <Typography variant="subtitle1">
+                {c.name} ({c.email})
+              </Typography>
+              <Chip
+                size="small"
+                label={`Conversion: ${toConversionLabel(c.conversion_status)}`}
+                color={toConversionColor(c.conversion_status)}
+                variant={c.conversion_status ? "filled" : "outlined"}
+              />
+            </Stack>
             <Divider sx={{ mb: 2 }} />
 
             <TextField

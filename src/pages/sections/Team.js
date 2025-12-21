@@ -275,21 +275,20 @@ const localPartsToUtcMillis = (date, time, zone) => {
 
 /* =============================================================================
    Team / Shift Management (Setmore-style)
-   - Month + Day chips view (clean overview)
    - Week/Day views (drag & drop editing, pro rendering)
    - Shift Template box + editor modal
    - Export, bulk delete, summary table
-   - NEW: Pro options (granularity, 12/24h, weekends, work hours, compact, full-screen)
+   - Pro options (granularity, 12/24h, weekends, work hours, compact, full-screen)
    ========================================================================== */
 const SecondTeam = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
 
   /* --------------------------- view & layout state --------------------------- */
-  const [viewMode, setViewMode] = useState("month"); // 'month' | 'week'
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [calendarHeight, setCalendarHeight] = useState("600px");
+  const [calendarHeight, setCalendarHeight] = useState("auto");
   const [calendarWidth, setCalendarWidth] = useState("100%");
   // put this near your other utils in Team.js
 const asLocalDate = (ymd) => {
@@ -299,7 +298,7 @@ const asLocalDate = (ymd) => {
 };
 
   // NEW — enterprise week/day options
-  const [innerCalView, setInnerCalView] = useState("timeGridWeek"); // "timeGridWeek" | "timeGridDay"
+  const [innerCalView, setInnerCalView] = useState("timeGridDay"); // "timeGridWeek" | "timeGridDay"
   const [granularity, setGranularity] = useState("00:30:00");       // 15/30/60
   const [timeFmt12h, setTimeFmt12h] = useState(false);
   const [showWeekends, setShowWeekends] = useState(true);
@@ -317,6 +316,9 @@ const asLocalDate = (ymd) => {
   /* --------------------------------- data ----------------------------------- */
   const [shifts, setShifts] = useState([]);
   const [selectedShiftIds, setSelectedShiftIds] = useState([]);
+  const [timeEntriesMap, setTimeEntriesMap] = useState({});
+  const [rosterMap, setRosterMap] = useState({});
+  const [timePolicy, setTimePolicy] = useState(null);
 
   /* ============================ summary helpers/state ============================ */
   const [compact, setCompact] = useState(true);
@@ -672,6 +674,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recruiters, selectedRecruiters, dateRange, getAuthHeaders]);
 
+
   useEffect(() => {
     const loadTemplates = async () => {
       try {
@@ -754,22 +757,40 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   /* --------------------------------- fetchers -------------------------------- */
   const fetchRecruiters = async () => {
     try {
+      const params = new URLSearchParams();
+      params.set("page", "1");
+      params.set("per_page", "500");
+      if (selectedDepartment) {
+        params.set("department_id", selectedDepartment);
+      }
       const res = await fetch(
-        `${API_URL}/manager/recruiters${
-          selectedDepartment ? `?department_id=${selectedDepartment}` : ""
-        }`,
+        `${API_URL}/manager/recruiters?${params.toString()}`,
         { headers: getAuthHeaders() }
       );
       const data = await res.json();
       const list = (data.recruiters || []).map((r) => ({
         ...r,
         name: r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim(),
+        display_role: r.is_manager ? "Manager" : (r.role || "Employee"),
       }));
       setRecruiters(list);
     } catch {
       setErrorMsg("Failed to fetch recruiters.");
     }
   };
+
+  const fetchTimePolicy = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/manager/time-tracking-policy`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setTimePolicy(data?.policy || null);
+    } catch {
+      setTimePolicy(null);
+    }
+  }, [getAuthHeaders]);
 
   const fetchShifts = async () => {
     try {
@@ -784,6 +805,41 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       setErrorMsg("Failed to fetch shifts.");
     }
   };
+
+  const fetchTimeEntries = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      params.set("start_date", dateRange.start);
+      params.set("end_date", dateRange.end);
+      if (selectedRecruiters.length === 1) {
+        params.set("recruiter_id", String(selectedRecruiters[0]));
+      }
+      const res = await fetch(`${API_URL}/manager/time-entries?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        setTimeEntriesMap({});
+        setRosterMap({});
+        return;
+      }
+      const data = await res.json();
+      const entryMap = {};
+      (data?.time_entries || []).forEach((entry) => {
+        if (!entry || !entry.id) return;
+        entryMap[String(entry.id)] = entry;
+      });
+      const rosterMapNext = {};
+      (data?.roster || []).forEach((entry) => {
+        if (!entry || !entry.id) return;
+        rosterMapNext[String(entry.id)] = entry;
+      });
+      setTimeEntriesMap(entryMap);
+      setRosterMap(rosterMapNext);
+    } catch {
+      setTimeEntriesMap({});
+      setRosterMap({});
+    }
+  }, [dateRange.end, dateRange.start, getAuthHeaders, selectedRecruiters]);
 
   const fetchAvailabilityForModal = useCallback(
     async (recruiterId, referenceDate) => {
@@ -813,6 +869,21 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   );
 
   useEffect(() => {
+    fetchTimeEntries();
+  }, [fetchTimeEntries]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      fetchTimeEntries();
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [fetchTimeEntries]);
+
+  useEffect(() => {
+    fetchTimePolicy();
+  }, [fetchTimePolicy]);
+
+  useEffect(() => {
     if (!modalOpen) return;
     const recruiterId =
       editingShift?.recruiter_id ||
@@ -838,6 +909,28 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     [shifts, statusFilter, selectedRecruiters]
   );
 
+  const getLocalStartIso = useCallback((shift) => {
+    const date = getShiftLocalDate(shift);
+    const time = getShiftLocalStart(shift);
+    if (!date || !time) return shift.clock_in_display || shift.clock_in;
+    return `${date}T${time}`;
+  }, []);
+
+  const getLocalEndIso = useCallback((shift) => {
+    const date = getShiftLocalEndDate(shift);
+    const time = getShiftLocalEnd(shift);
+    if (!date || !time) return shift.clock_out_display || shift.clock_out;
+    return `${date}T${time}`;
+  }, []);
+
+  const getScheduledStartIso = useCallback((shift) => {
+    return shift.scheduled_clock_in || shift.clock_in || shift.clock_in_display || null;
+  }, []);
+
+  const getScheduledEndIso = useCallback((shift) => {
+    return shift.scheduled_clock_out || shift.clock_out || shift.clock_out_display || null;
+  }, []);
+
   // Events for WEEK/DAY view (editable, drag/resize)
   const calendarEvents = useMemo(
     () =>
@@ -846,11 +939,34 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         const isOnLeave = s.on_leave === true;
         const rec = recruiters.find((r) => r.id === s.recruiter_id);
         const bgTint = hexToRgba(color, 0.14);
+        const entry = timeEntriesMap[String(s.id)];
+        const roster = rosterMap[String(s.id)];
+        const scheduledStart = getScheduledStartIso(s);
+        const scheduledEnd = getScheduledEndIso(s);
+        const actualClockIn = entry?.clock_in || s.clock_in;
+        const breakMissingMinutes = entry?.break_missing_minutes || 0;
+        const breakNonCompliant = Boolean(entry?.break_non_compliant);
+        const breakInProgress = Boolean(roster?.break_in_progress);
+        const clockedIn = roster?.status === "in_progress" || entry?.status === "in_progress";
+        const nowUtc = DateTime.utc();
+        const allowLateMinutes = Number(timePolicy?.allow_late_clock_in_minutes || 0);
+        let lateMinutes = 0;
+        if (scheduledStart && actualClockIn) {
+          const sched = DateTime.fromISO(scheduledStart).toUTC();
+          const actual = DateTime.fromISO(actualClockIn).toUTC();
+          const diff = Math.max(0, Math.round(actual.diff(sched, "minutes").minutes));
+          lateMinutes = diff;
+        }
+        let missedClockIn = false;
+        if (scheduledStart && !actualClockIn) {
+          const sched = DateTime.fromISO(scheduledStart).toUTC().plus({ minutes: allowLateMinutes });
+          missedClockIn = nowUtc > sched;
+        }
         return {
           id: String(s.id),
           title: `${s.status || "assigned"}`,
-          start: s.clock_in_display || s.clock_in,
-          end: s.clock_out_display || s.clock_out,
+          start: getLocalStartIso(s),
+          end: getLocalEndIso(s),
           backgroundColor: isOnLeave ? "#f0f0f0" : bgTint,
           borderColor: isOnLeave ? "#ccc" : color,
           textColor: isOnLeave ? "#666" : "#111",
@@ -866,89 +982,33 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             timezone: s.timezone,
             leave_reason: s.leave_reason || null,
             _empColor: color,
+            break_in_progress: breakInProgress,
+            clocked_in: clockedIn,
+            missed_clock_in: missedClockIn,
+            break_missing_minutes: breakMissingMinutes,
+            break_non_compliant: breakNonCompliant,
+            late_minutes: lateMinutes,
+            scheduled_clock_in: scheduledStart,
+            scheduled_clock_out: scheduledEnd,
           },
         };
       }),
-    [filteredShifts, recruiters]
+    [
+      filteredShifts,
+      recruiters,
+      getLocalStartIso,
+      getLocalEndIso,
+      getScheduledStartIso,
+      getScheduledEndIso,
+      rosterMap,
+      timeEntriesMap,
+      timePolicy,
+    ]
   );
 
-  // Events for MONTH view (non-editable, just for navigating days)
-  const monthEvents = useMemo(
-    () =>
-      filteredShifts.map((s) => ({
-        id: String(s.id),
-        title:
-          recruiters.find((r) => r.id === s.recruiter_id)?.name ||
-          `Emp ${s.recruiter_id}`,
-        start: s.clock_in_display || s.clock_in,
-        end: s.clock_out_display || s.clock_out,
-        backgroundColor: getColorForRecruiter(s.recruiter_id),
-        borderColor: getColorForRecruiter(s.recruiter_id),
-        textColor: "#111",
-        extendedProps: {
-          recruiter_id: s.recruiter_id,
-          recruiter_name:
-            recruiters.find((r) => r.id === s.recruiter_id)?.name ||
-            `Emp ${s.recruiter_id}`,
-          profile_image_url:
-            recruiters.find((r) => r.id === s.recruiter_id)?.profile_image_url ||
-            recruiters.find((r) => r.id === s.recruiter_id)?.avatar ||
-            null,
-        },
-        classNames: ["shift-event-month"],
-      })),
-    [filteredShifts, recruiters]
-  );
-
-  // Day rail chips (for selectedDate)
-  const dayChips = useMemo(() => {
-    const list = filteredShifts
-      .filter((s) => {
-          const localDateFromISO = getShiftLocalDate(s);
-          return s.date === selectedDate || localDateFromISO === selectedDate;
-        })
-
-      .map((s) => {
-        const startLabel = getShiftLocalStart(s);
-        const endLabel = getShiftLocalEnd(s);
-        const rec = recruiters.find((r) => r.id === s.recruiter_id);
-        const name = rec?.name || s.recruiter_id;
-        const avatarSrc = rec?.profile_image_url || rec?.avatar || null;
-        const avatarAlt = name || "Emp";
-        return {
-          key: `${s.id}-${s.clock_in_display || s.clock_in}`,
-          id: s.id,
-          recruiter_id: s.recruiter_id,
-          label: `${startLabel}–${endLabel} • ${name} (${s.status})`,
-          color: getColorForRecruiter(s.recruiter_id),
-          avatarSrc,
-          avatarAlt,
-          raw: s,
-          sortKey: `${getShiftLocalDate(s)} ${startLabel}`,
-        };
-      })
-      .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-
-    return list;
-  }, [filteredShifts, recruiters, selectedDate]);
   const canLinkAvailability = Boolean(editingShift) || selectedRecruiters.length === 1;
 
   /* ------------------------------- handlers --------------------------------- */
-  const handleMonthDateClick = (arg) => {
-    setSelectedDate(arg.dateStr);
-  };
-  const handleMonthEventClick = (info) => {
-    if (info.event.start) {
-      setSelectedDate(format(info.event.start, "yyyy-MM-dd"));
-    }
-  };
-  const handleMoreLinkClick = (info) => {
-    // When "+N more" is clicked, focus the day rail below
-    if (info?.date) {
-      setSelectedDate(format(info.date, "yyyy-MM-dd"));
-    }
-    return "none"; // disable FullCalendar default popover
-  };
 
   const handleEventDrop = (dropInfo) => {
     pendingRevertCallbackRef.current = dropInfo.revert;
@@ -1644,7 +1704,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const ids = selectedRecruiters.length
       ? selectedRecruiters.join(",")
       : recruiters.map((r) => r.id).join(",");
-    const url = `${API_URL}/automation/shifts/export?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
+      const url = `${API_URL}/automation/shifts/export?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
     try {
       const res = await fetch(url, { headers: getAuthHeaders() });
       if (!res.ok) {
@@ -1655,7 +1715,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       const urlBlob = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = urlBlob;
-      a.download = "shifts.xlsx";
+      a.download = "shifts.csv";
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1722,6 +1782,51 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           >
             {status}
           </span>
+          {xp.clocked_in && !xp.break_in_progress ? (
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: "#e6f4ea",
+                border: "1px solid #34a853",
+                color: "#111",
+              }}
+            >
+              Clocked in
+            </span>
+          ) : null}
+          {xp.break_in_progress ? (
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: "#fff8e1",
+                border: "1px solid #ffb300",
+                color: "#111",
+              }}
+            >
+              On break
+            </span>
+          ) : null}
+          {xp.missed_clock_in ? (
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: "#ffebee",
+                border: "1px solid #e53935",
+                color: "#111",
+              }}
+            >
+              Missed clock‑in
+            </span>
+          ) : null}
           {showAvatar && (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#111" }}>
               <span
@@ -1776,6 +1881,53 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           {startTime}
           {endTime ? ` – ${endTime}` : ""}
         </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
+          {xp.late_minutes > 0 ? (
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: "#fff3e0",
+                border: "1px solid #fb8c00",
+                color: "#111",
+              }}
+            >
+              Late +{xp.late_minutes}m
+            </span>
+          ) : null}
+          {xp.break_missing_minutes > 0 ? (
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: "#ffebee",
+                border: "1px solid #e53935",
+                color: "#111",
+              }}
+            >
+              Break missing {xp.break_missing_minutes}m
+            </span>
+          ) : null}
+          {xp.break_non_compliant ? (
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: "#fce4ec",
+                border: "1px solid #d81b60",
+                color: "#111",
+              }}
+            >
+              Break non‑compliant
+            </span>
+          ) : null}
+        </div>
         {xp.location ? (
           <div style={{ fontSize: 11, opacity: 0.9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {xp.location}
@@ -1803,7 +1955,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   // shared props for Week/Day calendars
   const baseCalProps = {
     plugins: [timeGridPlugin, dayGridPlugin, interactionPlugin],
-    events: [...calendarEvents, ...availabilityOverlay],
+    events: calendarEvents,
     editable: true,
     selectable: true,
     weekends: showWeekends,
@@ -1841,7 +1993,15 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
   /* --------------------------------- render --------------------------------- */
   return (
-    <Box p={{ xs: 1, md: 4 }} sx={{ bgcolor: { xs: "transparent", md: "background.default" } }}>
+    <Box
+      sx={{
+        bgcolor: { xs: "transparent", md: "background.default" },
+        pt: 0,
+        mt: 0,
+        px: { xs: 1, md: 2 },
+        pb: { xs: 1, md: 2 },
+      }}
+    >
       {/* Global tweaks for readability in timeGrid */}
       <GlobalStyles
         styles={{
@@ -1885,8 +2045,12 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
 
 
+      <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
+        Shift Management
+      </Typography>
+
       {/* Filters row */}
-      {isSmDown ? (
+      {isMdDown ? (
         <Accordion disableGutters sx={{ mb: 2 }} defaultExpanded={false}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle2">Filters & templates</Typography>
@@ -1930,7 +2094,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                     {recruiters.map((r) => (
                       <MenuItem key={r.id} value={r.id}>
                         <Checkbox checked={selectedRecruiters.indexOf(r.id) > -1} />
-                        <ListItemText primary={r.name} />
+                        <ListItemText primary={r.name} secondary={r.display_role} />
                       </MenuItem>
                     ))}
                   </Select>
@@ -1997,24 +2161,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} display="flex" gap={1} alignItems="center" flexWrap="wrap">
-                <Button variant="outlined" onClick={openTemplateModal} size="small">
-                  Edit Templates
-                </Button>
-                <ToggleButtonGroup
-                  size="small"
-                  exclusive
-                  value={viewMode}
-                  onChange={(_, v) => v && setViewMode(v)}
-                >
-                  <ToggleButton value="month" title="Month + Chips">
-                    Month
-                  </ToggleButton>
-                  <ToggleButton value="week" title="Week/Day (drag & drop)">
-                    Week/Day
-                  </ToggleButton>
-                </ToggleButtonGroup>
-              </Grid>
+              <Grid item xs={12} />
             </Grid>
           </AccordionDetails>
         </Accordion>
@@ -2057,7 +2204,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 {recruiters.map((r) => (
                   <MenuItem key={r.id} value={r.id}>
                     <Checkbox checked={selectedRecruiters.indexOf(r.id) > -1} />
-                    <ListItemText primary={r.name} />
+                    <ListItemText primary={r.name} secondary={r.display_role} />
                   </MenuItem>
                 ))}
               </Select>
@@ -2125,24 +2272,7 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} md={2} display="flex" gap={1} alignItems="center">
-            <Button variant="outlined" onClick={openTemplateModal}>
-              Edit Templates
-            </Button>
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={viewMode}
-              onChange={(_, v) => v && setViewMode(v)}
-            >
-              <ToggleButton value="month" title="Month + Chips">
-                Month
-              </ToggleButton>
-              <ToggleButton value="week" title="Week/Day (drag & drop)">
-                Week/Day
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Grid>
+          <Grid item xs={12} md={2} />
         </Grid>
       )}
 
@@ -2151,9 +2281,10 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
         mb={2}
         display="flex"
         gap={1}
-        alignItems="center"
+        alignItems={{ xs: "stretch", md: "center" }}
         flexWrap="wrap"
         sx={{
+          flexDirection: { xs: "column", md: "row" },
           position: { xs: "sticky", md: "static" },
           top: { xs: 8, md: "auto" },
           zIndex: 10,
@@ -2161,302 +2292,59 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
           py: { xs: 1, md: 0 },
         }}
       >
+        <Button variant="outlined" onClick={openTemplateModal} fullWidth={isMdDown}>
+          Edit Templates
+        </Button>
+
         <Tooltip title={selectedRecruiters.length === 0 ? "Select at least one employee above" : ""}>
           <span>
             <Button
               variant="contained"
               onClick={handleOpenAssignShift}
               disabled={selectedRecruiters.length === 0}
-              fullWidth={isSmDown}
+              fullWidth={isMdDown}
             >
               Assign Shift
             </Button>
           </span>
         </Tooltip>
 
-        <Button variant="outlined" onClick={handleExportToExcel} fullWidth={isSmDown}>
+        <Button variant="outlined" onClick={handleExportToExcel} fullWidth={isMdDown}>
           Export to Excel
         </Button>
 
-        <Button variant="outlined" onClick={fetchShifts} fullWidth={isSmDown}>
+        <Button variant="outlined" onClick={fetchShifts} fullWidth={isMdDown}>
           Refresh
+        </Button>
+
+        <Button
+          variant="outlined"
+          onClick={() => setCalendarHeight(calendarHeight === "auto" ? "90vh" : "auto")}
+          fullWidth={isMdDown}
+        >
+          {calendarHeight === "auto" ? "Fixed Height" : "Auto Height"}
+        </Button>
+
+        <Button
+          variant="outlined"
+          onClick={() => setCalendarWidth(calendarWidth === "100%" ? "300%" : "100%")}
+          fullWidth={isMdDown}
+        >
+          {calendarWidth === "100%" ? "Expand Width" : "Collapse Width"}
+        </Button>
+
+        <Button
+          startIcon={<OpenInFullIcon />}
+          variant="contained"
+          onClick={() => setFullScreenOpen(true)}
+          fullWidth={isMdDown}
+        >
+          Full Screen
         </Button>
       </Box>
 
-      {/* ============================== MONTH MODE ============================== */}
-      {viewMode === "month" && (
-        <>
-          <Paper
-            sx={{
-              p: { xs: 1.25, md: 2 },
-              mb: 2,
-              border: { xs: "none", md: "none" },
-              borderColor: { xs: "transparent", md: "transparent" },
-              boxShadow: { xs: "none", md: 1 },
-              bgcolor: { xs: "transparent", md: "background.paper" },
-              mx: { xs: -4, md: 0 },
-              width: { xs: "calc(100% + 64px)", md: "100%" },
-            }}
-            elevation={isSmDown ? 0 : 1}
-          >
-            <FullCalendar
-              plugins={[dayGridPlugin, interactionPlugin]}
-              initialView="dayGridMonth"
-              height="auto"
-              dayMaxEvents={3}
-              moreLinkClick={handleMoreLinkClick}
-              moreLinkText={(n) => `+${n} more`}
-              events={monthEvents}
-              eventContent={(arg) => {
-                const xp = arg.event.extendedProps || {};
-                const name = xp.recruiter_name || arg.event.title;
-                const avatar = xp.profile_image_url;
-                const color = getColorForRecruiter(xp.recruiter_id || arg.event.id);
-                const bg = hexToRgba(color, 0.12);
-                const textColor = getReadableTextColor(color);
-                return (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "2px 4px",
-                      color: textColor,
-                      borderLeft: `4px solid ${color}`,
-                      borderRadius: 6,
-                      background: bg,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: "50%",
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                        backgroundImage: avatar ? `url(${avatar})` : "none",
-                        backgroundColor: "#e0e0e0",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: textColor,
-                      }}
-                    >
-                      {!avatar ? (name || "E").charAt(0) : ""}
-                    </span>
-                    <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: textColor }}>
-                      {name}
-                    </span>
-                  </div>
-                );
-              }}
-              dateClick={handleMonthDateClick}
-              eventClick={handleMonthEventClick}
-              headerToolbar={{
-                left: "prev,next today",
-                center: "title",
-                right: "",
-              }}
-            />
-          </Paper>
-
-          {/* Legend for visible employees */}
-          <Stack direction="row" spacing={1} sx={{ mb: 1 }} useFlexGap flexWrap="wrap">
-            {recruiters
-              .filter(
-                (r) =>
-                  selectedRecruiters.length === 0 ||
-                  selectedRecruiters.includes(r.id)
-              )
-              .map((r) => (
-                <Chip
-                  key={r.id}
-                  label={r.name}
-                  sx={{
-                    bgcolor: getColorForRecruiter(r.id),
-                    border: "1px solid rgba(0,0,0,0.2)",
-                  }}
-                />
-              ))}
-          </Stack>
-
-          {/* Day rail chips */}
-          <Paper
-            sx={{
-              p: { xs: 1.25, md: 2 },
-              mb: 4,
-              border: { xs: "none", md: "none" },
-              borderColor: { xs: "transparent", md: "transparent" },
-              boxShadow: { xs: "none", md: 1 },
-              bgcolor: { xs: "transparent", md: "background.paper" },
-              mx: { xs: -4, md: 0 },
-              width: { xs: "calc(100% + 64px)", md: "100%" },
-            }}
-            elevation={isSmDown ? 0 : 1}
-          >
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={1}
-              sx={{ mb: 1, display: { xs: "none", md: "flex" } }}
-            >
-              <Typography variant="subtitle1" fontWeight={700}>
-                {format(asLocalDate(selectedDate), "EEE, MMM d")} — {dayChips.length} shift(s)
-
-              </Typography>
-              <Tooltip title="Each chip uses the employee color">
-                <Chip size="small" label="Legend: color by employee" />
-              </Tooltip>
-              <Button size="small" onClick={fetchShifts} sx={{ ml: "auto" }}>
-                Refresh
-              </Button>
-            </Stack>
-
-            {dayChips.length === 0 ? (
-              <Typography color="text.secondary">No shifts for this day.</Typography>
-            ) : (
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                {dayChips.map((c) => (
-                  <Chip
-                    key={c.key}
-                    label={c.label}
-                    icon={
-                      <Avatar
-                        src={c.avatarSrc || undefined}
-                        alt={c.avatarAlt || "Emp"}
-                        sx={{ width: 24, height: 24 }}
-                      >
-                        {String(c.avatarAlt || c.label || "E").charAt(0)}
-                      </Avatar>
-                    }
-                    onClick={() => {
-                      const s = c.raw;
-                      setEditingShift(s);
-                      const policyState = hydrateBreakPolicyFormState(s.break_policy);
-                      const derivedBreakMinutes =
-                        s.break_minutes ?? policyState.breakLength ?? "";
-                      setFormData({
-                        ...defaultBreakPolicyForm,
-                        ...policyState,
-                        date: getShiftLocalDate(s) || s.date || "",
-                        startTime: getShiftLocalStart(s) || "",
-                        endTime: getShiftLocalEnd(s) || "",
-                        location: s.location || "",
-                        note: s.note || "",
-                        recurring: false,
-                        recurringDays: [],
-                        selectedTemplate: "",
-                        breakStart: toTimeInputValue(s.break_start_display || s.break_start),
-                        breakEnd: toTimeInputValue(s.break_end_display || s.break_end),
-                        breakMinutes: derivedBreakMinutes,
-                        breakPaid: Boolean(s.break_paid),
-                        repeatMode: "weeks",
-                        repeatWeeks: 2,
-                        repeatUntil: "",
-                      });
-                      setSelectedAvailabilityIds(s.availability_id ? [s.availability_id] : []);
-                      fetchAvailabilityForModal(s.recruiter_id, s.date);
-
-                      setModalOpen(true);
-                    }}
-                    sx={{
-                      bgcolor: c.color,
-                      border: "1px solid rgba(0,0,0,0.2)",
-                    }}
-                  />
-                ))}
-              </Stack>
-            )}
-          </Paper>
-        </>
-      )}
-
       {/* =============================== WEEK/DAY MODE ============================== */}
-      {viewMode === "week" && (
-        <>
-          <Typography variant="h6" gutterBottom>
-            🧭 Week/Day View
-          </Typography>
-
-          {/* Pro options */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={innerCalView}
-              onChange={(_, v) => v && setInnerCalView(v)}
-            >
-              <ToggleButton value="timeGridWeek">Week</ToggleButton>
-              <ToggleButton value="timeGridDay">Day</ToggleButton>
-            </ToggleButtonGroup>
-
-            <ToggleButtonGroup
-              size="small"
-              value={[granularity]}
-              onChange={(_, val) => {
-                const v = Array.isArray(val) ? val[0] : val;
-                if (v) setGranularity(v);
-              }}
-            >
-              <ToggleButton value="00:15:00">15m</ToggleButton>
-              <ToggleButton value="00:30:00">30m</ToggleButton>
-              <ToggleButton value="01:00:00">60m</ToggleButton>
-            </ToggleButtonGroup>
-
-            <ToggleButtonGroup
-              size="small"
-              value={timeFmt12h ? ["12h"] : ["24h"]}
-              onChange={() => setTimeFmt12h((s) => !s)}
-            >
-              <ToggleButton value="12h">12-hour</ToggleButton>
-              <ToggleButton value="24h">24-hour</ToggleButton>
-            </ToggleButtonGroup>
-
-            <ToggleButtonGroup
-              size="small"
-              value={showWeekends ? ["weekends"] : []}
-              onChange={() => setShowWeekends((s) => !s)}
-            >
-              <ToggleButton value="weekends">{showWeekends ? "Hide" : "Show"} Weekends</ToggleButton>
-            </ToggleButtonGroup>
-
-            <ToggleButtonGroup
-              size="small"
-              value={workHoursOnly ? ["hours"] : []}
-              onChange={() => setWorkHoursOnly((s) => !s)}
-            >
-              <ToggleButton value="hours">{workHoursOnly ? "All Hours" : "Work Hours"}</ToggleButton>
-            </ToggleButtonGroup>
-
-            <ToggleButtonGroup
-              size="small"
-              value={compactDensity ? ["compact"] : []}
-              onChange={() => setCompactDensity((s) => !s)}
-            >
-              <ToggleButton value="compact">{compactDensity ? "Comfortable" : "Compact"}</ToggleButton>
-            </ToggleButtonGroup>
-
-            <Button variant="outlined" onClick={() =>
-              setCalendarHeight(calendarHeight === "90vh" ? "600px" : "90vh")
-            }>
-              {calendarHeight === "90vh" ? "Collapse Height" : "Expand Height"}
-            </Button>
-
-            <Button variant="outlined" onClick={() =>
-              setCalendarWidth(calendarWidth === "100%" ? "300%" : "100%")
-            }>
-              {calendarWidth === "100%" ? "Expand Width" : "Collapse Width"}
-            </Button>
-
-            <Button startIcon={<OpenInFullIcon />} variant="contained" onClick={() => setFullScreenOpen(true)}>
-              Full Screen
-            </Button>
-
-            <Button variant="outlined" onClick={fetchShifts}>Refresh</Button>
-          </Stack>
-
+      <>
           <Paper
             sx={{
               p: compactDensity ? 1 : 2,
@@ -2484,27 +2372,25 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
           </Paper>
 
           {/* Legend for visible employees (Week/Day views) */}
-          {viewMode !== "month" && (
-            <Stack direction="row" spacing={1} sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
-              {recruiters
-                .filter(
-                  (r) =>
-                    selectedRecruiters.length === 0 ||
-                    selectedRecruiters.includes(r.id)
-                )
-                .map((r) => (
-                  <Chip
-                    key={`legend-week-${r.id}`}
-                    label={r.name}
-                    sx={{
-                      bgcolor: getColorForRecruiter(r.id),
-                      border: "1px solid rgba(0,0,0,0.2)",
-                      color: "#111",
-                    }}
-                  />
-                ))}
-            </Stack>
-          )}
+          <Stack direction="row" spacing={1} sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
+            {recruiters
+              .filter(
+                (r) =>
+                  selectedRecruiters.length === 0 ||
+                  selectedRecruiters.includes(r.id)
+              )
+              .map((r) => (
+                <Chip
+                  key={`legend-week-${r.id}`}
+                  label={r.name}
+                  sx={{
+                    bgcolor: getColorForRecruiter(r.id),
+                    border: "1px solid rgba(0,0,0,0.2)",
+                    color: "#111",
+                  }}
+                />
+              ))}
+          </Stack>
 
           {/* Floating panel for pending update */}
           {pendingEventUpdate && (
@@ -2661,7 +2547,6 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
             </Box>
           </Dialog>
         </>
-      )}
 
       {/* ============================ Add/Edit Shift Modal ============================ */}
       <Modal
