@@ -1762,7 +1762,7 @@ return (
                     {shift.break_missing_minutes > 0 && (
                       <Chip
                         label={`Missing ${shift.break_missing_minutes}m`}
-                        color="error"
+                        color={shift.break_missing_minutes > 10 ? "error" : "warning"}
                         size="small"
                         sx={{ mt: 1, mr: 1 }}
                       />
