@@ -88,7 +88,7 @@ import CandidateBooking from "./CandidateBooking";
 import CancelBooking from "./CancelBooking";
 import CalendarView from "./CalendarView";
 import AnalyticsDashboard from "./AnalyticsDashboard";
-import JobOpenings from "./JobOpenings";
+import ManagerJobOpeningsPage from "./pages/manager/ManagerJobOpeningsPage";
 import CandidateManagement from "./CandidateManagement";
 import InterviewStages from "./InterviewStages";
 import RecruiterCandidates from "./RecruiterCandidates";
@@ -139,6 +139,9 @@ import MeetWithArtistPage from "./pages/client/MeetWithArtistPage";
 import ClientCancelBooking from "./pages/client/ClientCancelBooking";
 import { ClientRescheduleGateway, ClientCancelGateway } from "./pages/client/ClientBookingGateways";
 import CandidateIntakePage from "./pages/CandidateIntakePage";
+import PublicJobsListPage from "./pages/public/PublicJobsListPage";
+import PublicJobDetailPage from "./pages/public/PublicJobDetailPage";
+import DocumentRequestUploadPage from "./pages/public/DocumentRequestUploadPage";
 import ClientRescheduleBooking from "./pages/client/ClientRescheduleBooking";
 import Checkout from "./pages/client/Checkout";
 import ProductList from "./pages/client/ProductList";
@@ -420,6 +423,9 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/reset-password/temp" element={<ResetPassword />} />
           <Route path="/apply/:token" element={<CandidateIntakePage />} />
+          <Route path="/document-request/:token" element={<DocumentRequestUploadPage />} />
+          <Route path="/public/:companySlug/jobs" element={<PublicJobsListPage />} />
+          <Route path="/public/:companySlug/jobs/:jobSlug" element={<PublicJobDetailPage />} />
 
           {/* Client Public Booking Flow - specific routes first */}
           <Route path="/:slug/services" element={<ServiceList />} />
@@ -496,7 +502,7 @@ const AppContent = ({ token, setToken }) => {
             element={<AttendanceReportPage />}
           />
           <Route path="/manager/candidates" element={<CandidateManagement token={token} />} />
-          <Route path="/manager/job-openings" element={<JobOpenings />} />
+          <Route path="/manager/job-openings" element={<ManagerJobOpeningsPage token={token} />} />
           <Route path="/manager/candidates-management" element={<CandidateManagement />} />
           <Route path="/manager/interview-stages" element={<InterviewStages />} />
           <Route path="/manager/add-member" element={<AddRecruiter />} />

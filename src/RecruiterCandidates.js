@@ -12,6 +12,10 @@ import {
   CircularProgress,
   Divider,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   Link,
   Tooltip,
@@ -29,8 +33,9 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useTheme } from "@mui/material/styles";
-import axios from "axios";
+import { api } from "./utils/api";
 import { useSnackbar } from "notistack";
 import { downloadQuestionnaireFile } from "./utils/questionnaireUploads";
 import PublicBookingInfoCard from "./components/PublicBookingInfoCard";
@@ -81,15 +86,24 @@ const RecruiterCandidates = ({ token }) => {
   const [resumePolicy, setResumePolicy] = useState({ retention_limit: 3 });
   const [savingResumePolicy, setSavingResumePolicy] = useState(false);
   const [clearingResumeVersions, setClearingResumeVersions] = useState(false);
+  const [docRequests, setDocRequests] = useState([]);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState("");
+  const [docDialogOpen, setDocDialogOpen] = useState(false);
+  const [docSubject, setDocSubject] = useState("");
+  const [docMessage, setDocMessage] = useState("");
+  const [docFiles, setDocFiles] = useState([]);
+  const [docSending, setDocSending] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [downloadingAttachmentId, setDownloadingAttachmentId] = useState(null);
   const [authInfo, setAuthInfo] = useState(null);
+  const authConfig = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
   useEffect(() => {
     let active = true;
-    axios
-      .get(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+    api
+      .get("/auth/me", { ...authConfig, noCompanyHeader: true })
       .then((res) => {
         if (!active) return;
         setAuthInfo(res.data || {});
@@ -108,10 +122,8 @@ const RecruiterCandidates = ({ token }) => {
       return;
     }
     let active = true;
-    axios
-      .get(`${API_URL}/manager/candidates/resume-policy`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    api
+      .get("/manager/candidates/resume-policy", authConfig)
       .then((res) => {
         if (!active) return;
         setResumePolicy(res.data || { retention_limit: 3 });
@@ -127,14 +139,38 @@ const RecruiterCandidates = ({ token }) => {
 
   const canEditCandidate = Boolean(authInfo?.is_manager || authInfo?.can_manage_onboarding);
   const isReadOnly = authInfo ? !canEditCandidate : false;
+  const canViewDocs = Boolean(
+    authInfo?.is_manager || authInfo?.can_manage_onboarding || authInfo?.can_manage_onboarding_limited
+  );
+  const canSendDocs = Boolean(authInfo?.is_manager || authInfo?.can_manage_onboarding);
+  const fetchDocumentRequests = useCallback(async () => {
+    if (!candidate?.id || !canViewDocs) {
+      setDocRequests([]);
+      return;
+    }
+    setDocLoading(true);
+    setDocError("");
+    try {
+      const res = await api.get(`/manager/candidates/${candidate.id}/document-requests`, authConfig);
+      setDocRequests(Array.isArray(res.data?.results) ? res.data.results : []);
+    } catch (err) {
+      setDocError(err.response?.data?.error || "Failed to load document requests.");
+      setDocRequests([]);
+    } finally {
+      setDocLoading(false);
+    }
+  }, [API_URL, candidate?.id, canViewDocs, token]);
+
+  useEffect(() => {
+    if (!candidate?.id || !canViewDocs) return;
+    fetchDocumentRequests();
+  }, [candidate?.id, canViewDocs, fetchDocumentRequests]);
   useEffect(() => {
     let isActive = true;
     const fetchCandidate = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`${API_URL}/api/candidates/${encodedEmail}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.get(`/api/candidates/${encodedEmail}`, authConfig);
         if (!isActive) {
           return;
         }
@@ -252,11 +288,7 @@ const RecruiterCandidates = ({ token }) => {
     try {
       setMessage("");
       setError("");
-      await axios.post(
-        `${API_URL}/recruiter/candidates/${candidate.id}/request-conversion`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post(`/recruiter/candidates/${candidate.id}/request-conversion`, {}, authConfig);
       setMessage("Conversion request submitted for manager approval.");
       setCandidate((prev) =>
         prev
@@ -334,6 +366,7 @@ const RecruiterCandidates = ({ token }) => {
   };
   const resumeSizeLabel = formatBytes(candidate?.resume_file_size);
   const resumeUploadedLabel = formatDateTime(candidate?.resume_uploaded_at);
+  const docFileList = useMemo(() => Array.from(docFiles || []), [docFiles]);
   const resumeScanStatus = (candidate?.resume_scan_status || "").toLowerCase();
   const resumeScanLabel = resumeScanStatus || "unknown";
   const resumeScanColor =
@@ -446,9 +479,7 @@ const RecruiterCandidates = ({ token }) => {
       }
     setDownloadingResume(true);
     try {
-      const res = await axios.get(`${API_URL}/api/candidates/${encodedEmail}/resume-url`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get(`/api/candidates/${encodedEmail}/resume-url`, authConfig);
       const url = res?.data?.url;
       if (!url) {
         enqueueSnackbar("Resume is not available.", { variant: "warning" });
@@ -488,8 +519,8 @@ const RecruiterCandidates = ({ token }) => {
       }
       setDownloadingResume(true);
       try {
-        const res = await axios.get(`${API_URL}/api/candidates/${encodedEmail}/resume-url`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await api.get(`/api/candidates/${encodedEmail}/resume-url`, {
+          ...authConfig,
           params: versionKey ? { object_key: versionKey } : {},
         });
         const url = res?.data?.url;
@@ -514,16 +545,115 @@ const RecruiterCandidates = ({ token }) => {
     [API_URL, encodedEmail, enqueueSnackbar, token]
   );
 
+  const handleDocumentDownload = async (file) => {
+    if (!file?.id) return;
+    try {
+      setDownloadingAttachmentId(file.id);
+      const res = await api.get(`/manager/candidate-documents/${file.id}/download`, authConfig);
+      const url = res.data?.url;
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        enqueueSnackbar("Document is not available.", { variant: "warning" });
+      }
+    } catch (err) {
+      const code = err?.response?.data?.error;
+      if (code === "document_scan_pending") {
+        enqueueSnackbar("Document is still being scanned. Please try again shortly.", { variant: "warning" });
+      } else if (code === "document_blocked_by_scan") {
+        enqueueSnackbar("Document download blocked by antivirus scan.", { variant: "error" });
+      } else {
+        enqueueSnackbar("Document download failed.", { variant: "error" });
+      }
+    } finally {
+      setDownloadingAttachmentId(null);
+    }
+  };
+
+  const handleSendDocumentRequest = async () => {
+    if (!candidate?.id) return;
+    setDocSending(true);
+    setDocError("");
+    try {
+      const formData = new FormData();
+      if (docSubject.trim()) formData.append("subject", docSubject.trim());
+      if (docMessage.trim()) formData.append("message", docMessage.trim());
+      docFileList.forEach((file) => formData.append("attachments", file));
+      await api.post(
+        `/manager/candidates/${candidate.id}/document-requests`,
+        formData,
+        { ...authConfig, headers: { ...(authConfig.headers || {}), "Content-Type": "multipart/form-data" } }
+      );
+      setDocDialogOpen(false);
+      setDocSubject("");
+      setDocMessage("");
+      setDocFiles([]);
+      enqueueSnackbar("Document request sent.", { variant: "success" });
+      fetchDocumentRequests();
+    } catch (err) {
+      setDocError(err.response?.data?.error || "Failed to send document request.");
+    } finally {
+      setDocSending(false);
+    }
+  };
+
+  const handleCopyRequestLink = (req) => {
+    if (!req?.token) return;
+    const origin =
+      (typeof window !== "undefined" && window.location.origin) ||
+      process.env.REACT_APP_FRONTEND_URL ||
+      "http://localhost:3000";
+    const link = `${origin.replace(/\/$/, "")}/document-request/${req.token}`;
+    navigator.clipboard.writeText(link);
+    enqueueSnackbar("Upload link copied.", { variant: "success" });
+  };
+
+  const handleCloseRequest = async (req) => {
+    if (!req?.id) return;
+    if (!window.confirm("Mark this request as closed?")) return;
+    try {
+      await api.post(`/manager/candidate-document-requests/${req.id}/close`, null, authConfig);
+      fetchDocumentRequests();
+    } catch (err) {
+      enqueueSnackbar(err.response?.data?.error || "Failed to close request.", { variant: "error" });
+    }
+  };
+
+  const handleDeleteRequest = async (req) => {
+    if (!req?.id || !candidate?.id) return;
+    if (!window.confirm("Delete this document request and all its files?")) return;
+    try {
+      await api.delete(
+        `/manager/candidates/${candidate.id}/document-requests/${req.id}`,
+        authConfig
+      );
+      fetchDocumentRequests();
+    } catch (err) {
+      enqueueSnackbar(err.response?.data?.error || "Failed to delete request.", { variant: "error" });
+    }
+  };
+
+  const handleDeleteDocumentFile = async (file) => {
+    if (!file?.id) return;
+    if (!window.confirm("Delete this document?")) return;
+    try {
+      await api.delete(`/manager/candidate-documents/${file.id}`, authConfig);
+      fetchDocumentRequests();
+    } catch (err) {
+      enqueueSnackbar(err.response?.data?.error || "Failed to delete document.", { variant: "error" });
+    }
+  };
+
   const handleResumePolicyChange = async (value) => {
     if (!authInfo?.is_manager) return;
     const retentionLimit = Number(value);
     setResumePolicy((prev) => ({ ...prev, retention_limit: retentionLimit }));
     setSavingResumePolicy(true);
     try {
-      const res = await axios.put(
-        `${API_URL}/manager/candidates/resume-policy`,
+      const res = await api.put(
+        "/manager/candidates/resume-policy",
         { retention_limit: retentionLimit },
-        { headers: { Authorization: `Bearer ${token}` } }
+        authConfig
       );
       setResumePolicy(res.data || { retention_limit: retentionLimit });
       enqueueSnackbar("Resume retention updated.", { variant: "success" });
@@ -542,10 +672,10 @@ const RecruiterCandidates = ({ token }) => {
     }
     setClearingResumeVersions(true);
     try {
-      await axios.post(
-        `${API_URL}/manager/candidates/${candidate.id}/resume-versions/cleanup`,
+      await api.post(
+        `/manager/candidates/${candidate.id}/resume-versions/cleanup`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        authConfig
       );
       setCandidate((prev) =>
         prev ? { ...prev, resume_versions: [] } : prev
@@ -569,7 +699,7 @@ const RecruiterCandidates = ({ token }) => {
         setError("You have read-only access to this candidate profile.");
         return;
       }
-      await axios.put(`${API_URL}/api/candidates/${encodedEmail}`,
+      await api.put(`/api/candidates/${encodedEmail}`,
         {
           name,
           phone, // Include phone in update
@@ -580,7 +710,7 @@ const RecruiterCandidates = ({ token }) => {
           other_link: otherLink.startsWith("http") ? otherLink : `https://${otherLink}`,
           job_applied: position,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        authConfig
       );
       setMessage("Candidate updated successfully.");
       setError("");
@@ -770,6 +900,15 @@ const RecruiterCandidates = ({ token }) => {
                       <strong>Scan Status:</strong>
                     </Typography>
                     <Chip size="small" label={resumeScanLabel} color={resumeScanColor} />
+                    {resumeScanStatus === "blocked" && (
+                      <Chip
+                        size="small"
+                        icon={<WarningAmberIcon />}
+                        label="Blocked file"
+                        color="error"
+                        variant="outlined"
+                      />
+                    )}
                   </Stack>
                   {resumeScanStatus && resumeScanStatus !== "clean" && (
                     <Typography variant="caption" color="text.secondary">
@@ -859,6 +998,15 @@ const RecruiterCandidates = ({ token }) => {
                                       }
                                     />
                                   )}
+                                  {versionStatus === "blocked" && (
+                                    <Chip
+                                      size="small"
+                                      icon={<WarningAmberIcon />}
+                                      label="Blocked file"
+                                      color="error"
+                                      variant="outlined"
+                                    />
+                                  )}
                                 </Stack>
                                 <Button
                                   size="small"
@@ -879,6 +1027,159 @@ const RecruiterCandidates = ({ token }) => {
                   )}
                 </Paper>
               </Grid>
+              {canViewDocs && (
+                <Grid item xs={12}>
+                  <Paper
+                    sx={{
+                      p: 3,
+                      borderLeft: `6px solid ${theme.palette.success.main}`,
+                      backgroundColor: theme.palette.background.paper,
+                    }}
+                  >
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }} justifyContent="space-between">
+                      <Box>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, ...headerStyle }}>
+                          Document Requests
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Request signed documents and track uploads from the candidate.
+                        </Typography>
+                      </Box>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => setDocDialogOpen(true)}
+                        disabled={!canSendDocs}
+                        sx={{ textTransform: "none" }}
+                      >
+                        Request documents
+                      </Button>
+                    </Stack>
+
+                    {docError && <Alert severity="error" sx={{ mt: 2 }}>{docError}</Alert>}
+
+                    {docLoading ? (
+                      <Box sx={{ py: 3, textAlign: "center" }}>
+                        <CircularProgress />
+                      </Box>
+                    ) : docRequests.length === 0 ? (
+                      <Typography color="text.secondary" sx={{ mt: 2 }}>
+                        No document requests yet.
+                      </Typography>
+                    ) : (
+                      <Stack spacing={2} sx={{ mt: 2 }}>
+                        {docRequests.map((req) => (
+                          <Box
+                            key={req.id}
+                            sx={{
+                              border: "1px solid",
+                              borderColor: "divider",
+                              borderRadius: 2,
+                              p: 2,
+                            }}
+                          >
+                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} justifyContent="space-between">
+                              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                {req.subject || "Document request"}
+                              </Typography>
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Chip
+                                  size="small"
+                                  label={req.status || "sent"}
+                                  color={req.status === "returned" ? "success" : "default"}
+                                />
+                                {req.token && (
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => handleCopyRequestLink(req)}
+                                    sx={{ textTransform: "none" }}
+                                  >
+                                    Copy upload link
+                                  </Button>
+                                )}
+                                {canSendDocs && req.status !== "closed" && (
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => handleCloseRequest(req)}
+                                    sx={{ textTransform: "none" }}
+                                  >
+                                    Close
+                                  </Button>
+                                )}
+                                {canSendDocs && (
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="error"
+                                    onClick={() => handleDeleteRequest(req)}
+                                    sx={{ textTransform: "none" }}
+                                  >
+                                    Delete
+                                  </Button>
+                                )}
+                              </Stack>
+                            </Stack>
+                            <Typography variant="caption" color="text.secondary">
+                              Sent {formatDateTime(req.created_at)}
+                              {req.returned_at ? ` • Returned ${formatDateTime(req.returned_at)}` : ""}
+                            </Typography>
+                            {req.message && (
+                              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: "pre-wrap" }}>
+                                {req.message}
+                              </Typography>
+                            )}
+
+                            {Array.isArray(req.files) && req.files.length > 0 ? (
+                              <List dense sx={{ mt: 1 }}>
+                                {req.files.map((file) => {
+                                  const status = (file.scan_status || "").toLowerCase();
+                                  const blocked = status && status !== "clean";
+                                  return (
+                                    <ListItem key={file.id} disableGutters divider>
+                                      <ListItemText
+                                        primary={file.filename || "Document"}
+                                        secondary={`${file.uploaded_by === "staff" ? "Sent by HR" : "Uploaded by candidate"}${status ? ` • Scan: ${status}` : ""}`}
+                                      />
+                                      <Stack direction="row" spacing={1}>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          onClick={() => handleDocumentDownload(file)}
+                                          disabled={downloadingAttachmentId === file.id || blocked}
+                                          sx={{ textTransform: "none" }}
+                                        >
+                                          Download
+                                        </Button>
+                                        {canSendDocs && (
+                                          <Button
+                                            size="small"
+                                            variant="outlined"
+                                            color="error"
+                                            onClick={() => handleDeleteDocumentFile(file)}
+                                            sx={{ textTransform: "none" }}
+                                          >
+                                            Delete
+                                          </Button>
+                                        )}
+                                      </Stack>
+                                    </ListItem>
+                                  );
+                                })}
+                              </List>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                No files uploaded yet.
+                              </Typography>
+                            )}
+                          </Box>
+                        ))}
+                      </Stack>
+                    )}
+                  </Paper>
+                </Grid>
+              )}
               {/* Public booking details */}
               <Grid item xs={12}>
                 <PublicBookingInfoCard
@@ -1397,6 +1698,67 @@ const RecruiterCandidates = ({ token }) => {
           </AccordionDetails>
         </Accordion>
       )}
+
+      <Dialog
+        open={docDialogOpen}
+        onClose={() => setDocDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Request signed documents</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <TextField
+              label="Email subject"
+              value={docSubject}
+              onChange={(e) => setDocSubject(e.target.value)}
+              placeholder="Document signing request by your company"
+              fullWidth
+            />
+            <TextField
+              label="Message"
+              value={docMessage}
+              onChange={(e) => setDocMessage(e.target.value)}
+              placeholder="Add any instructions for the candidate..."
+              multiline
+              minRows={3}
+              fullWidth
+            />
+            <Box>
+              <Button variant="outlined" component="label" sx={{ textTransform: "none" }}>
+                Attach files
+                <input
+                  hidden
+                  multiple
+                  type="file"
+                  onChange={(e) => setDocFiles(e.target.files)}
+                />
+              </Button>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                Accepted: PDF, DOC, DOCX, PNG, JPG. Max 25MB per file.
+              </Typography>
+              {docFileList.length > 0 && (
+                <List dense sx={{ mt: 1 }}>
+                  {docFileList.map((file) => (
+                    <ListItem key={`${file.name}-${file.size}`} disableGutters>
+                      <ListItemText primary={file.name} secondary={`${Math.round(file.size / 1024)} KB`} />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Box>
+            {docError && <Alert severity="error">{docError}</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDocDialogOpen(false)} disabled={docSending}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleSendDocumentRequest} disabled={docSending}>
+            {docSending ? "Sending..." : "Send request"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       </Accordion>
     </Box>

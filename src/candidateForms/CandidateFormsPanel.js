@@ -1104,6 +1104,10 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
 
       handleTemplateDialogClose();
       fetchTemplates();
+      try {
+        localStorage.setItem("candidate_form_templates_updated", Date.now().toString());
+        window.dispatchEvent(new Event("candidate-templates-updated"));
+      } catch {}
     } catch (err) {
       const detail = err.response?.data?.error || err.message || "Failed to save template";
       setTemplateDialogError(detail);
@@ -1796,7 +1800,6 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
 };
 
 export default CandidateFormsPanel;
-
 
 
 

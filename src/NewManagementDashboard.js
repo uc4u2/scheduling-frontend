@@ -118,6 +118,7 @@ import CandidateSearch from "./CandidateSearch";
 import FeedbackNotes from "./FeedbackNotes";
 import RecruiterAvailabilityTracker from "./RecruiterAvailabilityTracker";
 import ClientProfileSettings from "./pages/client/ClientProfileSettings";
+import ManagerJobOpeningsPage from "./pages/manager/ManagerJobOpeningsPage";
 
 // NEW — FullCalendar for the Setmore-style panel
 import FullCalendar from "@fullcalendar/react";
@@ -138,6 +139,7 @@ const overviewChildrenConfig = [
   { labelKey: "manager.menu.teamActivityOverview", key: "team-activity", icon: <Dashboard /> },
   { labelKey: "manager.menu.masterCalendar", key: "master-calendar", icon: <CalendarToday /> },
   { labelKey: "manager.menu.candidateFunnel", key: "candidate-funnel", icon: <Assignment /> },
+  { label: "Job Postings", key: "job-openings", icon: <Assignment /> },
   { labelKey: "manager.menu.recruiterPerformance", key: "recruiter-performance", icon: <History /> },
   { labelKey: "manager.menu.candidateSearch", key: "candidate-search", icon: <People /> },
   { labelKey: "manager.menu.feedbackNotes", key: "feedback-notes", icon: <Article /> },
@@ -2050,6 +2052,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             <CandidateFunnel token={token} />
           </ManagementFrame>
         );
+
+      case "job-openings":
+        return <ManagerJobOpeningsPage token={token} />;
 
       case "recruiter-performance":
         return (

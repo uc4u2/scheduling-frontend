@@ -4,7 +4,6 @@ const DEFAULT_TARGET = process.env.REACT_APP_API_PROXY_TARGET || "http://localho
 
 module.exports = function setupProxy(app) {
   const routesToProxy = [
-    "/public",
     "/api",
     "/connect",
   ];

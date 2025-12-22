@@ -293,7 +293,16 @@ const CandidateIntakePage = () => {
     fetchSubmission();
   }, [fetchSubmission]);
 
-  const bookingRequired = submission?.booking_required !== false;
+  const rawBookingRequired = submission?.booking_required;
+  const bookingRequired =
+    rawBookingRequired === undefined
+      ? true
+      : !(
+          rawBookingRequired === false ||
+          rawBookingRequired === 0 ||
+          rawBookingRequired === "0" ||
+          rawBookingRequired === "false"
+        );
 
   useEffect(() => {
     if (bookingRequired && submission?.recruiter_id) {
@@ -651,6 +660,15 @@ const CandidateIntakePage = () => {
       return;
     }
 
+    const mergedResponses = {
+      ...responses,
+      ...(candidateBasics.candidateName ? { full_name: candidateBasics.candidateName, name: candidateBasics.candidateName } : {}),
+      ...(candidateBasics.candidateEmail ? { email: candidateBasics.candidateEmail } : {}),
+      ...(candidateBasics.candidatePhone ? { phone: candidateBasics.candidatePhone } : {}),
+      ...(candidateBasics.candidatePosition ? { candidate_position: candidateBasics.candidatePosition, job_title: candidateBasics.candidatePosition } : {}),
+      ...(candidateBasics.linkedin ? { linkedin: candidateBasics.linkedin } : {}),
+    };
+
     setSubmitting(true);
     setFieldErrors({});
     setError("");
@@ -659,13 +677,13 @@ const CandidateIntakePage = () => {
       let data;
       if (resumeFile) {
         const formData = new FormData();
-        formData.append("responses", JSON.stringify(responses));
+        formData.append("responses", JSON.stringify(mergedResponses));
         formData.append("resume", resumeFile);
         data = await candidateIntakeApi.submit(token, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
       } else {
-        data = await candidateIntakeApi.submit(token, { responses });
+        data = await candidateIntakeApi.submit(token, { responses: mergedResponses });
       }
       if (data?.submission) {
         setSubmission(data.submission);
@@ -869,71 +887,96 @@ const CandidateIntakePage = () => {
               </Typography>
             </Box>
 
-            <Box>
-              <Typography variant="h6" gutterBottom>
-                Step 1 — Pick an interview slot
-              </Typography>
-              <Accordion defaultExpanded={false} disableGutters sx={{ mb: 2 }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="subtitle2">Booking details & status</Typography>
-                </AccordionSummary>
-                <AccordionDetails sx={{ pt: 0 }}>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Select a time that works best for you, then confirm the booking. The form below unlocks after your slot is reserved.
-                  </Typography>
+            {bookingRequired && (
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Step 1 — Pick an interview slot
+                </Typography>
+                <Accordion defaultExpanded={false} disableGutters sx={{ mb: 2 }}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Typography variant="subtitle2">Booking details & status</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ pt: 0 }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Select a time that works best for you, then confirm the booking. The form below unlocks after your slot is reserved.
+                    </Typography>
 
-                  {bookingMessage.message && (
-                    <Alert severity={bookingMessage.severity} sx={{ mb: 2 }} onClose={() => setBookingMessage({ severity: "info", message: "" })}>
-                      {bookingMessage.message}
-                    </Alert>
+                    {bookingMessage.message && (
+                      <Alert severity={bookingMessage.severity} sx={{ mb: 2 }} onClose={() => setBookingMessage({ severity: "info", message: "" })}>
+                        {bookingMessage.message}
+                      </Alert>
+                    )}
+
+                    {bookingSuccess && bookedSlotInfo && bookedSlotLabel && (
+                      <Alert severity="success" sx={{ mb: 2 }}>
+                        {bookedSlotLabel}
+                        {bookedSlotLocation && (
+                          <>
+                            <br />
+                            Location: {bookedSlotLocation}
+                          </>
+                        )}
+                        {bookedSlotMeetingLink && (
+                          <>
+                            <br />
+                            <a href={bookedSlotMeetingLink} target="_blank" rel="noopener noreferrer">
+                              Join meeting
+                            </a>
+                          </>
+                        )}
+                        {bookedSlotCancelLink && (
+                          <>
+                            <br />
+                            Cancellation link:{' '}
+                            <a href={bookedSlotCancelLink} target="_blank" rel="noopener noreferrer">
+                              {bookedSlotCancelLink}
+                            </a>
+                          </>
+                        )}
+                      </Alert>
+                    )}
+                  </AccordionDetails>
+                </Accordion>
+
+                {!isSmDown && bookingPanelsDesktop}
+
+                <Box sx={{ mb: 2 }}>
+                  <CandidateSlotPicker
+                    slots={upcomingSlots}
+                    timezone={timezone}
+                    selectedSlotId={selectedSlotId}
+                    onSelect={handleSelectSlot}
+                    loading={slotsLoading}
+                    error={slotsError}
+                    disabled={bookingSuccess || bookingSaving}
+                  />
+                </Box>
+
+                <Box>
+                  <Button
+                    variant="contained"
+                    onClick={handleBookSlot}
+                    disabled={bookingSaving || bookingSuccess || !selectedSlot}
+                    startIcon={bookingSaving ? <CircularProgress size={16} /> : null}
+                  >
+                    {bookingSaving ? "Booking..." : bookingSuccess ? "Slot booked" : "Confirm slot"}
+                  </Button>
+                  {selectedSlot && !bookingSuccess && (
+                    <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Selected: {formatDateHeading(selectedSlot.date)} — {formatTime(selectedSlot.date, selectedSlot.start_time, timezone)} — {formatTime(selectedSlot.date, selectedSlot.end_time, timezone)}
+                    </Typography>
                   )}
+                </Box>
 
-                  {bookingSuccess && bookedSlotInfo && bookedSlotLabel && (
-                    <Alert severity="success" sx={{ mb: 2 }}>
-                      {bookedSlotLabel}
-                      {bookedSlotLocation && (
-                        <>
-                          <br />
-                          Location: {bookedSlotLocation}
-                        </>
-                      )}
-                      {bookedSlotMeetingLink && (
-                        <>
-                          <br />
-                          <a href={bookedSlotMeetingLink} target="_blank" rel="noopener noreferrer">
-                            Join meeting
-                          </a>
-                        </>
-                      )}
-                      {bookedSlotCancelLink && (
-                        <>
-                          <br />
-                          Cancellation link:{' '}
-                          <a href={bookedSlotCancelLink} target="_blank" rel="noopener noreferrer">
-                            {bookedSlotCancelLink}
-                          </a>
-                        </>
-                      )}
-                    </Alert>
-                  )}
-                </AccordionDetails>
-              </Accordion>
-
-              {bookingRequired && !isSmDown && bookingPanelsDesktop}
-
-              <Box sx={{ mb: 2 }}>
-                <CandidateSlotPicker
-                  slots={upcomingSlots}
-                  timezone={timezone}
-                  selectedSlotId={selectedSlotId}
-                  onSelect={handleSelectSlot}
-                  loading={slotsLoading}
-                  error={slotsError}
-                  disabled={bookingSuccess || bookingSaving}
-                />
+                {isSmDown && (
+                  <Box sx={{ mt: 2 }}>
+                    {bookingPanelsMobile}
+                  </Box>
+                )}
               </Box>
+            )}
 
-
+            <Box>
               <Stack spacing={2} sx={{ mt: 3 }}>
                 <TextField
                   label="Your name"
@@ -986,29 +1029,8 @@ const CandidateIntakePage = () => {
                     disabled={bookingSaving || bookingSuccess}
                   />
                 </Box>
-                <Box>
-              <Button
-                variant="contained"
-                onClick={handleBookSlot}
-                disabled={bookingSaving || bookingSuccess || !selectedSlot}
-                startIcon={bookingSaving ? <CircularProgress size={16} /> : null}
-              >
-                {bookingSaving ? "Booking..." : bookingSuccess ? "Slot booked" : "Confirm slot"}
-              </Button>
-                {selectedSlot && !bookingSuccess && (
-                  <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Selected: {formatDateHeading(selectedSlot.date)} — {formatTime(selectedSlot.date, selectedSlot.start_time, timezone)} — {formatTime(selectedSlot.date, selectedSlot.end_time, timezone)}
-                  </Typography>
-                )}
-              </Box>
-            </Stack>
-          </Box>
-
-          {isSmDown && (
-            <Box sx={{ mt: 2 }}>
-              {bookingRequired && bookingPanelsMobile}
+              </Stack>
             </Box>
-          )}
 
           {sortedQuestionnaires.length > 0 && (
             <Box>
@@ -1136,9 +1158,9 @@ const CandidateIntakePage = () => {
               <>
                 <Box>
                   <Typography variant="h6" gutterBottom>
-                    Step 2 — Complete your profile
+                    {bookingRequired ? "Step 2 — Complete your profile" : "Step 1 — Complete your profile"}
                   </Typography>
-                  {!bookingSuccess && !isReadOnly && (
+                  {bookingRequired && !bookingSuccess && !isReadOnly && (
                     <Alert severity="info" sx={{ mb: 2 }}>
                       Please confirm an interview slot above before submitting this form.
                     </Alert>

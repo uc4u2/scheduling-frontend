@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -26,6 +26,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTheme } from "@mui/material/styles";
 import axios from "axios";
 import { Link as RouterLink } from "react-router-dom";
@@ -453,6 +454,7 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templatesError, setTemplatesError] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [lastInviteLink, setLastInviteLink] = useState("");
   const [availableQuestionnaires, setAvailableQuestionnaires] = useState([]);
   const [loadingQuestionnaires, setLoadingQuestionnaires] = useState(false);
@@ -598,8 +600,16 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
     });
     variables.profession_key = profession;
     const professionOption = professionOptions.find((option) => option.value === profession);
-    if (professionOption) {
+    const templateName = (selectedTemplate?.name || "").trim();
+    if (templateName) {
+      variables.profession_label = templateName;
+    } else if (professionOption) {
       variables.profession_label = professionOption.label;
+    }
+    const jobTitle = (formData.jobTitle || "").trim();
+    if (jobTitle) {
+      variables.job_title = jobTitle;
+      variables.position = jobTitle;
     }
     const inviteNameValue = resolveInviteName();
     if (inviteNameValue) {
@@ -635,6 +645,16 @@ const EnhancedInvitationForm = ({ token, embedded = false }) => {
     const bodyStart = trimmed.indexOf(subjectLine) + subjectLine.length;
     const body = trimmed.slice(bodyStart).replace(/^[\r\n]+/, "");
     return { subject, body };
+  };
+
+  const buildTemplateFromFormTemplate = (formTemplate) => {
+    if (!formTemplate) return "";
+    const subject = (formTemplate.email_subject || "").trim();
+    const body = (formTemplate.email_body || "").trim();
+    if (!subject && !body) return "";
+    if (!subject) return body;
+    if (!body) return `Subject: ${subject}`;
+    return `Subject: ${subject}\n\n${body}`;
   };
 
   const [message, setMessage] = useState("");
@@ -868,7 +888,7 @@ const handlePreview = () => {
     }
   }, [token]);
 
-  useEffect(() => {
+  const fetchTemplatesForProfession = useCallback(async () => {
     if (!token || !profession || profession === "custom") {
       setAvailableTemplates([]);
       setSelectedTemplateId("");
@@ -876,42 +896,85 @@ const handlePreview = () => {
       setTemplatesLoading(false);
       return;
     }
-
-    const fetchTemplatesForProfession = async () => {
-      setTemplatesLoading(true);
-      setTemplatesError("");
-      try {
-        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-        const params = new URLSearchParams({
-          profession: profession,
-          status: "active",
-        });
-        const response = await axios.get(`${API_URL}/api/form-templates?${params.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const list = Array.isArray(response.data) ? response.data : [];
-        setAvailableTemplates(list);
-        if (list.length > 0) {
-          setSelectedTemplateId((prev) =>
-            prev && list.some((item) => item.id === prev) ? prev : list[0].id
-          );
-        } else {
-          setSelectedTemplateId("");
-        }
-      } catch (err) {
-        setAvailableTemplates([]);
+    setTemplatesLoading(true);
+    setTemplatesError("");
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+      const params = new URLSearchParams({
+        profession: profession,
+      });
+      const response = await axios.get(`${API_URL}/api/form-templates?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const list = Array.isArray(response.data) ? response.data : [];
+      const eligible = list.filter(
+        (tpl) => ["active", "published"].includes((tpl.status || "").toLowerCase())
+      );
+      setAvailableTemplates(eligible);
+      if (eligible.length > 0) {
+        setSelectedTemplateId((prev) =>
+          prev && eligible.some((item) => item.id === prev) ? prev : eligible[0].id
+        );
+      } else {
         setSelectedTemplateId("");
-        const detail =
-          err.response?.data?.error ||
-          "Unable to load templates for this profession.";
-        setTemplatesError(detail);
-      } finally {
-        setTemplatesLoading(false);
+      }
+    } catch (err) {
+      setAvailableTemplates([]);
+      setSelectedTemplateId("");
+      const detail =
+        err.response?.data?.error ||
+        "Unable to load templates for this profession.";
+      setTemplatesError(detail);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  }, [token, profession]);
+
+  useEffect(() => {
+    fetchTemplatesForProfession();
+  }, [fetchTemplatesForProfession]);
+
+  useEffect(() => {
+    const onTemplatesUpdated = () => fetchTemplatesForProfession();
+    window.addEventListener("candidate-templates-updated", onTemplatesUpdated);
+    const onStorage = (event) => {
+      if (event.key === "candidate_form_templates_updated") {
+        fetchTemplatesForProfession();
       }
     };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("candidate-templates-updated", onTemplatesUpdated);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [fetchTemplatesForProfession]);
 
-    fetchTemplatesForProfession();
-  }, [token, profession]);
+  useEffect(() => {
+    if (!selectedTemplateId || profession === "custom") return;
+    let active = true;
+    const loadSelectedTemplate = async () => {
+      try {
+        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+        const res = await axios.get(`${API_URL}/api/form-templates/${selectedTemplateId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!active) return;
+        const full = res?.data || null;
+        setSelectedTemplate(full);
+        const nextTemplate = buildTemplateFromFormTemplate(full);
+        if (nextTemplate) {
+          setTemplate(nextTemplate);
+        }
+      } catch {
+        if (!active) return;
+        setSelectedTemplate(null);
+      }
+    };
+    loadSelectedTemplate();
+    return () => {
+      active = false;
+    };
+  }, [selectedTemplateId, profession, token]);
 
   useEffect(() => {
     if (profession !== "doctor") {
@@ -1023,7 +1086,16 @@ const handlePreview = () => {
 
         payload.invite_name = inviteNameValue || 'Candidate';
 
-        const { subject: overrideSubject, body: overrideBody } = extractSubjectAndBody(template);
+        const selectedTemplateForSend = selectedTemplate;
+        const selectedStatus = (selectedTemplateForSend?.status || "").toLowerCase();
+        if (selectedTemplateForSend && !["active", "published"].includes(selectedStatus)) {
+          setError("Template must be active");
+          setSnackbarState({ open: true, severity: "error", message: "Template must be active" });
+          return;
+        }
+        const { subject: parsedSubject, body: parsedBody } = extractSubjectAndBody(template);
+        const overrideSubject = (selectedTemplateForSend?.email_subject || "").trim() || parsedSubject || "";
+        const overrideBody = (selectedTemplateForSend?.email_body || "").trim() || parsedBody || "";
         const templateVariables = buildTemplateVariables();
         if (overrideSubject) {
           payload.email_subject = overrideSubject;
@@ -1705,6 +1777,18 @@ const handlePreview = () => {
 
 {!isCustomProfession && (
   <Box sx={{ width: '100%', mb: 2 }}>
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+      <Typography variant="caption" color="text.secondary">
+        Candidate Form Template
+      </Typography>
+      <Tooltip
+        title="This controls the intake form fields and questionnaires shown after the candidate clicks the invite link. It does not change the email content unless you choose to override it."
+      >
+        <IconButton size="small">
+          <InfoOutlinedIcon fontSize="inherit" />
+        </IconButton>
+      </Tooltip>
+    </Stack>
     <TextField
       select
       fullWidth
@@ -1753,6 +1837,18 @@ const handlePreview = () => {
         ))}
       </Box>
 
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <Typography variant="caption" color="text.secondary">
+          Invitation Email Body
+        </Typography>
+        <Tooltip
+          title="This is the email your candidate receives. You can save a custom version per profession using the Save Defaults button."
+        >
+          <IconButton size="small">
+            <InfoOutlinedIcon fontSize="inherit" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
       <TextField
         label="Invitation Template"
         multiline

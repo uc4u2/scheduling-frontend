@@ -14,6 +14,7 @@ const TAB_CONFIG = [
   { value: "view-my-shift", label: "View My Shift", path: "/recruiter/my-shifts" },
   { value: "candidate-search", label: "Candidate Search", path: "/employee/candidate-search" },
   { value: "public-link", label: "Public Booking Link", path: "/recruiter/public-link" },
+  { value: "job-postings", label: "Job Postings", path: "/manager/job-openings" },
 ];
 
 const LOCAL_TABS = new Set(["availability", "calendar"]);
@@ -49,6 +50,7 @@ const HR_ONLY_TABS = new Set([
   "upcoming-meetings",
   "candidate-search",
   "public-link",
+  "job-postings",
 ]);
 
 const RecruiterTabs = ({
@@ -67,7 +69,9 @@ const RecruiterTabs = ({
       : Boolean(allowCandidateSearch);
   const tabs = useMemo(() => {
     if (hrAccess) return TAB_CONFIG;
-    return TAB_CONFIG.filter((tab) => !HR_ONLY_TABS.has(tab.value));
+    return TAB_CONFIG.filter((tab) =>
+      ["calendar", "my-time", "view-my-shift"].includes(tab.value)
+    );
   }, [hrAccess]);
 
   const value = useMemo(() => {
