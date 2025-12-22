@@ -7,6 +7,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  Chip,
   Paper,
   Stack,
   Typography,
@@ -20,10 +21,12 @@ export default function DocumentRequestUploadPage() {
   const [loading, setLoading] = useState(true);
   const [requestInfo, setRequestInfo] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [uploads, setUploads] = useState([]);
   const [error, setError] = useState("");
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState("");
+  const [uploadErrors, setUploadErrors] = useState([]);
   const maxSizeMb = 25;
   const allowedTypesLabel = "PDF, DOC, DOCX, PNG, JPG";
 
@@ -43,6 +46,7 @@ export default function DocumentRequestUploadPage() {
         if (!mounted) return;
         setRequestInfo(res?.data?.request || null);
         setAttachments(Array.isArray(res?.data?.attachments) ? res.data.attachments : []);
+        setUploads(Array.isArray(res?.data?.uploads) ? res.data.uploads : []);
       } catch (err) {
         if (!mounted) return;
         setError(err?.response?.data?.error || "Unable to load document request.");
@@ -64,22 +68,41 @@ export default function DocumentRequestUploadPage() {
     setUploading(true);
     setError("");
     setSuccess("");
+    setUploadErrors([]);
     try {
       const formData = new FormData();
       fileList.forEach((file) => formData.append("documents", file));
-      await api.post(`/api/document-requests/${token}/upload`, formData, {
+      const res = await api.post(`/api/document-requests/${token}/upload`, formData, {
         noAuth: true,
         noCompanyHeader: true,
         headers: { "Content-Type": "multipart/form-data" },
       });
+      const errors = Array.isArray(res?.data?.errors) ? res.data.errors : [];
+      if (errors.length) {
+        setUploadErrors(errors);
+      }
       setSuccess("Upload received. Your document will be reviewed shortly.");
       setFiles([]);
+      const refreshed = await api.get(`/api/document-requests/${token}`, {
+        noAuth: true,
+        noCompanyHeader: true,
+      });
+      setRequestInfo(refreshed?.data?.request || null);
+      setAttachments(Array.isArray(refreshed?.data?.attachments) ? refreshed.data.attachments : []);
+      setUploads(Array.isArray(refreshed?.data?.uploads) ? refreshed.data.uploads : []);
     } catch (err) {
-      setError(err?.response?.data?.error || "Upload failed.");
+      const payload = err?.response?.data || {};
+      setError(payload?.error || "Upload failed.");
+      if (Array.isArray(payload?.errors)) {
+        setUploadErrors(payload.errors);
+      }
     } finally {
       setUploading(false);
     }
   };
+
+  const expired = Boolean(requestInfo?.expired);
+  const canUpload = Boolean(requestInfo?.can_upload);
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 4, md: 6 } }}>
@@ -115,6 +138,23 @@ export default function DocumentRequestUploadPage() {
                 )}
               </Box>
 
+              {expired && (
+                <Alert severity="warning">
+                  This upload link expired on {requestInfo.expires_at ? new Date(requestInfo.expires_at).toLocaleDateString() : "an earlier date"}.
+                </Alert>
+              )}
+              {!expired && requestInfo.status && requestInfo.status.toLowerCase() === "closed" && (
+                <Alert severity="info">
+                  This request is marked as completed. Uploads are disabled.
+                </Alert>
+              )}
+              {!expired && uploads.length > 0 && (
+                <Alert severity="success">
+                  We've received {uploads.length} file{uploads.length === 1 ? "" : "s"}.
+                  You can upload more if needed.
+                </Alert>
+              )}
+
               {attachments.length > 0 && (
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -133,7 +173,35 @@ export default function DocumentRequestUploadPage() {
                               file.filename || "Attachment"
                             )
                           }
-                          secondary={file.scan_status ? `Scan: ${file.scan_status}` : null}
+                          secondary={
+                            file.scan_status
+                              ? `Scan: ${file.scan_status}${
+                                  file.uploaded_at ? ` · ${new Date(file.uploaded_at).toLocaleString()}` : ""
+                                }`
+                              : null
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              )}
+
+              {uploads.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    Your uploads
+                  </Typography>
+                  <List dense>
+                    {uploads.map((file) => (
+                      <ListItem key={file.id} disableGutters>
+                        <ListItemText
+                          primary={file.filename || "Uploaded file"}
+                          secondary={
+                            file.scan_status
+                              ? `Scan: ${file.scan_status}${file.uploaded_at ? ` · ${new Date(file.uploaded_at).toLocaleString()}` : ""}`
+                              : null
+                          }
                         />
                       </ListItem>
                     ))}
@@ -148,15 +216,19 @@ export default function DocumentRequestUploadPage() {
                 <Typography variant="caption" color="text.secondary">
                   Accepted: {allowedTypesLabel}. Max {maxSizeMb}MB per file. Files are scanned before they become available.
                 </Typography>
-                <Button variant="outlined" component="label" sx={{ mt: 1 }}>
-                  Select files
-                  <input
-                    hidden
-                    multiple
-                    type="file"
-                    onChange={(e) => setFiles(e.target.files)}
-                  />
-                </Button>
+                <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                  <Button variant="outlined" component="label" disabled={!canUpload || expired}>
+                    Select files
+                    <input
+                      hidden
+                      multiple
+                      type="file"
+                      onChange={(e) => setFiles(e.target.files)}
+                    />
+                  </Button>
+                  {!canUpload && !expired && <Chip label="Uploads disabled" size="small" />}
+                  {expired && <Chip label="Link expired" size="small" color="warning" />}
+                </Box>
                 {fileList.length > 0 && (
                   <List dense sx={{ mt: 1 }}>
                     {fileList.map((file) => (
@@ -173,8 +245,21 @@ export default function DocumentRequestUploadPage() {
 
               {success && <Alert severity="success">{success}</Alert>}
               {error && <Alert severity="error">{error}</Alert>}
+              {uploadErrors.length > 0 && (
+                <Alert severity="warning">
+                  {uploadErrors.map((errItem, idx) => (
+                    <Box key={`${errItem.filename || idx}`} sx={{ fontSize: 13 }}>
+                      {errItem.filename ? `${errItem.filename}: ` : ""}{errItem.error}
+                    </Box>
+                  ))}
+                </Alert>
+              )}
 
-              <Button variant="contained" onClick={handleUpload} disabled={uploading || fileList.length === 0}>
+              <Button
+                variant="contained"
+                onClick={handleUpload}
+                disabled={uploading || fileList.length === 0 || !canUpload || expired}
+              >
                 {uploading ? "Uploading..." : "Upload documents"}
               </Button>
             </Stack>
