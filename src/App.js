@@ -81,7 +81,6 @@ import RecruiterQuestionnairesPage from "./pages/recruiter/RecruiterQuestionnair
 import RecruiterUpcomingMeetingsPage from "./pages/recruiter/RecruiterUpcomingMeetingsPage";
 import RecruiterPublicLinkPage from "./pages/recruiter/PublicLinkPage";
 import RecruiterMyTimePage from "./pages/recruiter/RecruiterMyTimePage";
-import RecruiterMyShiftsPage from "./pages/recruiter/RecruiterMyShiftsPage";
 import RecruiterCandidateSearchPage from "./pages/recruiter/RecruiterCandidateSearchPage";
 import ManagerDashboard from "./ManagerDashboard";
 import CandidateBooking from "./CandidateBooking";
@@ -486,8 +485,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/employee/candidate-search" element={<RecruiterCandidateSearchPage token={token} />} />
         <Route path="/recruiter/my-time" element={<RecruiterMyTimePage token={token} />} />
         <Route path="/employee/my-time" element={<RecruiterMyTimePage token={token} />} />
-        <Route path="/recruiter/my-shifts" element={<RecruiterMyShiftsPage token={token} />} />
-        <Route path="/employee/my-shifts" element={<RecruiterMyShiftsPage token={token} />} />
+        <Route path="/recruiter/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
+        <Route path="/employee/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
         <Route path="/recruiter/*" element={<RecruiterDashboard token={token} />} />
         <Route path="/employee/*" element={<RecruiterDashboard token={token} />} />
           <Route path="/recruiter/candidates/:email" element={<RecruiterCandidates token={token} />} />

@@ -11,7 +11,6 @@ const TAB_CONFIG = [
   { value: "questionnaires", label: "Questionnaires", path: "/recruiter/questionnaires" },
   { value: "upcoming-meetings", label: "Upcoming Meetings", path: "/recruiter/upcoming-meetings" },
   { value: "my-time", label: "My Time", path: "/recruiter/my-time" },
-  { value: "view-my-shift", label: "View My Shift", path: "/recruiter/my-shifts" },
   { value: "candidate-search", label: "Candidate Search", path: "/employee/candidate-search" },
   { value: "public-link", label: "Public Booking Link", path: "/recruiter/public-link" },
   { value: "job-postings", label: "Job Postings", path: "/manager/job-openings" },
@@ -32,9 +31,6 @@ const getPathValue = (locationPathname, searchParams, fallback) => {
   }
   if (locationPathname.startsWith("/recruiter/my-time")) {
     return "my-time";
-  }
-  if (locationPathname.startsWith("/recruiter/my-shifts")) {
-    return "view-my-shift";
   }
   if (locationPathname.startsWith("/recruiter/candidate-search") || locationPathname.startsWith("/employee/candidate-search")) {
     return "candidate-search";
@@ -70,7 +66,7 @@ const RecruiterTabs = ({
   const tabs = useMemo(() => {
     if (hrAccess) return TAB_CONFIG;
     return TAB_CONFIG.filter((tab) =>
-      ["calendar", "my-time", "view-my-shift"].includes(tab.value)
+      ["calendar", "my-time"].includes(tab.value)
     );
   }, [hrAccess]);
 
