@@ -1676,23 +1676,32 @@ return (
             const end   = parseISO(shift.clock_out);
             const disabledSwap =
               shift.is_locked || shift.swap_status === "pending";
-            const breakLabel = (() => {
+            const breakMeta = (() => {
+              const paidTag = shift.break_paid === true ? "paid" : "unpaid";
               if (shift.break_start && shift.break_end) {
                 const bs = parseISO(shift.break_start);
                 const be = parseISO(shift.break_end);
-                const paidTag = shift.break_paid === true ? " (paid)" : " (unpaid)";
-                return `Break window: ${format(bs, "HH:mm")}–${format(be, "HH:mm")}${paidTag}`;
+                return {
+                  label: `Break window: ${format(bs, "HH:mm")}–${format(be, "HH:mm")} (${paidTag})`,
+                  tooltip: "Policy: scheduled window",
+                };
               }
               const policy = shift.break_policy || {};
               const slot = policy.generated_slot || {};
               const windowStart = slot.start || policy.window_start || policy.start_time;
               const windowEnd = slot.end || policy.window_end || policy.end_time;
               if (windowStart && windowEnd) {
-                return `Break window: ${windowStart}–${windowEnd}`;
+                const source = slot.start && slot.end ? "auto window" : "policy window";
+                return {
+                  label: `Break window: ${windowStart}–${windowEnd}`,
+                  tooltip: `Policy: ${source}`,
+                };
               }
               if (shift.break_minutes) {
-                const paidTag = shift.break_paid === true ? " (paid)" : " (unpaid)";
-                return `Break: ${shift.break_minutes}m${paidTag}`;
+                return {
+                  label: `Break: ${shift.break_minutes}m (${paidTag})`,
+                  tooltip: "Policy: minutes only",
+                };
               }
               return null;
             })();
@@ -1716,10 +1725,17 @@ return (
                             "HH:mm"
                           )}`}
                     </Typography>
-                    {breakLabel && !shift.on_leave && (
-                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                        {breakLabel}
-                      </Typography>
+                    {breakMeta && !shift.on_leave && (
+                      <Tooltip title={breakMeta.tooltip || ""}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          display="block"
+                          sx={{ mt: 0.5 }}
+                        >
+                          {breakMeta.label}
+                        </Typography>
+                      </Tooltip>
                     )}
 
                     {/* Chips */}
