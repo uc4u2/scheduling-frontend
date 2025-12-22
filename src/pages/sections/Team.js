@@ -2561,387 +2561,392 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
         <Box
           sx={{
             p: { xs: 2.5, sm: 4 },
-            bgcolor: "white",
-            width: { xs: "calc(100% - 24px)", sm: 420 },
-            maxWidth: 520,
+            bgcolor: "background.paper",
+            width: { xs: "calc(100% - 24px)", sm: 520 },
+            maxWidth: 640,
             mx: "auto",
             mt: { xs: "5vh", sm: "10%" },
             borderRadius: 2,
             boxShadow: 6,
             maxHeight: "90vh",
-            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          <Typography variant="h6" gutterBottom>
-            {editingShift ? "Edit Shift" : "Add New Shift"}
-          </Typography>
+          <Box sx={{ overflowY: "auto", pr: { xs: 0, sm: 1 } }}>
+            <Typography variant="h6" gutterBottom>
+              {editingShift ? "Edit Shift" : "Add New Shift"}
+            </Typography>
 
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Date"
-                type="date"
-                margin="normal"
-                name="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.date}
-                onChange={handleFormChange}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="Start Time"
-                type="time"
-                margin="normal"
-                name="startTime"
-                InputLabelProps={{ shrink: true }}
-                value={formData.startTime}
-                onChange={handleFormChange}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                fullWidth
-                label="End Time"
-                type="time"
-                margin="normal"
-                name="endTime"
-                InputLabelProps={{ shrink: true }}
-                value={formData.endTime}
-                onChange={handleFormChange}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Location"
-                margin="normal"
-                name="location"
-                value={formData.location}
-                onChange={handleFormChange}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Note"
-                margin="normal"
-                name="note"
-                value={formData.note}
-                onChange={handleFormChange}
-              />
-            </Grid>
-          </Grid>
-          <Box mt={3}>
-            <Box display="flex" alignItems="center" gap={1}>
-              <Typography variant="subtitle1" fontWeight={600}>
-                Break strategy
-              </Typography>
-              <Tooltip
-                title="Decide when breaks occur. Fixed = exact times, Window = must occur within the range, Stagger = auto-assigns unique slots to avoid coverage gaps."
-                arrow
-              >
-                <IconButton size="small">
-                  <InfoOutlined fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={formData.breakMode}
-              onChange={handleBreakModeChange}
-              sx={{ flexWrap: "wrap", gap: 1 }}
-            >
-              <ToggleButton value="none">Manual</ToggleButton>
-              <ToggleButton value="fixed">Fixed time</ToggleButton>
-              <ToggleButton value="window">Window</ToggleButton>
-              <ToggleButton value="stagger">Auto-stagger</ToggleButton>
-            </ToggleButtonGroup>
-            {formData.breakMode === "fixed" && (
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Break start"
-                    type="time"
-                    margin="normal"
-                    name="breakStart"
-                    InputLabelProps={{ shrink: true }}
-                    value={formData.breakStart}
-                    onChange={handleFormChange}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Break end"
-                    type="time"
-                    margin="normal"
-                    name="breakEnd"
-                    InputLabelProps={{ shrink: true }}
-                    value={formData.breakEnd}
-                    onChange={handleFormChange}
-                  />
-                </Grid>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Date"
+                  type="date"
+                  margin="normal"
+                  name="date"
+                  InputLabelProps={{ shrink: true }}
+                  value={formData.date}
+                  onChange={handleFormChange}
+                />
               </Grid>
-            )}
-            {formData.breakMode !== "none" && (
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Break minutes"
-                    type="number"
-                    margin="normal"
-                    name="breakMinutes"
-                    value={formData.breakMinutes}
-                    onChange={handleFormChange}
-                  />
-                </Grid>
-                {(formData.breakMode === "window" || formData.breakMode === "stagger") && (
-                  <>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="Window start"
-                        type="time"
-                        margin="normal"
-                        name="breakWindowStart"
-                        InputLabelProps={{ shrink: true }}
-                        value={formData.breakWindowStart}
-                        onChange={handleFormChange}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        label="Window end"
-                        type="time"
-                        margin="normal"
-                        name="breakWindowEnd"
-                        InputLabelProps={{ shrink: true }}
-                        value={formData.breakWindowEnd}
-                        onChange={handleFormChange}
-                      />
-                    </Grid>
-                  </>
-                )}
-                {formData.breakMode === "window" && (
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Start Time"
+                  type="time"
+                  margin="normal"
+                  name="startTime"
+                  InputLabelProps={{ shrink: true }}
+                  value={formData.startTime}
+                  onChange={handleFormChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="End Time"
+                  type="time"
+                  margin="normal"
+                  name="endTime"
+                  InputLabelProps={{ shrink: true }}
+                  value={formData.endTime}
+                  onChange={handleFormChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Location"
+                  margin="normal"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleFormChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Note"
+                  margin="normal"
+                  name="note"
+                  value={formData.note}
+                  onChange={handleFormChange}
+                />
+              </Grid>
+            </Grid>
+            <Box mt={3}>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Typography variant="subtitle1" fontWeight={600}>
+                  Break strategy
+                </Typography>
+                <Tooltip
+                  title="Decide when breaks occur. Fixed = exact times, Window = must occur within the range, Stagger = auto-assigns unique slots to avoid coverage gaps."
+                  arrow
+                >
+                  <IconButton size="small">
+                    <InfoOutlined fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={formData.breakMode}
+                onChange={handleBreakModeChange}
+                sx={{ flexWrap: "wrap", gap: 1 }}
+              >
+                <ToggleButton value="none">Manual</ToggleButton>
+                <ToggleButton value="fixed">Fixed time</ToggleButton>
+                <ToggleButton value="window">Window</ToggleButton>
+                <ToggleButton value="stagger">Auto-stagger</ToggleButton>
+              </ToggleButtonGroup>
+              {formData.breakMode === "fixed" && (
+                <Grid container spacing={2} sx={{ mt: 1 }}>
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
-                      label="Must start by"
-                      helperText="Latest time an employee can begin their break."
+                      label="Break start"
                       type="time"
                       margin="normal"
-                      name="breakLatestStart"
+                      name="breakStart"
                       InputLabelProps={{ shrink: true }}
-                      value={formData.breakLatestStart}
+                      value={formData.breakStart}
                       onChange={handleFormChange}
                     />
                   </Grid>
-                )}
-                {formData.breakMode === "stagger" && (
-                  <>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Break end"
+                      type="time"
+                      margin="normal"
+                      name="breakEnd"
+                      InputLabelProps={{ shrink: true }}
+                      value={formData.breakEnd}
+                      onChange={handleFormChange}
+                    />
+                  </Grid>
+                </Grid>
+              )}
+              {formData.breakMode !== "none" && (
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="Break minutes"
+                      type="number"
+                      margin="normal"
+                      name="breakMinutes"
+                      value={formData.breakMinutes}
+                      onChange={handleFormChange}
+                    />
+                  </Grid>
+                  {(formData.breakMode === "window" || formData.breakMode === "stagger") && (
+                    <>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Window start"
+                          type="time"
+                          margin="normal"
+                          name="breakWindowStart"
+                          InputLabelProps={{ shrink: true }}
+                          value={formData.breakWindowStart}
+                          onChange={handleFormChange}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Window end"
+                          type="time"
+                          margin="normal"
+                          name="breakWindowEnd"
+                          InputLabelProps={{ shrink: true }}
+                          value={formData.breakWindowEnd}
+                          onChange={handleFormChange}
+                        />
+                      </Grid>
+                    </>
+                  )}
+                  {formData.breakMode === "window" && (
                     <Grid item xs={12} sm={6}>
                       <TextField
                         fullWidth
-                        label="Max people on break"
-                        type="number"
+                        label="Must start by"
+                        helperText="Latest time an employee can begin their break."
+                        type="time"
                         margin="normal"
-                        name="breakMaxSimultaneous"
-                        value={formData.breakMaxSimultaneous}
+                        name="breakLatestStart"
+                        InputLabelProps={{ shrink: true }}
+                        value={formData.breakLatestStart}
                         onChange={handleFormChange}
                       />
                     </Grid>
-                    <Grid item xs={12}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            name="breakRotate"
-                            checked={formData.breakRotate}
-                            onChange={handleFormChange}
-                          />
-                        }
-                        label="Rotate assignments each time"
-                      />
-                    </Grid>
-                  </>
-                )}
-              </Grid>
-            )}
-            <FormControlLabel
-              control={
-                <Checkbox
-                  name="breakPaid"
-                  checked={formData.breakPaid}
-                  onChange={handleFormChange}
-                />
-              }
-              label="Break is paid"
-              sx={{ mt: 1 }}
-            />
-          </Box>
-          <FormControl
-            fullWidth
-            margin="normal"
-            disabled={!canLinkAvailability}
-          >
-            <InputLabel>Availability slot</InputLabel>
-            <Select
-              multiple
-              label="Availability slot"
-              value={selectedAvailabilityIds}
-              onChange={handleAvailabilitySelection}
-              input={<OutlinedInput label="Availability slot" />}
-              renderValue={(selected) =>
-                selected
-                  .map((id) => {
-                    const slot = modalAvailabilitySlots.find(
-                      (s) => String(s.id) === String(id)
-                    );
-                    return slot ? formatAvailabilityDisplay(slot) : id;
-                  })
-                  .join(", ")
-              }
-            >
-              {!canLinkAvailability ? (
-                <MenuItem disabled>Select one employee to link availability.</MenuItem>
-              ) : modalAvailabilitySlots.length === 0 ? (
-                <MenuItem disabled>No open slots near this date.</MenuItem>
-              ) : (
-                modalAvailabilitySlots.map((slot) => (
-                  <MenuItem
-                    key={slot.id}
-                    value={slot.id}
-                    disabled={
-                      slot.booked &&
-                      (!editingShift || String(slot.id) !== String(editingShift.availability_id))
-                    }
-                  >
-                    <Checkbox
-                      size="small"
-                      checked={selectedAvailabilityIds.some(
-                        (id) => String(id) === String(slot.id)
-                      )}
-                    />
-                    <ListItemText primary={formatAvailabilityDisplay(slot)} />
-                  </MenuItem>
-                ))
+                  )}
+                  {formData.breakMode === "stagger" && (
+                    <>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          label="Max people on break"
+                          type="number"
+                          margin="normal"
+                          name="breakMaxSimultaneous"
+                          value={formData.breakMaxSimultaneous}
+                          onChange={handleFormChange}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              name="breakRotate"
+                              checked={formData.breakRotate}
+                              onChange={handleFormChange}
+                            />
+                          }
+                          label="Rotate assignments each time"
+                        />
+                      </Grid>
+                    </>
+                  )}
+                </Grid>
               )}
-            </Select>
-            <FormHelperText>
-              {canLinkAvailability
-                ? "Optional: auto-link availability slots (select one to fill times)."
-                : "Select a single employee to link availability slots."}
-            </FormHelperText>
-          </FormControl>
-
-          {/* Recurrence controls */}
-          <Box mt={2}>
-            <FormControl fullWidth>
-              <InputLabel>Recurring</InputLabel>
-              <Select
-                value={formData.recurring ? "yes" : "no"}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, recurring: e.target.value === "yes" }))
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="breakPaid"
+                    checked={formData.breakPaid}
+                    onChange={handleFormChange}
+                  />
                 }
-                label="Recurring"
+                label="Break is paid"
+                sx={{ mt: 1 }}
+              />
+            </Box>
+            <FormControl
+              fullWidth
+              margin="normal"
+              disabled={!canLinkAvailability}
+            >
+              <InputLabel>Availability slot</InputLabel>
+              <Select
+                multiple
+                label="Availability slot"
+                value={selectedAvailabilityIds}
+                onChange={handleAvailabilitySelection}
+                input={<OutlinedInput label="Availability slot" />}
+                renderValue={(selected) =>
+                  selected
+                    .map((id) => {
+                      const slot = modalAvailabilitySlots.find(
+                        (s) => String(s.id) === String(id)
+                      );
+                      return slot ? formatAvailabilityDisplay(slot) : id;
+                    })
+                    .join(", ")
+                }
               >
-                <MenuItem value="no">No</MenuItem>
-                <MenuItem value="yes">Yes</MenuItem>
+                {!canLinkAvailability ? (
+                  <MenuItem disabled>Select one employee to link availability.</MenuItem>
+                ) : modalAvailabilitySlots.length === 0 ? (
+                  <MenuItem disabled>No open slots near this date.</MenuItem>
+                ) : (
+                  modalAvailabilitySlots.map((slot) => (
+                    <MenuItem
+                      key={slot.id}
+                      value={slot.id}
+                      disabled={
+                        slot.booked &&
+                        (!editingShift || String(slot.id) !== String(editingShift.availability_id))
+                      }
+                    >
+                      <Checkbox
+                        size="small"
+                        checked={selectedAvailabilityIds.some(
+                          (id) => String(id) === String(slot.id)
+                        )}
+                      />
+                      <ListItemText primary={formatAvailabilityDisplay(slot)} />
+                    </MenuItem>
+                  ))
+                )}
               </Select>
+              <FormHelperText>
+                {canLinkAvailability
+                  ? "Optional: auto-link availability slots (select one to fill times)."
+                  : "Select a single employee to link availability slots."}
+              </FormHelperText>
             </FormControl>
 
-            {formData.recurring && (
-              <>
-                {/* Days of week */}
-                <Box mt={2}>
-                  <Typography variant="subtitle2">Select Days</Typography>
-                  <Grid container>
-                    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day) => (
-                      <Grid item key={day} sx={{ pr: 1 }}>
-                        <Checkbox
-                          name="recurringDays"
-                          value={day}
-                          checked={formData.recurringDays.includes(day)}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            const value = e.target.value;
-                            setFormData((p) => ({
-                              ...p,
-                              recurringDays: checked
-                                ? [...p.recurringDays, value]
-                                : p.recurringDays.filter((d) => d !== value),
-                            }));
-                          }}
-                          size="small"
-                        />
-                        <Typography variant="caption">{day}</Typography>
-                      </Grid>
-                    ))}
-                  </Grid>
-                </Box>
+            {/* Recurrence controls */}
+            <Box mt={2}>
+              <FormControl fullWidth>
+                <InputLabel>Recurring</InputLabel>
+                <Select
+                  value={formData.recurring ? "yes" : "no"}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, recurring: e.target.value === "yes" }))
+                  }
+                  label="Recurring"
+                >
+                  <MenuItem value="no">No</MenuItem>
+                  <MenuItem value="yes">Yes</MenuItem>
+                </Select>
+              </FormControl>
 
-                {/* NEW: repeat strategy */}
-                <Box mt={2}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    Repeat Options
-                  </Typography>
+              {formData.recurring && (
+                <>
+                  {/* Days of week */}
+                  <Box mt={2}>
+                    <Typography variant="subtitle2">Select Days</Typography>
+                    <Grid container>
+                      {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day) => (
+                        <Grid item key={day} sx={{ pr: 1 }}>
+                          <Checkbox
+                            name="recurringDays"
+                            value={day}
+                            checked={formData.recurringDays.includes(day)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              const value = e.target.value;
+                              setFormData((p) => ({
+                                ...p,
+                                recurringDays: checked
+                                  ? [...p.recurringDays, value]
+                                  : p.recurringDays.filter((d) => d !== value),
+                              }));
+                            }}
+                            size="small"
+                          />
+                          <Typography variant="caption">{day}</Typography>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
 
-                  {/* Toggle between “N weeks” and “Until date” */}
-                  <ToggleButtonGroup
-                    size="small"
-                    exclusive
-                    value={formData.repeatMode}
-                    onChange={(_, v) => v && setFormData((p) => ({ ...p, repeatMode: v }))}
-                    sx={{ mb: 2 }}
-                  >
-                    <ToggleButton value="weeks">Repeat for N weeks</ToggleButton>
-                    <ToggleButton value="until">Repeat until date</ToggleButton>
-                  </ToggleButtonGroup>
+                  {/* NEW: repeat strategy */}
+                  <Box mt={2}>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Repeat Options
+                    </Typography>
 
-                  {/* Weeks count */}
-                  {formData.repeatMode === "weeks" && (
-                    <TextField
-                      label="Number of weeks"
-                      type="number"
-                      inputProps={{ min: 1, max: 52 }}
-                      value={formData.repeatWeeks}
-                      onChange={(e) =>
-                        setFormData((p) => ({
-                          ...p,
-                          repeatWeeks: Math.max(1, Math.min(52, parseInt(e.target.value || "1", 10))),
-                        }))
-                      }
-                      fullWidth
-                    />
-                  )}
+                    {/* Toggle between “N weeks” and “Until date” */}
+                    <ToggleButtonGroup
+                      size="small"
+                      exclusive
+                      value={formData.repeatMode}
+                      onChange={(_, v) => v && setFormData((p) => ({ ...p, repeatMode: v }))}
+                      sx={{ mb: 2 }}
+                    >
+                      <ToggleButton value="weeks">Repeat for N weeks</ToggleButton>
+                      <ToggleButton value="until">Repeat until date</ToggleButton>
+                    </ToggleButtonGroup>
 
-                  {/* End date */}
-                  {formData.repeatMode === "until" && (
-                    <TextField
-                      label="End date"
-                      type="date"
-                      InputLabelProps={{ shrink: true }}
-                      value={formData.repeatUntil}
-                      onChange={(e) => setFormData((p) => ({ ...p, repeatUntil: e.target.value }))}
-                      fullWidth
-                    />
-                  )}
+                    {/* Weeks count */}
+                    {formData.repeatMode === "weeks" && (
+                      <TextField
+                        label="Number of weeks"
+                        type="number"
+                        inputProps={{ min: 1, max: 52 }}
+                        value={formData.repeatWeeks}
+                        onChange={(e) =>
+                          setFormData((p) => ({
+                            ...p,
+                            repeatWeeks: Math.max(1, Math.min(52, parseInt(e.target.value || "1", 10))),
+                          }))
+                        }
+                        fullWidth
+                      />
+                    )}
 
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-                    Tip: If you don’t pick any days, we’ll default to the same weekday as your chosen start date.
-                  </Typography>
-                </Box>
-              </>
-            )}
+                    {/* End date */}
+                    {formData.repeatMode === "until" && (
+                      <TextField
+                        label="End date"
+                        type="date"
+                        InputLabelProps={{ shrink: true }}
+                        value={formData.repeatUntil}
+                        onChange={(e) => setFormData((p) => ({ ...p, repeatUntil: e.target.value }))}
+                        fullWidth
+                      />
+                    )}
+
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                      Tip: If you don’t pick any days, we’ll default to the same weekday as your chosen start date.
+                    </Typography>
+                  </Box>
+                </>
+              )}
+            </Box>
           </Box>
 
-          <Box mt={3} display="flex" justifyContent="space-between">
+          <Divider sx={{ my: 2 }} />
+
+          <Box display="flex" justifyContent="space-between">
             {editingShift ? (
               <>
                 <Button variant="contained" onClick={handleUpdateShift}>

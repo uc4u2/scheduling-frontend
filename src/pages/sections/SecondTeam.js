@@ -830,97 +830,104 @@ const calendarEvents = filteredShifts.map(s => ({
       {/* Modal for Adding/Editing Shift */}
       <Modal open={modalOpen} onClose={() => { setModalOpen(false); setEditingShift(null); }}>
         <Box sx={{
-          p: 4,
-          bgcolor: "white",
-          width: 400,
+          p: { xs: 2.5, sm: 4 },
+          bgcolor: "background.paper",
+          width: { xs: "calc(100% - 24px)", sm: 480 },
+          maxWidth: 620,
           mx: "auto",
-          mt: "10%",
+          mt: { xs: "5vh", sm: "10%" },
           borderRadius: 2,
-          boxShadow: 6
+          boxShadow: 6,
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
         }}>
-          <Typography variant="h6" gutterBottom>
-            {editingShift ? "Edit Shift" : "Add New Shift"}
-          </Typography>
-          <TextField
-            fullWidth
-            label="Date"
-            type="date"
-            margin="normal"
-            name="date"
-            InputLabelProps={{ shrink: true }}
-            value={formData.date}
-            onChange={handleFormChange}
-          />
-          <TextField
-            fullWidth
-            label="Start Time"
-            type="time"
-            margin="normal"
-            name="startTime"
-            InputLabelProps={{ shrink: true }}
-            value={formData.startTime}
-            onChange={handleFormChange}
-          />
-          <TextField
-            fullWidth
-            label="End Time"
-            type="time"
-            margin="normal"
-            name="endTime"
-            InputLabelProps={{ shrink: true }}
-            value={formData.endTime}
-            onChange={handleFormChange}
-          />
-          <TextField
-            fullWidth
-            label="Location"
-            margin="normal"
-            name="location"
-            value={formData.location}
-            onChange={handleFormChange}
-          />
-          <TextField
-            fullWidth
-            label="Note"
-            margin="normal"
-            name="note"
-            value={formData.note}
-            onChange={handleFormChange}
-          />
-          <Box mt={2}>
-            <FormControl fullWidth>
-              <InputLabel>Recurring</InputLabel>
-              <Select
-                value={formData.recurring ? "yes" : "no"}
-                onChange={(e) =>
-                  setFormData(prev => ({ ...prev, recurring: e.target.value === "yes" }))
-                }
-                label="Recurring"
-              >
-                <MenuItem value="no">No</MenuItem>
-                <MenuItem value="yes">Yes</MenuItem>
-              </Select>
-            </FormControl>
-            {formData.recurring && (
-              <Box mt={2}>
-                <Typography variant="subtitle2">Select Days</Typography>
-                <Grid container>
-                  {dayLabels.map(day => (
-                    <Grid item key={day}>
-                      <Checkbox
-                        name="recurringDays"
-                        value={day}
-                        checked={formData.recurringDays.includes(day)}
-                        onChange={handleFormChange}
-                      />
-                      <Typography variant="caption">{day}</Typography>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Box>
-            )}
+          <Box sx={{ overflowY: "auto", pr: { xs: 0, sm: 1 } }}>
+            <Typography variant="h6" gutterBottom>
+              {editingShift ? "Edit Shift" : "Add New Shift"}
+            </Typography>
+            <TextField
+              fullWidth
+              label="Date"
+              type="date"
+              margin="normal"
+              name="date"
+              InputLabelProps={{ shrink: true }}
+              value={formData.date}
+              onChange={handleFormChange}
+            />
+            <TextField
+              fullWidth
+              label="Start Time"
+              type="time"
+              margin="normal"
+              name="startTime"
+              InputLabelProps={{ shrink: true }}
+              value={formData.startTime}
+              onChange={handleFormChange}
+            />
+            <TextField
+              fullWidth
+              label="End Time"
+              type="time"
+              margin="normal"
+              name="endTime"
+              InputLabelProps={{ shrink: true }}
+              value={formData.endTime}
+              onChange={handleFormChange}
+            />
+            <TextField
+              fullWidth
+              label="Location"
+              margin="normal"
+              name="location"
+              value={formData.location}
+              onChange={handleFormChange}
+            />
+            <TextField
+              fullWidth
+              label="Note"
+              margin="normal"
+              name="note"
+              value={formData.note}
+              onChange={handleFormChange}
+            />
+            <Box mt={2}>
+              <FormControl fullWidth>
+                <InputLabel>Recurring</InputLabel>
+                <Select
+                  value={formData.recurring ? "yes" : "no"}
+                  onChange={(e) =>
+                    setFormData(prev => ({ ...prev, recurring: e.target.value === "yes" }))
+                  }
+                  label="Recurring"
+                >
+                  <MenuItem value="no">No</MenuItem>
+                  <MenuItem value="yes">Yes</MenuItem>
+                </Select>
+              </FormControl>
+              {formData.recurring && (
+                <Box mt={2}>
+                  <Typography variant="subtitle2">Select Days</Typography>
+                  <Grid container>
+                    {dayLabels.map(day => (
+                      <Grid item key={day}>
+                        <Checkbox
+                          name="recurringDays"
+                          value={day}
+                          checked={formData.recurringDays.includes(day)}
+                          onChange={handleFormChange}
+                        />
+                        <Typography variant="caption">{day}</Typography>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+            </Box>
           </Box>
-          <Box mt={3} display="flex" justifyContent="space-between">
+          <Divider sx={{ my: 2 }} />
+          <Box display="flex" justifyContent="space-between">
             {editingShift ? (
               <>
                 <Button variant="contained" onClick={handleUpdateShift}>
@@ -932,9 +939,8 @@ const calendarEvents = filteredShifts.map(s => ({
               </>
             ) : (
               <Button variant="contained" onClick={handleSubmitShift} disabled={isSubmitting}>
-  {isSubmitting ? "Assigning..." : "Submit Shift"}
-</Button>
-
+                {isSubmitting ? "Assigning..." : "Submit Shift"}
+              </Button>
             )}
           </Box>
         </Box>
