@@ -2946,7 +2946,20 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
 
           <Divider sx={{ my: 2 }} />
 
-          <Box display="flex" justifyContent="space-between">
+          <Box
+            sx={{
+              position: "sticky",
+              bottom: 0,
+              zIndex: 1,
+              pt: 1.5,
+              pb: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
+              backgroundColor: "background.paper",
+              borderTop: "1px solid",
+              borderColor: "divider",
+            }}
+            display="flex"
+            justifyContent="space-between"
+          >
             {editingShift ? (
               <>
                 <Button variant="contained" onClick={handleUpdateShift}>
