@@ -1678,12 +1678,13 @@ return (
               shift.is_locked || shift.swap_status === "pending";
             const breakMeta = (() => {
               const paidTag = shift.break_paid === true ? "paid" : "unpaid";
+              const autoTag = shift.break_auto_enforced ? "Auto-enforced" : null;
               if (shift.break_start && shift.break_end) {
                 const bs = parseISO(shift.break_start);
                 const be = parseISO(shift.break_end);
                 return {
                   label: `Break window: ${format(bs, "HH:mm")}–${format(be, "HH:mm")} (${paidTag})`,
-                  tooltip: "Policy: scheduled window",
+                  tooltip: ["Policy: scheduled window", autoTag].filter(Boolean).join(" · "),
                 };
               }
               const policy = shift.break_policy || {};
@@ -1694,13 +1695,13 @@ return (
                 const source = slot.start && slot.end ? "auto window" : "policy window";
                 return {
                   label: `Break window: ${windowStart}–${windowEnd}`,
-                  tooltip: `Policy: ${source}`,
+                  tooltip: ["Policy: " + source, autoTag].filter(Boolean).join(" · "),
                 };
               }
               if (shift.break_minutes) {
                 return {
                   label: `Break: ${shift.break_minutes}m (${paidTag})`,
-                  tooltip: "Policy: minutes only",
+                  tooltip: ["Policy: minutes only", autoTag].filter(Boolean).join(" · "),
                 };
               }
               return null;
@@ -1758,6 +1759,14 @@ return (
                       />
                     )}
                     {swapStatusChip(shift)}
+                    {shift.break_missing_minutes > 0 && (
+                      <Chip
+                        label={`Missing ${shift.break_missing_minutes}m`}
+                        color="error"
+                        size="small"
+                        sx={{ mt: 1, mr: 1 }}
+                      />
+                    )}
                     <Chip
                       label={durationChip(shift)}
                       color="primary"
