@@ -2,6 +2,106 @@
 // Each post can be rendered by BlogPostPage via slug.
 const blogPosts = [
   {
+    slug: "secure-hiring-resume-upload-onboarding",
+    title: "Modern Hiring, Resume Uploads, and Secure Document Requests - All in One Platform",
+    description:
+      "Schedulaa is an all-in-one hiring and onboarding platform with secure resume uploads, antivirus scanning, job postings, document requests, and employee onboarding for modern HR teams.",
+    datePublished: "2025-12-22T12:00:00Z",
+    dateModified: "2025-12-22T12:00:00Z",
+    category: "Hiring",
+    tags: ["hiring", "onboarding", "resume upload", "documents", "security"],
+    heroOverline: "Hiring",
+    sections: [
+      {
+        heading: "The problem with traditional hiring systems",
+        paragraphs: [
+          "Hiring today is broken.",
+          "Most businesses still rely on a patchwork of tools:",
+          "- Job boards for posting roles.",
+          "- Email attachments for resumes.",
+          "- Manual follow-ups for signed documents.",
+          "- Separate systems for onboarding and payroll.",
+          "That creates security risks, lost documents, and slower hiring decisions.",
+          "Schedulaa was built to solve this end to end.",
+        ],
+      },
+      {
+        heading: "A single hiring workflow - from job posting to employee onboarding",
+        paragraphs: [
+          "Schedulaa combines job posting, candidate intake, resume uploads, document requests, and onboarding into one platform.",
+          "No switching systems. No chasing email attachments. Just a single, secure flow from applicant to employee.",
+        ],
+      },
+      {
+        heading: "Job posting and candidate applications",
+        paragraphs: [
+          "Create job postings directly inside Schedulaa and share a public application link for each role.",
+          "Track who applied, when they applied, and which job they applied for in one dashboard.",
+        ],
+      },
+      {
+        heading: "Secure resume uploads with antivirus scanning",
+        paragraphs: [
+          "Candidates upload their resume through the intake link, and files are stored securely in your hiring workspace.",
+          "When antivirus scanning is enabled, each file is marked pending, then clean or blocked before HR can download it.",
+          "This reduces malware risk and removes the need to handle risky email attachments.",
+        ],
+      },
+      {
+        heading: "Document requests and secure uploads",
+        paragraphs: [
+          "Request documents directly from the candidate profile, including contracts, NDAs, policy acknowledgments, or ID documents.",
+          "Candidates upload signed files through a secure link, and files are scanned before HR can download them.",
+        ],
+      },
+      {
+        heading: "Candidate profile = hiring control center",
+        paragraphs: [
+          "Each candidate profile includes resume scan status, applications, document requests, interview history, and conversion status.",
+          "An activity timeline keeps an audit trail so hiring teams always have context.",
+        ],
+      },
+      {
+        heading: "Role-based HR and manager access",
+        paragraphs: [
+          "Schedulaa supports role-based access for HR teams, recruiters, and managers.",
+          "Access is permission-checked on the backend so sensitive candidate data stays protected.",
+        ],
+      },
+      {
+        heading: "From candidate to employee - seamless conversion",
+        paragraphs: [
+          "Once a candidate is approved, managers can convert them into an employee with one action.",
+          "An employee profile is created while the candidate record stays linked for reference.",
+        ],
+      },
+      {
+        heading: "Built for security and scale",
+        paragraphs: [
+          "Secure cloud storage, antivirus scanning, and signed downloads protect sensitive documents.",
+          "Role-aware access and a central timeline keep hiring data organized as teams grow.",
+        ],
+      },
+      {
+        heading: "Why businesses choose Schedulaa",
+        paragraphs: [
+          "One platform instead of five.",
+          "Secure by default, with antivirus scanning built in.",
+          "No email attachments or unsecured file shares.",
+          "Faster hiring decisions with one source of truth.",
+          "A cleaner candidate experience from day one.",
+        ],
+      },
+      {
+        heading: "Start hiring smarter",
+        paragraphs: [
+          "If you are tired of juggling job boards, inboxes, and insecure uploads, Schedulaa brings hiring into one secure workflow.",
+          "Hiring does not have to be complicated.",
+        ],
+      },
+    ],
+  },
+  {
     slug: "enterprise-payroll-workflows-qb-xero-zapier",
     title: "New: Enterprise payroll workflows (QB/Xero journals + Zapier automation)",
     description:

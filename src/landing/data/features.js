@@ -79,6 +79,16 @@ export const featurePillars = [
       "Compliance with regional payroll and privacy regulations out of the box.",
     ],
   },
+  {
+    icon: "09",
+    title: "Hiring, Resume Uploads, and Onboarding",
+    description: [
+      "Create job postings with public application links and track candidate applications.",
+      "Secure resume uploads with antivirus scan status (pending, clean, blocked) when enabled.",
+      "Request signed documents via secure links and store uploads in the candidate profile.",
+      "Convert approved candidates into employees with the candidate record linked for reference.",
+    ],
+  },
 ];
 
 export const featureWhyItMatters = [

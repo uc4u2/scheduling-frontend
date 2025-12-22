@@ -198,7 +198,7 @@ const FeaturePage = () => {
       applicationCategory: "BusinessApplication",
       operatingSystem: "Web",
       description:
-        "Schedulaa is an all-in-one SaaS for booking, payroll, websites, marketing, and analytics for service businesses in the US and Canada.",
+        "Schedulaa is an all-in-one SaaS for hiring, booking, payroll, websites, marketing, and analytics for service businesses in the US and Canada.",
       offers: {
         "@type": "Offer",
         price: "0",

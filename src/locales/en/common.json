@@ -2959,7 +2959,7 @@
     "features": {
       "meta": {
         "title": "Schedulaa Platform Features | Scheduling, Payroll, and Online Sales Unified",
-        "description": "Schedulaa unifies scheduling, payroll, website building, and eCommerce for teams. Sell services or products, automate payments, and manage multi-branch operations in one platform.",
+        "description": "Schedulaa unifies scheduling, payroll, hiring, website building, and eCommerce for teams. Sell services or products, automate payments, and manage multi-branch operations in one platform.",
         "ogTitle": "Schedulaa Platform Features",
         "ogDescription": "Book clients, sell products, pay your team – all from one platform."
       },
@@ -3118,6 +3118,16 @@
               "Optional per-employee billing with transparent management fees.",
               "Country-aware tax labels (US Sales Tax, CA GST/HST) and auto totals.",
               "PO numbers, payment terms, and client-ready PDFs included."
+            ]
+          },
+          {
+            "icon": "10",
+            "title": "Hiring, Resume Uploads, and Onboarding",
+            "description": [
+              "Create job postings with public application links and track candidate applications.",
+              "Secure resume uploads with antivirus scan status (pending, clean, blocked) when enabled.",
+              "Request signed documents via secure links and store uploads in the candidate profile.",
+              "Convert approved candidates into employees with the candidate record linked for reference."
             ]
           }
         ]
