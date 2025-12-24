@@ -396,6 +396,64 @@ const CandidateIntakePage = () => {
   const bookedSlotLocation = bookingSuccess && bookedSlotInfo ? bookedSlotInfo.location || "" : "";
   const bookedSlotMeetingLink = bookingSuccess && bookedSlotInfo ? bookedSlotInfo.meetingLink || "" : "";
   const bookedSlotCancelLink = bookingSuccess && bookedSlotInfo ? bookedSlotInfo.cancelLink || "" : "";
+  const submittedAtLabel = useMemo(() => {
+    const submittedAt = submission?.submitted_at || submission?.submittedAt;
+    if (!submittedAt) return "";
+    try {
+      return new Date(submittedAt).toLocaleString();
+    } catch (error) {
+      return String(submittedAt);
+    }
+  }, [submission?.submitted_at, submission?.submittedAt]);
+  const templateVersionLabel = useMemo(() => {
+    if (template?.version_major == null && template?.version_minor == null) return "";
+    const major = template?.version_major ?? 1;
+    const minor = template?.version_minor ?? 0;
+    return `v${major}.${minor}`;
+  }, [template?.version_major, template?.version_minor]);
+  const summaryEmail = candidateBasics.candidateEmail || submission?.invite_email || responses?.email || "";
+  const summaryName = candidateBasics.candidateName || submission?.invite_name || responses?.full_name || responses?.name || "";
+  const summaryPhone = candidateBasics.candidatePhone || submission?.invite_phone || responses?.phone || "";
+  const jobTitle =
+    responses?.job_title ||
+    responses?.candidate_position ||
+    responses?.position ||
+    "";
+  const jobOpeningId =
+    responses?.source_job_opening_id ||
+    responses?.job_opening_id ||
+    "";
+  const resumeFile = useMemo(() => {
+    const files = submissionFiles || [];
+    if (!files.length) return null;
+    const allowedExt = [".pdf", ".doc", ".docx"];
+    const isResumeName = (value) => {
+      const lowered = String(value || "").toLowerCase();
+      return lowered.includes("resume") || lowered.includes("cv");
+    };
+    const preferred = [];
+    const fallback = [];
+    files.forEach((file) => {
+      const name = String(file.original_filename || "").toLowerCase();
+      const matchesExt = allowedExt.some((ext) => name.endsWith(ext));
+      if (!matchesExt) return;
+      if (isResumeName(name) || isResumeName(file.field_key || "")) {
+        preferred.push(file);
+      } else {
+        fallback.push(file);
+      }
+    });
+    return preferred[0] || fallback[0] || null;
+  }, [submissionFiles]);
+  const sortedSubmissionFiles = useMemo(() => {
+    const files = submissionFiles || [];
+    return files.slice().sort((a, b) => {
+      const aTime = a?.uploaded_at || a?.created_at || 0;
+      const bTime = b?.uploaded_at || b?.created_at || 0;
+      if (!aTime || !bTime) return 0;
+      return new Date(bTime) - new Date(aTime);
+    });
+  }, [submissionFiles]);
 
   const handleSelectSlot = useCallback((slot) => {
     if (!slot) {
@@ -885,7 +943,172 @@ const CandidateIntakePage = () => {
               <Typography variant="body1" color="text.secondary">
                 {description}
               </Typography>
+              {template?.name && (
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }} alignItems="center" useFlexGap flexWrap="wrap">
+                  <Chip size="small" label={template.name} />
+                  {templateVersionLabel && <Chip size="small" variant="outlined" label={templateVersionLabel} />}
+                </Stack>
+              )}
             </Box>
+
+            {isReadOnly && (
+              <Alert severity="info">
+                Submitted{submittedAtLabel ? ` on ${submittedAtLabel}` : ""}. This is a read-only view.
+              </Alert>
+            )}
+
+            {isReadOnly && (
+              <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}>
+                <Stack spacing={2}>
+                  <Typography variant="h6">Summary</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">
+                      <strong>Name:</strong> {summaryName || "—"}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Email:</strong> {summaryEmail || "—"}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Phone:</strong> {summaryPhone || "—"}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Submission ID:</strong> {submission?.id ?? "—"}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Intake token:</strong> {token || "—"}
+                    </Typography>
+                    {jobTitle ? (
+                      <Typography variant="body2">
+                        <strong>Job:</strong> {jobTitle}
+                      </Typography>
+                    ) : jobOpeningId ? (
+                      <Typography variant="body2">
+                        <strong>Job opening ID:</strong> {jobOpeningId}
+                      </Typography>
+                    ) : null}
+                  </Stack>
+
+                  {resumeFile && (
+                    <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                      <Typography variant="body2">
+                        <strong>Resume:</strong> {resumeFile.original_filename || "Resume"}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleDownloadQuestionnaireFile(resumeFile)}
+                      >
+                        Download
+                      </Button>
+                      {resumeFile.scan_status && (
+                        <Chip
+                          size="small"
+                          color={
+                            resumeFile.scan_status === "clean"
+                              ? "success"
+                              : resumeFile.scan_status === "blocked"
+                              ? "error"
+                              : "warning"
+                          }
+                          label={`Scan: ${resumeFile.scan_status}`}
+                        />
+                      )}
+                    </Stack>
+                  )}
+
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disabled={!summaryEmail}
+                      component="a"
+                      href={summaryEmail ? `/recruiter/candidates/${encodeURIComponent(summaryEmail)}` : undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open candidate profile
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      component="a"
+                      href={summaryEmail ? `/recruiter/candidates/${encodeURIComponent(summaryEmail)}` : undefined}
+                      disabled={!summaryEmail}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Move stage
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      component="a"
+                      href="/recruiter/invitations"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Send follow-up
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Paper>
+            )}
+
+            {isReadOnly && sortedSubmissionFiles.length > 0 && (
+              <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 2 }}>
+                <Stack spacing={2}>
+                  <Typography variant="h6">Attachments</Typography>
+                  <Stack spacing={1.5}>
+                    {sortedSubmissionFiles.map((file) => {
+                      const scanStatus = (file.scan_status || "").toLowerCase();
+                      return (
+                        <Stack
+                          key={file.id}
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1}
+                          alignItems={{ sm: "center" }}
+                          justifyContent="space-between"
+                          useFlexGap
+                          flexWrap="wrap"
+                        >
+                          <Stack spacing={0.25}>
+                            <Typography variant="body2">
+                              {file.original_filename || `File #${file.id}`}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {file.field_key ? `Field: ${file.field_key}` : "Uploaded file"}
+                              {file.file_size ? ` • ${formatBytes(file.file_size)}` : ""}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                            {scanStatus && (
+                              <Chip
+                                size="small"
+                                color={
+                                  scanStatus === "clean"
+                                    ? "success"
+                                    : scanStatus === "blocked"
+                                    ? "error"
+                                    : "warning"
+                                }
+                                label={`Scan: ${scanStatus}`}
+                              />
+                            )}
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              onClick={() => handleDownloadQuestionnaireFile(file)}
+                            >
+                              Download
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      );
+                    })}
+                  </Stack>
+                </Stack>
+              </Paper>
+            )}
 
             {bookingRequired && (
               <Box>
