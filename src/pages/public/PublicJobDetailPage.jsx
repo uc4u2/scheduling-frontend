@@ -16,6 +16,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import PublicPageShell from "../client/PublicPageShell";
 import { publicJobs } from "../../utils/publicJobs";
+import CandidateLoginDialog from "../../components/candidate/CandidateLoginDialog";
 
 const formatPay = (job) => {
   const cur = job?.pay_currency || "";
@@ -26,6 +27,20 @@ const formatPay = (job) => {
   if (min != null && max != null) return `${fmt(min)} - ${fmt(max)}`;
   if (min != null) return `From ${fmt(min)}`;
   return `Up to ${fmt(max)}`;
+};
+
+const formatLocation = (job) => {
+  const city = job?.city || "";
+  const region = job?.region || "";
+  const country = job?.country || "";
+  if (city || region) {
+    const parts = [];
+    if (city) parts.push(city);
+    if (region) parts.push(region);
+    if (country && country !== "CA") parts.push(country);
+    return parts.join(", ");
+  }
+  return job?.location || "";
 };
 
 const Section = ({ title, children }) => {
@@ -56,8 +71,10 @@ export default function PublicJobDetailPage() {
   const [applyPhone, setApplyPhone] = useState("");
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState("");
+  const [loginOpen, setLoginOpen] = useState(false);
 
   const pay = useMemo(() => formatPay(job), [job]);
+  const locationLabel = useMemo(() => formatLocation(job), [job]);
 
   useEffect(() => {
     let mounted = true;
@@ -165,17 +182,25 @@ export default function PublicJobDetailPage() {
                   <Typography variant="overline" color="text.secondary">
                     {companySlug} / Careers
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 900 }}>
-                    {job.title}
-                  </Typography>
-
-                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                    {job.location && <Chip size="small" label={job.location} />}
-                    {job.location_type && <Chip size="small" label={job.location_type} />}
-                    {job.employment_type && <Chip size="small" label={job.employment_type} />}
-                    {job.seniority && <Chip size="small" label={job.seniority} />}
-                    {pay && <Chip size="small" label={pay} />}
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
+                    <Typography variant="h4" sx={{ fontWeight: 900, flex: 1 }}>
+                      {job.title}
+                    </Typography>
+                    <Button variant="outlined" onClick={() => setLoginOpen(true)}>
+                      Candidate login
+                    </Button>
                   </Stack>
+
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  {locationLabel && <Chip size="small" label={locationLabel} />}
+                  {(job.work_arrangement || job.location_type) && (
+                    <Chip size="small" label={job.work_arrangement || job.location_type} />
+                  )}
+                  {job.employment_type && <Chip size="small" label={job.employment_type} />}
+                  {job.job_category && <Chip size="small" label={job.job_category} />}
+                  {job.seniority && <Chip size="small" label={job.seniority} />}
+                  {pay && <Chip size="small" label={pay} />}
+                </Stack>
 
                   <Typography color="text.secondary">
                     {job.summary || "Apply below and you will be redirected to the secure application form."}
@@ -188,6 +213,9 @@ export default function PublicJobDetailPage() {
                       {job.apply_deadline ? `Apply by ${new Date(job.apply_deadline).toLocaleDateString()}` : ""}
                     </Typography>
                   )}
+                  <Typography variant="caption" color="text.secondary">
+                    Already applied? Use candidate login to view your status.
+                  </Typography>
                 </Stack>
               </Paper>
 
@@ -269,6 +297,11 @@ export default function PublicJobDetailPage() {
           )}
         </Container>
       </Box>
+      <CandidateLoginDialog
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        companySlug={companySlug}
+      />
     </PublicPageShell>
   );
 }

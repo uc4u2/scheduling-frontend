@@ -1413,7 +1413,10 @@ const CandidateIntakePage = () => {
                       </Typography>
                       <Stack spacing={2}>
                         {section.fields.map((field) => {
-                          const value = responses[field.key] ?? (field.type === "boolean" ? false : "");
+                          const isMultiSelect = ["multi_select", "multiselect", "checkboxes", "checkbox_group"].includes(
+                            String(field.type || "").toLowerCase()
+                          );
+                          const value = responses[field.key] ?? (field.type === "boolean" ? false : isMultiSelect ? [] : "");
                           const fieldError = fieldErrors[field.key];
                           const disabled = isReadOnly;
 
@@ -1465,12 +1468,25 @@ const CandidateIntakePage = () => {
                             );
                           }
 
-                          if (field.type === "select") {
+                          if (field.type === "select" || isMultiSelect) {
                             return (
                               <TextField
                                 key={fieldKey}
                                 select
                                 {...commonProps}
+                                SelectProps={{ multiple: isMultiSelect }}
+                                value={isMultiSelect ? (Array.isArray(value) ? value : []) : commonProps.value}
+                                onChange={(event) => {
+                                  const nextValue = event.target.value;
+                                  setResponses((prev) => ({
+                                    ...prev,
+                                    [field.key]: isMultiSelect
+                                      ? Array.isArray(nextValue)
+                                        ? nextValue
+                                        : [nextValue]
+                                      : nextValue,
+                                  }));
+                                }}
                               >
                                 {(field.options || []).map((option) => (
                                   <MenuItem key={option.value} value={option.value}>

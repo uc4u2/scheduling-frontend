@@ -2,9 +2,9 @@
 import { api } from "./api";
 
 export const publicJobs = {
-  list: async (companySlug) => {
+  list: async (companySlug, params = {}) => {
     const slug = encodeURIComponent(companySlug || "");
-    const res = await api.get(`/public/${slug}/jobs`, { noAuth: true });
+    const res = await api.get(`/api/public/${slug}/jobs`, { noAuth: true, params });
     return res.data;
   },
 

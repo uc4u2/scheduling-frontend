@@ -141,6 +141,8 @@ import CandidateIntakePage from "./pages/CandidateIntakePage";
 import PublicJobsListPage from "./pages/public/PublicJobsListPage";
 import PublicJobDetailPage from "./pages/public/PublicJobDetailPage";
 import DocumentRequestUploadPage from "./pages/public/DocumentRequestUploadPage";
+import CandidateLoginCallbackPage from "./pages/candidate/CandidateLoginCallbackPage";
+import CandidateDashboardPage from "./pages/candidate/CandidateDashboardPage";
 import ClientRescheduleBooking from "./pages/client/ClientRescheduleBooking";
 import Checkout from "./pages/client/Checkout";
 import ProductList from "./pages/client/ProductList";
@@ -423,6 +425,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/reset-password/temp" element={<ResetPassword />} />
           <Route path="/apply/:token" element={<CandidateIntakePage />} />
           <Route path="/document-request/:token" element={<DocumentRequestUploadPage />} />
+          <Route path="/candidate/login/:token" element={<CandidateLoginCallbackPage />} />
+          <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
           <Route path="/public/:companySlug/jobs" element={<PublicJobsListPage />} />
           <Route path="/public/:companySlug/jobs/:jobSlug" element={<PublicJobDetailPage />} />
 

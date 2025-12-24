@@ -39,6 +39,11 @@ const HR_RECRUITING_SECTIONS = [
         config: {
           options: [
             "Citizen/PR",
+            "US Citizen",
+            "US Permanent Resident (Green Card)",
+            "H-1B",
+            "TN",
+            "OPT/CPT",
             "Open WP",
             "Employer-specific WP",
             "Requires sponsorship",
