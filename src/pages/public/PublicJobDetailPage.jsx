@@ -29,14 +29,15 @@ const formatPay = (job) => {
 };
 
 const Section = ({ title, children }) => {
-  if (!children) return null;
+  const content = typeof children === "string" ? children.trim() : children;
+  if (!content) return null;
   return (
     <Box>
       <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
         {title}
       </Typography>
       <Typography color="text.secondary" sx={{ whiteSpace: "pre-wrap" }}>
-        {children}
+        {content}
       </Typography>
     </Box>
   );
@@ -193,10 +194,12 @@ export default function PublicJobDetailPage() {
               <GridLike>
                 <Paper variant="outlined" sx={{ p: { xs: 3, md: 4 }, borderRadius: 3 }}>
                   <Stack spacing={3}>
-                    <Section title="Description">{job.description}</Section>
-                    <Section title="Responsibilities">{job.responsibilities}</Section>
-                    <Section title="Requirements">{job.requirements}</Section>
-                    <Section title="Benefits">{job.benefits}</Section>
+                  <Section title="Description">{job.description}</Section>
+                  <Section title="Responsibilities">{job.responsibilities}</Section>
+                  <Section title="Requirements">{job.requirements}</Section>
+                  <Section title="Role-specific details">{job.role_details}</Section>
+                  <Section title="Key requirements">{job.key_requirements}</Section>
+                  <Section title="Benefits">{job.benefits}</Section>
 
                     {job.recruiter?.name && (
                       <Box>

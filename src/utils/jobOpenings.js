@@ -45,6 +45,14 @@ export const jobOpeningsApi = {
     const res = await api.get(`/manager/job-openings/${id}/applications`, { params });
     return res.data;
   },
+  aiRank: async (id, payload = {}) => {
+    const res = await api.post(`/manager/job-openings/${id}/ai-rank`, payload || {});
+    return res.data;
+  },
+  aiRankings: async (id, params = {}) => {
+    const res = await api.get(`/manager/job-openings/${id}/ai-rankings`, { params });
+    return res.data;
+  },
   exportApplications: async (id, params = {}, config = {}) => {
     const res = await api.get(`/manager/job-openings/${id}/applications/export`, {
       params,

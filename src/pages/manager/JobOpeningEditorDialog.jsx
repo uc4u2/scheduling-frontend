@@ -39,6 +39,11 @@ export default function JobOpeningEditorDialog({ open, job, onClose, onSave, sav
     responsibilities: "",
     requirements: "",
     benefits: "",
+    role_details: "",
+    key_requirements: "",
+    ai_must_have_skills: "",
+    ai_nice_to_have_skills: "",
+    ai_notes: "",
     location: "",
     location_type: "",
     employment_type: "",
@@ -67,6 +72,11 @@ export default function JobOpeningEditorDialog({ open, job, onClose, onSave, sav
       responsibilities: safe(job?.responsibilities),
       requirements: safe(job?.requirements),
       benefits: safe(job?.benefits),
+      role_details: safe(job?.role_details),
+      key_requirements: safe(job?.key_requirements),
+      ai_must_have_skills: safe(job?.ai_must_have_skills),
+      ai_nice_to_have_skills: safe(job?.ai_nice_to_have_skills),
+      ai_notes: safe(job?.ai_notes),
       location: safe(job?.location),
       location_type: safe(job?.location_type),
       employment_type: safe(job?.employment_type),
@@ -122,6 +132,11 @@ export default function JobOpeningEditorDialog({ open, job, onClose, onSave, sav
       responsibilities: form.responsibilities || undefined,
       requirements: form.requirements || undefined,
       benefits: form.benefits || undefined,
+      role_details: form.role_details || undefined,
+      key_requirements: form.key_requirements || undefined,
+      ai_must_have_skills: form.ai_must_have_skills || undefined,
+      ai_nice_to_have_skills: form.ai_nice_to_have_skills || undefined,
+      ai_notes: form.ai_notes || undefined,
       location: form.location || undefined,
       location_type: form.location_type || undefined,
       employment_type: form.employment_type || undefined,
@@ -248,6 +263,50 @@ export default function JobOpeningEditorDialog({ open, job, onClose, onSave, sav
                 onChange={handleChange("requirements")}
                 multiline
                 minRows={4}
+                fullWidth
+              />
+              <TextField
+                label="Role-specific details"
+                value={form.role_details}
+                onChange={handleChange("role_details")}
+                multiline
+                minRows={4}
+                fullWidth
+              />
+              <TextField
+                label="Key requirements"
+                value={form.key_requirements}
+                onChange={handleChange("key_requirements")}
+                multiline
+                minRows={4}
+                fullWidth
+              />
+              <Divider />
+              <Typography variant="subtitle2" color="text.secondary">
+                AI rubric (optional)
+              </Typography>
+              <TextField
+                label="AI must-have skills"
+                value={form.ai_must_have_skills}
+                onChange={handleChange("ai_must_have_skills")}
+                multiline
+                minRows={2}
+                fullWidth
+              />
+              <TextField
+                label="AI nice-to-have skills"
+                value={form.ai_nice_to_have_skills}
+                onChange={handleChange("ai_nice_to_have_skills")}
+                multiline
+                minRows={2}
+                fullWidth
+              />
+              <TextField
+                label="AI notes"
+                value={form.ai_notes}
+                onChange={handleChange("ai_notes")}
+                multiline
+                minRows={2}
                 fullWidth
               />
               <TextField

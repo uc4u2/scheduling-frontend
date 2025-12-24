@@ -6,6 +6,9 @@ import {
   Button,
   Chip,
   Divider,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   IconButton,
   Paper,
   Stack,
@@ -23,6 +26,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  LinearProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import PublishIcon from "@mui/icons-material/Publish";
@@ -37,6 +41,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import DescriptionIcon from "@mui/icons-material/Description";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import SendIcon from "@mui/icons-material/Send";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import { useNavigate } from "react-router-dom";
 import { api } from "../../utils/api";
@@ -81,6 +86,24 @@ const fmtDate = (iso) => {
   }
 };
 
+const scoreChipColor = (score) => {
+  if (score == null) return "default";
+  const value = Number(score);
+  if (Number.isNaN(value)) return "default";
+  if (value >= 85) return "success";
+  if (value >= 70) return "warning";
+  return "error";
+};
+
+const recommendationColor = (rec) => {
+  const value = String(rec || "").toLowerCase();
+  if (value.includes("strong")) return "success";
+  if (value === "yes") return "success";
+  if (value === "maybe") return "warning";
+  if (value === "no") return "error";
+  return "default";
+};
+
 export default function ManagerJobOpeningsPanel({ token }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -112,6 +135,12 @@ export default function ManagerJobOpeningsPanel({ token }) {
   const [appsQ, setAppsQ] = useState("");
   const [appsSavingId, setAppsSavingId] = useState(null);
   const [appsNotice, setAppsNotice] = useState("");
+  const [aiTopN, setAiTopN] = useState(10);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiRunning, setAiRunning] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiResults, setAiResults] = useState([]);
+  const [aiErrors, setAiErrors] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const appsPageSize = 20;
@@ -120,6 +149,7 @@ export default function ManagerJobOpeningsPanel({ token }) {
     [appsTotal]
   );
   const canEditJobs = Boolean(authInfo?.is_manager || authInfo?.can_manage_onboarding);
+  const canRunAi = Boolean(authInfo?.is_manager || authInfo?.can_manage_onboarding);
   const isAuthReady = authInfo !== null;
   const viewOnly = isAuthReady && !canEditJobs;
 
@@ -171,8 +201,17 @@ export default function ManagerJobOpeningsPanel({ token }) {
     if (!templates.length && !templatesLoading) {
       loadTemplates();
     }
+    if (canRunAi) {
+      loadAiRankings(appsJob.id, aiTopN);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appsOpen, appsJob?.id, appsPage]);
+
+  useEffect(() => {
+    if (!appsOpen || !appsJob?.id || !canRunAi) return;
+    loadAiRankings(appsJob.id, aiTopN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiTopN]);
 
   useEffect(() => {
     let mounted = true;
@@ -239,6 +278,36 @@ export default function ManagerJobOpeningsPanel({ token }) {
       setAppsError(e?.response?.data?.error || e?.displayMessage || e?.message || "Failed to load applications.");
     } finally {
       setAppsLoading(false);
+    }
+  };
+
+  const loadAiRankings = async (jobId, topN = aiTopN) => {
+    if (!jobId || !canRunAi) return;
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const data = await jobOpeningsApi.aiRankings(jobId, { top_n: topN });
+      setAiResults(Array.isArray(data?.results) ? data.results : []);
+      setAiErrors(Array.isArray(data?.errors) ? data.errors : []);
+    } catch (e) {
+      setAiError(e?.response?.data?.error || e?.displayMessage || e?.message || "Failed to load AI rankings.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const runAiRanking = async (force = false) => {
+    if (!appsJob?.id || !canRunAi) return;
+    setAiRunning(true);
+    setAiError("");
+    try {
+      const data = await jobOpeningsApi.aiRank(appsJob.id, { top_n: aiTopN, force });
+      setAiResults(Array.isArray(data?.results) ? data.results : []);
+      setAiErrors(Array.isArray(data?.errors) ? data.errors : []);
+    } catch (e) {
+      setAiError(e?.response?.data?.error || e?.displayMessage || e?.message || "AI ranking failed.");
+    } finally {
+      setAiRunning(false);
     }
   };
 
@@ -741,6 +810,9 @@ export default function ManagerJobOpeningsPanel({ token }) {
           setAppsTotal(0);
           setAppsError("");
           setAppsNotice("");
+          setAiResults([]);
+          setAiError("");
+          setAiErrors([]);
         }}
         fullWidth
         maxWidth="md"
@@ -755,13 +827,48 @@ export default function ManagerJobOpeningsPanel({ token }) {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center">
+            {canRunAi && (
+              <TextField
+                select
+                size="small"
+                value={aiTopN}
+                onChange={(e) => setAiTopN(Number(e.target.value))}
+                sx={{ minWidth: 90 }}
+              >
+                {[5, 10, 20].map((n) => (
+                  <MenuItem key={n} value={n}>
+                    Top {n}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+            {canRunAi && (
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => runAiRanking(false)}
+                disabled={aiRunning}
+              >
+                {aiRunning ? "Ranking..." : "AI Rank"}
+              </Button>
+            )}
+            {canRunAi && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => runAiRanking(true)}
+                disabled={aiRunning}
+              >
+                Refresh AI
+              </Button>
+            )}
             <Button
               variant="outlined"
               size="small"
               onClick={exportApplicationsCsv}
               disabled={!appsJob?.id || viewOnly}
             >
-              Export CSV
+              {aiResults.length ? "Export ranked CSV" : "Export CSV"}
             </Button>
             <IconButton onClick={() => setAppsOpen(false)}>
               <CloseIcon />
@@ -770,6 +877,115 @@ export default function ManagerJobOpeningsPanel({ token }) {
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
+            {canRunAi && (
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                <Stack spacing={1.5}>
+                  <Box display="flex" alignItems="center" justifyContent="space-between">
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      AI rankings
+                    </Typography>
+                    {aiLoading && <LinearProgress sx={{ flex: 1, ml: 2 }} />}
+                  </Box>
+                  {aiError && <Alert severity="error">{aiError}</Alert>}
+                  {aiErrors.length > 0 && (
+                    <Alert severity="warning">
+                      Some applicants could not be ranked. You can refresh AI to retry.
+                    </Alert>
+                  )}
+                  {aiLoading ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Loading AI rankings...
+                    </Typography>
+                  ) : aiResults.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary">
+                      No AI rankings yet. Click "AI Rank" to generate scores.
+                    </Typography>
+                  ) : (
+                    <Stack spacing={1}>
+                      {aiResults.map((row) => (
+                        <Accordion key={row.application_id} disableGutters>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Stack
+                              direction={{ xs: "column", sm: "row" }}
+                              spacing={1}
+                              alignItems={{ sm: "center" }}
+                              justifyContent="space-between"
+                              sx={{ width: "100%" }}
+                            >
+                              <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  {row.name || "Unnamed"} {row.email ? `· ${row.email}` : ""}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Stage: {row.stage || "—"}
+                                </Typography>
+                              </Box>
+                              <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                                <Chip
+                                  size="small"
+                                  color={scoreChipColor(row.score)}
+                                  label={row.score != null ? `Score ${row.score}` : "No score"}
+                                />
+                                {row.recommendation && (
+                                  <Chip
+                                    size="small"
+                                    color={recommendationColor(row.recommendation)}
+                                    label={row.recommendation}
+                                  />
+                                )}
+                              </Stack>
+                            </Stack>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Stack spacing={1}>
+                              {row.summary && (
+                                <Typography variant="body2" color="text.secondary">
+                                  {row.summary}
+                                </Typography>
+                              )}
+                              {row.strengths?.length > 0 && (
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Strengths
+                                  </Typography>
+                                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                                    {row.strengths.map((item, idx) => (
+                                      <Chip key={`${row.application_id}-s-${idx}`} size="small" label={item} />
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              )}
+                              {row.gaps?.length > 0 && (
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Gaps
+                                  </Typography>
+                                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                                    {row.gaps.map((item, idx) => (
+                                      <Chip
+                                        key={`${row.application_id}-g-${idx}`}
+                                        size="small"
+                                        color="warning"
+                                        label={item}
+                                      />
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              )}
+                              {row.ranked_at && (
+                                <Typography variant="caption" color="text.secondary">
+                                  Ranked {new Date(row.ranked_at).toLocaleString()}
+                                </Typography>
+                              )}
+                            </Stack>
+                          </AccordionDetails>
+                        </Accordion>
+                      ))}
+                    </Stack>
+                  )}
+                </Stack>
+              </Paper>
+            )}
             <TextField
               value={appsQ}
               onChange={(e) => setAppsQ(e.target.value)}

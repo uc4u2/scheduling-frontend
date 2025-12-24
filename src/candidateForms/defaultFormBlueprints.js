@@ -14,6 +14,125 @@ const BASE_BACKGROUND_FIELDS = [
   { key: "supporting_links", label: "Links to resume, portfolio or profiles", type: "text", is_required: false },
 ];
 
+const HR_RECRUITING_SECTIONS = [
+  {
+    key: "contact",
+    title: "Contact information",
+    description: "Tell us how we can reach you.",
+    fields: [
+      { key: "full_name", label: "Full Name", type: "text", is_required: true },
+      { key: "email", label: "Email Address", type: "email", is_required: true },
+      { key: "phone", label: "Phone Number", type: "phone", is_required: false },
+      { key: "location", label: "Location", type: "text", is_required: false },
+    ],
+  },
+  {
+    key: "eligibility",
+    title: "Work authorization",
+    description: "Let us know your current work authorization status.",
+    fields: [
+      {
+        key: "work_authorization",
+        label: "Work authorization",
+        type: "select",
+        is_required: true,
+        config: {
+          options: [
+            "Citizen/PR",
+            "Open WP",
+            "Employer-specific WP",
+            "Requires sponsorship",
+          ],
+        },
+      },
+    ],
+  },
+  {
+    key: "experience",
+    title: "Experience overview",
+    description: "Share a quick snapshot of your background.",
+    fields: [
+      { key: "years_experience", label: "Years of Experience", type: "number", is_required: false },
+      { key: "relevant_experience", label: "Relevant experience summary", type: "textarea", is_required: false },
+    ],
+  },
+  {
+    key: "skills",
+    title: "Skills",
+    description: "Highlight your core skills and tools.",
+    fields: [
+      { key: "primary_skills", label: "Primary skills (comma-separated)", type: "text", is_required: true },
+      { key: "tools_technologies", label: "Tools or technologies", type: "text", is_required: false },
+    ],
+  },
+  {
+    key: "preferences",
+    title: "Preferences",
+    description: "Share your availability and work preferences.",
+    fields: [
+      {
+        key: "availability",
+        label: "Availability",
+        type: "select",
+        is_required: true,
+        config: {
+          options: [
+            "Immediately",
+            "1-2 weeks",
+            "1 month",
+            "Flexible",
+          ],
+        },
+      },
+      {
+        key: "employment_type_preference",
+        label: "Employment type preference",
+        type: "multi_select",
+        is_required: true,
+        config: {
+          options: [
+            "Full-time",
+            "Part-time",
+            "Contract",
+            "Temporary",
+            "Casual/On-call",
+            "Seasonal",
+          ],
+        },
+      },
+      {
+        key: "work_arrangement_preference",
+        label: "Work arrangement preference",
+        type: "select",
+        is_required: true,
+        config: {
+          options: [
+            "On-site",
+            "Hybrid",
+            "Remote",
+          ],
+        },
+      },
+    ],
+  },
+  {
+    key: "compensation",
+    title: "Compensation",
+    description: "Optional compensation expectations.",
+    fields: [
+      { key: "expected_pay", label: "Expected pay", type: "text", is_required: false },
+    ],
+  },
+  {
+    key: "links",
+    title: "Links",
+    description: "Share a profile or portfolio link.",
+    fields: [
+      { key: "linkedin_or_portfolio", label: "LinkedIn or portfolio link", type: "text", is_required: false },
+    ],
+  },
+];
+
 const PROFESSION_SPECIFIC_FIELDS = {
   recruiter: [
     { key: "recruiting_focus", label: "Recruiting focus (industries, functions)", type: "textarea" },
@@ -114,10 +233,7 @@ const PROFESSION_SPECIFIC_FIELDS = {
     { key: "service_area", label: "Service area", type: "text" },
     { key: "special_services", label: "Special services (loan signings, etc.)", type: "textarea" },
   ],
-  custom: [
-    { key: "role_details", label: "Role-specific details", type: "textarea" },
-    { key: "key_requirements", label: "Key requirements or questions", type: "textarea" },
-  ],
+  custom: [],
 };
 
 const DEFAULT_DESCRIPTION_SUFFIX = "Complete this form so our team has the details we need to continue the conversation.";
@@ -174,6 +290,30 @@ const buildEmailCopy = () => ({
 });
 
 const buildBlueprint = (key, label) => {
+  if (key === "hr_recruiting") {
+    const sections = HR_RECRUITING_SECTIONS;
+    const schema = {
+      title: `${label} candidate intake`,
+      description: `${label}: ${DEFAULT_DESCRIPTION_SUFFIX}`,
+      sections: sections.map((section) => ({
+        title: section.title,
+        description: section.description,
+        fields: section.fields,
+      })),
+    };
+    const email = buildEmailCopy();
+    return {
+      professionKey: key,
+      label,
+      name: `${label} candidate intake`,
+      description: `${label} questionnaire. ${DEFAULT_DESCRIPTION_SUFFIX}`,
+      emailSubject: email.subject,
+      emailBody: email.body,
+      schema,
+      fields: normaliseFields(sections),
+    };
+  }
+
   const extras = PROFESSION_SPECIFIC_FIELDS[key] || PROFESSION_SPECIFIC_FIELDS.custom;
   const sections = buildSections(label, extras);
   const schema = {
