@@ -423,7 +423,7 @@ const CandidateIntakePage = () => {
     responses?.source_job_opening_id ||
     responses?.job_opening_id ||
     "";
-  const resumeFile = useMemo(() => {
+  const resumeSummaryFile = useMemo(() => {
     const files = submissionFiles || [];
     if (!files.length) return null;
     const allowedExt = [".pdf", ".doc", ".docx"];
@@ -988,29 +988,29 @@ const CandidateIntakePage = () => {
                     ) : null}
                   </Stack>
 
-                  {resumeFile && (
+                  {resumeSummaryFile && (
                     <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                       <Typography variant="body2">
-                        <strong>Resume:</strong> {resumeFile.original_filename || "Resume"}
+                        <strong>Resume:</strong> {resumeSummaryFile.original_filename || "Resume"}
                       </Typography>
                       <Button
                         size="small"
                         variant="outlined"
-                        onClick={() => handleDownloadQuestionnaireFile(resumeFile)}
+                        onClick={() => handleDownloadQuestionnaireFile(resumeSummaryFile)}
                       >
                         Download
                       </Button>
-                      {resumeFile.scan_status && (
+                      {resumeSummaryFile.scan_status && (
                         <Chip
                           size="small"
                           color={
-                            resumeFile.scan_status === "clean"
+                            resumeSummaryFile.scan_status === "clean"
                               ? "success"
-                              : resumeFile.scan_status === "blocked"
+                              : resumeSummaryFile.scan_status === "blocked"
                               ? "error"
                               : "warning"
                           }
-                          label={`Scan: ${resumeFile.scan_status}`}
+                          label={`Scan: ${resumeSummaryFile.scan_status}`}
                         />
                       )}
                     </Stack>

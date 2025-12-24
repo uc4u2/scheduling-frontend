@@ -45,6 +45,14 @@ export const jobOpeningsApi = {
     const res = await api.get(`/manager/job-openings/${id}/applications`, { params });
     return res.data;
   },
+  exportApplications: async (id, params = {}, config = {}) => {
+    const res = await api.get(`/manager/job-openings/${id}/applications/export`, {
+      params,
+      responseType: "blob",
+      ...config,
+    });
+    return res;
+  },
   updateApplication: async (applicationId, payload = {}) => {
     const res = await api.patch(`/manager/job-applications/${applicationId}`, payload);
     return res.data;

@@ -376,47 +376,27 @@ export default function ManagerJobOpeningsPanel({ token }) {
     }
   };
 
-  const exportApplicationsCsv = () => {
-    if (!appsRows.length) return;
-    const headers = [
-      "name",
-      "email",
-      "phone",
-      "stage",
-      "candidate_status",
-      "applied_at",
-      "source",
-      "utm_source",
-      "utm_medium",
-      "utm_campaign",
-    ];
-    const escapeCell = (value) => {
-      const str = value == null ? "" : String(value);
-      if (/[",\n]/.test(str)) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-    const rows = appsRows.map((row) => [
-      row.name || "",
-      row.email || "",
-      row.phone || "",
-      row.stage || "",
-      row.candidate_status || "",
-      row.applied_at || "",
-      row.source || "",
-      row.utm_source || "",
-      row.utm_medium || "",
-      row.utm_campaign || "",
-    ]);
-    const csv = [headers, ...rows].map((line) => line.map(escapeCell).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `job-applications-${appsJob?.id || "export"}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const exportApplicationsCsv = async () => {
+    if (!appsJob?.id || viewOnly) return;
+    setAppsError("");
+    try {
+      const res = await jobOpeningsApi.exportApplications(appsJob.id, {
+        q: appsQ || undefined,
+      });
+      const blob = res?.data instanceof Blob ? res.data : new Blob([res?.data || ""], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const disposition = res?.headers?.["content-disposition"] || res?.headers?.["Content-Disposition"];
+      const filenameMatch = disposition && /filename="([^"]+)"/.exec(disposition);
+      link.download = filenameMatch?.[1] || `job-applications-${appsJob?.id || "export"}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setAppsError(
+        e?.response?.data?.error || e?.displayMessage || e?.message || "Failed to export applications."
+      );
+    }
   };
 
   const resolveCompanySlug = () => {
@@ -779,7 +759,7 @@ export default function ManagerJobOpeningsPanel({ token }) {
               variant="outlined"
               size="small"
               onClick={exportApplicationsCsv}
-              disabled={!appsRows.length}
+              disabled={!appsJob?.id || viewOnly}
             >
               Export CSV
             </Button>
