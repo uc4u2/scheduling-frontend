@@ -314,6 +314,20 @@ const FeatureGate = ({ feature, children }) => {
 const AppContent = ({ token, setToken }) => {
   const location = useLocation();
   const isMarketingRoute = MARKETING_PATHS.includes(location.pathname);
+  const isApplyRoute = Boolean(matchPath({ path: "/apply/:token" }, location.pathname));
+  const isPublicJobsRoute = Boolean(
+    matchPath({ path: "/public/:companySlug/jobs" }, location.pathname) ||
+      matchPath({ path: "/public/:companySlug/jobs/:jobSlug" }, location.pathname)
+  );
+  const isCandidatePortalRoute = Boolean(matchPath({ path: "/candidate/*" }, location.pathname));
+  const isDocumentRequestRoute = Boolean(matchPath({ path: "/document-request/:token" }, location.pathname));
+  const isMeetRoute = Boolean(matchPath({ path: "/:slug/meet/:token" }, location.pathname));
+  const isNoChromeRoute =
+    isApplyRoute ||
+    isPublicJobsRoute ||
+    isCandidatePortalRoute ||
+    isDocumentRequestRoute ||
+    isMeetRoute;
   const slugMatch = matchPath({ path: '/:slug/*' }, location.pathname) || matchPath({ path: '/:slug' }, location.pathname);
   const slugCandidate = slugMatch?.params?.slug?.toLowerCase();
   const isCompanyRoute = Boolean(slugCandidate && !RESERVED_SLUG_PREFIXES.has(slugCandidate));
@@ -347,7 +361,7 @@ const AppContent = ({ token, setToken }) => {
   }, [isEmbed, primary, text]);
 
   const showChatBot = !isEmbed && MARKETING_PATHS.includes(location.pathname);
-  const showAppChrome = !isEmbed && !isMarketingRoute && !isCompanyRoute;
+  const showAppChrome = !isEmbed && !isMarketingRoute && !isCompanyRoute && !isNoChromeRoute;
 
   const content = (
     <>
@@ -429,6 +443,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/candidate/dashboard" element={<CandidateDashboardPage />} />
           <Route path="/public/:companySlug/jobs" element={<PublicJobsListPage />} />
           <Route path="/public/:companySlug/jobs/:jobSlug" element={<PublicJobDetailPage />} />
+          <Route path="/:slug/jobs" element={<PublicJobsListPage />} />
+          <Route path="/:slug/jobs/:jobSlug" element={<PublicJobDetailPage />} />
 
           {/* Client Public Booking Flow - specific routes first */}
           <Route path="/:slug/services" element={<ServiceList />} />

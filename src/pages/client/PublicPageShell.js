@@ -247,6 +247,15 @@ function ShellInner({
     return `/${slug}/products`;
   }, [slug, navCfg, pages]);
 
+  const jobsHref = useMemo(() => {
+    const target = String(navCfg?.jobs_page_slug || "jobs");
+    const hasPage = (pages || []).some((p) => String(p.slug || "").toLowerCase() === target.toLowerCase());
+    if (navCfg?.jobs_tab_target === "page" && hasPage) {
+      return `/${slug}?page=${encodeURIComponent(target)}`;
+    }
+    return `/${slug}/jobs`;
+  }, [slug, navCfg, pages]);
+
   const basketHref = useMemo(() => {
     const target = String(navCfg?.basket_page_slug || 'basket');
     const hasPage = (pages || []).some((p) => String(p.slug || '').toLowerCase() === target.toLowerCase());
@@ -269,6 +278,7 @@ function ShellInner({
       .filter((p) => !(p.slug === "my-bookings" && !authed))
       .map((p) => {
         let to = `/${slug}?page=${encodeURIComponent(p.slug)}`;
+        if (p.slug === "jobs") to = `/${slug}/jobs`;
         if (p.slug === "login") to = `/login?site=${encodeURIComponent(slug)}`;
         if (p.slug === "my-bookings") to = `/dashboard?site=${encodeURIComponent(slug)}`;
         const isActive =
@@ -287,35 +297,46 @@ function ShellInner({
   // Extra tabs (avoid duplicates)
   const extraTabs = useMemo(() => {
     const items = [];
+    const hasReviewsMenuItem = mappedMenu.some((item) => {
+      const key = String(item?.key || "").toLowerCase();
+      const label = String(item?.label || "").toLowerCase();
+      return key === "reviews" || key === "__reviews" || label === "reviews";
+    });
     const hasReviewsPage = (pages || []).some(
       (p) => String(p.slug || '').toLowerCase() === 'reviews' && p.show_in_menu !== false
     );
     const productsSlug = String(navCfg?.products_page_slug || 'products').toLowerCase();
     const basketSlug = String(navCfg?.basket_page_slug || 'basket').toLowerCase();
+    const jobsSlug = String(navCfg?.jobs_page_slug || 'jobs').toLowerCase();
     const hasProductsPage = (pages || []).some(
       (p) => String(p.slug || '').toLowerCase() === productsSlug && p.show_in_menu !== false
     );
     const hasBasketPage = (pages || []).some(
       (p) => String(p.slug || '').toLowerCase() === basketSlug && p.show_in_menu !== false
     );
+    const hasJobsPage = (pages || []).some(
+      (p) => String(p.slug || '').toLowerCase() === jobsSlug && p.show_in_menu !== false
+    );
     const reviewsTarget = String(navCfg?.reviews_tab_target || 'builtin').toLowerCase();
     const productsTarget = String(navCfg?.products_tab_target || 'builtin').toLowerCase();
     const basketTarget = String(navCfg?.basket_tab_target || 'builtin').toLowerCase();
+    const jobsTarget = String(navCfg?.jobs_tab_target || 'builtin').toLowerCase();
 
-    if (navCfg?.show_reviews_tab !== false && reviewsTarget === 'builtin' && !hasReviewsPage) {
-      items.push({
-        key: "__reviews",
-        label: navCfg?.reviews_tab_label || "Reviews",
-        to: reviewsHref,
-        active: pathname.startsWith(`/${slug}/reviews`) || activeKey === "__reviews",
-      });
-    }
+    // Reviews are already defined as a page in most templates; avoid duplicates here.
     if (navCfg?.show_products_tab !== false && productsTarget === 'builtin' && !hasProductsPage) {
       items.push({
         key: "__products",
         label: navCfg?.products_tab_label || "Products",
         to: productsHref,
         active: pathname.startsWith(`/${slug}/products`) || activeKey === "__products",
+      });
+    }
+    if (navCfg?.show_jobs_tab !== false && jobsTarget === 'builtin' && !hasJobsPage) {
+      items.push({
+        key: "__jobs",
+        label: navCfg?.jobs_tab_label || "Jobs",
+        to: jobsHref,
+        active: pathname.startsWith(`/${slug}/jobs`) || activeKey === "__jobs",
       });
     }
     if (navCfg?.show_basket_tab !== false && basketTarget === 'builtin' && !hasBasketPage) {
@@ -327,7 +348,7 @@ function ShellInner({
       });
     }
     return items;
-  }, [navCfg, reviewsHref, productsHref, basketHref, pathname, slug, authed, pages]);
+  }, [navCfg, reviewsHref, productsHref, jobsHref, basketHref, pathname, slug, authed, pages, mappedMenu]);
 
   const allNavItems = useMemo(
     () => [...mappedMenu, ...extraTabs],
@@ -392,6 +413,11 @@ function ShellInner({
       return (ps && ps.props) ? ps.props : (home?.content?.meta?.pageStyle || {});
     } catch { return {}; }
   }, [pages]);
+
+  const homeCssVars = useMemo(
+    () => (homePageStyle ? pageStyleToCssVars(homePageStyle) : null),
+    [homePageStyle]
+  );
 
   const bgSx = useMemo(() => {
     const ps = homePageStyle || {};
@@ -852,6 +878,23 @@ export default function PublicPageShell({
     return Array.from(set);
   }, [servicesPageSlug]);
 
+  const jobsPageSlug = useMemo(() => {
+    const overrideSlug = String(navCfg?.jobs_page_slug || "").trim();
+    if (overrideSlug) return overrideSlug;
+    return "jobs";
+  }, [navCfg]);
+
+  const jobsSlugCandidates = useMemo(() => {
+    const set = new Set([
+      String(jobsPageSlug || "").toLowerCase(),
+      "jobs",
+      "careers",
+      "career",
+    ]);
+    set.delete("");
+    return Array.from(set);
+  }, [jobsPageSlug]);
+
   const servicesPageStyle = useMemo(() => {
     for (const slugCandidate of servicesSlugCandidates) {
       const match = pages.find(
@@ -863,6 +906,29 @@ export default function PublicPageShell({
     return null;
   }, [pages, servicesSlugCandidates]);
 
+  const jobsPageStyle = useMemo(() => {
+    for (const slugCandidate of jobsSlugCandidates) {
+      const match = pages.find(
+        (p) => String(p?.slug || "").toLowerCase() === slugCandidate
+      );
+      const style = extractPageStyleProps(match);
+      if (style && Object.keys(style).length) return style;
+    }
+    return null;
+  }, [pages, jobsSlugCandidates]);
+
+  const homePageStyle = useMemo(() => {
+    const home = (pages || []).find((p) => p?.is_homepage) || (pages || [])[0] || null;
+    const style = extractPageStyleProps(home);
+    if (style && Object.keys(style).length) return style;
+    return null;
+  }, [pages]);
+
+  const homeCssVars = useMemo(
+    () => (homePageStyle ? pageStyleToCssVars(homePageStyle) : null),
+    [homePageStyle]
+  );
+
   const derivedServiceCssVars = useMemo(
     () => (servicesPageStyle ? pageStyleToCssVars(servicesPageStyle) : null),
     [servicesPageStyle]
@@ -871,6 +937,14 @@ export default function PublicPageShell({
     () => (servicesPageStyle ? pageStyleToBackgroundSx(servicesPageStyle) : null),
     [servicesPageStyle]
   );
+  const derivedJobsCssVars = useMemo(
+    () => (jobsPageStyle ? pageStyleToCssVars(jobsPageStyle) : null),
+    [jobsPageStyle]
+  );
+  const derivedJobsBackground = useMemo(
+    () => (jobsPageStyle ? pageStyleToBackgroundSx(jobsPageStyle) : null),
+    [jobsPageStyle]
+  );
 
   const isServicesActive = useMemo(() => {
     const activeLower = String(activeKey || "").toLowerCase();
@@ -878,11 +952,22 @@ export default function PublicPageShell({
     return servicesSlugCandidates.includes(activeLower);
   }, [activeKey, servicesSlugCandidates]);
 
+  const isJobsActive = useMemo(() => {
+    const activeLower = String(activeKey || "").toLowerCase();
+    if (activeLower === "__jobs") return true;
+    return jobsSlugCandidates.includes(activeLower);
+  }, [activeKey, jobsSlugCandidates]);
+
   const finalPageStyleOverride =
     pageStyleOverride ||
-    (isServicesActive ? derivedServiceBackground : null);
+    (isJobsActive ? derivedJobsBackground : (isServicesActive ? derivedServiceBackground : null));
   const finalPageCssVars =
-    pageCssVars || (isServicesActive ? derivedServiceCssVars : null);
+    pageCssVars ||
+    (isJobsActive
+      ? (derivedJobsCssVars || homeCssVars)
+      : (isServicesActive ? (derivedServiceCssVars || homeCssVars) : null));
+
+  const shellChildren = innerContent || children;
 
   return (
     <ThemeRuntimeProvider overrides={adjustedOverrides}>
@@ -896,7 +981,7 @@ export default function PublicPageShell({
           themeOverrides: adjustedOverrides,
         }}
       >
-        {innerContent || (
+        {slug ? (
           <ShellInner
             slug={slug}
             pages={pages}
@@ -906,8 +991,10 @@ export default function PublicPageShell({
             pageCssVars={finalPageCssVars}
             navStyle={navStyle}
           >
-            {children}
+            {shellChildren}
           </ShellInner>
+        ) : (
+          innerContent
         )}
       </PublicSiteContext.Provider>
     </ThemeRuntimeProvider>

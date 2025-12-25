@@ -12,9 +12,11 @@ import {
   Stack,
   Typography,
   Link,
+  CircularProgress,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
-import { api } from "../../utils/api";
+import SiteFrame from "../../components/website/SiteFrame";
+import { api, publicSite } from "../../utils/api";
 
 export default function DocumentRequestUploadPage() {
   const { token } = useParams();
@@ -103,8 +105,39 @@ export default function DocumentRequestUploadPage() {
 
   const expired = Boolean(requestInfo?.expired);
   const canUpload = Boolean(requestInfo?.can_upload);
+  const companySlug =
+    requestInfo?.company_slug ||
+    (() => {
+      try {
+        return localStorage.getItem("site") || "";
+      } catch {
+        return "";
+      }
+    })();
 
-  return (
+  const [sitePayload, setSitePayload] = useState(null);
+  const [siteLoading, setSiteLoading] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    if (!companySlug) return () => {};
+    setSiteLoading(true);
+    publicSite
+      .getBySlug(companySlug)
+      .then((data) => {
+        if (mounted) setSitePayload(data || null);
+      })
+      .catch(() => {
+        if (mounted) setSitePayload(null);
+      })
+      .finally(() => {
+        if (mounted) setSiteLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [companySlug]);
+
+  const content = (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 4, md: 6 } }}>
       <Container maxWidth="sm">
         <Paper
@@ -267,5 +300,28 @@ export default function DocumentRequestUploadPage() {
         </Paper>
       </Container>
     </Box>
+  );
+
+  if (!companySlug) {
+    return content;
+  }
+
+  if (siteLoading && !sitePayload) {
+    return (
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <SiteFrame
+      slug={companySlug}
+      initialSite={sitePayload || undefined}
+      disableFetch={Boolean(sitePayload)}
+      wrapChildrenInContainer={false}
+    >
+      {content}
+    </SiteFrame>
   );
 }

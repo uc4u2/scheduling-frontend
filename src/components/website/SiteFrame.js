@@ -199,6 +199,16 @@ export default function SiteFrame({
     return pageNavLinks;
   }, [headerConfig, pageNavLinks, menuSource]);
 
+  const hasReviewsLink = useMemo(
+    () =>
+      navLinks.some((item) => {
+        const label = (item?.label || "").toLowerCase();
+        const href = String(item?.href || "").toLowerCase();
+        return label.includes("review") || href.includes("review");
+      }),
+    [navLinks]
+  );
+
   const deslug = (value) =>
     (value || "")
       .replace(/[-_]+/g, " ")
@@ -391,9 +401,11 @@ export default function SiteFrame({
             })}
 
           {/* fixed “extra” tabs that every site has */}
-          <Button component={RouterLink} to={reviewsHref()} color={pathname.includes("/reviews") ? "primary" : "inherit"}>
-            {nav.reviews_tab_label || "Reviews"}
-          </Button>
+          {!hasReviewsLink && nav.show_reviews_tab !== false && (
+            <Button component={RouterLink} to={reviewsHref()} color={pathname.includes("/reviews") ? "primary" : "inherit"}>
+              {nav.reviews_tab_label || "Reviews"}
+            </Button>
+          )}
 
           {/* auth-aware */}
           {renderSessionButtons("inherit")}
@@ -468,14 +480,16 @@ export default function SiteFrame({
           </Button>
         );
       })}
-      <Button
-        component={RouterLink}
-        to={reviewsHref()}
-        color={pathname.includes("/reviews") ? "primary" : "inherit"}
-        size="small"
-      >
-        {nav.reviews_tab_label || "Reviews"}
-      </Button>
+      {!hasReviewsLink && nav.show_reviews_tab !== false && (
+        <Button
+          component={RouterLink}
+          to={reviewsHref()}
+          color={pathname.includes("/reviews") ? "primary" : "inherit"}
+          size="small"
+        >
+          {nav.reviews_tab_label || "Reviews"}
+        </Button>
+      )}
       {renderSessionButtons("inherit")}
     </>
   );

@@ -9,8 +9,11 @@ import {
   Paper,
   Stack,
   Typography,
+  CircularProgress,
 } from "@mui/material";
 import { candidatePortal } from "../../utils/candidatePortal";
+import SiteFrame from "../../components/website/SiteFrame";
+import { publicSite } from "../../utils/api";
 
 const statusChipColor = (status) => {
   const value = String(status || "").toLowerCase();
@@ -85,24 +88,20 @@ export default function CandidateDashboardPage() {
     }
   };
 
-  if (!token) {
-    return (
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 6, md: 8 } }}>
-        <Container maxWidth="sm">
-          <Paper variant="outlined" sx={{ p: 4, borderRadius: 3 }}>
-            <Typography variant="h5" sx={{ fontWeight: 800 }}>
-              Candidate portal
-            </Typography>
-            <Typography color="text.secondary" sx={{ mt: 1 }}>
-              Use the magic link we emailed you to access your dashboard.
-            </Typography>
-          </Paper>
-        </Container>
-      </Box>
-    );
-  }
-
-  return (
+  const content = !token ? (
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 6, md: 8 } }}>
+      <Container maxWidth="sm">
+        <Paper variant="outlined" sx={{ p: 4, borderRadius: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 800 }}>
+            Candidate portal
+          </Typography>
+          <Typography color="text.secondary" sx={{ mt: 1 }}>
+            Use the magic link we emailed you to access your dashboard.
+          </Typography>
+        </Paper>
+      </Container>
+    </Box>
+  ) : (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 6, md: 8 } }}>
       <Container maxWidth="md">
         <Stack spacing={3}>
@@ -244,5 +243,59 @@ export default function CandidateDashboardPage() {
         </Stack>
       </Container>
     </Box>
+  );
+
+  const companySlug =
+    data?.company?.slug ||
+    (() => {
+      try {
+        return localStorage.getItem("site") || "";
+      } catch {
+        return "";
+      }
+    })();
+
+  const [sitePayload, setSitePayload] = useState(null);
+  const [siteLoading, setSiteLoading] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    if (!companySlug) return () => {};
+    setSiteLoading(true);
+    publicSite
+      .getBySlug(companySlug)
+      .then((payload) => {
+        if (mounted) setSitePayload(payload || null);
+      })
+      .catch(() => {
+        if (mounted) setSitePayload(null);
+      })
+      .finally(() => {
+        if (mounted) setSiteLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [companySlug]);
+  if (!companySlug) {
+    return content;
+  }
+
+  if (siteLoading && !sitePayload) {
+    return (
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <SiteFrame
+      slug={companySlug}
+      initialSite={sitePayload || undefined}
+      disableFetch={Boolean(sitePayload)}
+      wrapChildrenInContainer={false}
+    >
+      {content}
+    </SiteFrame>
   );
 }

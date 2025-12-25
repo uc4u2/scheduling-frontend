@@ -23,6 +23,8 @@ import NavStyleHydrator from "../../components/website/NavStyleHydrator";
 import { ServiceListEmbedded } from "./ServiceList";
 import { ProductListEmbedded } from "./ProductList";
 import { MyBasketEmbedded } from "./MyBasket";
+import { JobsListEmbedded } from "../public/PublicJobsListPage";
+import { JobsDetailEmbedded } from "../public/PublicJobDetailPage";
 import {
   cloneFooterColumns,
   cloneLegalLinks,
@@ -413,6 +415,7 @@ export default function CompanyPublic() {
   const [pages, setPages] = useState([]);
 
   const pageFromQuery = (searchParams.get("page") || "").trim();
+  const jobFromQuery = (searchParams.get("job") || "").trim();
 
   const currentPage = useMemo(() => {
     if (!pages.length) return null;
@@ -429,6 +432,9 @@ export default function CompanyPublic() {
       if (directMatch) return directMatch;
 
       if (q === "reviews") return { slug: "reviews", title: "Reviews", content: { sections: [] } };
+      if (q === "jobs" || q === "careers") {
+        return { slug: "jobs", title: "Jobs", content: { sections: [] } };
+      }
       if (q === "services-classic") {
         const existing = pages.find(
           (p) => String(p.slug || "").toLowerCase() === "services-classic"
@@ -773,7 +779,7 @@ export default function CompanyPublic() {
         siteDefaultPageStyle
       );
 
-    if (["services", "services-classic", "products", "basket"].includes(slugLower)) {
+    if (["services", "services-classic", "products", "basket", "jobs"].includes(slugLower)) {
       const styleProps = resolveStyleProps();
       const overrideType = slugLower === "services" ? "services-classic" : slugLower;
       return { sections: [], styleProps, renderOverride: { type: overrideType, styleProps } };
@@ -852,6 +858,7 @@ export default function CompanyPublic() {
     const sections = currentPage?.content?.sections || [];
     const servicesLink = servicesHref();
     const reviewsLink = `/${slug}?page=reviews`;
+    const jobsLink = `/${slug}/jobs`;
     const servicesAliases = [
       "services",
       "/services",
@@ -864,11 +871,13 @@ export default function CompanyPublic() {
       "book",
       "/book",
     ];
+    const jobsAliases = ["jobs", "/jobs", "?page=jobs", "/?page=jobs", "careers", "/careers"];
     const resolver = (href) => {
       const base = resolveSiteHref(slug, href, pages);
       const clean = String(href || "").trim().toLowerCase();
       if (servicesAliases.includes(clean)) return servicesLink;
       if (["reviews", "/reviews"].includes(clean)) return reviewsLink;
+      if (jobsAliases.includes(clean)) return jobsLink;
       return base;
     };
     const fixIframeBody = (html) => {
@@ -917,7 +926,7 @@ export default function CompanyPublic() {
   }, [currentPage, slug, pages, nav, siteDefaultPageStyle, servicesHref]);
 
   const pageLayout = useMemo(() => {
-    if (renderOverride?.type === "services-classic" || renderOverride?.type === "products" || renderOverride?.type === "basket") {
+    if (renderOverride?.type === "services-classic" || renderOverride?.type === "products" || renderOverride?.type === "basket" || renderOverride?.type === "jobs") {
       return "full";
     }
     return currentPage?.layout ?? currentPage?.content?.meta?.layout ?? "boxed";
@@ -1363,10 +1372,15 @@ const siteTitle = useMemo(() => {
         return <ProductListEmbedded slug={slug} pageStyle={styleProps} />;
       case "basket":
         return <MyBasketEmbedded slug={slug} pageStyle={styleProps} />;
+      case "jobs":
+        if (jobFromQuery) {
+          return <JobsDetailEmbedded slug={slug} jobSlug={jobFromQuery} pageStyle={styleProps} />;
+        }
+        return <JobsListEmbedded slug={slug} pageStyle={styleProps} />;
       default:
         return null;
     }
-  }, [renderOverride, slug]);
+  }, [renderOverride, slug, jobFromQuery]);
 
   if (loading) {
     return <Box sx={{ p: 6, textAlign: "center" }}><CircularProgress /></Box>;

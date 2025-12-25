@@ -26,7 +26,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import EventIcon from "@mui/icons-material/Event";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 
-import PublicPageShell, { usePublicSite } from "./PublicPageShell";
+import SiteFrame from "../../components/website/SiteFrame";
 import { publicSite } from "../../utils/api";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./ServiceList";
 
@@ -73,7 +73,16 @@ const resolveMeetPageStyle = (context, pageKey) => {
 
   const wanted = Array.from(
     new Set(
-      [pageKey, "meet", "meet-artist", "meet-with-artist", "services-classic"]
+      [
+        pageKey,
+        "meet",
+        "meet-artist",
+        "meet-with-artist",
+        "services-classic",
+        "services",
+        "jobs",
+        "careers",
+      ]
         .filter(Boolean)
         .map((s) => String(s).toLowerCase())
     )
@@ -174,10 +183,9 @@ function normalizeSlots(raw, fallbackTz) {
   };
 }
 
-/* ---------- main content (rendered inside PublicPageShell) ---------- */
+/* ---------- main content (rendered inside SiteFrame) ---------- */
 
-const MeetWithArtistPageContent = ({ slug, artistKey, pageKey }) => {
-  const siteContext = usePublicSite();
+const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -1047,6 +1055,14 @@ const MeetWithArtistPage = () => {
     return searchParams.get("page") || "meet";
   }, [searchParams]);
 
+  useEffect(() => {
+    const oldHeader = document.getElementById("public-booking-header");
+    if (oldHeader) oldHeader.style.display = "none";
+    return () => {
+      if (oldHeader) oldHeader.style.display = "";
+    };
+  }, []);
+
   const slug = useMemo(() => {
     const qsSite = searchParams.get("site");
     if (qsSite) return qsSite;
@@ -1058,6 +1074,35 @@ const MeetWithArtistPage = () => {
     }
   }, [routeSlug, searchParams]);
 
+  const [sitePayload, setSitePayload] = useState(null);
+  const [siteLoading, setSiteLoading] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    if (!slug) return () => {};
+    setSiteLoading(true);
+    publicSite
+      .getBySlug(slug)
+      .then((data) => {
+        if (mounted) setSitePayload(data || null);
+      })
+      .catch(() => {
+        if (mounted) setSitePayload(null);
+      })
+      .finally(() => {
+        if (mounted) setSiteLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [slug]);
+  const siteContext = useMemo(
+    () => ({
+      site: sitePayload,
+      pages: Array.isArray(sitePayload?.pages) ? sitePayload.pages : [],
+    }),
+    [sitePayload]
+  );
+
   if (!slug) {
     return (
       <Box sx={{ py: 6, textAlign: "center" }}>
@@ -1066,17 +1111,29 @@ const MeetWithArtistPage = () => {
     );
   }
 
+  if (siteLoading && !sitePayload) {
+    return (
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
-    <PublicPageShell
-      activeKey={pageKey}
-      slugOverride={slug}
+    <SiteFrame
+      slug={slug}
+      activeKey="services-classic"
+      initialSite={sitePayload || undefined}
+      disableFetch={Boolean(sitePayload)}
+      wrapChildrenInContainer={false}
     >
       <MeetWithArtistPageContent
         slug={slug}
         artistKey={artistParam}
         pageKey={pageKey}
+        siteContext={siteContext}
       />
-    </PublicPageShell>
+    </SiteFrame>
   );
 };
 

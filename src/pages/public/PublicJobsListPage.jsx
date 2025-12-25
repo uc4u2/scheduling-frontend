@@ -18,11 +18,14 @@ import {
   Pagination,
   MenuItem,
   Snackbar,
+  CircularProgress,
 } from "@mui/material";
-import { useNavigate, useParams } from "react-router-dom";
-import PublicPageShell from "../client/PublicPageShell";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import SiteFrame from "../../components/website/SiteFrame";
+import { publicSite } from "../../utils/api";
 import { publicJobs } from "../../utils/publicJobs";
 import CandidateLoginDialog from "../../components/candidate/CandidateLoginDialog";
+import { pageStyleToBackgroundSx, pageStyleToCssVars } from "../client/ServiceList";
 import {
   CA_PROVINCES,
   COUNTRIES,
@@ -120,29 +123,56 @@ const JobCard = ({ job, onView }) => {
   );
 };
 
-export default function PublicJobsListPage() {
-  const { companySlug } = useParams();
+export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOverride }) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const embeddedPageParam = (searchParams.get("page") || "").toLowerCase();
+  const isEmbeddedJobsPage = embeddedPageParam === "jobs";
+  const pageParamKey = isEmbeddedJobsPage ? "pg" : "page";
+  const resolvedJobsBasePath = jobsBasePath || `/public/${effectiveSlug}/jobs`;
 
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState([]);
   const [error, setError] = useState("");
-  const [q, setQ] = useState("");
-  const [page, setPage] = useState(1);
+  const cssVarStyle = useMemo(() => {
+    const vars = pageStyleToCssVars(pageStyleOverride);
+    return Object.keys(vars).length ? vars : undefined;
+  }, [pageStyleOverride]);
+  const backgroundSx = useMemo(
+    () => pageStyleToBackgroundSx(pageStyleOverride),
+    [pageStyleOverride]
+  );
+
+  const parseList = (value) =>
+    value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
+
+  const initialQ = searchParams.get("q") || "";
+  const initialCountry = searchParams.get("country") || "CA";
+  const initialRegion = searchParams.get("region") || "";
+  const initialCity = searchParams.get("city") || "";
+  const initialArrangements = parseList(searchParams.get("work_arrangement"));
+  const initialEmployment = parseList(searchParams.get("employment_type"));
+  const initialCategories = parseList(searchParams.get("job_category"));
+  const initialPosted = searchParams.get("posted_within_days") || "";
+  const initialSort = searchParams.get("sort") || "newest";
+  const initialPage = Number(searchParams.get("page") || 1);
+
+  const [q, setQ] = useState(initialQ);
+  const [page, setPage] = useState(initialPage);
   const [pageSize] = useState(25);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [clearNoticeOpen, setClearNoticeOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [filters, setFilters] = useState({
-    country: "CA",
-    region: "",
-    city: "",
-    workArrangements: [],
-    employmentTypes: [],
-    jobCategories: [],
-    postedWithinDays: "",
-    sort: "newest",
+    country: initialCountry,
+    region: initialRegion,
+    city: initialCity,
+    workArrangements: initialArrangements,
+    employmentTypes: initialEmployment,
+    jobCategories: initialCategories,
+    postedWithinDays: initialPosted,
+    sort: initialSort,
   });
 
   const countryIsUS = filters.country === "US";
@@ -187,6 +217,105 @@ export default function PublicJobsListPage() {
       .filter(Boolean)
       .join(" · ");
   }, [filters, regionOptions]);
+  const resultsSummary = useMemo(() => {
+    const base = total ? `${total} jobs` : "No roles found";
+    return filterSummary ? `${base} • Filters: ${filterSummary}` : base;
+  }, [total, filterSummary]);
+
+  const filterChips = useMemo(() => {
+    const chips = [];
+    if (q.trim()) chips.push({ key: "q", label: `Search: ${q.trim()}` });
+    if (filters.country) {
+      const label = COUNTRIES.find((opt) => opt.code === filters.country)?.label || filters.country;
+      chips.push({ key: "country", label: `Country: ${label}` });
+    }
+    if (filters.region) {
+      const label = regionOptions.find((opt) => opt.code === filters.region)?.label || filters.region;
+      chips.push({ key: "region", label: `Region: ${label}` });
+    }
+    if (filters.city) chips.push({ key: "city", label: `City: ${filters.city}` });
+    if (filters.workArrangements.length) {
+      WORK_ARRANGEMENTS.forEach((opt) => {
+        if (filters.workArrangements.includes(opt.value)) {
+          chips.push({ key: `work_${opt.value}`, label: opt.label, type: "work", value: opt.value });
+        }
+      });
+    }
+    if (filters.employmentTypes.length) {
+      EMPLOYMENT_TYPES.forEach((opt) => {
+        if (filters.employmentTypes.includes(opt.value)) {
+          chips.push({ key: `employment_${opt.value}`, label: opt.label, type: "employment", value: opt.value });
+        }
+      });
+    }
+    if (filters.jobCategories.length) {
+      filters.jobCategories.forEach((cat) => {
+        chips.push({ key: `category_${cat}`, label: cat, type: "category", value: cat });
+      });
+    }
+    if (filters.postedWithinDays) {
+      chips.push({
+        key: "posted",
+        label: filters.postedWithinDays === "7" ? "Posted: last 7 days" : "Posted: last 30 days",
+      });
+    }
+    return chips;
+  }, [filters, q, regionOptions]);
+
+  const handleRemoveChip = (chip) => {
+    if (chip.key === "q") {
+      setQ("");
+      setPage(1);
+      return;
+    }
+    if (chip.key === "country") {
+      setFilters((prev) => ({
+        ...prev,
+        country: "CA",
+        region: "",
+      }));
+      setPage(1);
+      return;
+    }
+    if (chip.key === "region") {
+      setFilters((prev) => ({ ...prev, region: "" }));
+      setPage(1);
+      return;
+    }
+    if (chip.key === "city") {
+      setFilters((prev) => ({ ...prev, city: "" }));
+      setPage(1);
+      return;
+    }
+    if (chip.key === "posted") {
+      setFilters((prev) => ({ ...prev, postedWithinDays: "" }));
+      setPage(1);
+      return;
+    }
+    if (chip.type === "work") {
+      setFilters((prev) => ({
+        ...prev,
+        workArrangements: prev.workArrangements.filter((item) => item !== chip.value),
+      }));
+      setPage(1);
+      return;
+    }
+    if (chip.type === "employment") {
+      setFilters((prev) => ({
+        ...prev,
+        employmentTypes: prev.employmentTypes.filter((item) => item !== chip.value),
+      }));
+      setPage(1);
+      return;
+    }
+    if (chip.type === "category") {
+      setFilters((prev) => ({
+        ...prev,
+        jobCategories: prev.jobCategories.filter((item) => item !== chip.value),
+      }));
+      setPage(1);
+    }
+  };
 
   const handleClearFilters = () => {
     setFilters({
@@ -208,12 +337,65 @@ export default function PublicJobsListPage() {
   };
 
   useEffect(() => {
+    const params = new URLSearchParams();
+    if (q.trim()) params.set("q", q.trim());
+    if (filters.country) params.set("country", filters.country);
+    if (filters.region) params.set("region", filters.region);
+    if (filters.city) params.set("city", filters.city);
+    if (filters.workArrangements.length) {
+      params.set("work_arrangement", filters.workArrangements.join(","));
+    }
+    if (filters.employmentTypes.length) {
+      params.set("employment_type", filters.employmentTypes.join(","));
+    }
+    if (filters.jobCategories.length) {
+      params.set("job_category", filters.jobCategories.join(","));
+    }
+    if (filters.postedWithinDays) {
+      params.set("posted_within_days", filters.postedWithinDays);
+    }
+    if (filters.sort) params.set("sort", filters.sort);
+    if (isEmbeddedJobsPage) {
+      params.set("page", "jobs");
+    }
+    if (page > 1) params.set(pageParamKey, String(page));
+    setSearchParams(params, { replace: true });
+  }, [filters, page, q, setSearchParams, isEmbeddedJobsPage, pageParamKey]);
+
+  useEffect(() => {
+    const nextQ = searchParams.get("q") || "";
+    const nextCountry = searchParams.get("country") || "CA";
+    const nextRegion = searchParams.get("region") || "";
+    const nextCity = searchParams.get("city") || "";
+    const nextArrangements = parseList(searchParams.get("work_arrangement"));
+    const nextEmployment = parseList(searchParams.get("employment_type"));
+    const nextCategories = parseList(searchParams.get("job_category"));
+    const nextPosted = searchParams.get("posted_within_days") || "";
+    const nextSort = searchParams.get("sort") || "newest";
+    const nextPage = Number(searchParams.get(pageParamKey) || 1);
+
+    setQ(nextQ);
+    setPage(Number.isFinite(nextPage) && nextPage > 0 ? nextPage : 1);
+    setFilters((prev) => ({
+      ...prev,
+      country: nextCountry,
+      region: nextRegion,
+      city: nextCity,
+      workArrangements: nextArrangements,
+      employmentTypes: nextEmployment,
+      jobCategories: nextCategories,
+      postedWithinDays: nextPosted,
+      sort: nextSort,
+    }));
+  }, [searchParams, pageParamKey]);
+
+  useEffect(() => {
     let mounted = true;
     const run = async () => {
       setLoading(true);
       setError("");
       try {
-        const data = await publicJobs.list(companySlug, {
+        const data = await publicJobs.list(effectiveSlug, {
           q: q.trim() || undefined,
           country: filters.country || undefined,
           region: filters.region || undefined,
@@ -249,28 +431,48 @@ export default function PublicJobsListPage() {
     return () => {
       mounted = false;
     };
-  }, [companySlug, q, filters, page, pageSize]);
+  }, [effectiveSlug, q, filters, page, pageSize]);
 
   return (
-    <PublicPageShell slugOverride={companySlug} activeKey="jobs">
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 4, md: 6 } }}>
-        <Container maxWidth="lg">
+    <Box
+      style={cssVarStyle}
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        py: { xs: 4, md: 6 },
+        ...backgroundSx,
+      }}
+    >
+      <Container maxWidth="lg">
           <Paper
             elevation={0}
             sx={{
               p: { xs: 3, md: 4 },
-              borderRadius: 3,
+              borderRadius: "var(--page-card-radius, 12px)",
               border: "1px solid",
               borderColor: "divider",
               mb: 3,
+              bgcolor: "var(--page-card-bg, background.paper)",
+              boxShadow: "var(--page-card-shadow, none)",
+              backdropFilter: "blur(var(--page-card-blur, 0px))",
             }}
           >
             <Stack spacing={1.25}>
+              {isEmbeddedJobsPage && (
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => navigate(`/${effectiveSlug}`)}
+                  sx={{ alignSelf: "flex-start" }}
+                >
+                  ← Back to website
+                </Button>
+              )}
               <Typography variant="overline" color="text.secondary">
                 Careers
               </Typography>
               <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                {companySlug} - Open positions
+              {isEmbeddedJobsPage ? `Careers at ${effectiveSlug}` : `${effectiveSlug} - Open positions`}
               </Typography>
             <Typography color="text.secondary">
               Browse open roles and apply in minutes. No booking needed for applications.
@@ -307,8 +509,16 @@ export default function PublicJobsListPage() {
           )}
 
         <Grid container spacing={2}>
-          <Grid item xs={12} md={3}>
-            <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+          <Grid item xs={12} md={3} sx={{ alignSelf: "flex-start" }}>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2.5,
+                borderRadius: 2,
+                position: { md: "sticky" },
+                top: { md: 24 },
+              }}
+            >
               <Stack spacing={2}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                   Filters
@@ -491,14 +701,27 @@ export default function PublicJobsListPage() {
                 alignItems={{ sm: "center" }}
               >
                 <Typography variant="caption" color="text.secondary">
-                  {total ? `${total} roles found` : "No roles found"}
+                  {resultsSummary}
                 </Typography>
-                {filterSummary && (
-                  <Typography variant="caption" color="text.secondary">
-                    {filterSummary}
-                  </Typography>
-                )}
               </Stack>
+              {filterChips.length > 0 && (
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+                  {filterChips.map((chip) => (
+                    <Chip
+                      key={chip.key}
+                      label={chip.label}
+                      size="small"
+                      onDelete={() => handleRemoveChip(chip)}
+                    />
+                  ))}
+                  <Chip
+                    label="Clear all"
+                    size="small"
+                    variant="outlined"
+                    onClick={handleClearFilters}
+                  />
+                </Stack>
+              )}
 
               {loading ? (
                 <Grid container spacing={2}>
@@ -529,7 +752,16 @@ export default function PublicJobsListPage() {
                 <Grid container spacing={2}>
                   {jobs.map((job) => (
                     <Grid item xs={12} md={6} key={job.id || job.slug}>
-                      <JobCard job={job} onView={() => navigate(`/public/${companySlug}/jobs/${job.slug}`)} />
+                    <JobCard
+                      job={job}
+                      onView={() => {
+                        if (isEmbeddedJobsPage) {
+                          navigate(`/${effectiveSlug}?page=jobs&job=${job.slug}`);
+                          return;
+                        }
+                        navigate(`${resolvedJobsBasePath}/${job.slug}`);
+                      }}
+                    />
                     </Grid>
                   ))}
                 </Grid>
@@ -548,13 +780,12 @@ export default function PublicJobsListPage() {
           </Grid>
         </Grid>
 
-        <Box sx={{ mt: 4, textAlign: "center" }}>
-          <Typography variant="caption" color="text.secondary">
-            Powered by Schedulaa Hiring
-          </Typography>
-        </Box>
-        </Container>
+      <Box sx={{ mt: 4, textAlign: "center" }}>
+        <Typography variant="caption" color="text.secondary">
+          Powered by Schedulaa Hiring
+        </Typography>
       </Box>
+      </Container>
       <Snackbar
         open={clearNoticeOpen}
         autoHideDuration={2500}
@@ -568,8 +799,72 @@ export default function PublicJobsListPage() {
       <CandidateLoginDialog
         open={loginOpen}
         onClose={() => setLoginOpen(false)}
-        companySlug={companySlug}
+        companySlug={effectiveSlug}
       />
-    </PublicPageShell>
+    </Box>
+  );
+}
+
+export function JobsListEmbedded({ slug, pageStyle }) {
+  const basePath = `/${slug}/jobs`;
+  return (
+    <PublicJobsListContent
+      effectiveSlug={slug}
+      jobsBasePath={basePath}
+      pageStyleOverride={pageStyle}
+    />
+  );
+}
+
+export default function PublicJobsListPage() {
+  const { companySlug, slug } = useParams();
+  const effectiveSlug = companySlug || slug;
+  const jobsBasePath = companySlug
+    ? `/public/${effectiveSlug}/jobs`
+    : `/${effectiveSlug}/jobs`;
+  const [sitePayload, setSitePayload] = useState(null);
+  const [siteLoading, setSiteLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!effectiveSlug) return () => {};
+    setSiteLoading(true);
+    publicSite
+      .getBySlug(effectiveSlug)
+      .then((data) => {
+        if (mounted) setSitePayload(data || null);
+      })
+      .catch(() => {
+        if (mounted) setSitePayload(null);
+      })
+      .finally(() => {
+        if (mounted) setSiteLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [effectiveSlug]);
+
+  if (siteLoading && !sitePayload) {
+    return (
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <SiteFrame
+      slug={effectiveSlug}
+      activeKey="jobs"
+      initialSite={sitePayload || undefined}
+      disableFetch={Boolean(sitePayload)}
+      wrapChildrenInContainer={false}
+    >
+      <PublicJobsListContent
+        effectiveSlug={effectiveSlug}
+        jobsBasePath={jobsBasePath}
+      />
+    </SiteFrame>
   );
 }

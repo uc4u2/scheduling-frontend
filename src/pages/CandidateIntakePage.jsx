@@ -22,13 +22,16 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import QUESTIONNAIRE_LIMITS from "../constants/questionnaireUploads";
 import { candidateIntakeApi } from "../utils/api";
 import { uploadQuestionnaireFile, downloadQuestionnaireFile } from "../utils/questionnaireUploads";
 import CandidateSlotPicker from "../components/CandidateSlotPicker";
 import TimezoneSelect from "../components/TimezoneSelect";
+import SiteFrame from "../components/website/SiteFrame";
+import { publicSite } from "../utils/api";
+import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./client/ServiceList";
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -164,7 +167,17 @@ const CandidateIntakePage = () => {
   const [loading, setLoading] = useState(true);
   const [template, setTemplate] = useState(null);
   const [submission, setSubmission] = useState(null);
+  const [searchParams] = useSearchParams();
+  const [companySlug, setCompanySlug] = useState(() => {
+    try {
+      return localStorage.getItem("site") || "";
+    } catch {
+      return "";
+    }
+  });
   const [responses, setResponses] = useState({});
+  const [sitePayload, setSitePayload] = useState(null);
+  const [siteLoading, setSiteLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -227,6 +240,13 @@ const CandidateIntakePage = () => {
       const data = await candidateIntakeApi.get(token);
       setTemplate(data.template || {});
       setSubmission(data.submission || {});
+      const nextSlug = data.company?.slug || "";
+      setCompanySlug(nextSlug);
+      if (nextSlug) {
+        try {
+          localStorage.setItem("site", nextSlug);
+        } catch {}
+      }
       setQuestionnaires(Array.isArray(data.questionnaires) ? data.questionnaires : []);
       const storage = data.storage || {};
       const allowedMime = storage.allowed_mime || storage.allowedMime || QUESTIONNAIRE_LIMITS.allowedMime;
@@ -771,29 +791,6 @@ const CandidateIntakePage = () => {
     }
   }, [token, responses, bookingRequired, bookingSuccess, isReadOnly, questionnaires, submissionFiles]);
 
-  if (loading) {
-    return (
-      <Box sx={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (!sections.length && !submission && error) {
-    return (
-      <Box sx={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", px: 2 }}>
-        <Paper sx={{ maxWidth: 560, p: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            Intake unavailable
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {error}
-          </Typography>
-        </Paper>
-      </Box>
-    );
-  }
-
   const heading = submission?.invite_name || template?.name || "Candidate intake";
   const description = template?.description || "Please complete the following information.";
 
@@ -931,25 +928,41 @@ const CandidateIntakePage = () => {
     </Accordion>
   );
 
-  return (
+  const content = (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default", py: { xs: 4, md: 6 }, px: 2 }}>
       <Box sx={{ maxWidth: 900, mx: "auto" }}>
-        <Paper elevation={4} sx={{ p: { xs: 3, md: 4 } }}>
-          <Stack spacing={5}>
-            <Box>
-              <Typography variant="h4" gutterBottom>
-                {heading}
+        {loading ? (
+          <Box sx={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CircularProgress />
+          </Box>
+        ) : !sections.length && !submission && error ? (
+          <Box sx={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", px: 2 }}>
+            <Paper sx={{ maxWidth: 560, p: 4 }}>
+              <Typography variant="h5" gutterBottom>
+                Intake unavailable
               </Typography>
               <Typography variant="body1" color="text.secondary">
-                {description}
+                {error}
               </Typography>
-              {template?.name && (
-                <Stack direction="row" spacing={1} sx={{ mt: 1 }} alignItems="center" useFlexGap flexWrap="wrap">
-                  <Chip size="small" label={template.name} />
-                  {templateVersionLabel && <Chip size="small" variant="outlined" label={templateVersionLabel} />}
-                </Stack>
-              )}
-            </Box>
+            </Paper>
+          </Box>
+        ) : (
+          <Paper elevation={4} sx={{ p: { xs: 3, md: 4 } }}>
+            <Stack spacing={5}>
+              <Box>
+                <Typography variant="h4" gutterBottom>
+                  {heading}
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  {description}
+                </Typography>
+                {template?.name && (
+                  <Stack direction="row" spacing={1} sx={{ mt: 1 }} alignItems="center" useFlexGap flexWrap="wrap">
+                    <Chip size="small" label={template.name} />
+                    {templateVersionLabel && <Chip size="small" variant="outlined" label={templateVersionLabel} />}
+                  </Stack>
+                )}
+              </Box>
 
             {isReadOnly && (
               <Alert severity="info">
@@ -1529,8 +1542,9 @@ const CandidateIntakePage = () => {
                 This intake has already been submitted. Thank you!
               </Typography>
             )}
-          </Stack>
-        </Paper>
+            </Stack>
+          </Paper>
+        )}
       </Box>
       <Snackbar
         open={bookingToast.open}
@@ -1547,6 +1561,64 @@ const CandidateIntakePage = () => {
         </Alert>
       </Snackbar>
     </Box>
+  );
+
+  const shellSlug =
+    companySlug ||
+    (searchParams.get("site") || "").trim() ||
+    (() => {
+      try {
+        return localStorage.getItem("site") || "";
+      } catch {
+        return "";
+      }
+    })();
+
+  useEffect(() => {
+    let mounted = true;
+    if (!shellSlug) {
+      if (mounted) setSitePayload(null);
+      return () => {};
+    }
+    setSiteLoading(true);
+    publicSite
+      .getBySlug(shellSlug)
+      .then((data) => {
+        if (mounted) setSitePayload(data || null);
+      })
+      .catch(() => {
+        if (mounted) setSitePayload(null);
+      })
+      .finally(() => {
+        if (mounted) setSiteLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [shellSlug]);
+
+  if (!shellSlug) {
+    return content;
+  }
+
+  if (siteLoading && !sitePayload) {
+    return (
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <SiteFrame
+      slug={shellSlug}
+      activeKey="services-classic"
+      initialSite={sitePayload || undefined}
+      disableFetch={Boolean(sitePayload)}
+      wrapChildrenInContainer={false}
+    >
+      {content}
+    </SiteFrame>
   );
 };
 
