@@ -5,7 +5,7 @@ const blogPosts = [
     slug: "secure-hiring-resume-upload-onboarding",
     title: "Modern Hiring, Resume Uploads, and Secure Document Requests - All in One Platform",
     description:
-      "Schedulaa is an all-in-one hiring and onboarding platform with secure resume uploads, antivirus scanning, job postings, document requests, and employee onboarding for modern HR teams.",
+      "Schedulaa is an all-in-one hiring and onboarding platform with secure resume uploads, antivirus scanning, job postings, document requests, and employee onboarding for modern HR teams. It also includes a structured public job board, candidate dashboards, AI-assisted applicant ranking, and compliance-ready hiring workflows for growing teams.",
     datePublished: "2025-12-22T12:00:00Z",
     dateModified: "2025-12-22T12:00:00Z",
     category: "Hiring",
@@ -40,11 +40,27 @@ const blogPosts = [
         ],
       },
       {
+        heading: "Structured job postings and searchable job boards",
+        paragraphs: [
+          "Job postings are built with structured fields for location, employment type, work arrangement, category, and pay period - not free-text guesses.",
+          "This enables a modern public job board with keyword search, country/province/state filters, remote or on-site filters, employment type filters, pagination, and deep-linkable search URLs.",
+          "Candidates find relevant roles faster, and hiring teams receive cleaner, more comparable applications.",
+        ],
+      },
+      {
         heading: "Secure resume uploads with antivirus scanning",
         paragraphs: [
           "Candidates upload their resume through the intake link, and files are stored securely in your hiring workspace.",
           "When antivirus scanning is enabled, each file is marked pending, then clean or blocked before HR can download it.",
           "This reduces malware risk and removes the need to handle risky email attachments.",
+        ],
+      },
+      {
+        heading: "Candidate login and application tracking",
+        paragraphs: [
+          "Candidates can access a secure dashboard using a one-time login link - no passwords required.",
+          "From their dashboard, candidates can view all jobs they have applied to, check status updates, upload requested documents securely, and access audit-safe submission history.",
+          "This reduces follow-up emails and creates a transparent, professional candidate experience.",
         ],
       },
       {
@@ -59,6 +75,8 @@ const blogPosts = [
         paragraphs: [
           "Each candidate profile includes resume scan status, applications, document requests, interview history, and conversion status.",
           "An activity timeline keeps an audit trail so hiring teams always have context.",
+          "Candidate data can also be exported as structured CSV files per job posting, including intake responses and application metadata.",
+          "This lets HR teams run internal analysis, reporting, or AI-assisted screening in external tools without manual cleanup.",
         ],
       },
       {
@@ -66,6 +84,14 @@ const blogPosts = [
         paragraphs: [
           "Schedulaa supports role-based access for HR teams, recruiters, and managers.",
           "Access is permission-checked on the backend so sensitive candidate data stays protected.",
+        ],
+      },
+      {
+        heading: "AI-assisted applicant ranking",
+        paragraphs: [
+          "Hiring teams can optionally use AI to help evaluate applicants based on structured intake responses and job requirements.",
+          "For each job posting, AI can score applicants consistently, highlight strengths and gaps, and recommend top candidates.",
+          "AI rankings are transparent, auditable, and configurable per role, supporting faster decisions without replacing human judgment.",
         ],
       },
       {
@@ -80,6 +106,12 @@ const blogPosts = [
         paragraphs: [
           "Secure cloud storage, antivirus scanning, and signed downloads protect sensitive documents.",
           "Role-aware access and a central timeline keep hiring data organized as teams grow.",
+          "Built-in compliance and protection features include:",
+          "- Mandatory privacy-policy consent on applications.",
+          "- Consent versioning and timestamps.",
+          "- Anti-spam protection with honeypot fields and rate limits.",
+          "- Audit logs for candidate access and activity.",
+          "- Secure, time-limited access links.",
         ],
       },
       {
@@ -90,12 +122,16 @@ const blogPosts = [
           "No email attachments or unsecured file shares.",
           "Faster hiring decisions with one source of truth.",
           "A cleaner candidate experience from day one.",
+          "Structured job search instead of keyword chaos.",
+          "Built-in AI assistance for shortlisting candidates.",
+          "Candidate dashboards that reduce HR follow-ups.",
         ],
       },
       {
         heading: "Start hiring smarter",
         paragraphs: [
           "If you are tired of juggling job boards, inboxes, and insecure uploads, Schedulaa brings hiring into one secure workflow.",
+          "Whether you are hiring five people or scaling across teams, the same system adapts without added complexity.",
           "Hiring does not have to be complicated.",
         ],
       },

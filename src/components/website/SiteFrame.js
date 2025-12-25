@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import {
   AppBar,
   Toolbar,
@@ -24,8 +23,7 @@ import {
   cloneLegalLinks,
   formatCopyrightText,
 } from "../../utils/footerDefaults";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import { api } from "../../utils/api";
 
 const clampNumber = (value, min, max, fallback) => {
   const num = Number(value);
@@ -124,8 +122,11 @@ export default function SiteFrame({
     let cancelled = false;
     setLoading(true);
     setErr("");
-    axios
-      .get(`${API}/public/${encodeURIComponent(slug)}/site`)
+    api
+      .get(`/api/public/${encodeURIComponent(slug)}/website`, {
+        noCompanyHeader: true,
+        noAuth: true,
+      })
       .then(({ data }) => !cancelled && setSite(data))
       .catch(() => !cancelled && setErr("Failed to load site"))
       .finally(() => !cancelled && setLoading(false));
