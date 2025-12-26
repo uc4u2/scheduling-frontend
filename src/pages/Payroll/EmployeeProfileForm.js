@@ -34,7 +34,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import { api } from "../../utils/api";
+import { api, API_BASE_URL } from "../../utils/api";
 import { getAuthedCompanyId } from "../../utils/authedCompany";
 import UploadIcon from "@mui/icons-material/Upload";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -110,6 +110,14 @@ const US_STATES = [
   "WI",
   "WY",
 ];
+
+const normalizeApiUrl = (url) => {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = String(API_BASE_URL || "").replace(/\/$/, "");
+  if (!base) return url;
+  return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
+};
 
 const EmployeeProfileForm = ({ token, isManager = false }) => {
   const { t, i18n } = useTranslation();
@@ -232,6 +240,7 @@ const FRONTEND_ORIGIN =
         default_parental_insurance: data.default_parental_insurance ?? 0,
         default_pay_frequency: data.default_pay_frequency || "",
         default_pay_cycle: data.default_pay_cycle || "",
+        profile_image_url: normalizeApiUrl(data.profile_image_url || ""),
       };
       setEmployee(flatData);
       setErrorKey("");
@@ -434,7 +443,7 @@ const FRONTEND_ORIGIN =
       // Ensure relative paths use the API host (Render), not the static site host.
       let finalUrl = rawUrl;
       if (rawUrl && !/^https?:\/\//i.test(rawUrl)) {
-        const apiOrigin = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
+        const apiOrigin = String(API_BASE_URL || "").replace(/\/$/, "");
         finalUrl = apiOrigin ? `${apiOrigin}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}` : rawUrl;
       }
 
@@ -536,6 +545,9 @@ const FRONTEND_ORIGIN =
               : employee.default_parental_insurance,
           default_pay_frequency: data.default_pay_frequency ?? employee.default_pay_frequency,
           default_pay_cycle: data.default_pay_cycle ?? employee.default_pay_cycle,
+          profile_image_url: normalizeApiUrl(
+            data.profile_image_url !== undefined ? data.profile_image_url : employee.profile_image_url
+          ),
         };
         setEmployee(flatData);
       }
