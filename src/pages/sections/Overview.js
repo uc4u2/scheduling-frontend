@@ -25,11 +25,9 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
 
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../../utils/api";
 import OnboardingWidget from "../../components/management/OnboardingWidget";
 import AttendanceSummaryCard from "../../components/management/AttendanceSummaryCard";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 /* renderCard helper unchanged … */
 const renderCard = (icon, title, value, color = "#1976d2", onClick) => (
@@ -99,7 +97,7 @@ const Overview = () => {
 
   const safeGet = async (url, fallback) => {
     try {
-      const { data } = await axios.get(url, { headers: authHeader });
+      const { data } = await api.get(url, { headers: authHeader });
       return data ?? fallback;
     } catch {
       return fallback;
@@ -123,15 +121,15 @@ const Overview = () => {
         availRes,
         feedRes,
       ] = await Promise.all([
-        safeGet(`${API_URL}/manager/recruiters`, []),
-        safeGet(`${API_URL}/api/departments`, []),
-        safeGet(`${API_URL}/manager/calendar`, []),
-        safeGet(`${API_URL}/leaves/pending`, []),
-        safeGet(`${API_URL}/team/status/today`, []),
-        safeGet(`${API_URL}/shift-swap-requests?status=pending`, []),
-        safeGet(`${API_URL}/shift-swap-requests?status=peer_accepted`, []),
-        safeGet(`${API_URL}/manager/availability-summary`, { ok: 0, low: 0 }),
-        safeGet(`${API_URL}/manager/activity-feed`, []),
+        safeGet(`/manager/recruiters`, []),
+        safeGet(`/api/departments`, []),
+        safeGet(`/manager/calendar`, []),
+        safeGet(`/leaves/pending`, []),
+        safeGet(`/team/status/today`, []),
+        safeGet(`/shift-swap-requests?status=pending`, []),
+        safeGet(`/shift-swap-requests?status=peer_accepted`, []),
+        safeGet(`/manager/availability-summary`, { ok: 0, low: 0 }),
+        safeGet(`/manager/activity-feed`, []),
       ]);
 
       /* convert to arrays safely */

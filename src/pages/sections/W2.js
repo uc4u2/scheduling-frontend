@@ -32,7 +32,7 @@ import ManagementFrame from "../../components/ui/ManagementFrame";
 import HistoryIcon from "@mui/icons-material/History";
 import DescriptionIcon from "@mui/icons-material/Description";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import axios from "axios";
+import api from "../../utils/api";
 import { Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import AuditHistory from "../../components/Stubs/AuditHistory";
@@ -229,13 +229,12 @@ const W2 = ({ token }) => {
   /* Summary / pre-fill */
   const [w2Summary, setW2Summary] = useState(null);
 
-  const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
   /* ───────── Fetchers ───────── */
   const fetchRecruiters = async () => {
     try {
-      const res = await axios.get(`${API}/manager/recruiters`, auth);
+      const res = await api.get(`/manager/recruiters`, auth);
       setRecruiters(res.data.recruiters || []);
     } catch {
       setErr("Failed to load recruiters.");
@@ -245,7 +244,7 @@ const W2 = ({ token }) => {
   /* 🚩 NEW: fetch departments */
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get(`${API}/api/departments`, auth);
+      const res = await api.get(`/api/departments`, auth);
       setDepartments(res.data || []);
     } catch {
       setErr("Failed to load departments.");
@@ -259,7 +258,7 @@ const W2 = ({ token }) => {
         year,
         ...(selectedEmployee ? { employee_id: selectedEmployee } : {}),
       }).toString();
-      const { data } = await axios.get(`${API}/yearend/w2/list?${qs}`, auth);
+      const { data } = await api.get(`/yearend/w2/list?${qs}`, auth);
       setForms(data || []);
     } catch {
       setErr("Failed to fetch W-2 forms.");
@@ -274,8 +273,8 @@ const W2 = ({ token }) => {
       return;
     }
     try {
-      const { data } = await axios.get(
-        `${API}/yearend/w2/summary/${selectedEmployee}?year=${year}`,
+      const { data } = await api.get(
+        `/yearend/w2/summary/${selectedEmployee}?year=${year}`,
         auth
       );
       setW2Summary(data);
@@ -333,7 +332,7 @@ const W2 = ({ token }) => {
   /* ───────── Actions ───────── */
   const updateStatus = async (id, status) => {
     try {
-      await axios.put(`${API}/yearend/w2/${id}/update`, { status }, auth);
+      await api.put(`/yearend/w2/${id}/update`, { status }, auth);
 
       setMsg(`Form ${id} ${status}.`);
       fetchForms();
@@ -346,8 +345,8 @@ const W2 = ({ token }) => {
 
   const exportPDF = async (id) => {
     try {
-      const { data } = await axios.get(
-        `${API}/yearend/w2/${id}/export-pdf`,
+      const { data } = await api.get(
+        `/yearend/w2/${id}/export-pdf`,
         { ...auth, responseType: "blob" }
       );
       setPdfUrl(
@@ -360,13 +359,13 @@ const W2 = ({ token }) => {
 
   const exportBatchTxt = async () => {
     try {
-      const { data } = await axios.post(
-        `${API}/yearend/w2/generate-efw2`,
+      const { data } = await api.post(
+        `/yearend/w2/generate-efw2`,
         { year },
         auth
       );
-      const response = await axios.get(
-        `${API}${data.download_url}`,
+      const response = await api.get(
+        data.download_url,
         { ...auth, responseType: "blob" }
       );
       setTxtUrl(URL.createObjectURL(new Blob([response.data])));
@@ -378,8 +377,8 @@ const W2 = ({ token }) => {
 
   const downloadPDFZip = async () => {
     try {
-      const { data } = await axios.get(
-        `${API}/yearend/w2/${year}/download-batch`,
+      const { data } = await api.get(
+        `/yearend/w2/${year}/download-batch`,
         { ...auth, responseType: "blob" }
       );
       const url = URL.createObjectURL(new Blob([data]));
@@ -399,7 +398,7 @@ const W2 = ({ token }) => {
     }
     if (!window.confirm(`Delete W-2 Form ID ${row.id}?`)) return;
     try {
-      await axios.delete(`${API}/yearend/w2/${row.id}/delete`, auth);
+      await api.delete(`/yearend/w2/${row.id}/delete`, auth);
       setMsg(`Form ${row.id} deleted.`);
       fetchForms();
     } catch {
@@ -803,8 +802,8 @@ const W2 = ({ token }) => {
         onClose={() => setShowEditDialog(false)}
         onSave={async () => {
           try {
-            await axios.put(
-              `${API}/yearend/w2/${editForm.id}/update`,
+            await api.put(
+              `/yearend/w2/${editForm.id}/update`,
               editForm,
               auth
             );
@@ -825,7 +824,7 @@ const W2 = ({ token }) => {
         onClose={() => setShowCreateDialog(false)}
         onSave={async () => {
           try {
-            await axios.post(`${API}/yearend/w2/create`, createForm, auth);
+            await api.post(`/yearend/w2/create`, createForm, auth);
             setMsg("Form created successfully.");
             setShowCreateDialog(false);
             fetchForms();
@@ -841,7 +840,5 @@ const W2 = ({ token }) => {
 };
 
 export default W2;
-
-
 
 

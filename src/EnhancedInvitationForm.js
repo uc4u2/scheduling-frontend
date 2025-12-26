@@ -28,7 +28,7 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTheme } from "@mui/material/styles";
-import axios from "axios";
+import api from "./utils/api";
 import { Link as RouterLink } from "react-router-dom";
 import { questionnaires as questionnaireApi, settingsApi } from "./utils/api";
 import {
@@ -860,8 +860,7 @@ const handlePreview = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-        const res = await axios.get(`${API_URL}/profile`, {
+        const res = await api.get(`/profile`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const user = res.data;
@@ -899,11 +898,10 @@ const handlePreview = () => {
     setTemplatesLoading(true);
     setTemplatesError("");
     try {
-      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
       const params = new URLSearchParams({
         profession: profession,
       });
-      const response = await axios.get(`${API_URL}/api/form-templates?${params.toString()}`, {
+      const response = await api.get(`/api/form-templates?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const list = Array.isArray(response.data) ? response.data : [];
@@ -954,8 +952,7 @@ const handlePreview = () => {
     let active = true;
     const loadSelectedTemplate = async () => {
       try {
-        const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-        const res = await axios.get(`${API_URL}/api/form-templates/${selectedTemplateId}`, {
+        const res = await api.get(`/api/form-templates/${selectedTemplateId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!active) return;
@@ -1059,7 +1056,6 @@ const handlePreview = () => {
       return;
     }
 
-    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
     const useCandidateFormsFlow = !isCustomProfession && selectedTemplateId !== "";
 
     if (!isCustomProfession && selectedTemplateId === "") {
@@ -1119,8 +1115,8 @@ const handlePreview = () => {
           }));
         }
 
-        const response = await axios.post(
-          `${API_URL}/api/candidate-forms/invite`,
+        const response = await api.post(
+          `/api/candidate-forms/invite`,
           payload,
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -1146,8 +1142,8 @@ const handlePreview = () => {
         return;
       }
 
-      const response = await axios.post(
-        `${API_URL}/send-invitation`,
+      const response = await api.post(
+        `/send-invitation`,
         {
           candidate_name: formData.candidateName || formData.clientName,
           candidate_email: formData.candidateEmail,

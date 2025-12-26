@@ -25,18 +25,7 @@ import {
   CloudUpload,
   DeleteOutline,
 } from "@mui/icons-material";
-import axios from "axios";
-
-const API = (() => {
-  const env = process.env.REACT_APP_API_URL;
-  if (env && env.trim()) return env.trim();
-  if (typeof window !== "undefined") {
-    const origin = window.location.origin || "";
-    if (origin.includes("localhost:3000")) return "http://localhost:5000";
-    if (origin) return origin;
-  }
-  return "http://localhost:5000";
-})();
+import api from "../../../utils/api";
 
 const emptyForm = {
   sku: "",
@@ -72,7 +61,7 @@ const ProductManagement = ({ token }) => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API}/inventory/products`, auth);
+      const { data } = await api.get(`/inventory/products`, auth);
       setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load products", err);
@@ -134,10 +123,10 @@ const ProductManagement = ({ token }) => {
 
     try {
       if (editing) {
-        await axios.patch(`${API}/inventory/products/${editing.id}`, payload, auth);
+        await api.patch(`/inventory/products/${editing.id}`, payload, auth);
         notify(t("manager.product.messages.updated"));
       } else {
-        await axios.post(`${API}/inventory/products`, payload, auth);
+        await api.post(`/inventory/products`, payload, auth);
         notify(t("manager.product.messages.added"));
       }
       handleClose();
@@ -151,7 +140,7 @@ const ProductManagement = ({ token }) => {
   const handleDelete = useCallback(
     async (id) => {
       try {
-        await axios.delete(`${API}/inventory/products/${id}`, auth);
+        await api.delete(`/inventory/products/${id}`, auth);
         load();
         notify(t("manager.product.messages.deleted"));
       } catch (err) {
@@ -167,7 +156,7 @@ const ProductManagement = ({ token }) => {
       setImageTarget(null);
       setImageModal(true);
       try {
-        const { data } = await axios.get(`${API}/inventory/products/${row.id}`, auth);
+        const { data } = await api.get(`/inventory/products/${row.id}`, auth);
         setImageTarget(data);
       } catch (err) {
         console.error("Failed to load product images", err);
@@ -192,7 +181,7 @@ const ProductManagement = ({ token }) => {
 
       setImageUploading(true);
       try {
-        await axios.post(`${API}/inventory/products/${imageTarget.id}/images`, formData, {
+        await api.post(`/inventory/products/${imageTarget.id}/images`, formData, {
           ...auth,
           headers: {
             ...auth.headers,
@@ -200,7 +189,7 @@ const ProductManagement = ({ token }) => {
           },
         });
         notify(t("manager.product.messages.uploadSuccess"));
-        const { data } = await axios.get(`${API}/inventory/products/${imageTarget.id}`, auth);
+        const { data } = await api.get(`/inventory/products/${imageTarget.id}`, auth);
         setImageTarget(data);
       } catch (err) {
         console.error("Image upload failed", err);
@@ -216,8 +205,8 @@ const ProductManagement = ({ token }) => {
     async (imageId) => {
       if (!imageTarget) return;
       try {
-        await axios.delete(`${API}/inventory/products/${imageTarget.id}/images/${imageId}`, auth);
-        const { data } = await axios.get(`${API}/inventory/products/${imageTarget.id}`, auth);
+        await api.delete(`/inventory/products/${imageTarget.id}/images/${imageId}`, auth);
+        const { data } = await api.get(`/inventory/products/${imageTarget.id}`, auth);
         setImageTarget(data);
       } catch (err) {
         console.error("Failed to remove image", err);

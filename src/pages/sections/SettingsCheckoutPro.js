@@ -28,7 +28,7 @@ import {
 } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import axios from "axios";
+import api from "../../utils/api";
 import {
   getCurrencyOptions,
   resolveCurrencyForCountry,
@@ -40,8 +40,6 @@ import {
 import TaxSetupCard from "./TaxSetupCard";
 import TaxHelpGuide from "./TaxHelpGuide";
 import { useTranslation } from "react-i18next";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const CANADA_PROVINCES = [
   "AB","BC","MB","NB","NL","NS","NT","NU","ON","PE","SK","YT",
@@ -110,7 +108,7 @@ export default function SettingsCheckoutPro() {
 
     const load = async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/admin/company-profile`, {
+        const { data } = await api.get(`/admin/company-profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (ignore) return;
@@ -208,7 +206,7 @@ export default function SettingsCheckoutPro() {
         logo_url: logoUrl.trim(),
       };
 
-      const { data } = await axios.post(`${API_URL}/admin/company-profile`, payload, {
+      const { data } = await api.post(`/admin/company-profile`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -227,7 +225,7 @@ export default function SettingsCheckoutPro() {
   // 👇 helper to open Stripe dashboard from this page too (same as TaxSetupCard)
   const openStripeDashboard = async () => {
     try {
-      const { data } = await axios.post(`${API_URL}/connect/dashboard-login`, {}, {
+      const { data } = await api.post(`/connect/dashboard-login`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (data?.url) window.open(data.url, "_blank", "noopener");

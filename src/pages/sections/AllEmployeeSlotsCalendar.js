@@ -39,7 +39,7 @@ import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import axios from "axios";
+import api from "../../utils/api";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -51,8 +51,6 @@ import "./manager-calendar.css";
 // Timezone-safe utilities (use these for the TZ rules)
 import { isoFromParts } from "../../utils/datetime";
 import { formatSlotWithTZ } from "../../utils/timezone-wrapper";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 // consistent employee color (used for accents)
 const COLORS = [
@@ -157,7 +155,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   /* ------------------------- data-fetch helpers ------------------------ */
   const fetchDepartments = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/departments`, {
+      const { data } = await api.get(`/api/departments`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDepartments(data || []);
@@ -170,7 +168,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const fetchRecruiters = async () => {
     try {
       const params = departmentFilter !== "all" ? { department_id: departmentFilter } : {};
-      const { data } = await axios.get(`${API_URL}/manager/recruiters`, {
+      const { data } = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
         params
       });
@@ -184,9 +182,9 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const fetchEvents = async () => {
     try {
       const url = isRecruiter
-        ? `${API_URL}/recruiter/calendar`
-        : `${API_URL}/manager/calendar`;
-      const { data } = await axios.get(url, {
+        ? `/recruiter/calendar`
+        : `/manager/calendar`;
+      const { data } = await api.get(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -222,7 +220,6 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const { handleRecruiterSaveMeeting, handleRecruiterDirectBooking } =
     useRecruiterMeetingHandler(
       token,
-      API_URL,
       () => resetForm(),
       fetchEvents,
       setIsSubmitting,
@@ -257,11 +254,11 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     if (!token) return;
     (async () => {
       try {
-        const me = await axios.get(`${API_URL}/recruiter/profile`, { headers: { Authorization: `Bearer ${token}` } });
+        const me = await api.get(`/recruiter/profile`, { headers: { Authorization: `Bearer ${token}` } });
         setIsManagerUser(Boolean(me.data?.recruiter?.is_manager));
       } catch { setIsManagerUser(false); }
       try {
-        const pr = await axios.get(`${API_URL}/api/employee/permissions`, { headers: { Authorization: `Bearer ${token}` } });
+        const pr = await api.get(`/api/employee/permissions`, { headers: { Authorization: `Bearer ${token}` } });
         const p = pr.data || {};
         setCanCloseSlots(Boolean(isManagerUser || p.can_close_slots));
         setCanEditAvailability(Boolean(isManagerUser || p.can_edit_availability || p.can_close_slots));
@@ -406,16 +403,16 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
     if (editingEvent.booked) {
       // Booked appointment: trigger cancel (fires cancel email)
-      await axios.post(`${API_URL}/api/manager/bookings/${editingEvent.id}/cancel`, {}, headers);
+      await api.post(`/api/manager/bookings/${editingEvent.id}/cancel`, {}, headers);
     } else if (editingEvent.availability_id) {
       // Availability chip case (defensive)
       await tryDeleteAvailability(editingEvent.availability_id);
     } else {
       // Legacy non-booked meeting fallback
       const url = isRecruiter
-        ? `${API_URL}/recruiter/meetings/${editingEvent.id}`
-        : `${API_URL}/api/meetings/${editingEvent.id}`;
-      await axios.delete(url, headers);
+        ? `/recruiter/meetings/${editingEvent.id}`
+        : `/api/meetings/${editingEvent.id}`;
+      await api.delete(url, headers);
     }
 
     setOpenModal(false);
@@ -444,8 +441,8 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         auto_adjust: true,
       };
 
-      await axios.patch(
-        `${API_URL}/api/manager/bookings/${editingEvent.id}`,
+      await api.patch(
+        `/api/manager/bookings/${editingEvent.id}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -453,14 +450,14 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       // CREATE NEW MEETING — unchanged, but ensure we have a link
       let link = (form.invite_link || "").trim();
       if (!link) {
-        const { data } = await axios.get(`${API_URL}/utils/generate-jitsi`, {
+        const { data } = await api.get(`/utils/generate-jitsi`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         link = data?.link || "";
       }
       const payload = { ...form, invite_link: link };
 
-      await axios.post(`${API_URL}/manager/add-meeting`, payload, {
+      await api.post(`/manager/add-meeting`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
     }
@@ -543,47 +540,47 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   // single update/delete (tries a few prefixes for compatibility)
   const tryUpdateAvailability = async (id, payload) => {
     const urls = [
-      `${API_URL}/manager/availability/${id}`,
-      `${API_URL}/api/manager/availability/${id}`,
-      `${API_URL}/availability/${id}`,
+      `/manager/availability/${id}`,
+      `/api/manager/availability/${id}`,
+      `/availability/${id}`,
     ];
     for (const url of urls) {
-      try { await axios.put(url, payload, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {}
+      try { await api.put(url, payload, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {}
     }
     throw new Error("No availability update endpoint succeeded.");
   };
 
   const tryDeleteAvailability = async (id) => {
     const urls = [
-      `${API_URL}/manager/availability/${id}`,
-      `${API_URL}/api/manager/availability/${id}`,
-      `${API_URL}/availability/${id}`,
+      `/manager/availability/${id}`,
+      `/api/manager/availability/${id}`,
+      `/availability/${id}`,
     ];
     for (const url of urls) {
-      try { await axios.delete(url, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {}
+      try { await api.delete(url, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {}
     }
     throw new Error("No availability delete endpoint succeeded.");
   };
 
   // bulk manager day endpoints (optional; UI falls back to per-slot deletes if missing)
   const tryCloseAfterBulk = async ({ recruiter_id, date, from_time }) => {
-    const urls = [`${API_URL}/manager/availability/close-after`, `${API_URL}/api/manager/availability/close-after`];
-    for (const url of urls) { try { await axios.post(url, { recruiter_id, date, from_time }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
+    const urls = [`/manager/availability/close-after`, `/api/manager/availability/close-after`];
+    for (const url of urls) { try { await api.post(url, { recruiter_id, date, from_time }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
     return false;
   };
   const tryCloseBeforeBulk = async ({ recruiter_id, date, until_time }) => {
-    const urls = [`${API_URL}/manager/availability/close-before`, `${API_URL}/api/manager/availability/close-before`];
-    for (const url of urls) { try { await axios.post(url, { recruiter_id, date, until_time }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
+    const urls = [`/manager/availability/close-before`, `/api/manager/availability/close-before`];
+    for (const url of urls) { try { await api.post(url, { recruiter_id, date, until_time }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
     return false;
   };
   const tryCloseDayBulk = async ({ recruiter_id, date }) => {
-    const urls = [`${API_URL}/manager/availability/close-day`, `${API_URL}/api/manager/availability/close-day`];
-    for (const url of urls) { try { await axios.post(url, { recruiter_id, date }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
+    const urls = [`/manager/availability/close-day`, `/api/manager/availability/close-day`];
+    for (const url of urls) { try { await api.post(url, { recruiter_id, date }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
     return false;
   };
   const tryKeepRangeBulk = async ({ recruiter_id, date, start_time, end_time }) => {
-    const urls = [`${API_URL}/manager/availability/keep-range`, `${API_URL}/api/manager/availability/keep-range`];
-    for (const url of urls) { try { await axios.post(url, { recruiter_id, date, start_time, end_time }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
+    const urls = [`/manager/availability/keep-range`, `/api/manager/availability/keep-range`];
+    for (const url of urls) { try { await api.post(url, { recruiter_id, date, start_time, end_time }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
     return false;
   };
 

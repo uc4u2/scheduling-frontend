@@ -21,6 +21,7 @@ import {
 } from "./theme";
 
 import { getTenantHostMode } from "./utils/tenant";
+import api from "./utils/api";
 
 // Components
 import NavBar from "./NavBar";
@@ -282,8 +283,10 @@ const FeatureGate = ({ feature, children }) => {
     (async () => {
       try {
         // Public, no headers needed
-        const res = await fetch(`/api/public/${encodeURIComponent(slug)}/website`, { credentials: "same-origin" });
-        const data = await res.json();
+        const res = await api.get(`/api/public/${encodeURIComponent(slug)}/website`, {
+          withCredentials: true,
+        });
+        const data = res.data;
         const nav = data?.nav_overrides || data?.settings?.nav_overrides || {};
         const allowed =
           feature === "services"

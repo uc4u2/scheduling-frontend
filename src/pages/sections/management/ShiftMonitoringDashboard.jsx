@@ -5,10 +5,8 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import PeopleIcon from "@mui/icons-material/People";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import HotelIcon from "@mui/icons-material/Hotel";
-import axios from "axios";
+import api from "../../../utils/api";
 import ManagementFrame from "../../../components/ui/ManagementFrame";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const formatRangeLabel = (startIso, endIso, tz) => {
   if (!startIso) return "—";
@@ -67,10 +65,8 @@ const ShiftMonitoringDashboard = ({ token }) => {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    axios
-      .get(`${API_URL}/my-availability`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    api
+      .get("/my-availability")
       .then((res) => {
         setAppointmentBlocks(res.data?.appointment_blocks || []);
         setLeaveBlocks(res.data?.leave_blocks || []);

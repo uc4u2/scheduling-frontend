@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import api from "../../utils/api";
 import {
   Alert,
   Box,
@@ -39,7 +40,6 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LogoutIcon from "@mui/icons-material/Logout";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const statusColor = {
   assigned: "default",
   in_progress: "warning",
@@ -330,8 +330,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
 
     const loadDepartments = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/departments`, { headers });
-        const data = await res.json();
+        const res = await api.get(`/api/departments`, { headers });
+        const data = res.data;
         if (Array.isArray(data)) {
           setDepartments(data.map((dept) => ({ id: dept.id, name: dept.name })));
         }
@@ -342,8 +342,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
 
     const loadEmployees = async () => {
       try {
-        const res = await fetch(`${API_URL}/manager/recruiters`, { headers });
-        const data = await res.json();
+        const res = await api.get(`/manager/recruiters`, { headers });
+        const data = res.data;
         const normalize = (arr = []) =>
           arr.map((r) => {
             const role = ["recruiter", "manager"].includes(r.role) ? r.role : "recruiter";
@@ -751,16 +751,12 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         params.set("status", detailFilters.status);
       }
       const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
-      const res = await fetch(`${API_URL}/manager/time-entries/history?${params.toString()}`, {
+      const res = await api.get(`/manager/time-entries/history?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        responseType: "blob",
       });
-      if (!res.ok) {
-        const msg = await res.text().catch(() => "Download failed");
-        setSnackbar({ open: true, severity: "error", message: msg || "Unable to download PDF." });
-        return;
-      }
-      const ct = res.headers.get("content-type") || "";
-      const blob = await res.blob();
+      const ct = res.headers?.["content-type"] || "";
+      const blob = res.data;
       if (blob.size === 0 || (ct && !ct.includes("pdf"))) {
         setSnackbar({ open: true, severity: "error", message: "PDF export returned an empty file." });
         return;

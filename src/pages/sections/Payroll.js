@@ -35,7 +35,7 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 import Stack from "@mui/material/Stack";
 import { HelpOutline } from "@mui/icons-material";
-import axios from "axios";
+import api from "../../utils/api";
 import dayjs from "dayjs";
 import DownloadPayrollButton from "./DownloadPayrollButton";
 import { recalcNetPay } from "./netpay";
@@ -47,8 +47,6 @@ import { vacationIncludedByDefault, defaultVacationPercent } from "./utils/payro
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import PayrollScenarios from "./PayrollScenarios";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const columnsToExport = [
   "employee_name",
@@ -139,7 +137,7 @@ useEffect(() => {
     const loadPrefs = async () => {
       try {
         // Prefer company profile (adds default_pay_frequency) and fall back silently
-        const res = await axios.get(`${API_URL}/admin/company-profile`, {
+        const res = await api.get(`/admin/company-profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const defaultPayFreq =
@@ -168,7 +166,7 @@ useEffect(() => {
   let active = true;
   const loadProfile = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/recruiters/${selectedRecruiter}`, {
+      const res = await api.get(`/api/recruiters/${selectedRecruiter}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (active) setRecruiterProfile(res.data);
@@ -205,8 +203,8 @@ useEffect(() => {
     }
   }
 
-  axios
-    .get(`${API_URL}/payroll/ytd`, {
+  api
+    .get(`/payroll/ytd`, {
       params: {
         recruiter_id: selectedRecruiter,
         year: ytdYear,
@@ -225,7 +223,7 @@ useEffect(() => {
 
   const fetchRecruiters = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/recruiters`, {
+      const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRecruiters(
@@ -280,7 +278,7 @@ useEffect(() => {
     setExporting(true);
     try {
       setMissingExternalEmployees([]);
-      const res = await axios.get(`${API_URL}/automation/payroll/export-finalized`, {
+      const res = await api.get(`/automation/payroll/export-finalized`, {
         params: {
           recruiter_id: params.employee_ids || [],
           region: params.region,
@@ -309,7 +307,7 @@ useEffect(() => {
     setExporting(true);
     try {
       setMissingExternalEmployees([]);
-      const res = await axios.get(`${API_URL}/automation/payroll/export-finalized-summary-csv`, {
+      const res = await api.get(`/automation/payroll/export-finalized-summary-csv`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
@@ -340,7 +338,7 @@ useEffect(() => {
     }
     setExporting(true);
     try {
-      const res = await axios.get(`${API_URL}/automation/payroll/export-finalized-payslips-zip`, {
+      const res = await api.get(`/automation/payroll/export-finalized-payslips-zip`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
@@ -373,7 +371,7 @@ useEffect(() => {
     try {
       setMissingExternalEmployees([]);
       setProviderCsvMismatchEmployees([]);
-      const res = await axios.get(`${API_URL}/automation/payroll/export-finalized-provider-csv`, {
+      const res = await api.get(`/automation/payroll/export-finalized-provider-csv`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
@@ -464,7 +462,7 @@ useEffect(() => {
       const params = { start_date: expenseStartDate, end_date: expenseEndDate };
       if (expenseRegion && expenseRegion !== "all") params.region = expenseRegion;
       if (departmentFilter) params.department_id = departmentFilter;
-      const res = await axios.get(`${API_URL}/automation/payroll/company-expense-report`, {
+      const res = await api.get(`/automation/payroll/company-expense-report`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -495,7 +493,7 @@ useEffect(() => {
         params.month = month;
       }
   
-      const res = await axios.get(`${API_URL}/payroll/history`, {
+      const res = await api.get(`/payroll/history`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -572,7 +570,7 @@ useEffect(() => {
       ...payload, // ✅ correct spread
     };
 
-    const res = await axios.post(`${API_URL}/payroll/calculate`, body, {
+    const res = await api.post(`/payroll/calculate`, body, {
       headers: { Authorization: `Bearer ${token}` },
     });
   
@@ -651,8 +649,8 @@ useEffect(() => {
     setLoading(true);
   
     try {
-      const genRes = await axios.post(
-        `${API_URL}/automation/payroll/generate`,
+      const genRes = await api.post(
+        `/automation/payroll/generate`,
         {
           recruiter_id: selectedRecruiter,
           region,
@@ -764,7 +762,7 @@ useEffect(() => {
           0,
       };
 
-      const calcRes = await axios.post(`${API_URL}/payroll/calculate`, base, {
+      const calcRes = await api.post(`/payroll/calculate`, base, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -957,24 +955,13 @@ useEffect(() => {
     
 
     try {
-      const res = await fetch(
-        `${API_URL}/payroll/delete?${queryParams.toString()}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const result = await res.json();
-
-      if (res.ok) {
-        showMessage(result.message || "✅ Deleted successfully.", "success");
-        fetchPayslipHistory();
-      } else {
-        showMessage(
-          result.error || result.warning || "❌ Delete failed.",
-          "error"
-        );
-      }
+      const res = await api.delete("/payroll/delete", {
+        headers: { Authorization: `Bearer ${token}` },
+        params: Object.fromEntries(queryParams.entries()),
+      });
+      const result = res.data || {};
+      showMessage(result.message || "✅ Deleted successfully.", "success");
+      fetchPayslipHistory();
     } catch (err) {
       console.error("Delete error:", err);
       showMessage(
@@ -1497,7 +1484,7 @@ return (
                       };
                       if (expenseRegion && expenseRegion !== "all") params.region = expenseRegion;
                       if (departmentFilter) params.department_id = departmentFilter;
-                      const resp = await axios.get(`${API_URL}/automation/payroll/company-expense-report`, {
+                      const resp = await api.get(`/automation/payroll/company-expense-report`, {
                         params,
                         headers: { Authorization: `Bearer ${token}` },
                         responseType: "blob",

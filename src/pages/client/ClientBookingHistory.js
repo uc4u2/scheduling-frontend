@@ -19,7 +19,7 @@ import {
   Divider,
 } from "@mui/material";
 import GetAppIcon from "@mui/icons-material/GetApp";
-import axios from "axios";
+import api from "../../utils/api";
 import PaymentHistory from "./PaymentHistory";
 
 import { getUserTimezone } from "../../utils/timezone";
@@ -49,7 +49,7 @@ export default function ClientBookingHistory() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    axios
+    api
       .get("/api/client/bookings", {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -64,7 +64,7 @@ export default function ClientBookingHistory() {
   useEffect(() => {
     const token = () => localStorage.getItem("token");
     const handler = () => {
-      axios
+      api
         .get("/api/client/bookings", {
           headers: { Authorization: 'Bearer ' + token() },
         })
@@ -78,7 +78,7 @@ export default function ClientBookingHistory() {
 
   const handleViewBooking = (id) => {
     const token = localStorage.getItem("token");
-    axios
+    api
       .get(`/api/client/bookings/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -95,7 +95,7 @@ export default function ClientBookingHistory() {
 
     const token = localStorage.getItem("token");
     try {
-      await axios.post(`/api/client/bookings/${selected.id}/cancel`, null, {
+      await api.post(`/api/client/bookings/${selected.id}/cancel`, null, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -111,7 +111,7 @@ export default function ClientBookingHistory() {
   const downloadInvoice = async (bookingId) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`/invoices/${bookingId}?format=pdf`, {
+      const res = await api.get(`/invoices/${bookingId}?format=pdf`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
       });

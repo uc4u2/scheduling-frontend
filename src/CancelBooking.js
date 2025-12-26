@@ -8,7 +8,7 @@ import {
   Typography,
   Paper,
 } from "@mui/material";
-import axios from "axios";
+import api from "./utils/api";
 import { useParams, useNavigate } from "react-router-dom";
 
 const CancelBooking = () => {
@@ -21,8 +21,6 @@ const CancelBooking = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   useEffect(() => {
     if (token) setInvitationToken(token); // auto-fill from URL if present
   }, [token]);
@@ -34,7 +32,7 @@ const CancelBooking = () => {
     }
 
     try {
-      const response = await axios.post(`${API_URL}/public/cancel-booking`, {
+      const response = await api.post(`/public/cancel-booking`, {
         candidate_name: candidateName,
         candidate_email: candidateEmail,
         invitation_token: invitationToken,

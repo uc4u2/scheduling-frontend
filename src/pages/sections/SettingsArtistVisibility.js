@@ -8,11 +8,9 @@ import {
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import RestoreIcon from "@mui/icons-material/Restore";
-import axios from "axios";
+import api from "../../utils/api";
 
 import { useTranslation } from "react-i18next";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 /* ------------------------- Visibility defaults ------------------------- */
 const DEFAULTS = {
@@ -59,11 +57,11 @@ export default function SettingsArtistVisibility() {
     (async () => {
       try {
         // visibility settings
-        const vis = await axios.get(`${API_URL}/admin/artist-visibility-settings`, {
+        const vis = await api.get(`/admin/artist-visibility-settings`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         // availability permissions
-        const pr  = await axios.get(`${API_URL}/admin/availability-permissions`, {
+        const pr  = await api.get(`/admin/availability-permissions`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -86,10 +84,10 @@ export default function SettingsArtistVisibility() {
     try {
       // save both payloads
       await Promise.all([
-        axios.post(`${API_URL}/admin/artist-visibility-settings`, policy, {
+        api.post(`/admin/artist-visibility-settings`, policy, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.post(`${API_URL}/admin/availability-permissions`, {
+        api.post(`/admin/availability-permissions`, {
           can_close_slots: perms.can_close_slots,
         }, {
           headers: { Authorization: `Bearer ${token}` }

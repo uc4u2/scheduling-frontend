@@ -36,13 +36,11 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import moment from "moment-timezone";
-import axios from "axios";
+import api from "./utils/api";
 
 // timezone-safe helpers (paths you confirmed)
 import { formatSlot } from "./utils/timezone-wrapper";
 import { isoFromParts } from "./utils/datetime";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 /**
  * Enterprise Setmore-style calendar for the CURRENT EMPLOYEE.
@@ -82,17 +80,10 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const [canCloseSlots, setCanCloseSlots] = useState(false);
   const [canEditAvailability, setCanEditAvailability] = useState(false);
 
-  const headers = useMemo(
-    () => ({ Authorization: `Bearer ${token}` }),
-    [token]
-  );
-
   const fetchPermissions = async () => {
     if (!token) return;
     try {
-      const { data } = await axios.get(`${API}/api/employee/permissions`, {
-        headers,
-      });
+      const { data } = await api.get("/api/employee/permissions");
       setCanCloseSlots(!!data?.can_close_slots);
       setCanEditAvailability(!!data?.can_edit_availability);
     } catch {
@@ -146,8 +137,8 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     if (!token) return;
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API}/recruiter/calendar?view=fragments`, {
-        headers
+      const { data } = await api.get("/recruiter/calendar", {
+        params: { view: "fragments" },
       });
 
       const normalized = (data.events || [])
@@ -297,7 +288,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const postTry = async (paths, body) => {
     for (const p of paths) {
       try {
-        await axios.post(`${API}${p}`, body, { headers });
+        await api.post(p, body);
         return true;
       } catch {
         // try next
@@ -308,7 +299,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const delTry = async (paths) => {
     for (const p of paths) {
       try {
-        await axios.delete(`${API}${p}`, { headers });
+        await api.delete(p);
         return true;
       } catch {
         // continue
@@ -393,7 +384,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     ];
     for (const p of paths) {
       try {
-        await axios.put(`${API}${p}`, patch, { headers });
+        await api.put(p, patch);
         return true;
       } catch {}
     }

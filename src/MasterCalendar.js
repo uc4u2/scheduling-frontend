@@ -19,15 +19,13 @@ import {
   Button,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import axios from "axios";
+import api from "./utils/api";
 import moment from "moment-timezone"; // keep for formatting in drawer
 
 const leaveTypes = ["sick", "vacation", "personal", "family"];
 
 const MasterCalendar = ({ token, loggedInRecruiter }) => {
   const theme = useTheme();
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   const isManager = loggedInRecruiter?.role === "manager";
 
   const [events, setEvents] = useState([]);
@@ -88,8 +86,7 @@ const MasterCalendar = ({ token, loggedInRecruiter }) => {
   const fetchEvents = async () => {
     try {
       if (isManager) {
-        const res = await axios.get(`${API_URL}/recruiter/calendar`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await api.get("/recruiter/calendar", {
           params:
             departmentFilter !== "all"
               ? { department_id: departmentFilter }
@@ -97,9 +94,7 @@ const MasterCalendar = ({ token, loggedInRecruiter }) => {
         });
         setEvents(res.data.events || []);
       } else {
-        const res = await axios.get(`${API_URL}/recruiter/calendar`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.get("/recruiter/calendar");
         setEvents(res.data.events || []);
       }
     } catch (err) {
@@ -110,8 +105,7 @@ const MasterCalendar = ({ token, loggedInRecruiter }) => {
 
   const fetchEmployees = async () => {
     try {
-      const res = await axios.get(`${API_URL}/recruiter/team-members`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get("/recruiter/team-members", {
         params:
           departmentFilter !== "all" ? { department_id: departmentFilter } : {},
       });
@@ -130,9 +124,7 @@ const MasterCalendar = ({ token, loggedInRecruiter }) => {
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/departments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/api/departments");
       setDepartments(res.data || []);
     } catch {
       console.error("Failed to fetch departments");
@@ -186,17 +178,13 @@ const MasterCalendar = ({ token, loggedInRecruiter }) => {
           .replace("shift-", "")
           .trim()
       );
-      await axios.post(
-        `${API_URL}/employee/leave-request`,
-        {
-          shift_id: numericShiftId,
-          leave_type: leaveType,
-          reason,
-          start: selectedShift.start,
-          end: selectedShift.end,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post("/employee/leave-request", {
+        shift_id: numericShiftId,
+        leave_type: leaveType,
+        reason,
+        start: selectedShift.start,
+        end: selectedShift.end,
+      });
       setLeaveMsg("✅ Leave request submitted.");
       fetchEvents();
       setLeaveType("sick");

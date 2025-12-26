@@ -11,15 +11,13 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
-import axios from "axios";
+import api from "../utils/api";
 import dayjs from "dayjs";
 
 const MonthlyAttendanceCalendar = () => {
   const [month, setMonth] = useState(dayjs().format("YYYY-MM"));
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(false);
-
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   useEffect(() => {
     fetchAttendance();
@@ -29,7 +27,7 @@ const MonthlyAttendanceCalendar = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_URL}/payroll/attendance-calendar?month=${month}`, {
+      const res = await api.get(`/payroll/attendance-calendar?month=${month}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setData(res.data || {});

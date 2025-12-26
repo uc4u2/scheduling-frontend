@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import {
   Alert, Box, Button, Card, CardContent, CardHeader, Divider,
   LinearProgress, Stack, TextField, Typography
 } from "@mui/material";
 import dayjs from "dayjs";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function ClientInbox() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
@@ -21,7 +19,7 @@ export default function ClientInbox() {
   const load = async () => {
     setErr(""); setLoading(true);
     try {
-      const { data } = await axios.get(`${API}/api/client/messages`, auth);
+      const { data } = await api.get(`/api/client/messages`, auth);
       setMessages(data?.messages || []);
     } catch (e) {
       setErr(e?.response?.data?.error || "Failed to load messages");
@@ -34,7 +32,7 @@ export default function ClientInbox() {
     if (!body.trim()) return;
     setSending(true);
     try {
-      await axios.post(`${API}/api/client/messages/reply`, { body: body.trim() }, auth);
+      await api.post(`/api/client/messages/reply`, { body: body.trim() }, auth);
       setBody("");
       await load();
     } catch (e) {

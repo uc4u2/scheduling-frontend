@@ -1,11 +1,9 @@
 import React, { useState, useMemo } from "react";
-import axios from "axios";
+import api from "../../../utils/api";
 import {
   Card, CardHeader, CardContent, Grid, TextField, MenuItem,
   Button, FormControlLabel, Switch, LinearProgress
 } from "@mui/material";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 function useAuth() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
@@ -31,8 +29,8 @@ export default function ExportClientsCard() {
       if (minVisits !== "") params.set("min_visits", minVisits);
       params.set("require_email", requireEmail ? "true" : "false");
 
-      const url = `${API}/api/manager/clients/export?${params.toString()}`;
-      const res = await axios.get(url, { ...auth, responseType: "blob" });
+      const url = `/api/manager/clients/export?${params.toString()}`;
+      const res = await api.get(url, { ...auth, responseType: "blob" });
 
       const cd = res.headers["content-disposition"] || "attachment; filename=clients.csv";
       const fname = /filename="?([^"]+)"?/.exec(cd)?.[1] || "clients.csv";

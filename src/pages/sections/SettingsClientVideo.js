@@ -4,11 +4,9 @@ import {
   Grid, TextField, Switch, FormControlLabel,
   Button, Snackbar, Alert, Stack, Tooltip, Chip
 } from "@mui/material";
-import axios from "axios";
+import api from "../../utils/api";
 
 import { useTranslation } from "react-i18next";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function SettingsClientVideo() {
   const { t } = useTranslation();
@@ -30,7 +28,7 @@ export default function SettingsClientVideo() {
     let dead = false;
     (async () => {
       try {
-        const { data } = await axios.get(`${API}/admin/client-video-policy`, { headers: H });
+        const { data } = await api.get(`/admin/client-video-policy`, { headers: H });
         if (!dead) setP({ ...p, ...data });
       } catch (e) {
         setMsg(t("settings.clientVideo.loadError"));
@@ -44,7 +42,7 @@ export default function SettingsClientVideo() {
   const save = async () => {
     setSaving(true);
     try {
-      await axios.post(`${API}/admin/client-video-policy`, p, { headers: H });
+      await api.post(`/admin/client-video-policy`, p, { headers: H });
       setMsg(t("settings.clientVideo.saveSuccess"));
     } catch (e) {
       setMsg(e?.response?.data?.error || t("settings.common.saveError"));

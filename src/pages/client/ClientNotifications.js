@@ -7,7 +7,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import axios from "axios";
+import api from "../../utils/api";
 import dayjs from "dayjs";
 
 const statusColors = {
@@ -31,7 +31,7 @@ export default function ClientNotifications() {
     let url = "/notifications";
     if (filter !== "all") url += `?status=${filter}`;
     const token = localStorage.getItem("token");
-    axios.get(url, {
+    api.get(url, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => setNotifs(res.data))
@@ -55,7 +55,7 @@ export default function ClientNotifications() {
     else return handleMenuClose();
 
     const token = localStorage.getItem("token");
-    axios({ method, url, data, headers: { Authorization: `Bearer ${token}` } })
+    api({ method, url, data, headers: { Authorization: `Bearer ${token}` } })
       .then(() => {
         setSnackbar({ open: true, msg: `Notification ${action}d`, severity: "success" });
         fetchData();
@@ -66,7 +66,7 @@ export default function ClientNotifications() {
 
   function handleMarkAllRead() {
     const token = localStorage.getItem("token");
-    axios.patch("/notifications/mark_all_read", null, {
+    api.patch("/notifications/mark_all_read", null, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(() => {

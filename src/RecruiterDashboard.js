@@ -26,7 +26,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
+import api from "./utils/api";
 import RecurringAvailabilityForm from "./RecurringAvailabilityForm";
 import InteractiveCalendar from "./InteractiveCalendar";
 import { useSnackbar } from "notistack";
@@ -40,7 +40,6 @@ const RecruiterDashboard = ({ token }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   /* ---------- form fields ---------- */
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -130,23 +129,19 @@ const RecruiterDashboard = ({ token }) => {
   /* ---------- initial load ---------- */
   useEffect(() => {
     if (!token) return;
-    axios
-      .get(`${API_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    api
+      .get("/auth/me")
       .then((res) => setAuthInfo(res.data || null))
       .catch(() => setAuthInfo(null))
       .finally(() => setAuthLoaded(true));
-    axios
-      .get(`${API_URL}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    api
+      .get("/profile")
       .then((res) => {
         setRecruiter(res.data);
         localStorage.setItem("timezone", res.data.timezone || "UTC");
       })
       .catch((e) => console.error("Profile load failed:", e));
-  }, [token, API_URL]);
+  }, [token]);
   const handleSubmitOneTime = useCallback(async () => {
     if (!date || !startTime || !endTime) {
       setOneTimeError("All fields are required.");
@@ -154,11 +149,11 @@ const RecruiterDashboard = ({ token }) => {
       return;
     }
     try {
-      const { data } = await axios.post(
-        `${API_URL}/set-availability`,
-        { date, start_time: startTime, end_time: endTime },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await api.post("/set-availability", {
+        date,
+        start_time: startTime,
+        end_time: endTime,
+      });
       setOneTimeMessage(data.message);
       setOneTimeError("");
       setDate("");
@@ -169,24 +164,20 @@ const RecruiterDashboard = ({ token }) => {
       setOneTimeError(err.response?.data?.error || "Failed to set availability.");
       setOneTimeMessage("");
     }
-  }, [API_URL, token, date, startTime, endTime]);
+  }, [date, startTime, endTime]);
   const handleSubmitDailyAvailability = useCallback(async () => {
     if (!date || !startTime || !endTime || !dailyDuration) {
       setDailyError("All fields (date, start, end, duration) are required.");
       return;
     }
     try {
-      const { data } = await axios.post(
-        `${API_URL}/set-daily-availability`,
-        {
-          date,
-          start_time: startTime,
-          end_time: endTime,
-          duration: dailyDuration,
-          cooling_time: parseInt(coolingTime) || 0,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await api.post("/set-daily-availability", {
+        date,
+        start_time: startTime,
+        end_time: endTime,
+        duration: dailyDuration,
+        cooling_time: parseInt(coolingTime) || 0,
+      });
       setDailyMessage(data.message);
       setDailyError("");
       setDate("");
@@ -197,7 +188,7 @@ const RecruiterDashboard = ({ token }) => {
       setDailyError(err.response?.data?.error || "Failed to set daily availability.");
       setDailyMessage("");
     }
-  }, [API_URL, token, date, startTime, endTime, dailyDuration, coolingTime]);
+  }, [date, startTime, endTime, dailyDuration, coolingTime]);
   /* Handle slot drop (drag & drop on calendar) */
   const handleSlotDrop = useCallback((slotId, newDate, newStartTime, newEndTime) => {
     setPendingSlotUpdate({ slotId, newDate, newStartTime, newEndTime });
@@ -207,11 +198,11 @@ const RecruiterDashboard = ({ token }) => {
     if (!pendingSlotUpdate) return;
     const { slotId, newDate, newStartTime, newEndTime } = pendingSlotUpdate;
     try {
-      await axios.put(
-        `${API_URL}/update-availability/${slotId}`,
-        { date: newDate, start_time: newStartTime, end_time: newEndTime },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/update-availability/${slotId}`, {
+        date: newDate,
+        start_time: newStartTime,
+        end_time: newEndTime,
+      });
       enqueueSnackbar("Slot updated via drag.", { variant: "success" });
       setPendingSlotUpdate(null);
       setCalendarRefreshTrigger(Date.now());
@@ -219,7 +210,7 @@ const RecruiterDashboard = ({ token }) => {
       const detail = err.response?.data?.error || "Drag update failed.";
       enqueueSnackbar(detail, { variant: "error" });
     }
-  }, [API_URL, token, pendingSlotUpdate, enqueueSnackbar]);
+  }, [pendingSlotUpdate, enqueueSnackbar]);
   /* ------------------------------------------------------------------ */
   /*  RENDER                                                            */
   /* ------------------------------------------------------------------ */

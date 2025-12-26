@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import axios from "axios";
+import api from "../../utils/api";
 import { CircularProgress, Typography, Paper, Button } from "@mui/material";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -25,8 +23,8 @@ const SwapRespond = () => {
       return;
     }
 
-    axios
-      .post(`${API_URL}/shift-swap-requests/respond-via-link`, {
+    api
+      .post(`/shift-swap-requests/respond-via-link`, {
         swap_id,
         action,
       })

@@ -17,8 +17,8 @@ import {
   AccordionDetails,
   Snackbar,
 } from "@mui/material";
-import axios from "axios";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { api } from "./utils/api";
 
 const CandidateBooking = () => {
   const { recruiterId, token: invitationToken } = useParams();
@@ -58,12 +58,13 @@ const CandidateBooking = () => {
     return () => clearInterval(id);
   }, [saving, savingMessages.length]);
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   useEffect(() => {
     const fetchSlots = async () => {
       try {
-        const response = await axios.get(`${API_URL}/public/availability/${recruiterId}`);
+        const response = await api.get(`/public/availability/${recruiterId}`, {
+          noCompanyHeader: true,
+          noAuth: true,
+        });
         setSlots(response.data.available_slots);
         setRecruiterTimeZone(response.data.timezone || "UTC");
         setLoadError("");
@@ -73,7 +74,7 @@ const CandidateBooking = () => {
       }
     };
     fetchSlots();
-  }, [recruiterId, API_URL]);
+  }, [recruiterId]);
 
   const upcomingSlots = useMemo(() => {
     const now = new Date();
@@ -155,8 +156,10 @@ const CandidateBooking = () => {
         formData.append("resume", resumeFile);
       }
 
-      const response = await axios.post(`${API_URL}/public/book-slot`, formData, {
+      const response = await api.post(`/public/book-slot`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        noCompanyHeader: true,
+        noAuth: true,
       });
 
       const successMessage =

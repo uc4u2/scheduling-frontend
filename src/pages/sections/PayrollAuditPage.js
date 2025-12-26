@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import {
   Box,
   Grid,
@@ -30,8 +30,6 @@ import {
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function PayrollAuditPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
@@ -80,7 +78,7 @@ export default function PayrollAuditPage() {
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
 
-      const res = await axios.get(`${API_URL}/automation/payroll/audit`, {
+      const res = await api.get(`/automation/payroll/audit`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -105,7 +103,7 @@ export default function PayrollAuditPage() {
     if (!id) return;
     setDownloading(true);
     try {
-      const res = await axios.get(`${API_URL}/automation/payroll/audit/${id}/pdf`, {
+      const res = await api.get(`/automation/payroll/audit/${id}/pdf`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         responseType: "blob",
       });
@@ -349,7 +347,7 @@ export default function PayrollAuditPage() {
           {pdfId ? (
             <Button
               sx={{ mt: 2 }}
-              href={`${API_URL}/main/payroll_portal_download/${pdfId}`}
+              href={`/main/payroll_portal_download/${pdfId}`}
               target="_blank"
               rel="noopener noreferrer"
             >

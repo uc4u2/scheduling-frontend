@@ -8,12 +8,10 @@ import {
 import SendIcon from "@mui/icons-material/Send";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import axios from "axios";
+import api from "../../utils/api";
 import BookingChart from "../../components/charts/BookingChart";
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
-
-const API = process.env.REACT_APP_API_URL || ""; // keep relative if you proxy
 
 export default function ClientDashboardOverview() {
   const [overview, setOverview] = useState(null);
@@ -50,9 +48,9 @@ export default function ClientDashboardOverview() {
 
     // Core cards
     const p1 = Promise.all([
-      axios.get(`${API}/api/client/bookings`, auth),
-      axios.get(`${API}/invoices`, auth),
-      axios.get(`${API}/notifications?status=unread`, auth),
+      api.get(`/api/client/bookings`, auth),
+      api.get(`/invoices`, auth),
+      api.get(`/notifications?status=unread`, auth),
     ])
       .then(([bookingsRes, invoicesRes, notifsRes]) => {
         const bookings = bookingsRes.data.bookings || [];
@@ -86,8 +84,8 @@ export default function ClientDashboardOverview() {
 
     // Client telemetry (IP/geo/device/last channel)
     const p2 = Promise.all([
-      axios.get(`${API}/api/client/telemetry`, auth).catch(() => null),
-      axios.get(`${API}/api/client/telemetry/history?limit=5`, auth).catch(() => null),
+      api.get(`/api/client/telemetry`, auth).catch(() => null),
+      api.get(`/api/client/telemetry/history?limit=5`, auth).catch(() => null),
     ])
       .then(([sigRes, histRes]) => {
         if (!sigRes?.data) throw new Error("telemetry not available");
@@ -102,8 +100,8 @@ export default function ClientDashboardOverview() {
       .finally(() => setSignalsLoading(false));
 
     // Client messages (thread with the company/manager)
-    const p3 = axios
-      .get(`${API}/api/client/messages?limit=20`, auth)
+    const p3 = api
+      .get(`/api/client/messages?limit=20`, auth)
       .then((r) => setMessages(r?.data?.messages || []))
       .catch(() => {
         setMessages([]);
@@ -125,7 +123,7 @@ export default function ClientDashboardOverview() {
     setMsgSending(true);
     setMsgErr("");
     try {
-      const { data } = await axios.post(`${API}/api/client/messages`, { body }, auth);
+      const { data } = await api.post(`/api/client/messages`, { body }, auth);
       // Optimistic append
       const newMsg = data?.message || {
         id: `tmp_${Date.now()}`,
@@ -152,7 +150,7 @@ export default function ClientDashboardOverview() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          await axios.post(`${API}/api/client/telemetry/geo`, {
+          await api.post(`/api/client/telemetry/geo`, {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
             accuracy: pos.coords.accuracy,

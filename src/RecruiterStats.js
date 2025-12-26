@@ -9,14 +9,13 @@ import DownloadIcon from "@mui/icons-material/Download";
 import DeleteIcon from "@mui/icons-material/Delete";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
+import api from "./utils/api";
 
 const RecruiterStats = ({ token }) => {
   const { recruiterId } = useParams();
   const navigate = useNavigate();
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   const [recruiter, setRecruiter] = useState(null);
   const [goals, setGoals] = useState([]);
@@ -33,7 +32,7 @@ const RecruiterStats = ({ token }) => {
 
   const fetchStats = async () => {
     try {
-      const metricsRes = await axios.get(`${API_URL}/manager/recruiters/${recruiterId}/metrics`, {
+      const metricsRes = await api.get(`/manager/recruiters/${recruiterId}/metrics`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRecruiter({
@@ -46,7 +45,7 @@ const RecruiterStats = ({ token }) => {
       setGoals(metricsRes.data.performance_goals || []);
       setLogs(metricsRes.data.audit_logs || []);
 
-      const chartRes = await axios.get(`${API_URL}/manager/recruiter-stats/${recruiterId}/chart`, {
+      const chartRes = await api.get(`/manager/recruiter-stats/${recruiterId}/chart`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setChartData({
@@ -54,7 +53,7 @@ const RecruiterStats = ({ token }) => {
         values: chartRes.data.counts,
       });
 
-      const bookingsRes = await axios.get(`${API_URL}/manager/recruiter-stats/${recruiterId}`, {
+      const bookingsRes = await api.get(`/manager/recruiter-stats/${recruiterId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRecentBookings(bookingsRes.data.recent_bookings || []);
@@ -66,12 +65,13 @@ const RecruiterStats = ({ token }) => {
   };
 
   const handleExportPDF = () => {
-    const url = `${API_URL}/manager/recruiter-stats/${recruiterId}/export-pdf`;
-    const headers = new Headers({ Authorization: `Bearer ${token}` });
-    fetch(url, { headers })
-      .then(res => res.blob())
-      .then(blob => {
-        const blobURL = window.URL.createObjectURL(blob);
+    api
+      .get(`/manager/recruiter-stats/${recruiterId}/export-pdf`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      })
+      .then((res) => {
+        const blobURL = window.URL.createObjectURL(res.data);
         const link = document.createElement("a");
         link.href = blobURL;
         link.setAttribute("download", `Recruiter_Report_${recruiterId}.pdf`);
@@ -84,7 +84,7 @@ const RecruiterStats = ({ token }) => {
 
   const handlePromote = async () => {
     try {
-      await axios.patch(`${API_URL}/manager/recruiters/${recruiterId}/promote`, {}, {
+      await api.patch(`/manager/recruiters/${recruiterId}/promote`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMessage("Recruiter promoted to Manager.");
@@ -96,7 +96,7 @@ const RecruiterStats = ({ token }) => {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`${API_URL}/manager/recruiters/${recruiterId}`, {
+      await api.delete(`/manager/recruiters/${recruiterId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMessage("Recruiter deleted.");
@@ -182,7 +182,7 @@ const RecruiterStats = ({ token }) => {
               />
               <Button variant="contained" onClick={async () => {
                 try {
-                  await axios.put(`${API_URL}/manager/goals/${goal.id}`, goal, {
+                  await api.put(`/manager/goals/${goal.id}`, goal, {
                     headers: { Authorization: `Bearer ${token}` }
                   });
                   setMessage("Goal updated.");
@@ -192,7 +192,7 @@ const RecruiterStats = ({ token }) => {
               }}>Save</Button>
               <Button variant="outlined" color="error" onClick={async () => {
                 try {
-                  await axios.delete(`${API_URL}/manager/goals/${goal.id}`, {
+                  await api.delete(`/manager/goals/${goal.id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                   });
                   setGoals(goals.filter(g => g.id !== goal.id));
@@ -214,7 +214,7 @@ const RecruiterStats = ({ token }) => {
           <TextField label="Target" size="small" type="number" value={newGoal.target || ""} onChange={(e) => setNewGoal({ ...newGoal, target: parseInt(e.target.value) })} />
           <Button variant="contained" onClick={async () => {
             try {
-              await axios.post(`${API_URL}/manager/recruiters/${recruiterId}/goals`, {
+              await api.post(`/manager/recruiters/${recruiterId}/goals`, {
                 goal_name: newGoal.name,
                 target: newGoal.target
               }, {

@@ -20,14 +20,11 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
 import Snackbar from "@mui/material/Snackbar";
-import axios from "axios";
+import api from "./utils/api";
 import { getUserTimezone } from "./utils/timezone";
 import { Link as RouterLink } from "react-router-dom";
 import { useDepartments } from "./pages/sections/hooks/useRecruiterDepartments";
 import TimezoneSelect from "./components/TimezoneSelect";
-
-const API_BASE =
-  (process.env.REACT_APP_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
 const PASSWORD_HELP =
   "8+ chars, uppercase, lowercase, number, and symbol required.";
@@ -128,7 +125,7 @@ const passwordStrength = useMemo(() => {
         terms_version: "2025-11",
       };
 
-      const response = await axios.post(`${API_BASE}/manager/recruiters`, payload, {
+      const response = await api.post(`/manager/recruiters`, payload, {
         headers: {
           Authorization: token ? `Bearer ${token}` : undefined,
           "Content-Type": "application/json",

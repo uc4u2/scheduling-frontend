@@ -1,8 +1,8 @@
 // src/ForgotPassword.js
 import React, { useState } from "react";
 import { Container, Button, Alert, Typography, TextField } from "@mui/material";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { api } from "./utils/api";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -16,7 +16,11 @@ const ForgotPassword = () => {
       return;
     }
     try {
-      const response = await axios.post("http://localhost:5000/forgot-password", { email });
+      const response = await api.post(
+        "/forgot-password",
+        { email },
+        { noAuth: true, noCompanyHeader: true }
+      );
       setMessage(response.data.message);
       setError("");
     } catch (err) {

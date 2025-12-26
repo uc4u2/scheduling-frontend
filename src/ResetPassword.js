@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import { useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
+import api from "./utils/api";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -27,8 +27,6 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,14 +49,14 @@ const ResetPassword = () => {
       let res;
       if (isTokenReset) {
         const endpoint = resetType === "recruiter" ? "/recruiter/reset-password" : "/reset-password";
-        res = await axios.post(`${API_URL}${endpoint}`, {
+        res = await api.post(endpoint, {
           token: resetToken,
           password: newPassword,
-        });
+        }, { noAuth: true });
       } else {
         // Make API call to change password endpoint
-        res = await axios.post(
-          `${API_URL}/change-password`,
+        res = await api.post(
+          `/change-password`,
           {
             current_password: isTempReset ? currentPassword : undefined,
             new_password: newPassword,

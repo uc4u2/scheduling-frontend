@@ -6,9 +6,7 @@ import {
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { Add, Edit, Delete, PhotoCamera, CloudUpload, DeleteOutline } from "@mui/icons-material";
-import axios from "axios";
-
-const API  = process.env.REACT_APP_API_URL || "";
+import api from "../../../utils/api";
 
 const empty = { name: "", description: "", base_price: 0, duration: 15, service: null };
 
@@ -35,8 +33,8 @@ export default function AddonManagement({ token }) {
     setLoading(true);
     try {
       const [addonRes, svcRes] = await Promise.all([
-        axios.get(`${API}/manager/addons`,       auth),
-        axios.get(`${API}/booking/services`,     auth)
+        api.get(`/manager/addons`,       auth),
+        api.get(`/booking/services`,     auth)
       ]);
       setRows(addonRes.data || []);
       setServices((svcRes.data || []).filter(s => s.is_active));
@@ -59,10 +57,10 @@ export default function AddonManagement({ token }) {
 
     try {
       if (edit) {
-        await axios.put(`${API}/manager/addons/${edit.id}`, payload, auth);
+        await api.put(`/manager/addons/${edit.id}`, payload, auth);
         setSnk({ open:true, msg:"Updated" });
       } else {
-        await axios.post(`${API}/manager/addons`, payload, auth);
+        await api.post(`/manager/addons`, payload, auth);
         setSnk({ open:true, msg:"Created" });
       }
       setOpen(false); fetchAll();
@@ -72,7 +70,7 @@ export default function AddonManagement({ token }) {
   const del = async (id) => {
     if (!window.confirm("Delete this add-on?")) return;
     try {
-      await axios.delete(`${API}/manager/addons/${id}`, auth);
+      await api.delete(`/manager/addons/${id}`, auth);
       fetchAll();
     } catch { setSnk({ open:true, msg:"Delete failed"}); }
   };
@@ -93,7 +91,7 @@ export default function AddonManagement({ token }) {
     setImageModal(true);
     setImageTarget(null);
     try {
-      const { data } = await axios.get(`${API}/manager/addons/${row.id}`, auth);
+      const { data } = await api.get(`/manager/addons/${row.id}`, auth);
       setImageTarget(data);
     } catch (err) {
       console.error("AddonManagement openImages error", err);
@@ -115,8 +113,8 @@ export default function AddonManagement({ token }) {
 
     setImageUploading(true);
     try {
-      await axios.post(
-        `${API}/manager/addons/${imageTarget.id}/images`,
+      await api.post(
+        `/manager/addons/${imageTarget.id}/images`,
         formData,
         {
           ...auth,
@@ -126,7 +124,7 @@ export default function AddonManagement({ token }) {
           },
         }
       );
-      const { data } = await axios.get(`${API}/manager/addons/${imageTarget.id}`, auth);
+      const { data } = await api.get(`/manager/addons/${imageTarget.id}`, auth);
       setImageTarget(data);
       setSnk({ open:true, msg:"Image uploaded" });
     } catch (err) {
@@ -141,8 +139,8 @@ export default function AddonManagement({ token }) {
   const removeImage = async (imageId) => {
     if (!imageTarget) return;
     try {
-      await axios.delete(`${API}/manager/addon-images/${imageId}`, auth);
-      const { data } = await axios.get(`${API}/manager/addons/${imageTarget.id}`, auth);
+      await api.delete(`/manager/addon-images/${imageId}`, auth);
+      const { data } = await api.get(`/manager/addons/${imageTarget.id}`, auth);
       setImageTarget(data);
       setSnk({ open:true, msg:"Image removed" });
     } catch (err) {

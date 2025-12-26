@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import {
   Container,
   Typography,
@@ -33,7 +33,7 @@ const ClientAppointments = () => {
     setError("");
     try {
       const token = localStorage.getItem("token");
-      const { data } = await axios.get("/api/client/bookings", {
+      const { data } = await api.get("/api/client/bookings", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAppointments(data.bookings || []);
@@ -58,7 +58,7 @@ const ClientAppointments = () => {
     if (!selectedAppt) return;
 
     try {
-      await axios.post(
+      await api.post(
         `/public/${selectedAppt.slug}/appointment/${selectedAppt.id}/cancel?token=${selectedAppt.cancel_token}`
       );
       setAppointments((prev) =>

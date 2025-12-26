@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Box, Typography, Paper, TextField, Button, Snackbar
 } from "@mui/material";
-import axios from "axios";
+import api from "../../../utils/api";
 import { getUserTimezone } from "../../../utils/timezone";
 const WorkspaceSettings = () => {
   const [settings, setSettings] = useState({
@@ -18,7 +18,7 @@ const WorkspaceSettings = () => {
       setLoading(true);
       try {
         // Replace with your settings API endpoint
-        const res = await axios.get("/api/settings/workspace");
+        const res = await api.get("/api/settings/workspace");
         setSettings(res.data);
       } catch {
         // fallback
@@ -34,7 +34,7 @@ const WorkspaceSettings = () => {
 
   const handleSave = async () => {
     try {
-      await axios.put("/api/settings/workspace", settings);
+      await api.put("/api/settings/workspace", settings);
       setSnackbar({ open: true, msg: "Settings updated!" });
     } catch {
       setSnackbar({ open: true, msg: "Update failed." });

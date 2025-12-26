@@ -19,9 +19,7 @@ import {
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { Add, Edit, Delete, PhotoCamera, CloudUpload, DeleteOutline } from "@mui/icons-material";
-import axios from "axios";
-
-const API = process.env.REACT_APP_API_URL || "";
+import api from "../../../utils/api";
 
 const emptyForm = {
   name: "",
@@ -96,7 +94,7 @@ const ServiceManagement = ({ token }) => {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API}/booking/services?active=true`, auth);
+      const { data } = await api.get(`/booking/services?active=true`, auth);
       setServices(data);
     } catch (err) {
       console.error("ServiceManagement load error", err);
@@ -125,7 +123,7 @@ const ServiceManagement = ({ token }) => {
   const handleDelete = async (id) => {
     if (!window.confirm(t("manager.service.confirmDelete"))) return;
     try {
-      await axios.delete(`${API}/booking/services/${id}`, auth);
+      await api.delete(`/booking/services/${id}`, auth);
       await load();
       setSnk({ open: true, key: "manager.service.messages.deleted" });
     } catch (err) {
@@ -137,10 +135,10 @@ const ServiceManagement = ({ token }) => {
   const save = async () => {
     try {
       if (editing) {
-        await axios.put(`${API}/booking/services/${editing.id}`, form, auth);
+        await api.put(`/booking/services/${editing.id}`, form, auth);
         setSnk({ open: true, key: "manager.service.messages.updated" });
       } else {
-        await axios.post(`${API}/booking/services`, form, auth);
+        await api.post(`/booking/services`, form, auth);
         setSnk({ open: true, key: "manager.service.messages.added" });
       }
       handleCloseDialog();
@@ -155,7 +153,7 @@ const ServiceManagement = ({ token }) => {
     setImageModal(true);
     setImageTarget(null);
     try {
-      const { data } = await axios.get(`${API}/booking/services/${row.id}`, auth);
+      const { data } = await api.get(`/booking/services/${row.id}`, auth);
       setImageTarget(data);
     } catch (err) {
       console.error("ServiceManagement openImages error", err);
@@ -177,8 +175,8 @@ const ServiceManagement = ({ token }) => {
 
     setImageUploading(true);
     try {
-      await axios.post(
-        `${API}/booking/services/${imageTarget.id}/images`,
+      await api.post(
+        `/booking/services/${imageTarget.id}/images`,
         formData,
         {
           ...auth,
@@ -188,7 +186,7 @@ const ServiceManagement = ({ token }) => {
           },
         }
       );
-      const { data } = await axios.get(`${API}/booking/services/${imageTarget.id}`, auth);
+      const { data } = await api.get(`/booking/services/${imageTarget.id}`, auth);
       setImageTarget(data);
       setSnk({ open: true, key: "manager.service.messages.updated" });
     } catch (err) {
@@ -205,8 +203,8 @@ const ServiceManagement = ({ token }) => {
   const removeImage = async (imageId) => {
     if (!imageTarget) return;
     try {
-      await axios.delete(`${API}/booking/service-images/${imageId}`, auth);
-      const { data } = await axios.get(`${API}/booking/services/${imageTarget.id}`, auth);
+      await api.delete(`/booking/service-images/${imageId}`, auth);
+      const { data } = await api.get(`/booking/services/${imageTarget.id}`, auth);
       setImageTarget(data);
       setSnk({ open: true, key: "manager.service.messages.updated" });
     } catch (err) {

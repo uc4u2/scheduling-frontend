@@ -10,18 +10,15 @@ import {
   Paper,
   Alert,
 } from "@mui/material";
-import axios from "axios";
+import api from "./utils/api";
 
 const RecruiterAvailabilityTracker = ({ token }) => {
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const [summary, setSummary] = useState([]);
   const [error, setError] = useState("");
 
   const fetchSummary = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/availability-summary`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/manager/availability-summary");
       setSummary(res.data.availability_summary);
       setError("");
     } catch (err) {

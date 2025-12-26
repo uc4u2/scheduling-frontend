@@ -6,7 +6,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { Container, Typography, Alert } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { motion } from "framer-motion";
-import axios from "axios";
+import api from "../utils/api";
 
 const DEFAULT_HEADER = {
   left: "prev,next today",
@@ -27,14 +27,13 @@ const AnimatedCalendar = ({
   const theme = useTheme();
   const [events, setEvents] = useState(initialEvents);
   const [error, setError] = useState("");
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   const shouldFetch = Boolean(token) && fetchOnMount;
 
   const fetchEvents = useCallback(async () => {
     if (!shouldFetch) return;
     try {
-      const response = await axios.get(`${API_URL}/my-availability`, {
+      const response = await api.get(`/my-availability`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const fetchedEvents = response.data.available_slots.map((slot) => ({
@@ -51,7 +50,7 @@ const AnimatedCalendar = ({
     } catch (err) {
       setError("Failed to fetch events");
     }
-  }, [API_URL, shouldFetch, theme.palette.primary.main, theme.palette.success.main, token]);
+  }, [shouldFetch, theme.palette.primary.main, theme.palette.success.main, token]);
 
   useEffect(() => {
     setEvents(initialEvents);

@@ -18,10 +18,8 @@ import HomeIcon from "@mui/icons-material/Home";
 import VolunteerActivismIcon from "@mui/icons-material/VolunteerActivism";
 import RateReviewIcon from "@mui/icons-material/RateReview";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import PublicPageShell from "./PublicPageShell";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import { api } from "../../utils/api";
 
 function hostLabel(url) {
   try {
@@ -64,8 +62,10 @@ export default function PublicReview() {
       setError("");
       try {
         // 0) Verify link via new endpoint
-        const verify = await axios.get(`${API_URL}/api/public/postservice/verify`, {
+        const verify = await api.get(`/api/public/postservice/verify`, {
           params: { t: token, action: "review", appointment_id: Number(appointmentId) },
+          noCompanyHeader: true,
+          noAuth: true,
         });
         if (cancelled) return;
         if (!verify?.data?.ok) {
@@ -75,8 +75,10 @@ export default function PublicReview() {
         }
 
         // 1) Resolve appointment data
-        const resv = await axios.get(`${API_URL}/public/${slug}/feedback/resolve`, {
+        const resv = await api.get(`/public/${slug}/feedback/resolve`, {
           params: { appointment_id: appointmentId, token },
+          noCompanyHeader: true,
+          noAuth: true,
         });
         if (cancelled) return;
         setResolved(resv.data);
@@ -87,7 +89,10 @@ export default function PublicReview() {
           setExtUrl(fromResolve);
         } else {
           try {
-            const cfg = await axios.get(`${API_URL}/public/${slug}/reviews-settings`);
+            const cfg = await api.get(`/public/${slug}/reviews-settings`, {
+              noCompanyHeader: true,
+              noAuth: true,
+            });
             if (!cancelled) setExtUrl(cfg?.data?.review_redirect_url || "");
           } catch {
             /* ignore */
@@ -114,12 +119,12 @@ export default function PublicReview() {
     try {
       setSubmitting(true);
       setError("");
-      await axios.post(`${API_URL}/public/${slug}/feedback/review`, {
+      await api.post(`/public/${slug}/feedback/review`, {
         appointment_id: Number(appointmentId),
         token,
         rating: Number(rating),
         comment: (comment || "").trim(),
-      });
+      }, { noCompanyHeader: true, noAuth: true });
       setDone(true);
     } catch (e) {
       setError(e?.response?.data?.error || "Submit failed.");

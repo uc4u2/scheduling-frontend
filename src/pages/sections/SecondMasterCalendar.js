@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import moment from "moment-timezone";
 
 /* one authoritative helper for the viewer’s zone */
@@ -10,7 +10,6 @@ import { getUserTimezone } from "../../utils/timezone";   // ← path: pages/sec
 /* ------------------------------------------------------------------ */
 export const useRecruiterMeetingHandler = (
   token,
-  API_URL,
   resetForm,
   fetchEvents,
   setIsSubmitting,
@@ -67,7 +66,7 @@ export const useRecruiterMeetingHandler = (
         attendees: form.attendees || [],
       };
 
-      await axios.post(`${API_URL}/api/add-meeting-iso`, payload, {
+      await api.post(`/api/add-meeting-iso`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -115,8 +114,8 @@ export const useRecruiterMeetingHandler = (
         invite_link: form.invite_link || "",
       };
 
-      const res = await axios.post(
-        `${API_URL}/recruiter/direct-booking`,
+      const res = await api.post(
+        `/recruiter/direct-booking`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -136,7 +135,7 @@ export const useRecruiterMeetingHandler = (
   /* ─── Load recruiter calendar (slots & bookings) ─── */
   const fetchRecruiterEvents = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/recruiter/calendar`, {
+      const { data } = await api.get(`/recruiter/calendar`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -177,7 +176,7 @@ export const useRecruiterMeetingHandler = (
   /* helper: lazy‑create Jitsi link when none supplied */
   const ensureInviteLink = async (existing) => {
     if (existing) return existing;
-    const { data } = await axios.get(`${API_URL}/utils/generate-jitsi`, {
+    const { data } = await api.get(`/utils/generate-jitsi`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return data.link;
@@ -193,8 +192,6 @@ export const useRecruiterMeetingHandler = (
 /* ------------------------------------------------------------------ */
 /*  2.  Thin wrapper component that uses the hook                      */
 /* ------------------------------------------------------------------ */
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 const SecondMasterCalendar = ({ token }) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -205,7 +202,6 @@ const SecondMasterCalendar = ({ token }) => {
 
   const { fetchRecruiterEvents } = useRecruiterMeetingHandler(
     token,
-    API_URL,
     () => {},              // resetForm placeholder
     () => fetchRecruiterEvents(),
     setIsSubmitting,

@@ -10,11 +10,9 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PersonIcon from "@mui/icons-material/Person";
-import axios from "axios";
 import { useParams } from "react-router-dom";
 import PublicPageShell from "./PublicPageShell";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import { api } from "../../utils/api";
 
 export default function PublicReviewList({ slug, limit = 20, disableShell = false, compact = false }) {
   // slug can come from props or the route
@@ -70,7 +68,11 @@ export default function PublicReviewList({ slug, limit = 20, disableShell = fals
     setErr("");
     try {
       const enc = encodeURIComponent(effectiveSlug);
-      const { data } = await axios.get(`${API}/public/${enc}/reviews`, { params: { limit } });
+      const { data } = await api.get(`/public/${enc}/reviews`, {
+        params: { limit },
+        noCompanyHeader: true,
+        noAuth: true,
+      });
       const list = Array.isArray(data)
         ? data
         : Array.isArray(data?.reviews)
@@ -91,7 +93,7 @@ export default function PublicReviewList({ slug, limit = 20, disableShell = fals
     setEligLoading(true);
     try {
       const enc = encodeURIComponent(effectiveSlug);
-      const { data } = await axios.get(`${API}/client/${enc}/reviews/eligibility`, {
+      const { data } = await api.get(`/client/${enc}/reviews/eligibility`, {
         headers: { Authorization: `Bearer ${clientToken}` },
       });
       const payload = {
@@ -144,8 +146,8 @@ export default function PublicReviewList({ slug, limit = 20, disableShell = fals
     try {
       setForm((f) => ({ ...f, submitting: true, error: "" }));
       const enc = encodeURIComponent(effectiveSlug);
-      await axios.post(
-        `${API}/client/${enc}/feedback/review`,
+      await api.post(
+        `/client/${enc}/feedback/review`,
         {
           appointment_id: form.apptId,
           rating: Number(form.rating),

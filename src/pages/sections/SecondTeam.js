@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import api from "../../utils/api";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -36,7 +37,6 @@ import { useNavigate } from "react-router-dom";
 import { DateTime } from "luxon";
 import { getUserTimezone } from "../../utils/timezone";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const viewerTimezone = getUserTimezone();
 
@@ -169,24 +169,20 @@ const SecondTeam = () => {
     if (!window.confirm("Are you sure you want to delete selected shifts?")) return;
   
     try {
-      const res = await fetch(`${API_URL}/automation/shifts/delete-bulk`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify({ shift_ids: selectedShiftIds })
-      });
-  
-      const result = await res.json();
-  
-      if (res.ok) {
-        setSuccessMsg(result.message || "Shifts deleted successfully.");
-        setSelectedShiftIds([]);
-        fetchShifts();
-      } else {
-        setErrorMsg(result.error || "Error deleting shifts.");
-      }
+      const res = await api.post(
+        "/automation/shifts/delete-bulk",
+        { shift_ids: selectedShiftIds },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+        }
+      );
+      const result = res.data || {};
+      setSuccessMsg(result.message || "Shifts deleted successfully.");
+      setSelectedShiftIds([]);
+      fetchShifts();
     } catch (err) {
       setErrorMsg("Bulk delete failed.");
     }
@@ -197,9 +193,8 @@ const SecondTeam = () => {
     if (!editingShift) return;
   
     try {
-      await fetch(`${API_URL}/automation/shifts/delete/${editingShift.id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders()
+      await api.delete(`/automation/shifts/delete/${editingShift.id}`, {
+        headers: getAuthHeaders(),
       });
       setSuccessMsg("Shift deleted successfully.");
       setModalOpen(false);
@@ -235,13 +230,11 @@ const SecondTeam = () => {
     }
   
     try {
-      await fetch(`${API_URL}/automation/shifts/update/${editingShift.id}`, {
-        method: "PUT",
+      await api.put(`/automation/shifts/update/${editingShift.id}`, payload, {
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaders()
+          ...getAuthHeaders(),
         },
-        body: JSON.stringify(payload)
       });
       setSuccessMsg("Shift updated successfully.");
       setModalOpen(false);
@@ -261,10 +254,10 @@ const SecondTeam = () => {
   // Fetch recruiters
   const fetchRecruiters = async () => {
     try {
-      const res = await fetch(`${API_URL}/manager/recruiters`, {
-        headers: getAuthHeaders()
+      const res = await api.get("/manager/recruiters", {
+        headers: getAuthHeaders(),
       });
-      const data = await res.json();
+      const data = res.data;
       setRecruiters(data.recruiters || []);
     } catch (err) {
       setErrorMsg("Failed to fetch recruiters.");
@@ -276,10 +269,11 @@ const SecondTeam = () => {
     try {
       const now = new Date();
       const month = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
-      const res = await fetch(`${API_URL}/automation/shifts/monthly?month=${month}`, {
-        headers: getAuthHeaders()
+      const res = await api.get("/automation/shifts/monthly", {
+        params: { month },
+        headers: getAuthHeaders(),
       });
-      const data = await res.json();
+      const data = res.data;
       const normalized = (data.shifts || []).map((shift) => {
         const zone = shift.timezone || viewerTimezone;
         const clock_in_display = toLocalIso(shift.clock_in, zone);
@@ -422,20 +416,13 @@ const SecondTeam = () => {
         };
         
         try {
-          const res = await fetch(`${API_URL}/automation/shifts/create`, {
-            method: "POST",
+          await api.post("/automation/shifts/create", payload, {
             headers: {
               "Content-Type": "application/json",
-              ...getAuthHeaders()
+              ...getAuthHeaders(),
             },
-            body: JSON.stringify(payload)
           });
-  
-          if (!res.ok) {
-            failures.push(`🔴 Failed - Recruiter ${recruiterId} on ${dateStr}`);
-          } else {
-            successCount++;
-          }
+          successCount++;
         } catch (err) {
           failures.push(`🔴 Error - Recruiter ${recruiterId} on ${dateStr}`);
         }
@@ -478,22 +465,16 @@ const SecondTeam = () => {
       status: pendingEventUpdate.status
     };
     try {
-      const res = await fetch(`${API_URL}/automation/shifts/update/${pendingEventUpdate.id}`, {
-        method: "PUT",
+      await api.put(`/automation/shifts/update/${pendingEventUpdate.id}`, payload, {
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaders()
+          ...getAuthHeaders(),
         },
-        body: JSON.stringify(payload)
       });
-      if (res.ok) {
-        setSuccessMsg("Shift update saved successfully.");
-        setPendingEventUpdate(null);
-        pendingRevertCallbackRef.current = null;
-        fetchShifts();
-      } else {
-        setErrorMsg("Error saving shift update.");
-      }
+      setSuccessMsg("Shift update saved successfully.");
+      setPendingEventUpdate(null);
+      pendingRevertCallbackRef.current = null;
+      fetchShifts();
     } catch (err) {
       setErrorMsg("Error saving shift update.");
     }
@@ -808,9 +789,8 @@ const calendarEvents = filteredShifts.map(s => ({
       color="error"
       onClick={async () => {
         try {
-          await fetch(`${API_URL}/automation/shifts/delete/${pendingEventUpdate.id}`, {
-            method: "DELETE",
-            headers: getAuthHeaders()
+          await api.delete(`/automation/shifts/delete/${pendingEventUpdate.id}`, {
+            headers: getAuthHeaders(),
           });
           setSuccessMsg("Shift deleted.");
           setPendingEventUpdate(null);

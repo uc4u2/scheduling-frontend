@@ -19,16 +19,10 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import axios from "axios";
+import api from "../../../utils/api";
 import { pad } from "../../../utils/datetime";
 import { DateTime } from "luxon";
 import { useNavigate } from "react-router-dom";
-import { API_BASE_URL } from "../../../utils/api";
-
-const API_URL =
-  (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
-  API_BASE_URL ||
-  "https://scheduling-application.onrender.com";
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHIFT_LOOKAHEAD_DAYS = 21;
 
@@ -110,14 +104,14 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   useEffect(() => {
     if (!token) return;
 
-    axios
-      .get(`${API_URL}/api/departments`, { headers: { Authorization: `Bearer ${token}` } })
+    api
+      .get(`/api/departments`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => setDepartments(r.data || []))
       .catch(() => setError("Failed to load departments."));
 
     setLoadingEmployees(true);
-    axios
-      .get(`${API_URL}/manager/recruiters?active=true`, { headers: { Authorization: `Bearer ${token}` } })
+    api
+      .get(`/manager/recruiters?active=true`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) =>
         setEmployees(
           (r.data.recruiters || r.data || []).map((e) => ({
@@ -129,8 +123,8 @@ const EmployeeAvailabilityManagement = ({ token }) => {
       .catch(() => setError("Failed to load employees."))
       .finally(() => setLoadingEmployees(false));
 
-    axios
-      .get(`${API_URL}/api/shift-templates`, { headers: { Authorization: `Bearer ${token}` } })
+    api
+      .get(`/api/shift-templates`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) =>
         setTemplates(
           (r.data || []).map((t) => ({
@@ -148,8 +142,8 @@ const EmployeeAvailabilityManagement = ({ token }) => {
       )
       .catch(() => setError("Failed to load shift templates."));
 
-    axios
-      .get(`${API_URL}/booking/services`, { headers: { Authorization: `Bearer ${token}` } })
+    api
+      .get(`/booking/services`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => setServices(r.data || []))
       .catch(() => setError("Failed to load services."));
   }, [token]);
@@ -171,8 +165,8 @@ useEffect(() => {
     const emp = employees.find((e) => e.id === selectedEmployeeId);
     setSelectedEmployeeTimezone(emp?.timezone || "UTC");
 
-    axios
-      .get(`${API_URL}/api/manager/employees/${selectedEmployeeId}/availability`, {
+    api
+      .get(`/api/manager/employees/${selectedEmployeeId}/availability`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((r) => {
@@ -195,9 +189,9 @@ const loadAssignedShifts = useCallback(() => {
   const start = DateTime.now().startOf("day");
   const end = start.plus({ days: SHIFT_LOOKAHEAD_DAYS });
   setLoadingShifts(true);
-  axios
+  api
     .get(
-      `${API_URL}/automation/shifts/range?start_date=${start.toISODate()}&end_date=${end.toISODate()}&recruiter_ids=${selectedEmployeeId}`,
+      `/automation/shifts/range?start_date=${start.toISODate()}&end_date=${end.toISODate()}&recruiter_ids=${selectedEmployeeId}`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
     .then((r) => setAssignedShifts(r.data?.shifts || []))
@@ -279,8 +273,8 @@ useEffect(() => {
             "minutes"
           ).minutes
         );
-        await axios.post(
-          `${API_URL}/set-daily-availability`,
+        await api.post(
+          `/set-daily-availability`,
           {
             recruiter_id: selectedEmployeeId,
             date,
@@ -308,8 +302,8 @@ useEffect(() => {
     }
     setLoading(true);
     try {
-      await axios.post(
-        `${API_URL}/api/manager/employees/${selectedEmployeeId}/set-recurring-availability`,
+      await api.post(
+        `/api/manager/employees/${selectedEmployeeId}/set-recurring-availability`,
         {
           start_date: startDate,
           end_date: endDate,
@@ -339,8 +333,8 @@ useEffect(() => {
     }
     setLoading(true);
     try {
-      await axios.post(
-        `${API_URL}/api/manager/employees/${selectedEmployeeId}/add-service-slot`,
+      await api.post(
+        `/api/manager/employees/${selectedEmployeeId}/add-service-slot`,
         {
           service_id: selectedServiceId,
           date: slotDate,

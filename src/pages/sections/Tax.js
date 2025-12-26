@@ -5,10 +5,8 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 } from "@mui/material";
 import { AddCircle, RemoveCircle } from "@mui/icons-material";
-import axios from "axios";
+import api from "../../utils/api";
 import ManagementFrame from "../../components/ui/ManagementFrame";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const CA_PROVINCES = [
   "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU",
@@ -69,7 +67,7 @@ export default function Tax() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${API_URL}/automation/tax/config`, {
+      await api.post(`/automation/tax/config`, {
         year: Number(year),
         region: regionKey,
         brackets: cleanedBrackets
@@ -88,7 +86,7 @@ export default function Tax() {
     if (!window.confirm(`Delete config for ${region} - ${year}?`)) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_URL}/automation/tax/config`, {
+      await api.delete(`/automation/tax/config`, {
         params: { year, region },
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -122,7 +120,7 @@ export default function Tax() {
     if (!window.confirm(`Delete ${selectedConfigs.length} tax config(s)?`)) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_URL}/automation/tax/config`, {
+      await api.delete(`/automation/tax/config`, {
         data: { items: selectedConfigs },
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -138,7 +136,7 @@ export default function Tax() {
   const fetchExistingConfigs = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_URL}/automation/tax/config/all`, {
+      const res = await api.get(`/automation/tax/config/all`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setExistingConfigs(res.data || []);

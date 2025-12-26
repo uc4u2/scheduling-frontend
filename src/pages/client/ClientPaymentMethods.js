@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
-import axios from "axios";
+import api from "../../utils/api";
 
 export default function ClientPaymentMethods() {
   const [methods, setMethods] = useState([]);
@@ -21,7 +21,7 @@ export default function ClientPaymentMethods() {
 
   const fetchMethods = useCallback(() => {
     setLoading(true);
-    axios
+    api
       .get("/payments")
       .then((res) => setMethods(res.data))
       .catch((err) => {
@@ -47,7 +47,7 @@ export default function ClientPaymentMethods() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`/payments/${id}`);
+      await api.delete(`/payments/${id}`);
       fetchMethods();
     } catch (err) {
       console.error("Failed to delete payment method:", err);
@@ -72,7 +72,7 @@ export default function ClientPaymentMethods() {
         items: [],
       };
 
-      const { data } = await axios.post(`/public/${site}/checkout/session`, payload, {
+      const { data } = await api.post(`/public/${site}/checkout/session`, payload, {
         headers: { "Content-Type": "application/json" },
       });
 

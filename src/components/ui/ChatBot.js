@@ -15,7 +15,7 @@ import SendIcon from "@mui/icons-material/Send";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import axios from "axios";
+import api from "../../utils/api";
 
 const BASE_CHIPS = [
   "Scheduling & time tracking",
@@ -61,12 +61,7 @@ const ChatBot = () => {
     setLoading(true);
 
     try {
-      const apiBase =
-        process.env.REACT_APP_API_URL ||
-        (typeof window !== "undefined" && window.__ENV__?.API_URL) ||
-        "http://localhost:5000";
-      const url = `${apiBase.replace(/\/$/, "")}/chat`;
-      const res = await axios.post(url, {
+      const res = await api.post("/chat", {
         message: content,
       });
 

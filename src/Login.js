@@ -14,8 +14,8 @@ import {
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import TimezoneSelect from "./components/TimezoneSelect";
-import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
+import { api, publicSite } from "./utils/api";
 
 const ROLE_OPTIONS = [
   {
@@ -42,10 +42,6 @@ const detectedTz =
   (typeof Intl !== "undefined" &&
     Intl.DateTimeFormat().resolvedOptions().timeZone) ||
   "America/New_York";
-
-const API_URL =
-  (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
-  "http://localhost:5000";
 
 // Helper: append query params to a URL safely
 function appendQuery(url, paramsObj = {}) {
@@ -130,14 +126,9 @@ const Login = ({ setToken }) => {
       return String(hintedCompanyId);
     }
 
-    const authed = axios.create({
-      baseURL: API_URL,
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
     // 2) Try manager endpoints if available
     try {
-      const r1 = await authed.get("/manager/profile");
+      const r1 = await api.get("/manager/profile");
       const id =
         r1?.data?.company_id ||
         r1?.data?.company?.id ||
@@ -149,7 +140,7 @@ const Login = ({ setToken }) => {
     } catch {}
 
     try {
-      const r2 = await authed.get("/api/company/me");
+      const r2 = await api.get("/api/company/me");
       const id =
         r2?.data?.company_id ||
         r2?.data?.company?.id ||
@@ -164,8 +155,8 @@ const Login = ({ setToken }) => {
     const site = siteForRedirect();
     if (site) {
       try {
-        const r3 = await axios.get(`${API_URL}/api/public/${site}/website`);
-        const id = r3?.data?.company_id || r3?.data?.company?.id;
+        const r3 = await publicSite.getBySlug(site);
+        const id = r3?.company_id || r3?.company?.id;
         if (id) {
           localStorage.setItem("company_id", String(id));
           return String(id);
@@ -184,13 +175,17 @@ const Login = ({ setToken }) => {
     const targetRole = getRoleMeta(selectedRole).apiValue;
 
     try {
-      const res = await axios.post(`${API_URL}/login`, {
+      const res = await api.post(
+        `/login`,
+        {
         email,
         password,
         role: targetRole,
         timezone,
         remember_device: rememberDevice,
-      });
+        },
+        { noAuth: true, noCompanyHeader: true }
+      );
 
       if (targetRole === "client" && res.data?.access_token) {
         const token = res.data.access_token;
@@ -224,10 +219,11 @@ const Login = ({ setToken }) => {
     setMessage("");
 
     try {
-      const res = await axios.post(`${API_URL}/verify-otp`, {
-        email,
-        otp,
-      });
+      const res = await api.post(
+        `/verify-otp`,
+        { email, otp },
+        { noAuth: true, noCompanyHeader: true }
+      );
 
       const token = res.data?.access_token;
       if (!token) throw new Error("No access token returned.");
@@ -284,7 +280,11 @@ const Login = ({ setToken }) => {
     setError("");
     setMessage("Sending a new code...");
     try {
-      await axios.post(`${API_URL}/login/resend-otp`, { email });
+      await api.post(
+        `/login/resend-otp`,
+        { email },
+        { noAuth: true, noCompanyHeader: true }
+      );
       setMessage("We just sent a new code. It may take a moment to arrive.");
       setResendCooldown(45);
     } catch (err) {

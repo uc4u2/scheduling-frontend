@@ -1,6 +1,6 @@
 // src/pages/analytics/EnterpriseAnalytics.js
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../../utils/api";
 import dayjs from "dayjs";
 import quarterOfYear from "dayjs/plugin/quarterOfYear";
 
@@ -34,8 +34,6 @@ import ClientsSegmentsTab from "./ClientsSegmentsTab";
 import SegmentsPanel from "./SegmentsPanel";
 
 dayjs.extend(quarterOfYear);
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 /* ---------- Small KPI card ---------- */
 const KPI = ({ label, value, help }) => (
@@ -91,10 +89,10 @@ export default function EnterpriseAnalytics() {
     setErr("");
     setLoading(true);
     try {
-      const url = `${API_URL}/api/manager/analytics/summary?from=${from}&to=${to}&tz=${encodeURIComponent(
+      const url = `/api/manager/analytics/summary?from=${from}&to=${to}&tz=${encodeURIComponent(
         tz
       )}&group=${group}`;
-      const { data } = await axios.get(url, auth);
+      const { data } = await api.get(url, auth);
       setData(data);
     } catch (e) {
       setData(null);
@@ -106,10 +104,10 @@ export default function EnterpriseAnalytics() {
 
   const fetchTips = async () => {
     try {
-      const url = `${API_URL}/api/manager/tips/summary?from=${from}&to=${to}&tz=${encodeURIComponent(
+      const url = `/api/manager/tips/summary?from=${from}&to=${to}&tz=${encodeURIComponent(
         tz
       )}`;
-      const { data } = await axios.get(url, auth);
+      const { data } = await api.get(url, auth);
       setTips(data?.tips_by_recipient || []);
     } catch {
       setTips([]);
@@ -119,10 +117,10 @@ export default function EnterpriseAnalytics() {
   const fetchAdvanced = async () => {
     setAdvErr("");
     try {
-      const url = `${API_URL}/api/manager/analytics/advanced?from=${from}&to=${to}&tz=${encodeURIComponent(
+      const url = `/api/manager/analytics/advanced?from=${from}&to=${to}&tz=${encodeURIComponent(
         tz
       )}`;
-      const { data } = await axios.get(url, auth);
+      const { data } = await api.get(url, auth);
       setAdvanced(data || {});
     } catch (e) {
       setAdvanced(null);

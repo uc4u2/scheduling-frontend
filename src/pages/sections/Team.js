@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import api from "../../utils/api";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -95,7 +96,6 @@ const hexToRgba = (hex, alpha = 0.15) => {
 // ------------------------------------------------------------------------------------
 // Constants & utils
 // ------------------------------------------------------------------------------------
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const dayIndexToLabel = (value) => {
   if (typeof value === "string") {
@@ -495,8 +495,7 @@ const asLocalDate = (ymd) => {
   // single delete (re-uses your bulk delete API)
   const handleDeleteSingle = async (id) => {
     try {
-      await fetch(`${API_URL}/automation/shifts/delete/${id}`, {
-        method: "DELETE",
+      await api.delete(`/automation/shifts/delete/${id}`, {
         headers: getAuthHeaders(),
       });
       setSuccessMsg("Shift deleted.");
@@ -652,10 +651,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/departments`, {
+        const res = await api.get("/api/departments", {
           headers: getAuthHeaders(),
         });
-        const data = await res.json();
+        const data = res.data;
         setDepartments(toArray(data?.departments || data));
       } catch {
         setErrorMsg("Failed to fetch departments.");
@@ -678,11 +677,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   useEffect(() => {
     const loadTemplates = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/shift-templates`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        });
-        if (!res.ok) throw new Error("API error");
-        const data = await res.json();
+        const res = await api.get("/api/shift-templates");
+        const data = res.data;
 
         const list = (data || []).map((t) => ({
           id: t.id,
@@ -716,19 +712,23 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       try {
         const results = await Promise.all(
           selectedRecruiters.map(async (rid) => {
-            const res = await fetch(
-              `${API_URL}/manager/recruiters/${rid}/availability?start_date=${dateRange.start}&end_date=${dateRange.end}`,
-              { headers: getAuthHeaders() }
-            );
-            if (!res.ok) {
+            try {
+              const res = await api.get(`/manager/recruiters/${rid}/availability`, {
+                params: {
+                  start_date: dateRange.start,
+                  end_date: dateRange.end,
+                },
+                headers: getAuthHeaders(),
+              });
+              const data = res.data;
+              const slots = (data?.availability || data || []).map((slot) => ({
+                ...slot,
+                recruiter_id: rid,
+              }));
+              return { recruiterId: rid, slots };
+            } catch {
               return { recruiterId: rid, slots: [] };
             }
-            const data = await res.json();
-            const slots = (data?.availability || data || []).map((slot) => ({
-              ...slot,
-              recruiter_id: rid,
-            }));
-            return { recruiterId: rid, slots };
           })
         );
         const overlayEvents = results.flatMap(({ recruiterId, slots }) =>
@@ -763,11 +763,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       if (selectedDepartment) {
         params.set("department_id", selectedDepartment);
       }
-      const res = await fetch(
-        `${API_URL}/manager/recruiters?${params.toString()}`,
-        { headers: getAuthHeaders() }
-      );
-      const data = await res.json();
+      const res = await api.get("/manager/recruiters", {
+        params: Object.fromEntries(params.entries()),
+        headers: getAuthHeaders(),
+      });
+      const data = res.data;
       const list = (data.recruiters || []).map((r) => ({
         ...r,
         name: r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim(),
@@ -781,11 +781,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
   const fetchTimePolicy = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/manager/time-tracking-policy`, {
+      const res = await api.get("/manager/time-tracking-policy", {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = res.data;
       setTimePolicy(data?.policy || null);
     } catch {
       setTimePolicy(null);
@@ -797,9 +796,15 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       const ids = selectedRecruiters.length
         ? selectedRecruiters.join(",")
         : recruiters.map((r) => r.id).join(",");
-      const url = `${API_URL}/automation/shifts/range?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
-      const res = await fetch(url, { headers: getAuthHeaders() });
-      const data = await res.json();
+      const res = await api.get("/automation/shifts/range", {
+        params: {
+          start_date: dateRange.start,
+          end_date: dateRange.end,
+          recruiter_ids: ids,
+        },
+        headers: getAuthHeaders(),
+      });
+      const data = res.data;
       setShifts((data.shifts || []).map(enrichShift));
     } catch {
       setErrorMsg("Failed to fetch shifts.");
@@ -814,15 +819,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       if (selectedRecruiters.length === 1) {
         params.set("recruiter_id", String(selectedRecruiters[0]));
       }
-      const res = await fetch(`${API_URL}/manager/time-entries?${params.toString()}`, {
+      const res = await api.get("/manager/time-entries", {
+        params: Object.fromEntries(params.entries()),
         headers: getAuthHeaders(),
       });
-      if (!res.ok) {
-        setTimeEntriesMap({});
-        setRosterMap({});
-        return;
-      }
-      const data = await res.json();
+      const data = res.data;
       const entryMap = {};
       (data?.time_entries || []).forEach((entry) => {
         if (!entry || !entry.id) return;
@@ -851,11 +852,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       const startDate = format(addDays(asLocalDate(fallbackDate), -7), "yyyy-MM-dd");
       const endDate = format(addDays(asLocalDate(fallbackDate), 14), "yyyy-MM-dd");
       try {
-        const res = await fetch(
-          `${API_URL}/manager/recruiters/${recruiterId}/availability?start_date=${startDate}&end_date=${endDate}`,
-          { headers: getAuthHeaders() }
-        );
-        const data = await res.json();
+        const res = await api.get(`/manager/recruiters/${recruiterId}/availability`, {
+          params: { start_date: startDate, end_date: endDate },
+          headers: getAuthHeaders(),
+        });
+        const data = res.data;
         const slots = (data?.availability || data || []).map((slot) => ({
           ...slot,
           id: slot.id,
@@ -1055,25 +1056,16 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       status: pendingEventUpdate.status,
     };
     try {
-      const res = await fetch(
-        `${API_URL}/automation/shifts/update/${pendingEventUpdate.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...getAuthHeaders(),
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-      if (res.ok) {
-        setSuccessMsg("Shift update saved successfully.");
-        setPendingEventUpdate(null);
-        pendingRevertCallbackRef.current = null;
-        fetchShifts();
-      } else {
-        setErrorMsg("Error saving shift update.");
-      }
+      await api.put(`/automation/shifts/update/${pendingEventUpdate.id}`, payload, {
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+      });
+      setSuccessMsg("Shift update saved successfully.");
+      setPendingEventUpdate(null);
+      pendingRevertCallbackRef.current = null;
+      fetchShifts();
     } catch {
       setErrorMsg("Error saving shift update.");
     }
@@ -1352,28 +1344,26 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const id = templates[editingTemplateIndex]?.id;
     const url =
       method === "POST"
-        ? `${API_URL}/api/shift-templates`
-        : `${API_URL}/api/shift-templates/${id}`;
+        ? `/api/shift-templates`
+        : `/api/shift-templates/${id}`;
 
     try {
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Failed to save template");
+      if (method === "POST") {
+        await api.post(url, payload, {
+          headers: { "Content-Type": "application/json" },
+        });
+      } else {
+        await api.put(url, payload, {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
 
       setTemplateModalOpen(false);
       setEditingTemplateIndex(null);
 
       // reload templates
-      const resReload = await fetch(`${API_URL}/api/shift-templates`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      const dataReload = await resReload.json();
+      const resReload = await api.get("/api/shift-templates");
+      const dataReload = resReload.data;
       const listReload = (dataReload || []).map((t) => ({
         id: t.id,
         label: t.name,
@@ -1517,19 +1507,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         );
 
         try {
-          const res = await fetch(`${API_URL}/automation/shifts/create`, {
-            method: "POST",
+          await api.post("/automation/shifts/create", payload, {
             headers: {
               "Content-Type": "application/json",
               ...getAuthHeaders(),
             },
-            body: JSON.stringify(payload),
           });
-          if (!res.ok) {
-            failures.push(`🔴 Failed - Recruiter ${recruiterId} on ${slot.date}`);
-          } else {
-            successCount++;
-          }
+          successCount++;
         } catch {
           failures.push(`🔴 Error - Recruiter ${recruiterId} on ${slot.date}`);
         }
@@ -1557,19 +1541,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           );
 
           try {
-            const res = await fetch(`${API_URL}/automation/shifts/create`, {
-              method: "POST",
+            await api.post("/automation/shifts/create", payload, {
               headers: {
                 "Content-Type": "application/json",
                 ...getAuthHeaders(),
               },
-              body: JSON.stringify(payload),
             });
-            if (!res.ok) {
-              failures.push(`🔴 Failed - Recruiter ${recruiterId} on ${dateStr}`);
-            } else {
-              successCount++;
-            }
+            successCount++;
           } catch {
             failures.push(`🔴 Error - Recruiter ${recruiterId} on ${dateStr}`);
           }
@@ -1625,13 +1603,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     }
 
     try {
-      await fetch(`${API_URL}/automation/shifts/update/${editingShift.id}`, {
-        method: "PUT",
+      await api.put(`/automation/shifts/update/${editingShift.id}`, payload, {
         headers: {
           "Content-Type": "application/json",
           ...getAuthHeaders(),
         },
-        body: JSON.stringify(payload),
       });
       setSuccessMsg("Shift updated successfully.");
       setModalOpen(false);
@@ -1644,8 +1620,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   const handleDeleteShift = async () => {
     if (!editingShift) return;
     try {
-      await fetch(`${API_URL}/automation/shifts/delete/${editingShift.id}`, {
-        method: "DELETE",
+      await api.delete(`/automation/shifts/delete/${editingShift.id}`, {
         headers: getAuthHeaders(),
       });
       setSuccessMsg("Shift deleted successfully.");
@@ -1659,22 +1634,20 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   const handleBulkDeleteShifts = async () => {
     if (!window.confirm("Are you sure you want to delete selected shifts?")) return;
     try {
-      const res = await fetch(`${API_URL}/automation/shifts/delete-bulk`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({ shift_ids: selectedShiftIds }),
-      });
-      const result = await res.json();
-      if (res.ok) {
-        setSuccessMsg(result.message || "Shifts deleted successfully.");
-        setSelectedShiftIds([]);
-        fetchShifts();
-      } else {
-        setErrorMsg(result.error || "Error deleting shifts.");
-      }
+      const res = await api.post(
+        "/automation/shifts/delete-bulk",
+        { shift_ids: selectedShiftIds },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+        }
+      );
+      const result = res.data || {};
+      setSuccessMsg(result.message || "Shifts deleted successfully.");
+      setSelectedShiftIds([]);
+      fetchShifts();
     } catch {
       setErrorMsg("Bulk delete failed.");
     }
@@ -1704,14 +1677,17 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const ids = selectedRecruiters.length
       ? selectedRecruiters.join(",")
       : recruiters.map((r) => r.id).join(",");
-      const url = `${API_URL}/automation/shifts/export?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
     try {
-      const res = await fetch(url, { headers: getAuthHeaders() });
-      if (!res.ok) {
-        setErrorMsg("Failed to export shifts.");
-        return;
-      }
-      const blob = await res.blob();
+      const res = await api.get("/automation/shifts/export", {
+        params: {
+          start_date: dateRange.start,
+          end_date: dateRange.end,
+          recruiter_ids: ids,
+        },
+        responseType: "blob",
+        headers: getAuthHeaders(),
+      });
+      const blob = res.data;
       const urlBlob = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = urlBlob;
@@ -2469,10 +2445,9 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                 color="error"
                 onClick={async () => {
                   try {
-                    await fetch(
-                      `${API_URL}/automation/shifts/delete/${pendingEventUpdate.id}`,
-                      { method: "DELETE", headers: getAuthHeaders() }
-                    );
+                    await api.delete(`/automation/shifts/delete/${pendingEventUpdate.id}`, {
+                      headers: getAuthHeaders(),
+                    });
                     setSuccessMsg("Shift deleted.");
                     setPendingEventUpdate(null);
                     pendingRevertCallbackRef.current = null;

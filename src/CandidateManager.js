@@ -12,9 +12,8 @@ import {
   Chip,
   Stack,
 } from "@mui/material";
-import axios from "axios";
+import api from "./utils/api";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const toConversionLabel = (value) => {
   const status = (value || "").toLowerCase();
   if (!status || status === "none") return "Not requested";
@@ -40,7 +39,7 @@ const CandidateManager = ({ token }) => {
   useEffect(() => {
     const fetchCandidates = async () => {
       try {
-        const res = await axios.get(`${API_URL}/recruiter/candidates`, {
+        const res = await api.get(`/recruiter/candidates`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log("Fetched candidates:", res.data);
@@ -60,7 +59,7 @@ const CandidateManager = ({ token }) => {
   const updateCandidate = async (id, field, value) => {
     try {
       const updatedCandidate = { [field]: value };
-      await axios.put(`${API_URL}/recruiter/candidates/${id}`, updatedCandidate, {
+      await api.put(`/recruiter/candidates/${id}`, updatedCandidate, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSaveStatus((prev) => ({ ...prev, [id]: "Saved!" }));

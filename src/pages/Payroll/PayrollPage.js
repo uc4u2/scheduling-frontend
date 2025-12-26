@@ -14,7 +14,7 @@
 
 import React, { useEffect, useState } from "react";
 import dayjs from "dayjs";
-import axios from "axios";
+import api, { API_BASE_URL } from "../../utils/api";
 import { recalcNetPay, savePayroll, exportPayroll, updateDeductionFromPct } from "./netpay";
 
 // ✅ Imports (make sure these exist at the top)
@@ -90,7 +90,6 @@ export default function Payroll({ token }) {
   const [ytdTotals, setYtdTotals] = useState(null);
 
   // Adjust to your actual backend route
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const downloadExport = async (format, recruiterId, month, region, token) => {
     try {
       await exportPayroll({
@@ -135,8 +134,8 @@ export default function Payroll({ token }) {
   // ✅ Add inside useEffect or when recruiter/month changes (fetch YTD):
   useEffect(() => {
     if (selectedRecruiter && month) {
-      axios
-        .get(`${API_URL}/payroll/ytd`, {
+      api
+        .get(`/payroll/ytd`, {
           params: {
             recruiter_id: selectedRecruiter,
             year: new Date().getFullYear(),
@@ -160,7 +159,7 @@ export default function Payroll({ token }) {
   // Fetch list of recruiters
   const fetchRecruiters = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/recruiters`, {
+      const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (Array.isArray(res.data)) {
@@ -178,8 +177,8 @@ export default function Payroll({ token }) {
   const fetchPayslipHistory = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(
-        `${API_URL}/payroll/history?recruiter_id=${selectedRecruiter}`,
+      const res = await api.get(
+        `/payroll/history?recruiter_id=${selectedRecruiter}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setPayslipHistory(res.data || []);
@@ -236,8 +235,8 @@ export default function Payroll({ token }) {
     if (!selectedRecruiter) return;
     setLoading(true);
     try {
-      const res = await axios.post(
-        `${API_URL}/automation/payroll/generate`,
+      const res = await api.post(
+        `/automation/payroll/generate`,
         { recruiter_id: selectedRecruiter, month, region },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -1014,7 +1013,7 @@ const formatCurrency = (val) => {
                             variant="outlined"
                             onClick={() => {
                               // example only
-                              const url = `${API_URL}/automation/payroll/payslip-pdf?recruiter_id=${selectedRecruiter}&month=${month}&region=${region}`;
+                              const url = `${API_BASE_URL}/automation/payroll/payslip-pdf?recruiter_id=${selectedRecruiter}&month=${month}&region=${region}`;
 window.open(url, "_blank");
 
                             }}

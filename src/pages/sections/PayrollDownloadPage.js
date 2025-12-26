@@ -11,7 +11,7 @@ import {
   Paper,
   Divider
 } from "@mui/material";
-import axios from "axios";
+import api from "../../utils/api";
 
 const PayrollDownloadPage = () => {
   const { id } = useParams();
@@ -19,12 +19,10 @@ const PayrollDownloadPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   useEffect(() => {
     const fetchPayroll = async () => {
       try {
-        const res = await axios.get(`${API_URL}/main/payroll_portal_metadata/${id}`);
+        const res = await api.get(`/main/payroll_portal_metadata/${id}`);
         setPayroll(res.data);
       } catch (err) {
         console.error("Payroll fetch failed", err);
@@ -35,14 +33,14 @@ const PayrollDownloadPage = () => {
     };
 
     fetchPayroll();
-  }, [id, API_URL]);
+  }, [id]);
 
   const handleDownload = async () => {
     try {
-      const res = await fetch(`${API_URL}/main/payroll_portal_download/${id}`);
-      if (!res.ok) throw new Error("Download failed");
-
-      const blob = await res.blob();
+      const res = await api.get(`/main/payroll_portal_download/${id}`, {
+        responseType: "blob",
+      });
+      const blob = res.data;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

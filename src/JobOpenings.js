@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from "./utils/api";
 import { Button, Alert, Typography, Grid, Card, CardContent } from '@mui/material';
 
 const JobOpenings = () => {
@@ -9,7 +9,7 @@ const JobOpenings = () => {
   useEffect(() => {
     const fetchJobOpenings = async () => {
       try {
-        const response = await axios.get('/api/manager/job-openings');
+        const response = await api.get('/api/manager/job-openings');
         setJobOpenings(response.data);
       } catch (err) {
         setError('Failed to load job openings');

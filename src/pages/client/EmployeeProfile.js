@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import PublicPageShell from "./PublicPageShell";
 import {
@@ -16,8 +16,6 @@ import {
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EmployeeAvailabilityCalendar from "./EmployeeAvailabilityCalendar";
-
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const PRESERVED_QUERY_KEYS = [
   "embed",
@@ -62,9 +60,9 @@ const EmployeeProfile = () => {
     if (!effectiveSlug) return;
     setLoadingProfile(true);
     setError("");
-    axios
+    api
       .get(
-        `${API_BASE}/public/${effectiveSlug}/artists/${employeeId}${departmentId ? `?department_id=${departmentId}` : ""}`
+        `/public/${effectiveSlug}/artists/${employeeId}${departmentId ? `?department_id=${departmentId}` : ""}`
       )
       .then((res) => {
         setProfile(res.data);
@@ -80,9 +78,9 @@ const EmployeeProfile = () => {
   useEffect(() => {
     if (!effectiveSlug) return;
     setLoadingServices(true);
-    axios
+    api
       .get(
-        `${API_BASE}/public/${effectiveSlug}/artist/${employeeId}/services${departmentId ? `?department_id=${departmentId}` : ""}`
+        `/public/${effectiveSlug}/artist/${employeeId}/services${departmentId ? `?department_id=${departmentId}` : ""}`
       )
       .then((res) => setServices(Array.isArray(res.data) ? res.data : []))
       .catch(() => setServices([]))

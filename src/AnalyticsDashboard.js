@@ -18,7 +18,7 @@ import {
   Box,
   Stack,
 } from "@mui/material";
-import axios from "axios";
+import api from "./utils/api";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { CSVLink } from "react-csv";
 import dayjs from "dayjs";
@@ -48,24 +48,18 @@ const AnalyticsDashboard = ({ token }) => {
   const [qbInvoiceLastDryRun, setQbInvoiceLastDryRun] = useState(false);
   const qbCanExport = quickbooksStatus?.permissions?.can_export_accounting !== false;
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   const fetchAnalytics = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/analytics`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get("/analytics");
       setAnalytics(response.data);
     } catch (err) {
       setError("Failed to fetch analytics");
     }
-  }, [API_URL, token]);
+  }, []);
 
   const fetchFunnel = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/funnel`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/manager/funnel");
       const transformed = Object.entries(res.data.funnel).map(([stage, count]) => ({
         stage,
         candidates: count,
@@ -74,7 +68,7 @@ const AnalyticsDashboard = ({ token }) => {
     } catch (err) {
       setError("Failed to fetch funnel data");
     }
-  }, [API_URL, token]);
+  }, []);
 
   useEffect(() => {
     if (token) {

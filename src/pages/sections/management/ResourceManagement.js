@@ -6,7 +6,7 @@ import {
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { Add, Edit, Delete } from "@mui/icons-material";
-import axios from "axios";
+import api from "../../../utils/api";
 
 const emptyForm = { name: "", description: "", capacity: 1 };
 
@@ -22,7 +22,7 @@ const ResourceManagement = ({ token }) => {
 
   const load = async () => {
     setL(true);
-    try { const { data } = await axios.get("/booking/resources", auth); setRows(data); }
+    try { const { data } = await api.get("/booking/resources", auth); setRows(data); }
     catch { setSnk({ open: true, msg: "Error loading resources" }); }
     setL(false);
   };
@@ -31,10 +31,10 @@ const ResourceManagement = ({ token }) => {
   const save = async () => {
     try {
       if (editing) {
-        await axios.put(`/booking/resources/${editing.id}`, form, auth);
+        await api.put(`/booking/resources/${editing.id}`, form, auth);
         setSnk({ open: true, msg: "Resource updated" });
       } else {
-        await axios.post("/booking/resources", form, auth);
+        await api.post("/booking/resources", form, auth);
         setSnk({ open: true, msg: "Resource added" });
       }
       setOpen(false); load();
@@ -45,7 +45,7 @@ const ResourceManagement = ({ token }) => {
 
   const del = async (id) => {
     if (!window.confirm("Delete this resource?")) return;
-    try { await axios.delete(`/booking/resources/${id}`, auth); load(); }
+    try { await api.delete(`/booking/resources/${id}`, auth); load(); }
     catch { setSnk({ open: true, msg: "Delete failed" }); }
   };
 

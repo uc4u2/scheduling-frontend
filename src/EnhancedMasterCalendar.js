@@ -17,7 +17,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import axios from "axios";
+import api from "./utils/api";
 
 /* ──────────────────────────────────────────────────────────── *\
    One helper for every component that needs “the user’s zone”
@@ -37,9 +37,6 @@ const EnhancedMasterCalendar = ({ token }) => {
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [error, setError] = useState("");
 
-  /* env */
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   /* logged‑in (or browser) timezone */
   const timeZone = getUserTimezone();
 
@@ -53,9 +50,7 @@ const EnhancedMasterCalendar = ({ token }) => {
 
   const fetchEvents = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/manager/calendar`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await api.get("/manager/calendar");
 
       /* API already returns ISO strings with offsets – no extra conversion */
       const evts = (data.events || []).map((e) => ({
@@ -76,9 +71,7 @@ const EnhancedMasterCalendar = ({ token }) => {
 
   const fetchRecruiters = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/manager/recruiters`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await api.get("/manager/recruiters");
       setRecruiters(data?.recruiters || data || []);
     } catch (err) {
       console.error("Failed to fetch recruiters.", err);
@@ -88,9 +81,7 @@ const EnhancedMasterCalendar = ({ token }) => {
 
   const fetchDepartments = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/departments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await api.get("/api/departments");
       setDepartments(data || []);
     } catch (err) {
       console.error("Failed to fetch departments.", err);

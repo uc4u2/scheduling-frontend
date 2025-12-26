@@ -4,12 +4,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableRow, Paper, Alert,
   Dialog, DialogTitle, DialogContent, TextField, DialogActions
 } from "@mui/material";
-import axios from "axios";
+import api from "./utils/api";
 import dayjs from "dayjs";
 import InteractiveCalendar from "./InteractiveCalendar";
 import ShiftCalendar from "./ShiftCalendar"; // or correct relative path
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const EmployeeScheduling = () => {
   const [tab, setTab] = useState(0);
@@ -29,8 +27,6 @@ const EmployeeScheduling = () => {
   const month = dayjs().format("YYYY-MM");
   const region = "ca"; // placeholder
 
-  const headers = { Authorization: `Bearer ${token}` };
-
   useEffect(() => {
     if (token) {
       fetchShifts();
@@ -42,7 +38,9 @@ const EmployeeScheduling = () => {
   const fetchShifts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/automation/shifts/monthly?month=${month}&recruiter_id=${recruiterId}`, { headers });
+      const res = await api.get("/automation/shifts/monthly", {
+        params: { month, recruiter_id: recruiterId },
+      });
       console.log("✅ Loaded shiftLogs:", res.data);
       setShiftLogs(res.data || []);
     } catch (err) {
@@ -54,7 +52,9 @@ const EmployeeScheduling = () => {
 
   const fetchRate = async () => {
     try {
-      const res = await axios.get(`${API_URL}/automation/rates/latest?recruiter_id=${recruiterId}`, { headers });
+      const res = await api.get("/automation/rates/latest", {
+        params: { recruiter_id: recruiterId },
+      });
       setHourlyRate(res.data);
     } catch (err) {
       setError("❌ Could not fetch rate info.");
@@ -63,7 +63,9 @@ const EmployeeScheduling = () => {
 
   const fetchPayroll = async () => {
     try {
-      const res = await axios.get(`${API_URL}/payroll?month=${month}&region=${region}&recruiter_id=${recruiterId}`, { headers });
+      const res = await api.get("/payroll", {
+        params: { month, region, recruiter_id: recruiterId },
+      });
       setPayroll(res.data.records || []);
     } catch (err) {
       setError("❌ Payroll could not be loaded.");
@@ -72,8 +74,8 @@ const EmployeeScheduling = () => {
 
   const exportPayroll = async (format = "pdf") => {
     try {
-      const res = await axios.get(`${API_URL}/payroll/export?recruiter_id=${recruiterId}&format=${format}`, {
-        headers,
+      const res = await api.get("/payroll/export", {
+        params: { recruiter_id: recruiterId, format },
         responseType: "blob",
       });
       const blob = new Blob([res.data]);
@@ -89,7 +91,7 @@ const EmployeeScheduling = () => {
 
   const handleLeaveSubmit = async () => {
     try {
-      await axios.post(`${API_URL}/employee/leave-request`, { ...leaveData, recruiter_id: recruiterId }, { headers });
+      await api.post("/employee/leave-request", { ...leaveData, recruiter_id: recruiterId });
       alert("Leave request submitted.");
       setLeaveModal(false);
     } catch (err) {
@@ -99,7 +101,7 @@ const EmployeeScheduling = () => {
 
   const handleAvailabilitySubmit = async () => {
     try {
-      await axios.post(`${API_URL}/employee/availability`, { ...availabilityData, recruiter_id: recruiterId }, { headers });
+      await api.post("/employee/availability", { ...availabilityData, recruiter_id: recruiterId });
       alert("Availability updated.");
       setAvailabilityModal(false);
     } catch (err) {

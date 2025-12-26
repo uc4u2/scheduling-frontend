@@ -25,10 +25,8 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import axios from "axios";
+import api from "../../utils/api";
 import ManagementFrame from "../../components/ui/ManagementFrame";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function RetirementPlanPage({ token }) {
   const [country, setCountry] = useState("us");
@@ -50,7 +48,7 @@ export default function RetirementPlanPage({ token }) {
 
   const loadPlan = async (c) => {
     try {
-      const res = await axios.get(`${API_URL}/automation/retirement/plan`, {
+      const res = await api.get(`/automation/retirement/plan`, {
         params: { country: c },
         headers: authHeaders,
       });
@@ -80,7 +78,7 @@ export default function RetirementPlanPage({ token }) {
   useEffect(() => {
     const fetchCompanyCountry = async () => {
       try {
-        const res = await axios.get(`${API_URL}/admin/company-profile`, { headers: authHeaders });
+        const res = await api.get(`/admin/company-profile`, { headers: authHeaders });
         const code = (res.data?.country_code || "us").toLowerCase();
         const c = code.startsWith("ca") ? "ca" : "us";
         setCountry(c);
@@ -113,7 +111,7 @@ export default function RetirementPlanPage({ token }) {
         employee_contrib_flat_default:
           plan.employee_contrib_method === "flat" ? plan.employee_contrib_flat_default : null,
       };
-      await axios.post(`${API_URL}/automation/retirement/plan`, payload, {
+      await api.post(`/automation/retirement/plan`, payload, {
         headers: authHeaders,
       });
       setMessage("Plan saved");

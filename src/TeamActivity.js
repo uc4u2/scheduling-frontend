@@ -8,8 +8,7 @@ import {
   TableBody,
   Paper,
 } from "@mui/material";
-import axios from "axios";
-import { API_BASE_URL } from "./utils/api";
+import api from "./utils/api";
 
 const TeamActivity = ({ token }) => {
   const [data, setData] = useState([]);
@@ -17,16 +16,7 @@ const TeamActivity = ({ token }) => {
   useEffect(() => {
     const fetchActivity = async () => {
       try {
-        const base =
-          (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
-          API_BASE_URL ||
-          "https://scheduling-application.onrender.com";
-        const res = await axios.get(
-          `${base.replace(/\/$/, "")}/manager/activity-summary`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const res = await api.get("/manager/activity-summary");
         setData(res.data);
       } catch (err) {
         console.error("Failed to load activity summary", err);

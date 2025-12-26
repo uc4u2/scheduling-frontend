@@ -10,7 +10,7 @@ import {
   Divider,
 } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
-import axios from "axios";
+import api, { API_BASE_URL } from "../../utils/api";
 import { useSnackbar } from "notistack";
 import { Navigate, useSearchParams } from "react-router-dom";
 
@@ -25,8 +25,6 @@ const RecruiterInvitationsPage = ({ token }) => {
   const { enqueueSnackbar } = useSnackbar();
   const [searchParams] = useSearchParams();
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
-
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
@@ -52,11 +50,11 @@ const RecruiterInvitationsPage = ({ token }) => {
     }
     setIsSubmitting(true);
     try {
-      const { data } = await axios.post(
-        `${API_URL}/send-reminder`,
-        { name: candidateName, email: candidateEmail, position: candidatePosition },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await api.post("/send-reminder", {
+        name: candidateName,
+        email: candidateEmail,
+        position: candidatePosition,
+      });
       setMessage(data.message);
       setError("");
       enqueueSnackbar("Reminder email sent", { variant: "success" });
@@ -67,7 +65,7 @@ const RecruiterInvitationsPage = ({ token }) => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [API_URL, token, candidateName, candidateEmail, candidatePosition, enqueueSnackbar]);
+  }, [token, candidateName, candidateEmail, candidatePosition, enqueueSnackbar]);
 
   if (!isLoading && !allowHrAccess) {
     return <Navigate to="/employee?tab=calendar" replace />;
@@ -165,7 +163,7 @@ const RecruiterInvitationsPage = ({ token }) => {
                 Manage active form templates and review candidate submissions.
               </Typography>
             </Box>
-            <CandidateFormsPanel token={token} apiUrl={API_URL} />
+            <CandidateFormsPanel token={token} apiUrl={API_BASE_URL} />
           </Stack>
         </Paper>
       </Stack>

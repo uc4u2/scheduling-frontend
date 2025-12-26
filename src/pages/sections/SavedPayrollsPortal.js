@@ -24,15 +24,13 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import EmailIcon from "@mui/icons-material/Email";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import axios from "axios";
+import api from "../../utils/api";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 
 const SavedPayrollsPortal = ({ token, currentUser }) => {
   // ─────────────────────────── helper flags ────────────────────────────
   const isManager =
     currentUser?.is_manager ?? currentUser?.isManager ?? currentUser?.role === "manager";
-
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   // ─────────────────────────── state ────────────────────────────────────
   const [payrolls, setPayrolls] = useState([]);
@@ -85,7 +83,7 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
   // ─────────────────────────── API helpers ─────────────────────────────
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/departments`, {
+      const res = await api.get(`/api/departments`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setDepartments(res.data || []);
@@ -96,7 +94,7 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
 
   const fetchRecruiters = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/recruiters`, {
+      const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
         params: departmentFilter ? { department_id: departmentFilter } : {}, // ⇠ step-2
       });
@@ -120,7 +118,7 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
       if (isManager && recruiterFilter) params.recruiter_id = recruiterFilter;
       if (isManager && departmentFilter) params.department_id = departmentFilter; // ⇠ optional step-5
 
-      const res = await axios.get(`${API_URL}/main/payroll_portal_list`, {
+      const res = await api.get(`/main/payroll_portal_list`, {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });
@@ -136,10 +134,11 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
   // ─────────────────────────── file helpers & bulk ops ─────────────────
   const handleDownload = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/main/payroll_portal_download/${id}`, {
+      const res = await api.get(`/main/payroll_portal_download/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
       });
-      const blob = await res.blob();
+      const blob = res.data;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -153,8 +152,8 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
 
   const handleManualIssue = async (id) => {
     try {
-      await axios.post(
-        `${API_URL}/main/payroll_portal_manual_issue/${id}`,
+      await api.post(
+        `/main/payroll_portal_manual_issue/${id}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -167,7 +166,7 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
   const handleDelete = async () => {
     if (!selected.length) return;
     try {
-      await axios.delete(`${API_URL}/main/payroll_portal_delete`, {
+      await api.delete(`/main/payroll_portal_delete`, {
         headers: { Authorization: `Bearer ${token}` },
         data: { ids: selected },
       });
@@ -181,11 +180,12 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
     try {
       const params = new URLSearchParams();
       selected.forEach((id) => params.append("ids", id));
-      const res = await fetch(
-        `${API_URL}/main/payroll_portal_download_bulk?${params.toString()}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const blob = await res.blob();
+      const res = await api.get("/main/payroll_portal_download_bulk", {
+        params: Object.fromEntries(params.entries()),
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const blob = res.data;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -199,8 +199,8 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
 
   const handleSendEmails = async () => {
     try {
-      await axios.post(
-        `${API_URL}/main/payroll_portal_notify`,
+      await api.post(
+        `/main/payroll_portal_notify`,
         { ids: selected, subject: emailSubject, body: emailBody },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -425,7 +425,5 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
 };
 
 export default SavedPayrollsPortal;
-
-
 
 

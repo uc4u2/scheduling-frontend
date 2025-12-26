@@ -24,7 +24,7 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import LaunchIcon from "@mui/icons-material/Launch";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import axios from "axios";
+import api from "../../utils/api";
 import { useSnackbar } from "notistack";
 import { Navigate } from "react-router-dom";
 
@@ -70,7 +70,6 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
   const theme = useTheme();
   const { enqueueSnackbar } = useSnackbar();
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   const [candidateBlocks, setCandidateBlocks] = useState([]);
   const [clientBlocks, setClientBlocks] = useState([]);
@@ -96,9 +95,7 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
     if (!token) return;
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API_URL}/my-availability`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await api.get("/my-availability");
       setCandidateBlocks(mapBlocks(data.candidate_blocks));
       setClientBlocks(mapBlocks(data.appointment_blocks));
       setError("");
@@ -107,7 +104,7 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
     } finally {
       setLoading(false);
     }
-  }, [API_URL, token]);
+  }, [token]);
 
   useEffect(() => {
     fetchMeetings();

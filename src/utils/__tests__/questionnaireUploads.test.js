@@ -10,9 +10,9 @@ jest.mock('../../constants/questionnaireUploads', () => ({
   },
 }));
 
-jest.mock('axios', () => jest.fn());
 jest.mock('../api', () => {
-  const apiMock = { post: jest.fn() };
+  const apiMock = jest.fn();
+  apiMock.post = jest.fn();
   const questionnaireUploadsApiMock = {
     reserveRecruiter: jest.fn(),
     reserveCandidate: jest.fn(),
@@ -24,9 +24,8 @@ jest.mock('../api', () => {
   return { api: apiMock, questionnaireUploadsApi: questionnaireUploadsApiMock };
 });
 
-const axios = require('axios');
 const { uploadQuestionnaireFile, validateQuestionnaireFile, downloadQuestionnaireFile } = require('../questionnaireUploads');
-const { questionnaireUploadsApi } = require('../api');
+const { questionnaireUploadsApi, api } = require('../api');
 
 describe('questionnaireUploads helpers', () => {
   beforeEach(() => {
@@ -89,7 +88,7 @@ describe('questionnaireUploads helpers', () => {
     questionnaireUploadsApi.completeRecruiter.mockResolvedValue({
       file: { id: 456, field_key: 'questionnaire_2', scan_status: 'pending' },
     });
-    axios.mockResolvedValue({});
+    api.mockResolvedValue({});
 
     const onProgress = jest.fn();
     const completed = await uploadQuestionnaireFile({
@@ -100,7 +99,7 @@ describe('questionnaireUploads helpers', () => {
       onProgress,
     });
 
-    expect(axios).toHaveBeenCalledWith(expect.objectContaining({
+    expect(api).toHaveBeenCalledWith(expect.objectContaining({
       method: 'POST',
       url: 'https://example.com/upload',
     }));

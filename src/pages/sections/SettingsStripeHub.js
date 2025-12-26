@@ -20,12 +20,10 @@ import ReplayIcon from "@mui/icons-material/Replay";
 import SectionCard from "../../components/ui/SectionCard";
 import { stripeConnect } from "../../utils/api";
 import useStripeConnectStatus from "../../hooks/useStripeConnectStatus";
-import axios from "axios";
+import api from "../../utils/api";
 import { useTranslation } from "react-i18next";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import TaxHelpGuide from "./TaxHelpGuide";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const MODE_LABEL_KEY = {
   offline: "settings.stripeHub.checkout.mode.offline",
@@ -66,7 +64,7 @@ export default function SettingsStripeHub() {
     setProfileLoading(true);
     setProfileError("");
     try {
-      const { data } = await axios.get(`${API_URL}/admin/company-profile`, {
+      const { data } = await api.get(`/admin/company-profile`, {
         headers,
       });
       setProfile(data || {});

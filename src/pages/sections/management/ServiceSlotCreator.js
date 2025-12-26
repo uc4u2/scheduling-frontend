@@ -13,9 +13,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import axios from "axios";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import api from "../../../utils/api";
 
 const ServiceSlotCreator = ({ token }) => {
   const theme = useTheme();
@@ -41,9 +39,9 @@ const ServiceSlotCreator = ({ token }) => {
     const fetchData = async () => {
       try {
         const [depRes, empRes, svcRes] = await Promise.all([
-          axios.get(`${API}/api/departments`, auth),
-          axios.get(`${API}/manager/recruiters?active=true`, auth),
-          axios.get(`${API}/booking/services`, auth),
+          api.get(`/api/departments`, auth),
+          api.get(`/manager/recruiters?active=true`, auth),
+          api.get(`/booking/services`, auth),
         ]);
 
         setDepartments(depRes.data || []);
@@ -79,7 +77,7 @@ const ServiceSlotCreator = ({ token }) => {
         start_time: startTime,
       };
 
-      await axios.post(`${API}/api/manager/employees/${selectedEmployee}/add-service-slot`, payload, auth);
+      await api.post(`/api/manager/employees/${selectedEmployee}/add-service-slot`, payload, auth);
 
       setSnackbar({
         open: true,

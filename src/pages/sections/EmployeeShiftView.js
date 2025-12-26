@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
+import api from "../../utils/api";
 import { useSearchParams } from "react-router-dom";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -27,7 +28,6 @@ import { format, addDays } from "date-fns";
 
 
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const EmployeeShiftView = () => {
@@ -49,11 +49,21 @@ const EmployeeShiftView = () => {
   }, [allRecruiters]);
 
   // Fetch Departments
-useEffect(() => {
-  fetch(`${API_URL}/api/departments`, { headers: getAuthHeaders() })
-    .then(res => res.json())
-    .then(data => setDepartments(data || []));
-}, []);
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      try {
+        const res = await api.get("/api/departments");
+        if (mounted) setDepartments(res.data || []);
+      } catch {
+        if (mounted) setErrorMsg("Failed to fetch departments.");
+      }
+    };
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, []);
   
   const [selectedRecruiters, setSelectedRecruiters] = useState(() => {
     if (userRole === "manager" && recruiterId) return [recruiterId];
@@ -107,21 +117,12 @@ useEffect(() => {
   // Reference for the calendar component
   const calendarRef = useRef(null);
 
-  // Utility function to add authentication headers
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("token");
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-
   // ----------------------------------------------------------------
   // 1. Advanced Availability-Aware Scheduling
   const fetchAvailabilityMap = async () => {
     try {
-      const res = await fetch(`${API_URL}/employee/availability/all`, {
-        headers: getAuthHeaders()
-      });
-      const data = await res.json(); // Expected format: { recruiterId: { days: ["Mon"], time: "09:00-17:00" }, ... }
+      const res = await api.get("/employee/availability/all");
+      const data = res.data; // Expected format: { recruiterId: { days: ["Mon"], time: "09:00-17:00" }, ... }
       setAvailabilityMap(data);
     } catch {
       setErrorMsg("Failed to fetch availability.");
@@ -132,8 +133,8 @@ useEffect(() => {
   // 2. Advanced Leave Overlay + Blocking
   const fetchLeaveBlocks = async () => {
     try {
-      const res = await fetch(`${API_URL}/employee/leaves/approved`, { headers: getAuthHeaders() });
-      setLeaveBlocks(await res.json());
+      const res = await api.get("/employee/leaves/approved");
+      setLeaveBlocks(res.data);
     } catch {
       setErrorMsg("Failed to fetch leave blocks.");
     }
@@ -143,8 +144,8 @@ useEffect(() => {
   // 3. Shift Templates (Full UX Flow)
   const fetchTemplates = async () => {
     try {
-      const res = await fetch(`${API_URL}/shift-templates`, { headers: getAuthHeaders() });
-      setShiftTemplates(await res.json());
+      const res = await api.get("/shift-templates");
+      setShiftTemplates(res.data);
     } catch {
       setErrorMsg("Failed to fetch shift templates.");
     }
@@ -154,8 +155,8 @@ useEffect(() => {
   // 7. Inline Leave Approval Panel
   const fetchPendingLeaves = async () => {
     try {
-      const res = await fetch(`${API_URL}/employee/leaves?status=pending`, { headers: getAuthHeaders() });
-      setPendingLeaves(await res.json());
+      const res = await api.get("/employee/leaves", { params: { status: "pending" } });
+      setPendingLeaves(res.data);
     } catch {
       setErrorMsg("Failed to fetch pending leaves.");
     }
@@ -163,7 +164,7 @@ useEffect(() => {
 
   const approveLeave = async (id) => {
     try {
-      await fetch(`${API_URL}/employee/leaves/approve/${id}`, { method: "POST", headers: getAuthHeaders() });
+      await api.post(`/employee/leaves/approve/${id}`);
       fetchPendingLeaves();
     } catch {
       setErrorMsg("Failed to approve leave.");
@@ -172,7 +173,7 @@ useEffect(() => {
 
   const rejectLeave = async (id) => {
     try {
-      await fetch(`${API_URL}/employee/leaves/reject/${id}`, { method: "POST", headers: getAuthHeaders() });
+      await api.post(`/employee/leaves/reject/${id}`);
       fetchPendingLeaves();
     } catch {
       setErrorMsg("Failed to reject leave.");
@@ -183,10 +184,8 @@ useEffect(() => {
   // Fetch recruiter details (manager view)
   const fetchRecruiter = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/manager/recruiters`, {
-        headers: getAuthHeaders()
-      });
-      const data = await res.json();
+      const res = await api.get("/manager/recruiters");
+      const data = res.data;
       const found = data.recruiters?.find(r => String(r.id) === String(id));
       setRecruiter(found || {});
     } catch {
@@ -199,10 +198,8 @@ useEffect(() => {
   // 3. Live Team Calendar Overlay - Fetch all recruiters list
   const fetchAllRecruiters = async () => {
   try {
-    const res = await fetch(`${API_URL}/manager/recruiters`, {
-      headers: getAuthHeaders()
-    });
-    const data = await res.json();
+    const res = await api.get("/manager/recruiters");
+    const data = res.data;
     setAllRecruiters(data.recruiters || []);
   } catch {
     setErrorMsg("Failed to fetch recruiters.");
@@ -215,11 +212,10 @@ useEffect(() => {
   // 4. Audit Log for Shift Edits - Fetch audit logs
   const fetchAuditLog = async () => {
     try {
-      const res = await fetch(`${API_URL}/shifts/audit-log?recruiter_id=${currentRecruiterId}`, {
-
-        headers: getAuthHeaders()
+      const res = await api.get("/shifts/audit-log", {
+        params: { recruiter_id: currentRecruiterId },
       });
-      const data = await res.json();
+      const data = res.data;
       setAuditLog(data || []);
     } catch {
       setErrorMsg("Failed to fetch audit log.");
@@ -231,11 +227,14 @@ useEffect(() => {
   const fetchShifts = async () => {
   try {
     const ids = selectedRecruiters.map(String).join(",");
-    const res = await fetch(
-      `${API_URL}/automation/shifts/range?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`,
-      { headers: getAuthHeaders() }
-    );
-    const data = await res.json();
+    const res = await api.get("/automation/shifts/range", {
+      params: {
+        start_date: dateRange.start,
+        end_date: dateRange.end,
+        recruiter_ids: ids,
+      },
+    });
+    const data = res.data;
     setShifts(data.shifts ?? (Array.isArray(data) ? data : []));
   } catch {
     setErrorMsg("Failed to fetch shifts.");
@@ -414,11 +413,7 @@ useEffect(() => {
   // Save the pending update from drag/resize
   const savePendingUpdate = async () => {
     try {
-      await fetch(`${API_URL}/automation/shifts/update/${pendingUpdate.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify(pendingUpdate)
-      });
+      await api.put(`/automation/shifts/update/${pendingUpdate.id}`, pendingUpdate);
       setSuccessMsg("Shift updated via drag.");
       setPendingUpdate(null);
       fetchShifts();
@@ -500,17 +495,13 @@ useEffect(() => {
     if (!selectedShift) return;
     if (!advancedValidation()) return;
     try {
-      await fetch(`${API_URL}/automation/shifts/update/${selectedShift.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({
-          clock_in: `${formData.date}T${formData.startTime}`,
-          clock_out: `${formData.date}T${formData.endTime}`,
-          location: formData.location,
-          note: formData.note,
-          status: formData.status,
-          role: formData.role
-        })
+      await api.put(`/automation/shifts/update/${selectedShift.id}`, {
+        clock_in: `${formData.date}T${formData.startTime}`,
+        clock_out: `${formData.date}T${formData.endTime}`,
+        location: formData.location,
+        note: formData.note,
+        status: formData.status,
+        role: formData.role,
       });
       setSuccessMsg("Shift updated.");
       setModalOpen(false);
@@ -526,19 +517,15 @@ useEffect(() => {
   const handleCreateShift = async () => {
     if (!advancedValidation()) return;
     try {
-      await fetch(`${API_URL}/automation/shifts/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({
-          recruiter_id: currentRecruiterId, 
-          date: formData.date,
-          clock_in: `${formData.date}T${formData.startTime}`,
-          clock_out: `${formData.date}T${formData.endTime}`,
-          location: formData.location,
-          note: formData.note,
-          status: formData.status,
-          role: formData.role
-        })
+      await api.post("/automation/shifts/create", {
+        recruiter_id: currentRecruiterId,
+        date: formData.date,
+        clock_in: `${formData.date}T${formData.startTime}`,
+        clock_out: `${formData.date}T${formData.endTime}`,
+        location: formData.location,
+        note: formData.note,
+        status: formData.status,
+        role: formData.role,
       });
       setSuccessMsg("Shift created.");
       setModalOpen(false);
@@ -552,10 +539,7 @@ useEffect(() => {
   // Delete a shift
   const handleShiftDelete = async () => {
     try {
-      await fetch(`${API_URL}/automation/shifts/delete/${selectedShift.id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders()
-      });
+      await api.delete(`/automation/shifts/delete/${selectedShift.id}`);
       setSuccessMsg("Shift deleted.");
       setModalOpen(false);
       fetchShifts();

@@ -22,10 +22,8 @@ import {
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { Add, Edit, Delete } from "@mui/icons-material";
-import axios from "axios";
+import api from "../../../utils/api";
 import { useTranslation } from "react-i18next";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 /** ------------------------------------------------------------------
  * Normalizers & helpers
@@ -139,7 +137,7 @@ const CouponManagement = ({ token }) => {
   const fetchCoupons = async () => {
     setLoad(true);
     try {
-      const { data } = await axios.get(`${API}/booking/coupons`, auth);
+      const { data } = await api.get(`/booking/coupons`, auth);
       const list = Array.isArray(data) ? data : [];
       let normalized = list.map(normalizeCoupon);
 
@@ -150,7 +148,7 @@ const CouponManagement = ({ token }) => {
         const detailed = await Promise.all(
           needHydrate.map(async (c) => {
             try {
-              const { data: d } = await axios.get(`${API}/booking/coupons/${c.id}`, auth);
+              const { data: d } = await api.get(`/booking/coupons/${c.id}`, auth);
               return normalizeCoupon(d);
             } catch {
               return c;
@@ -172,7 +170,7 @@ const CouponManagement = ({ token }) => {
 
   const fetchServices = async () => {
     try {
-      const { data } = await axios.get(`${API}/booking/services`, auth);
+      const { data } = await api.get(`/booking/services`, auth);
       setServices(data || []);
     } catch {
       // ignore or toast
@@ -202,10 +200,10 @@ const CouponManagement = ({ token }) => {
       const payload = buildSavePayload(form);
 
       if (edit) {
-        await axios.put(`${API}/booking/coupons/${edit.id}`, payload, auth);
+        await api.put(`/booking/coupons/${edit.id}`, payload, auth);
         setSnk({ open: true, msg: t("messages.couponUpdated") });
       } else {
-        await axios.post(`${API}/booking/coupons`, payload, auth);
+        await api.post(`/booking/coupons`, payload, auth);
         setSnk({ open: true, msg: t("messages.couponCreated") });
       }
 
@@ -219,7 +217,7 @@ const CouponManagement = ({ token }) => {
   const remove = async (id) => {
     if (!window.confirm(t("messages.confirmDeleteCoupon"))) return;
     try {
-      await axios.delete(`${API}/booking/coupons/${id}`, auth);
+      await api.delete(`/booking/coupons/${id}`, auth);
       await fetchCoupons();
       setSnk({ open: true, msg: t("messages.couponDeleted") });
     } catch {
@@ -235,7 +233,7 @@ const CouponManagement = ({ token }) => {
       // If the row lacks services info, hydrate with detail endpoint so the multi-select checks are correct
       if (!Array.isArray(row.applicable_service_ids)) {
         try {
-          const { data } = await axios.get(`${API}/booking/coupons/${row.id}`, auth);
+          const { data } = await api.get(`/booking/coupons/${row.id}`, auth);
           r = normalizeCoupon(data);
         } catch {
           r = normalizeCoupon(row);

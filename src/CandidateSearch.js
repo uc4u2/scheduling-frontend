@@ -13,10 +13,9 @@ import {
   Alert,
   Chip
 } from '@mui/material';
-import axios from 'axios';
+import api from "./utils/api";
 
 const CandidateSearch = ({ token }) => {
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const toConversionLabel = (value) => {
     const status = (value || '').toLowerCase();
     if (!status || status === 'none') return 'Not requested';
@@ -42,9 +41,8 @@ const CandidateSearch = ({ token }) => {
 
   const fetchCandidates = async () => {
     try {
-      const response = await axios.get(`${API_URL}/manager/candidate-search`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: filters
+      const response = await api.get("/manager/candidate-search", {
+        params: filters,
       });
       setCandidates(response.data.candidates);
       setError('');

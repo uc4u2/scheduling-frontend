@@ -3,14 +3,14 @@ import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell, Chip, Button, CircularProgress
 } from "@mui/material";
-import axios from "axios";
+import api from "../../utils/api";
 
 export default function ClientPackages() {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get("/packages").then(res => setPackages(res.data || [])).finally(() => setLoading(false));
+    api.get("/packages").then(res => setPackages(res.data || [])).finally(() => setLoading(false));
   }, []);
 
   return (

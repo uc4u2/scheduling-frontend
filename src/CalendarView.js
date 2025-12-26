@@ -3,17 +3,13 @@ import React, { useState, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import { Container, Typography } from "@mui/material";
-import axios from "axios";
+import api from "./utils/api";
 
 const CalendarView = () => {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    axios.get("http://localhost:5000/my-availability", {
-      headers: {
-        // Add your JWT token here if needed.
-      },
-    })
+    api.get("/my-availability")
     .then((response) => {
       const events = response.data.available_slots.map((slot) => ({
         id: slot.id,

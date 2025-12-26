@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../../utils/api";
 import {
   Alert, Box, Button, Card, CardContent, CardHeader, Chip, Divider,
   Grid, LinearProgress, Stack, TextField, Typography
 } from "@mui/material";
 import dayjs from "dayjs";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 // Toggle this if you want the messaging block visible
 const SHOW_MESSAGING = false;
@@ -65,10 +63,10 @@ export default function Client360({
 
       // Email-first alias when email is provided; otherwise fall back to ID route
       const url = clientEmail
-        ? `${API}/api/manager/client/intel?${qs}`
-        : `${API}/api/manager/clients/${clientId}/intel?${qs}`;
+        ? `/api/manager/client/intel?${qs}`
+        : `/api/manager/clients/${clientId}/intel?${qs}`;
 
-      const { data } = await axios.get(url, auth);
+      const { data } = await api.get(url, auth);
       setIntel(data);
     } catch (e) {
       setIntel(null);
@@ -83,7 +81,7 @@ export default function Client360({
     if (!clientId || !msg.trim()) return;
     setSending(true);
     try {
-      await axios.post(`${API}/api/manager/clients/${clientId}/messages`, { body: msg.trim() }, auth);
+      await api.post(`/api/manager/clients/${clientId}/messages`, { body: msg.trim() }, auth);
       setMsg("");
       await fetchIntel();
     } catch (e) {
@@ -259,7 +257,6 @@ export default function Client360({
 }
 
 function MessageHistory({ clientId, auth }) {
-  const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -267,7 +264,7 @@ function MessageHistory({ clientId, auth }) {
     if (!clientId) return;
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API}/api/manager/clients/${clientId}/messages`, auth);
+      const { data } = await api.get(`/api/manager/clients/${clientId}/messages`, auth);
       setMessages(data?.messages || []);
     } finally {
       setLoading(false);

@@ -1,7 +1,7 @@
 // src/ZoomRedirect.js
 import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "./utils/api";
 
 const ZoomRedirect = () => {
   const location = useLocation();
@@ -16,10 +16,10 @@ const ZoomRedirect = () => {
     if (code) {
       // Construct endpoint URL with code (and state if available)
       const endpoint = state
-        ? `http://localhost:5000/zoom/callback?code=${code}&state=${state}`
-        : `http://localhost:5000/zoom/callback?code=${code}`;
+        ? `/zoom/callback?code=${code}&state=${state}`
+        : `/zoom/callback?code=${code}`;
       
-      axios.get(endpoint)
+      api.get(endpoint)
         .then((response) => {
           console.log("Zoom tokens:", response.data);
           // Optionally, store token info in your app state or notify the user

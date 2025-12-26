@@ -16,11 +16,9 @@ import {
   TablePagination,
   Alert,
 } from "@mui/material";
-import axios from "axios";
+import api from "../../utils/api";
 
 const EmployeePayslipPortal = ({ token }) => {
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   const [payrolls, setPayrolls] = useState([]);
   const [loading, setLoading] = useState(false);
   const [monthFilter, setMonthFilter] = useState("");
@@ -48,7 +46,7 @@ const EmployeePayslipPortal = ({ token }) => {
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
 
-      const res = await axios.get(`${API_URL}/main/payroll_portal_list`, {
+      const res = await api.get(`/main/payroll_portal_list`, {
         headers: { Authorization: `Bearer ${token}` },
         params,
       });
@@ -56,7 +54,7 @@ const EmployeePayslipPortal = ({ token }) => {
       const enriched = await Promise.all(
         (res.data.results || []).map(async (p) => {
           try {
-            const meta = await axios.get(`${API_URL}/main/payroll_portal_metadata/${p.id}`, {
+            const meta = await api.get(`/main/payroll_portal_metadata/${p.id}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
             return { ...p, ...meta.data };
@@ -78,11 +76,11 @@ const EmployeePayslipPortal = ({ token }) => {
 
   const handleDownload = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/main/payroll_portal_download/${id}`, {
+      const res = await api.get(`/main/payroll_portal_download/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
       });
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
+      const blob = res.data;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

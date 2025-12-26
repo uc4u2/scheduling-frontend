@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import api from "../../../utils/api";
 
 export const useDepartments = () => {
   const [departments, setDepartments] = useState([]);
@@ -9,7 +7,7 @@ export const useDepartments = () => {
     const load = async () => {
       const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
       try {
-        const res = await axios.get(`${API_URL}/api/departments`, {
+        const res = await api.get(`/api/departments`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (Array.isArray(res.data)) {
@@ -30,7 +28,7 @@ export const useEmployeesByDepartment = () => {
     const load = async () => {
       const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
       try {
-        const res = await axios.get(`${API_URL}/manager/recruiters`, {
+        const res = await api.get(`/manager/recruiters`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         const list = Array.isArray(res.data?.recruiters) ? res.data.recruiters : Array.isArray(res.data) ? res.data : [];

@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import { Button, Box, Typography } from "@mui/material";
-import axios from "axios";
+import api from "../../utils/api";
 
 export default function ClientInvoices() {
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    axios.get("/invoices", {
+    api.get("/invoices", {
       headers: { Authorization: `Bearer ${token}` }
     }).then((res) => setRows(res.data));
   }, []);

@@ -13,7 +13,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 
 import { DateTime } from "luxon";
-import axios from "axios";
+import { api } from "../../utils/api";
 
 export default function ModernBookingCalendar({
   companySlug,
@@ -50,11 +50,13 @@ export default function ModernBookingCalendar({
     }
 
     try {
-      const { data } = await axios.get(`/public/${companySlug}/availability`, {
+      const { data } = await api.get(`/public/${companySlug}/availability`, {
         params: {
           artist_id: artistId,
           service_id: serviceId,
         },
+        noCompanyHeader: true,
+        noAuth: true,
       });
 
       // Group slots by date string (YYYY-MM-DD)

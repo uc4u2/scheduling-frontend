@@ -11,9 +11,7 @@ import {
   Alert,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import api from "../../utils/api";
 
 export default function ClientProfileSettings() {
   const theme = useTheme();
@@ -27,7 +25,7 @@ export default function ClientProfileSettings() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/profile`, {
+        const { data } = await api.get(`/profile`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         setProfile(data || {});
@@ -50,7 +48,7 @@ export default function ClientProfileSettings() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await axios.put(`${API_URL}/profile`, form, {
+      await api.put(`/profile`, form, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       setProfile(form);

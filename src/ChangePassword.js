@@ -8,8 +8,8 @@ import {
   Alert,
   Paper,
 } from "@mui/material";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { api } from "./utils/api";
 
 const ChangePassword = () => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -19,8 +19,6 @@ const ChangePassword = () => {
   const [message, setMessage] = useState("");
 
   const navigate = useNavigate();
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-  const token = localStorage.getItem("token");
 
   const handleChangePassword = async () => {
     setError("");
@@ -37,18 +35,10 @@ const ChangePassword = () => {
     }
 
     try {
-      const res = await axios.post(
-        `${API_URL}/change-password`,
-        {
-          current_password: currentPassword,
-          new_password: newPassword,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await api.post("/change-password", {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
       setMessage(res.data.message);
       setTimeout(() => navigate("/dashboard"), 2000);
     } catch (err) {

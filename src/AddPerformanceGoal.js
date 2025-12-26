@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from "./utils/api";
 import { TextField, Button, Alert } from '@mui/material';
 
 const AddPerformanceGoal = () => {
@@ -13,7 +13,7 @@ const AddPerformanceGoal = () => {
     e.preventDefault();
     
     try {
-      const response = await axios.post('/api/manager/performance', {
+      const response = await api.post('/api/manager/performance', {
         recruiter_id: recruiterId,
         goal_name: goalName,
         target

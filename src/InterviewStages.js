@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from "./utils/api";
 import { Button, TextField, Grid, Typography, Alert } from '@mui/material';
 
 const InterviewStages = () => {
@@ -11,7 +11,7 @@ const InterviewStages = () => {
   useEffect(() => {
     const fetchStages = async () => {
       try {
-        const response = await axios.get('/api/manager/interview-stages');
+        const response = await api.get('/api/manager/interview-stages');
         setStages(response.data);
       } catch (err) {
         setError('Failed to load interview stages');
@@ -24,7 +24,7 @@ const InterviewStages = () => {
   const handleAddStage = async () => {
     if (!newStage) return;
     try {
-      await axios.post('/api/manager/interview-stages', { name: newStage });
+      await api.post('/api/manager/interview-stages', { name: newStage });
       setSuccessMessage('Interview stage added successfully');
       setError('');
       setNewStage('');

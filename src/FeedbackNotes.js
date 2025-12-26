@@ -12,10 +12,9 @@ import {
   TableBody,
   Alert
 } from '@mui/material';
-import axios from 'axios';
+import api from "./utils/api";
 
 const FeedbackNotes = ({ token }) => {
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
   const [candidateId, setCandidateId] = useState('');
   const [note, setNote] = useState('');
   const [feedbackList, setFeedbackList] = useState([]);
@@ -25,9 +24,7 @@ const FeedbackNotes = ({ token }) => {
   // Fetch feedback logs (for managers)
   const fetchFeedback = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/candidate-feedback`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/manager/candidate-feedback");
       setFeedbackList(res.data.feedback);
       setError('');
     } catch (err) {
@@ -48,9 +45,7 @@ const FeedbackNotes = ({ token }) => {
       return;
     }
     try {
-      await axios.post(`${API_URL}/recruiter/candidate-feedback`, { candidate_id: candidateId, note }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.post("/recruiter/candidate-feedback", { candidate_id: candidateId, note });
       setMessage('Feedback added successfully');
       setError('');
       setCandidateId('');

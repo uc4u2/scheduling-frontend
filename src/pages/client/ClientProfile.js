@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   Box, TextField, Button, Typography, Avatar, CircularProgress, Alert, Stack, Paper
 } from "@mui/material";
-import axios from "axios";
+import api from "../../utils/api";
 
 export default function ClientProfile() {
   const [profile, setProfile] = useState(null);
@@ -15,7 +15,7 @@ export default function ClientProfile() {
   useEffect(() => {
     setLoading(true);
     const token = localStorage.getItem("token");
-    axios.get("/me", {
+    api.get("/me", {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {
@@ -39,7 +39,7 @@ export default function ClientProfile() {
     setSuccess("");
     setSaving(true);
     const token = localStorage.getItem("token");
-    axios.put("/me", form, {
+    api.put("/me", form, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(() => setSuccess("Profile updated!"))

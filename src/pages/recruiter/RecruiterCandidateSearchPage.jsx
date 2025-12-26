@@ -15,7 +15,7 @@ import {
   Chip,
 } from "@mui/material";
 import { Link, Navigate } from "react-router-dom";
-import axios from "axios";
+import api, { API_BASE_URL } from "../../utils/api";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
 import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
@@ -58,7 +58,6 @@ const resolveResumeUrl = (row, apiUrl) => {
 };
 
 const RecruiterCandidateSearchPage = ({ token }) => {
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
   const [candidateSearch, setCandidateSearch] = useState("");
   const [candidateStatus, setCandidateStatus] = useState("");
@@ -74,21 +73,18 @@ const RecruiterCandidateSearchPage = ({ token }) => {
       setCandidateRecruiters([]);
       return;
     }
-    axios
-      .get(`${API_URL}/manager/recruiters`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    api
+      .get("/manager/recruiters")
       .then((res) => setCandidateRecruiters(res.data?.recruiters || []))
       .catch(() => setCandidateRecruiters([]));
-  }, [API_URL, token, allowHrAccess]);
+  }, [token, allowHrAccess]);
 
   const handleCandidateSearch = useCallback(async () => {
     if (!allowHrAccess) return;
     setCandidateError("");
     setCandidateLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/manager/candidate-search`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get("/manager/candidate-search", {
         params: {
           q: candidateSearch,
           status: candidateStatus,
@@ -104,15 +100,7 @@ const RecruiterCandidateSearchPage = ({ token }) => {
     } finally {
       setCandidateLoading(false);
     }
-  }, [
-    API_URL,
-    token,
-    allowHrAccess,
-    candidateSearch,
-    candidateStatus,
-    candidateJob,
-    candidateRecruiterId,
-  ]);
+  }, [token, allowHrAccess, candidateSearch, candidateStatus, candidateJob, candidateRecruiterId]);
 
   if (!isLoading && !allowHrAccess) {
     return <Navigate to="/employee?tab=calendar" replace />;
@@ -206,7 +194,7 @@ const RecruiterCandidateSearchPage = ({ token }) => {
                 </TableHead>
                 <TableBody>
                   {candidateResults.map((row) => {
-                    const resumeLink = resolveResumeUrl(row, API_URL);
+                    const resumeLink = resolveResumeUrl(row, API_BASE_URL);
                     return (
                       <TableRow key={row.id} hover>
                         <TableCell>

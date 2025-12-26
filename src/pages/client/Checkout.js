@@ -33,7 +33,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import { useTheme } from "@mui/material/styles";
-import axios from "axios";
+import api from "../../utils/api";
 import PublicPageShell from "./PublicPageShell";
 import TimezoneSelect from "../../components/TimezoneSelect";
 
@@ -104,7 +104,7 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
     setError("");
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/login`, {
+      const res = await api.post(`/login`, {
         email,
         password,
         role: selectedRole,
@@ -207,7 +207,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
     }
 
     try {
-      await axios.post(`${API_URL}/register`, {
+      await api.post(`/register`, {
         first_name: firstName,
         last_name: lastName,
         email,
@@ -215,7 +215,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
         timezone,
         role: "client",
       });
-      const loginRes = await axios.post(`${API_URL}/login`, {
+      const loginRes = await api.post(`/login`, {
         email,
         password,
         role: "client",

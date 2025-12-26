@@ -17,11 +17,9 @@ import {
   Grid,
   TextField
 } from "@mui/material";
-import axios from "axios";
+import api from "./utils/api";
 
 const CandidateManagement = ({ token }) => {
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   // State for bookings data
   const [bookings, setBookings] = useState([]);
   const [error, setError] = useState("");
@@ -44,9 +42,7 @@ const CandidateManagement = ({ token }) => {
   // Fetch bookings from the new endpoint using the /api prefix
   const fetchBookings = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/candidate/get-bookings`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.get("/api/candidate/get-bookings");
       setBookings(res.data.bookings || []);
       setError("");
     } catch (err) {
@@ -86,9 +82,7 @@ const CandidateManagement = ({ token }) => {
   // Save updated booking via the new endpoint
   const handleSave = async () => {
     try {
-      await axios.put(`${API_URL}/api/candidate/bookings/${editingBooking.id}`, bookingForm, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.put(`/api/candidate/bookings/${editingBooking.id}`, bookingForm);
       setMessage("Booking updated successfully.");
       setDialogOpen(false);
       setEditingBooking(null);

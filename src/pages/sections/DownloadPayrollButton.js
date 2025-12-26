@@ -6,7 +6,7 @@ import React, { useState } from "react";
 import { Button, CircularProgress, Tooltip, Snackbar, Alert, Stack, Typography } from "@mui/material";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import EmailIcon from "@mui/icons-material/Email";
-import axios  from "axios";
+import api, { API_BASE_URL } from "../../utils/api";
 import dayjs  from "dayjs";
 
 /* ──────────────────────────────────────────────────────────
@@ -41,8 +41,6 @@ export default function DownloadPayrollButton({
   token           = "",
   payroll         = {},  // full payroll object incl. manager overrides + preview
 }) {
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   const [busy  , setBusy  ] = useState(false);
   const [snack , setSnack ] = useState({ open: false, msg: "", sev: "info" });
 
@@ -121,8 +119,8 @@ export default function DownloadPayrollButton({
       /* 1️⃣  PDF branch: finalise-and-export → blob → download + toast */
       if (fmt === "pdf") {
         const pdfPayload = { ...payload, download: true };
-        const resp = await axios.post(
-          `${API_URL}/automation/payroll/finalize-and-export`,
+        const resp = await api.post(
+          `/automation/payroll/finalize-and-export`,
           pdfPayload,
           {
             headers     : { Authorization: `Bearer ${token}` },
@@ -144,8 +142,8 @@ export default function DownloadPayrollButton({
       }
 
       /* 2️⃣  For CSV/XLSX/SAVE: finalise (no download) */
-      await axios.post(
-        `${API_URL}/automation/payroll/finalize-and-export`,
+      await api.post(
+        `/automation/payroll/finalize-and-export`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -157,7 +155,7 @@ export default function DownloadPayrollButton({
       }
 
       /* 3️⃣  Build export URL for CSV/XLSX */
-      const exportURL = new URL(`${API_URL}/automation/payroll/export-finalized`);
+      const exportURL = new URL(`${API_BASE_URL}/automation/payroll/export-finalized`);
       exportURL.searchParams.append("recruiter_id", recruiterId);
       exportURL.searchParams.append("region"      , region);
       exportURL.searchParams.append("start_date"  , startISO);
@@ -177,7 +175,7 @@ export default function DownloadPayrollButton({
       cols.forEach((c) => exportURL.searchParams.append("columns[]", c));
 
       /* 4️⃣  Fetch CSV/XLSX blob */
-      const resp = await axios.get(exportURL.toString(), {
+      const resp = await api.get(exportURL.toString(), {
         responseType: "blob",
         headers     : { Authorization: `Bearer ${token}` },
       });

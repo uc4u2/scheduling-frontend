@@ -4,7 +4,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import axios from "axios";
+import api from "../../utils/api";
 import {
   Box,
   Typography,
@@ -40,8 +40,6 @@ function stringToColor(str) {
   return `hsl(${hue}, 70%, 75%)`;
 }
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 const AvailableShiftsCalendar = ({ token }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
@@ -56,8 +54,8 @@ const AvailableShiftsCalendar = ({ token }) => {
   /* ------------------ Fetch departments ------------------ */
   useEffect(() => {
     if (!token) return;
-    axios
-      .get(`${API_URL}/api/departments`, {
+    api
+      .get(`/api/departments`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then(({ data }) => setDepartments(data || []))
@@ -69,8 +67,8 @@ const AvailableShiftsCalendar = ({ token }) => {
     if (!token) return;
     const params =
       departmentFilter !== "all" ? { department_id: departmentFilter } : {};
-    axios
-      .get(`${API_URL}/manager/recruiters`, {
+    api
+      .get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
         params,
       })
@@ -89,8 +87,8 @@ const AvailableShiftsCalendar = ({ token }) => {
     if (departmentFilter !== "all") params.department_id = departmentFilter;
     if (employeeFilter !== "all") params.recruiter_id = employeeFilter;
 
-    axios
-      .get(`${API_URL}/manager/calendar`, {
+    api
+      .get(`/manager/calendar`, {
         headers: { Authorization: `Bearer ${token}` },
         params,
       })

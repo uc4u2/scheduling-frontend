@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import api from "../../utils/api";
 import {
   Box,
   Typography,
@@ -19,8 +20,6 @@ import {
 } from "@mui/material";
 import { format } from "date-fns";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 const LeaveRequests = () => {
   const token = localStorage.getItem("token");
   const [requests, setRequests] = useState([]);
@@ -30,11 +29,12 @@ const LeaveRequests = () => {
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false });
 
   useEffect(() => {
-    fetch(`${API_URL}/manager/leave-requests?status=${statusFilter}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => {
+    api
+      .get(`/manager/leave-requests?status=${statusFilter}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const data = res.data || {};
         setRequests(data.requests || []);
         setLoading(false);
       })
@@ -49,17 +49,12 @@ const LeaveRequests = () => {
     const comment = reviewComments[id] || "";
 
     try {
-      const res = await fetch(`${API_URL}/manager/leave-review`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ request_id: id, action, comment }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Request failed");
+      const res = await api.post(
+        `/manager/leave-review`,
+        { request_id: id, action, comment },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = res?.data || {};
 
       setSnackbar({ open: true, msg: `Leave ${action}ed.`, error: false });
       setRequests((prev) => prev.filter((r) => r.id !== id));

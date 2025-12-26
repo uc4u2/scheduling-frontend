@@ -3,7 +3,7 @@
 // ───────────────────────────────────────────────────────────────
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   Box, Typography, Alert, Button, CircularProgress
@@ -75,7 +75,7 @@ const ClientCancelBooking = () => {
       return;
     }
     try {
-      const { data } = await axios.get(
+      const { data } = await api.get(
         `/public/${slug}/appointment/${bookingId}`,
         { params: { token: qsToken } }
       );
@@ -100,7 +100,7 @@ const ClientCancelBooking = () => {
       if (!ok) return;
     }
     try {
-      await axios.post(
+      await api.post(
         `/public/${slug}/appointment/${bookingId}/cancel`,
         null,
         { params: { token: qsToken } }

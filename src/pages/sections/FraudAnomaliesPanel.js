@@ -24,9 +24,7 @@ import {
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import api from "../../utils/api";
 
 const palette = {
   accent: "#FF7A3C",
@@ -110,7 +108,7 @@ const FraudAnomaliesPanel = () => {
         end_date: filters.end_date,
         type: filters.type || "any",
       });
-      const res = await axios.get(`${API_URL}/manager/time-entries/anomalies?${params.toString()}`, {
+      const res = await api.get(`/manager/time-entries/anomalies?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       setSummary(res.data.summary || {});

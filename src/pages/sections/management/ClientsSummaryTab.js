@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../../utils/api";
 import {
   Alert, Box, Card, CardContent, CardHeader, Chip, Divider,
   Grid, LinearProgress, Stack, Typography, Tooltip
 } from "@mui/material";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const KPI = ({ label, value, help }) => (
   <Card variant="outlined">
@@ -37,7 +35,7 @@ export default function ClientsSummaryTab({ from, to, tz, departmentId, employee
         ...(departmentId ? { department_id: departmentId } : {}),
         ...(employeeId ? { employee_id: employeeId } : {}),
       }).toString();
-      const { data } = await axios.get(`${API}/api/manager/clients/analytics/summary?${qs}`, auth);
+      const { data } = await api.get(`/api/manager/clients/analytics/summary?${qs}`, auth);
       setData(data);
     } catch (e) {
       setErr(e?.response?.data?.error || e?.message || "Failed to load analytics");

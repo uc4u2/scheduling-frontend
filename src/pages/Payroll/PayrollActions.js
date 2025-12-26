@@ -4,9 +4,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import api, { API_BASE_URL } from "../../utils/api";
 
 export default function PayrollActions({ payroll, onPreview, token }) {
   const handleExport = (format) => {
@@ -18,13 +16,13 @@ export default function PayrollActions({ payroll, onPreview, token }) {
       format,
     });
 
-    const url = `${API_URL}/automation/payroll/export?${query.toString()}`;
+    const url = `${API_BASE_URL}/automation/payroll/export?${query.toString()}`;
     window.open(url, "_blank");
   };
 
   const handleFinalize = async () => {
     try {
-      await axios.post(`${API_URL}/api/payroll/submit`, payroll, {
+      await api.post(`/api/payroll/submit`, payroll, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

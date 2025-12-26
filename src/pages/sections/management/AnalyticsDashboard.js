@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, Typography, Grid, Paper, CircularProgress } from "@mui/material";
 import { Bar, Pie } from "react-chartjs-2";
-import axios from "axios";
+import api from "../../../utils/api";
 import Chart from "chart.js/auto";
 
 const AnalyticsDashboard = () => {
@@ -14,8 +14,8 @@ const AnalyticsDashboard = () => {
       setLoading(true);
       try {
         // Replace these with real API calls
-        const stats = await axios.get("/api/analytics/summary");
-        const bookings = await axios.get("/api/analytics/bookings");
+        const stats = await api.get("/api/analytics/summary");
+        const bookings = await api.get("/api/analytics/bookings");
         setSummary(stats.data);
         setChartData({
           labels: bookings.data.map(x => x.date),

@@ -15,9 +15,7 @@ import {
   Box,
   Alert,
 } from "@mui/material";
-import axios from "axios";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import api from "../../../utils/api";
 
 export default function AssignTemplateDialog({ token, template, onClose }) {
   const [employees, setEmployees] = useState([]);
@@ -30,8 +28,8 @@ export default function AssignTemplateDialog({ token, template, onClose }) {
   const [ok, setOk] = useState("");
 
   useEffect(() => {
-    axios
-      .get(`${API}/manager/recruiters?active=true`, {
+    api
+      .get(`/manager/recruiters?active=true`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((r) => setEmployees(r.data.recruiters || r.data || []));
@@ -49,8 +47,8 @@ export default function AssignTemplateDialog({ token, template, onClose }) {
     setErr("");
     setOk("");
     try {
-      await axios.post(
-        `${API}/api/shift-templates/${template.id}/assign`,
+      await api.post(
+        `/api/shift-templates/${template.id}/assign`,
         {
           recruiter_ids: sel.map((e) => e.id),
           start_date: range.from,

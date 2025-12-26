@@ -23,17 +23,14 @@ import {
 import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useParams, useSearchParams } from "react-router-dom";
-import axios from "axios";
 import QUESTIONNAIRE_LIMITS from "../constants/questionnaireUploads";
-import { candidateIntakeApi } from "../utils/api";
+import { api, candidateIntakeApi } from "../utils/api";
 import { uploadQuestionnaireFile, downloadQuestionnaireFile } from "../utils/questionnaireUploads";
 import CandidateSlotPicker from "../components/CandidateSlotPicker";
 import TimezoneSelect from "../components/TimezoneSelect";
 import SiteFrame from "../components/website/SiteFrame";
 import { publicSite } from "../utils/api";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./client/ServiceList";
-
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const BOOKING_CAPTURED_KEYS = new Set([
   "candidate_name",
@@ -299,7 +296,10 @@ const CandidateIntakePage = () => {
     setSlotsLoading(true);
     setSlotsError("");
     try {
-      const { data } = await axios.get(`${API_BASE}/public/availability/${recruiterId}`);
+      const { data } = await api.get(`/public/availability/${recruiterId}`, {
+        noCompanyHeader: true,
+        noAuth: true,
+      });
       setSlots(data?.available_slots || []);
       setTimezone(data?.timezone || "UTC");
     } catch (err) {
@@ -655,7 +655,7 @@ const CandidateIntakePage = () => {
       if (linkedin) formData.append("linkedin", linkedin);
       if (resumeFile) formData.append("resume", resumeFile);
 
-      const { data } = await axios.post(`${API_BASE}/api/candidate-forms/intake/${token}/book-slot`, formData, {
+      const { data } = await api.post(`/api/candidate-forms/intake/${token}/book-slot`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

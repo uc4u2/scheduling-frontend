@@ -23,13 +23,9 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import axios from "axios";
+import api from "../utils/api";
 import dayjs from "dayjs";
 import { STATUS, POLL_MS } from "../utils/shiftSwap";
-
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 
 
 const POLL_INTERVAL_MS = POLL_MS;
@@ -61,8 +57,8 @@ const IncomingSwapRequests = ({ token }) => {
     try {
       const qs = showHistory ? "" : "?status=pending,executed";
 
-      const { data } = await axios.get(
-        `${API_URL}/shift-swap-requests${qs}`,
+      const { data } = await api.get(
+        `/shift-swap-requests${qs}`,
         { headers }
       );
       setSwaps(data);
@@ -85,8 +81,8 @@ const IncomingSwapRequests = ({ token }) => {
   // ───────────── actions ─────────────
   const respond = async (id, accept) => {
     try {
-      await axios.put(
-        `${API_URL}/shift-swap-requests/${id}/peer-response`,
+      await api.put(
+        `/shift-swap-requests/${id}/peer-response`,
         { accept },
         { headers }
       );
@@ -110,7 +106,7 @@ const IncomingSwapRequests = ({ token }) => {
 
   const cancel = async (id) => {
   try {
-    await axios.delete(`${API_URL}/shift-swap-requests/${id}`, { headers });
+    await api.delete(`/shift-swap-requests/${id}`, { headers });
     setSwaps((prev) =>
       prev.map((s) =>
         s.id === id ? { ...s, status: "cancelled" } : s
@@ -129,8 +125,8 @@ const IncomingSwapRequests = ({ token }) => {
 
   const resendEmail = async (id) => {
     try {
-      await axios.post(
-        `${API_URL}/shift-swap-requests/${id}/send-email`,
+      await api.post(
+        `/shift-swap-requests/${id}/send-email`,
         {},
         { headers }
       );

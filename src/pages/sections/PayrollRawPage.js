@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import {
   Box,
   Grid,
@@ -27,8 +27,6 @@ import {
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function PayrollRawPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
@@ -75,7 +73,7 @@ export default function PayrollRawPage() {
       if (month) params.month = month;
       if (selectedDept) params.department_id = selectedDept;
 
-      const res = await axios.get(`${API_URL}/automation/payroll/raw`, {
+      const res = await api.get(`/automation/payroll/raw`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -101,8 +99,8 @@ export default function PayrollRawPage() {
       if (month) params.append("month", month);
       if (selectedDept) params.append("department_id", selectedDept);
       params.append("summary", "true");
-      const url = `${API_URL}/automation/payroll/export-finalized?${params.toString()}`;
-      const resp = await axios.get(url, {
+      const url = `/automation/payroll/export-finalized?${params.toString()}`;
+      const resp = await api.get(url, {
         responseType: "blob",
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -10,19 +10,15 @@ import {
   Alert,
   Paper,
 } from "@mui/material";
-import axios from "axios";
+import api from "./utils/api";
 
 const CandidateFunnel = ({ token }) => {
   const [funnel, setFunnel] = useState({});
   const [error, setError] = useState("");
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   useEffect(() => {
     const fetchFunnel = async () => {
       try {
-        const response = await axios.get(`${API_URL}/manager/funnel`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await api.get("/manager/funnel");
         setFunnel(response.data.funnel);
       } catch (err) {
         setError("Failed to fetch funnel data");
@@ -30,7 +26,7 @@ const CandidateFunnel = ({ token }) => {
     };
 
     if (token) fetchFunnel();
-  }, [token, API_URL]);
+  }, [token]);
 
   return (
     <Container sx={{ mt: 5 }}>

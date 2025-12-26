@@ -75,7 +75,7 @@ import {
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "./utils/api";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import AllEmployeeSlotsCalendar from "./pages/sections/AllEmployeeSlotsCalendar";
@@ -253,7 +253,6 @@ const exportToPDF = async () => {
 /* ─────────────────────────────────────────────────────────
    Helpers for AvailableShiftsPanel (Setmore-style)
 ─────────────────────────────────────────────────────────── */
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const toArray = (raw) =>
   Array.isArray(raw) ? raw : raw && typeof raw === "object" ? Object.values(raw) : [];
@@ -307,13 +306,11 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
     if (openFullScreenOnMount) setFullScreenOpen(true);
   }, [openFullScreenOnMount]);
 
-  const auth = { Authorization: `Bearer ${token}` };
-
   // Departments
   useEffect(() => {
     const run = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/departments`, { headers: auth });
+        const res = await api.get("/api/departments");
         setDepartments(toArray(res.data?.departments || res.data));
       } catch {
         setError("Failed to load departments.");
@@ -327,10 +324,9 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
   useEffect(() => {
     const run = async () => {
       try {
-        const url = selectedDepartment
-          ? `${API_URL}/manager/recruiters?department_id=${selectedDepartment}`
-          : `${API_URL}/manager/recruiters`;
-        const res = await axios.get(url, { headers: auth });
+        const res = await api.get("/manager/recruiters", {
+          params: selectedDepartment ? { department_id: selectedDepartment } : {},
+        });
         const list = (res.data.recruiters || []).map((r) => ({
           ...r,
           name: r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim(),
@@ -350,8 +346,13 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
     const run = async () => {
       try {
         const ids = (selectedRecruiters.length ? selectedRecruiters : recruiters.map((r) => r.id)).join(",");
-        const url = `${API_URL}/automation/shifts/range?start_date=${dateRange.start}&end_date=${dateRange.end}&recruiter_ids=${ids}`;
-        const res = await axios.get(url, { headers: auth });
+        const res = await api.get("/automation/shifts/range", {
+          params: {
+            start_date: dateRange.start,
+            end_date: dateRange.end,
+            recruiter_ids: ids,
+          },
+        });
         setShifts(res.data.shifts || []);
       } catch {
         setError("Failed to load shifts.");
@@ -816,8 +817,6 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const drawerExpanded = isMobileViewport ? true : isDrawerOpen;
   const drawerWidthCurrent = drawerExpanded ? drawerWidth : collapsedWidth;
 
-  const API_URL_LOCAL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   useEffect(() => {
     localStorage.setItem("manager_selected_view", selectedView);
   }, [selectedView]);
@@ -825,16 +824,14 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await axios.get(`${API_URL_LOCAL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.get("/auth/me");
         setCurrentUserInfo(res.data || null);
       } catch {
         setCurrentUserInfo(null);
       }
     };
     if (token) fetchUser();
-  }, [API_URL_LOCAL, token]);
+  }, [token]);
 
   useEffect(() => {
     if (initialView && initialView !== selectedView) {
@@ -855,9 +852,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   useEffect(() => {
     const run = async () => {
       try {
-        const res = await axios.get(`${API_URL_LOCAL}/manager/activity-feed`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.get("/manager/activity-feed");
         setActivityLanding(res.data || { recent_bookings: [] });
       } catch (e) {
         setActivityErr("Failed to load activity feed.");
@@ -869,7 +864,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       (selectedView === "__landing__" || selectedView === "overview" || selectedView === "recent-bookings")
     )
       run();
-  }, [API_URL_LOCAL, token, selectedView, isManager]);
+  }, [token, selectedView, isManager]);
 
   // Employee management data loading
   useEffect(() => {
@@ -903,8 +898,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const fetchEmployees = async (options = {}) => {
     const { ignoreFilter = false } = options;
     try {
-      const res = await axios.get(`${API_URL_LOCAL}/manager/recruiters`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get("/manager/recruiters", {
         params: !ignoreFilter && departmentFilter ? { department_id: departmentFilter } : {},
       });
       const rows = res.data?.recruiters || res.data || [];
@@ -916,9 +910,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get(`${API_URL_LOCAL}/api/departments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/api/departments");
       setDepartments(res.data || []);
     } catch {
       setError("Failed to fetch departments.");
@@ -928,8 +920,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const fetchConversionRequests = async () => {
     try {
       setConversionLoading(true);
-      const res = await axios.get(`${API_URL_LOCAL}/manager/candidates/conversion-requests`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get("/manager/candidates/conversion-requests", {
         params: { status: "pending" },
       });
       setConversionRequests(res.data?.results || []);
@@ -942,11 +933,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   const handleRoleChange = async (id, newRole) => {
     try {
-      await axios.patch(
-        `${API_URL_LOCAL}/manager/recruiters/${id}`,
-        { role: newRole },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.patch(`/manager/recruiters/${id}`, { role: newRole });
       fetchEmployees();
     } catch {
       setError("Failed to update role.");
@@ -955,7 +942,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   const handleResetPassword = async (id) => {
     try {
-      await axios.post(`${API_URL_LOCAL}/manager/recruiters/${id}/reset-password`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await api.post(`/manager/recruiters/${id}/reset-password`, {});
       setMessage("Temporary password sent.");
     } catch {
       setError("Failed to reset password.");
@@ -975,14 +962,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       )
     );
     try {
-      await axios.patch(
-        `${API_URL_LOCAL}/manager/recruiters/${id}`,
-        {
-          can_manage_onboarding: enabled,
-          ...(enabled ? { can_manage_onboarding_limited: false } : {}),
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.patch(`/manager/recruiters/${id}`, {
+        can_manage_onboarding: enabled,
+        ...(enabled ? { can_manage_onboarding_limited: false } : {}),
+      });
       setMessage("Onboarding access updated.");
       fetchEmployees();
     } catch {
@@ -1014,14 +997,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       )
     );
     try {
-      await axios.patch(
-        `${API_URL_LOCAL}/manager/recruiters/${id}`,
-        {
-          can_manage_onboarding_limited: enabled,
-          ...(enabled ? { can_manage_onboarding: false } : {}),
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.patch(`/manager/recruiters/${id}`, {
+        can_manage_onboarding_limited: enabled,
+        ...(enabled ? { can_manage_onboarding: false } : {}),
+      });
       setMessage("Limited onboarding access updated.");
       fetchEmployees();
     } catch {
@@ -1052,11 +1031,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       )
     );
     try {
-      await axios.patch(
-        `${API_URL_LOCAL}/manager/recruiters/${id}`,
-        { can_manage_shifts: enabled },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.patch(`/manager/recruiters/${id}`, { can_manage_shifts: enabled });
       setMessage("Supervisor access updated.");
       fetchEmployees();
     } catch {
@@ -1086,11 +1061,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       )
     );
     try {
-      await axios.patch(
-        `${API_URL_LOCAL}/manager/recruiters/${id}`,
-        { can_manage_payroll: enabled },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.patch(`/manager/recruiters/${id}`, { can_manage_payroll: enabled });
       setMessage("Payroll access updated.");
       fetchEmployees();
     } catch {
@@ -1110,11 +1081,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   const handleApproveConversion = async (candidateId) => {
     try {
-      await axios.post(
-        `${API_URL_LOCAL}/manager/candidates/${candidateId}/approve-conversion`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post(`/manager/candidates/${candidateId}/approve-conversion`, {});
       setMessage("Conversion approved.");
       fetchConversionRequests();
     } catch (err) {
@@ -1125,11 +1092,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const handleRejectConversion = async (candidateId) => {
     const reason = window.prompt("Rejection reason (optional):") || "";
     try {
-      await axios.post(
-        `${API_URL_LOCAL}/manager/candidates/${candidateId}/reject-conversion`,
-        { reason },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post(`/manager/candidates/${candidateId}/reject-conversion`, { reason });
       setMessage("Conversion rejected.");
       fetchConversionRequests();
     } catch (err) {
@@ -1139,7 +1102,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   const handleArchive = async () => {
     try {
-      await axios.patch(`${API_URL_LOCAL}/manager/recruiters/${confirmArchiveId}/archive`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      await api.patch(`/manager/recruiters/${confirmArchiveId}/archive`, {});
       setMessage("Employee archived.");
       setConfirmArchiveId(null);
       fetchEmployees();
@@ -1150,7 +1113,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   const handleRestore = async (id) => {
     try {
-      await axios.patch(`${API_URL_LOCAL}/manager/recruiters/${id}`, { status: "active" }, { headers: { Authorization: `Bearer ${token}` } });
+      await api.patch(`/manager/recruiters/${id}`, { status: "active" });
       setMessage("Employee restored.");
       fetchEmployees();
     } catch {
@@ -1160,8 +1123,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   const handleCompare = async () => {
     try {
-      const res = await axios.get(`${API_URL_LOCAL}/manager/recruiters/compare`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await api.get("/manager/recruiters/compare", {
         params: { ids: selectedForComparison, timeRange },
       });
       setComparisonData(res.data);
@@ -1186,9 +1148,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   const fetchSwapRequests = async () => {
     try {
-      const res = await axios.get(`${API_URL_LOCAL}/shift-swap-requests`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/shift-swap-requests");
       const peerAccepted = res.data.filter((r) => r.status === "peer_accepted");
       setSwapRequests(peerAccepted);
       setSwapError("");
@@ -1199,13 +1159,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   const handleManagerDecision = async (swapId, approve) => {
     try {
-      await axios.put(
-        `${API_URL_LOCAL}/shift-swap-requests/${swapId}/manager-decision`,
-        { approve },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await api.put(`/shift-swap-requests/${swapId}/manager-decision`, { approve });
       fetchSwapRequests();
     } catch {
       setSwapError("Failed to update swap status.");

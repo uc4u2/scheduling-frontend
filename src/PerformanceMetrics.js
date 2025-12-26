@@ -10,19 +10,15 @@ import {
   Alert,
   Paper,
 } from "@mui/material";
-import axios from "axios";
+import api from "./utils/api";
 
 const PerformanceMetrics = ({ token }) => {
   const [data, setData] = useState([]);
   const [error, setError] = useState("");
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   useEffect(() => {
     const fetchPerformance = async () => {
       try {
-        const response = await axios.get(`${API_URL}/manager/performance`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await api.get("/manager/performance");
         setData(response.data.performance);
       } catch (err) {
         setError("Failed to fetch performance metrics");
@@ -30,7 +26,7 @@ const PerformanceMetrics = ({ token }) => {
     };
 
     if (token) fetchPerformance();
-  }, [token, API_URL]);
+  }, [token]);
 
   // Helper: convert seconds to "X min Y sec"
   const formatSeconds = (sec) => {

@@ -1,4 +1,3 @@
-import axios from "axios";
 import { api, questionnaireUploadsApi } from "./api";
 import {
   QUESTIONNAIRE_ALLOWED_MIME,
@@ -82,7 +81,9 @@ const uploadToS3 = async ({ upload, file, onProgress }) => {
   if (upload?.headers) {
     requestConfig.headers = { ...upload.headers };
   }
-  await axios(requestConfig);
+  requestConfig.noAuth = true;
+  requestConfig.noCompanyHeader = true;
+  await api(requestConfig);
 };
 
 const uploadToLocal = async ({ upload, file, fileId, isCandidate, onProgress }) => {

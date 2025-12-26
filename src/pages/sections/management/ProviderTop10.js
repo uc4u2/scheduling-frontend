@@ -1,6 +1,6 @@
 // src/pages/sections/management/ProviderTop10.js
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../../utils/api";
 import {
   Alert,
   Box,
@@ -23,8 +23,6 @@ import dayjs from "dayjs";
 /* ────────────────────────────────────────────────────────── */
 /*                           CONFIG                           */
 /* ────────────────────────────────────────────────────────── */
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 /** Server metric keys -> nice labels.
  *  “fallback: true” means we can compute from /api/manager/analytics/summary?provider_id=...
@@ -119,8 +117,8 @@ const ProviderTop10 = ({ token: tokenProp }) => {
     setError("");
     try {
       const [rec, dept] = await Promise.all([
-        axios.get(`${API}/manager/recruiters`, auth),
-        axios.get(`${API}/api/departments`,   auth),
+        api.get(`/manager/recruiters`, auth),
+        api.get(`/api/departments`,   auth),
       ]);
       setRecruiters(rec?.data?.recruiters || rec?.data || []);
       setDepartments(dept?.data || []);
@@ -139,7 +137,7 @@ const ProviderTop10 = ({ token: tokenProp }) => {
     if (providerId)   params.provider_id   = providerId;
 
     const qs = new URLSearchParams(params).toString();
-    const { data } = await axios.get(`${API}/api/manager/providers/top10?${qs}`, auth);
+    const { data } = await api.get(`/api/manager/providers/top10?${qs}`, auth);
     const list = Array.isArray(data) ? data : (data?.rows || []);
     return list;
   };
@@ -225,7 +223,7 @@ const ProviderTop10 = ({ token: tokenProp }) => {
             const qs = new URLSearchParams({
               from, to, tz, group: "day", provider_id: pid,
             }).toString();
-            const { data } = await axios.get(`${API}/api/manager/analytics/summary?${qs}`, auth);
+            const { data } = await api.get(`/api/manager/analytics/summary?${qs}`, auth);
             const extracted = extractFromSummary(metricKey, data);
             return {
               provider_id: Number(pid),

@@ -6,7 +6,7 @@ import {
   vacationIncludedByDefault,
 } from "./utils/payrollRules";
 
-import axios from "axios";
+import api from "../../utils/api";
 import {
   Typography,
   Divider,
@@ -189,8 +189,7 @@ function recalcNetPay(data) {
 
 /* 🔹 Helper – call backend /payroll/calculate */
 const fetchPayrollPreview = async (payload, token) => {
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-  const res = await axios.post(`${API_URL}/payroll/calculate`, payload, {
+  const res = await api.post(`/payroll/calculate`, payload, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.data;
@@ -201,8 +200,6 @@ const getIntegrationStatusChip = (status) => {
   if (status === "error") return { color: "error", label: "Error" };
   return { color: "default", label: status === "pending" ? "Pending" : status || "Pending" };
 };
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const paymentStatusMeta = (status) => {
   const s = (status || "not_requested").toLowerCase();
@@ -298,7 +295,7 @@ export default function PayrollPreview({
     const load = async () => {
       // Company defaults (provider/currency/label)
       try {
-        const res = await axios.get(`${API_URL}/admin/company-profile`, {
+        const res = await api.get(`/admin/company-profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (active) {
@@ -341,7 +338,7 @@ export default function PayrollPreview({
       if (finalizedId) {
         try {
           setPaymentLoading(true);
-        const res = await axios.get(`${API_URL}/automation/payroll/payment/status`, {
+        const res = await api.get(`/automation/payroll/payment/status`, {
           params: { finalized_payroll_id: finalizedId },
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -378,7 +375,7 @@ export default function PayrollPreview({
         return;
       }
       try {
-        const res = await axios.get(`${API_URL}/automation/payroll/raw`, {
+        const res = await api.get(`/automation/payroll/raw`, {
           params: {
             recruiter_id: payroll.recruiter_id,
             start_date: payroll.start_date,
@@ -417,11 +414,10 @@ const saveFinalizedPayroll = async () => {
       return;
     }
 
-    const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
     const headers = { Authorization:`Bearer ${token}` };
 
     // 2️⃣ download the already-finalised PDF (blob)
-    const url = `${API}/automation/payroll/export-finalized`
+    const url = `/automation/payroll/export-finalized`
       + `?recruiter_id=${payroll.recruiter_id}`
       + `&month=${month}`
       + `&region=${region}`
@@ -429,11 +425,11 @@ const saveFinalizedPayroll = async () => {
       + `&start_date=${payroll.start_date}`
       + `&end_date=${payroll.end_date}`;
 
-    const blobRes = await axios.get(url, { headers, responseType:"blob" });
+    const blobRes = await api.get(url, { headers, responseType:"blob" });
     const base64File = await blobToBase64(blobRes.data);
 
     // 3️⃣ send that file to your “portal” table
-    await axios.post(`${API}/main/payroll/save-finalized`, {
+    await api.post(`/main/payroll/save-finalized`, {
       ...payroll,
       employee_id : payroll.recruiter_id,
       file_data   : base64File,
@@ -463,8 +459,8 @@ const saveFinalizedPayroll = async () => {
     }
     try {
       setPaymentLoading(true);
-      const res = await axios.post(
-        `${API_URL}/automation/payroll/payment/request`,
+      const res = await api.post(
+        `/automation/payroll/payment/request`,
         {
           finalized_payroll_id: finalizedId,
           partner: paymentPartner || undefined,
@@ -490,7 +486,7 @@ const saveFinalizedPayroll = async () => {
     if (!finalizedId) return;
     try {
       setPaymentLoading(true);
-      const res = await axios.get(`${API_URL}/automation/payroll/payment/status`, {
+      const res = await api.get(`/automation/payroll/payment/status`, {
         params: { finalized_payroll_id: finalizedId },
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -516,8 +512,8 @@ const saveFinalizedPayroll = async () => {
     }
     try {
       setMappingLoading(true);
-      await axios.post(
-        `${API_URL}/automation/payroll/employee-mapping/request`,
+      await api.post(
+        `/automation/payroll/employee-mapping/request`,
         {
           employee_id: payroll.recruiter_id,
           provider:

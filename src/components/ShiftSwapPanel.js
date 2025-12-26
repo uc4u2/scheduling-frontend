@@ -22,13 +22,11 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import axios from "axios";
+import api from "../utils/api";
 import dayjs from "dayjs";
 
 // adjust the path if your folder structure differs
 import { STATUS, POLL_MS } from "../utils/shiftSwap";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const ShiftSwapPanel = ({ token, headerStyle }) => {
   // ───────────── state ─────────────
@@ -47,7 +45,7 @@ const ShiftSwapPanel = ({ token, headerStyle }) => {
     setError("");
     try {
       const qs = showHistory ? "" : "?status=peer_accepted";
-      const { data } = await axios.get(`${API_URL}/shift-swap-requests${qs}`, {
+      const { data } = await api.get(`/shift-swap-requests${qs}`, {
         headers,
       });
       setSwaps(data);
@@ -67,8 +65,8 @@ const ShiftSwapPanel = ({ token, headerStyle }) => {
   // ───────────── actions ─────────────
   const decide = async (id, approve) => {
     try {
-      const { data } = await axios.put(
-        `${API_URL}/shift-swap-requests/${id}/manager-decision`,
+      const { data } = await api.put(
+        `/shift-swap-requests/${id}/manager-decision`,
         { approve },
         { headers }
       );
@@ -93,7 +91,7 @@ const ShiftSwapPanel = ({ token, headerStyle }) => {
 
   const resendEmail = async (id) => {
     try {
-      await axios.post(`${API_URL}/shift-swap-requests/${id}/send-email`, {}, { headers });
+      await api.post(`/shift-swap-requests/${id}/send-email`, {}, { headers });
       setSnackbar({ open: true, msg: "E-mail re-sent.", error: false });
     } catch {
       setSnackbar({ open: true, msg: "Could not resend e-mail.", error: true });

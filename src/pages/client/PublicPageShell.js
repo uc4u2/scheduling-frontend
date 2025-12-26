@@ -1,6 +1,5 @@
 // src/pages/client/PublicPageShell.js
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import {
   AppBar, Toolbar, Button, Container, Box, Stack, Typography,
   IconButton, CircularProgress, Alert, CssBaseline, GlobalStyles, useTheme
@@ -8,11 +7,9 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import { Link as RouterLink, useParams, useNavigate, useLocation } from "react-router-dom";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
-import { publicSite } from "../../utils/api"; // added for edit guard
+import { publicSite } from "../../utils/api"; // added for edit guard + data fetch
 import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../../utils/navStyle";
 import NavStyleHydrator from "../../components/website/NavStyleHydrator";
-
-const API = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
 
 const PublicSiteContext = createContext(null);
 
@@ -759,29 +756,17 @@ export default function PublicPageShell({
     setLoading(true);
     setErr("");
 
-    const enc = encodeURIComponent(slug);
     (async () => {
-      const tries = [
-        `${API}/api/public/${enc}/website`,
-        `${API}/public/${enc}/website`,
-        `${API}/api/public/${enc}/site`,
-        `${API}/public/${enc}/site`,
-        `${API}/public/site/${enc}`,
-      ];
-      let ok = null, lastError = null;
-      for (const url of tries) {
-        try {
-          const { data } = await axios.get(url);
-          ok = data;
-          break;
-        } catch (e) {
-          lastError = e;
-        }
+      try {
+        const ok = await publicSite.getBySlug(slug);
+        if (!alive) return;
+        setSite(ok || null);
+      } catch (e) {
+        if (!alive) return;
+        setErr(e?.response?.data?.error || "Failed to load site.");
+      } finally {
+        if (alive) setLoading(false);
       }
-      if (!alive) return;
-      if (ok) setSite(ok);
-      else setErr(lastError?.response?.data?.error || "Failed to load site.");
-      setLoading(false);
     })();
 
     return () => { alive = false; };

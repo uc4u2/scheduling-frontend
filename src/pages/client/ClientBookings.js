@@ -13,7 +13,7 @@ import {
   Divider,
   Link,
 } from "@mui/material";
-import axios from "axios";
+import api from "../../utils/api";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import { getUserTimezone } from "../../utils/timezone";
@@ -41,7 +41,7 @@ export default function ClientBookings() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    axios
+    api
       .get("/api/client/bookings", {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -55,7 +55,7 @@ export default function ClientBookings() {
   useEffect(() => {
     const token = () => localStorage.getItem("token");
     const handler = () => {
-      axios
+      api
         .get("/api/client/bookings", {
           headers: { Authorization: 'Bearer ' + token() },
         })
@@ -71,7 +71,7 @@ export default function ClientBookings() {
     if (row.status === "cancelled" || row.status === "unavailable") return;
     if (window.confirm("Cancel this booking?")) {
       const token = localStorage.getItem("token");
-      axios
+      api
         .post(`/api/client/bookings/${row.id}/cancel`, null, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -90,7 +90,7 @@ export default function ClientBookings() {
   function handleSendNote() {
     if (!note.trim()) return;
     const token = localStorage.getItem("token");
-    axios
+    api
       .post(
         `/api/client/bookings/${selected.id}/note`,
         { note },

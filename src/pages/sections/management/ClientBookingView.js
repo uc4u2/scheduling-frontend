@@ -11,14 +11,12 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import axios from "axios";
+import api from "../../../utils/api";
 
 import { getUserTimezone } from "../../../utils/timezone";
 import { isoFromParts } from "../../../utils/datetime";
 
 import "../../../components/calendar-enterprise.css";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 /* ──────────────────────────────────────────────── */
 /* Split a raw availability window into N‑minute blocks */
@@ -91,9 +89,9 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
     (async () => {
       try {
         const [svcRes, recRes, linkRes] = await Promise.all([
-          axios.get(`${API}/booking/services`, auth),
-          axios.get(`${API}/manager/recruiters?active=true`, auth),
-          axios.get(`${API}/booking/employee-services`, auth)
+          api.get(`/booking/services`, auth),
+          api.get(`/manager/recruiters?active=true`, auth),
+          api.get(`/booking/employee-services`, auth)
         ]);
         setServices(svcRes.data || []);
         setRecruiters(recRes.data.recruiters || recRes.data || []);
@@ -127,15 +125,15 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
 
         if (isPublic) {
           // Public endpoint (already trimmed to service length)
-          const { data } = await axios.get(
-            `${API}/public/${propSlug}/availability`,
+          const { data } = await api.get(
+            `/public/${propSlug}/availability`,
             { params:{ artist_id: empId, service_id: svcId, date } }
           );
           raw = data.slots || [];
         } else {
           // Manager endpoint → split long windows client‑side
-          const { data } = await axios.get(
-            `${API}/manager/available-slots`,
+          const { data } = await api.get(
+            `/manager/available-slots`,
             { ...auth, params:{ recruiter_id: empId } }
           );
           const daySlots = (data.slots || []).filter(s => s.date === date);
@@ -183,7 +181,7 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
       || "";
 
     try {
-      await axios.post(`${API}/api/manager/book-client`, {
+      await api.post(`/api/manager/book-client`, {
         company_slug : companySlug,
         artist_id    : empId,
         service_id   : svcId,

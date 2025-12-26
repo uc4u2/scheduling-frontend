@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Container, Grid, Card, CardContent, CardActions, Typography, Button, CircularProgress, TextField
@@ -21,7 +21,7 @@ const EmployeeList = () => {
       ? `/public/${slug}/artists?department_id=${departmentId}`
       : `/public/${slug}/artists`;
 
-    axios.get(url)
+    api.get(url)
       .then(res => setEmployees(res.data))
       .catch(() => setEmployees([]))
       .finally(() => setLoading(false));

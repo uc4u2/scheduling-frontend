@@ -17,9 +17,7 @@ import {
   LinearProgress,
   Button,
 } from "@mui/material";
-import axios from "axios";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import api from "../../../utils/api";
 
 const nameOfRecruiter = (r) =>
   r?.full_name ||
@@ -102,8 +100,8 @@ export default function ClientFinder({
     setError("");
     try {
       const [depRes, recRes] = await Promise.all([
-        axios.get(`${API}/api/departments`, auth),
-        axios.get(`${API}/manager/recruiters`, auth),
+        api.get(`/api/departments`, auth),
+        api.get(`/manager/recruiters`, auth),
       ]);
       setDepartments(depRes?.data || []);
       setRecruiters(recRes?.data?.recruiters || []);
@@ -122,8 +120,8 @@ export default function ClientFinder({
     setError("");
     try {
       const [cliRes, bkgRes] = await Promise.all([
-        axios.get(`${API}/booking/clients`, auth), // full client list
-        axios.get(`${API}/api/manager/bookings`, auth), // we will scope/filter by date/emp/dep
+        api.get(`/booking/clients`, auth), // full client list
+        api.get(`/api/manager/bookings`, auth), // we will scope/filter by date/emp/dep
       ]);
       setAllClients(Array.isArray(cliRes?.data) ? cliRes.data : []);
       setBookings(Array.isArray(bkgRes?.data) ? bkgRes.data : []);

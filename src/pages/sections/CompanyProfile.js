@@ -32,7 +32,7 @@ import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ManagementFrame from "../../components/ui/ManagementFrame";
-import axios from "axios";
+import api from "../../utils/api";
 import { useTranslation } from "react-i18next";
 import { wb } from "../../utils/api"; // <-- add to verify public viewer
 import {
@@ -145,8 +145,7 @@ export default function CompanyProfile({ token }) {
   );
 
   /* ---------- config ---------- */
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-  const endpoint = `${API_URL}/admin/company-profile`;
+  const endpoint = `/admin/company-profile`;
 
   /* ---------- helpers ---------- */
   const showMessage = (messageKey, severity = "info", fallback = "") =>
@@ -203,7 +202,7 @@ export default function CompanyProfile({ token }) {
      ──────────────────────────────────────────────────────────────── */
   const loadDepartments = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/departments`, {
+      const { data } = await api.get(`/api/departments`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setDepartments(data);
@@ -220,8 +219,8 @@ export default function CompanyProfile({ token }) {
       return;
     }
     try {
-      const { data } = await axios.post(
-        `${API_URL}/api/departments`,
+      const { data } = await api.post(
+        `/api/departments`,
         { name, description },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -263,7 +262,7 @@ export default function CompanyProfile({ token }) {
       return;
     }
     try {
-      await axios.put(`${API_URL}/api/departments/${editingDepartmentId}`, { name, description }, {
+      await api.put(`/api/departments/${editingDepartmentId}`, { name, description }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       showMessage('', 'success', 'Department updated.');
@@ -277,7 +276,7 @@ export default function CompanyProfile({ token }) {
 
   const handleDeleteDepartment = async (deptId) => {
     try {
-      await axios.delete(`${API_URL}/api/departments/${deptId}`, {
+      await api.delete(`/api/departments/${deptId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (editingDepartmentId === deptId) {
@@ -296,7 +295,7 @@ export default function CompanyProfile({ token }) {
     (async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get(endpoint, {
+        const { data } = await api.get(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!ignore && data && typeof data === 'object') {
@@ -355,7 +354,7 @@ export default function CompanyProfile({ token }) {
     if (!newSlug) return;
     try {
       setSaving(true);
-      await axios.patch(endpoint, { slug: newSlug }, {
+      await api.patch(endpoint, { slug: newSlug }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setForm((f) => ({ ...f, slug: newSlug }));
@@ -389,7 +388,7 @@ export default function CompanyProfile({ token }) {
 	          ? Math.max(0, Math.min(14, Math.trunc(num)))
 	          : null;
 	      }
-	      const { data: updated } = await axios[method](endpoint, payload, {
+	      const { data: updated } = await api[method](endpoint, payload, {
 	        headers: { Authorization: `Bearer ${token}` },
 	      });
       if (updated && typeof updated === "object") {

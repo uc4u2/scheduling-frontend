@@ -1,10 +1,8 @@
 import React, { useMemo, useState } from "react";
-import axios from "axios";
 import {
   Box, Paper, Stack, Typography, TextField, Button, Alert, Tabs, Tab
 } from "@mui/material";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import { api } from "../../utils/api";
 
 export default function PublicClientAuth({ slug }) {
   const [tab, setTab] = useState("login");
@@ -30,9 +28,9 @@ export default function PublicClientAuth({ slug }) {
   const doLogin = async () => {
     setError(""); setBusy(true);
     try {
-      const { data } = await axios.post(`${API}/login`, {
+      const { data } = await api.post(`/login`, {
         email, password, role: "client", timezone: tz
-      });
+      }, { noAuth: true, noCompanyHeader: true });
       if (!data?.access_token) throw new Error("No token");
       finish(data.access_token);
     } catch (e) {
@@ -43,13 +41,13 @@ export default function PublicClientAuth({ slug }) {
   const doRegister = async () => {
     setError(""); setBusy(true);
     try {
-      await axios.post(`${API}/register`, {
+      await api.post(`/register`, {
         first_name: first, last_name: last, email, password, timezone: tz, role: "client"
-      });
+      }, { noAuth: true, noCompanyHeader: true });
       // auto-login for convenience
-      const { data } = await axios.post(`${API}/login`, {
+      const { data } = await api.post(`/login`, {
         email, password, role: "client", timezone: tz
-      });
+      }, { noAuth: true, noCompanyHeader: true });
       if (!data?.access_token) throw new Error("No token");
       finish(data.access_token);
     } catch (e) {

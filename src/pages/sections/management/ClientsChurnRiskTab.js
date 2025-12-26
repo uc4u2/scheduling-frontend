@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../../utils/api";
 import {
   Alert, Box, Card, CardContent, CardHeader, Grid, LinearProgress,
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography
 } from "@mui/material";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function ClientsChurnRiskTab({ departmentId, employeeId }) {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
@@ -25,7 +23,7 @@ export default function ClientsChurnRiskTab({ departmentId, employeeId }) {
         ...(departmentId ? { department_id: departmentId } : {}),
         ...(employeeId ? { employee_id: employeeId } : {}),
       }).toString();
-      const { data } = await axios.get(`${API}/api/manager/clients/analytics/churn_risk?${qs}`, auth);
+      const { data } = await api.get(`/api/manager/clients/analytics/churn_risk?${qs}`, auth);
       setRows(data?.results || []);
     } catch (e) {
       setErr(e?.response?.data?.error || e?.message || "Failed to load churn risk");

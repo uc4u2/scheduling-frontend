@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Paper, Button, Rating, TextField, Table, TableBody, TableCell, TableHead, TableRow, CircularProgress
 } from "@mui/material";
-import axios from "axios";
+import api from "../../utils/api";
 
 export default function ClientReviews() {
   const [reviews, setReviews] = useState([]);
@@ -11,7 +11,7 @@ export default function ClientReviews() {
   const [form, setForm] = useState({ appointment_id: "", rating: 0, comment: "" });
 
   useEffect(() => {
-    axios.get("/public/reviews").then(res => setReviews(res.data)).finally(() => setLoading(false));
+    api.get("/public/reviews").then(res => setReviews(res.data)).finally(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -19,7 +19,7 @@ export default function ClientReviews() {
 
   const handleSubmit = async () => {
     if (!form.appointment_id || !form.rating) return alert("Appointment and rating required.");
-    await axios.post("/public/review", form);
+    await api.post("/public/review", form);
     setForm({ appointment_id: "", rating: 0, comment: "" });
     alert("Thank you for your review!");
   };

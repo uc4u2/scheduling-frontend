@@ -48,7 +48,7 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import axios from "axios";
+import api from "../../utils/api";
 import { STATUS } from "../../utils/shiftSwap";
 import { POLL_MS } from "../../utils/shiftSwap";
 
@@ -57,8 +57,6 @@ import ShiftSwapPanel from "../../components/ShiftSwapPanel";
 import IncomingSwapRequests from "../../components/IncomingSwapRequests";
 import { getUserTimezone } from "../../utils/timezone";
 import { timeTracking } from "../../utils/api";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const SecondEmployeeShiftView = () => {
   const theme = useTheme();
@@ -165,12 +163,12 @@ const loadShifts = async () => {
   try {
     const today = format(new Date(), "yyyy-MM-dd");
     const in30 = format(addDays(new Date(), 30), "yyyy-MM-dd");
-    const res = await fetch(
-      `${API_URL}/recruiter/calendar?start_date=${today}&end_date=${in30}`,
-      { headers: authHeader }
-    );
+    const res = await api.get("/recruiter/calendar", {
+      params: { start_date: today, end_date: in30 },
+      headers: authHeader,
+    });
 
-    const { events = [] } = await res.json();
+    const { events = [] } = res.data || {};
 
     const shiftEvents = events
       .filter((e) => e.type === "shift")
@@ -217,10 +215,10 @@ const loadShifts = async () => {
 const loadPendingSwaps = async (showHistory = false) => {
   try {
     const statusFilter = showHistory ? "" : "?status=pending,executed";
-    const res = await fetch(`${API_URL}/shift-swap-requests${statusFilter}`, {
+    const res = await api.get(`/shift-swap-requests${statusFilter}`, {
       headers: authHeader,
     });
-    const data = await res.json();
+    const data = res.data;
     setPendingSwaps(data);
   } catch (_) {
     setPendingSwaps([]);
@@ -229,10 +227,10 @@ const loadPendingSwaps = async (showHistory = false) => {
 
 const loadOptOut = async () => {
   try {
-    const res = await fetch(`${API_URL}/employee/swap-opt-out`, {
+    const res = await api.get("/employee/swap-opt-out", {
       headers: authHeader,
     });
-    const data = await res.json();
+    const data = res.data;
     setOptOut(Boolean(data.opt_out));
   } catch {
     /* if call fails, keep default = false */
@@ -241,11 +239,11 @@ const loadOptOut = async () => {
 
 const loadSwappableShifts = async (shiftId, scope = "week") => {
   try {
-    const res = await fetch(
-      `${API_URL}/employee/swappable-shifts?shift_id=${shiftId}&scope=${scope}`,
-      { headers: authHeader }
-    );
-    const data = await res.json();
+    const res = await api.get("/employee/swappable-shifts", {
+      params: { shift_id: shiftId, scope },
+      headers: authHeader,
+    });
+    const data = res.data;
     setSwappableShifts(data);
   } catch (_) {
     setSwappableShifts([]);
@@ -301,13 +299,9 @@ useEffect(() => {
   const submitLeaveRequest = async () => {
     setSubmittingLeave(true);
     try {
-      const res = await fetch(`${API_URL}/employee/leave-request`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader,
-        },
-        body: JSON.stringify({
+      const res = await api.post(
+        "/employee/leave-request",
+        {
           shift_id: selectedShift.id,
           leave_type: leaveForm.leave_type,
           leave_subtype: leaveForm.leave_subtype,
@@ -318,10 +312,16 @@ useEffect(() => {
           override_hours: leaveForm.override_hours || null,
           top_up_percent: leaveForm.top_up_percent,
           top_up_cap: leaveForm.top_up_cap,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Request failed");
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeader,
+          },
+        }
+      );
+      const data = res.data || {};
+      if (data?.error) throw new Error(data.error || "Request failed");
       setSnackbar({ open: true, msg: "Leave request submitted.", error: false });
       setLeaveModalOpen(false);
       loadShifts();
@@ -339,8 +339,8 @@ useEffect(() => {
   const fireEmail = async (swapId) => {
     if (!swapId) return;
     try {
-      await axios.post(
-        `${API_URL}/shift-swap-requests/${swapId}/send-email`,
+      await api.post(
+        `/shift-swap-requests/${swapId}/send-email`,
         {},
         { headers: authHeader }
       );
@@ -364,8 +364,8 @@ useEffect(() => {
 
   const handleSwapRequest = async () => {
     try {
-      const res = await axios.post(
-        `${API_URL}/shift-swap-requests`,
+      const res = await api.post(
+        `/shift-swap-requests`,
         {
           from_shift_id: selectedShift.id,
           target_shift_id: swapTargetShiftId,
@@ -395,7 +395,7 @@ useEffect(() => {
 
   const cancelSwap = async (swapId) => {
     try {
-      await axios.delete(`${API_URL}/shift-swap-requests/${swapId}`, {
+      await api.delete(`/shift-swap-requests/${swapId}`, {
         headers: authHeader,
       });
       setSnackbar({ open: true, msg: "Swap cancelled.", error: false });
@@ -701,13 +701,14 @@ useEffect(() => {
         params.set("status", historyFilters.status);
       }
       params.set("format", "csv");
-      const res = await fetch(`${API_URL}/employee/time-history?${params.toString()}`, {
+      const res = await api.get("/employee/time-history", {
+        params: Object.fromEntries(params.entries()),
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        responseType: "blob",
       });
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
+      const blob = res.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -1627,8 +1628,8 @@ return (
               const val = e.target.checked;
               setOptOut(val);
               try {
-                await axios.put(
-                  `${API_URL}/employee/swap-opt-out`,
+                await api.put(
+                  `/employee/swap-opt-out`,
                   { opt_out: val },
                   { headers: authHeader }
                 );

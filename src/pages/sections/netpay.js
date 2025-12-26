@@ -1,5 +1,5 @@
 // netpay.js
-import axios from 'axios';
+import api from "../../utils/api";
 import { vacationIncludedByDefault } from "./utils/payrollRules";
 
 // ─────────────────────────────────────────────────────────────
@@ -225,9 +225,8 @@ export const updateDeductionFromPct = (field, value, payroll, setPayroll) => {
 // 🔹 Persistence helpers
 // ─────────────────────────────────────────────────────────────
 export async function savePayroll(data, token) {
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-  const res = await axios.post(
-    `${API_URL}/automation/payroll/save`,
+  const res = await api.post(
+    `/automation/payroll/save`,
     data,
     { headers: { Authorization: `Bearer ${token}` } }
   );
@@ -235,9 +234,8 @@ export async function savePayroll(data, token) {
 }
 
 export async function exportPayroll(params, token, format = 'pdf') {
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-  const res = await axios.get(
-    `${API_URL}/automation/payroll/export`,
+  const res = await api.get(
+    `/automation/payroll/export`,
     {
       headers: { Authorization: `Bearer ${token}` },
       responseType: 'blob',

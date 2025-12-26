@@ -13,7 +13,6 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { formatCurrency } from "../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, resolveActiveCurrencyFromCompany, getActiveCurrency } from "../../utils/currency";
 import { loadStripe } from "@stripe/stripe-js";
@@ -23,6 +22,7 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
+import { api } from "../../utils/api";
 
 /* ----------------------------- Tip Form ----------------------------- */
 const TipForm = ({ onRecorded }) => {
@@ -112,7 +112,6 @@ export default function PublicTip() {
   const token = search.get("token") || search.get("t") || "";
   const navigate = useNavigate();
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const STRIPE_PK = process.env.REACT_APP_STRIPE_PUBLIC_KEY || "";
 
   const stripePromise = useMemo(() => loadStripe(STRIPE_PK), [STRIPE_PK]);
@@ -149,8 +148,10 @@ export default function PublicTip() {
         setError("");
 
         // 0) Verify link via new endpoint
-        const verify = await axios.get(`${API_URL}/api/public/postservice/verify`, {
+        const verify = await api.get(`/api/public/postservice/verify`, {
           params: { t: token, action: "tip", appointment_id: Number(appointmentId) },
+          noCompanyHeader: true,
+          noAuth: true,
         });
         if (!verify?.data?.ok) {
           setError(verify?.data?.error || "Expired or invalid link.");
@@ -161,10 +162,15 @@ export default function PublicTip() {
 
         // 1) Resolve + 2) Get external review URL
         const [{ data: resv }, { data: cfg }] = await Promise.all([
-          axios.get(`${API_URL}/public/${slug}/feedback/resolve`, {
+          api.get(`/public/${slug}/feedback/resolve`, {
             params: { appointment_id: appointmentId, token },
+            noCompanyHeader: true,
+            noAuth: true,
           }),
-          axios.get(`${API_URL}/public/${slug}/reviews-settings`),
+          api.get(`/public/${slug}/reviews-settings`, {
+            noCompanyHeader: true,
+            noAuth: true,
+          }),
         ]);
         setResolved(resv);
         setExtUrl(cfg?.review_redirect_url || "");
@@ -191,7 +197,7 @@ export default function PublicTip() {
         setLoading(false);
       }
     })();
-  }, [API_URL, slug, appointmentId, token]);
+  }, [slug, appointmentId, token]);
 
   const presets = [5, 10, 20];
 
@@ -205,14 +211,15 @@ export default function PublicTip() {
         setCreating(false);
         return;
       }
-      const { data } = await axios.post(
-        `${API_URL}/public/${slug}/feedback/tip-intent`,
+      const { data } = await api.post(
+        `/public/${slug}/feedback/tip-intent`,
         {
           appointment_id: Number(appointmentId),
           token,
           amount_cents: cents,
           currency: (normalizeCurrency(displayCurrency) || "USD").toLowerCase(),
-        }
+        },
+        { noCompanyHeader: true, noAuth: true }
       );
       setClientSecret(data.client_secret);
     } catch (e) {
@@ -224,9 +231,11 @@ export default function PublicTip() {
 
   const callRecord = async (payment_intent_id) => {
     try {
-      await axios.post(`${API_URL}/public/${slug}/feedback/tip-record`, {
-        payment_intent_id,
-      });
+      await api.post(
+        `/public/${slug}/feedback/tip-record`,
+        { payment_intent_id },
+        { noCompanyHeader: true, noAuth: true }
+      );
       setDone(true);
     } catch (e) {
       setError(e?.response?.data?.error || "Failed to record tip.");

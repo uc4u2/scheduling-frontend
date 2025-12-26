@@ -24,7 +24,7 @@ import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { DataGrid } from "@mui/x-data-grid";
 import { Add, Edit, Delete } from "@mui/icons-material";
-import axios from "axios";
+import api from "../../../utils/api";
 
 /* =================================================================
    COMPONENT
@@ -63,7 +63,6 @@ const ServiceAssignment = ({ token }) => {
 
   /* ─────────── helpers ─────────── */
   const auth = { headers: { Authorization: `Bearer ${token}` } };
-  const API  = process.env.REACT_APP_API_URL || "";
 
   /* =================================================================
      FETCH ALL DATA
@@ -72,10 +71,10 @@ const ServiceAssignment = ({ token }) => {
     setLoading(true);
     try {
       const [recRes, svcRes, depRes, linkRes] = await Promise.all([
-        axios.get(`${API}/manager/recruiters`,       auth),
-        axios.get(`${API}/booking/services`,         auth),
-        axios.get(`${API}/api/departments`,          auth),
-        axios.get(`${API}/booking/employee-services`,auth),
+        api.get(`/manager/recruiters`,       auth),
+        api.get(`/booking/services`,         auth),
+        api.get(`/api/departments`,          auth),
+        api.get(`/booking/employee-services`,auth),
       ]);
 
       setEmployees(recRes.data.recruiters || recRes.data || []);
@@ -165,10 +164,10 @@ const ServiceAssignment = ({ token }) => {
 
     try {
       if (editing) {
-        await axios.put(`${API}/booking/employee-services/${editing.id}`, payload, auth);
+        await api.put(`/booking/employee-services/${editing.id}`, payload, auth);
         setSnackbar({ open: true, msg: "Updated!" });
       } else {
-        await axios.post(`${API}/booking/employee-services`, payload, auth);
+        await api.post(`/booking/employee-services`, payload, auth);
         setSnackbar({ open: true, msg: "Added!" });
       }
       setDialogOpen(false);
@@ -181,7 +180,7 @@ const ServiceAssignment = ({ token }) => {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this assignment?")) return;
     try {
-      await axios.delete(`${API}/booking/employee-services`, { ...auth, params: { id } });
+      await api.delete(`/booking/employee-services`, { ...auth, params: { id } });
       setSnackbar({ open: true, msg: "Deleted." });
       fetchAll();
     } catch {
@@ -198,8 +197,8 @@ const ServiceAssignment = ({ token }) => {
       return;
     }
     try {
-      await axios.post(
-        `${API}/api/manager/employees/${form.recruiter.id}/add-service-slot`,
+      await api.post(
+        `/api/manager/employees/${form.recruiter.id}/add-service-slot`,
         { service_id: form.service.id, date: slotDate, start_time: slotStartTime },
         auth
       );

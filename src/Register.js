@@ -17,7 +17,7 @@ import {
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PasswordField from "./PasswordField";
-import axios from "axios";
+import api from "./utils/api";
 import TimezoneSelect from "./components/TimezoneSelect";
 
 const ROLE_OPTIONS = [
@@ -62,8 +62,6 @@ const Register = () => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const navigate = useNavigate();
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   const passwordChecklist = useMemo(
     () => [
       { label: "At least 8 characters", pass: password.length >= 8 },
@@ -95,7 +93,7 @@ const Register = () => {
     const targetRole = getRoleMeta(role).apiValue;
 
     try {
-      const response = await axios.post(`${API_URL}/register`, {
+      const response = await api.post(`/register`, {
         first_name: firstName,
         last_name: lastName,
         email,

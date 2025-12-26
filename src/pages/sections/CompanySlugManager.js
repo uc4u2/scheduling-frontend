@@ -2,9 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Box, TextField, Button, Typography, CircularProgress, Alert } from "@mui/material";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import api from "../../utils/api";
 
 export default function CompanySlugManager({ slug, onSlugChange, token, readOnly }) {
   const [value, setValue] = useState(slug || "");
@@ -30,7 +28,7 @@ export default function CompanySlugManager({ slug, onSlugChange, token, readOnly
     setChecking(true);
     setError("");
     try {
-      const { data } = await axios.get(`${API_URL}/api/company/check-slug`, {
+      const { data } = await api.get(`/api/company/check-slug`, {
         params: { slug: str },
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

@@ -23,7 +23,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import axios from "axios";
+import { api } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatSlot } from "../../utils/timezone-wrapper";
 import { useTheme, alpha } from "@mui/material/styles";
@@ -91,8 +91,10 @@ const fetchSlotsForDate = useCallback(
     setError("");
     try {
       // 1) who can perform this service?
-      const { data: emps } = await axios.get(`/public/${slug}/service/${serviceId}/employees`, {
+      const { data: emps } = await api.get(`/public/${slug}/service/${serviceId}/employees`, {
         params: departmentId ? { department_id: departmentId } : {},
+        noCompanyHeader: true,
+        noAuth: true,
       });
 
       const userTz = getUserTimezone();
@@ -112,7 +114,10 @@ const fetchSlotsForDate = useCallback(
         if (cartJSON) qs.set("cart", cartJSON);
 
         try {
-          const { data } = await axios.get(`/public/${slug}/availability?${qs.toString()}`);
+          const { data } = await api.get(`/public/${slug}/availability?${qs.toString()}`, {
+            noCompanyHeader: true,
+            noAuth: true,
+          });
           const slots = Array.isArray(data?.slots) ? data.slots
                       : Array.isArray(data?.times) ? data.times
                       : [];
@@ -184,7 +189,7 @@ deduped.sort((a, b) => {
 
   const fetchAvailableArtists = async (slot) => {
     try {
-      const { data } = await axios.get(
+      const { data } = await api.get(
         `/public/${slug}/service/${serviceId}/available-artists`,
         {
           params: {
@@ -192,6 +197,8 @@ deduped.sort((a, b) => {
             start_time: slot.start_time,
             timezone: slot.timezone || backendTimezone || userTz,
           },
+          noCompanyHeader: true,
+          noAuth: true,
         }
       );
       setAvailableArtists(data || []);

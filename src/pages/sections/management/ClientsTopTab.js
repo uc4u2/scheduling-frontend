@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../../utils/api";
 import {
   Alert, Box, Card, CardContent, CardHeader, Grid, LinearProgress,
   MenuItem, Stack, Table, TableBody, TableCell, TableHead, TableRow,
   TextField, Typography
 } from "@mui/material";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const METRICS = [
   { value: "ltv",         label: "Top LTV (lifetime)" },
@@ -37,7 +35,7 @@ export default function ClientsTopTab({ from, to, tz, departmentId, employeeId }
         ...(departmentId ? { department_id: departmentId } : {}),
         ...(employeeId ? { employee_id: employeeId } : {}),
       }).toString();
-      const { data } = await axios.get(`${API}/api/manager/clients/analytics/top?${qs}`, auth);
+      const { data } = await api.get(`/api/manager/clients/analytics/top?${qs}`, auth);
       setRows(data?.results || []);
     } catch (e) {
       setErr(e?.response?.data?.error || e?.message || "Failed to load top clients");

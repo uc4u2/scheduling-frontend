@@ -15,7 +15,7 @@ import {
   FormControl,
   Alert
 } from "@mui/material";
-import axios from "axios";
+import api from "../../../utils/api";
 
 export default function BookingManagement({ token }) {
   const [bookings, setBookings] = useState([]);
@@ -25,8 +25,6 @@ export default function BookingManagement({ token }) {
   const [managerNote, setManagerNote] = useState("");
   const [msg, setMsg] = useState("");
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   // ✅ Load data
   useEffect(() => {
     loadBookings();
@@ -35,7 +33,7 @@ export default function BookingManagement({ token }) {
 
   const loadBookings = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/manager/bookings`, {
+      const { data } = await api.get(`/api/manager/bookings`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setBookings(data || []);
@@ -48,7 +46,7 @@ export default function BookingManagement({ token }) {
   // ✅ Fetch employees like W2.js
   const loadEmployees = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/recruiters`, {
+      const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setEmployees(res.data.recruiters || []);
@@ -75,7 +73,7 @@ export default function BookingManagement({ token }) {
   const handleCancel = async () => {
     if (!selected || !window.confirm("Cancel this booking?")) return;
     try {
-      await axios.delete(`${API_URL}/api/manager/bookings/${selected.id}`, {
+      await api.delete(`/api/manager/bookings/${selected.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMsg("Booking cancelled and client notified.");
@@ -90,7 +88,7 @@ export default function BookingManagement({ token }) {
   const handleNoShow = async () => {
     if (!selected) return;
     try {
-      await axios.post(`${API_URL}/api/manager/bookings/${selected.id}/no-show`, {}, {
+      await api.post(`/api/manager/bookings/${selected.id}/no-show`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMsg("Marked as No Show.");
@@ -105,7 +103,7 @@ export default function BookingManagement({ token }) {
   const handleSave = async () => {
     if (!selected) return;
     try {
-      await axios.patch(`${API_URL}/api/manager/bookings/${selected.id}`, editData, {
+      await api.patch(`/api/manager/bookings/${selected.id}`, editData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMsg("Booking updated successfully and client notified.");
@@ -120,7 +118,7 @@ export default function BookingManagement({ token }) {
   const handleReassign = async () => {
     if (!selected) return;
     try {
-      await axios.post(`${API_URL}/api/manager/bookings/${selected.id}/reassign`, {
+      await api.post(`/api/manager/bookings/${selected.id}/reassign`, {
         recruiter_id: editData.recruiter_id
       }, { headers: { Authorization: `Bearer ${token}` } });
       setMsg("Employee reassigned successfully.");
@@ -135,7 +133,7 @@ export default function BookingManagement({ token }) {
   const handleAddNote = async () => {
     if (!selected) return;
     try {
-      await axios.post(`${API_URL}/api/manager/bookings/${selected.id}/note`, {
+      await api.post(`/api/manager/bookings/${selected.id}/note`, {
         note: managerNote
       }, { headers: { Authorization: `Bearer ${token}` } });
       setMsg("Manager note added.");

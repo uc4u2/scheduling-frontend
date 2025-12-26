@@ -32,7 +32,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import axios from "axios";
+import api from "../../utils/api";
 import { useLocation } from "react-router-dom";
 
 import SettingsReviewsTips from "./SettingsReviewsTips";
@@ -50,8 +50,6 @@ import SectionCard from "../../components/ui/SectionCard";
 import { PROFESSION_OPTIONS } from "../../constants/professions";
 import TabShell from "../../components/ui/TabShell";
 import { Trans, useTranslation } from "react-i18next";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 // tiny helper to extract src="..." from an iframe snippet
 const extractIframeSrc = (html) => {
@@ -137,7 +135,7 @@ const Settings = () => {
       try {
         const token = localStorage.getItem("token");
         // 1) load settings
-        const { data } = await axios.get(`${API_URL}/settings`, {
+        const { data } = await api.get(`/settings`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setProfession(data.profession || "general");
@@ -156,7 +154,7 @@ const Settings = () => {
         setMaxReschedules(data.max_reschedules_per_month ?? 3);
 
         // 2) load snippets
-        const snip = await axios.get(`${API_URL}/embed-snippet`, {
+        const snip = await api.get(`/embed-snippet`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setSnippetWidget(snip.data.snippet_widget || "");
@@ -173,8 +171,8 @@ const Settings = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.post(
-        `${API_URL}/settings`,
+      await api.post(
+        `/settings`,
         {
           profession,
           workspace_name: workspaceName || "prefs",
@@ -193,7 +191,7 @@ const Settings = () => {
       );
 
       // refresh snippets (so color/theme are reflected)
-      const snip = await axios.get(`${API_URL}/embed-snippet`, {
+      const snip = await api.get(`/embed-snippet`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSnippetWidget(snip.data.snippet_widget || "");

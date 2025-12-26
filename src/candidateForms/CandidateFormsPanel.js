@@ -37,11 +37,10 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
-import axios from "axios";
 import { useSnackbar } from "notistack";
 import QUESTIONNAIRE_LIMITS from "../constants/questionnaireUploads";
 import { uploadQuestionnaireFile, downloadQuestionnaireFile, validateQuestionnaireFile } from "../utils/questionnaireUploads";
-import { candidateIntakeApi, settingsApi } from "../utils/api";
+import { candidateIntakeApi, settingsApi, api } from "../utils/api";
 import { PROFESSION_OPTIONS } from "../constants/professions";
 import { getDefaultBlueprint } from "./defaultFormBlueprints";
 import TemplateFieldBuilder from "./TemplateFieldBuilder";
@@ -186,7 +185,7 @@ const formatBytes = (bytes) => {
   return `${display} ${units[index]}`;
 };
 
-const CandidateFormsPanel = ({ token, apiUrl }) => {
+  const CandidateFormsPanel = ({ token, apiUrl }) => {
   const { enqueueSnackbar } = useSnackbar();
   const baseUrl = apiUrl || process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -402,7 +401,7 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
       const url = `${baseUrl}/api/form-templates${
         params.toString() ? `?${params.toString()}` : ""
       }`;
-      const response = await axios.get(url, { headers: authHeaders });
+      const response = await api.get(url, { headers: authHeaders });
       setTemplates(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
       const detail =
@@ -494,7 +493,7 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
 
   const handleArchiveTemplate = async (templateId) => {
     try {
-      await axios.delete(`${baseUrl}/api/form-templates/${templateId}`, {
+      await api.delete(`${baseUrl}/api/form-templates/${templateId}`, {
         headers: authHeaders,
       });
       enqueueSnackbar("Template archived", { variant: "success" });
@@ -510,7 +509,7 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
   const handleConvertSubmission = async (submissionId) => {
     try {
       setConvertingId(submissionId);
-      await axios.post(
+      await api.post(
         `${baseUrl}/api/candidate-forms/submissions/${submissionId}/convert`,
         {},
         { headers: authHeaders }
@@ -898,7 +897,7 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
     setTemplateDialogOpen(true);
 
     try {
-      const { data } = await axios.get(
+      const { data } = await api.get(
         `${baseUrl}/api/form-templates/${template.id}`,
         { headers: authHeaders }
       );
@@ -1091,14 +1090,14 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
       setTemplateDialogError("");
 
       if (isEdit && templateForm.id !== null) {
-        await axios.put(
+        await api.put(
           `${baseUrl}/api/form-templates/${templateForm.id}`,
           payload,
           { headers: authHeaders }
         );
         enqueueSnackbar("Template updated", { variant: "success" });
       } else {
-        await axios.post(`${baseUrl}/api/form-templates`, payload, { headers: authHeaders });
+        await api.post(`${baseUrl}/api/form-templates`, payload, { headers: authHeaders });
         enqueueSnackbar("Template created", { variant: "success" });
       }
 
@@ -1800,8 +1799,6 @@ const CandidateFormsPanel = ({ token, apiUrl }) => {
 };
 
 export default CandidateFormsPanel;
-
-
 
 
 

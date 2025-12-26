@@ -4,10 +4,9 @@ import React, { useState, useEffect } from "react";
 import {
   Box, TextField, Button, MenuItem, Typography
 } from "@mui/material";
-import axios from "axios";
+import api from "../utils/api";
 
 const RecruiterForm = () => {
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const token = localStorage.getItem("token");
 
   const [formData, setFormData] = useState({
@@ -26,7 +25,7 @@ const RecruiterForm = () => {
 
   const fetchManagers = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/recruiters`, {
+      const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setManagers(res.data.recruiters || []);
@@ -45,7 +44,7 @@ const RecruiterForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/manager/recruiters`, formData, {
+      await api.post(`/manager/recruiters`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert("Recruiter added successfully!");

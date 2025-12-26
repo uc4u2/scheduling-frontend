@@ -39,15 +39,10 @@ import UndoIcon from "@mui/icons-material/Undo";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import axios from "axios";
+import api from "./utils/api";
 import { alpha, darken, lighten, useTheme } from "@mui/material/styles";
 import { isoFromParts } from "./utils/datetime";
 import { DateTime } from "luxon";
-import { API_BASE_URL } from "./utils/api";
-
-const API_URL =
-  (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) ||
-  API_BASE_URL;
 
 const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilters, readOnly = false }) => {
   const theme = useTheme();
@@ -127,10 +122,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
   const fetchRecruiters = useCallback(async () => {
     if (!token) return;
     try {
-      const { data } = await axios.get(
-        `${API_URL}/api/manager/employees`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await api.get("/api/manager/employees");
       setRecruiters(data || []);
     } catch {
       setRecruiters([]);
@@ -140,10 +132,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
   const fetchDepartments = useCallback(async () => {
     if (!token) return;
     try {
-      const { data } = await axios.get(
-        `${API_URL}/api/departments`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await api.get("/api/departments");
       setDepartments(data || []);
     } catch {
       setDepartments([]);
@@ -154,9 +143,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
     if (!token) return;
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/my-availability`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/my-availability");
       const slots   = res.data.available_slots || [];
       const leaves  = res.data.leave_blocks || [];
       const blocks  = res.data.appointment_blocks || [];   // NEW â€” single contiguous appointment blocks
@@ -311,11 +298,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
         attendees: event.extendedProps.attendees || [],
       };
 
-      await axios.put(
-        `${API_URL}/update-availability/${slotId}`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/update-availability/${slotId}`, payload);
 
       setCalendarRefreshTrigger(Date.now());
       setSnackbarMsg("Slot updated successfully. Email notifications sent.");
@@ -332,11 +315,10 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
   const undoLastChange = async () => {
     if (!lastChange) return;
     try {
-      await axios.put(
-        `${API_URL}/update-availability/${lastChange.slotId}`,
-        { start: lastChange.prevStart, end: lastChange.prevEnd },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/update-availability/${lastChange.slotId}`, {
+        start: lastChange.prevStart,
+        end: lastChange.prevEnd,
+      });
       setCalendarRefreshTrigger(Date.now());
       setShowUndo(false);
       setLastChange(null);
@@ -508,13 +490,9 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
         invite_link: form.invite_link,
         attendees: form.attendees,
       };
-      const url = editingEvent
-        ? `${API_URL}/api/meetings/${editingEvent.id}`
-        : `${API_URL}/api/meetings`;
       const method = editingEvent ? "put" : "post";
-      await axios[method](url, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const url = editingEvent ? `/api/meetings/${editingEvent.id}` : "/api/meetings";
+      await api[method](url, payload);
       setSuccessMessage("Meeting saved!");
       setOpenModal(false);
       setEditingEvent(null);
@@ -530,11 +508,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
   const handleCancelBooking = async () => {
     if (!editingEvent) return;
     try {
-      await axios.post(
-        `${API_URL}/api/employee/bookings/${editingEvent.id}/cancel`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post(`/api/employee/bookings/${editingEvent.id}/cancel`, {});
       setSuccessMessage("Booking cancelled successfully");
       setOpenModal(false);
       fetchEvents();
@@ -546,11 +520,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
   const handleMarkNoShow = async () => {
     if (!editingEvent) return;
     try {
-      await axios.post(
-        `${API_URL}/api/employee/bookings/${editingEvent.id}/no-show`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post(`/api/employee/bookings/${editingEvent.id}/no-show`, {});
       setSuccessMessage("Booking marked as no-show");
       setOpenModal(false);
       fetchEvents();

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import dayjs from "dayjs";
 import {
   Box,
@@ -24,8 +24,6 @@ import {
 } from "./netpay";
 
 // ---------------- Constants ----------------
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 const columnsToExport = [
   "employee_name",
   "hours_worked",
@@ -83,8 +81,8 @@ export default function Payroll({ token }) {
 
   useEffect(() => {
     if (selectedRecruiter && month) {
-      axios
-        .get(`${API_URL}/payroll/ytd`, {
+      api
+        .get(`/payroll/ytd`, {
           params: {
             recruiter_id: selectedRecruiter,
             year: new Date().getFullYear(),
@@ -99,7 +97,7 @@ export default function Payroll({ token }) {
   // ---------------- API + Utils ----------------
   const fetchRecruiters = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/recruiters`, {
+      const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRecruiters(Array.isArray(res.data) ? res.data : res.data.recruiters || []);
@@ -112,8 +110,8 @@ export default function Payroll({ token }) {
   const fetchPayslipHistory = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(
-        `${API_URL}/payroll/history?recruiter_id=${selectedRecruiter}`,
+      const res = await api.get(
+        `/payroll/history?recruiter_id=${selectedRecruiter}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setPayslipHistory(res.data || []);
@@ -193,8 +191,8 @@ export default function Payroll({ token }) {
     if (!selectedRecruiter) return;
     setLoading(true);
     try {
-      const res = await axios.post(
-        `${API_URL}/automation/payroll/generate`,
+      const res = await api.post(
+        `/automation/payroll/generate`,
         { recruiter_id: selectedRecruiter, month, region },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -357,7 +355,7 @@ export default function Payroll({ token }) {
                         <Button
                           variant="outlined"
                           onClick={() => {
-                            const url = `${API_URL}/automation/payroll/payslip-pdf?recruiter_id=${selectedRecruiter}&month=${month}&region=${region}`;
+                            const url = `/automation/payroll/payslip-pdf?recruiter_id=${selectedRecruiter}&month=${month}&region=${region}`;
                             window.open(url, "_blank");
                           }}
                         >

@@ -1,6 +1,6 @@
 // --- SegmentsPanel.jsx (inline inside EnterpriseAnalytics.js is fine) ---
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import api from "../../../utils/api";
 import dayjs from "dayjs";
 import {
   Alert, Box, Card, CardContent, CardHeader, Chip, Divider, Grid,
@@ -8,8 +8,6 @@ import {
   TableContainer, TableHead, TableRow, TextField, Tooltip, Typography
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function SegmentsPanel() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
@@ -50,7 +48,7 @@ export default function SegmentsPanel() {
         habitual_avg_gap_max: String(habitGapMax),
       }).toString();
 
-      const { data } = await axios.get(`${API}/api/manager/clients/analytics/segments?${qs}`, auth);
+      const { data } = await api.get(`/api/manager/clients/analytics/segments?${qs}`, auth);
       setRows(data?.results || []);
       setMeta(data?.meta || null);
     } catch (e) {

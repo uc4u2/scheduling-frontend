@@ -6,10 +6,8 @@ import {
   Snackbar, Alert, Tooltip, IconButton, Chip
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import axios from "axios";
+import api from "../../utils/api";
 import { useTranslation } from "react-i18next";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function SettingsReviewsTips() {
   const { t } = useTranslation();
@@ -42,7 +40,7 @@ export default function SettingsReviewsTips() {
     let ignore = false;
     (async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/admin/review-tip-settings`, {
+        const { data } = await api.get(`/admin/review-tip-settings`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -89,7 +87,7 @@ export default function SettingsReviewsTips() {
       const safeDelay = Math.max(0, Math.floor(Number(delayHours || 0)));
       const safeWindow = Math.max(0, Math.min(90, Math.floor(Number(windowDays || 0)))); // cap to 90 just for sanity
 
-      await axios.post(`${API_URL}/admin/review-tip-settings`, {
+      await api.post(`/admin/review-tip-settings`, {
         enable_auto_review_emails: enableAuto,
         review_delay_hours: safeDelay,
         require_manager_approval: requireApproval,

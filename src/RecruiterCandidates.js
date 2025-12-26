@@ -35,12 +35,11 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { useTheme } from "@mui/material/styles";
-import { api } from "./utils/api";
+import api, { API_BASE_URL } from "./utils/api";
 import { useSnackbar } from "notistack";
 import { downloadQuestionnaireFile } from "./utils/questionnaireUploads";
 import PublicBookingInfoCard from "./components/PublicBookingInfoCard";
 import { isoFromParts } from "./utils/datetime";
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 const statusOptions = [
   "Applied",
   "Interview Scheduled",
@@ -135,7 +134,7 @@ const RecruiterCandidates = ({ token }) => {
     return () => {
       active = false;
     };
-  }, [API_URL, authInfo, token]);
+  }, [API_BASE_URL, authInfo, token]);
 
   const canEditCandidate = Boolean(authInfo?.is_manager || authInfo?.can_manage_onboarding);
   const isReadOnly = authInfo ? !canEditCandidate : false;
@@ -159,7 +158,7 @@ const RecruiterCandidates = ({ token }) => {
     } finally {
       setDocLoading(false);
     }
-  }, [API_URL, candidate?.id, canViewDocs, token]);
+  }, [API_BASE_URL, candidate?.id, canViewDocs, token]);
 
   useEffect(() => {
     if (!candidate?.id || !canViewDocs) return;
@@ -390,9 +389,9 @@ const RecruiterCandidates = ({ token }) => {
       return url;
     }
     if (url.startsWith("/")) {
-      return `${API_URL}${url}`;
+      return `${API_BASE_URL}${url}`;
     }
-    return `${API_URL}/${url}`;
+    return `${API_BASE_URL}/${url}`;
   };
 
   const handleDownloadAttachment = useCallback(
@@ -499,7 +498,7 @@ const RecruiterCandidates = ({ token }) => {
     } finally {
       setDownloadingResume(false);
     }
-  }, [API_URL, encodedEmail, enqueueSnackbar, token]);
+  }, [API_BASE_URL, encodedEmail, enqueueSnackbar, token]);
 
   const handleResumeVersionDownload = useCallback(
     async (version) => {
@@ -542,7 +541,7 @@ const RecruiterCandidates = ({ token }) => {
         setDownloadingResume(false);
       }
     },
-    [API_URL, encodedEmail, enqueueSnackbar, token]
+    [API_BASE_URL, encodedEmail, enqueueSnackbar, token]
   );
 
   const handleDocumentDownload = async (file) => {

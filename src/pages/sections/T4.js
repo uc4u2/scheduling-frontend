@@ -30,7 +30,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import HistoryIcon from "@mui/icons-material/History";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import axios from "axios";
+import api from "../../utils/api";
 import { Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import AuditHistory from "../../components/Stubs/AuditHistory";
@@ -84,7 +84,6 @@ const T4 = ({ token, isManager = false }) => {
   const [editSlip, setEditSlip] = useState(null);
   const [validation, setValidation] = useState({});
 
-  const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
   /* ── Helpers ──────────────────────────────────────────── */
@@ -95,7 +94,7 @@ const T4 = ({ token, isManager = false }) => {
 
   const fetchRecruiters = async () => {
     try {
-      const res = await axios.get(`${API}/manager/recruiters`, auth);
+      const res = await api.get(`/manager/recruiters`, auth);
       setRecruiters(res.data.recruiters || []);
     } catch {
       setErr("Failed to load recruiters.");
@@ -104,7 +103,7 @@ const T4 = ({ token, isManager = false }) => {
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get(`${API}/api/departments`, auth);
+      const res = await api.get(`/api/departments`, auth);
       setDepartments(res.data || []);
     } catch {
       setErr("Failed to load departments.");
@@ -128,9 +127,9 @@ const T4 = ({ token, isManager = false }) => {
           ? { employee_id: selectedEmployee }
           : {}),
       }).toString();
-      const listReq = axios.get(`${API}/yearend/t4/list?${qs}`, auth);
+      const listReq = api.get(`/yearend/t4/list?${qs}`, auth);
       const sumReq = isManager
-        ? axios.get(`${API}/yearend/t4/${year}/summary`, auth)
+        ? api.get(`/yearend/t4/${year}/summary`, auth)
         : Promise.resolve({ data: null });
 
       const [{ data: list }, { data: sum }] = await Promise.all([
@@ -184,7 +183,7 @@ const T4 = ({ token, isManager = false }) => {
 
   const generateAll = async () => {
     try {
-      await axios.post(`${API}/yearend/t4/generate`, { year }, auth);
+      await api.post(`/yearend/t4/generate`, { year }, auth);
       setMsg("Batch generation started.");
       // clear employee filter so newly generated slips show
       setSelectedEmployee("");
@@ -196,8 +195,8 @@ const T4 = ({ token, isManager = false }) => {
 
   const exportXMLBatch = async () => {
     try {
-      const { data } = await axios.get(
-        `${API}/yearend/t4/${year}/export-xml`,
+      const { data } = await api.get(
+        `/yearend/t4/${year}/export-xml`,
         { ...auth, responseType: "blob" }
       );
       setXmlUrl(URL.createObjectURL(new Blob([data])));
@@ -208,8 +207,8 @@ const T4 = ({ token, isManager = false }) => {
 
   const downloadPDFZip = async () => {
     try {
-      const { data } = await axios.get(
-        `${API}/yearend/t4/${year}/download-batch`,
+      const { data } = await api.get(
+        `/yearend/t4/${year}/download-batch`,
         { ...auth, responseType: "blob" }
       );
       const url = URL.createObjectURL(new Blob([data]));
@@ -224,8 +223,8 @@ const T4 = ({ token, isManager = false }) => {
 
   const exportPDF = async (id) => {
     try {
-      const { data } = await axios.get(
-        `${API}/yearend/t4/${id}/export-pdf`,
+      const { data } = await api.get(
+        `/yearend/t4/${id}/export-pdf`,
         { ...auth, responseType: "blob" }
       );
       setPdfUrl(URL.createObjectURL(new Blob([data], { type: "application/pdf" })));
@@ -236,8 +235,8 @@ const T4 = ({ token, isManager = false }) => {
 
   const exportXmlSingle = async (id, preview = false) => {
     try {
-      const { data } = await axios.get(
-        `${API}/yearend/t4/slip/${id}/export-xml`,
+      const { data } = await api.get(
+        `/yearend/t4/slip/${id}/export-xml`,
         { ...auth, responseType: preview ? "text" : "blob" }
       );
       if (preview) setXmlText(typeof data === "string" ? data : data);
@@ -249,7 +248,7 @@ const T4 = ({ token, isManager = false }) => {
 
   const runValidation = async (id) => {
     try {
-      const { data } = await axios.get(`${API}/yearend/t4/${id}/validate`, auth);
+      const { data } = await api.get(`/yearend/t4/${id}/validate`, auth);
       setValidation((prev) => ({ ...prev, [id]: data }));
       return data;
     } catch {
@@ -260,7 +259,7 @@ const T4 = ({ token, isManager = false }) => {
 
   const updateStatus = async (id, status) => {
     try {
-      await axios.put(`${API}/yearend/t4/${id}/update-status`, { status }, auth);
+      await api.put(`/yearend/t4/${id}/update-status`, { status }, auth);
       setMsg(`Slip ${id} ${status}.`);
       fetchSlipsAndSummary();
     } catch {
@@ -286,7 +285,7 @@ const T4 = ({ token, isManager = false }) => {
     if (row.status === "issued" || !isManager) return;
     if (!window.confirm("Are you sure you want to delete this T4?")) return;
     try {
-      await axios.delete(`${API}/yearend/t4/${row.id}/delete`, auth);
+      await api.delete(`/yearend/t4/${row.id}/delete`, auth);
       setMsg(`Slip ${row.id} deleted.`);
       fetchSlipsAndSummary();
     } catch {
@@ -548,8 +547,8 @@ const T4 = ({ token, isManager = false }) => {
                       <Button
                         size="small"
                         onClick={async () => {
-                          const { data } = await axios.get(
-                            `${API}/yearend/t4/${row.id}`,
+                          const { data } = await api.get(
+                            `/yearend/t4/${row.id}`,
                             auth
                           );
                           setEditSlip(data);
@@ -769,8 +768,8 @@ const T4 = ({ token, isManager = false }) => {
             <Button
               onClick={async () => {
                 try {
-                  await axios.put(
-                    `${API}/yearend/t4/${editSlip.id}/boxes`,
+                  await api.put(
+                    `/yearend/t4/${editSlip.id}/boxes`,
                     { json_boxes: editSlip.json_boxes },
                     auth
                   );

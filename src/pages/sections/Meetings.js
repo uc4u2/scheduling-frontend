@@ -21,9 +21,7 @@ import {
   Alert,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+import api from "../../utils/api";
 
 const Meetings = ({ token }) => {
   const [meetings, setMeetings] = useState([]);
@@ -54,7 +52,7 @@ const Meetings = ({ token }) => {
 
   const fetchRecruiters = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/recruiters`, {
+      const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRecruiters(res.data.recruiters);
@@ -68,7 +66,7 @@ const Meetings = ({ token }) => {
 
   const fetchMeetings = async (recruiterId) => {
     try {
-      const res = await axios.get(`${API_URL}/api/meetings/${recruiterId}`, {
+      const res = await api.get(`/api/meetings/${recruiterId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = res.data.meetings.map((m) => ({
@@ -128,7 +126,7 @@ const Meetings = ({ token }) => {
         recruiter_id: selectedRecruiter,
         attendees: form.attendees.filter((a) => a.email), // Only valid entries
       };
-      await axios.post(`${API_URL}/manager/add-meeting`, payload, {
+      await api.post(`/manager/add-meeting`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setOpenModal(false);
@@ -142,7 +140,7 @@ const Meetings = ({ token }) => {
 
   const handleDeleteMeeting = async (id) => {
     try {
-      await axios.delete(`${API_URL}/api/meetings/${id}`, {
+      await api.delete(`/api/meetings/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchMeetings(selectedRecruiter);

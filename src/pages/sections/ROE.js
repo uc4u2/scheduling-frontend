@@ -33,7 +33,7 @@ import {
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import DescriptionIcon from "@mui/icons-material/Description";
-import axios from "axios";
+import api from "../../utils/api";
 import { Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import AuditHistory from "../../components/Stubs/AuditHistory";
@@ -102,13 +102,11 @@ const ROE = ({ token }) => {
   const [xmlUrl, setXmlUrl] = useState(null);
   const [showAudit, setShowAudit] = useState({ open: false, roeId: null });
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
   /* ────────── Helpers ────────── */
 
   const fetchRecruiters = async () => {
     try {
-      const res = await axios.get(`${API_URL}/manager/recruiters`, {
+      const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRecruiters(res.data.recruiters || []);
@@ -120,7 +118,7 @@ const ROE = ({ token }) => {
   /* 🚩 NEW: fetch departments */
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/departments`, {
+      const res = await api.get(`/api/departments`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setDepartments(res.data || []);
@@ -132,7 +130,7 @@ const ROE = ({ token }) => {
   const fetchRoeList = async () => {
     setIsLoadingRoeList(true);
     try {
-      const res = await axios.get(`${API_URL}/roe/list`, {
+      const res = await api.get(`/roe/list`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRoeData(res.data || []);
@@ -147,7 +145,7 @@ const ROE = ({ token }) => {
     setLoading(true);
     setEmployeeInfo(null);
     try {
-      const res = await axios.get(`${API_URL}/roe/summary/${recruiterId}`, {
+      const res = await api.get(`/roe/summary/${recruiterId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setEmployeeInfo(res.data);
@@ -264,8 +262,8 @@ const ROE = ({ token }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(
-        `${API_URL}/roe/create`,
+      await api.post(
+        `/roe/create`,
         { ...form, country },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -287,7 +285,7 @@ const ROE = ({ token }) => {
 
   const handleExport = async (id) => {
     try {
-      const res = await axios.get(`${API_URL}/roe/${id}/export-pdf`, {
+      const res = await api.get(`/roe/${id}/export-pdf`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
       });
@@ -302,7 +300,7 @@ const ROE = ({ token }) => {
 
   const handleExportXML = async (id) => {
     try {
-      const res = await axios.get(`${API_URL}/roe/${id}/export-xml`, {
+      const res = await api.get(`/roe/${id}/export-xml`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: "blob",
       });
@@ -326,8 +324,8 @@ const ROE = ({ token }) => {
 
   const updateRoeStatus = async (roeId, status) => {
     try {
-      await axios.put(
-        `${API_URL}/roe/${roeId}/update-status`,
+      await api.put(
+        `/roe/${roeId}/update-status`,
         {
           status,
           comment: status === "rejected" ? "Rejected by manager" : "",
@@ -345,7 +343,7 @@ const ROE = ({ token }) => {
 
   const deleteRoe = async (roeId) => {
     try {
-      await axios.delete(`${API_URL}/roe/${roeId}/delete`, {
+      await api.delete(`/roe/${roeId}/delete`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchRoeList();
@@ -840,5 +838,4 @@ const ROE = ({ token }) => {
 };
 
 export default ROE;
-
 

@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import TodayIcon from "@mui/icons-material/Today";
 import dayjs from "dayjs";
-import axios from "axios";
+import api from "../../utils/api";
 
 /* ───────────────────────────────
    Region-specific option lists
@@ -96,7 +96,6 @@ export default function PayrollFilters({
   setDepartmentFilter: setDepartmentFilterProp,
 }) {
   /* ───────── API helpers ───────── */
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const token   = localStorage.getItem("token");
 
   /* ───────── local UI state ───────── */
@@ -119,7 +118,7 @@ export default function PayrollFilters({
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/departments`, {
+        const res = await api.get(`/api/departments`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setDepartments(res.data || []);
@@ -128,7 +127,7 @@ export default function PayrollFilters({
       }
     };
     fetchDepartments();
-  }, [API_URL, token]);
+  }, [token]);
 
   /* recruiters shown after dept filter */
   const filteredRecruiters = departmentFilter

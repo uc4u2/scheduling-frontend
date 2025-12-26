@@ -12,14 +12,12 @@ import {
   CircularProgress,
   Paper,
 } from "@mui/material";
-import axios from "axios";
+import api from "../utils/api";
 import dayjs from "dayjs";
 
 const AuditHistory = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
   useEffect(() => {
     fetchLogs();
@@ -29,7 +27,7 @@ const AuditHistory = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_URL}/payroll/audit-history`, {
+      const res = await api.get(`/payroll/audit-history`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setLogs(res.data.logs || []);

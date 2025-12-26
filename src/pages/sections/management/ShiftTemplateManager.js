@@ -7,10 +7,8 @@ import {
   FormControlLabel, MenuItem, Chip, CircularProgress,
 } from "@mui/material";
 import { Delete, Edit, Assignment } from "@mui/icons-material";
-import axios from "axios";
+import api from "../../../utils/api";
 import AssignTemplateDialog from "./AssignTemplateDialog";
-
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 export default function ShiftTemplateManager({ token }) {
   const [rows, setRows] = useState([]);
@@ -22,7 +20,7 @@ export default function ShiftTemplateManager({ token }) {
   /* fetch templates on mount */
   const load = () => {
     setLoading(true);
-    axios.get(`${API}/api/shift-templates`, {
+    api.get(`/api/shift-templates`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => setRows(r.data))
@@ -33,9 +31,9 @@ export default function ShiftTemplateManager({ token }) {
   const handleSave = (tpl) => {
     const method = tpl.id ? "patch" : "post";
     const url    = tpl.id
-      ? `${API}/api/shift-templates/${tpl.id}`
-      : `${API}/api/shift-templates`;
-    axios[method](url, tpl, {
+      ? `/api/shift-templates/${tpl.id}`
+      : `/api/shift-templates`;
+    api[method](url, tpl, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(load);
     setOpenForm(false);
@@ -44,7 +42,7 @@ export default function ShiftTemplateManager({ token }) {
 
   const handleDelete = (id) => {
     if (!window.confirm("Delete template?")) return;
-    axios.delete(`${API}/api/shift-templates/${id}`, {
+    api.delete(`/api/shift-templates/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then(load);
   };

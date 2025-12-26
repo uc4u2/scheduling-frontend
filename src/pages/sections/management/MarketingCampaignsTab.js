@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../utils/api";
 import {
   Alert, Box, Button, Card, CardContent, CardHeader, Checkbox, Divider,
   FormControlLabel, Grid, LinearProgress, MenuItem, Switch,
@@ -14,8 +14,6 @@ import MarketingCampaignsGuide from "./MarketingCampaignsGuide";
 import Autocomplete from "@mui/material/Autocomplete";
 import CircularProgress from "@mui/material/CircularProgress";
 import ExportClientsCard from "./ExportClientsCard";
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
-
 function useAuth() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const auth  = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
@@ -64,8 +62,8 @@ function CampaignCard({
   const fetchServices = async (q = "") => {
     setSvcLoading(true);
     try {
-      const url = `${API}/booking/services${q ? `?q=${encodeURIComponent(q)}` : ""}`;
-      const { data } = await axios.get(url, auth);
+      const url = `/booking/services${q ? `?q=${encodeURIComponent(q)}` : ""}`;
+      const { data } = await api.get(url, auth);
       setServiceOptions(Array.isArray(data) ? data : []);
     } catch (e) {
       // ignore quietly in UI; managers can still type an ID if needed
@@ -91,7 +89,7 @@ function CampaignCard({
     setErr(""); setInfo(""); setLoading(true); setSelected({});
     try {
       const qs = new URLSearchParams(params).toString();
-      const { data } = await axios.get(`${API}${previewPath}?${qs}`, auth);
+      const { data } = await api.get(`${previewPath}?${qs}`, auth);
       setRows(Array.isArray(data?.results) ? data.results : []);
     } catch (e) {
       setErr(e?.response?.data?.error || e?.message || t("campaigns.failedToLoadPreview"));
@@ -134,7 +132,7 @@ function CampaignCard({
         if (!rows.length) { setInfo(t("campaigns.noPreviewRows")); setSending(false); return; }
         payload.targets = rows.map(r => ({ email: r.email, subject: r.subject, html: r.html }));
       }
-      const { data } = await axios.post(`${API}${sendPath}`, payload, auth);
+      const { data } = await api.post(`${sendPath}`, payload, auth);
       const sentCount = data?.sent ?? 0;
       const dryMode = data?.dry_run ? t("campaigns.dryRunStatusOnShort") : t("campaigns.dryRunStatusOffShort");
       setInfo(t("campaigns.sendResult", { count: sentCount, mode: dryMode }));
@@ -631,4 +629,3 @@ export default function MarketingCampaignsTab() {
     </Box>
   );
 }
-
