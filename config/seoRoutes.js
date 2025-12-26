@@ -77,6 +77,7 @@ module.exports = {
     { path: "/blog/quickbooks-xero-integration", changefreq: "monthly", priority: "0.5" },
     { path: "/blog/enterprise-payroll-workflows-qb-xero-zapier", changefreq: "monthly", priority: "0.5" },
     { path: "/blog/smarter-invoice-system-service-businesses", changefreq: "monthly", priority: "0.5" },
+    { path: "/blog/secure-hiring-resume-upload-onboarding", changefreq: "monthly", priority: "0.5" },
     { path: "/blog/category/automation", changefreq: "monthly", priority: "0.5" },
     { path: "/blog/category/payroll", changefreq: "monthly", priority: "0.5" },
     { path: "/status", changefreq: "daily", priority: "0.2" },
