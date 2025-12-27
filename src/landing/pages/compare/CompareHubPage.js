@@ -62,6 +62,30 @@ const CompareHubPage = () => {
           </Stack>
         </Stack>
 
+        <Stack spacing={1.5} sx={{ mt: 5 }}>
+          <Typography variant="h5" fontWeight={800}>
+            Why Schedulaa exists
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Most comparison pages focus on feature checklists. That is not why Schedulaa was built. Service teams do not struggle with payroll
+            in isolation. They struggle with everything that happens before payroll - schedules change, breaks are missed, hours are adjusted,
+            and tips or leave are approved late. That gap between operations and payroll is where errors and compliance risk show up.
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Schedulaa is operations-first. Scheduling, time tracking, break enforcement, and leave approvals live in the same workflow that
+            produces payroll-ready data. Invoices, exports, and accounting handoffs are generated from what actually happened, not spreadsheets
+            or guesswork.
+          </Typography>
+          <Typography variant="h5" fontWeight={800} sx={{ mt: 2 }}>
+            Who this is for
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            These comparisons are for service teams with 3-100 employees that need scheduling, payroll, and compliance to stay aligned - salons,
+            clinics, call centers, staffing agencies, creative studios, and field teams operating in Canada or the United States. If your business
+            relies on shifts, real-time staffing, and accurate pay, these guides will help you choose the right tool.
+          </Typography>
+        </Stack>
+
         <Stack spacing={2.5} sx={{ mt: 6 }}>
           {comparisons.map((item) => (
             <Paper

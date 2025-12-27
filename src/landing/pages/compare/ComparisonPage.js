@@ -140,8 +140,10 @@ const ComparisonPage = ({ pageType = "compare" }) => {
     intro = [],
     executiveOverview,
     differentiators = [],
+    contextBlock,
     summaryTable,
     complianceSafeguards,
+    bridgeSection,
     featureGrid,
     fitMatrix = [],
     testimonial,
@@ -327,6 +329,16 @@ const ComparisonPage = ({ pageType = "compare" }) => {
               {paragraph}
             </Typography>
           ))}
+          {contextBlock?.title ? (
+            <Typography variant="h5" fontWeight={800} sx={{ pt: 2 }}>
+              {contextBlock.title}
+            </Typography>
+          ) : null}
+          {(contextBlock?.paragraphs || []).map((paragraph) => (
+            <Typography key={paragraph} variant="body1" color="text.secondary" textAlign="left">
+              {paragraph}
+            </Typography>
+          ))}
           <Typography variant="body2" color="text.secondary" textAlign="left">
             {isAlternatives ? (
               <>
@@ -391,6 +403,21 @@ const ComparisonPage = ({ pageType = "compare" }) => {
             ))}
           </Grid>
         </Box>
+
+        {bridgeSection?.title ? (
+          <Box component="section" sx={{ mt: 6 }}>
+            <Typography variant="h4" fontWeight={800} gutterBottom>
+              {bridgeSection.title}
+            </Typography>
+            <Stack spacing={2}>
+              {(bridgeSection.paragraphs || []).map((paragraph) => (
+                <Typography key={paragraph} variant="body1" color="text.secondary">
+                  {paragraph}
+                </Typography>
+              ))}
+            </Stack>
+          </Box>
+        ) : null}
 
         {summaryTable?.headers?.length ? (
           <ComparisonTable headers={summaryTable.headers} rows={summaryTable.rows || []} />
