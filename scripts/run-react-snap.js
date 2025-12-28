@@ -18,19 +18,43 @@ const app = express()
   .use(reactSnapConfig.publicPath || "/", serveStatic(sourceDir))
   .use(fallback("200.html", { root: sourceDir }));
 
-const server = http.createServer(app);
+const startServer = (preferredPort) =>
+  new Promise((resolve, reject) => {
+    const server = http.createServer(app);
+    server.once("error", reject);
+    server.listen(preferredPort, host, () => resolve(server));
+  });
 
-server.listen(port, host, async () => {
+const runSnap = async () => {
+  let server;
   try {
+    try {
+      server = await startServer(port);
+    } catch (err) {
+      if (err.code !== "EPERM" || port === 0) {
+        throw err;
+      }
+      server = await startServer(0);
+    }
+    const address = server.address();
+    const actualPort = typeof address === "object" && address ? address.port : port;
     await run({
       ...reactSnapConfig,
+      port: actualPort,
       externalServer: true,
     });
     server.close();
   } catch (err) {
-    server.close(() => {
+    if (server) {
+      server.close(() => {
+        console.error(err);
+        process.exit(1);
+      });
+    } else {
       console.error(err);
       process.exit(1);
-    });
+    }
   }
-});
+};
+
+runSnap();
