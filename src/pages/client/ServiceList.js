@@ -333,6 +333,8 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     [services, bookingServiceId]
   );
 
+  const [bookingLoaded, setBookingLoaded] = useState(false);
+
   const bookingUrl = useMemo(() => {
     if (!bookingServiceId) return "";
     const params = new URLSearchParams();
@@ -346,6 +348,10 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     const base = `${origin}/${effectiveSlug}/services/${bookingServiceId}`;
     return `${base}?${params.toString()}`;
   }, [bookingServiceId, embedCfg, effectiveSlug, selectedDept, origin]);
+
+  useEffect(() => {
+    setBookingLoaded(false);
+  }, [bookingUrl]);
 
   if (loading && !services.length) {
     return (
@@ -559,19 +565,39 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
           </DialogTitle>
           <DialogContent dividers sx={{ p: 0 }}>
             {bookingUrl ? (
-              <Box
-                component="iframe"
-                key={bookingUrl}
-                src={bookingUrl}
-                title="Service booking"
-                allowFullScreen
-                sx={{
-                  display: "block",
-                  border: 0,
-                  width: "100%",
-                  height: bookingFullScreen ? "100vh" : { xs: "75vh", md: "70vh" },
-                }}
-              />
+              <Box sx={{ position: "relative" }}>
+                {!bookingLoaded && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      bgcolor: "background.paper",
+                      color: "var(--page-btn-bg, var(--sched-primary))",
+                      zIndex: 1,
+                    }}
+                  >
+                    <CircularProgress sx={{ color: "currentColor" }} />
+                  </Box>
+                )}
+                <Box
+                  component="iframe"
+                  key={bookingUrl}
+                  src={bookingUrl}
+                  title="Service booking"
+                  allowFullScreen
+                  onLoad={() => setBookingLoaded(true)}
+                  sx={{
+                    display: "block",
+                    border: 0,
+                    width: "100%",
+                    height: bookingFullScreen ? "100vh" : { xs: "75vh", md: "70vh" },
+                    opacity: bookingLoaded ? 1 : 0,
+                  }}
+                />
+              </Box>
             ) : (
               <Box sx={{ p: 4, textAlign: "center", color: "var(--page-btn-bg, var(--sched-primary))" }}>
                 <CircularProgress sx={{ color: "currentColor" }} />
