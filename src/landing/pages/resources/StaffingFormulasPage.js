@@ -72,7 +72,7 @@ const StaffingFormulasPage = () => {
           title: "Staffing Formulas & Workforce Planning Guide",
           description:
             "A practical checklist of staffing formulas to keep schedules, payroll, and compliance aligned.",
-          image: "https://www.schedulaa.com/og/resources.jpg",
+          image: "https://www.schedulaa.com/og/default.jpg",
         }}
       />
       <JsonLd data={schema} />

@@ -42,7 +42,7 @@ const PayrollComplianceWebinarPage = () => {
         og={{
           title: "Payroll Compliance Webinar",
           description: "Break compliance, approvals, audit logs, and payroll exports in one workflow.",
-          image: "https://www.schedulaa.com/og/webinar.jpg",
+          image: "https://www.schedulaa.com/og/default.jpg",
         }}
       />
       <JsonLd data={schema} />
