@@ -120,7 +120,7 @@ const WorkforcePage = () => {
 
       <Stack spacing={3} alignItems="flex-start" mb={8}>
         <Chip label="Workforce" color="primary" />
-        <Typography variant="h2" fontWeight={800}>
+        <Typography component="h1" variant="h2" fontWeight={800}>
           {workforceHero.title}
         </Typography>
         <Typography variant="h6" color="text.secondary" maxWidth={720}>

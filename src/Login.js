@@ -335,7 +335,7 @@ const Login = ({ setToken }) => {
         >
           <Box sx={{ height: 4, width: "100%", bgcolor: "#FF7033", borderRadius: 1, mb: 3 }} />
 
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
+          <Typography component="h1" variant="h4" fontWeight="bold" gutterBottom>
             Welcome Back to Schedulaa
           </Typography>
           

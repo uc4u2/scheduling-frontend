@@ -139,7 +139,7 @@ const Register = () => {
             title="Enterprise-grade scheduling & payroll, made simple. Whether you're a business owner, team member, or customer, choose your role below and get started."
             placement="right"
           >
-            <Typography variant="h4" fontWeight="bold" gutterBottom sx={{ cursor: "help" }}>
+            <Typography component="h1" variant="h4" fontWeight="bold" gutterBottom sx={{ cursor: "help" }}>
               Create Your Account
             </Typography>
           </Tooltip>

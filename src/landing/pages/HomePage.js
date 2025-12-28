@@ -625,6 +625,7 @@ const HomePage = () => {
               {heroCopy.eyebrow}
             </Typography>
             <Typography
+              component="h1"
               variant="h3"
               sx={{ fontWeight: 800, letterSpacing: "-0.4px" }}
             >

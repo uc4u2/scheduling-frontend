@@ -12,13 +12,30 @@ import { api } from "../utils/api";
  * }
  */
 export function useDataSource(def = {}, { ttlMs = 60000 } = {}) {
-  const stable = useMemo(() => ({
-    url: def.url || "",
+  const resolvedSlug = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const fromQuery = q.get("site") || q.get("slug");
+      if (fromQuery) return fromQuery;
+    } catch {}
+    const parts = String(window.location.pathname || "").split("/").filter(Boolean);
+    return parts[0] || "";
+  }, []);
+
+  const stable = useMemo(() => {
+    const rawUrl = def.url || "";
+    const url = rawUrl.includes("{{slug}}") && resolvedSlug
+      ? rawUrl.replaceAll("{{slug}}", resolvedSlug)
+      : rawUrl;
+    return {
+      url,
     params: def.params || {},
     pick: def.pick || "",
     map: def.map || null,
     noCompanyHeader: Boolean(def.noCompanyHeader),
-  }), [JSON.stringify(def)]);
+    };
+  }, [JSON.stringify(def), resolvedSlug]);
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(!!stable.url);

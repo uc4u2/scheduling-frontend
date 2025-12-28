@@ -30,7 +30,7 @@ const ForgotPassword = () => {
 
   return (
     <Container sx={{ mt: 5, maxWidth: "sm" }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography component="h1" variant="h4" gutterBottom>
         Forgot Password
       </Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

@@ -20,7 +20,7 @@ export default function ManagementFrame({
           <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
             <Box sx={{ minWidth: 0, overflow: "hidden" }}>
               {title && (
-                <Typography variant="h5" fontWeight={800} gutterBottom noWrap>
+                <Typography component="h1" variant="h5" fontWeight={800} gutterBottom noWrap>
                   {title}
                 </Typography>
               )}

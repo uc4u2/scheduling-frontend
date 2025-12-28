@@ -118,7 +118,7 @@ const DemoPage = () => {
               label={`Test drive · ${DEMO_ENV}`}
               sx={{ alignSelf: { xs: "flex-start", md: "center" }, textTransform: "uppercase", letterSpacing: 0.6 }}
             />
-            <Typography variant="h3" fontWeight={800}>
+            <Typography component="h1" variant="h3" fontWeight={800}>
               Experience the Schedulaa manager dashboard in minutes
             </Typography>
             <Typography variant="body1" color="text.secondary" maxWidth={760}>
