@@ -37,6 +37,8 @@ import DocsPage from "./landing/pages/DocsPage";
 import StatusPage from "./landing/pages/StatusPage";
 import BlogPage from "./landing/pages/BlogPage";
 import DemoPage from "./landing/pages/DemoPage";
+import StaffingFormulasPage from "./landing/pages/resources/StaffingFormulasPage";
+import PayrollComplianceWebinarPage from "./landing/pages/webinars/PayrollComplianceWebinarPage";
 import AboutPage from "./landing/pages/AboutPage";
 import ContactPage from "./landing/pages/ContactPage";
 import FAQPage from "./landing/pages/FAQPage";
@@ -414,6 +416,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/settings/zapier" element={<Navigate to="/manager/dashboard?view=zapier" replace />} />
           <Route path="/xero/callback" element={<XeroCallback />} />
             <Route path="/docs" element={<DocsPage />} />
+            <Route path="/resources/staffing-formulas" element={<StaffingFormulasPage />} />
+            <Route path="/webinars/payroll-compliance" element={<PayrollComplianceWebinarPage />} />
             <Route path="/help/domains" element={<DomainHelpPage />} />
             <Route path="/help/enterprise-retirement" element={<EnterpriseRetirementHelp />} />
             <Route path="/blog" element={<BlogPage />} />
