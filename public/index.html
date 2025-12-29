@@ -73,6 +73,67 @@
       window.__ENV__ = window.__ENV__ || {};
       window.__ENV__.GA_MEASUREMENT_ID = window.__ENV__.GA_MEASUREMENT_ID || "%REACT_APP_GA_MEASUREMENT_ID%";
     </script>
+    <script>
+      (function () {
+        var path = window.location.pathname || "/";
+        var seg = path.split("/").filter(Boolean)[0] || "";
+        var reserved = {
+          "about": true,
+          "acceptable-use": true,
+          "admin": true,
+          "analytics": true,
+          "apply": true,
+          "blog": true,
+          "booking": true,
+          "calendar": true,
+          "cancel-booking": true,
+          "candidate": true,
+          "client": true,
+          "compare": true,
+          "contact": true,
+          "cookie": true,
+          "data-processing": true,
+          "dashboard": true,
+          "demo": true,
+          "docs": true,
+          "employee": true,
+          "faq": true,
+          "forgot-password": true,
+          "help": true,
+          "industries": true,
+          "login": true,
+          "manage": true,
+          "manager": true,
+          "marketing": true,
+          "payroll": true,
+          "payslips": true,
+          "platform": true,
+          "pricing": true,
+          "privacy": true,
+          "public": true,
+          "recruiter": true,
+          "register": true,
+          "reset-password": true,
+          "resources": true,
+          "security": true,
+          "settings": true,
+          "status": true,
+          "terms": true,
+          "user-agreement": true,
+          "website-builder": true,
+          "workforce": true,
+          "zapier": true
+        };
+        if (seg && !reserved[seg]) {
+          document.documentElement.classList.add("company-boot");
+        }
+      })();
+    </script>
+    <style>
+      html.company-boot #root {
+        opacity: 0;
+      }
+    </style>
     <meta charset="UTF-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

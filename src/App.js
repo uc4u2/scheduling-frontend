@@ -365,6 +365,10 @@ const AppContent = ({ token, setToken }) => {
     return () => document.body.classList.remove("embed");
   }, [isEmbed, primary, text]);
 
+  useEffect(() => {
+    document.documentElement.classList.remove("company-boot");
+  }, []);
+
   const showChatBot = !isEmbed && MARKETING_PATHS.includes(location.pathname);
   const showAppChrome = !isEmbed && !isMarketingRoute && !isCompanyRoute && !isNoChromeRoute;
 
