@@ -225,8 +225,11 @@ export default function SiteFrame({
         ? site.header.social_links
         : DEFAULT_SOCIAL_LINKS) || [];
   const showBrandText = headerConfig?.show_brand_text !== false;
+  const headerTextRaw = headerConfig?.text && headerConfig.text.trim();
+  const headerText =
+    headerTextRaw && /schedulaa/i.test(headerTextRaw) ? null : headerTextRaw;
   const brandName =
-    (headerConfig?.text && headerConfig.text.trim()) ||
+    headerText ||
     site?.company?.name ||
     deslug(site?.company?.slug) ||
     deslug(slug) ||
@@ -612,9 +615,12 @@ export default function SiteFrame({
     company: site?.company?.name,
     slug,
   });
+  const footerTextRaw = footerConfig?.text && footerConfig.text.trim();
+  const footerText =
+    footerTextRaw && /schedulaa/i.test(footerTextRaw) ? null : footerTextRaw;
   const footerHasContent =
     footerConfig &&
-    (footerConfig.text ||
+    (footerText ||
       footerColumns.length ||
       footerSocial.length ||
       footerLegal.length);
@@ -627,6 +633,7 @@ export default function SiteFrame({
     footerConfig?.link_color ||
     footerTextColor ||
     linkColor;
+  const footerHeadingColor = footerLinkColor;
 
   const footerNode = footerConfig ? (
     <Box
@@ -648,9 +655,12 @@ export default function SiteFrame({
             sx={{ height: 48, width: "auto", maxWidth: 200, objectFit: "contain", mb: 2 }}
           />
         )}
-        {(footerConfig.text || (isPreview && !footerHasContent)) && (
-          <Typography variant="body1" sx={{ mb: 3, maxWidth: 640 }}>
-            {footerConfig.text || "Add footer copy in Branding → Footer"}
+        {(footerText || (isPreview && !footerHasContent)) && (
+          <Typography
+            variant="body1"
+            sx={{ mb: 3, maxWidth: 640, color: footerHeadingColor }}
+          >
+            {footerText || "Add footer copy in Branding → Footer"}
           </Typography>
         )}
         {footerColumns.length > 0 && (
@@ -658,7 +668,11 @@ export default function SiteFrame({
             {footerColumns.map((col, idx) => (
               <Grid item xs={12} md={Math.max(3, Math.floor(12 / footerColumns.length))} key={`footer-col-${idx}`}>
                 {col.title && (
-                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+                  <Typography
+                    variant="subtitle2"
+                    fontWeight={700}
+                    sx={{ mb: 1, color: footerHeadingColor }}
+                  >
                     {col.title}
                   </Typography>
                 )}

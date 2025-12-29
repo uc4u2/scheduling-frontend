@@ -1780,10 +1780,24 @@ const autoProvisionIfEmpty = useCallback(
         setEditing(created);
       }
 
-      const publishRes = await wb.publish(companyId, true);
-      const publishPayload = publishRes?.data || publishRes || {};
-      applyBrandingFromServer(publishPayload);
-      setSiteSettings(publishPayload);
+      const latestSettings = await wb.getSettings(companyId).catch(() => null);
+      const latestPayload = latestSettings?.data || latestSettings || {};
+      const draftSettings = latestPayload?.settings || {};
+      const publishPayload = {
+        ...draftSettings,
+        header: draftSettings.header || headerDraft,
+        footer: draftSettings.footer || footerDraft,
+        theme_overrides: draftSettings.theme_overrides || themeOverridesDraft,
+        nav_overrides: draftSettings.nav_overrides || navOverridesWithDefault,
+      };
+      const brandingRes = await wb.saveSettings(companyId, publishPayload, {
+        publish: true,
+      });
+      const brandingPayload = brandingRes?.data || brandingRes || {};
+      applyBrandingFromServer(brandingPayload);
+      setSiteSettings(brandingPayload);
+
+      await wb.publish(companyId, true);
       const publishedMsg = `${
         t("manager.visualBuilder.messages.sitePublished") || "Site published"
       } ✔`;

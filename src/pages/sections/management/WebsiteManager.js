@@ -336,6 +336,9 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
     setMsg("");
     setPublishing(true);
     try {
+      const brandingRes = await wb.saveSettings(companyId, {}, { publish: true });
+      const brandingPayload = brandingRes?.data || brandingRes || {};
+      setSettings((s) => ({ ...(s || {}), ...(brandingPayload || {}) }));
       const res = await wb.publish(companyId, true);
       setSettings((s) => ({ ...(s || {}), is_live: !!res.data?.is_live }));
       setMsg(t("management.website.messages.sitePublished"));

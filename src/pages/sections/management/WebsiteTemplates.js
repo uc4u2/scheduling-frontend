@@ -162,15 +162,17 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
   // ---------- Import (then redirect to builder) ----------
   const goToBuilder = () => navigate("/manage/website/builder");
 
-  const runImport = async () => {
-    if (!companyId || !selectedKey) return;
+  const runImport = async (keyOverride, versionOverride) => {
+    const key = keyOverride || selectedKey;
+    const version = versionOverride || selectedVersion || DEFAULT_VERSION;
+    if (!companyId || !key) return;
     setImporting(true);
     setImportResult(null);
     try {
       const payload = {
-        key: selectedKey,
-        template_key: selectedKey,
-        version: selectedVersion || DEFAULT_VERSION,
+        key,
+        template_key: key,
+        version,
         clear_existing: true,
         publish: true,
         set_theme_from_template: true,
@@ -332,7 +334,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
                     <Tooltip
                       title={!companyId ? "Sign in as a manager first" : "Import and go to the editor"}
                     >
-                      <span>
+                          <span>
                         <Button
                           size="small"
                           variant="outlined"
@@ -340,7 +342,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
                           onClick={() => {
                             setSelectedKey(t.key);
                             setSelectedVersion(v);
-                            runImport();
+                            runImport(t.key, v);
                           }}
                           disabled={!companyId || importing}
                         >

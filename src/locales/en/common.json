@@ -1309,7 +1309,7 @@
             "overlayOpacity": "Overlay opacity (0-1)",
             "headingColor": "Heading color",
             "bodyColor": "Body text color",
-            "linkColor": "Link color",
+            "linkColor": "Link color (also social icons)",
             "headingFont": "Heading font family (optional)",
             "bodyFont": "Body font family (optional)",
             "heroHeadingShadow": "Hero heading text-shadow (CSS)",

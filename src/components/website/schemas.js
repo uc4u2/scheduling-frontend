@@ -712,7 +712,7 @@ export const SCHEMA_REGISTRY = {
       // --- Text & fonts ---
       { name: "headingColor", type: "color",  label: "Heading color", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.headingColor" },
       { name: "bodyColor",    type: "color",  label: "Body text color", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.bodyColor" },
-      { name: "linkColor",    type: "color",  label: "Link color", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.linkColor" },
+      { name: "linkColor",    type: "color",  label: "Link color (also social icons)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.linkColor" },
       { name: "headingFont",  type: "string", label: "Heading font family (optional)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.headingFont" },
       { name: "bodyFont",     type: "string", label: "Body font family (optional)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.bodyFont" },
 

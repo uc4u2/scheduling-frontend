@@ -1698,11 +1698,14 @@ const siteTitle = useMemo(() => {
                       sx={{ height: 40, width: "auto", maxWidth: 160, objectFit: "contain" }}
                     />
                   )}
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: footerLinkColor }}>
                     {siteTitle}
                   </Typography>
                   {footerSummary && (
-                    <Typography variant="body2" sx={{ maxWidth: 560 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ maxWidth: 560, color: footerLinkColor }}
+                    >
                       {footerSummary}
                     </Typography>
                   )}
@@ -1739,7 +1742,10 @@ const siteTitle = useMemo(() => {
                   {footerColumns.map((col, idx) => (
                     <Box key={`footer-col-${idx}`} sx={{ flex: 1, minWidth: 160 }}>
                       {col.title && (
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 600, mb: 1, color: footerLinkColor }}
+                        >
                           {col.title}
                         </Typography>
                       )}
