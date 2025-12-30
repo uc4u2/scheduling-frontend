@@ -54,6 +54,8 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [previewKey, setPreviewKey] = useState(null);
+  const [previewVersion, setPreviewVersion] = useState(null);
   const [device, setDevice] = useState("desktop");
   const [pageSlug, setPageSlug] = useState("");
 
@@ -143,6 +145,8 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
     const v = verArg || selectedVersion || DEFAULT_VERSION;
     if (!k) return;
 
+    setPreviewKey(k);
+    setPreviewVersion(v);
     setPreviewOpen(true);
     setPreviewLoading(true);
     setPreviewData(null);
@@ -255,7 +259,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
                         <Button
                           size="small"
                           variant="contained"
-                          onClick={runImport}
+                          onClick={() => runImport(t.key, v)}
                           disabled={!companyId || importing}
                         >
                           {importing ? "Importing…" : "Use"}
@@ -514,7 +518,11 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
                 <Stack spacing={1}>
                   <Tooltip title={!companyId ? "Sign in as a manager first" : "Import and go to the editor"}>
                     <span>
-                      <Button variant="contained" onClick={runImport} disabled={!companyId || importing}>
+                      <Button
+                        variant="contained"
+                        onClick={() => runImport(previewKey || selectedKey, previewVersion || selectedVersion)}
+                        disabled={!companyId || importing}
+                      >
                         {importing ? "Importing…" : "Use this template"}
                       </Button>
                     </span>
