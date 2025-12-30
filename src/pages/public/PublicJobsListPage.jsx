@@ -147,7 +147,7 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
     value ? value.split(",").map((item) => item.trim()).filter(Boolean) : [];
 
   const initialQ = searchParams.get("q") || "";
-  const initialCountry = searchParams.get("country") || "CA";
+  const initialCountry = searchParams.get("country") || "";
   const initialRegion = searchParams.get("region") || "";
   const initialCity = searchParams.get("city") || "";
   const initialArrangements = parseList(searchParams.get("work_arrangement"));
@@ -177,6 +177,10 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
 
   const countryIsUS = filters.country === "US";
   const countryIsCA = filters.country === "CA";
+  const countryOptions = useMemo(
+    () => [{ code: "", label: "All countries" }, ...COUNTRIES],
+    []
+  );
   const regionOptions = useMemo(() => {
     if (countryIsUS) return US_STATES;
     if (countryIsCA) return CA_PROVINCES;
@@ -188,7 +192,7 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
 
   const filterSummary = useMemo(() => {
     const countryLabel =
-      COUNTRIES.find((opt) => opt.code === filters.country)?.label || filters.country;
+      countryOptions.find((opt) => opt.code === filters.country)?.label || filters.country;
     const regionLabel =
       regionOptions.find((opt) => opt.code === filters.region)?.label || filters.region;
     const arrangementLabels = WORK_ARRANGEMENTS.filter((opt) =>
@@ -216,7 +220,7 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
     ]
       .filter(Boolean)
       .join(" · ");
-  }, [filters, regionOptions]);
+  }, [filters, regionOptions, countryOptions]);
   const resultsSummary = useMemo(() => {
     const base = total ? `${total} jobs` : "No roles found";
     return filterSummary ? `${base} • Filters: ${filterSummary}` : base;
@@ -226,7 +230,8 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
     const chips = [];
     if (q.trim()) chips.push({ key: "q", label: `Search: ${q.trim()}` });
     if (filters.country) {
-      const label = COUNTRIES.find((opt) => opt.code === filters.country)?.label || filters.country;
+      const label =
+        countryOptions.find((opt) => opt.code === filters.country)?.label || filters.country;
       chips.push({ key: "country", label: `Country: ${label}` });
     }
     if (filters.region) {
@@ -260,7 +265,7 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
       });
     }
     return chips;
-  }, [filters, q, regionOptions]);
+  }, [filters, q, regionOptions, countryOptions]);
 
   const handleRemoveChip = (chip) => {
     if (chip.key === "q") {
@@ -271,7 +276,7 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
     if (chip.key === "country") {
       setFilters((prev) => ({
         ...prev,
-        country: "CA",
+        country: "",
         region: "",
       }));
       setPage(1);
@@ -319,7 +324,7 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
 
   const handleClearFilters = () => {
     setFilters({
-      country: "CA",
+      country: "",
       region: "",
       city: "",
       workArrangements: [],
@@ -364,7 +369,7 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
 
   useEffect(() => {
     const nextQ = searchParams.get("q") || "";
-    const nextCountry = searchParams.get("country") || "CA";
+    const nextCountry = searchParams.get("country") || "";
     const nextRegion = searchParams.get("region") || "";
     const nextCity = searchParams.get("city") || "";
     const nextArrangements = parseList(searchParams.get("work_arrangement"));
@@ -539,7 +544,7 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
                   size="small"
                   fullWidth
                 >
-                  {COUNTRIES.map((opt) => (
+                  {countryOptions.map((opt) => (
                     <MenuItem key={opt.code} value={opt.code}>
                       {opt.label}
                     </MenuItem>
