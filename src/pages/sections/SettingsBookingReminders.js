@@ -63,7 +63,6 @@ const SettingsBookingReminders = () => {
       const payload = {
         enabled: Boolean(policy.enabled),
         minutes_before_start: clamp(Number(policy.minutes_before_start || 0), 1, 1440),
-        window_minutes: clamp(Number(policy.window_minutes || 0), 1, 30),
       };
       const { data } = await api.put("/admin/booking-reminder-policy", payload);
       const nextPolicy = data?.policy || payload;
@@ -121,20 +120,6 @@ const SettingsBookingReminders = () => {
               onChange={handleNumberChange("minutes_before_start")}
               fullWidth
               inputProps={{ min: 1, max: 1440 }}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              type="number"
-              label={t("settings.reminders.windowMinutes", "Send window (minutes)")}
-              helperText={t(
-                "settings.reminders.windowMinutesHelper",
-                "Allowed window around the target time to send reminders."
-              )}
-              value={policy.window_minutes}
-              onChange={handleNumberChange("window_minutes")}
-              fullWidth
-              inputProps={{ min: 1, max: 30 }}
             />
           </Grid>
         </Grid>
