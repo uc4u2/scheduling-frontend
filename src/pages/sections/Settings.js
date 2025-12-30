@@ -45,6 +45,7 @@ import SettingsQuickBooks from "./SettingsQuickBooks";
 import IntegrationActivityCard from "./IntegrationActivityCard";
 import ProfessionSettings from "./ProfessionSetting";
 import SettingsTimeTracking from "./SettingsTimeTracking";
+import SettingsBookingReminders from "./SettingsBookingReminders";
 
 import SectionCard from "../../components/ui/SectionCard";
 import { PROFESSION_OPTIONS } from "../../constants/professions";
@@ -610,6 +611,7 @@ const Settings = () => {
           {GeneralCard}
           {PolicyCard}
           <SettingsTimeTracking />
+          <SettingsBookingReminders />
         </Stack>
       ),
     },
