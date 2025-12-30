@@ -1764,7 +1764,7 @@ const autoProvisionIfEmpty = useCallback(
 
     try {
       const snapshot = withLiftedLayout(
-        ensureSectionIds({ ...editing, published: true })
+        ensureSectionIds({ ...editing })
       );
       const payload = serializePage(snapshot);
 
