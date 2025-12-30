@@ -62,11 +62,23 @@ const normalizeMediaAsset = (asset, companyId) => {
     variantList.find((v) => v?.url)?.url ||
     variantList.find((v) => v?.href)?.href ||
     null;
-  const finalUrl =
+  const absolutize = (value) => {
+    if (!value || typeof value !== "string") return value;
+    if (/^https?:\/\//i.test(value)) return value;
+    if (value.startsWith("/")) {
+      return `${String(API_BASE_URL).replace(/\/$/, "")}${value}`;
+    }
+    return value;
+  };
+  const fallbackUrl = stored
+    ? `/api/website/media/file/${companyId || "company"}/${stored}`
+    : undefined;
+  const finalUrl = absolutize(
     asset.url ||
-    asset.url_public ||
-    variantUrl ||
-    (stored ? `${String(API_BASE_URL).replace(/\/$/, "")}/uploads/${companyId || "company"}/${stored}` : undefined);
+      asset.url_public ||
+      variantUrl ||
+      fallbackUrl
+  );
   return {
     ...asset,
     stored_name: stored,
@@ -463,7 +475,11 @@ export const website = {
   mediaFileUrl: (companyId, storedNameOrUrl) => {
     if (!storedNameOrUrl) return "";
     if (/^https?:\/\//i.test(storedNameOrUrl)) return storedNameOrUrl;
-    return `${String(API_BASE_URL).replace(/\/$/, "")}/uploads/${companyId}/${storedNameOrUrl}`;
+    const base = String(API_BASE_URL).replace(/\/$/, "");
+    if (storedNameOrUrl.startsWith("/")) {
+      return `${base}${storedNameOrUrl}`;
+    }
+    return `${base}/api/website/media/file/${companyId}/${storedNameOrUrl}`;
   },
 
   // Server-side preview

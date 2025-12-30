@@ -11,7 +11,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import { useParams, useSearchParams, Link as RouterLink, useNavigate } from "react-router-dom";
 
-import { wb } from "../../utils/api";
+import { wb, API_BASE_URL } from "../../utils/api";
 import { RenderSections } from "../../components/website/RenderSections";
 import VisualSiteBuilder from "../sections/management/VisualSiteBuilder";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
@@ -1005,26 +1005,55 @@ const siteTitle = useMemo(() => {
     return clean;
   }, [rawSiteTitle, company?.name, company?.slug, slug]);
 
+  const resolveMediaUrl = useCallback(
+    (asset, fallback) => {
+      if (asset && typeof asset === "object") {
+        const candidate = asset.url || asset.url_public;
+        if (typeof candidate === "string" && candidate.trim()) {
+          if (/^https?:\/\//i.test(candidate)) return candidate;
+          if (candidate.startsWith("/")) {
+            return `${String(API_BASE_URL).replace(/\/$/, "")}${candidate}`;
+          }
+          return candidate;
+        }
+        const firstVariant =
+          Array.isArray(asset.variants) && asset.variants.find((v) => v?.url || v?.href);
+        if (firstVariant) {
+          const variantUrl = firstVariant.url || firstVariant.href;
+          if (typeof variantUrl === "string" && variantUrl.trim()) {
+            if (/^https?:\/\//i.test(variantUrl)) return variantUrl;
+            if (variantUrl.startsWith("/")) {
+              return `${String(API_BASE_URL).replace(/\/$/, "")}${variantUrl}`;
+            }
+            return variantUrl;
+          }
+        }
+        if (asset.stored_name && company?.id) {
+          return `${String(API_BASE_URL).replace(/\/$/, "")}/api/website/media/file/${company.id}/${asset.stored_name}`;
+        }
+      }
+      if (typeof fallback === "string" && fallback.trim()) {
+        const trimmed = fallback.trim();
+        if (/^https?:\/\//i.test(trimmed)) return trimmed;
+        if (trimmed.startsWith("/")) {
+          return `${String(API_BASE_URL).replace(/\/$/, "")}${trimmed}`;
+        }
+        return trimmed;
+      }
+      return null;
+    },
+    [company?.id]
+  );
+
   const headerLogoUrl = useMemo(() => {
-    const asset = headerConfig?.logo_asset;
-    if (asset && typeof asset === "object") {
-      if (asset.url) return asset.url;
-      if (asset.url_public) return asset.url_public;
-      const firstVariant =
-        Array.isArray(asset.variants) && asset.variants.find((v) => v?.url || v?.href);
-      if (firstVariant) return firstVariant.url || firstVariant.href;
-    }
-    if (typeof headerConfig?.logo_url === "string" && headerConfig.logo_url.trim()) {
-      return headerConfig.logo_url.trim();
-    }
-    if (typeof headerConfig?.logo_asset_url === "string" && headerConfig.logo_asset_url.trim()) {
-      return headerConfig.logo_asset_url.trim();
-    }
-    if (typeof headerConfig?.logo === "string" && headerConfig.logo.trim()) {
-      return headerConfig.logo.trim();
-    }
-    return company?.logo_url || null;
-  }, [headerConfig, company]);
+    return resolveMediaUrl(
+      headerConfig?.logo_asset,
+      headerConfig?.logo_url ||
+        headerConfig?.logo_asset_url ||
+        headerConfig?.logo ||
+        company?.logo_url
+    );
+  }, [headerConfig, company, resolveMediaUrl]);
 
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
   const headerTextColor = headerConfig?.text || themeOverrides?.header?.text || "inherit";
@@ -1067,12 +1096,10 @@ const siteTitle = useMemo(() => {
     themeOverrides?.footer?.text ||
     "rgba(255,255,255,0.92)";
   const footerLinkColor = footerConfig?.link_color || footerTextColor;
-  const footerLogoUrl =
-    footerConfig?.logo_asset?.url ||
-    footerConfig?.logo_asset?.url_public ||
-    footerConfig?.logo_url ||
-    footerConfig?.logo_asset_url ||
-    null;
+  const footerLogoUrl = resolveMediaUrl(
+    footerConfig?.logo_asset,
+    footerConfig?.logo_url || footerConfig?.logo_asset_url || null
+  );
 
   const globalSeo = useMemo(() => {
     if (settings?.seo) return settings.seo;
