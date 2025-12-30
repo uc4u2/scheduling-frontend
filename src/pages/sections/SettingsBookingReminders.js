@@ -25,7 +25,7 @@ const SettingsBookingReminders = () => {
   const [error, setError] = useState("");
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
 
-  const loadPolicy = async () => {
+  const loadPolicy = React.useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -41,11 +41,11 @@ const SettingsBookingReminders = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadPolicy();
-  }, []);
+  }, [loadPolicy]);
 
   const handleToggle = (event) => {
     setPolicy((prev) => ({ ...prev, enabled: event.target.checked }));
