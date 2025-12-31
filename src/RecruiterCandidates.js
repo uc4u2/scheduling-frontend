@@ -40,7 +40,7 @@ import api, { API_BASE_URL } from "./utils/api";
 import { useSnackbar } from "notistack";
 import { downloadQuestionnaireFile } from "./utils/questionnaireUploads";
 import PublicBookingInfoCard from "./components/PublicBookingInfoCard";
-import { isoFromParts } from "./utils/datetime";
+import { isoFromParts, formatDateTimeInTz } from "./utils/datetime";
 import { getUserTimezone } from "./utils/timezone";
 const statusOptions = [
   "Applied",
@@ -1211,7 +1211,7 @@ const RecruiterCandidates = ({ token }) => {
                         </Typography>
                         {reminder.sent_at && (
                           <Typography variant="body2">
-                            <strong>Sent:</strong> {formatDateTime(reminder.sent_at)}
+                            <strong>Sent:</strong> {formatDateTimeInTz(reminder.sent_at, viewerTimezone)}
                           </Typography>
                         )}
                         {reminder.last_error && (
