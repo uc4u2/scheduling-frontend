@@ -31,6 +31,7 @@ import {
   ListItem,
   ListItemText,
 } from "@mui/material";
+import { DateTime } from "luxon";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
@@ -40,6 +41,7 @@ import { useSnackbar } from "notistack";
 import { downloadQuestionnaireFile } from "./utils/questionnaireUploads";
 import PublicBookingInfoCard from "./components/PublicBookingInfoCard";
 import { isoFromParts } from "./utils/datetime";
+import { getUserTimezone } from "./utils/timezone";
 const statusOptions = [
   "Applied",
   "Interview Scheduled",
@@ -203,7 +205,7 @@ const RecruiterCandidates = ({ token }) => {
         setReminder(nextReminder);
         setReminderTitle(nextReminder?.title || "");
         setReminderMessage(nextReminder?.message || "");
-        setReminderNotifyAt(toLocalInput(nextReminder?.notify_at));
+        setReminderNotifyAt(toInputInTz(nextReminder?.notify_at, viewerTimezone));
         setReminderRecipients((nextReminder?.recipients || []).join(", "));
         setReminderError("");
         setReminderNotice("");
@@ -329,28 +331,36 @@ const RecruiterCandidates = ({ token }) => {
     return date.toLocaleString();
   };
 
-  const toLocalInput = (value) => {
-    if (!value) return "";
-    const dt = new Date(value);
-    if (Number.isNaN(dt.getTime())) return "";
-    const offset = dt.getTimezoneOffset() * 60000;
-    return new Date(dt.getTime() - offset).toISOString().slice(0, 16);
-  };
-
-  const fromLocalInput = (value) => {
-    if (!value) return null;
-    const dt = new Date(value);
-    if (Number.isNaN(dt.getTime())) return null;
-    return dt.toISOString();
-  };
-
-  const userTimezone = useMemo(() => {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    } catch {
-      return "UTC";
+  const viewerTimezone = useMemo(() => {
+    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const explicitTz = authInfo?.timezone || "";
+    const resolved = getUserTimezone(explicitTz);
+    if (!explicitTz) {
+      const stored = localStorage.getItem("timezone");
+      if (stored === "UTC" && browserTz && browserTz !== "UTC") {
+        return browserTz;
+      }
     }
-  }, []);
+    return resolved;
+  }, [authInfo?.timezone]);
+
+  const toInputInTz = (value, tz) => {
+    if (!value) return "";
+    const hasOffset = /[zZ]|[+-]\d{2}:\d{2}$/.test(value);
+    const base = hasOffset
+      ? DateTime.fromISO(value, { setZone: true })
+      : DateTime.fromISO(value, { zone: "utc" });
+    const dt = base.setZone(tz || "local");
+    if (!dt.isValid) return "";
+    return dt.toFormat("yyyy-LL-dd'T'HH:mm");
+  };
+
+  const fromInputInTz = (value, tz) => {
+    if (!value) return null;
+    const dt = DateTime.fromFormat(value, "yyyy-LL-dd'T'HH:mm", { zone: tz || "local" });
+    if (!dt.isValid) return null;
+    return dt.toUTC().toISO({ suppressMilliseconds: true, includeOffset: true });
+  };
 
   const formatDateOnly = (value) => {
     if (!value) {
@@ -548,7 +558,7 @@ const RecruiterCandidates = ({ token }) => {
       const payload = {
         title: reminderTitle,
         message: reminderMessage,
-        notify_at: fromLocalInput(reminderNotifyAt),
+        notify_at: fromInputInTz(reminderNotifyAt, viewerTimezone),
         recipients: reminderRecipients,
       };
       const res = await api.post(
@@ -560,7 +570,7 @@ const RecruiterCandidates = ({ token }) => {
       setReminder(nextReminder);
       setReminderTitle(nextReminder?.title || "");
       setReminderMessage(nextReminder?.message || "");
-      setReminderNotifyAt(toLocalInput(nextReminder?.notify_at));
+      setReminderNotifyAt(toInputInTz(nextReminder?.notify_at, viewerTimezone));
       setReminderRecipients((nextReminder?.recipients || []).join(", "));
       setReminderNotice("Reminder saved.");
     } catch (err) {
@@ -601,7 +611,7 @@ const RecruiterCandidates = ({ token }) => {
     setReminderError("");
     setReminderNotice("");
     try {
-      const payload = { notify_at: fromLocalInput(reminderNotifyAt) };
+      const payload = { notify_at: fromInputInTz(reminderNotifyAt, viewerTimezone) };
       const res = await api.post(
         `/manager/candidates/${candidate.id}/reminders/${reminder.id}/snooze`,
         payload,
@@ -609,7 +619,7 @@ const RecruiterCandidates = ({ token }) => {
       );
       const nextReminder = res?.data?.reminder || null;
       setReminder(nextReminder);
-      setReminderNotifyAt(toLocalInput(nextReminder?.notify_at));
+      setReminderNotifyAt(toInputInTz(nextReminder?.notify_at, viewerTimezone));
       setReminderNotice("Reminder snoozed.");
     } catch (err) {
       setReminderError(err?.response?.data?.error || "Failed to snooze reminder.");
@@ -1157,7 +1167,7 @@ const RecruiterCandidates = ({ token }) => {
                   </Typography>
                   <Stack spacing={1.5}>
                     <Typography variant="body2" color="text.secondary">
-                      Notify at (your timezone: {userTimezone})
+                      Notify at (your timezone: {viewerTimezone})
                     </Typography>
                     <TextField
                       label="Title"
