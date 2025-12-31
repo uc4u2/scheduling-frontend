@@ -1068,6 +1068,13 @@ const RecruiterCandidates = ({ token }) => {
                           </MenuItem>
                         ))}
                       </TextField>
+                      <Tooltip
+                        title="We keep the last N resume uploads for audit/history. Older versions may still be scanning."
+                      >
+                        <Typography variant="caption" color="text.secondary">
+                          What are resume versions?
+                        </Typography>
+                      </Tooltip>
                       <Button
                         size="small"
                         variant="outlined"
@@ -1082,9 +1089,16 @@ const RecruiterCandidates = ({ token }) => {
                   )}
                   {resumeVersions.length > 0 && (
                     <Box sx={{ mt: 1.5 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        Previous Versions
-                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          Previous Versions
+                        </Typography>
+                        <Tooltip title="Older resumes are kept for history. Only clean scans can be downloaded.">
+                          <Typography variant="caption" color="text.secondary">
+                            Why?
+                          </Typography>
+                        </Tooltip>
+                      </Stack>
                       <List dense sx={{ mt: 0.5 }}>
                         {resumeVersions.map((version, index) => {
                           const name = version?.filename || `Resume v${resumeVersions.length - index}`;
