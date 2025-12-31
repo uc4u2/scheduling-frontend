@@ -93,6 +93,14 @@ const RecruiterCandidates = ({ token }) => {
   const [docMessage, setDocMessage] = useState("");
   const [docFiles, setDocFiles] = useState([]);
   const [docSending, setDocSending] = useState(false);
+  const [reminder, setReminder] = useState(null);
+  const [reminderTitle, setReminderTitle] = useState("");
+  const [reminderMessage, setReminderMessage] = useState("");
+  const [reminderNotifyAt, setReminderNotifyAt] = useState("");
+  const [reminderRecipients, setReminderRecipients] = useState("");
+  const [reminderSaving, setReminderSaving] = useState(false);
+  const [reminderError, setReminderError] = useState("");
+  const [reminderNotice, setReminderNotice] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [downloadingAttachmentId, setDownloadingAttachmentId] = useState(null);
@@ -191,6 +199,14 @@ const RecruiterCandidates = ({ token }) => {
         setPosition(data.position || data.job_applied || "");
         setResumeFilename(data.resume_filename || "");
         setResumeUrl(data.resume_url || "");
+        const nextReminder = data.reminder || null;
+        setReminder(nextReminder);
+        setReminderTitle(nextReminder?.title || "");
+        setReminderMessage(nextReminder?.message || "");
+        setReminderNotifyAt(toLocalInput(nextReminder?.notify_at));
+        setReminderRecipients((nextReminder?.recipients || []).join(", "));
+        setReminderError("");
+        setReminderNotice("");
         setError("");
       } catch (err) {
         console.error(err);
@@ -312,6 +328,29 @@ const RecruiterCandidates = ({ token }) => {
     }
     return date.toLocaleString();
   };
+
+  const toLocalInput = (value) => {
+    if (!value) return "";
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return "";
+    const offset = dt.getTimezoneOffset() * 60000;
+    return new Date(dt.getTime() - offset).toISOString().slice(0, 16);
+  };
+
+  const fromLocalInput = (value) => {
+    if (!value) return null;
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return null;
+    return dt.toISOString();
+  };
+
+  const userTimezone = useMemo(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      return "UTC";
+    }
+  }, []);
 
   const formatDateOnly = (value) => {
     if (!value) {
@@ -499,6 +538,85 @@ const RecruiterCandidates = ({ token }) => {
       setDownloadingResume(false);
     }
   }, [API_BASE_URL, encodedEmail, enqueueSnackbar, token]);
+
+  const handleReminderSave = async () => {
+    if (!candidate?.id) return;
+    setReminderSaving(true);
+    setReminderError("");
+    setReminderNotice("");
+    try {
+      const payload = {
+        title: reminderTitle,
+        message: reminderMessage,
+        notify_at: fromLocalInput(reminderNotifyAt),
+        recipients: reminderRecipients,
+      };
+      const res = await api.post(
+        `/manager/candidates/${candidate.id}/reminders`,
+        payload,
+        authConfig
+      );
+      const nextReminder = res?.data?.reminder || null;
+      setReminder(nextReminder);
+      setReminderTitle(nextReminder?.title || "");
+      setReminderMessage(nextReminder?.message || "");
+      setReminderNotifyAt(toLocalInput(nextReminder?.notify_at));
+      setReminderRecipients((nextReminder?.recipients || []).join(", "));
+      setReminderNotice("Reminder saved.");
+    } catch (err) {
+      const payload = err?.response?.data || {};
+      const invalid = payload?.invalid_emails;
+      if (Array.isArray(invalid) && invalid.length > 0) {
+        setReminderError(`Invalid emails: ${invalid.join(", ")}`);
+      } else {
+        setReminderError(payload?.error || "Failed to save reminder.");
+      }
+    } finally {
+      setReminderSaving(false);
+    }
+  };
+
+  const handleReminderCancel = async () => {
+    if (!candidate?.id || !reminder?.id) return;
+    setReminderSaving(true);
+    setReminderError("");
+    setReminderNotice("");
+    try {
+      await api.delete(
+        `/manager/candidates/${candidate.id}/reminders/${reminder.id}`,
+        authConfig
+      );
+      setReminder((prev) => (prev ? { ...prev, status: "cancelled" } : prev));
+      setReminderNotice("Reminder cancelled.");
+    } catch (err) {
+      setReminderError(err?.response?.data?.error || "Failed to cancel reminder.");
+    } finally {
+      setReminderSaving(false);
+    }
+  };
+
+  const handleReminderSnooze = async () => {
+    if (!candidate?.id || !reminder?.id) return;
+    setReminderSaving(true);
+    setReminderError("");
+    setReminderNotice("");
+    try {
+      const payload = { notify_at: fromLocalInput(reminderNotifyAt) };
+      const res = await api.post(
+        `/manager/candidates/${candidate.id}/reminders/${reminder.id}/snooze`,
+        payload,
+        authConfig
+      );
+      const nextReminder = res?.data?.reminder || null;
+      setReminder(nextReminder);
+      setReminderNotifyAt(toLocalInput(nextReminder?.notify_at));
+      setReminderNotice("Reminder snoozed.");
+    } catch (err) {
+      setReminderError(err?.response?.data?.error || "Failed to snooze reminder.");
+    } finally {
+      setReminderSaving(false);
+    }
+  };
 
   const handleResumeVersionDownload = useCallback(
     async (version) => {
@@ -1024,6 +1142,103 @@ const RecruiterCandidates = ({ token }) => {
                       </List>
                     </Box>
                   )}
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Paper
+                  sx={{
+                    p: 3,
+                    borderLeft: `6px solid ${theme.palette.info.main}`,
+                    backgroundColor: theme.palette.background.paper,
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, ...headerStyle }}>
+                    Reminder
+                  </Typography>
+                  <Stack spacing={1.5}>
+                    <Typography variant="body2" color="text.secondary">
+                      Notify at (your timezone: {userTimezone})
+                    </Typography>
+                    <TextField
+                      label="Title"
+                      value={reminderTitle}
+                      onChange={(e) => setReminderTitle(e.target.value)}
+                      fullWidth
+                      disabled={!canEditCandidate}
+                    />
+                    <TextField
+                      label="Notify at"
+                      type="datetime-local"
+                      value={reminderNotifyAt}
+                      onChange={(e) => setReminderNotifyAt(e.target.value)}
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      disabled={!canEditCandidate}
+                    />
+                    <TextField
+                      label="Recipients (optional)"
+                      value={reminderRecipients}
+                      onChange={(e) => setReminderRecipients(e.target.value)}
+                      placeholder="email@example.com, hr@example.com"
+                      helperText="Comma or newline separated. Managers + recruiter are included by default."
+                      fullWidth
+                      disabled={!canEditCandidate}
+                    />
+                    <TextField
+                      label="Message (optional)"
+                      value={reminderMessage}
+                      onChange={(e) => setReminderMessage(e.target.value)}
+                      multiline
+                      minRows={2}
+                      fullWidth
+                      disabled={!canEditCandidate}
+                    />
+                    {reminder && (
+                      <Stack spacing={0.5}>
+                        <Typography variant="body2">
+                          <strong>Status:</strong>{" "}
+                          {reminder.status === "processing" ? "Sending..." : reminder.status || "scheduled"}
+                        </Typography>
+                        {reminder.sent_at && (
+                          <Typography variant="body2">
+                            <strong>Sent:</strong> {formatDateTime(reminder.sent_at)}
+                          </Typography>
+                        )}
+                        {reminder.last_error && (
+                          <Alert severity="warning">{reminder.last_error}</Alert>
+                        )}
+                      </Stack>
+                    )}
+                    {reminderError && <Alert severity="error">{reminderError}</Alert>}
+                    {reminderNotice && <Alert severity="success">{reminderNotice}</Alert>}
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                      <Button
+                        variant="contained"
+                        onClick={handleReminderSave}
+                        disabled={!canEditCandidate || reminderSaving}
+                        sx={{ textTransform: "none" }}
+                      >
+                        {reminderSaving ? "Saving..." : "Save reminder"}
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        onClick={handleReminderSnooze}
+                        disabled={!canEditCandidate || reminderSaving || !reminder?.id}
+                        sx={{ textTransform: "none" }}
+                      >
+                        Snooze
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={handleReminderCancel}
+                        disabled={!canEditCandidate || reminderSaving || !reminder?.id}
+                        sx={{ textTransform: "none" }}
+                      >
+                        Cancel
+                      </Button>
+                    </Stack>
+                  </Stack>
                 </Paper>
               </Grid>
               {canViewDocs && (
