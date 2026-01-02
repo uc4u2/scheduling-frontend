@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Checkbox,
+  CircularProgress,
   Divider,
   FormControlLabel,
   Grid,
@@ -64,6 +65,10 @@ const AddRecruiter = () => {
   const [seatNeeded, setSeatNeeded] = useState(0);
   const [seatsAllowed, setSeatsAllowed] = useState(0);
   const [pendingPayload, setPendingPayload] = useState(null);
+  const [seatPreview, setSeatPreview] = useState(null);
+  const [seatPreviewLoading, setSeatPreviewLoading] = useState(false);
+  const [seatNotice, setSeatNotice] = useState("");
+  const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
   const departments = useDepartments();
 
 const passwordStrength = useMemo(() => {
@@ -211,7 +216,7 @@ const passwordStrength = useMemo(() => {
     try {
       setSubmitState({ status: "loading", message: "" });
       const targetTotal = seatsAllowed + additional;
-      await api.post(
+      const response = await api.post(
         "/billing/seats/set",
         { target_total_seats: targetTotal },
         {
@@ -221,7 +226,9 @@ const passwordStrength = useMemo(() => {
           },
         }
       );
+      setSeatInvoiceUrl(response?.data?.latest_invoice_url || "");
       setSeatDialogOpen(false);
+      setSeatNotice("Seats updated. View invoice in Billing Portal.");
       if (pendingPayload) {
         const response = await createRecruiter(pendingPayload, token);
         setSubmitState({ status: "success", message: response.data?.message || "Recruiter added." });
@@ -231,6 +238,34 @@ const passwordStrength = useMemo(() => {
       setSubmitState({ status: "error", message: error?.response?.data?.error || "Unable to purchase seats." });
     }
   };
+
+  React.useEffect(() => {
+    if (!seatDialogOpen) return;
+    const value = Math.max(0, parseInt(seatInput, 10) || 0);
+    if (!value) {
+      setSeatPreview(null);
+      return;
+    }
+    let active = true;
+    setSeatPreviewLoading(true);
+    api
+      .get(`/billing/seats/preview?addon_qty=${value}`)
+      .then((res) => {
+        if (!active) return;
+        setSeatPreview(res?.data || null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSeatPreview(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setSeatPreviewLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [seatDialogOpen, seatInput]);
 
   return (
     <Box sx={{ maxWidth: 1300, mx: "auto", my: 4, px: { xs: 1, sm: 2 } }}>
@@ -265,6 +300,48 @@ const passwordStrength = useMemo(() => {
         {submitState.status === "error" && submitState.message && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {submitState.message}
+          </Alert>
+        )}
+        {seatNotice && (
+          <Alert
+            severity="success"
+            sx={{ mb: 2 }}
+            action={
+              <Stack direction="row" spacing={1}>
+                {seatInvoiceUrl && (
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        window.open(seatInvoiceUrl, "_blank", "noopener");
+                      }
+                    }}
+                  >
+                    View invoice
+                  </Button>
+                )}
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={async () => {
+                    try {
+                      const res = await api.post("/billing/portal");
+                      const url = res?.data?.url;
+                      if (url && typeof window !== "undefined") {
+                        window.location.href = url;
+                      }
+                    } catch {
+                      setSubmitState({ status: "error", message: "Unable to open billing portal." });
+                    }
+                  }}
+                >
+                  Manage Billing
+                </Button>
+              </Stack>
+            }
+          >
+            {seatNotice}
           </Alert>
         )}
 
@@ -548,12 +625,28 @@ const passwordStrength = useMemo(() => {
                 onChange={(e) => setSeatInput(e.target.value)}
                 fullWidth
               />
+              {seatPreviewLoading && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CircularProgress size={16} />
+                  <Typography variant="caption">Fetching estimate…</Typography>
+                </Stack>
+              )}
+              {seatPreview && (
+                <Stack spacing={0.5}>
+                  <Typography variant="caption">
+                    Estimated charge today: {seatPreview.amount_due_today_formatted || "—"}
+                  </Typography>
+                  <Typography variant="caption">
+                    Next billing date: {seatPreview.next_billing_date ? new Date(seatPreview.next_billing_date).toLocaleDateString() : "—"}
+                  </Typography>
+                </Stack>
+              )}
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
             <Button onClick={() => setSeatDialogOpen(false)}>Cancel</Button>
             <Button variant="contained" onClick={handleSeatPurchase} disabled={submitState.status === "loading"}>
-              Purchase seats
+              Confirm purchase
             </Button>
           </DialogActions>
         </Dialog>

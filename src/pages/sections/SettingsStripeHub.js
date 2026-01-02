@@ -70,6 +70,10 @@ export default function SettingsStripeHub() {
   const [billingStatusLoading, setBillingStatusLoading] = useState(Boolean(token));
   const [seatDialogOpen, setSeatDialogOpen] = useState(false);
   const [seatInput, setSeatInput] = useState("");
+  const [seatPreview, setSeatPreview] = useState(null);
+  const [seatPreviewLoading, setSeatPreviewLoading] = useState(false);
+  const [seatNotice, setSeatNotice] = useState("");
+  const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
 
   const loadProfile = useCallback(async () => {
     if (!token) return;
@@ -218,6 +222,7 @@ export default function SettingsStripeHub() {
 
   const handleOpenSeatDialog = () => {
     setSeatInput(neededSeats > 0 ? String(neededSeats) : "1");
+    setSeatPreview(null);
     setSeatDialogOpen(true);
   };
 
@@ -237,6 +242,8 @@ export default function SettingsStripeHub() {
         { headers }
       );
       setBillingStatus(data || null);
+      setSeatInvoiceUrl(data?.latest_invoice_url || "");
+      setSeatNotice("Seats updated. View invoice in Billing Portal.");
       setSeatDialogOpen(false);
     } catch (error) {
       setBillingStatusError(
@@ -246,6 +253,34 @@ export default function SettingsStripeHub() {
       setBillingStatusLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    if (!seatDialogOpen) return;
+    const value = Math.max(0, parseInt(seatInput, 10) || 0);
+    if (!value) {
+      setSeatPreview(null);
+      return;
+    }
+    let active = true;
+    setSeatPreviewLoading(true);
+    api
+      .get(`/billing/seats/preview?addon_qty=${value}`, { headers })
+      .then((res) => {
+        if (!active) return;
+        setSeatPreview(res?.data || null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSeatPreview(null);
+      })
+      .finally(() => {
+        if (!active) return;
+        setSeatPreviewLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [seatDialogOpen, seatInput, headers]);
 
   const handleSeatSync = async () => {
     setBillingStatusError("");
@@ -440,6 +475,33 @@ export default function SettingsStripeHub() {
           </Stack>
         ) : (
           <Stack spacing={1}>
+            {seatNotice && (
+              <Alert
+                severity="success"
+                action={
+                  <Stack direction="row" spacing={1}>
+                    {seatInvoiceUrl && (
+                      <Button
+                        color="inherit"
+                        size="small"
+                        onClick={() => {
+                          if (typeof window !== "undefined") {
+                            window.open(seatInvoiceUrl, "_blank", "noopener");
+                          }
+                        }}
+                      >
+                        View invoice
+                      </Button>
+                    )}
+                    <Button color="inherit" size="small" onClick={handleBillingPortal}>
+                      Manage Billing
+                    </Button>
+                  </Stack>
+                }
+              >
+                {seatNotice}
+              </Alert>
+            )}
             {billingStatusError && <Alert severity="error">{billingStatusError}</Alert>}
             {seatsOver && (
               <Alert severity="warning">
@@ -469,12 +531,28 @@ export default function SettingsStripeHub() {
               onChange={(e) => setSeatInput(e.target.value)}
               fullWidth
             />
+            {seatPreviewLoading && (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={16} />
+                <Typography variant="caption">Fetching estimate…</Typography>
+              </Stack>
+            )}
+            {seatPreview && (
+              <Stack spacing={0.5}>
+                <Typography variant="caption">
+                  Estimated charge today: {seatPreview.amount_due_today_formatted || "—"}
+                </Typography>
+                <Typography variant="caption">
+                  Next billing date: {seatPreview.next_billing_date ? new Date(seatPreview.next_billing_date).toLocaleDateString() : "—"}
+                </Typography>
+              </Stack>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setSeatDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleSeatPurchase} disabled={billingStatusLoading}>
-            Purchase seats
+            Confirm purchase
           </Button>
         </DialogActions>
       </Dialog>
