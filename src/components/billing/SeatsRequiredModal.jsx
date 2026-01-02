@@ -21,6 +21,7 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [invoiceUrl, setInvoiceUrl] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     setSeatInput(String(needed));
@@ -56,6 +57,7 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
 
   const handlePurchase = async () => {
     setError("");
+    setSuccessMessage("");
     const additional = Math.max(0, parseInt(seatInput, 10) || 0);
     if (!additional) {
       setError("Enter at least 1 seat.");
@@ -66,8 +68,7 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
       const targetTotal = (allowed || 0) + additional;
       const res = await api.post("/billing/seats/set", { target_total_seats: targetTotal });
       setInvoiceUrl(res?.data?.latest_invoice_url || "");
-      onClose();
-      await openBillingPortal();
+      setSuccessMessage("Seats updated. You can view the invoice or manage billing.");
     } catch (err) {
       setError(err?.response?.data?.error || "Unable to purchase seats.");
     } finally {
@@ -109,25 +110,39 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
           )}
           {error && <Typography color="error" variant="caption">{error}</Typography>}
           {invoiceUrl && (
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.open(invoiceUrl, "_blank", "noopener");
-                }
-              }}
-            >
-              View invoice
-            </Button>
+            <Typography variant="caption">
+              Invoice ready. Use the buttons below to view it.
+            </Typography>
+          )}
+          {successMessage && (
+            <Typography variant="caption" color="text.secondary">
+              {successMessage}
+            </Typography>
           )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handlePurchase} disabled={loading}>
-          Confirm purchase
+        <Button onClick={onClose}>Close</Button>
+        {invoiceUrl && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.open(invoiceUrl, "_blank", "noopener");
+              }
+            }}
+          >
+            View invoice
+          </Button>
+        )}
+        <Button variant="outlined" onClick={() => openBillingPortal()}>
+          Open billing portal
         </Button>
+        {!successMessage && (
+          <Button variant="contained" onClick={handlePurchase} disabled={loading}>
+            Confirm purchase
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );
