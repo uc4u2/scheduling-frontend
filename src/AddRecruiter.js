@@ -64,6 +64,7 @@ const AddRecruiter = () => {
   const [seatInput, setSeatInput] = useState("");
   const [seatNeeded, setSeatNeeded] = useState(0);
   const [seatsAllowed, setSeatsAllowed] = useState(0);
+  const [seatAttemptTotal, setSeatAttemptTotal] = useState(0);
   const [pendingPayload, setPendingPayload] = useState(null);
   const [seatPreview, setSeatPreview] = useState(null);
   const [seatPreviewLoading, setSeatPreviewLoading] = useState(false);
@@ -176,6 +177,7 @@ const passwordStrength = useMemo(() => {
         const current = Number(apiData?.current || 0);
         const needed = Math.max(1, current - allowed);
         setSeatsAllowed(allowed);
+        setSeatAttemptTotal(current);
         setSeatNeeded(needed);
         setSeatInput(String(needed));
         setPendingPayload(payload);
@@ -615,9 +617,16 @@ const passwordStrength = useMemo(() => {
           <DialogTitle>Add seats</DialogTitle>
           <DialogContent sx={{ pt: 1 }}>
             <Stack spacing={1.5}>
-              <Typography variant="body2" color="text.secondary">
-                You need {seatNeeded} more seats to add this team member.
-              </Typography>
+              {seatsAllowed > 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  You’re {seatNeeded} seat{seatNeeded === 1 ? "" : "s"} over your limit. Attempted total: {seatAttemptTotal} ·
+                  Allowed: {seatsAllowed}.
+                </Typography>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Seat limit reached. Add seats to continue.
+                </Typography>
+              )}
               <TextField
                 label="Additional seats"
                 type="number"
