@@ -123,27 +123,26 @@ const passwordStrength = useMemo(() => {
       setSubmitState({ status: "error", message: "Please fix the highlighted fields." });
       return;
     }
+    const token = localStorage.getItem("token");
+    const payload = {
+      first_name: form.firstName.trim(),
+      last_name: form.lastName.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim().slice(0, 20),
+      role: form.role,
+      department_id: form.departmentId ? Number(form.departmentId) : null,
+      timezone: form.timezone.trim() || getUserTimezone(),
+      address_city: form.city.trim() || null,
+      address_street: form.street.trim() || null,
+      address_state: form.state.trim() || null,
+      address_zip: form.postalCode.trim() || null,
+      password: form.password,
+      password_confirm: form.confirmPassword,
+      agreed_to_terms: form.agreedToTerms,
+      terms_version: "2025-11",
+    };
     try {
       setSubmitState({ status: "loading", message: "" });
-      const token = localStorage.getItem("token");
-      const payload = {
-        first_name: form.firstName.trim(),
-        last_name: form.lastName.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim().slice(0, 20),
-        role: form.role,
-        department_id: form.departmentId ? Number(form.departmentId) : null,
-        timezone: form.timezone.trim() || getUserTimezone(),
-        address_city: form.city.trim() || null,
-        address_street: form.street.trim() || null,
-        address_state: form.state.trim() || null,
-        address_zip: form.postalCode.trim() || null,
-        password: form.password,
-        password_confirm: form.confirmPassword,
-        agreed_to_terms: form.agreedToTerms,
-        terms_version: "2025-11",
-      };
-
       const response = await createRecruiter(payload, token);
 
       setSubmitState({ status: "success", message: response.data?.message || "Recruiter added." });
