@@ -106,6 +106,7 @@ api.interceptors.response.use(
     const data = error?.response?.data || {};
     const code = data.code || data.error || data.error_code;
     const userMessage = data.user_message || data.message || data.detail;
+    const skipBillingModal = Boolean(error?.config?.skipBillingModal);
 
     if (status === 412 || code === 'STRIPE_ONBOARDING_INCOMPLETE') {
       error.code = code || 'STRIPE_ONBOARDING_INCOMPLETE';
@@ -114,6 +115,31 @@ api.interceptors.response.use(
 
     if (userMessage && !error.displayMessage) {
       error.displayMessage = userMessage;
+    }
+
+    if (!skipBillingModal && status === 402 && data?.error === "subscription_required") {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("billing:upgrade-required", {
+            detail: {
+              requiredPlan: data?.required_plan || null,
+            },
+          })
+        );
+      }
+    }
+
+    if (!skipBillingModal && status === 409 && data?.error === "limit_exceeded" && data?.limit === "seats") {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("billing:seats-required", {
+            detail: {
+              allowed: data?.allowed,
+              current: data?.current,
+            },
+          })
+        );
+      }
     }
 
     return Promise.reject(error);

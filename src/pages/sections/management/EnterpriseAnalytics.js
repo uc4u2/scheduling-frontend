@@ -32,6 +32,7 @@ import ClientsTopTab from "./ClientsTopTab";
 import ClientsChurnRiskTab from "./ClientsChurnRiskTab";
 import ClientsSegmentsTab from "./ClientsSegmentsTab";
 import SegmentsPanel from "./SegmentsPanel";
+import UpgradeNoticeBanner from "../../../components/billing/UpgradeNoticeBanner";
 
 dayjs.extend(quarterOfYear);
 
@@ -1066,12 +1067,17 @@ const ClientsTab = (
   ];
 
   return (
-    <TabShell
-      title="Enterprise Analytics"
-      description="KPI snapshots, trends, and insights across your business."
-      tabs={tabs}
-      defaultTab={0}
-    />
+    <>
+      <UpgradeNoticeBanner
+        requiredPlan="pro"
+        message="Advanced analytics require the Pro plan or higher."
+      />
+      <TabShell
+        title="Enterprise Analytics"
+        description="KPI snapshots, trends, and insights across your business."
+        tabs={tabs}
+        defaultTab={0}
+      />
+    </>
   );
 }
-

@@ -30,6 +30,7 @@ import {
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 export default function PayrollAuditPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
@@ -124,6 +125,10 @@ export default function PayrollAuditPage() {
 
   return (
     <Paper sx={{ p: 2 }}>
+      <UpgradeNoticeBanner
+        requiredPlan="pro"
+        message="Payroll audit features require the Pro plan or higher."
+      />
       <Typography variant="h5" gutterBottom fontWeight={700}>
         Payroll Finalization Audit
       </Typography>

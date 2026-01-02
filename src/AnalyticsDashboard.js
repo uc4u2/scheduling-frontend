@@ -23,6 +23,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { CSVLink } from "react-csv";
 import dayjs from "dayjs";
 import { xeroIntegration, quickbooksIntegration } from "./utils/api";
+import UpgradeNoticeBanner from "./components/billing/UpgradeNoticeBanner";
 
 const AnalyticsDashboard = ({ token }) => {
   const [analytics, setAnalytics] = useState(null);
@@ -191,6 +192,10 @@ const AnalyticsDashboard = ({ token }) => {
 
   return (
     <Container sx={{ mt: 5 }}>
+      <UpgradeNoticeBanner
+        requiredPlan="pro"
+        message="Advanced analytics require the Pro plan or higher."
+      />
       <Typography variant="h4" gutterBottom>
         Analytics Dashboard
       </Typography>

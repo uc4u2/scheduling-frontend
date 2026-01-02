@@ -36,6 +36,7 @@ import api from "../../utils/api";
 import { Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import AuditHistory from "../../components/Stubs/AuditHistory";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 /* ─────────── Constants ─────────── */
 const THIS_YEAR = new Date().getFullYear();
@@ -447,6 +448,10 @@ const W2 = ({ token }) => {
   /* ───────── Render ───────── */
   return (
     <ManagementFrame title="W-2 Forms" subtitle="Prepare and preview U.S. W‑2 forms for the selected tax year.">
+    <UpgradeNoticeBanner
+      requiredPlan="business"
+      message="Compliance documents (W‑2) require the Business plan."
+    />
     <Box
       sx={{ p: 2 }}
     >
@@ -840,5 +845,4 @@ const W2 = ({ token }) => {
 };
 
 export default W2;
-
 

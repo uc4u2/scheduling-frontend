@@ -27,6 +27,7 @@ import {
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 export default function PayrollRawPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
@@ -138,6 +139,10 @@ export default function PayrollRawPage() {
       <Typography variant="h5" gutterBottom>
         Payroll Detail / Raw Data
       </Typography>
+      <UpgradeNoticeBanner
+        requiredPlan="pro"
+        message="Payroll exports require the Pro plan or higher."
+      />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Accountant view: one row per finalized payroll period. Use filters, then export via existing CSV/XLSX endpoints.
       </Typography>

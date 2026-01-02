@@ -26,6 +26,7 @@ import EmailIcon from "@mui/icons-material/Email";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import api from "../../utils/api";
 import ManagementFrame from "../../components/ui/ManagementFrame";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 const SavedPayrollsPortal = ({ token, currentUser }) => {
   // ─────────────────────────── helper flags ────────────────────────────
@@ -213,6 +214,10 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
   // ─────────────────────────── render ──────────────────────────────────
   return (
     <ManagementFrame title="Saved Payrolls" subtitle="Search, email or export saved payroll runs.">
+      <UpgradeNoticeBanner
+        requiredPlan="pro"
+        message="Payroll exports require the Pro plan or higher."
+      />
 
       {/* ─────────────── filter row ─────────────── */}
       <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
@@ -425,5 +430,4 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
 };
 
 export default SavedPayrollsPortal;
-
 

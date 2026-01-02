@@ -38,6 +38,7 @@ import { Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import AuditHistory from "../../components/Stubs/AuditHistory";
 import ManagementFrame from "../../components/ui/ManagementFrame";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 /* ───────────────────────────────────────────────────────────── */
 /*                             DATA                             */
@@ -371,6 +372,10 @@ const ROE = ({ token }) => {
 
   return (
   <ManagementFrame title="Record of Employment" subtitle="Generate and manage Records of Employment for departing employees.">
+    <UpgradeNoticeBanner
+      requiredPlan="business"
+      message="Compliance documents (ROE) require the Business plan."
+    />
     <Box
       maxWidth="lg"
       disableGutters
@@ -838,4 +843,3 @@ const ROE = ({ token }) => {
 };
 
 export default ROE;
-

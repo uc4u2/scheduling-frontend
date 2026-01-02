@@ -116,6 +116,7 @@ const passwordStrength = useMemo(() => {
         Authorization: token ? `Bearer ${token}` : undefined,
         "Content-Type": "application/json",
       },
+      skipBillingModal: true,
     });
     return response;
   };

@@ -17,6 +17,7 @@ import {
   Alert,
 } from "@mui/material";
 import api from "../../utils/api";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 const EmployeePayslipPortal = ({ token }) => {
   const [payrolls, setPayrolls] = useState([]);
@@ -95,6 +96,10 @@ const EmployeePayslipPortal = ({ token }) => {
 
   return (
     <Box sx={{ p: 4 }}>
+      <UpgradeNoticeBanner
+        requiredPlan="pro"
+        message="Payslip access requires the Pro plan or higher."
+      />
       <Typography variant="h4" gutterBottom>
         My Payslips
       </Typography>

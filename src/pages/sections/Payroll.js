@@ -36,6 +36,7 @@ import { Link as RouterLink } from "react-router-dom";
 import Stack from "@mui/material/Stack";
 import { HelpOutline } from "@mui/icons-material";
 import api from "../../utils/api";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 import dayjs from "dayjs";
 import DownloadPayrollButton from "./DownloadPayrollButton";
 import { recalcNetPay } from "./netpay";
@@ -996,6 +997,10 @@ return (
       </Stack>
     }
   >
+    <UpgradeNoticeBanner
+      requiredPlan="pro"
+      message="Payroll features require the Pro plan or higher."
+    />
 
    {/* Guide Drawer */}
 <Drawer anchor="right" open={guideOpen} onClose={() => setGuideOpen(false)}>

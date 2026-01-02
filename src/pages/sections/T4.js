@@ -35,6 +35,7 @@ import { Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import AuditHistory from "../../components/Stubs/AuditHistory";
 import ManagementFrame from "../../components/ui/ManagementFrame";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 /* ────── Constants ───────────────────────────────────────── */
 const THIS_YEAR = new Date().getFullYear();
@@ -312,6 +313,10 @@ const T4 = ({ token, isManager = false }) => {
   /* ── Render ───────────────────────────────────────────── */
   return (
   <ManagementFrame title="T4 Slips" subtitle="Prepare and preview Canadian T4 slips for the selected tax year.">
+    <UpgradeNoticeBanner
+      requiredPlan="business"
+      message="Compliance documents (T4) require the Business plan."
+    />
     <Box sx={{ p: 2 }}>
       <Typography variant="h4" gutterBottom>
         T4&nbsp;Slips&nbsp;(Canada)
