@@ -81,6 +81,7 @@ const Login = ({ setToken }) => {
   const qs = new URLSearchParams(location.search);
   const nextParam = qs.get("next") || "";
   const siteParam = qs.get("site") || "";
+  const planParam = (qs.get("plan") || "").toLowerCase();
 
   // Persist site from query once present
   useEffect(() => {
@@ -200,7 +201,12 @@ const Login = ({ setToken }) => {
         const next =
           nextParam ||
           (site ? `/dashboard?site=${encodeURIComponent(site)}` : "/dashboard");
-        navigate(next);
+        if (planParam) {
+          localStorage.setItem("pending_plan_key", planParam);
+          navigate(`/pricing?plan=${encodeURIComponent(planParam)}`);
+        } else {
+          navigate(next);
+        }
         return;
       }
 
@@ -256,6 +262,12 @@ const Login = ({ setToken }) => {
             })
           : nextParam;
         navigate(url);
+        return;
+      }
+
+      if (planParam) {
+        localStorage.setItem("pending_plan_key", planParam);
+        navigate(`/pricing?plan=${encodeURIComponent(planParam)}`);
         return;
       }
 

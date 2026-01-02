@@ -309,6 +309,16 @@ const Register = () => {
               >
                 {loading ? "Registering..." : "Create account"}
               </Button>
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                Already have an account?{" "}
+                <MuiLink
+                  component={RouterLink}
+                  to={selectedPlan ? `/login?plan=${encodeURIComponent(selectedPlan)}` : "/login"}
+                  sx={{ fontWeight: 600 }}
+                >
+                  Log in
+                </MuiLink>
+              </Typography>
             </Stack>
           </Box>
         </Box>

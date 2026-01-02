@@ -11,6 +11,11 @@ import {
   IconButton,
   Drawer,
   Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
 } from "@mui/material";
 import LaunchIcon from "@mui/icons-material/Launch";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -60,6 +65,11 @@ export default function SettingsStripeHub() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [billingError, setBillingError] = useState("");
   const [billingLoading, setBillingLoading] = useState(false);
+  const [billingStatus, setBillingStatus] = useState(null);
+  const [billingStatusError, setBillingStatusError] = useState("");
+  const [billingStatusLoading, setBillingStatusLoading] = useState(Boolean(token));
+  const [seatDialogOpen, setSeatDialogOpen] = useState(false);
+  const [seatInput, setSeatInput] = useState("");
 
   const loadProfile = useCallback(async () => {
     if (!token) return;
@@ -84,6 +94,26 @@ export default function SettingsStripeHub() {
   React.useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  const loadBillingStatus = useCallback(async () => {
+    if (!token) return;
+    setBillingStatusLoading(true);
+    setBillingStatusError("");
+    try {
+      const { data } = await api.get("/billing/status", { headers });
+      setBillingStatus(data || null);
+    } catch (error) {
+      setBillingStatusError(
+        error?.response?.data?.error || error?.message || t("settings.common.saveError")
+      );
+    } finally {
+      setBillingStatusLoading(false);
+    }
+  }, [headers, t, token]);
+
+  React.useEffect(() => {
+    loadBillingStatus();
+  }, [loadBillingStatus]);
 
   const runConnectAction = useCallback(
     async (action) => {
@@ -176,6 +206,59 @@ export default function SettingsStripeHub() {
       );
     } finally {
       setBillingLoading(false);
+    }
+  };
+
+  const seatsAllowed = Number(billingStatus?.seats_allowed || 0);
+  const seatsIncluded = Number(billingStatus?.seats_included || 0);
+  const seatsAddon = Number(billingStatus?.seats_addon_qty || 0);
+  const activeStaff = Number(billingStatus?.active_staff_count || 0);
+  const seatsOver = Boolean(billingStatus?.seats_overage);
+  const neededSeats = Math.max(0, activeStaff - seatsAllowed);
+
+  const handleOpenSeatDialog = () => {
+    setSeatInput(neededSeats > 0 ? String(neededSeats) : "1");
+    setSeatDialogOpen(true);
+  };
+
+  const handleSeatPurchase = async () => {
+    const additional = Math.max(0, parseInt(seatInput, 10) || 0);
+    if (!additional) {
+      setBillingStatusError("Enter at least 1 seat.");
+      return;
+    }
+    setBillingStatusError("");
+    setBillingStatusLoading(true);
+    try {
+      const targetTotal = seatsAllowed + additional;
+      const { data } = await api.post(
+        "/billing/seats/set",
+        { target_total_seats: targetTotal },
+        { headers }
+      );
+      setBillingStatus(data || null);
+      setSeatDialogOpen(false);
+    } catch (error) {
+      setBillingStatusError(
+        error?.response?.data?.error || error?.message || t("settings.common.saveError")
+      );
+    } finally {
+      setBillingStatusLoading(false);
+    }
+  };
+
+  const handleSeatSync = async () => {
+    setBillingStatusError("");
+    setBillingStatusLoading(true);
+    try {
+      const { data } = await api.post("/billing/sync-seats", {}, { headers });
+      setBillingStatus(data || null);
+    } catch (error) {
+      setBillingStatusError(
+        error?.response?.data?.error || error?.message || t("settings.common.saveError")
+      );
+    } finally {
+      setBillingStatusLoading(false);
     }
   };
 
@@ -335,6 +418,66 @@ export default function SettingsStripeHub() {
           </Typography>
         )}
       </SectionCard>
+
+      <SectionCard
+        title="Seats"
+        description="Manage staff seat limits for your subscription."
+        actions={
+          <Stack direction="row" spacing={1}>
+            <Button size="small" variant="outlined" onClick={handleSeatSync} disabled={billingStatusLoading}>
+              Sync seats
+            </Button>
+            <Button size="small" variant="contained" onClick={handleOpenSeatDialog} disabled={billingStatusLoading}>
+              Add seats
+            </Button>
+          </Stack>
+        }
+      >
+        {billingStatusLoading ? (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <CircularProgress size={18} />
+            <Typography variant="body2">Loading seat usage…</Typography>
+          </Stack>
+        ) : (
+          <Stack spacing={1}>
+            {billingStatusError && <Alert severity="error">{billingStatusError}</Alert>}
+            {seatsOver && (
+              <Alert severity="warning">
+                Over limit: {activeStaff} active staff with {seatsAllowed} seats available.
+              </Alert>
+            )}
+            <Typography variant="body2"><strong>Active staff:</strong> {activeStaff}</Typography>
+            <Typography variant="body2"><strong>Included seats:</strong> {seatsIncluded}</Typography>
+            <Typography variant="body2"><strong>Addon seats:</strong> {seatsAddon}</Typography>
+            <Typography variant="body2"><strong>Total allowed:</strong> {seatsAllowed}</Typography>
+          </Stack>
+        )}
+      </SectionCard>
+
+      <Dialog open={seatDialogOpen} onClose={() => setSeatDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Add seats</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <Stack spacing={1.5}>
+            <Typography variant="body2" color="text.secondary">
+              Add seats to increase your total allowed headcount.
+            </Typography>
+            <TextField
+              label="Additional seats"
+              type="number"
+              inputProps={{ min: 1 }}
+              value={seatInput}
+              onChange={(e) => setSeatInput(e.target.value)}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setSeatDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSeatPurchase} disabled={billingStatusLoading}>
+            Purchase seats
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <SectionCard
         title={t("settings.stripeHub.checkout.title")}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -8,7 +8,7 @@ import {
   Alert,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation, Trans } from "react-i18next";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import BoltIcon from "@mui/icons-material/Bolt";
@@ -211,6 +211,7 @@ const PricingPage = () => {
   const theme = useTheme();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const marketing = theme.marketing || {};
   const [ctaLoadingKey, setCtaLoadingKey] = useState("");
   const [ctaError, setCtaError] = useState("");
@@ -405,7 +406,7 @@ const PricingPage = () => {
 
   const metaOg = metaContent?.og || DEFAULT_META.og;
 
-  const handleCheckout = async (planKey) => {
+  const handleCheckout = useCallback(async (planKey) => {
     if (!planKey) return;
     setCtaError("");
     const token =
@@ -438,7 +439,17 @@ const PricingPage = () => {
     } finally {
       setCtaLoadingKey("");
     }
-  };
+  }, [navigate]);
+
+  React.useEffect(() => {
+    const planParam = (searchParams.get("plan") || "").toLowerCase();
+    const token =
+      typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+    if (!planParam || !token) return;
+    if (!["starter", "pro", "business"].includes(planParam)) return;
+    if (ctaLoadingKey) return;
+    handleCheckout(planParam);
+  }, [searchParams, handleCheckout, ctaLoadingKey]);
 
   return (
     <Box sx={{ position: "relative", overflow: "hidden" }}>

@@ -14,6 +14,10 @@ import {
   Stack,
   TextField,
   Typography,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
@@ -55,6 +59,11 @@ const AddRecruiter = () => {
   const [submitState, setSubmitState] = useState({ status: "idle", message: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [seatDialogOpen, setSeatDialogOpen] = useState(false);
+  const [seatInput, setSeatInput] = useState("");
+  const [seatNeeded, setSeatNeeded] = useState(0);
+  const [seatsAllowed, setSeatsAllowed] = useState(0);
+  const [pendingPayload, setPendingPayload] = useState(null);
   const departments = useDepartments();
 
 const passwordStrength = useMemo(() => {
@@ -96,6 +105,16 @@ const passwordStrength = useMemo(() => {
     return errors;
   };
 
+  const createRecruiter = async (payload, token) => {
+    const response = await api.post(`/manager/recruiters`, payload, {
+      headers: {
+        Authorization: token ? `Bearer ${token}` : undefined,
+        "Content-Type": "application/json",
+      },
+    });
+    return response;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const errors = validate();
@@ -125,12 +144,7 @@ const passwordStrength = useMemo(() => {
         terms_version: "2025-11",
       };
 
-      const response = await api.post(`/manager/recruiters`, payload, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : undefined,
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await createRecruiter(payload, token);
 
       setSubmitState({ status: "success", message: response.data?.message || "Recruiter added." });
       setForm({
@@ -152,6 +166,18 @@ const passwordStrength = useMemo(() => {
       setFieldErrors({});
     } catch (error) {
       const apiData = error?.response?.data;
+      if (error?.response?.status === 409 && apiData?.error === "limit_exceeded" && apiData?.limit === "seats") {
+        const allowed = Number(apiData?.allowed || 0);
+        const current = Number(apiData?.current || 0);
+        const needed = Math.max(1, current - allowed);
+        setSeatsAllowed(allowed);
+        setSeatNeeded(needed);
+        setSeatInput(String(needed));
+        setPendingPayload(payload);
+        setSeatDialogOpen(true);
+        setSubmitState({ status: "error", message: "Seat limit reached. Add seats to continue." });
+        return;
+      }
       if (apiData?.field_errors) {
         const mapped = {};
         Object.entries(apiData.field_errors).forEach(([key, value]) => {
@@ -173,6 +199,37 @@ const passwordStrength = useMemo(() => {
       } else {
         setSubmitState({ status: "error", message: apiData?.error || "Failed to add recruiter." });
       }
+    }
+  };
+
+  const handleSeatPurchase = async () => {
+    const token = localStorage.getItem("token");
+    const additional = Math.max(0, parseInt(seatInput, 10) || 0);
+    if (!additional) {
+      setSubmitState({ status: "error", message: "Enter at least 1 seat." });
+      return;
+    }
+    try {
+      setSubmitState({ status: "loading", message: "" });
+      const targetTotal = seatsAllowed + additional;
+      await api.post(
+        "/billing/seats/set",
+        { target_total_seats: targetTotal },
+        {
+          headers: {
+            Authorization: token ? `Bearer ${token}` : undefined,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      setSeatDialogOpen(false);
+      if (pendingPayload) {
+        const response = await createRecruiter(pendingPayload, token);
+        setSubmitState({ status: "success", message: response.data?.message || "Recruiter added." });
+        setPendingPayload(null);
+      }
+    } catch (error) {
+      setSubmitState({ status: "error", message: error?.response?.data?.error || "Unable to purchase seats." });
     }
   };
 
@@ -477,6 +534,30 @@ const passwordStrength = useMemo(() => {
             </Button>
           </Stack>
         </form>
+        <Dialog open={seatDialogOpen} onClose={() => setSeatDialogOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Add seats</DialogTitle>
+          <DialogContent sx={{ pt: 1 }}>
+            <Stack spacing={1.5}>
+              <Typography variant="body2" color="text.secondary">
+                You need {seatNeeded} more seats to add this team member.
+              </Typography>
+              <TextField
+                label="Additional seats"
+                type="number"
+                inputProps={{ min: 1 }}
+                value={seatInput}
+                onChange={(e) => setSeatInput(e.target.value)}
+                fullWidth
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setSeatDialogOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={handleSeatPurchase} disabled={submitState.status === "loading"}>
+              Purchase seats
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Paper>
     </Box>
   );
