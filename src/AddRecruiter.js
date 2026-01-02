@@ -68,6 +68,7 @@ const AddRecruiter = () => {
   const [pendingPayload, setPendingPayload] = useState(null);
   const [seatPreview, setSeatPreview] = useState(null);
   const [seatPreviewLoading, setSeatPreviewLoading] = useState(false);
+  const [seatDialogError, setSeatDialogError] = useState("");
   const [seatNotice, setSeatNotice] = useState("");
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
   const departments = useDepartments();
@@ -181,6 +182,7 @@ const passwordStrength = useMemo(() => {
         setSeatNeeded(needed);
         setSeatInput(String(needed));
         setPendingPayload(payload);
+        setSeatDialogError("");
         setSeatDialogOpen(true);
         setSubmitState({ status: "error", message: "Seat limit reached. Add seats to continue." });
         return;
@@ -217,6 +219,7 @@ const passwordStrength = useMemo(() => {
       return;
     }
     try {
+      setSeatDialogError("");
       setSubmitState({ status: "loading", message: "" });
       const targetTotal = seatsAllowed + additional;
       const response = await api.post(
@@ -238,7 +241,14 @@ const passwordStrength = useMemo(() => {
         setPendingPayload(null);
       }
     } catch (error) {
-      setSubmitState({ status: "error", message: error?.response?.data?.error || "Unable to purchase seats." });
+      const apiError = error?.response?.data?.error;
+      if (apiError === "subscription_missing") {
+        setSeatDialogError("No active subscription. Start a plan to purchase seats.");
+        setSubmitState({ status: "error", message: "Active subscription required to add seats." });
+        return;
+      }
+      setSeatDialogError(error?.response?.data?.message || "Unable to purchase seats.");
+      setSubmitState({ status: "error", message: apiError || "Unable to purchase seats." });
     }
   };
 
@@ -247,6 +257,7 @@ const passwordStrength = useMemo(() => {
     const value = Math.max(0, parseInt(seatInput, 10) || 0);
     if (!value) {
       setSeatPreview(null);
+      setSeatDialogError("");
       return;
     }
     let active = true;
@@ -255,10 +266,19 @@ const passwordStrength = useMemo(() => {
       .get(`/billing/seats/preview?addon_qty=${value}`)
       .then((res) => {
         if (!active) return;
+        setSeatDialogError("");
         setSeatPreview(res?.data || null);
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
+        const apiError = error?.response?.data?.error;
+        if (apiError === "subscription_missing") {
+          setSeatDialogError("No active subscription. Start a plan to purchase seats.");
+        } else if (apiError === "seat_addon_price_missing") {
+          setSeatDialogError("Seat add-on price is not configured yet.");
+        } else {
+          setSeatDialogError("");
+        }
         setSeatPreview(null);
       })
       .finally(() => {
@@ -624,9 +644,10 @@ const passwordStrength = useMemo(() => {
                 </Typography>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  Seat limit reached. Add seats to continue.
+                  No active subscription. Your plan allows 0 seats, and you currently have {seatAttemptTotal} active staff.
                 </Typography>
               )}
+              {seatDialogError && <Alert severity="warning">{seatDialogError}</Alert>}
               <TextField
                 label="Additional seats"
                 type="number"
@@ -634,6 +655,7 @@ const passwordStrength = useMemo(() => {
                 value={seatInput}
                 onChange={(e) => setSeatInput(e.target.value)}
                 fullWidth
+                disabled={Boolean(seatDialogError)}
               />
               {seatPreviewLoading && (
                 <Stack direction="row" spacing={1} alignItems="center">
@@ -655,9 +677,22 @@ const passwordStrength = useMemo(() => {
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
             <Button onClick={() => setSeatDialogOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleSeatPurchase} disabled={submitState.status === "loading"}>
-              Confirm purchase
-            </Button>
+            {seatDialogError ? (
+              <Button
+                variant="contained"
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    window.location.href = "/pricing";
+                  }
+                }}
+              >
+                View plans
+              </Button>
+            ) : (
+              <Button variant="contained" onClick={handleSeatPurchase} disabled={submitState.status === "loading"}>
+                Confirm purchase
+              </Button>
+            )}
           </DialogActions>
         </Dialog>
       </Paper>

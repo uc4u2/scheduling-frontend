@@ -72,6 +72,7 @@ export default function SettingsStripeHub() {
   const [seatInput, setSeatInput] = useState("");
   const [seatPreview, setSeatPreview] = useState(null);
   const [seatPreviewLoading, setSeatPreviewLoading] = useState(false);
+  const [seatDialogError, setSeatDialogError] = useState("");
   const [seatNotice, setSeatNotice] = useState("");
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
 
@@ -223,6 +224,7 @@ export default function SettingsStripeHub() {
   const handleOpenSeatDialog = () => {
     setSeatInput(neededSeats > 0 ? String(neededSeats) : "1");
     setSeatPreview(null);
+    setSeatDialogError("");
     setSeatDialogOpen(true);
   };
 
@@ -233,6 +235,7 @@ export default function SettingsStripeHub() {
       return;
     }
     setBillingStatusError("");
+    setSeatDialogError("");
     setBillingStatusLoading(true);
     try {
       const targetTotal = seatsAllowed + additional;
@@ -246,9 +249,16 @@ export default function SettingsStripeHub() {
       setSeatNotice("Seats updated. View invoice in Billing Portal.");
       setSeatDialogOpen(false);
     } catch (error) {
-      setBillingStatusError(
-        error?.response?.data?.error || error?.message || t("settings.common.saveError")
-      );
+      const apiError = error?.response?.data?.error;
+      if (apiError === "subscription_missing") {
+        setSeatDialogError("No active subscription. Start a plan to purchase seats.");
+        setBillingStatusError("Active subscription required to add seats.");
+      } else {
+        setSeatDialogError(error?.response?.data?.message || "");
+        setBillingStatusError(
+          apiError || error?.message || t("settings.common.saveError")
+        );
+      }
     } finally {
       setBillingStatusLoading(false);
     }
@@ -259,6 +269,7 @@ export default function SettingsStripeHub() {
     const value = Math.max(0, parseInt(seatInput, 10) || 0);
     if (!value) {
       setSeatPreview(null);
+      setSeatDialogError("");
       return;
     }
     let active = true;
@@ -267,10 +278,19 @@ export default function SettingsStripeHub() {
       .get(`/billing/seats/preview?addon_qty=${value}`, { headers })
       .then((res) => {
         if (!active) return;
+        setSeatDialogError("");
         setSeatPreview(res?.data || null);
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
+        const apiError = error?.response?.data?.error;
+        if (apiError === "subscription_missing") {
+          setSeatDialogError("No active subscription. Start a plan to purchase seats.");
+        } else if (apiError === "seat_addon_price_missing") {
+          setSeatDialogError("Seat add-on price is not configured yet.");
+        } else {
+          setSeatDialogError("");
+        }
         setSeatPreview(null);
       })
       .finally(() => {
@@ -523,6 +543,7 @@ export default function SettingsStripeHub() {
             <Typography variant="body2" color="text.secondary">
               Add seats to increase your total allowed headcount.
             </Typography>
+            {seatDialogError && <Alert severity="warning">{seatDialogError}</Alert>}
             <TextField
               label="Additional seats"
               type="number"
@@ -530,6 +551,7 @@ export default function SettingsStripeHub() {
               value={seatInput}
               onChange={(e) => setSeatInput(e.target.value)}
               fullWidth
+              disabled={Boolean(seatDialogError)}
             />
             {seatPreviewLoading && (
               <Stack direction="row" spacing={1} alignItems="center">
@@ -551,9 +573,22 @@ export default function SettingsStripeHub() {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setSeatDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSeatPurchase} disabled={billingStatusLoading}>
-            Confirm purchase
-          </Button>
+          {seatDialogError ? (
+            <Button
+              variant="contained"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.location.href = "/pricing";
+                }
+              }}
+            >
+              View plans
+            </Button>
+          ) : (
+            <Button variant="contained" onClick={handleSeatPurchase} disabled={billingStatusLoading}>
+              Confirm purchase
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
