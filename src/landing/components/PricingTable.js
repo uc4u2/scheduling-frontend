@@ -16,6 +16,7 @@ import {
 import { Link } from "react-router-dom";
 
 const PricingCard = ({
+  planKey,
   name,
   price,
   description,
@@ -24,6 +25,8 @@ const PricingCard = ({
   ctaTo,
   highlight,
   badge,
+  onCtaClick,
+  ctaLoadingKey,
 }) => (
   <Paper
     elevation={highlight ? 8 : 2}
@@ -65,11 +68,14 @@ const PricingCard = ({
         ))}
       </Stack>
       <Button
-        component={Link}
-        to={ctaTo}
+        component={onCtaClick ? "button" : Link}
+        to={onCtaClick ? undefined : ctaTo}
+        onClick={onCtaClick ? () => onCtaClick(planKey) : undefined}
         variant={highlight ? "contained" : "outlined"}
         color="primary"
         sx={{ textTransform: "none", borderRadius: 999 }}
+        type={onCtaClick ? "button" : undefined}
+        disabled={Boolean(ctaLoadingKey)}
       >
         {ctaLabel}
       </Button>
@@ -77,11 +83,11 @@ const PricingCard = ({
   </Paper>
 );
 
-const PricingTable = ({ plans = [], addons = [], addonsTitle, addonHeaders = {} }) => (
+const PricingTable = ({ plans = [], addons = [], addonsTitle, addonHeaders = {}, onCtaClick, ctaLoadingKey }) => (
   <Stack spacing={6}>
     <Grid container spacing={3}>
       {plans.map((plan) => {
-        const card = <PricingCard {...plan} />;
+        const card = <PricingCard {...plan} planKey={plan.key} onCtaClick={onCtaClick} ctaLoadingKey={ctaLoadingKey} />;
         return (
           <Grid
             item

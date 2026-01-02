@@ -58,6 +58,8 @@ export default function SettingsStripeHub() {
   const [profile, setProfile] = useState(null);
   const [copyNotice, setCopyNotice] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
+  const [billingError, setBillingError] = useState("");
+  const [billingLoading, setBillingLoading] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!token) return;
@@ -151,6 +153,29 @@ export default function SettingsStripeHub() {
     } catch {
       setCopyNotice(t("settings.stripeHub.checkout.copyError"));
       setTimeout(() => setCopyNotice(""), 2500);
+    }
+  };
+
+  const handleBillingPortal = async () => {
+    setBillingError("");
+    setBillingLoading(true);
+    try {
+      const res = await api.post("/billing/portal", {}, { headers });
+      const url = res?.data?.url;
+      if (url && typeof window !== "undefined") {
+        window.location.href = url;
+        return;
+      }
+      throw new Error("Billing portal URL missing.");
+    } catch (error) {
+      setBillingError(
+        error?.displayMessage ||
+          error?.response?.data?.error ||
+          error?.message ||
+          t("settings.common.saveError")
+      );
+    } finally {
+      setBillingLoading(false);
     }
   };
 
@@ -287,6 +312,28 @@ export default function SettingsStripeHub() {
             </>
           )}
         </Stack>
+      </SectionCard>
+
+      <SectionCard
+        title="Subscription & Billing"
+        description="Manage your subscription, payment method, and invoices."
+        actions={
+          <Button
+            size="small"
+            variant="contained"
+            onClick={handleBillingPortal}
+            disabled={billingLoading}
+          >
+            {billingLoading ? "Opening..." : "Manage Billing"}
+          </Button>
+        }
+      >
+        {billingError && <Alert severity="error">{billingError}</Alert>}
+        {!billingError && (
+          <Typography variant="body2" color="text.secondary">
+            Use the billing portal to upgrade plans, update your card, or download invoices.
+          </Typography>
+        )}
       </SectionCard>
 
       <SectionCard

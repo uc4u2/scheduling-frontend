@@ -1,13 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Typography,
   Stack,
   Paper,
   Button,
+  Alert,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation, Trans } from "react-i18next";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import BoltIcon from "@mui/icons-material/Bolt";
@@ -22,6 +23,7 @@ import FeatureCardShowcase from "../components/FeatureCardShowcase";
 import PricingTable from "../components/PricingTable";
 import platformMap from "../../assets/marketing/platform-map.svg";
 import JsonLd from "../../components/seo/JsonLd";
+import api from "../../utils/api";
 
 const HERO_PRIMARY_CTA_TO = "/register";
 const HERO_SECONDARY_CTA_TO = "#plans";
@@ -208,7 +210,10 @@ const DEFAULT_FOOTNOTE = {
 const PricingPage = () => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const marketing = theme.marketing || {};
+  const [ctaLoadingKey, setCtaLoadingKey] = useState("");
+  const [ctaError, setCtaError] = useState("");
 
   const content = useMemo(() => t("landing.pricingPage", { returnObjects: true }), [t]);
   const metaContent = content?.meta || DEFAULT_META;
@@ -400,6 +405,41 @@ const PricingPage = () => {
 
   const metaOg = metaContent?.og || DEFAULT_META.og;
 
+  const handleCheckout = async (planKey) => {
+    if (!planKey) return;
+    setCtaError("");
+    const token =
+      typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+    if (!token) {
+      navigate(`/register?plan=${encodeURIComponent(planKey)}`);
+      return;
+    }
+    setCtaLoadingKey(planKey);
+    try {
+      const res = await api.post("/billing/checkout", { plan_key: planKey });
+      const url = res?.data?.url;
+      if (url && typeof window !== "undefined") {
+        window.location.href = url;
+        return;
+      }
+      throw new Error("Billing checkout URL missing.");
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        navigate(`/register?plan=${encodeURIComponent(planKey)}`);
+        return;
+      }
+      setCtaError(
+        error?.displayMessage ||
+          error?.response?.data?.error ||
+          error?.message ||
+          "Unable to start checkout."
+      );
+    } finally {
+      setCtaLoadingKey("");
+    }
+  };
+
   return (
     <Box sx={{ position: "relative", overflow: "hidden" }}>
       <Meta
@@ -491,11 +531,18 @@ const PricingPage = () => {
       )}
 
       <Box id="plans" sx={{ px: { xs: 2, md: 6 }, pb: { xs: 10, md: 12 } }}>
+        {ctaError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {ctaError}
+          </Alert>
+        )}
         <PricingTable
           plans={plans}
           addons={addons.items}
           addonsTitle={addons.title}
           addonHeaders={addons.headers}
+          onCtaClick={handleCheckout}
+          ctaLoadingKey={ctaLoadingKey}
         />
         <Typography
           variant="body2"

@@ -809,6 +809,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const [comparisonData, setComparisonData] = useState([]);
   const [statsError, setStatsError] = useState("");
   const [timeRange, setTimeRange] = useState("14");
+  const [billingStatus, setBillingStatus] = useState(null);
+  const [billingStatusError, setBillingStatusError] = useState("");
+  const [billingPortalLoading, setBillingPortalLoading] = useState(false);
   const isMobileViewport = useMediaQuery(theme.breakpoints.down("lg"));
   const navOffset = useMediaQuery(theme.breakpoints.down("sm")) ? 56 : 64; // height of global nav bar
   const managerBarHeight = 0; // remove extra bar on mobile; rely on floating toggle
@@ -832,6 +835,23 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     };
     if (token) fetchUser();
   }, [token]);
+
+  useEffect(() => {
+    const loadBillingStatus = async () => {
+      setBillingStatusError("");
+      try {
+        const res = await api.get("/billing/status");
+        setBillingStatus(res.data || null);
+      } catch (err) {
+        if (err?.response?.status !== 403) {
+          setBillingStatusError("Unable to load billing status.");
+        }
+      }
+    };
+    if (token && isManager) {
+      loadBillingStatus();
+    }
+  }, [token, isManager]);
 
   useEffect(() => {
     if (initialView && initialView !== selectedView) {
@@ -1178,6 +1198,23 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       setMobileDrawerOpen((prev) => !prev);
     } else {
       setIsDrawerOpen((prev) => !prev);
+    }
+  };
+
+  const handleBillingPortal = async () => {
+    setBillingPortalLoading(true);
+    try {
+      const res = await api.post("/billing/portal");
+      const url = res?.data?.url;
+      if (url && typeof window !== "undefined") {
+        window.location.href = url;
+        return;
+      }
+      throw new Error("Billing portal URL missing.");
+    } catch {
+      setBillingStatusError("Unable to open billing portal.");
+    } finally {
+      setBillingPortalLoading(false);
     }
   };
 
@@ -2315,6 +2352,28 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     return <Box sx={{ width: "100%" }}>{renderView()}</Box>;
   }
 
+  const graceUntil = billingStatus?.grace_period_ends_at
+    ? new Date(billingStatus.grace_period_ends_at)
+    : null;
+  const showBillingBanner =
+    Boolean(billingStatus) &&
+    (billingStatus.seats_overage ||
+      (billingStatus.status && !["active", "trialing"].includes(billingStatus.status)) ||
+      billingStatus.in_grace);
+  const billingBannerMessage = () => {
+    if (!billingStatus) return "";
+    if (billingStatus.seats_overage) {
+      return `Seat limit exceeded. ${billingStatus.active_staff_count} active staff, ${billingStatus.seats_allowed} included.`;
+    }
+    if (billingStatus.in_grace && graceUntil) {
+      return `Payment issue detected. Grace period ends ${graceUntil.toLocaleDateString()}.`;
+    }
+    if (billingStatus.status && !["active", "trialing"].includes(billingStatus.status)) {
+      return "Subscription required to unlock all features.";
+    }
+    return "";
+  };
+
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", width: "100%" }}>
       <CssBaseline />
@@ -2392,6 +2451,29 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
           mt: `${headerOffset}px`,
         }}
       >
+        {billingStatusError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {billingStatusError}
+          </Alert>
+        )}
+        {showBillingBanner && (
+          <Alert
+            severity="warning"
+            sx={{ mb: 2 }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={handleBillingPortal}
+                disabled={billingPortalLoading}
+              >
+                {billingPortalLoading ? "Opening..." : "Manage Billing"}
+              </Button>
+            }
+          >
+            {billingBannerMessage()}
+          </Alert>
+        )}
         {renderView()}
       </Box>
     </Box>

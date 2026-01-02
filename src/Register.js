@@ -14,7 +14,7 @@ import {
   Checkbox,
   Link as MuiLink,
 } from "@mui/material";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PasswordField from "./PasswordField";
 import api from "./utils/api";
@@ -60,8 +60,10 @@ const Register = () => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState("");
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const passwordChecklist = useMemo(
     () => [
       { label: "At least 8 characters", pass: password.length >= 8 },
@@ -113,6 +115,16 @@ const Register = () => {
     setLoading(false);
   };
 
+  React.useEffect(() => {
+    const planParam = (searchParams.get("plan") || "").toLowerCase();
+    if (["starter", "pro", "business"].includes(planParam)) {
+      setSelectedPlan(planParam);
+      try {
+        localStorage.setItem("pending_plan_key", planParam);
+      } catch {}
+    }
+  }, [searchParams]);
+
   return (
     <Box
       sx={{
@@ -152,6 +164,11 @@ const Register = () => {
           {message && (
             <Alert severity="success" sx={{ mb: 2 }}>
               {message}
+            </Alert>
+          )}
+          {selectedPlan && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Plan selected: {selectedPlan.toUpperCase()} — you’ll get a 14-day trial after signup.
             </Alert>
           )}
 
