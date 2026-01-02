@@ -1708,6 +1708,33 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       case "overview":
         return (
           <ManagementFrame>
+            {billingStatus && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  mb: 2.5,
+                  borderRadius: 2,
+                  border: (t) => `1px solid ${t.palette.divider}`,
+                  backgroundColor: (t) => t.palette.background.paper,
+                }}
+              >
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center" justifyContent="space-between">
+                  <Stack spacing={0.5}>
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      Seats
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Active staff: {billingStatus.active_staff_count ?? 0} · Included: {billingStatus.seats_included ?? 0} ·
+                      Addon: {billingStatus.seats_addon_qty ?? 0} · Allowed: {billingStatus.seats_allowed ?? 0}
+                    </Typography>
+                  </Stack>
+                  <Button variant="outlined" size="small" onClick={handleBillingPortal} disabled={billingPortalLoading}>
+                    {billingPortalLoading ? "Opening..." : "Manage Billing"}
+                  </Button>
+                </Stack>
+              </Paper>
+            )}
             <Overview token={token} />
 
             <Typography variant="h6" sx={{ mt: 3, mb: 1.5, fontWeight: 700 }}>
