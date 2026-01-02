@@ -30,6 +30,8 @@ import PublicLayout from "./layouts/PublicLayout";
 import ThemeSwitcher from "./components/ui/ThemeSwitcher";
 import HomePage from "./landing/pages/HomePage";
 import PricingPage from "./landing/pages/PricingPage";
+import BillingSuccessPage from "./pages/billing/BillingSuccessPage";
+import BillingCancelPage from "./pages/billing/BillingCancelPage";
 import FeaturePage from "./landing/pages/FeaturePage";
 import WorkforcePage from "./landing/pages/WorkforcePage";
 import ZapierPage from "./landing/pages/ZapierPage";
@@ -448,6 +450,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/reset-password/temp" element={<ResetPassword />} />
+          <Route path="/billing/success" element={<BillingSuccessPage />} />
+          <Route path="/billing/cancel" element={<BillingCancelPage />} />
           <Route path="/apply/:token" element={<CandidateIntakePage />} />
           <Route path="/document-request/:token" element={<DocumentRequestUploadPage />} />
           <Route path="/candidate/login/:token" element={<CandidateLoginCallbackPage />} />
