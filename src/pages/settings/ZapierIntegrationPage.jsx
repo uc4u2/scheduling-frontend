@@ -5,6 +5,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ZapierApiKeysPanel from "../../components/zapier/ZapierApiKeysPanel";
 import ZapierHooksPanel from "../../components/zapier/ZapierHooksPanel";
 import ZapierHelpSection from "../../components/zapier/ZapierHelpSection";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 const ZapierIntegrationPage = () => {
   const [showHelp, setShowHelp] = useState(false);
@@ -37,6 +38,11 @@ const ZapierIntegrationPage = () => {
       <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 720, mb: 2 }}>
         Connect Schedulaa with Zapier to automate your workflows. Create an API key, add Event hooks, and you’re live.
       </Typography>
+
+      <UpgradeNoticeBanner
+        requiredPlan="pro"
+        message="Zapier automations require the Pro plan or higher. Upgrade to unlock workflow automation."
+      />
 
       <Collapse in={showHelp} timeout="auto" unmountOnExit>
         <Paper

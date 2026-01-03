@@ -35,6 +35,7 @@ import ManagementFrame from "../../components/ui/ManagementFrame";
 import api from "../../utils/api";
 import { useTranslation } from "react-i18next";
 import { wb } from "../../utils/api"; // <-- add to verify public viewer
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 import {
   getCurrencyOptions,
   resolveCurrencyForCountry,
@@ -528,6 +529,10 @@ export default function CompanyProfile({ token }) {
           <CircularProgress />
         ) : (
           <>
+            <UpgradeNoticeBanner
+              requiredPlan="business"
+              message="Multi-location (branches) requires the Business plan. Upgrade to add and manage additional locations."
+            />
             <Grid container spacing={2}>
               {t("manager.companyProfile.sections.locationSettings")}
               <Grid item xs={12}>

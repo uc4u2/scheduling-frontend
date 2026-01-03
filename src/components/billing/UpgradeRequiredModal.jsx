@@ -8,9 +8,10 @@ const PLAN_LABELS = {
   business: "Business",
 };
 
-const UpgradeRequiredModal = ({ open, requiredPlan, onClose }) => {
+const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) => {
   const navigate = useNavigate();
   const planLabel = PLAN_LABELS[requiredPlan] || "Pro";
+  const detail = message || `This feature requires the ${planLabel} plan.`;
 
   const handlePortal = async () => {
     try {
@@ -26,10 +27,12 @@ const UpgradeRequiredModal = ({ open, requiredPlan, onClose }) => {
       <DialogContent>
         <Stack spacing={1.5}>
           <Typography variant="body1">
-            This feature requires the {planLabel} plan.
+            {detail}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Upgrade your subscription to unlock this feature.
+            {action === "start_plan"
+              ? "Start a plan to unlock this feature."
+              : "Upgrade your subscription to unlock this feature."}
           </Typography>
         </Stack>
       </DialogContent>
@@ -38,8 +41,11 @@ const UpgradeRequiredModal = ({ open, requiredPlan, onClose }) => {
         <Button variant="outlined" onClick={() => navigate("/pricing")}>
           View plans
         </Button>
-        <Button variant="contained" onClick={handlePortal}>
-          Upgrade
+        <Button
+          variant="contained"
+          onClick={action === "start_plan" ? () => navigate("/pricing") : handlePortal}
+        >
+          {action === "start_plan" ? "Start plan" : "Upgrade"}
         </Button>
       </DialogActions>
     </Dialog>

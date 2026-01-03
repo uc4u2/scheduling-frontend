@@ -123,6 +123,8 @@ api.interceptors.response.use(
           new CustomEvent("billing:upgrade-required", {
             detail: {
               requiredPlan: data?.required_plan || null,
+              message: data?.message || "",
+              action: data?.action || "",
             },
           })
         );
@@ -136,6 +138,20 @@ api.interceptors.response.use(
             detail: {
               allowed: data?.allowed,
               current: data?.current,
+            },
+          })
+        );
+      }
+    }
+
+    if (!skipBillingModal && status === 409 && data?.error === "limit_exceeded" && data?.limit !== "seats") {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("billing:upgrade-required", {
+            detail: {
+              requiredPlan: data?.required_plan || null,
+              message: data?.message || "",
+              action: data?.action || "upgrade",
             },
           })
         );

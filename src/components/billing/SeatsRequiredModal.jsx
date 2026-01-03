@@ -18,6 +18,7 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
   const [seatInput, setSeatInput] = useState(String(needed));
   const [preview, setPreview] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [invoiceUrl, setInvoiceUrl] = useState("");
@@ -32,6 +33,7 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
     const value = Math.max(0, parseInt(seatInput, 10) || 0);
     if (!value) {
       setPreview(null);
+      setPreviewError("");
       return;
     }
     let active = true;
@@ -41,10 +43,19 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
       .then((res) => {
         if (!active) return;
         setPreview(res?.data || null);
+        setPreviewError("");
       })
-      .catch(() => {
+      .catch((err) => {
         if (!active) return;
         setPreview(null);
+        const apiError = err?.response?.data?.error;
+        if (apiError === "subscription_missing") {
+          setPreviewError("No active subscription. Start a plan to purchase seats.");
+        } else if (apiError === "seat_addon_price_missing") {
+          setPreviewError("Seat add-on price is not configured yet.");
+        } else {
+          setPreviewError("Estimate unavailable. You can still continue.");
+        }
       })
       .finally(() => {
         if (!active) return;
@@ -70,7 +81,12 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
       setInvoiceUrl(res?.data?.latest_invoice_url || "");
       setSuccessMessage("Seats updated. You can view the invoice or manage billing.");
     } catch (err) {
-      setError(err?.response?.data?.error || "Unable to purchase seats.");
+      const apiError = err?.response?.data?.error;
+      if (apiError === "subscription_missing") {
+        setError("No active subscription. Start a plan to purchase seats.");
+      } else {
+        setError(apiError || "Unable to purchase seats.");
+      }
     } finally {
       setLoading(false);
     }
@@ -107,6 +123,11 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
                 Next billing date: {preview.next_billing_date ? new Date(preview.next_billing_date).toLocaleDateString() : "—"}
               </Typography>
             </Stack>
+          )}
+          {!loadingPreview && !preview && (
+            <Typography variant="caption" color="text.secondary">
+              {previewError || "Estimate unavailable. You can still continue."}
+            </Typography>
           )}
           {error && <Typography color="error" variant="caption">{error}</Typography>}
           {invoiceUrl && (
