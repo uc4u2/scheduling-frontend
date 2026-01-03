@@ -5,6 +5,7 @@ import ManagementFrame from "../../components/ui/ManagementFrame";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
 import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsAccess";
 import ManagerJobOpeningsPanel from "./ManagerJobOpeningsPanel";
+import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 export default function ManagerJobOpeningsPage({ token }) {
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
@@ -22,6 +23,10 @@ export default function ManagerJobOpeningsPage({ token }) {
       contentSx={{ p: { xs: 1.5, md: 2.5 } }}
     >
       <RecruiterTabs localTab="job-postings" allowHrAccess={allowHrAccess} isLoading={isLoading} />
+      <UpgradeNoticeBanner
+        requiredPlan="pro"
+        message="Job postings and onboarding workflows require the Pro plan or higher."
+      />
       <ManagerJobOpeningsPanel token={token} />
     </ManagementFrame>
   );

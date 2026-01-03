@@ -3749,8 +3749,7 @@
                 "Stripe Checkout with Automatic Tax compliance.",
                 "1 staff seat and 1 location included.",
                 "CSV and PDF reports for revenue and appointments.",
-                "Custom domain + automatic SSL included on this plan.",
-                "Onboarding workflows available as your team grows."
+                "Custom domain + automatic SSL included on this plan."
               ],
               "ctaLabel": "Start free trial",
               "ctaTo": "/register"

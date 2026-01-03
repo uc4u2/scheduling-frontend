@@ -91,6 +91,11 @@ const DEFAULT_PLANS = [
     "Online booking, confirmations, and client portal.",
     "Public “Book with me” link.",
     "Stripe Checkout with automatic tax compliance.",
+    { type: "heading", text: "Operational basics" },
+    "Booking notifications and reminders.",
+    "Embeddable booking widgets.",
+    "Stripe refunds and payment history.",
+    "Basic role-based access.",
     { type: "heading", text: "Time & reporting" },
     "Basic time tracking tied to bookings and shifts.",
     "CSV/PDF exports for worked hours and revenue.",
@@ -112,8 +117,12 @@ const DEFAULT_PLANS = [
   trialNote: "14-day free trial • Cancel anytime",
   features: [
     "Everything in Starter.",
-    { type: "heading", text: "Time & payroll operations" },
-    "Shift-based time tracking with break enforcement.",
+    { type: "heading", text: "Time & Labor" },
+    "Shift-based clock-in and clock-out.",
+    "Break enforcement and auto-deductions.",
+    "Overtime and anomaly flags.",
+    { type: "heading", text: "Payroll" },
+    "Full payroll runs included (no per-run fees).",
     "Payroll-ready approvals and audit trails.",
     "Payroll exports to QuickBooks & Xero.",
     "Payroll processing with Employee Payslip Portal (self-serve PDFs).",
@@ -143,16 +152,21 @@ const DEFAULT_PLANS = [
     "Built for compliance, audits, and multi-location (department) operations.",
     trialNote: "14-day free trial • Cancel anytime",
     features: [
-      "Everything in Pro.",
-      { type: "heading", text: "Governance & compliance" },
-      "Payroll audit trails and historical locking.",
-      "Compliance-ready tax exports (W-2, T4, ROE).",
-      "Multi-location (department) payroll and reporting.",
-      { type: "heading", text: "Advanced control" },
-      "Branch-level permissions.",
-      "Bulk scheduling controls (close / keep windows).",
-      "Priority incident handling.",
-      { type: "heading", text: "Capacity" },
+    "Everything in Pro.",
+    { type: "heading", text: "Time & Labor" },
+    "Shift-based clock-in and clock-out with break enforcement.",
+    "Overtime, anomaly flags, and audit-ready time records.",
+    { type: "heading", text: "Payroll" },
+    "Full payroll runs included (no per-run fees).",
+    { type: "heading", text: "Governance & compliance" },
+    "Audit-ready payroll and compliance records.",
+    "Compliance-ready tax exports (W-2, T4, ROE).",
+    "Multi-location (department) payroll and reporting.",
+    { type: "heading", text: "Advanced control" },
+    "Branch-level permissions.",
+    "Bulk scheduling controls (close / keep windows).",
+    "Audit-ready operations with reduced compliance risk.",
+    { type: "heading", text: "Capacity" },
       "10 staff seats and up to 2 locations (departments) included.",
       "Add seats for $9/mo each.",
       "Free branded website included when using Payroll + Scheduling.",
@@ -230,10 +244,6 @@ const DEFAULT_RIBBON = {
   buttonTo: "/manager/dashboard",
 };
 
-const DEFAULT_FOOTNOTE = {
-  message:
-    "<strong>Custom domain + automatic SSL:</strong> included on every plan.",
-};
 
 const PricingPage = () => {
   const theme = useTheme();
@@ -250,7 +260,6 @@ const PricingPage = () => {
   const plansContent = content?.plans?.table || {};
   const assurancesContent = content?.assurances || {};
   const ribbonContent = content?.ribbon || DEFAULT_RIBBON;
-  const footnoteContent = content?.footnote || DEFAULT_FOOTNOTE;
   const ctaContent = content?.ctaBanner || DEFAULT_CTA;
   const pricingSchemas = useMemo(
     () => [
@@ -583,6 +592,36 @@ const PricingPage = () => {
           onCtaClick={handleCheckout}
           ctaLoadingKey={ctaLoadingKey}
         />
+        <Paper
+          elevation={0}
+          sx={{
+            mt: { xs: 3, md: 4 },
+            p: { xs: 2.5, md: 3 },
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
+          }}
+        >
+          <Typography variant="h6" fontWeight={700} gutterBottom>
+            Included in every plan
+          </Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2" color="text.secondary">
+              Custom domains with automatic SSL.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Role-based access and staff permissions.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Email and booking notifications.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Secure Stripe payments with refunds.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Continuous feature updates.
+            </Typography>
+          </Stack>
+        </Paper>
         <Box
           sx={{
             mt: { xs: 4, md: 5 },
@@ -988,41 +1027,13 @@ const PricingPage = () => {
               border: `1px solid ${theme.palette.divider}`,
             }}
           >
-            <Typography variant="h6" fontWeight={700} gutterBottom>
-              Included in every plan
-            </Typography>
-            <Stack spacing={1}>
-              <Typography variant="body2" color="text.secondary">
-                Custom domains with automatic SSL.
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Role-based access and staff permissions.
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Email and booking notifications, plus continuous updates.
-              </Typography>
-            </Stack>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              dangerouslySetInnerHTML={{ __html: VALUE_NOTE }}
+            />
           </Paper>
         </Stack>
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mt: 1.5, textAlign: { xs: "left", md: "center" } }}
-          dangerouslySetInnerHTML={{ __html: VALUE_NOTE }}
-        />
-        {footnoteContent?.message && (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 1.5, textAlign: { xs: "left", md: "center" } }}
-          >
-            <Trans
-              i18nKey="landing.pricingPage.footnote.message"
-              components={{ strong: <strong /> }}
-              defaults={footnoteContent.message}
-            />
-          </Typography>
-        )}
       </Box>
 
       <Box sx={{ px: { xs: 2, md: 6 }, pb: { xs: 8, md: 10 }, textAlign: "center" }}>
@@ -1030,19 +1041,21 @@ const PricingPage = () => {
           Need more scale?
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, mx: "auto", mb: 3 }}>
-          We support larger organizations with higher seat and location (department) limits, priority support, and guided onboarding.
-          Example configurations: <strong>Enterprise</strong> (25 staff, up to 3 locations/departments) and <strong>Corporate</strong> (50 staff, up to 4 locations/departments).
-          Contracted SLAs, audit support, and dedicated environments are available by agreement.
+          Enterprise plans are built for multi-location operators and compliance-heavy teams.
+          Example configurations: <strong>Enterprise</strong> (up to 300 staff, unlimited locations/departments).
         </Typography>
         <Stack component="ul" spacing={1} sx={{ maxWidth: 720, mx: "auto", mb: 3, pl: 2, color: "text.secondary" }}>
           <Typography component="li" variant="body2">
+            Common fits: multi-location service brands, staffing teams, and high-volume payroll.
+          </Typography>
+          <Typography component="li" variant="body2">
+            Extended audit logs and data retention policies.
+          </Typography>
+          <Typography component="li" variant="body2">
+            Contracted SLAs, account ownership, and billing coordination.
+          </Typography>
+          <Typography component="li" variant="body2">
             SOC2-aligned controls (in progress).
-          </Typography>
-          <Typography component="li" variant="body2">
-            Data retention and audit policy configuration.
-          </Typography>
-          <Typography component="li" variant="body2">
-            Dedicated onboarding and billing coordination.
           </Typography>
         </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center">
