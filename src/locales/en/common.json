@@ -1541,6 +1541,7 @@
       },
       "departments": {
         "title": "Departments",
+        "locationHint": "Use departments as locations (for example, Toronto Office, Vegas Office).",
         "fields": {
           "name": "Department Name",
           "description": "Description"

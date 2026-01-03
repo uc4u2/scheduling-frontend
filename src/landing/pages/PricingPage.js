@@ -95,7 +95,7 @@ const DEFAULT_PLANS = [
     "Basic time tracking tied to bookings and shifts.",
     "CSV/PDF exports for worked hours and revenue.",
     { type: "heading", text: "Capacity" },
-    "1 staff seat and 1 location included.",
+    "1 staff seat and 1 location (department) included.",
     "Custom domain + automatic SSL included.",
     "Onboarding workflows as you grow.",
   ],
@@ -126,7 +126,7 @@ const DEFAULT_PLANS = [
     "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
     "Advanced Analytics (bookings, revenue, client segments).",
     { type: "heading", text: "Capacity" },
-    "Up to 5 staff seats and 1 location included.",
+    "Up to 5 staff seats and 1 location (department) included.",
     "Automated Canadian stat holiday pay and accruals.",
     "Priority support (business hours).",
     ],
@@ -140,20 +140,20 @@ const DEFAULT_PLANS = [
     name: "Business",
     price: "$119.99/mo",
     description:
-    "Built for compliance, audits, and multi-location operations.",
+    "Built for compliance, audits, and multi-location (department) operations.",
     trialNote: "14-day free trial • Cancel anytime",
     features: [
       "Everything in Pro.",
       { type: "heading", text: "Governance & compliance" },
       "Payroll audit trails and historical locking.",
       "Compliance-ready tax exports (W-2, T4, ROE).",
-      "Multi-location payroll and reporting.",
+      "Multi-location (department) payroll and reporting.",
       { type: "heading", text: "Advanced control" },
       "Branch-level permissions.",
       "Bulk scheduling controls (close / keep windows).",
       "Priority incident handling.",
       { type: "heading", text: "Capacity" },
-      "10 staff seats and up to 2 locations included.",
+      "10 staff seats and up to 2 locations (departments) included.",
       "Add seats for $9/mo each.",
       "Free branded website included when using Payroll + Scheduling.",
     ],
@@ -173,7 +173,7 @@ const DEFAULT_ADDONS = {
 
 const VALUE_NOTE = `
 <strong>Bundle value:</strong> Subscribe to <strong>Payroll + Scheduling</strong> and your branded website on your own domain (with automatic SSL) is included for free.
-If you only need Website or Booking, <strong>Starter</strong> covers it; <strong>Pro</strong> adds staff scheduling, payroll, and automations, and <strong>Business</strong> adds full payroll compliance documents and multi-location controls.
+If you only need Website or Booking, <strong>Starter</strong> covers it; <strong>Pro</strong> adds staff scheduling, payroll, and automations, and <strong>Business</strong> adds full payroll compliance documents and multi-location (department) controls.
 `;
 
 const DEFAULT_CTA = {
@@ -207,7 +207,7 @@ const DEFAULT_ASSURANCES = [
     key: "enterpriseOnboarding",
     title: "Enterprise onboarding",
     description:
-      "Guided setup for multi-location brands with tax and payroll mapping.",
+      "Guided setup for multi-location brands (departments as locations) with tax and payroll mapping.",
   },
   {
     key: "roleAccess",
@@ -273,7 +273,7 @@ const PricingPage = () => {
         "@type": "Product",
         name: "Schedulaa Pro",
         brand: { "@type": "Brand", name: "Schedulaa" },
-        description: "Scheduling, marketing campaigns, advanced analytics; up to 5 staff, 1 location.",
+        description: "Scheduling, marketing campaigns, advanced analytics; up to 5 staff, 1 location (department).",
         offers: {
           "@type": "Offer",
           price: "49.99",
@@ -287,7 +287,7 @@ const PricingPage = () => {
         "@type": "Product",
         name: "Schedulaa Business",
         brand: { "@type": "Brand", name: "Schedulaa" },
-        description: "Advanced payroll exports, audits, compliance docs; 10 staff, 2 locations included.",
+        description: "Advanced payroll exports, audits, compliance docs; 10 staff, 2 locations (departments) included.",
         offers: {
           "@type": "Offer",
           price: "119.99",
@@ -618,7 +618,7 @@ const PricingPage = () => {
                   <TableCell>Best for</TableCell>
                   <TableCell>Solo professionals</TableCell>
                   <TableCell>Growing teams</TableCell>
-                  <TableCell>Compliance & multi-location teams</TableCell>
+                  <TableCell>Compliance & multi-location (department) teams</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
@@ -825,7 +825,7 @@ const PricingPage = () => {
                   <TableCell>Yes</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Multi-location analytics</TableCell>
+                  <TableCell>Multi-location (department) analytics</TableCell>
                   <TableCell>—</TableCell>
                   <TableCell>—</TableCell>
                   <TableCell>Yes</TableCell>
@@ -1030,8 +1030,8 @@ const PricingPage = () => {
           Need more scale?
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, mx: "auto", mb: 3 }}>
-          We support larger organizations with higher seat and location limits, priority support, and guided onboarding.
-          Example configurations: <strong>Enterprise</strong> (25 staff, up to 3 locations) and <strong>Corporate</strong> (50 staff, up to 4 locations).
+          We support larger organizations with higher seat and location (department) limits, priority support, and guided onboarding.
+          Example configurations: <strong>Enterprise</strong> (25 staff, up to 3 locations/departments) and <strong>Corporate</strong> (50 staff, up to 4 locations/departments).
           Contracted SLAs, audit support, and dedicated environments are available by agreement.
         </Typography>
         <Stack component="ul" spacing={1} sx={{ maxWidth: 720, mx: "auto", mb: 3, pl: 2, color: "text.secondary" }}>

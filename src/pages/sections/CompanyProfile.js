@@ -26,11 +26,14 @@ import {
   DialogContent,
   DialogActions,
   Divider,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
 import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import api from "../../utils/api";
 import { useTranslation } from "react-i18next";
@@ -1107,9 +1110,16 @@ export default function CompanyProfile({ token }) {
 
       {/* Departments */}
       <Paper sx={{ p: 3, mt: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          {t("manager.companyProfile.departments.title")}
-        </Typography>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+          <Typography variant="h6">
+            {t("manager.companyProfile.departments.title")}
+          </Typography>
+          <Tooltip title={t("manager.companyProfile.departments.locationHint")}>
+            <IconButton size="small" aria-label="Departments as locations info">
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
 
         <Grid container spacing={2}>
           <Grid item xs={12} md={5}>

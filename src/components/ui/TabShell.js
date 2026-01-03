@@ -48,6 +48,15 @@ export default function TabShell({
     if (idx > max) setIdx(max);
   }, [idx, safeTabs.length]);
 
+  // Sync with external defaultIndex changes (e.g., URL tab updates)
+  useEffect(() => {
+    const max = Math.max(0, safeTabs.length - 1);
+    const next = Math.min(Math.max(0, Number(defaultIndex) || 0), max);
+    if (Number.isFinite(next) && next !== idx) {
+      setIdx(next);
+    }
+  }, [defaultIndex, safeTabs.length, idx]);
+
   return (
     <SectionCard
       title={title}
