@@ -31,6 +31,8 @@ import ThemeSwitcher from "./components/ui/ThemeSwitcher";
 import HomePage from "./landing/pages/HomePage";
 import PricingPage from "./landing/pages/PricingPage";
 import BillingUpgradeController from "./components/billing/BillingUpgradeController";
+import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
+import { BillingBannerProvider } from "./components/billing/BillingBannerContext";
 import BillingSuccessPage from "./pages/billing/BillingSuccessPage";
 import BillingCancelPage from "./pages/billing/BillingCancelPage";
 import FeaturePage from "./landing/pages/FeaturePage";
@@ -376,13 +378,14 @@ const AppContent = ({ token, setToken }) => {
   const showAppChrome = !isEmbed && !isMarketingRoute && !isCompanyRoute && !isNoChromeRoute;
 
   const content = (
-    <>
+    <BillingBannerProvider>
       <BillingUpgradeController />
       {showAppChrome && <ThemeSwitcher />}
       {showAppChrome && (
         <>
           <NavBar token={token} setToken={setToken} />
           <Toolbar />
+          <GlobalBillingBanner />
         </>
       )}
 
@@ -595,7 +598,7 @@ const AppContent = ({ token, setToken }) => {
 
       {showAppChrome && <Footer />}
       {!isEmbed && showChatBot && <ChatBot token={token} />}
-    </>
+    </BillingBannerProvider>
   );
 
   return effectiveTheme ? (

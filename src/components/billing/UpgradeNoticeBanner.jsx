@@ -1,18 +1,20 @@
 import React from "react";
 import { Alert, Button, Stack } from "@mui/material";
 import useBillingStatus from "./useBillingStatus";
+import { useBillingBanner } from "./BillingBannerContext";
 import { openBillingPortal } from "./billingHelpers";
 
 const PLAN_RANK = { starter: 0, pro: 1, business: 2 };
 
 const UpgradeNoticeBanner = ({ requiredPlan = "pro", message }) => {
   const { status } = useBillingStatus();
+  const { visible } = useBillingBanner();
   const planKey = status?.plan_key || "starter";
   const needsUpgrade =
     PLAN_RANK[planKey] < (PLAN_RANK[requiredPlan] ?? 0) ||
     (status?.status && !["active", "trialing"].includes(status.status));
 
-  if (!needsUpgrade) return null;
+  if (!needsUpgrade || visible) return null;
 
   return (
     <Alert

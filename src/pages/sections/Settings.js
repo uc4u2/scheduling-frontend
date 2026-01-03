@@ -42,6 +42,7 @@ import SettingsArtistVisibility from "./SettingsArtistVisibility";
 import SettingsClientVideo from "./SettingsClientVideo";
 import SettingsXero from "./SettingsXero";
 import SettingsQuickBooks from "./SettingsQuickBooks";
+import SettingsBillingSubscription from "./SettingsBillingSubscription";
 import IntegrationActivityCard from "./IntegrationActivityCard";
 import ProfessionSettings from "./ProfessionSetting";
 import SettingsTimeTracking from "./SettingsTimeTracking";
@@ -638,6 +639,10 @@ const Settings = () => {
     {
       label: t("settings.tabs.stripeHub"),
       content: <SettingsStripeHub />,
+    },
+    {
+      label: t("settings.tabs.billing", "Billing & Subscription"),
+      content: <SettingsBillingSubscription />,
     },
     {
       label: t("settings.tabs.xero", "Xero"),
