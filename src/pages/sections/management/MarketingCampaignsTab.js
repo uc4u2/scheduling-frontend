@@ -15,6 +15,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 import CircularProgress from "@mui/material/CircularProgress";
 import ExportClientsCard from "./ExportClientsCard";
 import UpgradeNoticeBanner from "../../../components/billing/UpgradeNoticeBanner";
+import useBillingStatus from "../../../components/billing/useBillingStatus";
 function useAuth() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const auth  = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
@@ -345,6 +346,10 @@ function CampaignCard({
 
 export default function MarketingCampaignsTab() {
   const { t, i18n } = useTranslation();
+  const { status: billingStatus } = useBillingStatus();
+  const planKey = (billingStatus?.plan_key || "starter").toLowerCase();
+  const isActive = ["active", "trialing"].includes(billingStatus?.status || "");
+  const canAccess = (planKey === "pro" || planKey === "business") && isActive;
   const fieldLabel = (key) => {
     const labelKey = `campaigns.fields.${key}.label`;
     const value = t(labelKey);
@@ -384,6 +389,20 @@ export default function MarketingCampaignsTab() {
 
   const [guideOpen, setGuideOpen] = useState(false);
 
+  if (!canAccess) {
+    return (
+      <Box>
+        <UpgradeNoticeBanner
+          requiredPlan="pro"
+          message="Email campaigns require the Pro plan or higher."
+        />
+        <Typography variant="body2" color="text.secondary">
+          Upgrade to Pro to export clients and launch Broadcast, Win-Back, VIP, No-Show, and Anniversary campaigns.
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       {/* Header + Guide */}
@@ -396,10 +415,6 @@ export default function MarketingCampaignsTab() {
           </IconButton>
         </Tooltip>
       </Box>
-      <UpgradeNoticeBanner
-        requiredPlan="pro"
-        message="Email campaigns require the Pro plan or higher."
-      />
 
       {/* Guide Drawer (content imported to keep this file lean) */}
       <Drawer

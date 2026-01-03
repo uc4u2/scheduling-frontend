@@ -33,6 +33,7 @@ import ClientsChurnRiskTab from "./ClientsChurnRiskTab";
 import ClientsSegmentsTab from "./ClientsSegmentsTab";
 import SegmentsPanel from "./SegmentsPanel";
 import UpgradeNoticeBanner from "../../../components/billing/UpgradeNoticeBanner";
+import useBillingStatus from "../../../components/billing/useBillingStatus";
 
 dayjs.extend(quarterOfYear);
 
@@ -56,6 +57,10 @@ const KPI = ({ label, value, help }) => (
 );
 
 export default function EnterpriseAnalytics() {
+  const { status: billingStatus } = useBillingStatus();
+  const planKey = (billingStatus?.plan_key || "starter").toLowerCase();
+  const isActive = ["active", "trialing"].includes(billingStatus?.status || "");
+  const canAccess = (planKey === "pro" || planKey === "business") && isActive;
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const auth = useMemo(
     () => ({ headers: { Authorization: `Bearer ${token}` } }),
@@ -1066,18 +1071,28 @@ const ClientsTab = (
     },
   ];
 
+  if (!canAccess) {
+    return (
+      <>
+        <UpgradeNoticeBanner
+          requiredPlan="pro"
+          message="Advanced analytics require the Pro plan or higher."
+        />
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Upgrade to Pro to unlock KPI dashboards, client segments, and advanced insights.
+          </Typography>
+        </Box>
+      </>
+    );
+  }
+
   return (
-    <>
-      <UpgradeNoticeBanner
-        requiredPlan="pro"
-        message="Advanced analytics require the Pro plan or higher."
-      />
-      <TabShell
-        title="Enterprise Analytics"
-        description="KPI snapshots, trends, and insights across your business."
-        tabs={tabs}
-        defaultTab={0}
-      />
-    </>
+    <TabShell
+      title="Enterprise Analytics"
+      description="KPI snapshots, trends, and insights across your business."
+      tabs={tabs}
+      defaultTab={0}
+    />
   );
 }
