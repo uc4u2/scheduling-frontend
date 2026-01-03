@@ -30,6 +30,7 @@ import { getUserTimezone } from "./utils/timezone";
 import { Link as RouterLink } from "react-router-dom";
 import { useDepartments } from "./pages/sections/hooks/useRecruiterDepartments";
 import TimezoneSelect from "./components/TimezoneSelect";
+import useBillingStatus from "./components/billing/useBillingStatus";
 
 const PASSWORD_HELP =
   "8+ chars, uppercase, lowercase, number, and symbol required.";
@@ -72,6 +73,13 @@ const AddRecruiter = () => {
   const [seatNotice, setSeatNotice] = useState("");
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
   const departments = useDepartments();
+  const { status: billingStatus } = useBillingStatus();
+  const trialEnd = billingStatus?.trial_end;
+  const seatNextBillingLabel = seatPreview?.next_billing_date
+    ? `Next billing date: ${new Date(seatPreview.next_billing_date).toLocaleDateString()}`
+    : trialEnd
+      ? `Trial ends: ${new Date(trialEnd).toLocaleDateString()}`
+      : "Next billing date: —";
 
 const passwordStrength = useMemo(() => {
   if (!form.password) return "";
@@ -669,7 +677,7 @@ const passwordStrength = useMemo(() => {
                     Estimated charge today: {seatPreview.amount_due_today_formatted || "—"}
                   </Typography>
                   <Typography variant="caption">
-                    Next billing date: {seatPreview.next_billing_date ? new Date(seatPreview.next_billing_date).toLocaleDateString() : "—"}
+                    {seatNextBillingLabel}
                   </Typography>
                 </Stack>
               )}

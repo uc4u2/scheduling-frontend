@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import api from "../../utils/api";
 import { openBillingPortal } from "./billingHelpers";
+import useBillingStatus from "./useBillingStatus";
 
 const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
   const needed = Math.max(1, (current || 0) - (allowed || 0));
@@ -19,10 +20,17 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
   const [preview, setPreview] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState("");
+  const { status: billingStatus } = useBillingStatus();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [invoiceUrl, setInvoiceUrl] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const trialEnd = billingStatus?.trial_end;
+  const nextBillingLabel = preview?.next_billing_date
+    ? `Next billing date: ${new Date(preview.next_billing_date).toLocaleDateString()}`
+    : trialEnd
+      ? `Trial ends: ${new Date(trialEnd).toLocaleDateString()}`
+      : "Next billing date: —";
 
   useEffect(() => {
     setSeatInput(String(needed));
@@ -123,7 +131,7 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
                 Estimated charge today: {preview.amount_due_today_formatted || "—"}
               </Typography>
               <Typography variant="caption">
-                Next billing date: {preview.next_billing_date ? new Date(preview.next_billing_date).toLocaleDateString() : "—"}
+                {nextBillingLabel}
               </Typography>
             </Stack>
           )}

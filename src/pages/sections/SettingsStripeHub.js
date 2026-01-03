@@ -72,6 +72,12 @@ export default function SettingsStripeHub() {
   const [seatInput, setSeatInput] = useState("");
   const [seatPreview, setSeatPreview] = useState(null);
   const [seatPreviewLoading, setSeatPreviewLoading] = useState(false);
+  const trialEnd = billingStatus?.trial_end;
+  const seatNextBillingLabel = seatPreview?.next_billing_date
+    ? `Next billing date: ${new Date(seatPreview.next_billing_date).toLocaleDateString()}`
+    : trialEnd
+      ? `Trial ends: ${new Date(trialEnd).toLocaleDateString()}`
+      : "Next billing date: —";
   const [seatDialogError, setSeatDialogError] = useState("");
   const [seatNotice, setSeatNotice] = useState("");
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
@@ -565,7 +571,7 @@ export default function SettingsStripeHub() {
                   Estimated charge today: {seatPreview.amount_due_today_formatted || "—"}
                 </Typography>
                 <Typography variant="caption">
-                  Next billing date: {seatPreview.next_billing_date ? new Date(seatPreview.next_billing_date).toLocaleDateString() : "—"}
+                  {seatNextBillingLabel}
                 </Typography>
               </Stack>
             )}
