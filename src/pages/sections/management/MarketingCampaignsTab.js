@@ -14,6 +14,7 @@ import MarketingCampaignsGuide from "./MarketingCampaignsGuide";
 import Autocomplete from "@mui/material/Autocomplete";
 import CircularProgress from "@mui/material/CircularProgress";
 import ExportClientsCard from "./ExportClientsCard";
+import UpgradeNoticeBanner from "../../../components/billing/UpgradeNoticeBanner";
 function useAuth() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const auth  = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
@@ -395,6 +396,10 @@ export default function MarketingCampaignsTab() {
           </IconButton>
         </Tooltip>
       </Box>
+      <UpgradeNoticeBanner
+        requiredPlan="pro"
+        message="Email campaigns require the Pro plan or higher."
+      />
 
       {/* Guide Drawer (content imported to keep this file lean) */}
       <Drawer
