@@ -31,7 +31,6 @@ import ThemeSwitcher from "./components/ui/ThemeSwitcher";
 import HomePage from "./landing/pages/HomePage";
 import PricingPage from "./landing/pages/PricingPage";
 import BillingUpgradeController from "./components/billing/BillingUpgradeController";
-import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
 import { BillingBannerProvider } from "./components/billing/BillingBannerContext";
 import BillingSuccessPage from "./pages/billing/BillingSuccessPage";
 import BillingCancelPage from "./pages/billing/BillingCancelPage";
@@ -385,7 +384,6 @@ const AppContent = ({ token, setToken }) => {
         <>
           <NavBar token={token} setToken={setToken} />
           <Toolbar />
-          <GlobalBillingBanner />
         </>
       )}
 

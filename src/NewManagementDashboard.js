@@ -73,6 +73,7 @@ import {
   InfoOutlined,
 } from "@mui/icons-material";
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
+import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
 
 import { useNavigate } from "react-router-dom";
 import api from "./utils/api";
@@ -213,6 +214,9 @@ const menuConfig = [
 
   // Integrations
   { label: "Zapier", key: "zapier", icon: <ApiIcon /> },
+
+  // Billing
+  { label: "Billing & Subscription", key: "billing", icon: <Paid /> },
 
   // Settings last
   { labelKey: "manager.menu.settings", key: "settings", icon: <Settings /> },
@@ -1187,6 +1191,14 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   };
 
   const handleNavSelect = (viewKey) => {
+    if (viewKey === "billing") {
+      navigate("/manager/dashboard?view=settings&tab=billing");
+      setSelectedView("settings");
+      if (isMobileViewport) {
+        setMobileDrawerOpen(false);
+      }
+      return;
+    }
     setSelectedView(viewKey);
     if (isMobileViewport) {
       setMobileDrawerOpen(false);
@@ -2379,28 +2391,6 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     return <Box sx={{ width: "100%" }}>{renderView()}</Box>;
   }
 
-  const graceUntil = billingStatus?.grace_period_ends_at
-    ? new Date(billingStatus.grace_period_ends_at)
-    : null;
-  const showBillingBanner =
-    Boolean(billingStatus) &&
-    (billingStatus.seats_overage ||
-      (billingStatus.status && !["active", "trialing"].includes(billingStatus.status)) ||
-      billingStatus.in_grace);
-  const billingBannerMessage = () => {
-    if (!billingStatus) return "";
-    if (billingStatus.seats_overage) {
-      return `Seat limit exceeded. ${billingStatus.active_staff_count} active staff, ${billingStatus.seats_allowed} included.`;
-    }
-    if (billingStatus.in_grace && graceUntil) {
-      return `Payment issue detected. Grace period ends ${graceUntil.toLocaleDateString()}.`;
-    }
-    if (billingStatus.status && !["active", "trialing"].includes(billingStatus.status)) {
-      return "Subscription required to unlock all features.";
-    }
-    return "";
-  };
-
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", width: "100%" }}>
       <CssBaseline />
@@ -2483,24 +2473,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             {billingStatusError}
           </Alert>
         )}
-        {showBillingBanner && (
-          <Alert
-            severity="warning"
-            sx={{ mb: 2 }}
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={handleBillingPortal}
-                disabled={billingPortalLoading}
-              >
-                {billingPortalLoading ? "Opening..." : "Manage Billing"}
-              </Button>
-            }
-          >
-            {billingBannerMessage()}
-          </Alert>
-        )}
+        <GlobalBillingBanner />
         {renderView()}
       </Box>
     </Box>
