@@ -77,6 +77,7 @@ const DEFAULT_PLANS = [
   price: "$19.99/mo",
   description:
     "Launch your website and start taking bookings and payments — perfect for solo professionals.",
+  trialNote: "14-day free trial • Cancel anytime",
   features: [
     "Website builder with branded pages and templates.",
     "Online booking, confirmations, and client portal.",
@@ -87,7 +88,7 @@ const DEFAULT_PLANS = [
     "Custom domain + automatic SSL included on this plan.",
     "Onboarding workflows available as your team grows.",
   ],
-    ctaLabel: "Start free trial",
+    ctaLabel: "Start 14-day free trial",
     ctaTo: HERO_PRIMARY_CTA_TO,
   },
   {
@@ -96,6 +97,7 @@ const DEFAULT_PLANS = [
     price: "$49.99/mo",
   description:
     "For small teams that need staff scheduling, marketing automation, and analytics.",
+  trialNote: "14-day free trial • Cancel anytime",
   features: [
     "Everything in Starter.",
     "Custom domain + automatic SSL included.",
@@ -108,7 +110,7 @@ const DEFAULT_PLANS = [
     "Automated Canadian stat holiday pay and accruals.",
     "Priority support (business hours).",
     ],
-    ctaLabel: "Start Pro",
+    ctaLabel: "Start 14-day free trial",
     ctaTo: HERO_PRIMARY_CTA_TO,
     highlight: true,
     badge: "Most popular",
@@ -119,6 +121,7 @@ const DEFAULT_PLANS = [
     price: "$119.99/mo",
     description:
       "For established teams managing advanced payroll, compliance, and analytics.",
+    trialNote: "14-day free trial • Cancel anytime",
     features: [
       "Everything in Pro.",
       "10 staff seats and up to 2 locations included.",
@@ -129,7 +132,7 @@ const DEFAULT_PLANS = [
       "24/7 priority support.",
       "Free branded website included when using Payroll + Scheduling.",
     ],
-    ctaLabel: "Start Business",
+    ctaLabel: "Start 14-day free trial",
     ctaTo: HERO_PRIMARY_CTA_TO,
   },
 ];
@@ -139,7 +142,7 @@ const DEFAULT_ADDONS = {
   title: "Popular add-ons",
   headers: { addon: "Add-on", price: "Price" },
   items: [
-    { key: "extraSeat", name: "Additional staff seat", price: "$9/mo" },
+    { key: "extraSeat", name: "Additional staff seat", price: "$9/mo per seat (prorated)" },
   ],
 };
 

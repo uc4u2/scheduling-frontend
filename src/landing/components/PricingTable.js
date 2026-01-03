@@ -20,6 +20,7 @@ const PricingCard = ({
   name,
   price,
   description,
+  trialNote,
   features = [],
   ctaLabel,
   ctaTo,
@@ -59,6 +60,11 @@ const PricingCard = ({
         <Typography variant="body1" color="text.secondary" mt={1}>
           {description}
         </Typography>
+        {trialNote && (
+          <Typography variant="body2" color="text.secondary" mt={1}>
+            {trialNote}
+          </Typography>
+        )}
       </Box>
       <Stack component="ul" spacing={1.2} sx={{ pl: 2, m: 0 }}>
         {features.map((feature, index) => (
