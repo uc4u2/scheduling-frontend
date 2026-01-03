@@ -6,6 +6,11 @@ import {
   Paper,
   Button,
   Alert,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -60,7 +65,7 @@ const DEFAULT_HERO = {
     "Launch on your own domain with automatic SSL.",
   ],
   subtitle:
-    "Custom domains (TXT/CNAME) with automatic SSL are now included on every plan. Start with Starter for website + booking, then add staff, payroll, and automations on Pro and Business.",
+    "Custom domains (TXT/CNAME) with automatic SSL are included on every plan. Start with Starter for website + booking, then add staff, payroll, and automations on Pro and Business.",
   primaryCta: { label: "Start free trial" },
   secondaryCta: { label: "Compare plans" },
   badge: {
@@ -76,20 +81,23 @@ const DEFAULT_PLANS = [
   name: "Starter",
   price: "$19.99/mo",
   description:
-    "Launch your website and start taking bookings and payments — perfect for solo professionals.",
+    "Launch your website and take bookings and payments for solo professionals.",
   trialNote: "14-day free trial • Cancel anytime",
   features: [
-    "Core platform: unified booking, website, and payments engine.",
+    { type: "heading", text: "Core platform" },
+    "Unified booking, website, and payments.",
     "Secure client and staff portals.",
-    "Automatic tax handling via Stripe.",
     "Website builder with branded pages and templates.",
     "Online booking, confirmations, and client portal.",
-    "Public “Book with me” link for solo professionals.",
-    "Stripe Checkout with Automatic Tax compliance.",
+    "Public “Book with me” link.",
+    "Stripe Checkout with automatic tax compliance.",
+    { type: "heading", text: "Time & reporting" },
+    "Basic time tracking tied to bookings and shifts.",
+    "CSV/PDF exports for worked hours and revenue.",
+    { type: "heading", text: "Capacity" },
     "1 staff seat and 1 location included.",
-    "CSV and PDF reports for revenue and appointments.",
-    "Custom domain + automatic SSL included on this plan.",
-    "Onboarding workflows available as your team grows.",
+    "Custom domain + automatic SSL included.",
+    "Onboarding workflows as you grow.",
   ],
     ctaLabel: "Start 14-day free trial",
     ctaTo: HERO_PRIMARY_CTA_TO,
@@ -98,22 +106,27 @@ const DEFAULT_PLANS = [
     key: "pro",
     name: "Pro",
     price: "$49.99/mo",
-    positioning: "Run your team’s daily operations from one system.",
+    positioning: "Run daily operations from one system.",
   description:
-    "For small teams that need staff scheduling, marketing automation, and analytics.",
+    "For small teams that need scheduling, automation, and analytics.",
   trialNote: "14-day free trial • Cancel anytime",
   features: [
     "Everything in Starter.",
-    "Custom domain + automatic SSL included.",
-    "Shift swaps, approvals, and live roster controls.",
-    "Department-based scheduling and shared calendars.",
-    "Timeclock tied to scheduled shifts (no free-floating punches).",
-    "Up to 5 staff seats and 1 location included.",
-    "Zapier automation for bookings, shifts, timeclock, breaks, PTO, onboarding, and payroll events.",
-    "QuickBooks and Xero exports for payroll and revenue.",
-    "Payroll processing included with Employee Payslip Portal (self-serve PDF downloads).",
+    { type: "heading", text: "Time & payroll operations" },
+    "Shift-based time tracking with break enforcement.",
+    "Payroll-ready approvals and audit trails.",
+    "Payroll exports to QuickBooks & Xero.",
+    "Payroll processing with Employee Payslip Portal (self-serve PDFs).",
+    { type: "heading", text: "Access & control" },
+    "Role-based access for managers and staff.",
+    "Staff permissions and visibility controls.",
+    "Department scheduling and shared calendars.",
+    "Shift swaps, approvals, and live rosters.",
+    { type: "heading", text: "Analytics & marketing" },
     "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
     "Advanced Analytics (bookings, revenue, client segments).",
+    { type: "heading", text: "Capacity" },
+    "Up to 5 staff seats and 1 location included.",
     "Automated Canadian stat holiday pay and accruals.",
     "Priority support (business hours).",
     ],
@@ -127,19 +140,21 @@ const DEFAULT_PLANS = [
     name: "Business",
     price: "$119.99/mo",
     description:
-      "For established teams managing advanced payroll, compliance, and analytics.",
+    "Built for compliance, audits, and multi-location operations.",
     trialNote: "14-day free trial • Cancel anytime",
     features: [
       "Everything in Pro.",
+      { type: "heading", text: "Governance & compliance" },
+      "Payroll audit trails and historical locking.",
+      "Compliance-ready tax exports (W-2, T4, ROE).",
+      "Multi-location payroll and reporting.",
+      { type: "heading", text: "Advanced control" },
+      "Branch-level permissions.",
+      "Bulk scheduling controls (close / keep windows).",
+      "Priority incident handling.",
+      { type: "heading", text: "Capacity" },
       "10 staff seats and up to 2 locations included.",
-      "Add additional staff seats for $9/mo each (scales with your team).",
-      "Compliance & audit readiness: audit-ready payroll and time records.",
-      "Government-ready exports for IRS and CRA (W-2, T4, ROE).",
-      "Historical change logs for payroll, shifts, and breaks.",
-      "Compliance Documents Pack: W-2 (US), T4 (CA), ROE (CA) creation & export (PDF/XML).",
-      "Advanced payroll exports, audits, and tax reports.",
-      "Team scheduling controls (bulk close / keep windows).",
-      "24/7 priority support.",
+      "Add seats for $9/mo each.",
       "Free branded website included when using Payroll + Scheduling.",
     ],
     ctaLabel: "Start 14-day free trial",
@@ -165,7 +180,7 @@ const DEFAULT_CTA = {
   eyebrow: "Launch today",
   title: "Start your free trial - no credit card required",
   description:
-    "Bring scheduling, payments, and payroll into one workspace backed by automatic SSL on your own domain.",
+    "Bring scheduling, payments, and payroll into one workspace with automatic SSL on your domain.",
   primaryCta: { label: "Start free trial" },
   secondaryCta: { label: "Talk to sales" },
 };
@@ -186,7 +201,7 @@ const DEFAULT_ASSURANCES = [
     key: "professionReady",
     title: "Branded websites",
     description:
-      "Custom domains with TXT/CNAME verification and automatic SSL on Pro and Business.",
+      "Custom domains with TXT/CNAME verification and automatic SSL on every plan.",
   },
   {
     key: "enterpriseOnboarding",
@@ -210,14 +225,14 @@ const DEFAULT_ASSURANCES = [
 
 const DEFAULT_RIBBON = {
   message:
-    "<strong>New:</strong> Custom domains (TXT/CNAME) with automatic SSL are included on <strong>Pro</strong> and <strong>Business</strong>. Starter can add it as an add-on.",
+    "<strong>New:</strong> Custom domains (TXT/CNAME) with automatic SSL are included on every plan.",
   buttonLabel: "Connect domain",
   buttonTo: "/manager/dashboard",
 };
 
 const DEFAULT_FOOTNOTE = {
   message:
-    "<strong>Custom domain + automatic SSL:</strong> included on <strong>Pro</strong> and <strong>Business</strong>. Available on <strong>Starter</strong> as an add-on ($5 / month).",
+    "<strong>Custom domain + automatic SSL:</strong> included on every plan.",
 };
 
 const PricingPage = () => {
@@ -568,6 +583,373 @@ const PricingPage = () => {
           onCtaClick={handleCheckout}
           ctaLoadingKey={ctaLoadingKey}
         />
+        <Box
+          sx={{
+            mt: { xs: 4, md: 5 },
+            p: { xs: 2.5, md: 3 },
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
+          }}
+        >
+          <Typography variant="h5" fontWeight={700} gutterBottom>
+            Schedulaa Feature Comparison
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Compare plans at a glance.
+          </Typography>
+          <Box sx={{ overflowX: "auto" }}>
+            <Table size="small" sx={{ minWidth: 720 }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>Feature</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Starter</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Pro</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Business</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow>
+                  <TableCell>Price</TableCell>
+                  <TableCell>$19.99 / mo</TableCell>
+                  <TableCell>$49.99 / mo</TableCell>
+                  <TableCell>$119.99 / mo</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Best for</TableCell>
+                  <TableCell>Solo professionals</TableCell>
+                  <TableCell>Growing teams</TableCell>
+                  <TableCell>Compliance & multi-location teams</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Website & Online Presence
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Branded website builder & templates</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Custom domain + automatic SSL</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Public booking pages</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Embedded booking widgets</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Company-level branding</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Booking & Scheduling
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Online booking & confirmations</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Client self-serve rescheduling</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Multi-service & add-on bookings</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Staff scheduling & shift management</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Shift swaps & leave approvals</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Bulk scheduling controls</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Time Tracking
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Shift-based clock-in / clock-out</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Break policy enforcement</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Staggered & windowed breaks</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>IP / device audit hints</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Overtime & anomaly flags</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Payroll
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Payroll processing (US & Canada)</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Automated stat holiday pay & accruals</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Employee payslip portal (PDF)</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Advanced payroll exports & audits</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Payroll-linked invoicing</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Compliance
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Revenue & appointment reports</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>CSV / PDF exports</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>W-2 (US) generation</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>T4 & ROE (Canada)</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Compliance-ready audit trails</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Analytics
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Revenue & booking dashboards</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Utilization & productivity analytics</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Client segmentation & trends</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Multi-location analytics</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Automation
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Email notifications & reminders</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Email campaigns (VIP, Win-back, No-show)</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Zapier automation</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Workflow automations</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Hiring
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Job postings & public apply links</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Resume uploads & tracking</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Onboarding workflows</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Hiring → payroll handoff</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Scale
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Staff seats included</TableCell>
+                  <TableCell>1</TableCell>
+                  <TableCell>Up to 5</TableCell>
+                  <TableCell>10</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Additional staff seats</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>$9 / seat</TableCell>
+                  <TableCell>$9 / seat</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Multi-location support (use departments as locations)</TableCell>
+                  <TableCell>1</TableCell>
+                  <TableCell>1</TableCell>
+                  <TableCell>Up to 2</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Role-based access & permissions</TableCell>
+                  <TableCell>Basic</TableCell>
+                  <TableCell>Advanced</TableCell>
+                  <TableCell>Advanced</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Branch-level permissions</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Support
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Standard support</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Priority support</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Business hours</TableCell>
+                  <TableCell>24 / 7</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Audit & compliance support</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>Yes</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Box>
+        </Box>
         <Stack
           spacing={3}
           sx={{
@@ -594,7 +976,7 @@ const PricingPage = () => {
                 No syncing errors between shifts, hours, and pay.
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Fewer compliance gaps caused by disconnected tools.
+                Fewer compliance gaps from disconnected tools.
               </Typography>
             </Stack>
           </Paper>
@@ -611,13 +993,13 @@ const PricingPage = () => {
             </Typography>
             <Stack spacing={1}>
               <Typography variant="body2" color="text.secondary">
-                Automatic SSL and custom domains.
+                Custom domains with automatic SSL.
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Secure role-based access and staff permissions.
+                Role-based access and staff permissions.
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Email and booking notifications plus continuous feature updates.
+                Email and booking notifications, plus continuous updates.
               </Typography>
             </Stack>
           </Paper>
@@ -648,10 +1030,21 @@ const PricingPage = () => {
           Need more scale?
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, mx: "auto", mb: 3 }}>
-          We support larger organizations with increased seat and location limits, premium support, and tailored onboarding.
+          We support larger organizations with higher seat and location limits, priority support, and guided onboarding.
           Example configurations: <strong>Enterprise</strong> (25 staff, up to 3 locations) and <strong>Corporate</strong> (50 staff, up to 4 locations).
-          Expect contractual SLA options, audit-ready data retention policies, security review support, and dedicated environments when required.
+          Contracted SLAs, audit support, and dedicated environments are available by agreement.
         </Typography>
+        <Stack component="ul" spacing={1} sx={{ maxWidth: 720, mx: "auto", mb: 3, pl: 2, color: "text.secondary" }}>
+          <Typography component="li" variant="body2">
+            SOC2-aligned controls (in progress).
+          </Typography>
+          <Typography component="li" variant="body2">
+            Data retention and audit policy configuration.
+          </Typography>
+          <Typography component="li" variant="body2">
+            Dedicated onboarding and billing coordination.
+          </Typography>
+        </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center">
           <Button component={Link} to="/contact" variant="contained" size="large">
             Contact Sales

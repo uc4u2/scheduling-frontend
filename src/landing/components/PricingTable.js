@@ -73,11 +73,26 @@ const PricingCard = ({
         )}
       </Box>
       <Stack component="ul" spacing={1.2} sx={{ pl: 2, m: 0 }}>
-        {features.map((feature, index) => (
-          <Typography component="li" variant="body2" color="text.primary" key={`${feature}-${index}`}>
-            {feature}
-          </Typography>
-        ))}
+        {features.map((feature, index) => {
+          if (feature && typeof feature === "object" && feature.type === "heading") {
+            return (
+              <Typography
+                component="li"
+                variant="overline"
+                color="text.secondary"
+                key={`${feature.text}-${index}`}
+                sx={{ fontWeight: 700, listStyleType: "none", pl: 0, mt: 1 }}
+              >
+                {feature.text}
+              </Typography>
+            );
+          }
+          return (
+            <Typography component="li" variant="body2" color="text.primary" key={`${feature}-${index}`}>
+              {feature}
+            </Typography>
+          );
+        })}
       </Stack>
       <Button
         component={onCtaClick ? "button" : Link}
