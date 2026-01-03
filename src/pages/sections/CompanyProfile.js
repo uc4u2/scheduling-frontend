@@ -232,6 +232,15 @@ export default function CompanyProfile({ token }) {
       setNewDepartment({ name: "", description: "" });
       loadDepartments();
     } catch (err) {
+      const payload = err?.response?.data;
+      if (payload?.error === "subscription_required") {
+        showMessage("", "error", payload?.message || "Upgrade required to add more locations.");
+        return;
+      }
+      if (payload?.error === "limit_exceeded" && payload?.limit === "locations") {
+        showMessage("", "error", payload?.message || "Location limit reached. Upgrade to add more locations.");
+        return;
+      }
       console.error("Error creating department", err);
       showMessage("manager.companyProfile.messages.departmentCreateFailed", "error");
     }
