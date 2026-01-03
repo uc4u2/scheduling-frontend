@@ -30,13 +30,6 @@ const GlobalBillingBanner = () => {
         action: "update_payment",
       };
     }
-    if (status.seats_overage) {
-      return {
-        severity: "info",
-        message: "Seat limit reached. Add seats to continue.",
-        action: "add_seats",
-      };
-    }
     return null;
   }, [status]);
 
@@ -48,26 +41,6 @@ const GlobalBillingBanner = () => {
 
   const actions = (
     <Stack direction="row" spacing={1}>
-      {banner.action === "add_seats" && (
-        <Button
-          color="inherit"
-          size="small"
-          onClick={() => {
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(
-                new CustomEvent("billing:seats-required", {
-                  detail: {
-                    allowed: status?.seats_allowed,
-                    current: status?.active_staff_count,
-                  },
-                })
-              );
-            }
-          }}
-        >
-          Add seats
-        </Button>
-      )}
       {banner.action === "update_payment" && (
         <Button color="inherit" size="small" onClick={() => openBillingPortal()}>
           Update payment

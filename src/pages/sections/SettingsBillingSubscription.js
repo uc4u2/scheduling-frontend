@@ -86,6 +86,11 @@ const SettingsBillingSubscription = () => {
                 Multiple subscriptions detected in Stripe. Cancel one in the billing portal, then run Sync.
               </Alert>
             )}
+            {status.seats_overage && (
+              <Alert severity="info">
+                Seat limit reached. Add seats to keep adding team members.
+              </Alert>
+            )}
             {syncState.message && <Alert severity="success">{syncState.message}</Alert>}
             {syncState.error && <Alert severity="error">{syncState.error}</Alert>}
             <Stack direction="row" spacing={3} flexWrap="wrap">
