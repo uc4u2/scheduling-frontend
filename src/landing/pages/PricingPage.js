@@ -79,6 +79,9 @@ const DEFAULT_PLANS = [
     "Launch your website and start taking bookings and payments — perfect for solo professionals.",
   trialNote: "14-day free trial • Cancel anytime",
   features: [
+    "Core platform: unified booking, website, and payments engine.",
+    "Secure client and staff portals.",
+    "Automatic tax handling via Stripe.",
     "Website builder with branded pages and templates.",
     "Online booking, confirmations, and client portal.",
     "Public “Book with me” link for solo professionals.",
@@ -95,12 +98,16 @@ const DEFAULT_PLANS = [
     key: "pro",
     name: "Pro",
     price: "$49.99/mo",
+    positioning: "Run your team’s daily operations from one system.",
   description:
     "For small teams that need staff scheduling, marketing automation, and analytics.",
   trialNote: "14-day free trial • Cancel anytime",
   features: [
     "Everything in Starter.",
     "Custom domain + automatic SSL included.",
+    "Shift swaps, approvals, and live roster controls.",
+    "Department-based scheduling and shared calendars.",
+    "Timeclock tied to scheduled shifts (no free-floating punches).",
     "Up to 5 staff seats and 1 location included.",
     "Zapier automation for bookings, shifts, timeclock, breaks, PTO, onboarding, and payroll events.",
     "QuickBooks and Xero exports for payroll and revenue.",
@@ -126,6 +133,9 @@ const DEFAULT_PLANS = [
       "Everything in Pro.",
       "10 staff seats and up to 2 locations included.",
       "Add additional staff seats for $9/mo each (scales with your team).",
+      "Compliance & audit readiness: audit-ready payroll and time records.",
+      "Government-ready exports for IRS and CRA (W-2, T4, ROE).",
+      "Historical change logs for payroll, shifts, and breaks.",
       "Compliance Documents Pack: W-2 (US), T4 (CA), ROE (CA) creation & export (PDF/XML).",
       "Advanced payroll exports, audits, and tax reports.",
       "Team scheduling controls (bulk close / keep windows).",
@@ -558,6 +568,60 @@ const PricingPage = () => {
           onCtaClick={handleCheckout}
           ctaLoadingKey={ctaLoadingKey}
         />
+        <Stack
+          spacing={3}
+          sx={{
+            mt: { xs: 4, md: 5 },
+            mb: { xs: 2, md: 3 },
+          }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2.5, md: 3 },
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Why teams choose Schedulaa
+            </Typography>
+            <Stack spacing={1}>
+              <Typography variant="body2" color="text.secondary">
+                Booking, payroll, time tracking, and websites share one data model.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                No syncing errors between shifts, hours, and pay.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Fewer compliance gaps caused by disconnected tools.
+              </Typography>
+            </Stack>
+          </Paper>
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2.5, md: 3 },
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
+            }}
+          >
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              Included in every plan
+            </Typography>
+            <Stack spacing={1}>
+              <Typography variant="body2" color="text.secondary">
+                Automatic SSL and custom domains.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Secure role-based access and staff permissions.
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Email and booking notifications plus continuous feature updates.
+              </Typography>
+            </Stack>
+          </Paper>
+        </Stack>
         <Typography
           variant="body2"
           color="text.secondary"
@@ -586,7 +650,7 @@ const PricingPage = () => {
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720, mx: "auto", mb: 3 }}>
           We support larger organizations with increased seat and location limits, premium support, and tailored onboarding.
           Example configurations: <strong>Enterprise</strong> (25 staff, up to 3 locations) and <strong>Corporate</strong> (50 staff, up to 4 locations).
-          Tell us what you need and we&apos;ll tailor a quote.
+          Expect contractual SLA options, audit-ready data retention policies, security review support, and dedicated environments when required.
         </Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center">
           <Button component={Link} to="/contact" variant="contained" size="large">

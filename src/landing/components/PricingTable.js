@@ -19,6 +19,7 @@ const PricingCard = ({
   planKey,
   name,
   price,
+  positioning,
   description,
   trialNote,
   features = [],
@@ -54,6 +55,11 @@ const PricingCard = ({
         <Typography variant="h6" component="h3" fontWeight={700}>
           {name}
         </Typography>
+        {positioning && (
+          <Typography variant="subtitle2" color="text.secondary" mt={0.5}>
+            {positioning}
+          </Typography>
+        )}
         <Typography variant="h3" component="p" fontWeight={700} mt={1}>
           {price}
         </Typography>
