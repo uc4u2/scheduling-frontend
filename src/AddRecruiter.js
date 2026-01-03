@@ -31,6 +31,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { useDepartments } from "./pages/sections/hooks/useRecruiterDepartments";
 import TimezoneSelect from "./components/TimezoneSelect";
 import useBillingStatus from "./components/billing/useBillingStatus";
+import { formatBillingNextDateLabel } from "./components/billing/billingLabels";
 
 const PASSWORD_HELP =
   "8+ chars, uppercase, lowercase, number, and symbol required.";
@@ -74,12 +75,10 @@ const AddRecruiter = () => {
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
   const departments = useDepartments();
   const { status: billingStatus } = useBillingStatus();
-  const trialEnd = billingStatus?.trial_end;
-  const seatNextBillingLabel = seatPreview?.next_billing_date
-    ? `Next billing date: ${new Date(seatPreview.next_billing_date).toLocaleDateString()}`
-    : trialEnd
-      ? `Trial ends: ${new Date(trialEnd).toLocaleDateString()}`
-      : "Next billing date: —";
+  const seatNextBillingLabel = formatBillingNextDateLabel({
+    nextBillingDate: seatPreview?.next_billing_date,
+    trialEnd: billingStatus?.trial_end,
+  });
 
 const passwordStrength = useMemo(() => {
   if (!form.password) return "";

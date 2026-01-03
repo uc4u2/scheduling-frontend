@@ -13,6 +13,7 @@ import {
 import api from "../../utils/api";
 import { openBillingPortal } from "./billingHelpers";
 import useBillingStatus from "./useBillingStatus";
+import { formatBillingNextDateLabel } from "./billingLabels";
 
 const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
   const needed = Math.max(1, (current || 0) - (allowed || 0));
@@ -25,12 +26,10 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
   const [error, setError] = useState("");
   const [invoiceUrl, setInvoiceUrl] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const trialEnd = billingStatus?.trial_end;
-  const nextBillingLabel = preview?.next_billing_date
-    ? `Next billing date: ${new Date(preview.next_billing_date).toLocaleDateString()}`
-    : trialEnd
-      ? `Trial ends: ${new Date(trialEnd).toLocaleDateString()}`
-      : "Next billing date: —";
+  const nextBillingLabel = formatBillingNextDateLabel({
+    nextBillingDate: preview?.next_billing_date,
+    trialEnd: billingStatus?.trial_end,
+  });
 
   useEffect(() => {
     setSeatInput(String(needed));

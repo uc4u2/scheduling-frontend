@@ -29,6 +29,7 @@ import api from "../../utils/api";
 import { useTranslation } from "react-i18next";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import TaxHelpGuide from "./TaxHelpGuide";
+import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
 
 const MODE_LABEL_KEY = {
   offline: "settings.stripeHub.checkout.mode.offline",
@@ -72,12 +73,10 @@ export default function SettingsStripeHub() {
   const [seatInput, setSeatInput] = useState("");
   const [seatPreview, setSeatPreview] = useState(null);
   const [seatPreviewLoading, setSeatPreviewLoading] = useState(false);
-  const trialEnd = billingStatus?.trial_end;
-  const seatNextBillingLabel = seatPreview?.next_billing_date
-    ? `Next billing date: ${new Date(seatPreview.next_billing_date).toLocaleDateString()}`
-    : trialEnd
-      ? `Trial ends: ${new Date(trialEnd).toLocaleDateString()}`
-      : "Next billing date: —";
+  const seatNextBillingLabel = formatBillingNextDateLabel({
+    nextBillingDate: seatPreview?.next_billing_date,
+    trialEnd: billingStatus?.trial_end,
+  });
   const [seatDialogError, setSeatDialogError] = useState("");
   const [seatNotice, setSeatNotice] = useState("");
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
