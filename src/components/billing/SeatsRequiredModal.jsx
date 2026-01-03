@@ -49,10 +49,13 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
         if (!active) return;
         setPreview(null);
         const apiError = err?.response?.data?.error;
+        const apiMessage = err?.response?.data?.message;
         if (apiError === "subscription_missing") {
           setPreviewError("No active subscription. Start a plan to purchase seats.");
         } else if (apiError === "seat_addon_price_missing") {
           setPreviewError("Seat add-on price is not configured yet.");
+        } else if (apiMessage) {
+          setPreviewError(apiMessage);
         } else {
           setPreviewError("Estimate unavailable. You can still continue.");
         }
