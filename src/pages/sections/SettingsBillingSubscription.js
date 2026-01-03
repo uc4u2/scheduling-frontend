@@ -4,6 +4,7 @@ import SectionCard from "../../components/ui/SectionCard";
 import useBillingStatus from "../../components/billing/useBillingStatus";
 import { openBillingPortal } from "../../components/billing/billingHelpers";
 import api from "../../utils/api";
+import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
 
 const planLabel = (key) => {
   const map = { starter: "Starter", pro: "Pro", business: "Business" };
@@ -109,7 +110,10 @@ const SettingsBillingSubscription = () => {
                 <strong>Trial ends:</strong> {formatDate(status.trial_end)}
               </Typography>
               <Typography variant="body2">
-                <strong>Next billing date:</strong> {formatDate(status.next_billing_date)}
+                <strong>{formatBillingNextDateLabel({
+                  nextBillingDate: status.next_billing_date,
+                  trialEnd: status.trial_end,
+                })}</strong>
               </Typography>
             </Stack>
             <Divider sx={{ my: 1 }} />

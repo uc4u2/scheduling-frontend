@@ -11,6 +11,7 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../utils/api";
+import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
 
 const PLAN_LABELS = {
   starter: "Starter",
@@ -172,7 +173,10 @@ const BillingSuccessPage = () => {
                 <strong>Trial ends:</strong> {formatDate(statusPayload.trial_end)}
               </Typography>
               <Typography variant="body2">
-                <strong>Next billing date:</strong> {formatDate(statusPayload.current_period_end)}
+                <strong>{formatBillingNextDateLabel({
+                  nextBillingDate: statusPayload.current_period_end,
+                  trialEnd: statusPayload.trial_end,
+                })}</strong>
               </Typography>
             </Stack>
           )}
