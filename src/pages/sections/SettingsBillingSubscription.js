@@ -27,6 +27,7 @@ const SettingsBillingSubscription = () => {
   const seatAddon = Number(status?.seats_addon_qty || 0);
   const activeStaff = Number(status?.active_staff_count || 0);
   const [syncState, setSyncState] = useState({ loading: false, error: "", message: "" });
+  const [modeMismatchDismissed, setModeMismatchDismissed] = useState(false);
 
   const handleAddSeats = () => {
     if (typeof window === "undefined") return;
@@ -49,6 +50,15 @@ const SettingsBillingSubscription = () => {
       const apiError = err?.response?.data;
       const message = apiError?.message || apiError?.error || "Unable to sync from Stripe.";
       setSyncState({ loading: false, error: message, message: "" });
+    }
+  };
+
+  const handleModeMismatchDismiss = async () => {
+    setModeMismatchDismissed(true);
+    try {
+      await api.post("/billing/reset-stripe-state");
+    } catch (err) {
+      // Ignore reset failures to avoid blocking dismissal.
     }
   };
 
@@ -82,6 +92,20 @@ const SettingsBillingSubscription = () => {
         )}
         {!loading && !error && status && (
           <Stack spacing={1.25}>
+            {status.error === "mode_mismatch" && !modeMismatchDismissed && (
+              <Alert
+                severity="warning"
+                onClose={handleModeMismatchDismiss}
+                action={
+                  <Button color="inherit" size="small" onClick={() => (window.location.href = "/pricing")}>
+                    Start plan
+                  </Button>
+                }
+              >
+                {status.message ||
+                  "Billing data was created in test mode. Please start your plan again to activate live billing."}
+              </Alert>
+            )}
             {status.sync_error === "multiple_subscriptions" && (
               <Alert severity="warning">
                 Multiple subscriptions detected in Stripe. Cancel one in the billing portal, then run Sync.

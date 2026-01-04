@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Stack } from "@mui/material";
 import useBillingStatus from "./useBillingStatus";
 import { openBillingPortal } from "./billingHelpers";
 import { useBillingBanner } from "./BillingBannerContext";
+import api from "../../utils/api";
 
 const planLabel = (key) => {
   const map = { starter: "Starter", pro: "Pro", business: "Business" };
@@ -12,10 +13,21 @@ const planLabel = (key) => {
 const GlobalBillingBanner = () => {
   const { status } = useBillingStatus();
   const { setVisible } = useBillingBanner();
+  const [dismissed, setDismissed] = useState(false);
 
   const banner = useMemo(() => {
     if (!status) return null;
+    if (dismissed) return null;
     const state = status.subscription_state || status.status;
+    if (status.error === "mode_mismatch") {
+      return {
+        severity: "warning",
+        message:
+          status.message ||
+          "Billing data was created in test mode. Please start your plan again to activate live billing.",
+        action: "start_plan",
+      };
+    }
     if (state === "none" || state === "inactive" || state === "canceled") {
       return {
         severity: "warning",
@@ -31,7 +43,7 @@ const GlobalBillingBanner = () => {
       };
     }
     return null;
-  }, [status]);
+  }, [status, dismissed]);
 
   useEffect(() => {
     setVisible(Boolean(banner));
@@ -51,14 +63,31 @@ const GlobalBillingBanner = () => {
           Start plan
         </Button>
       )}
-      <Button color="inherit" size="small" onClick={() => openBillingPortal()}>
-        Manage billing
-      </Button>
+      {status?.error !== "mode_mismatch" && (
+        <Button color="inherit" size="small" onClick={() => openBillingPortal()}>
+          Manage billing
+        </Button>
+      )}
     </Stack>
   );
 
   return (
-    <Alert severity={banner.severity} sx={{ mb: 2 }} action={actions}>
+    <Alert
+      severity={banner.severity}
+      sx={{ mb: 2 }}
+      action={actions}
+      onClose={async () => {
+        setDismissed(true);
+        setVisible(false);
+        if (status?.error === "mode_mismatch") {
+          try {
+            await api.post("/billing/reset-stripe-state");
+          } catch (err) {
+            // Swallow reset failures to avoid blocking dismissal.
+          }
+        }
+      }}
+    >
       {banner.message}
       {banner.action === "start_plan" && status?.plan_key && (
         <>
