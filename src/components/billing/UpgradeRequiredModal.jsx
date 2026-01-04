@@ -14,11 +14,22 @@ const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) 
   const detail = message || `This feature requires the ${planLabel} plan.`;
 
   const handlePortal = async () => {
+    if (onClose) onClose();
     try {
       await openBillingPortal();
     } catch {
       navigate("/pricing");
     }
+  };
+
+  const handleStartPlan = () => {
+    if (onClose) onClose();
+    navigate("/pricing");
+  };
+
+  const handleViewPlans = () => {
+    if (onClose) onClose();
+    navigate("/pricing");
   };
 
   return (
@@ -38,12 +49,12 @@ const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) 
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="outlined" onClick={() => navigate("/pricing")}>
+        <Button variant="outlined" onClick={handleViewPlans}>
           View plans
         </Button>
         <Button
           variant="contained"
-          onClick={action === "start_plan" ? () => navigate("/pricing") : handlePortal}
+          onClick={action === "start_plan" ? handleStartPlan : handlePortal}
         >
           {action === "start_plan" ? "Start plan" : "Upgrade"}
         </Button>
