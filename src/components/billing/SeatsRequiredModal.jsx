@@ -26,6 +26,8 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
   const [error, setError] = useState("");
   const [invoiceUrl, setInvoiceUrl] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const seatQty = Math.max(0, parseInt(seatInput, 10) || 0);
+  const monthlyAddon = seatQty * 9;
   const nextBillingLabel = formatBillingNextDateLabel({
     nextBillingDate: preview?.next_billing_date,
     trialEnd: billingStatus?.trial_end,
@@ -138,6 +140,16 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
             <Typography variant="caption" color="text.secondary">
               {previewError || "Estimate unavailable. You can still continue."}
             </Typography>
+          )}
+          {seatQty > 0 && (
+            <Stack spacing={0.3}>
+              <Typography variant="caption">
+                Estimated monthly add-on: ${monthlyAddon.toFixed(2)} ({seatQty} x $9).
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Prorated charge will be applied immediately.
+              </Typography>
+            </Stack>
           )}
           {error && <Typography color="error" variant="caption">{error}</Typography>}
           {invoiceUrl && (
