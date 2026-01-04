@@ -1,5 +1,5 @@
 // src/components/ui/TabShell.js
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { Box, Tabs, Tab, Stack, Typography, Divider } from "@mui/material";
 import SectionCard from "./SectionCard";
@@ -49,13 +49,16 @@ export default function TabShell({
   }, [idx, safeTabs.length]);
 
   // Sync with external defaultIndex changes (e.g., URL tab updates)
+  const prevDefaultIndex = useRef(defaultIndex);
   useEffect(() => {
+    if (prevDefaultIndex.current === defaultIndex) return;
+    prevDefaultIndex.current = defaultIndex;
     const max = Math.max(0, safeTabs.length - 1);
     const next = Math.min(Math.max(0, Number(defaultIndex) || 0), max);
-    if (Number.isFinite(next) && next !== idx) {
+    if (Number.isFinite(next)) {
       setIdx(next);
     }
-  }, [defaultIndex, safeTabs.length, idx]);
+  }, [defaultIndex, safeTabs.length]);
 
   return (
     <SectionCard
