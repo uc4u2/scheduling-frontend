@@ -372,8 +372,13 @@ export default function SettingsCheckoutPro() {
                 placeholder={t("settings.checkout.publishableKey.placeholder")}
                 type={showKey ? "text" : "password"}
                 error={!!keyError}
-                helperText={keyError || keyWarning || "Use your Stripe publishable key (pk_test_… or pk_live_…)."}
+                helperText={
+                  keyError ||
+                  keyWarning ||
+                  "Managed by Schedulaa (Stripe Connect). This public key is used for checkout."
+                }
                 InputProps={{
+                  readOnly: true,
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
