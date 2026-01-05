@@ -12,8 +12,10 @@ import {
   Divider,
   Grid,
   Link as MuiLink,
+  Drawer,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 import { alpha, useTheme } from "@mui/material/styles";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import ThemeRuntimeProvider from "./ThemeRuntimeProvider";
@@ -87,6 +89,7 @@ export default function SiteFrame({
   const themeOverrides = site?.theme_overrides || {};
   const nav = useMemo(() => site?.nav_overrides || {}, [site]);
   const menuSource = nav?.menu_source || "pages";
+  const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const headerConfig = useMemo(
@@ -152,7 +155,16 @@ export default function SiteFrame({
       localStorage.removeItem("token");
       localStorage.removeItem("role");
     } catch {}
+    setMobileOpen(false);
     navigate("/login");
+  };
+
+  const handleMobileToggle = () => {
+    setMobileOpen(prev => !prev);
+  };
+
+  const handleMobileClose = () => {
+    setMobileOpen(false);
   };
 
   const resolveLinkProps = (href) => {
@@ -329,13 +341,14 @@ export default function SiteFrame({
     </>
   );
 
-  const renderSessionButtons = (color = "inherit") =>
+  const renderSessionButtons = (color = "inherit", onItemClick) =>
     clientLoggedIn ? (
       <>
         <Button
           component={RouterLink}
           to={myBookingsHref()}
           color={pathname.startsWith("/dashboard") ? "primary" : color}
+          onClick={onItemClick}
         >
           {nav.mybookings_tab_label || "My Bookings"}
         </Button>
@@ -348,6 +361,7 @@ export default function SiteFrame({
         component={RouterLink}
         to={loginHref()}
         color={pathname === "/login" ? "primary" : color}
+        onClick={onItemClick}
       >
         {nav.login_tab_label || "Login"}
       </Button>
@@ -364,7 +378,11 @@ export default function SiteFrame({
       }}
     >
       <Toolbar sx={{ gap: 1 }}>
-        <IconButton edge="start" sx={{ display: { xs: "inline-flex", md: "none" } }}>
+        <IconButton
+          edge="start"
+          sx={{ display: { xs: "inline-flex", md: "none" } }}
+          onClick={handleMobileToggle}
+        >
           <MenuIcon />
         </IconButton>
 
@@ -498,6 +516,39 @@ export default function SiteFrame({
     </>
   );
 
+  const mobileNavButtons = (
+    <Stack spacing={1} alignItems="stretch">
+      {navLinks.map((item, idx) => {
+        const props = resolveLinkProps(item.href);
+        return (
+          <Button
+            key={`${item.label}-${idx}`}
+            {...props}
+            color="inherit"
+            fullWidth
+            sx={{ justifyContent: "flex-start" }}
+            onClick={handleMobileClose}
+          >
+            {item.label || "Link"}
+          </Button>
+        );
+      })}
+      {!hasReviewsLink && nav.show_reviews_tab !== false && (
+        <Button
+          component={RouterLink}
+          to={reviewsHref()}
+          color={pathname.includes("/reviews") ? "primary" : "inherit"}
+          fullWidth
+          sx={{ justifyContent: "flex-start" }}
+          onClick={handleMobileClose}
+        >
+          {nav.reviews_tab_label || "Reviews"}
+        </Button>
+      )}
+      {renderSessionButtons("inherit", handleMobileClose)}
+    </Stack>
+  );
+
   const headerNode = headerConfig ? (
     <Box
       component="header"
@@ -529,7 +580,7 @@ export default function SiteFrame({
             direction="row"
             spacing={1.25}
             alignItems="center"
-            justifyContent={logoAlign}
+            justifyContent={{ xs: "space-between", md: logoAlign }}
             sx={{
               width: "100%",
               maxWidth:
@@ -541,7 +592,15 @@ export default function SiteFrame({
               ...logoEdgePlacement,
             }}
           >
-            {renderBrandContent(true)}
+            <Stack direction="row" spacing={1.25} alignItems="center">
+              {renderBrandContent(true)}
+            </Stack>
+            <IconButton
+              onClick={handleMobileToggle}
+              sx={{ display: { xs: "inline-flex", md: "none" } }}
+            >
+              <MenuIcon />
+            </IconButton>
           </Stack>
           <Box
             sx={{
@@ -558,7 +617,7 @@ export default function SiteFrame({
               spacing={1}
               flexWrap="wrap"
               justifyContent={navAlign}
-              sx={{ flex: 1 }}
+              sx={{ flex: 1, display: { xs: "none", md: "flex" } }}
             >
               {socialInline && socialInlinePlacement === "before" &&
                 renderSocialIcons({ inline: true, placement: "before" })}
@@ -788,6 +847,30 @@ export default function SiteFrame({
   return (
     <ThemeRuntimeProvider themeOverrides={site?.theme_overrides || {}}>
       {headerNode}
+      <Drawer
+        anchor="top"
+        open={mobileOpen}
+        onClose={handleMobileClose}
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          sx: {
+            pt: 2,
+            pb: 3,
+            px: 2.5,
+            backgroundColor: theme.palette.background.paper,
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {site?.company?.name || slug}
+          </Typography>
+          <IconButton onClick={handleMobileClose}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        {mobileNavButtons}
+      </Drawer>
       {wrapChildrenInContainer ? (
         <Container sx={{ py: { xs: 3, md: 5 } }}>{children}</Container>
       ) : (
