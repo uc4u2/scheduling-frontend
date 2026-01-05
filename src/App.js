@@ -379,7 +379,7 @@ const AppContent = ({ token, setToken }) => {
   const content = (
     <BillingBannerProvider>
       <BillingUpgradeController />
-      {showAppChrome && <ThemeSwitcher />}
+      {showAppChrome && null}
       {showAppChrome && (
         <>
           <NavBar token={token} setToken={setToken} />
