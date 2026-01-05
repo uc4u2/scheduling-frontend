@@ -27,7 +27,6 @@ import api from "./utils/api";
 import NavBar from "./NavBar";
 import Footer from "./components/Footer";
 import PublicLayout from "./layouts/PublicLayout";
-import ThemeSwitcher from "./components/ui/ThemeSwitcher";
 import HomePage from "./landing/pages/HomePage";
 import PricingPage from "./landing/pages/PricingPage";
 import BillingUpgradeController from "./components/billing/BillingUpgradeController";
@@ -379,7 +378,6 @@ const AppContent = ({ token, setToken }) => {
   const content = (
     <BillingBannerProvider>
       <BillingUpgradeController />
-      {showAppChrome && null}
       {showAppChrome && (
         <>
           <NavBar token={token} setToken={setToken} />
