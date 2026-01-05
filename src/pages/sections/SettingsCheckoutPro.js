@@ -28,7 +28,7 @@ import {
 } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import api from "../../utils/api";
+import api, { isStripeOnboardingIncomplete, stripeConnect } from "../../utils/api";
 import {
   getCurrencyOptions,
   resolveCurrencyForCountry,
@@ -225,11 +225,37 @@ export default function SettingsCheckoutPro() {
   // 👇 helper to open Stripe dashboard from this page too (same as TaxSetupCard)
   const openStripeDashboard = async () => {
     try {
-      const { data } = await api.post(`/connect/dashboard-login`, {}, {
+      const data = await stripeConnect.dashboardLogin({}, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (data?.url) window.open(data.url, "_blank", "noopener");
+      if (data?.url) {
+        window.open(data.url, "_blank", "noopener");
+      }
     } catch (e) {
+      if (isStripeOnboardingIncomplete(e)) {
+        try {
+          const onboardingUrl = e?.response?.data?.onboarding_url;
+          if (onboardingUrl) {
+            window.open(onboardingUrl, "_blank", "noopener");
+            setMsg(t("settings.checkout.onboardingContinue", "Complete Stripe onboarding to access the dashboard."));
+            setMsgSeverity("info");
+            return;
+          }
+          const data = await stripeConnect.refreshOnboardingLink({}, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (data?.url) {
+            window.open(data.url, "_blank", "noopener");
+            setMsg(t("settings.checkout.onboardingContinue", "Complete Stripe onboarding to access the dashboard."));
+            setMsgSeverity("info");
+            return;
+          }
+        } catch (linkErr) {
+          setMsg(linkErr?.response?.data?.error || linkErr?.message || t("settings.checkout.openDashboardError"));
+          setMsgSeverity("error");
+          return;
+        }
+      }
       setMsg(e?.response?.data?.error || t("settings.checkout.openDashboardError"));
       setMsgSeverity("error");
     }

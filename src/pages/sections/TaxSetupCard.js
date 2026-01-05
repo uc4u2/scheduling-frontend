@@ -1,5 +1,5 @@
 import React from "react";
-import { stripeConnect } from "../../utils/api";
+import { isStripeOnboardingIncomplete, stripeConnect } from "../../utils/api";
 import {
   Card, CardContent, CardHeader,
   Button, Stack, Alert, Typography, Divider, Chip, CircularProgress
@@ -38,6 +38,23 @@ export default function TaxSetupCard() {
         throw new Error("Stripe did not provide a dashboard URL.");
       }
     } catch (e) {
+      if (isStripeOnboardingIncomplete(e)) {
+        try {
+          const onboardingUrl = e?.response?.data?.onboarding_url;
+          if (onboardingUrl) {
+            window.open(onboardingUrl, "_blank", "noopener");
+            return;
+          }
+          const data = await stripeConnect.refreshOnboardingLink({}, { headers });
+          if (data?.url) {
+            window.open(data.url, "_blank", "noopener");
+            return;
+          }
+        } catch (linkErr) {
+          setErr(linkErr?.response?.data?.error || linkErr?.message || "Unable to open Stripe onboarding.");
+          return;
+        }
+      }
       setErr(e?.displayMessage || e?.response?.data?.error || e?.message || "Could not open Stripe dashboard");
     }
   };
