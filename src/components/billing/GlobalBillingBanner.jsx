@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Stack } from "@mui/material";
+import { Alert, Button, Stack, useMediaQuery } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import useBillingStatus from "./useBillingStatus";
 import { openBillingPortal } from "./billingHelpers";
 import { useBillingBanner } from "./BillingBannerContext";
@@ -11,6 +12,8 @@ const planLabel = (key) => {
 };
 
 const GlobalBillingBanner = () => {
+  const theme = useTheme();
+  const hideOnSmallScreens = useMediaQuery(theme.breakpoints.down("md"));
   const { status } = useBillingStatus();
   const { setVisible } = useBillingBanner();
   const [dismissed, setDismissed] = useState(false);
@@ -49,7 +52,7 @@ const GlobalBillingBanner = () => {
     setVisible(Boolean(banner));
   }, [banner, setVisible]);
 
-  if (!banner) return null;
+  if (!banner || hideOnSmallScreens) return null;
 
   const actions = (
     <Stack direction="row" spacing={1}>
