@@ -2473,7 +2473,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             {billingStatusError}
           </Alert>
         )}
-        <GlobalBillingBanner />
+        {selectedView !== "team" && <GlobalBillingBanner />}
         {renderView()}
       </Box>
     </Box>
