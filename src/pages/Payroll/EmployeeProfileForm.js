@@ -211,6 +211,24 @@ const FRONTEND_ORIGIN =
     fetchRecruiters();
   }, [searchQuery, departmentFilter, page, perPage, includeArchived]);
 
+  const visibleRecruiters = useMemo(() => {
+    if (includeArchived) return recruiters;
+    return recruiters.filter(
+      (recruiter) => String(recruiter.status || "").toLowerCase() === "active"
+    );
+  }, [recruiters, includeArchived]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const stillVisible = visibleRecruiters.some(
+      (recruiter) => String(recruiter.id) === String(selectedId)
+    );
+    if (!stillVisible) {
+      setSelectedId("");
+      setEmployee(null);
+    }
+  }, [visibleRecruiters, selectedId]);
+
   const handleSelect = async (id) => {
     setSelectedId(id);
     if (!id) return;
@@ -711,7 +729,7 @@ const FRONTEND_ORIGIN =
         <MenuItem value="">
           <em>{t("common.none")}</em>
         </MenuItem>
-        {recruiters
+        {visibleRecruiters
           .filter((recruiter) =>
             departmentFilter
               ? recruiter.department_id === parseInt(departmentFilter, 10)
