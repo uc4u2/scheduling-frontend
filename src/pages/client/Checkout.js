@@ -75,6 +75,11 @@ const normalizeProductOrder = (payload) => {
 /* LoginDialog component (unchanged) */
 function LoginDialog({ open, onClose, onLoginSuccess }) {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+  const dialogPaperSx = {
+    backgroundColor: "#ffffff",
+    backgroundImage: "none",
+    color: "#111827",
+  };
 
   const timezones = [
     "America/New_York",
@@ -132,16 +137,19 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
       maxWidth="xs"
       PaperProps={{
         sx: {
-          backgroundColor: "var(--page-card-bg, #ffffff)",
-          backgroundImage: "none",
-          color: "var(--page-body-color, #111827)",
+          ...dialogPaperSx,
         },
       }}
+      sx={{
+        "& .MuiDialog-paper": dialogPaperSx,
+        "& .MuiDialogContent-root": { backgroundColor: "#ffffff" },
+        "& .MuiDialogTitle-root": { backgroundColor: "#ffffff" },
+      }}
     >
-      <DialogTitle sx={{ backgroundColor: "var(--page-card-bg, #ffffff)" }}>
+      <DialogTitle sx={{ backgroundColor: "#ffffff" }}>
         Client Login
       </DialogTitle>
-      <DialogContent sx={{ backgroundColor: "var(--page-card-bg, #ffffff)" }}>
+      <DialogContent sx={{ backgroundColor: "#ffffff" }}>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -198,6 +206,11 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
 /* RegisterDialog component (unchanged) */
 function RegisterDialog({ open, onClose, onRegisterSuccess }) {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
+  const dialogPaperSx = {
+    backgroundColor: "#ffffff",
+    backgroundImage: "none",
+    color: "#111827",
+  };
 
   const [firstName, setFirstName] = React.useState("");
   const [lastName, setLastName] = React.useState("");
@@ -256,16 +269,19 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
       maxWidth="xs"
       PaperProps={{
         sx: {
-          backgroundColor: "var(--page-card-bg, #ffffff)",
-          backgroundImage: "none",
-          color: "var(--page-body-color, #111827)",
+          ...dialogPaperSx,
         },
       }}
+      sx={{
+        "& .MuiDialog-paper": dialogPaperSx,
+        "& .MuiDialogContent-root": { backgroundColor: "#ffffff" },
+        "& .MuiDialogTitle-root": { backgroundColor: "#ffffff" },
+      }}
     >
-      <DialogTitle sx={{ backgroundColor: "var(--page-card-bg, #ffffff)" }}>
+      <DialogTitle sx={{ backgroundColor: "#ffffff" }}>
         Client Sign Up
       </DialogTitle>
-      <DialogContent sx={{ backgroundColor: "var(--page-card-bg, #ffffff)" }}>
+      <DialogContent sx={{ backgroundColor: "#ffffff" }}>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
