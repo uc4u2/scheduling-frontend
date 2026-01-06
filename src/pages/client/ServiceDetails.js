@@ -380,6 +380,8 @@ export default function ServiceDetails() {
         service_id: serviceId,
         date: dateStr,
         timezone: tz,
+        explicit_only: 1,
+        respect_rows: 1,
         ...(departmentId ? { department_id: departmentId } : {}),
       });
       if (cartJSON) alt.set("cart", cartJSON);
@@ -395,7 +397,7 @@ export default function ServiceDetails() {
         return slots.filter((s) => {
           const typeOk = s.type ? s.type === "available" : true;
           const statusOk = s.status ? s.status === "available" : true;
-          return !s.booked && typeOk && statusOk;
+          return !s.booked && typeOk && statusOk && s.origin !== "shift";
         });
       } catch {
         return [];
