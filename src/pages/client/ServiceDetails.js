@@ -33,6 +33,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useTheme, alpha } from "@mui/material/styles";
 import { useNavWithEmbed } from "../../embed";
 import PublicPageShell from "./PublicPageShell";
+import { getUserTimezone } from "../../utils/timezone";
 
 /* ───────────────── helpers ───────────────── */
 /** Build "cart" JSON for the availability endpoint (filter by date and optional artist) */
@@ -132,6 +133,7 @@ export default function ServiceDetails() {
   const departmentId = searchParams.get("department_id") || "";
   const navigate = useNavWithEmbed();
   const theme = useTheme();
+  const userTz = getUserTimezone();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTabletDown = useMediaQuery(theme.breakpoints.down("md"));
   const buttonPalette = {
@@ -316,8 +318,14 @@ export default function ServiceDetails() {
     }
     const deptQuery = departmentId ? `?department_id=${departmentId}` : "";
     Promise.all([
-      api.get(`/public/${slug}/service/${serviceId}${deptQuery}`, { noCompanyHeader: true }),
-      api.get(`/public/${slug}/service/${serviceId}/employees${deptQuery}`, { noCompanyHeader: true }),
+      api.get(`/public/${slug}/service/${serviceId}${deptQuery}`, {
+        noCompanyHeader: true,
+        noAuth: true,
+      }),
+      api.get(`/public/${slug}/service/${serviceId}/employees${deptQuery}`, {
+        noCompanyHeader: true,
+        noAuth: true,
+      }),
     ])
       .then(([svc, empRes]) => {
         setService(svc.data);
@@ -340,7 +348,7 @@ export default function ServiceDetails() {
 
   /* helper: fetch availability for one employee + one date (canonical route, with safe fallback) */
   const fetchAvail = async (empId, dateStr) => {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const tz = userTz || "UTC";
     const cartJSON = buildCartPayload({ date: dateStr, artistId: empId });
 
     // 1) canonical route (supports explicit + shift fallback; returns start_utc)
@@ -357,7 +365,7 @@ export default function ServiceDetails() {
     try {
       const { data } = await api.get(
         `/public/${slug}/availability?${qs.toString()}`,
-        { noCompanyHeader: true }
+        { noCompanyHeader: true, noAuth: true }
       );
       const slots = Array.isArray(data?.slots)
         ? data.slots
@@ -387,7 +395,7 @@ export default function ServiceDetails() {
       if (cartJSON) alt.set("cart", cartJSON);
         const { data } = await api.get(
           `/public/${slug}/artists/${empId}/availability?${alt.toString()}`,
-          { noCompanyHeader: true }
+          { noCompanyHeader: true, noAuth: true }
         );
         const slots = Array.isArray(data?.slots)
           ? data.slots
