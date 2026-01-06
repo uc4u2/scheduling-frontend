@@ -125,9 +125,23 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Client Login</DialogTitle>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      PaperProps={{
+        sx: {
+          backgroundColor: "var(--page-card-bg, #ffffff)",
+          backgroundImage: "none",
+          color: "var(--page-body-color, #111827)",
+        },
+      }}
+    >
+      <DialogTitle sx={{ backgroundColor: "var(--page-card-bg, #ffffff)" }}>
+        Client Login
+      </DialogTitle>
+      <DialogContent sx={{ backgroundColor: "var(--page-card-bg, #ffffff)" }}>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -235,9 +249,23 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Client Sign Up</DialogTitle>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      PaperProps={{
+        sx: {
+          backgroundColor: "var(--page-card-bg, #ffffff)",
+          backgroundImage: "none",
+          color: "var(--page-body-color, #111827)",
+        },
+      }}
+    >
+      <DialogTitle sx={{ backgroundColor: "var(--page-card-bg, #ffffff)" }}>
+        Client Sign Up
+      </DialogTitle>
+      <DialogContent sx={{ backgroundColor: "var(--page-card-bg, #ffffff)" }}>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
