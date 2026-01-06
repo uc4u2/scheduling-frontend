@@ -1476,7 +1476,8 @@
         "hints": {
           "businessNumberDigits": "Digits only. Letters or symbols are removed automatically.",
           "employerNumberDigits": "Digits only. Letters or symbols are removed automatically."
-        }
+        },
+        "tooltips": {}
       },
       "messages": {
         "departmentsLoadFailed": "Could not load departments.",
@@ -1959,6 +1960,11 @@
       "publishableKey": {
         "label": "Stripe Publishable Key",
         "placeholder": "e.g. pk_live_xxxxxxxxxxxxxxxxxxxxx"
+      },
+      "bookingHold": {
+        "label": "Booking hold (minutes)",
+        "helper": "How long a selected time is reserved during checkout.",
+        "tooltip": "Used for the checkout timer; changes apply to future checkouts."
       },
       "section": {
         "taxLocalization": "Tax & Localization"

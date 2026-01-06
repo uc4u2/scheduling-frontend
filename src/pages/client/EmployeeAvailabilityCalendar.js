@@ -44,6 +44,34 @@ const buildDisplayFromISO = (iso) => {
   return { date: formatDate(dt), time: formatTime(dt) };
 };
 
+/** Build "cart" JSON for the availability endpoint (filter by date + artist). */
+const buildCartPayload = ({ date, artistId = null }) => {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem("booking_cart") || "[]");
+    const filtered = raw
+      .filter(
+        (it) =>
+          it &&
+          it.date === date &&
+          (!artistId || String(it.artist_id) === String(artistId))
+      )
+      .map((it) => ({
+        artist_id: it.artist_id,
+        service_id: it.service_id,
+        date: it.date,
+        start_time: it.start_time,
+        addon_ids: Array.isArray(it.addon_ids) && it.addon_ids.length
+          ? it.addon_ids
+          : Array.isArray(it.addons)
+          ? it.addons.map((a) => a && a.id).filter(Boolean)
+          : [],
+      }));
+    return JSON.stringify(filtered);
+  } catch (e) {
+    return "[]";
+  }
+};
+
 /* ───────────────── component ───────────────── */
 export default function EmployeeAvailabilityCalendar({
   companySlug: companySlugProp,
@@ -147,18 +175,26 @@ export default function EmployeeAvailabilityCalendar({
         setSlots([]);
 
         // Fetch day availability for this artist/service/date
+        const cartJSON = buildCartPayload({ date: selectedDate, artistId });
         const { data } = await api.get(`/public/${companySlug}/availability`, {
           params: {
             artist_id: artistId,
             service_id: serviceId,
             date: selectedDate,
             timezone: userTz,
+            explicit_only: 1,
+            respect_rows: 1,
+            cart: cartJSON || undefined,
             department_id: departmentId || undefined,
           },
         });
 
         const sourceSlots = Array.isArray(data?.slots) ? data.slots : [];
-        const daySlots = sourceSlots.filter((slot) => (slot.type || slot.status) === "available");
+        const daySlots = sourceSlots.filter((slot) => {
+          const typeOk = slot.type ? slot.type === "available" : true;
+          const statusOk = slot.status ? slot.status === "available" : true;
+          return typeOk && statusOk && slot.origin !== "shift";
+        });
         setSlots(daySlots);
         setSelectedTime((prev) =>
           daySlots.some((s) => s.start_time === prev) ? prev : ""

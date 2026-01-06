@@ -25,9 +25,11 @@ import {
   Drawer,            // 👈 added
   IconButton,
   InputAdornment,
+  Tooltip,
 } from "@mui/material";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import api, { isStripeOnboardingIncomplete, stripeConnect } from "../../utils/api";
 import {
   getCurrencyOptions,
@@ -67,6 +69,7 @@ export default function SettingsCheckoutPro() {
   const [paymentMode, setPaymentMode] = useState("offline");
   const [publishableKey, setPublishableKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const [bookingHoldMinutes, setBookingHoldMinutes] = useState(3);
   const [pricesIncludeTax, setPricesIncludeTax] = useState(false);
   const [chargeCurrencyMode, setChargeCurrencyMode] = useState("PLATFORM_FIXED");
   const [taxCountry, setTaxCountry] = useState("");
@@ -120,6 +123,7 @@ export default function SettingsCheckoutPro() {
 
         const envPublishable = process.env.REACT_APP_STRIPE_PUBLIC_KEY || "";
         setPublishableKey(data.stripe_publishable_key || envPublishable);
+        setBookingHoldMinutes(data.booking_hold_minutes ?? 3);
         setPricesIncludeTax(!!data.prices_include_tax);
         setChargeCurrencyMode((data.charge_currency_mode || "PLATFORM_FIXED").toUpperCase());
         setTaxCountry((data.tax_country_code || "").toUpperCase());
@@ -189,6 +193,7 @@ export default function SettingsCheckoutPro() {
     setDisplayCurrency(normalizedDisplay);
     setLogoUrl(data.logo_url || "");
     setCompanyCountry((data.country_code || "").toUpperCase());
+    setBookingHoldMinutes(data.booking_hold_minutes ?? 3);
   };
 
   const onSave = async () => {
@@ -198,6 +203,7 @@ export default function SettingsCheckoutPro() {
         enable_stripe_payments: enableStripe,
         allow_card_on_file: allowCardOnFile,
         stripe_publishable_key: publishableKey.trim(),
+        booking_hold_minutes: Number(bookingHoldMinutes) || 0,
         prices_include_tax: pricesIncludeTax,
         charge_currency_mode: chargeCurrencyMode,
         tax_country_code: taxCountry,
@@ -397,6 +403,28 @@ export default function SettingsCheckoutPro() {
                   {keyWarning}
                 </Alert>
               )}
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label={
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <span>{t("settings.checkout.bookingHold.label")}</span>
+                    <Tooltip title={t("settings.checkout.bookingHold.tooltip")}>
+                      <InfoOutlined fontSize="small" />
+                    </Tooltip>
+                  </Stack>
+                }
+                fullWidth
+                type="number"
+                inputProps={{ min: 1, step: 1 }}
+                value={bookingHoldMinutes}
+                onChange={(e) => setBookingHoldMinutes(e.target.value)}
+                helperText={t("settings.checkout.bookingHold.helper")}
+                InputProps={{
+                  endAdornment: <InputAdornment position="end">min</InputAdornment>,
+                }}
+              />
             </Grid>
 
             <Grid item xs={12}>

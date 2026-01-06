@@ -401,9 +401,9 @@ export default function CompanyProfile({ token }) {
 	          ? Math.max(0, Math.min(14, Math.trunc(num)))
 	          : null;
 	      }
-	      const { data: updated } = await api[method](endpoint, payload, {
-	        headers: { Authorization: `Bearer ${token}` },
-	      });
+      const { data: updated } = await api[method](endpoint, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (updated && typeof updated === "object") {
         setForm((prev) => ({ ...prev, ...updated }));
       }
