@@ -3,12 +3,14 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AppBar, Box, Button, Chip, Container, Dialog, DialogContent, IconButton,
   Menu, MenuItem, Stack, Toolbar, Tooltip, Typography, Alert, CircularProgress, GlobalStyles, Snackbar,
+  Drawer,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import BrushIcon from "@mui/icons-material/Brush";
 import PublishIcon from "@mui/icons-material/Publish";
 import CloseIcon from "@mui/icons-material/Close";
 import StorefrontIcon from "@mui/icons-material/Storefront";
+import MenuIcon from "@mui/icons-material/Menu";
 import { useParams, useSearchParams, Link as RouterLink, useNavigate } from "react-router-dom";
 
 import { wb, API_BASE_URL } from "../../utils/api";
@@ -745,6 +747,10 @@ export default function CompanyPublic() {
     });
   }, [navItems, currentPage]);
 
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const handleMobileOpen = () => setMobileNavOpen(true);
+  const handleMobileClose = () => setMobileNavOpen(false);
+
   const navButtonSx = useMemo(
     () => createNavButtonStyles(navStyle),
     [navStyle]
@@ -1389,6 +1395,53 @@ const siteTitle = useMemo(() => {
     ]
   );
 
+  const renderMobileNavButtons = () => (
+    <Stack spacing={1} alignItems="stretch">
+      {navItemsToRender.map((item) => {
+        if (item.onClick) {
+          return (
+            <Button
+              key={item.key}
+              fullWidth
+              size="small"
+              variant="text"
+              sx={{
+                justifyContent: "flex-start",
+                color: headerTextColor,
+              }}
+              onClick={() => {
+                item.onClick();
+                handleMobileClose();
+              }}
+            >
+              {item.label}
+            </Button>
+          );
+        }
+        const external = isExternalHref(item.href);
+        const commonProps = external
+          ? { component: "a", href: item.href, target: "_blank", rel: "noreferrer" }
+          : { component: RouterLink, to: item.href };
+        return (
+          <Button
+            key={item.key}
+            fullWidth
+            size="small"
+            variant="text"
+            sx={{
+              justifyContent: "flex-start",
+              color: headerTextColor,
+            }}
+            {...commonProps}
+            onClick={handleMobileClose}
+          >
+            {item.label}
+          </Button>
+        );
+      })}
+    </Stack>
+  );
+
   const overrideContent = useMemo(() => {
     if (!renderOverride) return null;
     const styleProps = renderOverride.styleProps || null;
@@ -1545,7 +1598,7 @@ const siteTitle = useMemo(() => {
             direction="row"
             spacing={1.25}
             alignItems="center"
-            justifyContent={headerLogoAlign}
+            justifyContent={{ xs: "space-between", md: headerLogoAlign }}
             sx={{
               width: "100%",
               maxWidth:
@@ -1557,7 +1610,15 @@ const siteTitle = useMemo(() => {
               ...logoEdgePlacement,
             }}
           >
-              {renderHeaderBrandContent()}
+              <Stack direction="row" spacing={1.25} alignItems="center">
+                {renderHeaderBrandContent()}
+              </Stack>
+              <IconButton
+                onClick={handleMobileOpen}
+                sx={{ display: { xs: "inline-flex", md: "none" }, color: headerTextColor }}
+              >
+                <MenuIcon />
+              </IconButton>
             </Stack>
             <Box
               sx={{
@@ -1578,6 +1639,7 @@ const siteTitle = useMemo(() => {
                   alignItems: "center",
                   justifyContent: headerNavAlign,
                   flex: 1,
+                  display: { xs: "none", md: "flex" },
                 }}
               >
                 {headerSocialInline && headerSocialInlinePlacement === "before" &&
@@ -1642,6 +1704,36 @@ const siteTitle = useMemo(() => {
           {headerSocialPosition === "below" && renderHeaderSocialIcons()}
         </Container>
       </Box>
+      <Drawer
+        anchor="top"
+        open={mobileNavOpen}
+        onClose={handleMobileClose}
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          sx: {
+            pt: 2,
+            pb: 3,
+            px: 2.5,
+            backgroundColor: headerBg || "#ffffff",
+            color: headerTextColor,
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            {navBrandName}
+          </Typography>
+          <IconButton onClick={handleMobileClose} sx={{ color: headerTextColor }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        {renderMobileNavButtons()}
+        {headerSocialPosition !== "above" && headerSocialPosition !== "below" && headerSocialLinks.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            {renderHeaderSocialIcons({ inline: true, placement: "after" })}
+          </Box>
+        )}
+      </Drawer>
 
       {/* PAGE CONTENT */}
       <Box
