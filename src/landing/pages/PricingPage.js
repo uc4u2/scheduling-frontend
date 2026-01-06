@@ -167,7 +167,7 @@ const DEFAULT_PLANS = [
     "Bulk scheduling controls (close / keep windows).",
     "Audit-ready operations with reduced compliance risk.",
     { type: "heading", text: "Capacity" },
-      "10 staff seats and up to 2 locations (departments) included.",
+      "10 staff seats and up to 5 locations (departments) included.",
       "Add seats for $9/mo each.",
       "Free branded website included when using Payroll + Scheduling.",
     ],
@@ -296,7 +296,7 @@ const PricingPage = () => {
         "@type": "Product",
         name: "Schedulaa Business",
         brand: { "@type": "Brand", name: "Schedulaa" },
-        description: "Advanced payroll exports, audits, compliance docs; 10 staff, 2 locations (departments) included.",
+        description: "Advanced payroll exports, audits, compliance docs; 10 staff, 5 locations (departments) included.",
         offers: {
           "@type": "Offer",
           price: "119.99",
