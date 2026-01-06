@@ -67,6 +67,7 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
   const [services,  setServices]   = useState([]);
   const [recruiters,setRecruiters] = useState([]);
   const [links,     setLinks]      = useState([]);
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const [svcId, setSvcId] = useState("");
   const [empId, setEmpId] = useState("");
@@ -88,9 +89,10 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
   useEffect(() => {
     (async () => {
       try {
+        const recruiterParams = includeArchived ? { include_archived: 1 } : { active: true };
         const [svcRes, recRes, linkRes] = await Promise.all([
           api.get(`/booking/services`, auth),
-          api.get(`/manager/recruiters?active=true`, auth),
+          api.get(`/manager/recruiters`, { ...auth, params: recruiterParams }),
           api.get(`/booking/employee-services`, auth)
         ]);
         setServices(svcRes.data || []);
@@ -100,7 +102,18 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
         setMsg({type:"error", text:"Unable to load reference data"});
       }
     })();
-  }, []);
+  }, [includeArchived]);
+
+  useEffect(() => {
+    if (!empId) return;
+    const exists = recruiters.some((r) => String(r.id) === String(empId));
+    if (!exists) {
+      setEmpId("");
+      setSlots([]);
+      setEvtId("");
+      setSlot(null);
+    }
+  }, [recruiters, empId]);
 
   /* ───────── derived lists ───────── */
   const employees = useMemo(() => {
@@ -238,6 +251,18 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
           ))}
         </Select>
       </FormControl>
+      {token && (
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+          }
+          label="Show archived employees"
+          sx={{ mb: 2 }}
+        />
+      )}
 
       {/* Date */}
       <TextField

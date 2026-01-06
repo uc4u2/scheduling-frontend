@@ -12,6 +12,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  FormControlLabel,
+  Checkbox,
   CircularProgress,
   Alert,
   Paper,
@@ -47,6 +49,7 @@ const AvailableShiftsCalendar = ({ token }) => {
   const [employees, setEmployees] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [employeeFilter, setEmployeeFilter] = useState("all");
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -65,8 +68,10 @@ const AvailableShiftsCalendar = ({ token }) => {
   /* ------------------ Fetch employees ------------------ */
   useEffect(() => {
     if (!token) return;
-    const params =
-      departmentFilter !== "all" ? { department_id: departmentFilter } : {};
+    const params = {
+      ...(departmentFilter !== "all" ? { department_id: departmentFilter } : {}),
+      ...(includeArchived ? { include_archived: 1 } : {}),
+    };
     api
       .get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -77,7 +82,7 @@ const AvailableShiftsCalendar = ({ token }) => {
         setError("Failed to fetch employees");
         setEmployees([]);
       });
-  }, [token, departmentFilter]);
+  }, [token, departmentFilter, includeArchived]);
 
   /* ------------------ Fetch available shifts ------------------ */
   useEffect(() => {
@@ -186,6 +191,16 @@ const AvailableShiftsCalendar = ({ token }) => {
             ))}
           </Select>
           </FormControl>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={includeArchived}
+                onChange={(e) => setIncludeArchived(e.target.checked)}
+              />
+            }
+            label="Show archived employees"
+          />
         </Stack>
       </Paper>
 

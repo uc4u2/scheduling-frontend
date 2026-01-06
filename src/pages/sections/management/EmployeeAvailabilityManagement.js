@@ -41,6 +41,7 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [selectedTemplateLabel, setSelectedTemplateLabel] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   /* ─────────────────────────────── Flags / messages ───────────────────────────── */
   const [loadingEmployees, setLoadingEmployees] = useState(false);
@@ -110,8 +111,12 @@ const EmployeeAvailabilityManagement = ({ token }) => {
       .catch(() => setError("Failed to load departments."));
 
     setLoadingEmployees(true);
+    const recruiterParams = includeArchived ? { include_archived: 1 } : { active: true };
     api
-      .get(`/manager/recruiters?active=true`, { headers: { Authorization: `Bearer ${token}` } })
+      .get(`/manager/recruiters`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: recruiterParams,
+      })
       .then((r) =>
         setEmployees(
           (r.data.recruiters || r.data || []).map((e) => ({
@@ -146,7 +151,7 @@ const EmployeeAvailabilityManagement = ({ token }) => {
       .get(`/booking/services`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => setServices(r.data || []))
       .catch(() => setError("Failed to load services."));
-  }, [token]);
+  }, [token, includeArchived]);
 
   /* ─────────────────────────────── Pre‑fill on employee change ─────────────────── */
 useEffect(() => {
@@ -391,6 +396,15 @@ useEffect(() => {
             </MenuItem>
           ))}
         </TextField>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+          }
+          label="Show archived employees"
+        />
 
         {loadingEmployees ? (
           <CircularProgress size={24} />

@@ -21,6 +21,7 @@ import {
   Select,
   InputLabel,
   FormControl,
+  FormControlLabel,
   Drawer,
   List,
   ListItemButton,
@@ -802,6 +803,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
   // Employee Management states
   const [employees, setEmployees] = useState([]);
+  const [includeArchivedEmployees, setIncludeArchivedEmployees] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [conversionRequests, setConversionRequests] = useState([]);
@@ -898,7 +900,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   useEffect(() => {
     if (token && selectedView === "employee-management") fetchEmployees();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, departmentFilter, selectedView]);
+  }, [token, departmentFilter, selectedView, includeArchivedEmployees]);
 
   useEffect(() => {
     if (token && selectedView === "employee-management" && isManager) fetchConversionRequests();
@@ -923,7 +925,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     const { ignoreFilter = false } = options;
     try {
       const res = await api.get("/manager/recruiters", {
-        params: !ignoreFilter && departmentFilter ? { department_id: departmentFilter } : {},
+        params: {
+          ...(!ignoreFilter && departmentFilter ? { department_id: departmentFilter } : {}),
+          ...(selectedView === "employee-management" && includeArchivedEmployees ? { include_archived: 1 } : {}),
+        },
       });
       const rows = res.data?.recruiters || res.data || [];
       setEmployees(rows);
@@ -1496,11 +1501,20 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                   >
                     Clear filter
                   </Button>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={includeArchivedEmployees}
+                        onChange={(e) => setIncludeArchivedEmployees(e.target.checked)}
+                      />
+                    }
+                    label="Show archived employees"
+                  />
                 </Stack>
 
                 <Grid container spacing={2}>
                   {filteredEmployees
-                    .filter((e) => e.status !== "inactive")
+                    .filter((e) => (includeArchivedEmployees ? true : e.status !== "inactive"))
                     .map((e) => (
                       <Grid item xs={12} sm={6} key={e.id}>
                         <Accordion
@@ -1518,6 +1532,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                               <Typography variant="body2" color="text.secondary">
                                 {e.email} {e.timezone ? `• ${e.timezone}` : ""}
                               </Typography>
+                              {e.status === "inactive" && (
+                                <Typography variant="caption" color="text.secondary">
+                                  Archived
+                                </Typography>
+                              )}
                             </Stack>
                           </AccordionSummary>
                           <AccordionDetails>
@@ -1656,8 +1675,19 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                                   startIcon={<ArchiveIcon />}
                                   onClick={() => setConfirmArchiveId(e.id)}
                                   fullWidth={isMobileViewport}
+                                  disabled={e.status === "inactive"}
                                 >
                                   Archive
+                                </Button>
+                              )}
+                              {isManager && e.status === "inactive" && (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => handleRestore(e.id)}
+                                  fullWidth={isMobileViewport}
+                                >
+                                  Restore
                                 </Button>
                               )}
                               {isManager && (

@@ -23,6 +23,7 @@ import {
   IconButton,
   MenuItem,
   FormControlLabel,
+  Checkbox,
   Switch,
   Alert,
   Tabs,
@@ -64,6 +65,7 @@ const ManagerInvoicesPage = () => {
   const [recruiters, setRecruiters] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [breakdownByEmployee, setBreakdownByEmployee] = useState(false);
   const [agencyFeePercent, setAgencyFeePercent] = useState("");
   const [agencyFeeFlat, setAgencyFeeFlat] = useState("");
@@ -153,10 +155,12 @@ const ManagerInvoicesPage = () => {
 
   const fetchRecruiters = async (q = "") => {
     try {
-      const url = q
-        ? `/manager/recruiters?q=${encodeURIComponent(q)}`
-        : "/manager/recruiters";
-      const res = await api.get(url);
+      const res = await api.get("/manager/recruiters", {
+        params: {
+          ...(q ? { q } : {}),
+          ...(includeArchived ? { include_archived: 1 } : {}),
+        },
+      });
       setRecruiters(res.data?.recruiters || []);
     } catch (err) {
       // silent
@@ -188,7 +192,7 @@ const ManagerInvoicesPage = () => {
     fetchCompanyProfile();
     fetchRecruiters();
     fetchDepartments();
-  }, []);
+  }, [includeArchived]);
 
   const filteredRecruiters = useMemo(
     () =>
@@ -1256,6 +1260,15 @@ const ManagerInvoicesPage = () => {
                     </MenuItem>
                   ))}
                 </TextField>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={includeArchived}
+                      onChange={(e) => setIncludeArchived(e.target.checked)}
+                    />
+                  }
+                  label="Show archived employees"
+                />
                 <TextField
                   label="Search recruiters"
                   fullWidth

@@ -61,6 +61,7 @@ export default function Payroll({ token }) {
 
   const [recruiters, setRecruiters] = useState([]);
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   // Region can be "ca", "us", or "other"
   const [region, setRegion] = useState("ca");
@@ -122,7 +123,7 @@ export default function Payroll({ token }) {
   // --------------------------------------------------------------
   useEffect(() => {
     fetchRecruiters();
-  }, []);
+  }, [includeArchived]);
 
   useEffect(() => {
     if (viewMode === "history" && selectedRecruiter) {
@@ -161,6 +162,7 @@ export default function Payroll({ token }) {
     try {
       const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: includeArchived ? { include_archived: 1 } : {},
       });
       if (Array.isArray(res.data)) {
         setRecruiters(res.data);
@@ -411,6 +413,17 @@ const formatCurrency = (val) => {
             </Select>
             <FormHelperText>Select an Employee</FormHelperText>
           </FormControl>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={includeArchived}
+                onChange={(e) => setIncludeArchived(e.target.checked)}
+              />
+            }
+            label="Show archived employees"
+          />
         </Grid>
 
         {/* Month */}

@@ -22,7 +22,8 @@ export const useDepartments = () => {
   return departments;
 };
 
-export const useEmployeesByDepartment = () => {
+export const useEmployeesByDepartment = (options = {}) => {
+  const { includeArchived = false } = options;
   const [employees, setEmployees] = useState({ all: [] });
   useEffect(() => {
     const load = async () => {
@@ -30,6 +31,7 @@ export const useEmployeesByDepartment = () => {
       try {
         const res = await api.get(`/manager/recruiters`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
+          params: includeArchived ? { include_archived: 1 } : {},
         });
         const list = Array.isArray(res.data?.recruiters) ? res.data.recruiters : Array.isArray(res.data) ? res.data : [];
         const grouped = { all: list };
@@ -44,6 +46,6 @@ export const useEmployeesByDepartment = () => {
       }
     };
     load();
-  }, []);
+  }, [includeArchived]);
   return employees;
 };

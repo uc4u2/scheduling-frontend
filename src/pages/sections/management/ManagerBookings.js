@@ -23,6 +23,8 @@ import {
   Toolbar,
   IconButton,
   Tooltip,
+  FormControlLabel,
+  Checkbox,
   Menu as MuiMenu,
   Backdrop,
 } from "@mui/material";
@@ -144,6 +146,7 @@ const ManagerBookings = ({ slug, connect }) => {
   const [recruiters, setRecruiters] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -229,7 +232,9 @@ const ManagerBookings = ({ slug, connect }) => {
 
   const fetchRecruiters = useCallback(async () => {
     try {
-      const { data } = await api.get("/manager/recruiters");
+      const { data } = await api.get("/manager/recruiters", {
+        params: includeArchived ? { include_archived: 1 } : {},
+      });
       const list = Array.isArray(data?.recruiters)
         ? data.recruiters
         : Array.isArray(data)
@@ -240,7 +245,7 @@ const ManagerBookings = ({ slug, connect }) => {
       console.error("Failed to load employees:", err);
       setRecruiters([]);
     }
-  }, []);
+  }, [includeArchived]);
 
   const filteredRecruiters = useMemo(() => {
     if (!selectedDepartment) return recruiters;
@@ -930,6 +935,17 @@ const RowActions = ({ row }) => {
                   ))}
                 </TextField>
               </Grid>
+              <Grid item xs={12} sm={4} md={3}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={includeArchived}
+                      onChange={(e) => setIncludeArchived(e.target.checked)}
+                    />
+                  }
+                  label="Show archived employees"
+                />
+              </Grid>
             </Grid>
           </Paper>
 
@@ -1181,8 +1197,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
-
 
 
 

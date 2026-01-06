@@ -87,6 +87,7 @@ export default function Payroll({ token }) {
 
   /* ── domain state ── */
   const [recruiters, setRecruiters] = useState([]);
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [exportAllEmployees, setExportAllEmployees] = useState(true);
@@ -132,7 +133,7 @@ export default function Payroll({ token }) {
 // ─────────────────────────────────────────────────────────
 useEffect(() => {
   fetchRecruiters();
-}, []);
+}, [includeArchived]);
   useEffect(() => {
     // load company defaults
     const loadPrefs = async () => {
@@ -226,6 +227,7 @@ useEffect(() => {
     try {
       const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: includeArchived ? { include_archived: 1 } : {},
       });
       setRecruiters(
         Array.isArray(res.data) ? res.data : res.data.recruiters || []
@@ -1223,6 +1225,8 @@ return (
           setExportEmployeeIds([]);
           setExportAllEmployees(true);
         }}
+        includeArchived={includeArchived}
+        setIncludeArchived={setIncludeArchived}
         region={region}
         setRegion={setRegion}
         startDate={startDate}

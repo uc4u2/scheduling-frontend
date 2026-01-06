@@ -69,6 +69,7 @@ const ROE = ({ token }) => {
 
   /* Recruiters, Departments & ROE lists */
   const [recruiters, setRecruiters] = useState([]);
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [departments, setDepartments] = useState([]);           // 🚩 NEW
   const [roeData, setRoeData] = useState([]);
 
@@ -109,6 +110,7 @@ const ROE = ({ token }) => {
     try {
       const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: includeArchived ? { include_archived: 1 } : {},
       });
       setRecruiters(res.data.recruiters || []);
     } catch {
@@ -194,7 +196,7 @@ const ROE = ({ token }) => {
     fetchRecruiters();
     fetchDepartments();   // 🚩 NEW
     fetchRoeList();
-  }, []);
+  }, [includeArchived]);
 
   /* ────────── Derived data ────────── */
 
@@ -428,6 +430,16 @@ const ROE = ({ token }) => {
             </MenuItem>
           ))}
         </TextField>
+        <FormControlLabel
+          sx={{ mb: 2 }}
+          control={
+            <Checkbox
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+          }
+          label="Show archived employees"
+        />
 
         <TextField
           select

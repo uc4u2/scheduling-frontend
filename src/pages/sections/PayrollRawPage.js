@@ -9,6 +9,8 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
+  FormControlLabel,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -32,7 +34,8 @@ import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 export default function PayrollRawPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
   const departments = useDepartments();
-  const employees = useEmployeesByDepartment();
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const employees = useEmployeesByDepartment({ includeArchived });
   const userTz = getUserTimezone();
   const coerceUtcIso = (iso) => {
     if (!iso) return iso;
@@ -178,6 +181,17 @@ export default function PayrollRawPage() {
               ))}
             </Select>
           </FormControl>
+        </Grid>
+        <Grid item xs={12} sm={3}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={includeArchived}
+                onChange={(e) => setIncludeArchived(e.target.checked)}
+              />
+            }
+            label="Show archived employees"
+          />
         </Grid>
         <Grid item xs={12} sm={3}>
           <FormControl fullWidth size="small">

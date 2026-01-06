@@ -157,6 +157,7 @@ const EmployeeProfileForm = ({ token, isManager = false }) => {
 
   const [departments, setDepartments] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -195,6 +196,7 @@ const FRONTEND_ORIGIN =
           department_id: departmentFilter,
           page,
           per_page: perPage,
+          ...(includeArchived ? { include_archived: 1 } : {}),
         },
       });
         setRecruiters(res.data.recruiters || []);
@@ -207,7 +209,7 @@ const FRONTEND_ORIGIN =
       }
     };
     fetchRecruiters();
-  }, [searchQuery, departmentFilter, page, perPage]);
+  }, [searchQuery, departmentFilter, page, perPage, includeArchived]);
 
   const handleSelect = async (id) => {
     setSelectedId(id);
@@ -687,6 +689,16 @@ const FRONTEND_ORIGIN =
           </MenuItem>
         ))}
       </TextField>
+      <FormControlLabel
+        sx={{ mb: 2 }}
+        control={
+          <Checkbox
+            checked={includeArchived}
+            onChange={(event) => setIncludeArchived(event.target.checked)}
+          />
+        }
+        label="Show archived employees"
+      />
 
       <TextField
         select

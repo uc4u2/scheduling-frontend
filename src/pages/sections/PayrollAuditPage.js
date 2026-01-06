@@ -41,8 +41,9 @@ export default function PayrollAuditPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [overwritesOnly, setOverwritesOnly] = useState(false);
+  const [includeArchived, setIncludeArchived] = useState(false);
 
-  const employeesHook = useEmployeesByDepartment(); // shape: { all: [...], [deptId]: [...] }
+  const employeesHook = useEmployeesByDepartment({ includeArchived }); // shape: { all: [...], [deptId]: [...] }
   const employeesByDept = employeesHook && typeof employeesHook === "object" ? employeesHook : { all: [] };
   const employees =
     (employeesByDept[selectedDept] ??
@@ -156,6 +157,17 @@ export default function PayrollAuditPage() {
               ))}
             </Select>
           </FormControl>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={includeArchived}
+                onChange={(e) => setIncludeArchived(e.target.checked)}
+              />
+            }
+            label="Show archived employees"
+          />
         </Grid>
         <Grid item xs={12} md={3}>
           <FormControl fullWidth>

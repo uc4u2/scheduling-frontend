@@ -8,6 +8,8 @@ import {
   Box,
   Typography,
   Alert,
+  FormControlLabel,
+  Checkbox,
   FormControl,
   Select,
   MenuItem,
@@ -82,6 +84,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
   const [departments, setDepartments] = useState([]);
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const [recruiters, setRecruiters] = useState([]);
   const [selectedRecruiter, setSelectedRecruiter] = useState("all");
@@ -167,7 +170,10 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
   const fetchRecruiters = async () => {
     try {
-      const params = departmentFilter !== "all" ? { department_id: departmentFilter } : {};
+      const params = {
+        ...(departmentFilter !== "all" ? { department_id: departmentFilter } : {}),
+        ...(includeArchived ? { include_archived: 1 } : {}),
+      };
       const { data } = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
         params
@@ -247,7 +253,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     if (!token) return;
     fetchRecruiters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, departmentFilter]);
+  }, [token, departmentFilter, includeArchived]);
 
   // load permission flags
   useEffect(() => {
@@ -821,6 +827,17 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             })}
           </Select>
         </FormControl>
+
+        <FormControlLabel
+          sx={{ gridColumn: { xs: "span 12", sm: "span 6", md: "span 3" } }}
+          control={
+            <Checkbox
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+          }
+          label="Show archived employees"
+        />
 
         {/* Status filter */}
         <FormControl sx={{ gridColumn: { xs: "span 12", sm: "span 6", md: "span 3" } }}>

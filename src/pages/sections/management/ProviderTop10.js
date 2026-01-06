@@ -10,7 +10,9 @@ import {
   CardHeader,
   Chip,
   Divider,
+  FormControlLabel,
   Grid,
+  Checkbox,
   LinearProgress,
   MenuItem,
   Stack,
@@ -99,6 +101,7 @@ const ProviderTop10 = ({ token: tokenProp }) => {
   const [departmentId, setDepartmentId] = useState("");
   const [providerId, setProviderId]     = useState(""); // Employee filter
   const [metricKey, setMetricKey]       = useState("revenue");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   // Directory
   const [recruiters, setRecruiters]     = useState([]);
@@ -116,8 +119,9 @@ const ProviderTop10 = ({ token: tokenProp }) => {
     setDirLoading(true);
     setError("");
     try {
+      const recruiterParams = includeArchived ? { include_archived: 1 } : {};
       const [rec, dept] = await Promise.all([
-        api.get(`/manager/recruiters`, auth),
+        api.get(`/manager/recruiters`, { ...auth, params: recruiterParams }),
         api.get(`/api/departments`,   auth),
       ]);
       setRecruiters(rec?.data?.recruiters || rec?.data || []);
@@ -284,7 +288,7 @@ const ProviderTop10 = ({ token: tokenProp }) => {
   useEffect(() => {
     loadDirectory().then(loadTop10);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [includeArchived]);
 
   // when filters change, reload
   useEffect(() => {
@@ -485,6 +489,18 @@ const ProviderTop10 = ({ token: tokenProp }) => {
                 </MenuItem>
               ))}
             </TextField>
+          </Grid>
+
+          <Grid item xs={12} md="auto">
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={includeArchived}
+                  onChange={(e) => setIncludeArchived(e.target.checked)}
+                />
+              }
+              label="Show archived employees"
+            />
           </Grid>
 
           {/* Metric */}

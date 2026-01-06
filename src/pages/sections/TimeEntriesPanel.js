@@ -103,6 +103,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   const today = useMemo(() => new Date(), []);
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState(recruiters || []);
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [filters, setFilters] = useState({
     status: "all",
     recruiterId: "",
@@ -342,7 +343,10 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
 
     const loadEmployees = async () => {
       try {
-        const res = await api.get(`/manager/recruiters`, { headers });
+        const res = await api.get(`/manager/recruiters`, {
+          headers,
+          params: includeArchived ? { include_archived: 1 } : {},
+        });
         const data = res.data;
         const normalize = (arr = []) =>
           arr.map((r) => {
@@ -365,7 +369,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
 
     loadDepartments();
     loadEmployees();
-  }, [recruiters]);
+  }, [recruiters, includeArchived]);
 
   useEffect(() => {
     const loadTemplates = async () => {
@@ -949,6 +953,17 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                     );
                   })}
                 </TextField>
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={includeArchived}
+                      onChange={(e) => setIncludeArchived(e.target.checked)}
+                    />
+                  }
+                  label="Show archived employees"
+                />
               </Grid>
               <Grid item xs={12} md={3}>
                 <TextField

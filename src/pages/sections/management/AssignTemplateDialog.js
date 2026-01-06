@@ -23,17 +23,19 @@ export default function AssignTemplateDialog({ token, template, onClose }) {
   const [range, setRange] = useState({ from: "", to: "" });
   const [dow, setDow] = useState([0, 1, 2, 3, 4]); // default Mon-Fri
   const [override, setOverride] = useState(false);
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
 
   useEffect(() => {
     api
-      .get(`/manager/recruiters?active=true`, {
+      .get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: includeArchived ? { include_archived: 1 } : { active: true },
       })
       .then((r) => setEmployees(r.data.recruiters || r.data || []));
-  }, [token]);
+  }, [token, includeArchived]);
 
   const toggleDow = (d) =>
     setDow(dow.includes(d) ? dow.filter((x) => x !== d) : [...dow, d]);
@@ -93,6 +95,16 @@ export default function AssignTemplateDialog({ token, template, onClose }) {
             ))
           }
           renderInput={(params) => <TextField {...params} label="Employees" />}
+          sx={{ mb: 2 }}
+        />
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+          }
+          label="Show archived employees"
           sx={{ mb: 2 }}
         />
 

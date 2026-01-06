@@ -15,6 +15,8 @@ import {
   IconButton,
   MenuItem,
   Paper,
+  FormControlLabel,
+  Checkbox,
   Snackbar,
   Stack,
   TextField,
@@ -38,6 +40,7 @@ const ServiceAssignment = ({ token }) => {
   const [departments, setDepartments] = useState([]);
   const [rawRows, setRawRows]       = useState([]); // EmployeeService links
   const [loading, setLoading]       = useState(true);
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   /* ─────────── filters ─────────── */
   const [selectedDepartment, setSelectedDepartment] = useState("");
@@ -70,8 +73,9 @@ const ServiceAssignment = ({ token }) => {
   const fetchAll = async () => {
     setLoading(true);
     try {
+      const recruiterParams = includeArchived ? { include_archived: 1 } : {};
       const [recRes, svcRes, depRes, linkRes] = await Promise.all([
-        api.get(`/manager/recruiters`,       auth),
+        api.get(`/manager/recruiters`,       { ...auth, params: recruiterParams }),
         api.get(`/booking/services`,         auth),
         api.get(`/api/departments`,          auth),
         api.get(`/booking/employee-services`,auth),
@@ -102,7 +106,7 @@ const ServiceAssignment = ({ token }) => {
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [includeArchived]);
 
   /* =================================================================
      DERIVED DATA
@@ -273,6 +277,15 @@ const ServiceAssignment = ({ token }) => {
               </MenuItem>
             ))}
           </TextField>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={includeArchived}
+                onChange={(e) => setIncludeArchived(e.target.checked)}
+              />
+            }
+            label="Show archived employees"
+          />
 
           <Box sx={{ flexGrow: 1, display: { xs: "none", md: "block" } }} />
 

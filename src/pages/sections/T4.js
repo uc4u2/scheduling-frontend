@@ -8,6 +8,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
+  Checkbox,
   Grid,
   IconButton,
   MenuItem,
@@ -66,6 +68,7 @@ const T4 = ({ token, isManager = false }) => {
   /* ── State ────────────────────────────────────────────── */
   const [year, setYear] = useState(THIS_YEAR);
   const [recruiters, setRecruiters] = useState([]);
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [departments, setDepartments] = useState([]);            // 🚩 NEW
   const [selectedDepartment, setSelectedDepartment] = useState(""); // 🚩 NEW
   const [slips, setSlips] = useState([]);
@@ -95,7 +98,10 @@ const T4 = ({ token, isManager = false }) => {
 
   const fetchRecruiters = async () => {
     try {
-      const res = await api.get(`/manager/recruiters`, auth);
+      const res = await api.get(`/manager/recruiters`, {
+        ...auth,
+        params: includeArchived ? { include_archived: 1 } : {},
+      });
       setRecruiters(res.data.recruiters || []);
     } catch {
       setErr("Failed to load recruiters.");
@@ -151,7 +157,7 @@ const T4 = ({ token, isManager = false }) => {
   useEffect(() => {
     fetchRecruiters();
     fetchDepartments();        // 🚩 NEW: fetch departments
-  }, []);
+  }, [includeArchived]);
   useEffect(() => {
     fetchSlipsAndSummary();
   }, [year, selectedEmployee]);
@@ -371,6 +377,17 @@ const T4 = ({ token, isManager = false }) => {
                 </MenuItem>
               ))}
             </TextField>
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={includeArchived}
+                  onChange={(e) => setIncludeArchived(e.target.checked)}
+                />
+              }
+              label="Show archived employees"
+            />
           </Grid>
 
           <Grid item xs={12} sm={6} md={4}>

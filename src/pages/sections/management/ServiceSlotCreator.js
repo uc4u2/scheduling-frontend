@@ -11,6 +11,8 @@ import {
   Grid,
   Snackbar,
   useMediaQuery,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import api from "../../../utils/api";
@@ -25,6 +27,7 @@ const ServiceSlotCreator = ({ token }) => {
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [selectedService, setSelectedService] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,9 +41,10 @@ const ServiceSlotCreator = ({ token }) => {
 
     const fetchData = async () => {
       try {
+        const recruiterParams = includeArchived ? { include_archived: 1 } : { active: true };
         const [depRes, empRes, svcRes] = await Promise.all([
           api.get(`/api/departments`, auth),
-          api.get(`/manager/recruiters?active=true`, auth),
+          api.get(`/manager/recruiters`, { ...auth, params: recruiterParams }),
           api.get(`/booking/services`, auth),
         ]);
 
@@ -53,7 +57,7 @@ const ServiceSlotCreator = ({ token }) => {
     };
 
     fetchData();
-  }, [token]);
+  }, [token, includeArchived]);
 
   // ✅ Filter employees by department
   const filteredEmployees = useMemo(() => {
@@ -141,6 +145,17 @@ const ServiceSlotCreator = ({ token }) => {
               </MenuItem>
             ))}
           </TextField>
+        </Grid>
+        <Grid item xs={12}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={includeArchived}
+                onChange={(e) => setIncludeArchived(e.target.checked)}
+              />
+            }
+            label="Show archived employees"
+          />
         </Grid>
 
         {/* Service Selector */}

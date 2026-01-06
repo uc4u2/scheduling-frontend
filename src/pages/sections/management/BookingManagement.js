@@ -13,7 +13,9 @@ import {
   Select,
   InputLabel,
   FormControl,
-  Alert
+  Alert,
+  FormControlLabel,
+  Checkbox
 } from "@mui/material";
 import api from "../../../utils/api";
 
@@ -24,12 +26,13 @@ export default function BookingManagement({ token }) {
   const [editData, setEditData] = useState({});
   const [managerNote, setManagerNote] = useState("");
   const [msg, setMsg] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   // ✅ Load data
   useEffect(() => {
     loadBookings();
     loadEmployees();
-  }, []);
+  }, [includeArchived]);
 
   const loadBookings = async () => {
     try {
@@ -46,8 +49,10 @@ export default function BookingManagement({ token }) {
   // ✅ Fetch employees like W2.js
   const loadEmployees = async () => {
     try {
+      const params = includeArchived ? { include_archived: 1 } : {};
       const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
+        params,
       });
       setEmployees(res.data.recruiters || []);
     } catch (err) {
@@ -145,6 +150,16 @@ export default function BookingManagement({ token }) {
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h5">Booking Management</Typography>
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={includeArchived}
+            onChange={(e) => setIncludeArchived(e.target.checked)}
+          />
+        }
+        label="Show archived employees"
+        sx={{ mt: 1 }}
+      />
 
       {bookings.length === 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>No bookings found.</Alert>

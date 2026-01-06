@@ -48,6 +48,7 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
 
   const [recruiters, setRecruiters] = useState([]);
   const [recruiterFilter, setRecruiterFilter] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailSubject, setEmailSubject] = useState("Your payslip for {month} is now available");
@@ -77,6 +78,7 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
     endDate,
     recruiterFilter,
     departmentFilter,               // ⇠ include dept filter
+    includeArchived,
     page,
     rowsPerPage,
   ]);
@@ -97,7 +99,10 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
     try {
       const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: departmentFilter ? { department_id: departmentFilter } : {}, // ⇠ step-2
+        params: {
+          ...(departmentFilter ? { department_id: departmentFilter } : {}), // ⇠ step-2
+          ...(includeArchived ? { include_archived: 1 } : {}),
+        },
       });
       const data = res.data?.recruiters || res.data || [];
       setRecruiters(data);
@@ -280,6 +285,15 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
                 </MenuItem>
               ))}
             </Select>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={includeArchived}
+                  onChange={(e) => setIncludeArchived(e.target.checked)}
+                />
+              }
+              label="Show archived employees"
+            />
           </>
         )}
 
@@ -430,4 +444,3 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
 };
 
 export default SavedPayrollsPortal;
-

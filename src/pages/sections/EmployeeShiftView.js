@@ -97,6 +97,7 @@ const EmployeeShiftView = () => {
   });
   const [pendingUpdate, setPendingUpdate] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   // Advanced feature states
   const [availabilityMap, setAvailabilityMap] = useState({});
@@ -184,7 +185,9 @@ const EmployeeShiftView = () => {
   // Fetch recruiter details (manager view)
   const fetchRecruiter = async (id) => {
     try {
-      const res = await api.get("/manager/recruiters");
+      const res = await api.get("/manager/recruiters", {
+        params: includeArchived ? { include_archived: 1 } : {},
+      });
       const data = res.data;
       const found = data.recruiters?.find(r => String(r.id) === String(id));
       setRecruiter(found || {});
@@ -198,7 +201,9 @@ const EmployeeShiftView = () => {
   // 3. Live Team Calendar Overlay - Fetch all recruiters list
   const fetchAllRecruiters = async () => {
   try {
-    const res = await api.get("/manager/recruiters");
+    const res = await api.get("/manager/recruiters", {
+      params: includeArchived ? { include_archived: 1 } : {},
+    });
     const data = res.data;
     setAllRecruiters(data.recruiters || []);
   } catch {
@@ -307,6 +312,18 @@ const EmployeeShiftView = () => {
     fetchTemplates();
     fetchPendingLeaves();
   }, []);
+
+  useEffect(() => {
+    fetchAllRecruiters();
+  }, [includeArchived]);
+
+  useEffect(() => {
+    if (!selectedRecruiters.length) return;
+    const hasSelected = allRecruiters.some(
+      (rec) => String(rec.id) === String(selectedRecruiters[0])
+    );
+    if (!hasSelected) setSelectedRecruiters([]);
+  }, [allRecruiters, selectedRecruiters]);
   
 
 
@@ -627,6 +644,18 @@ const EmployeeShiftView = () => {
     ))}
   </Select>
 </FormControl>
+{userRole === "manager" && (
+  <FormControlLabel
+    control={
+      <Checkbox
+        checked={includeArchived}
+        onChange={(e) => setIncludeArchived(e.target.checked)}
+      />
+    }
+    label="Show archived employees"
+    sx={{ mt: 1, mb: 2 }}
+  />
+)}
 
       {/* Controls for filtering and calendar overlay */}
       <Grid container spacing={2} alignItems="center" mb={2}>

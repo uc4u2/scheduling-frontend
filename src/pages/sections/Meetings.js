@@ -15,10 +15,12 @@ import {
   Grid,
   IconButton,
   FormControl,
+  FormControlLabel,
   Select,
   MenuItem,
   InputLabel,
   Alert,
+  Checkbox,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import api from "../../utils/api";
@@ -27,6 +29,7 @@ const Meetings = ({ token }) => {
   const [meetings, setMeetings] = useState([]);
   const [recruiters, setRecruiters] = useState([]);
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -42,7 +45,7 @@ const Meetings = ({ token }) => {
 
   useEffect(() => {
     fetchRecruiters();
-  }, []);
+  }, [includeArchived, token]);
 
   useEffect(() => {
     if (selectedRecruiter) {
@@ -54,6 +57,7 @@ const Meetings = ({ token }) => {
     try {
       const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: includeArchived ? { include_archived: 1 } : {},
       });
       setRecruiters(res.data.recruiters);
       if (res.data.recruiters.length > 0) {
@@ -172,6 +176,16 @@ const Meetings = ({ token }) => {
           ))}
         </Select>
       </FormControl>
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={includeArchived}
+            onChange={(e) => setIncludeArchived(e.target.checked)}
+          />
+        }
+        label="Show archived employees"
+        sx={{ mb: 2 }}
+      />
 
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}

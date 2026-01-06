@@ -16,6 +16,8 @@ import {
   Alert,
   LinearProgress,
   Button,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import api from "../../../utils/api";
 
@@ -82,6 +84,7 @@ export default function ClientFinder({
   // Filters
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   // Data
   const [allClients, setAllClients] = useState([]); // from /booking/clients
@@ -99,9 +102,10 @@ export default function ClientFinder({
     setLoadingDir(true);
     setError("");
     try {
+      const recruiterParams = includeArchived ? { include_archived: 1 } : {};
       const [depRes, recRes] = await Promise.all([
         api.get(`/api/departments`, auth),
-        api.get(`/manager/recruiters`, auth),
+        api.get(`/manager/recruiters`, { ...auth, params: recruiterParams }),
       ]);
       setDepartments(depRes?.data || []);
       setRecruiters(recRes?.data?.recruiters || []);
@@ -137,7 +141,7 @@ export default function ClientFinder({
   useEffect(() => {
     loadDirectory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [includeArchived]);
 
   useEffect(() => {
     loadClientsAndBookings();
@@ -330,6 +334,17 @@ export default function ClientFinder({
                 </MenuItem>
               ))}
             </TextField>
+          </Grid>
+          <Grid item xs={12} md="auto">
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={includeArchived}
+                  onChange={(e) => setIncludeArchived(e.target.checked)}
+                />
+              }
+              label="Show archived employees"
+            />
           </Grid>
 
           {/* Search + results */}

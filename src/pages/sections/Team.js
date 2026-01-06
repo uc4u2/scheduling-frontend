@@ -312,6 +312,7 @@ const asLocalDate = (ymd) => {
   const [recruiters, setRecruiters] = useState([]);
   const [selectedRecruiters, setSelectedRecruiters] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   /* --------------------------------- data ----------------------------------- */
   const [shifts, setShifts] = useState([]);
@@ -666,7 +667,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   useEffect(() => {
     fetchRecruiters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDepartment, getAuthHeaders]);
+  }, [selectedDepartment, includeArchived, getAuthHeaders]);
 
   useEffect(() => {
     fetchShifts();
@@ -762,6 +763,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       params.set("per_page", "500");
       if (selectedDepartment) {
         params.set("department_id", selectedDepartment);
+      }
+      if (includeArchived) {
+        params.set("include_archived", "1");
       }
       const res = await api.get("/manager/recruiters", {
         params: Object.fromEntries(params.entries()),
@@ -2093,6 +2097,17 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   </Select>
                 </FormControl>
               </Grid>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={includeArchived}
+                      onChange={(e) => setIncludeArchived(e.target.checked)}
+                    />
+                  }
+                  label="Show archived employees"
+                />
+              </Grid>
 
               <Grid item xs={12}>
                 <TextField
@@ -2202,6 +2217,18 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 <MenuItem value="assigned">Assigned</MenuItem>
               </Select>
             </FormControl>
+          </Grid>
+
+          <Grid item xs={12} md={2}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={includeArchived}
+                  onChange={(e) => setIncludeArchived(e.target.checked)}
+                />
+              }
+              label="Show archived employees"
+            />
           </Grid>
 
           <Grid item xs={12} md={2}>

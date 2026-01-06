@@ -4,6 +4,8 @@ import {
   Grid,
   Paper,
   FormControl,
+  FormControlLabel,
+  Checkbox,
   InputLabel,
   MenuItem,
   Select,
@@ -94,6 +96,8 @@ export default function PayrollFilters({
   setPayFreqTouched,
   departmentFilter: departmentFilterProp,
   setDepartmentFilter: setDepartmentFilterProp,
+  includeArchived = false,
+  setIncludeArchived,
 }) {
   /* ───────── API helpers ───────── */
   const token   = localStorage.getItem("token");
@@ -204,6 +208,20 @@ export default function PayrollFilters({
             </Select>
           </FormControl>
         </Grid>
+
+        {setIncludeArchived && (
+          <Grid item xs={12} md={4}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={includeArchived}
+                  onChange={(e) => setIncludeArchived(e.target.checked)}
+                />
+              }
+              label="Show archived employees"
+            />
+          </Grid>
+        )}
 
         {/* ───── Employee picker ───── */}
         <Grid item xs={12} md={4}>
