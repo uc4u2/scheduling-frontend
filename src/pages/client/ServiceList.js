@@ -144,6 +144,7 @@ const pageStyleToCssVars = (style) => {
   assign("--page-heading-font", style.headingFont);
   assign("--page-body-font", style.bodyFont);
   assign("--page-hero-heading-shadow", style.heroHeadingShadow);
+  assign("--page-body-bg", style.backgroundColor);
   assign("--page-card-bg", style.cardBg || style.cardColor);
   assign("--page-card-radius", toPx(style.cardRadius));
   assign("--page-card-shadow", style.cardShadow);
