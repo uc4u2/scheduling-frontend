@@ -462,8 +462,9 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             maxWidth: 1200,
             mx: 0,
             borderRadius: 2,
-            backgroundColor: "#ffffff",
+            backgroundColor: "var(--page-card-bg, #ffffff)",
             backgroundImage: "none",
+            color: "var(--page-body-color, #111827)",
           },
         }}
       >
@@ -473,7 +474,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            backgroundColor: "#ffffff",
+            backgroundColor: "var(--page-card-bg, #ffffff)",
           }}
         >
           <Typography variant="h6" fontWeight={700} noWrap>
@@ -483,7 +484,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers sx={{ p: 0, backgroundColor: "#ffffff" }}>
+        <DialogContent dividers sx={{ p: 0, backgroundColor: "var(--page-card-bg, #ffffff)" }}>
           <Checkout disableShell companySlug={slug} />
         </DialogContent>
       </Dialog>
