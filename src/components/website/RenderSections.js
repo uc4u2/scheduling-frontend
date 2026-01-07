@@ -3265,7 +3265,7 @@ const Gallery = ({
   const borderRadius = resolvedTile?.borderRadius ?? 16;
   const border = resolvedTile?.border || "1px solid rgba(148,163,184,0.25)";
   const hoverLift = resolvedTile?.hoverLift ?? false;
-  const lightboxEnabled = resolvedLightbox?.enabled ?? false;
+  const lightboxOn = resolvedLightbox?.enabled ?? false;
   const [activeIndex, setActiveIndex] = useState(null);
 
   const columnsConf = (() => {
@@ -3287,7 +3287,7 @@ const Gallery = ({
   };
 
   const handleOpen = (index) => {
-    if (!lightboxEnabled) return;
+    if (!lightboxOn) return;
     setActiveIndex(index);
   };
   const closeLightbox = () => setActiveIndex(null);
@@ -3337,14 +3337,14 @@ const Gallery = ({
           return (
             <Box
               key={i}
-              role={lightboxEnabled ? "button" : undefined}
+              role={lightboxOn ? "button" : undefined}
               onClick={() => handleOpen(i)}
               sx={{
                 borderRadius,
                 border,
                 overflow: "hidden",
                 lineHeight: 0,
-                cursor: lightboxEnabled ? "pointer" : "default",
+                cursor: lightboxOn ? "pointer" : "default",
                 boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
                 transition: "transform 0.2s ease, box-shadow 0.2s ease",
                 ...(hoverLift
