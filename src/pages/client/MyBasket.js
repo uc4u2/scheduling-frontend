@@ -341,8 +341,8 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     if (!checkoutOpen) return null;
     const vars = styleVars ? { ...styleVars } : {};
     const fallback = "rgba(255,255,255,0.95)";
-    const modalBg = checkoutBg || modalPageBg || vars["--page-body-bg"] || null;
-    const cardBg = checkoutCardBg || modalCardBg || vars["--page-card-bg"] || modalBg || null;
+    const modalBg = modalPageBg || null;
+    const cardBg = checkoutBg || checkoutCardBg || modalCardBg || vars["--page-card-bg"] || modalBg || null;
     vars["--checkout-modal-bg"] = modalBg || cardBg || fallback;
     vars["--checkout-card-bg"] = cardBg || fallback;
     vars["--checkout-modal-bg-image"] = modalPageBgImage || "none";
