@@ -52,6 +52,18 @@ const ProductDetails = () => {
     pairs.forEach(([key, val]) => qs.set(key, val));
     return `?${qs.toString()}`;
   }, [searchParams]);
+  const basketHref = useMemo(() => {
+    if (!slug) return "";
+    const keys = ["embed", "mode", "dialog", "primary", "text"];
+    const qs = new URLSearchParams();
+    qs.set("page", "basket");
+    keys.forEach((key) => {
+      const val = searchParams.get(key);
+      if (val) qs.set(key, val);
+    });
+    const query = qs.toString();
+    return query ? `/${slug}?${query}` : `/${slug}`;
+  }, [slug, searchParams]);
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -104,8 +116,8 @@ const ProductDetails = () => {
     navigate(`/${slug}/products${embedSuffix}`);
   };
   const goBasket = () => {
-    if (!slug) return;
-    navigate(`/${slug}/basket${embedSuffix}`);
+    if (!basketHref) return;
+    navigate(basketHref);
   };
 
   const gallery = useMemo(() => (Array.isArray(product?.images) ? product.images : []), [product]);

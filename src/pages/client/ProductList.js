@@ -58,6 +58,18 @@ const ProductListBase = ({ slugOverride, disableShell = false, pageStyleOverride
     pairs.forEach(([key, val]) => qs.set(key, val));
     return `?${qs.toString()}`;
   }, [disableShell, searchParams]);
+  const basketHref = useMemo(() => {
+    if (!slug) return "";
+    const keys = ["embed", "mode", "dialog", "primary", "text"];
+    const qs = new URLSearchParams();
+    qs.set("page", "basket");
+    keys.forEach((key) => {
+      const val = searchParams.get(key);
+      if (val) qs.set(key, val);
+    });
+    const query = qs.toString();
+    return query ? `/${slug}?${query}` : `/${slug}`;
+  }, [slug, searchParams]);
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -133,8 +145,8 @@ const ProductListBase = ({ slugOverride, disableShell = false, pageStyleOverride
   };
 
   const goToBasket = () => {
-    if (!slug) return;
-    navigate(`/${slug}/basket${embedSuffix}`);
+    if (!basketHref) return;
+    navigate(basketHref);
   };
 
   const hasCartItems = loadCart().length > 0;
