@@ -523,7 +523,7 @@ export default function SectionInspector({
                 label="Border radius (px)"
                 size="small"
                 type="number"
-                value={p.tileBorderRadius ?? 20}
+                value={p.tileBorderRadius ?? 8}
                 onChange={(e) => onChangeProp("tileBorderRadius", Number(e.target.value))}
                 inputProps={{ min: 0, max: 64 }}
                 fullWidth
