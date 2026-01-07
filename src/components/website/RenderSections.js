@@ -3201,15 +3201,44 @@ const BookingCtaBar = ({
 const Gallery = ({
   title,
   images = [],
-  columns = 3,
+  columns,
+  columnsXs,
+  columnsSm,
+  columnsMd,
   titleAlign,
   maxWidth,
   layout = "grid",
-  gap = 16,
-  tile = {},
-  lightbox = {}
+  gap,
+  tile,
+  tileAspectRatio,
+  tileBorderRadius,
+  tileBorder,
+  tileHoverLift,
+  lightbox,
+  lightboxEnabled,
+  lightboxLoop,
+  lightboxShowArrows,
+  lightboxCloseOnBackdrop
 }) => {
   const list = Array.isArray(images) ? images : [];
+  const resolvedTile = tile || {
+    aspectRatio: tileAspectRatio,
+    borderRadius: tileBorderRadius,
+    border: tileBorder,
+    hoverLift: tileHoverLift
+  };
+  const resolvedLightbox = lightbox || {
+    enabled: lightboxEnabled,
+    loop: lightboxLoop,
+    showArrows: lightboxShowArrows,
+    closeOnBackdrop: lightboxCloseOnBackdrop
+  };
+  const resolvedGap = gap ?? 16;
+  const resolvedColumns =
+    columns ||
+    (columnsXs || columnsSm || columnsMd
+      ? { xs: columnsXs, sm: columnsSm, md: columnsMd }
+      : 3);
   const normalizeItem = (it) => {
     if (typeof it === "string") return { url: it };
     return it || {};
@@ -3230,24 +3259,24 @@ const Gallery = ({
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
   };
-  const ratio = parseAspectRatio(tile?.aspectRatio);
+  const ratio = parseAspectRatio(resolvedTile?.aspectRatio);
   const thumbSize = ratio ? { w: 800, h: Math.round(800 / ratio), fit: "crop" } : { w: 800, fit: "crop" };
   const fullSize = { w: 2000, fit: "max" };
-  const borderRadius = tile?.borderRadius ?? 16;
-  const border = tile?.border || "1px solid rgba(148,163,184,0.25)";
-  const hoverLift = tile?.hoverLift ?? false;
-  const lightboxEnabled = lightbox?.enabled ?? false;
+  const borderRadius = resolvedTile?.borderRadius ?? 16;
+  const border = resolvedTile?.border || "1px solid rgba(148,163,184,0.25)";
+  const hoverLift = resolvedTile?.hoverLift ?? false;
+  const lightboxEnabled = resolvedLightbox?.enabled ?? false;
   const [activeIndex, setActiveIndex] = useState(null);
 
   const columnsConf = (() => {
-    if (columns && typeof columns === "object") {
+    if (resolvedColumns && typeof resolvedColumns === "object") {
       return {
-        xs: columns.xs || 2,
-        sm: columns.sm || columns.xs || 2,
-        md: columns.md || columns.sm || columns.xs || 3,
+        xs: resolvedColumns.xs || 2,
+        sm: resolvedColumns.sm || resolvedColumns.xs || 2,
+        md: resolvedColumns.md || resolvedColumns.sm || resolvedColumns.xs || 3,
       };
     }
-    const num = Number(columns) || 3;
+    const num = Number(resolvedColumns) || 3;
     return { xs: 1, sm: Math.min(2, num), md: num };
   })();
 
@@ -3262,8 +3291,8 @@ const Gallery = ({
     setActiveIndex(index);
   };
   const closeLightbox = () => setActiveIndex(null);
-  const showArrows = lightbox?.showArrows ?? true;
-  const loop = lightbox?.loop ?? true;
+  const showArrows = resolvedLightbox?.showArrows ?? true;
+  const loop = resolvedLightbox?.loop ?? true;
 
   const currentItem = activeIndex != null ? normalizeItem(list[activeIndex]) : null;
   const currentPath = currentItem ? toPath(currentItem) : "";
@@ -3297,7 +3326,7 @@ const Gallery = ({
         sx={{
           display: "grid",
           gridTemplateColumns: gridTemplate,
-          gap: typeof gap === "number" ? `${gap}px` : gap,
+          gap: typeof resolvedGap === "number" ? `${resolvedGap}px` : resolvedGap,
         }}
       >
         {list.map((item, i) => {
@@ -3349,7 +3378,7 @@ const Gallery = ({
       <Dialog
         open={activeIndex != null}
         onClose={(event, reason) => {
-          if (reason === "backdropClick" && lightbox?.closeOnBackdrop === false) return;
+          if (reason === "backdropClick" && resolvedLightbox?.closeOnBackdrop === false) return;
           closeLightbox();
         }}
         maxWidth="lg"
