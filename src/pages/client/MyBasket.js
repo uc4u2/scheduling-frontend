@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import {
   Box,
@@ -111,6 +111,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutBg, setCheckoutBg] = useState(null);
   const [checkoutCardBg, setCheckoutCardBg] = useState(null);
+  const checkoutStyleRef = useRef(null);
   const [holdMinutes, setHoldMinutes] = useState(null);
   const [holdState, setHoldState] = useState({ overall: null, perItem: {} });
   const [cancelHandled, setCancelHandled] = useState(false);
@@ -355,6 +356,27 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     modalPageBg,
     modalPageBgImage,
   ]);
+  useEffect(() => {
+    if (!checkoutOpen || !modalVars) return;
+    const root = document.documentElement;
+    const prev = {};
+    Object.entries(modalVars).forEach(([key, value]) => {
+      prev[key] = root.style.getPropertyValue(key);
+      root.style.setProperty(key, value);
+    });
+    checkoutStyleRef.current = prev;
+    return () => {
+      const restore = checkoutStyleRef.current || {};
+      Object.entries(modalVars).forEach(([key]) => {
+        if (Object.prototype.hasOwnProperty.call(restore, key)) {
+          root.style.setProperty(key, restore[key]);
+        } else {
+          root.style.removeProperty(key);
+        }
+      });
+      checkoutStyleRef.current = null;
+    };
+  }, [checkoutOpen, modalVars]);
 
 
   const content = (
