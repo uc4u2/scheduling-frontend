@@ -41,10 +41,16 @@ function toArray(val) {
 /** Render sanitized (inline) HTML in Typography */
 function HtmlTypo({ variant = "body1", sx, children, ...rest }) {
   const html = normalizeInlineHtml(String(children ?? ""));
+  const alignMatch = /text-align\s*:\s*(left|center|right|justify)/i.exec(html);
+  const inferredAlign = alignMatch ? alignMatch[1].toLowerCase() : null;
+  const mergedSx =
+    inferredAlign && (!sx || sx.textAlign == null)
+      ? { ...(sx || {}), textAlign: inferredAlign }
+      : sx;
   return (
     <Typography
       variant={variant}
-      sx={sx}
+      sx={mergedSx}
       {...rest}
       dangerouslySetInnerHTML={{ __html: safeHtml(html) }}
     />
@@ -705,7 +711,7 @@ const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
-        <Typography
+        <HtmlTypo
           variant="h4"
           sx={{
             mb: 2,
@@ -714,8 +720,8 @@ const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign
             ...(titleColor ? { color: titleColor } : {}),
           }}
         >
-          {toPlain(title)}
-        </Typography>
+          {title}
+        </HtmlTypo>
       )}
       {subtitle && (
         <HtmlTypo
