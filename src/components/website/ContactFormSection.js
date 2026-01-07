@@ -11,6 +11,7 @@ import {
   Alert,
   CircularProgress,
   Typography,
+  Paper,
 } from "@mui/material";
 import { publicSite } from "../../utils/api";
 import { safeHtml } from "../../utils/safeHtml";
@@ -151,47 +152,58 @@ export default function ContactFormSection(props) {
           {ok && <Alert severity="success">{successMessage}</Alert>}
           {err && <Alert severity="error">{err}</Alert>}
 
-          <Box component="form" onSubmit={submit} noValidate>
-            <Grid container spacing={2}>
-              {normFields.map((f) => (
-                <Grid key={f.name} item xs={12} sm={gridCols(f)}>
-                  {f.type === "textarea" ? (
-                    <TextField
-                      label={f.label}
-                      value={values[f.name] || ""}
-                      onChange={onChange(f.name)}
-                      required={!!f.required}
-                      fullWidth
-                      multiline
-                      minRows={4}
-                      placeholder={f.placeholder || ""}
-                    />
-                  ) : (
-                    <TextField
-                      label={f.label}
-                      type={f.type || "text"}
-                      value={values[f.name] || ""}
-                      onChange={onChange(f.name)}
-                      required={!!f.required}
-                      fullWidth
-                      placeholder={f.placeholder || ""}
-                    />
-                  )}
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2, md: 3 },
+              borderRadius: "var(--page-card-radius, 12px)",
+              backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
+              boxShadow: "var(--page-card-shadow, 0 8px 30px rgba(0,0,0,0.08))",
+              border: "1px solid rgba(148,163,184,0.18)",
+            }}
+          >
+            <Box component="form" onSubmit={submit} noValidate>
+              <Grid container spacing={2}>
+                {normFields.map((f) => (
+                  <Grid key={f.name} item xs={12} sm={gridCols(f)}>
+                    {f.type === "textarea" ? (
+                      <TextField
+                        label={f.label}
+                        value={values[f.name] || ""}
+                        onChange={onChange(f.name)}
+                        required={!!f.required}
+                        fullWidth
+                        multiline
+                        minRows={4}
+                        placeholder={f.placeholder || ""}
+                      />
+                    ) : (
+                      <TextField
+                        label={f.label}
+                        type={f.type || "text"}
+                        value={values[f.name] || ""}
+                        onChange={onChange(f.name)}
+                        required={!!f.required}
+                        fullWidth
+                        placeholder={f.placeholder || ""}
+                      />
+                    )}
+                  </Grid>
+                ))}
+                <Grid item xs={12}>
+                  <Button type="submit" variant="contained" size="large" disabled={sending || !resolvedSlug}>
+                    {sending ? (
+                      <>
+                        <CircularProgress size={20} sx={{ mr: 1 }} /> Sending…
+                      </>
+                    ) : (
+                      "Send message"
+                    )}
+                  </Button>
                 </Grid>
-              ))}
-              <Grid item xs={12}>
-                <Button type="submit" variant="contained" size="large" disabled={sending || !resolvedSlug}>
-                  {sending ? (
-                    <>
-                      <CircularProgress size={20} sx={{ mr: 1 }} /> Sending…
-                    </>
-                  ) : (
-                    "Send message"
-                  )}
-                </Button>
               </Grid>
-            </Grid>
-          </Box>
+            </Box>
+          </Paper>
         </Stack>
       </Container>
     </Box>
