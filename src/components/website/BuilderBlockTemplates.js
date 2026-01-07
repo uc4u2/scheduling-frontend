@@ -26,7 +26,7 @@ export const NEW_BLOCKS = {
   gallery: () => ({
     type: "gallery",
     props: {
-      title: "Our work",
+      title: "Photo Gallery",
       titleAlign: "center",
       layout: "grid",
       columns: { xs: 2, sm: 2, md: 3 },
