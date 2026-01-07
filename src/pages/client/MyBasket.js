@@ -36,6 +36,7 @@ const toSolidColor = (value) => {
   if (!value) return null;
   const raw = String(value).trim();
   if (!raw) return null;
+  if (raw.toLowerCase() === "transparent") return null;
   if (raw.startsWith("rgba(")) {
     const parts = raw
       .slice(5, -1)
@@ -109,6 +110,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   const [snack, setSnack] = useState({ open: false, msg: "" });
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutBg, setCheckoutBg] = useState(null);
+  const [checkoutCardBg, setCheckoutCardBg] = useState(null);
   const [holdMinutes, setHoldMinutes] = useState(null);
   const [holdState, setHoldState] = useState({ overall: null, perItem: {} });
   const [cancelHandled, setCancelHandled] = useState(false);
@@ -314,17 +316,45 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     const candidate = pageStyleOverride?.cardColor || pageStyleOverride?.cardBg;
     return toSolidColor(candidate);
   }, [pageStyleOverride]);
+  const modalPageBg = useMemo(() => {
+    const candidate = pageStyleOverride?.backgroundColor;
+    return toSolidColor(candidate);
+  }, [pageStyleOverride]);
+  const modalPageBgImage = useMemo(() => {
+    const candidate = backgroundSx?.backgroundImage;
+    return candidate || null;
+  }, [backgroundSx]);
   useEffect(() => {
     if (!checkoutOpen) return;
     try {
       const root = document.documentElement;
       const computed = getComputedStyle(root).getPropertyValue("--page-card-bg");
-      const solid = toSolidColor(computed) || modalCardBg;
+      const solid = toSolidColor(computed) || modalCardBg || modalPageBg;
       setCheckoutBg(solid || null);
     } catch {
-      setCheckoutBg(modalCardBg || null);
+      setCheckoutBg(modalCardBg || modalPageBg || null);
     }
-  }, [checkoutOpen, modalCardBg]);
+    setCheckoutCardBg(modalCardBg || modalPageBg || null);
+  }, [checkoutOpen, modalCardBg, modalPageBg]);
+  const modalVars = useMemo(() => {
+    if (!checkoutOpen) return null;
+    const vars = styleVars ? { ...styleVars } : {};
+    const fallback = "rgba(255,255,255,0.95)";
+    const modalBg = checkoutBg || modalPageBg || vars["--page-body-bg"] || null;
+    const cardBg = checkoutCardBg || modalCardBg || vars["--page-card-bg"] || modalBg || null;
+    vars["--checkout-modal-bg"] = modalBg || cardBg || fallback;
+    vars["--checkout-card-bg"] = cardBg || fallback;
+    vars["--checkout-modal-bg-image"] = modalPageBgImage || "none";
+    return vars;
+  }, [
+    checkoutOpen,
+    styleVars,
+    checkoutCardBg,
+    checkoutBg,
+    modalCardBg,
+    modalPageBg,
+    modalPageBgImage,
+  ]);
 
 
   const content = (
@@ -501,15 +531,15 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
         onClose={() => setCheckoutOpen(false)}
         fullWidth
         maxWidth="lg"
-        sx={checkoutBg ? { "--checkout-modal-bg": checkoutBg } : undefined}
+        sx={modalVars || undefined}
         PaperProps={{
           sx: {
             width: "100%",
             maxWidth: 1200,
             mx: 0,
             borderRadius: 2,
-            backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
-            backgroundImage: "none",
+            backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, rgba(255,255,255,0.95)))",
+            backgroundImage: "var(--checkout-modal-bg-image, none)",
             color: "var(--page-body-color, #111827)",
           },
         }}
@@ -521,6 +551,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             alignItems: "center",
             justifyContent: "space-between",
             backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
+            backgroundImage: "var(--checkout-modal-bg-image, none)",
           }}
         >
           <Typography variant="h6" fontWeight={700} noWrap>
@@ -535,6 +566,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
           sx={{
             p: 0,
             backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
+            backgroundImage: "var(--checkout-modal-bg-image, none)",
           }}
         >
           <Checkout disableShell companySlug={slug} />

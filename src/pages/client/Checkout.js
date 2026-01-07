@@ -77,7 +77,7 @@ const normalizeProductOrder = (payload) => {
 function LoginDialog({ open, onClose, onLoginSuccess }) {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const dialogPaperSx = {
-    backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
+    backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))",
     backgroundImage: "none",
     color: "var(--page-body-color, #111827)",
   };
@@ -143,14 +143,14 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
       }}
       sx={{
         "& .MuiDialog-paper": dialogPaperSx,
-        "& .MuiDialogContent-root": { backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))" },
-        "& .MuiDialogTitle-root": { backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))" },
+        "& .MuiDialogContent-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))" },
+        "& .MuiDialogTitle-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))" },
       }}
     >
-      <DialogTitle sx={{ backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))" }}>
+      <DialogTitle sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))" }}>
         Client Login
       </DialogTitle>
-      <DialogContent sx={{ backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))" }}>
+      <DialogContent sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))" }}>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -208,7 +208,7 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
 function RegisterDialog({ open, onClose, onRegisterSuccess }) {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const dialogPaperSx = {
-    backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
+    backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))",
     backgroundImage: "none",
     color: "var(--page-body-color, #111827)",
   };
@@ -275,14 +275,14 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
       }}
       sx={{
         "& .MuiDialog-paper": dialogPaperSx,
-        "& .MuiDialogContent-root": { backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))" },
-        "& .MuiDialogTitle-root": { backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))" },
+        "& .MuiDialogContent-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))" },
+        "& .MuiDialogTitle-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))" },
       }}
     >
-      <DialogTitle sx={{ backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))" }}>
+      <DialogTitle sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))" }}>
         Client Sign Up
       </DialogTitle>
-      <DialogContent sx={{ backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))" }}>
+      <DialogContent sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))" }}>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -1179,15 +1179,15 @@ function CheckoutFormCore({
 
     return (
       <Box py={{ xs: 6, md: 8 }} px={{ xs: 2, md: 0 }} maxWidth={720} mx="auto">
-      <Paper
-        elevation={4}
-        sx={{
-          p: { xs: 3, md: 4 },
-          borderRadius: 4,
-          backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
-          color: "var(--page-body-color, inherit)",
-        }}
-      >
+        <Paper
+          elevation={4}
+          sx={{
+            p: { xs: 3, md: 4 },
+            borderRadius: 4,
+            backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))",
+            color: "var(--page-body-color, inherit)",
+          }}
+        >
           <Stack spacing={4}>
             <Stack spacing={1}>
               <Typography variant="h3" fontWeight={800}>
@@ -1334,7 +1334,7 @@ function CheckoutFormCore({
         sx={{
           p: { xs: 2.5, md: 4 },
           borderRadius: 4,
-          backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
+          backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))",
           color: "var(--page-body-color, inherit)",
         }}
       >
