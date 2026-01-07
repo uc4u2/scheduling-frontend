@@ -968,7 +968,7 @@ const Testimonials = ({ title, items = [], titleAlign, maxWidth }) => {
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
-        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: titleAlign || "left" }}>
+        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: titleAlign || "center" }}>
           {title}
         </HtmlTypo>
       )}

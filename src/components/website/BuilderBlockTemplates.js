@@ -27,6 +27,7 @@ export const NEW_BLOCKS = {
     type: "gallery",
     props: {
       title: "Our work",
+      titleAlign: "center",
       layout: "grid",
       columns: { xs: 2, sm: 2, md: 3 },
       gap: 18,

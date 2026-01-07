@@ -500,7 +500,7 @@ export const SCHEMA_REGISTRY = {
       { name: "lightboxLoop", type: "boolean", label: "Lightbox loop", default: true },
       { name: "lightboxShowArrows", type: "boolean", label: "Lightbox arrows", default: true },
       { name: "lightboxCloseOnBackdrop", type: "boolean", label: "Close on backdrop", default: true },
-      { name: "titleAlign",  type: "select",     label: "Title alignment", options: ["left","center","right"], default: "left" },
+      { name: "titleAlign",  type: "select",     label: "Title alignment", options: ["left","center","right"], default: "center" },
       { name: "maxWidth",    type: "select",     label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },
       { name: "gutterX",     type: "number",     label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
       { name: "bleedLeft",   type: "boolean",    label: "Bleed left" },
