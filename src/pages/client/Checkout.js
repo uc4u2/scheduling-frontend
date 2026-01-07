@@ -34,7 +34,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import { useTheme } from "@mui/material/styles";
 import api from "../../utils/api";
-import PublicPageShell from "./PublicPageShell";
+import SiteFrame from "../../components/website/SiteFrame";
+import { publicSite } from "../../utils/api";
 import TimezoneSelect from "../../components/TimezoneSelect";
 
 const stashProductOrder = (order, sessionId) => {
@@ -1879,6 +1880,8 @@ export default function Checkout(props) {
   const companySlug = pickSlug(props.companySlug, params.slug, lsSite, urlPathFirst);
 
   const [ready, setReady] = useState(false);
+  const [sitePayload, setSitePayload] = useState(null);
+  const [siteLoading, setSiteLoading] = useState(false);
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [cardOnFileEnabled, setCardOnFileEnabled] = useState(false);
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
@@ -1937,18 +1940,56 @@ export default function Checkout(props) {
     };
   }, [companySlug]);
 
+  useEffect(() => {
+    let mounted = true;
+    if (!companySlug) {
+      setSitePayload(null);
+      setSiteLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+    setSiteLoading(true);
+    publicSite
+      .getBySlug(companySlug)
+      .then((data) => {
+        if (!mounted) return;
+        setSitePayload(data || null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setSitePayload(null);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setSiteLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [companySlug]);
+
   const renderShell = (node) => {
     if (disableShell) {
       return node;
     }
+    if (!companySlug) {
+      return node;
+    }
     return (
-      <PublicPageShell activeKey="__basket" slugOverride={companySlug || undefined}>
+      <SiteFrame
+        slug={companySlug}
+        activeKey="__basket"
+        initialSite={sitePayload || undefined}
+        disableFetch={Boolean(sitePayload)}
+        wrapChildrenInContainer={false}
+      >
         {node}
-      </PublicPageShell>
+      </SiteFrame>
     );
   };
 
-  if (!ready) {
+  if (!ready || (siteLoading && !sitePayload)) {
     return renderShell(
       <Box p={3} maxWidth={600} mx="auto">
         <CircularProgress />
