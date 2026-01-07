@@ -16,10 +16,15 @@ import {
   Stack,
   TextField,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
+import CloseIcon from "@mui/icons-material/Close";
 import PublicPageShell from "./PublicPageShell";
+import Checkout from "./Checkout";
 import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
 import { api as apiClient } from "../../utils/api";
@@ -73,6 +78,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
 
   const [items, setItems] = useState(() => loadCart());
   const [snack, setSnack] = useState({ open: false, msg: "" });
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [holdMinutes, setHoldMinutes] = useState(null);
   const [holdState, setHoldState] = useState({ overall: null, perItem: {} });
   const [cancelHandled, setCancelHandled] = useState(false);
@@ -248,7 +254,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
       setSnack({ open: true, msg: "Services and retail products must be checked out separately. Please complete one checkout before starting another." });
       return;
     }
-    navigate(`/${slug}/checkout${embedSuffix}`);
+    setCheckoutOpen(true);
   };
   const continueShopping = () => navigate(`/${slug}/products${embedSuffix}`);
 
@@ -445,6 +451,32 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
         onClose={() => setSnack({ open: false, msg: "" })}
         message={snack.msg}
       />
+      <Dialog
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        fullWidth
+        maxWidth="lg"
+        PaperProps={{
+          sx: {
+            width: "100%",
+            maxWidth: 1200,
+            mx: 0,
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle sx={{ py: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Typography variant="h6" fontWeight={700} noWrap>
+            Checkout
+          </Typography>
+          <IconButton onClick={() => setCheckoutOpen(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0 }}>
+          <Checkout disableShell companySlug={slug} />
+        </DialogContent>
+      </Dialog>
       </Container>
     </Box>
   );
