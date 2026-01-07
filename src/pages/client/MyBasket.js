@@ -111,6 +111,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutBg, setCheckoutBg] = useState(null);
   const [checkoutCardBg, setCheckoutCardBg] = useState(null);
+  const [pageScopeVars, setPageScopeVars] = useState(null);
   const checkoutStyleRef = useRef(null);
   const [holdMinutes, setHoldMinutes] = useState(null);
   const [holdState, setHoldState] = useState({ overall: null, perItem: {} });
@@ -337,9 +338,56 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     }
     setCheckoutCardBg(modalCardBg || modalPageBg || null);
   }, [checkoutOpen, modalCardBg, modalPageBg]);
+  useEffect(() => {
+    if (!checkoutOpen) {
+      setPageScopeVars(null);
+      return;
+    }
+    const scopeEl = document.querySelector(".page-scope");
+    if (!scopeEl) {
+      setPageScopeVars(null);
+      return;
+    }
+    const computed = getComputedStyle(scopeEl);
+    const readVar = (key) => {
+      const raw = computed.getPropertyValue(key);
+      return raw ? raw.trim() : "";
+    };
+    const vars = {
+      "--page-card-bg": readVar("--page-card-bg"),
+      "--page-body-color": readVar("--page-body-color"),
+      "--page-heading-color": readVar("--page-heading-color"),
+      "--page-link-color": readVar("--page-link-color"),
+      "--page-heading-font": readVar("--page-heading-font"),
+      "--page-body-font": readVar("--page-body-font"),
+      "--page-btn-bg": readVar("--page-btn-bg"),
+      "--page-btn-color": readVar("--page-btn-color"),
+      "--page-btn-radius": readVar("--page-btn-radius"),
+      "--page-card-radius": readVar("--page-card-radius"),
+      "--page-card-shadow": readVar("--page-card-shadow"),
+      "--page-card-blur": readVar("--page-card-blur"),
+      "--page-body-bg": readVar("--page-body-bg"),
+    };
+    const bg = computed.backgroundColor;
+    if (!vars["--page-body-bg"] && bg && bg !== "transparent") {
+      vars["--page-body-bg"] = bg;
+    }
+    const bgImage = computed.backgroundImage;
+    if (bgImage && bgImage !== "none") {
+      vars["--checkout-modal-bg-image"] = bgImage;
+    }
+    setPageScopeVars(vars);
+  }, [checkoutOpen]);
   const modalVars = useMemo(() => {
     if (!checkoutOpen) return null;
     const vars = styleVars ? { ...styleVars } : {};
+    if (pageScopeVars) {
+      Object.entries(pageScopeVars).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && String(value).trim() !== "") {
+          vars[key] = value;
+        }
+      });
+    }
     const fallback = "rgba(255,255,255,0.95)";
     const modalBg = modalPageBg || null;
     const cardBg = checkoutBg || checkoutCardBg || modalCardBg || vars["--page-card-bg"] || modalBg || null;
@@ -350,6 +398,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   }, [
     checkoutOpen,
     styleVars,
+    pageScopeVars,
     checkoutCardBg,
     checkoutBg,
     modalCardBg,
