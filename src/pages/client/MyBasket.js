@@ -108,6 +108,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
   const [items, setItems] = useState(() => loadCart());
   const [snack, setSnack] = useState({ open: false, msg: "" });
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutBg, setCheckoutBg] = useState(null);
   const [holdMinutes, setHoldMinutes] = useState(null);
   const [holdState, setHoldState] = useState({ overall: null, perItem: {} });
   const [cancelHandled, setCancelHandled] = useState(false);
@@ -313,6 +314,17 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     const candidate = pageStyleOverride?.cardColor || pageStyleOverride?.cardBg;
     return toSolidColor(candidate);
   }, [pageStyleOverride]);
+  useEffect(() => {
+    if (!checkoutOpen) return;
+    try {
+      const root = document.documentElement;
+      const computed = getComputedStyle(root).getPropertyValue("--page-card-bg");
+      const solid = toSolidColor(computed) || modalCardBg;
+      setCheckoutBg(solid || null);
+    } catch {
+      setCheckoutBg(modalCardBg || null);
+    }
+  }, [checkoutOpen, modalCardBg]);
 
 
   const content = (
@@ -489,7 +501,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
         onClose={() => setCheckoutOpen(false)}
         fullWidth
         maxWidth="lg"
-        sx={modalCardBg ? { "--checkout-modal-bg": modalCardBg } : undefined}
+        sx={checkoutBg ? { "--checkout-modal-bg": checkoutBg } : undefined}
         PaperProps={{
           sx: {
             width: "100%",
