@@ -3170,34 +3170,46 @@ const Footer = ({ text, maxWidth }) => (
 const BookingCtaBar = ({
   text = "Ready to book?",
   buttonText = "See availability",
-  buttonLink = "/services"
-}) => (
-  <Box sx={{ position: "sticky", bottom: 16, zIndex: 1200 }}>
-    <Container maxWidth="lg">
-      <Box
-        className="booking-cta-card"
-        sx={{
-          p: 2,
-          borderRadius: 3,
-          boxShadow: 6,
-          bgcolor: "var(--page-card-bg, rgba(255,255,255,0.12))",
-          display: "flex",
-          gap: 2,
-          alignItems: "center",
-          justifyContent: "space-between",
-          border: (t) => `1px solid ${t.palette.divider}`
-        }}
-      >
-        <HtmlTypo variant="subtitle1" className="booking-cta-text" sx={{ fontWeight: 700, m: 0 }}>
-          {text}
-        </HtmlTypo>
-        <Button href={buttonLink} variant="contained" size="large">
-          {toPlain(buttonText)}
-        </Button>
-      </Box>
-    </Container>
-  </Box>
-);
+  buttonLink = "/services",
+  titleAlign = "left"
+}) => {
+  const align = (titleAlign || "left").toLowerCase();
+  const isCenter = align === "center";
+  const isRight = align === "right";
+  return (
+    <Box sx={{ position: "sticky", bottom: 16, zIndex: 1200 }}>
+      <Container maxWidth="lg">
+        <Box
+          className="booking-cta-card"
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            boxShadow: 6,
+            bgcolor: "var(--page-card-bg, rgba(255,255,255,0.12))",
+            display: "flex",
+            gap: 2,
+            alignItems: "center",
+            justifyContent: isCenter ? "center" : "space-between",
+            flexDirection: isCenter ? "column" : isRight ? "row-reverse" : "row",
+            textAlign: align,
+            border: (t) => `1px solid ${t.palette.divider}`
+          }}
+        >
+          <HtmlTypo
+            variant="subtitle1"
+            className="booking-cta-text"
+            sx={{ fontWeight: 700, m: 0, textAlign: align }}
+          >
+            {text}
+          </HtmlTypo>
+          <Button href={buttonLink} variant="contained" size="large">
+            {toPlain(buttonText)}
+          </Button>
+        </Box>
+      </Container>
+    </Box>
+  );
+};
 
 const Gallery = ({
   title,
