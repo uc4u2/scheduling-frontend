@@ -13,6 +13,8 @@ import {
   Typography,
 } from "@mui/material";
 import { publicSite } from "../../utils/api";
+import { safeHtml } from "../../utils/safeHtml";
+import { normalizeBlockHtml, isEmptyHtml } from "../../utils/html";
 
 /**
  * ContactFormSection
@@ -86,6 +88,7 @@ export default function ContactFormSection(props) {
   }, [fields]);
 
   const onChange = (k) => (e) => setValues((v) => ({ ...v, [k]: e.target.value }));
+  const introHtml = useMemo2(() => normalizeBlockHtml(String(intro || "")), [intro]);
 
   async function submit(e) {
     e.preventDefault();
@@ -133,14 +136,16 @@ export default function ContactFormSection(props) {
               {title}
             </Typography>
           )}
-          {!!intro && (
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              sx={{ textAlign: titleAlign === "center" ? "center" : "left" }}
-            >
-              {intro}
-            </Typography>
+          {!!intro && !isEmptyHtml(introHtml) && (
+            <Box
+              sx={{
+                textAlign: titleAlign === "center" ? "center" : "left",
+                color: "text.secondary",
+                "& p": { margin: 0, marginBottom: "0.5rem" },
+                "& p:last-of-type": { marginBottom: 0 },
+              }}
+              dangerouslySetInnerHTML={{ __html: safeHtml(introHtml) }}
+            />
           )}
 
           {ok && <Alert severity="success">{successMessage}</Alert>}
