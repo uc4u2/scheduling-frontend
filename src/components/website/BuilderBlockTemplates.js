@@ -32,7 +32,7 @@ export const NEW_BLOCKS = {
       gap: 18,
       tile: {
         aspectRatio: "4/5",
-        borderRadius: 8,
+        borderRadius: 4,
         border: "1px solid rgba(255,255,255,0.35)",
         hoverLift: true
       },

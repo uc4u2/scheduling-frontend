@@ -493,7 +493,7 @@ export const SCHEMA_REGISTRY = {
       { name: "columnsMd",   type: "number",     label: "Columns (md)", min: 1, max: 6, step: 1, default: 3 },
       { name: "gap",         type: "number",     label: "Tile gap (px)", min: 0, max: 64, step: 1, default: 18 },
       { name: "tileAspectRatio", type: "string", label: "Tile aspect ratio", placeholder: "4/5" },
-      { name: "tileBorderRadius", type: "number", label: "Tile border radius (px)", min: 0, max: 64, step: 1, default: 8 },
+      { name: "tileBorderRadius", type: "number", label: "Tile border radius (px)", min: 0, max: 64, step: 1, default: 4 },
       { name: "tileBorder", type: "string", label: "Tile border (CSS)", placeholder: "1px solid rgba(255,255,255,0.35)" },
       { name: "tileHoverLift", type: "boolean", label: "Hover lift", default: true },
       { name: "lightboxEnabled", type: "boolean", label: "Lightbox enabled", default: true },
