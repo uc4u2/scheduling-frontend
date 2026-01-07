@@ -3177,9 +3177,11 @@ const BookingCtaBar = ({
   text = "Ready to book?",
   buttonText = "See availability",
   buttonLink = "/services",
-  titleAlign = "left"
+  titleAlign
 }) => {
-  const align = (titleAlign || "left").toLowerCase();
+  const inlineAlignMatch = /text-align\s*:\s*(left|center|right|justify)/i.exec(String(text || ""));
+  const inlineAlign = inlineAlignMatch ? inlineAlignMatch[1].toLowerCase() : null;
+  const align = ((titleAlign || inlineAlign || "left") + "").toLowerCase();
   const isCenter = align === "center";
   const isRight = align === "right";
   return (
@@ -3204,7 +3206,7 @@ const BookingCtaBar = ({
           <HtmlTypo
             variant="subtitle1"
             className="booking-cta-text"
-            sx={{ fontWeight: 700, m: 0, textAlign: align }}
+            sx={{ fontWeight: 700, m: 0, textAlign: titleAlign ? align : undefined }}
           >
             {text}
           </HtmlTypo>
