@@ -32,6 +32,35 @@ import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./ServiceList";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
+const toSolidColor = (value) => {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  if (raw.startsWith("rgba(")) {
+    const parts = raw
+      .slice(5, -1)
+      .split(",")
+      .map((v) => v.trim());
+    if (parts.length >= 3) {
+      const [r, g, b] = parts;
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+  }
+  if (raw.startsWith("hsla(")) {
+    return `hsl(${raw.slice(5, -1).split(",").slice(0, 3).join(",")})`;
+  }
+  if (raw.startsWith("#")) {
+    const hex = raw.slice(1);
+    if (hex.length === 4) {
+      return `#${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`;
+    }
+    if (hex.length === 8) {
+      return `#${hex.slice(0, 6)}`;
+    }
+  }
+  return raw;
+};
+
 const lineSubtotal = (item) => {
   if (item.type === CartTypes.PRODUCT) {
     return Number(item.price || 0) * (item.quantity || 1);
@@ -280,6 +309,10 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     () => (pageStyleOverride ? pageStyleToBackgroundSx(pageStyleOverride) : null),
     [pageStyleOverride]
   );
+  const modalCardBg = useMemo(() => {
+    const candidate = pageStyleOverride?.cardColor || pageStyleOverride?.cardBg;
+    return toSolidColor(candidate);
+  }, [pageStyleOverride]);
 
 
   const content = (
@@ -456,13 +489,14 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
         onClose={() => setCheckoutOpen(false)}
         fullWidth
         maxWidth="lg"
+        sx={modalCardBg ? { "--checkout-modal-bg": modalCardBg } : undefined}
         PaperProps={{
           sx: {
             width: "100%",
             maxWidth: 1200,
             mx: 0,
             borderRadius: 2,
-            backgroundColor: "var(--page-card-bg, #ffffff)",
+            backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
             backgroundImage: "none",
             color: "var(--page-body-color, #111827)",
           },
@@ -474,7 +508,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            backgroundColor: "var(--page-card-bg, #ffffff)",
+            backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
           }}
         >
           <Typography variant="h6" fontWeight={700} noWrap>
@@ -484,7 +518,13 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers sx={{ p: 0, backgroundColor: "var(--page-card-bg, #ffffff)" }}>
+        <DialogContent
+          dividers
+          sx={{
+            p: 0,
+            backgroundColor: "var(--checkout-modal-bg, var(--page-card-bg, #ffffff))",
+          }}
+        >
           <Checkout disableShell companySlug={slug} />
         </DialogContent>
       </Dialog>
