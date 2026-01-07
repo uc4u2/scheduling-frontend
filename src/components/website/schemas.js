@@ -508,6 +508,24 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  /* --------------------------- MAP ---------------------- */
+  mapEmbed: {
+    title: "Map",
+    fields: [
+      { name: "title",       type: "richinline", label: "Title (optional)" },
+      { name: "provider",    type: "select",     label: "Provider", options: ["google"], default: "google" },
+      { name: "query",       type: "string",     label: "Address / query" },
+      { name: "embedUrl",    type: "string",     label: "Embed URL (optional)" },
+      { name: "height",      type: "number",     label: "Height (px)", min: 180, max: 900, step: 10, default: 320 },
+      { name: "borderRadius",type: "number",     label: "Border radius (px)", min: 0, max: 64, step: 1, default: 16 },
+      { name: "titleAlign",  type: "select",     label: "Title alignment", options: ["left","center","right"], default: "left" },
+      { name: "maxWidth",    type: "select",     label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",     type: "number",     label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",   type: "boolean",    label: "Bleed left" },
+      { name: "bleedRight",  type: "boolean",    label: "Bleed right" }
+    ]
+  },
+
   /* -------------------- GALLERY / CAROUSEL ------------------ */
   galleryCarousel: {
     title: "Gallery (Carousel)",

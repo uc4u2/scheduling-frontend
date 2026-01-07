@@ -3157,6 +3157,59 @@ const ContactBlock = ({ title, intro, email, phone, address, mapEmbedUrl, titleA
   </Container>
 );
 
+const MapEmbed = ({
+  provider = "google",
+  query = "",
+  embedUrl = "",
+  height = 320,
+  borderRadius = 16,
+  maxWidth = "lg",
+  title = "",
+  titleAlign = "left"
+}) => {
+  const resolvedUrl = (() => {
+    if (embedUrl) return embedUrl;
+    if (!query) return "";
+    if (provider && String(provider).toLowerCase() !== "google") return "";
+    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+  })();
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      {title && (
+        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: titleAlign || "left" }}>
+          {title}
+        </HtmlTypo>
+      )}
+      <Box
+        sx={{
+          borderRadius: borderRadius ?? 16,
+          overflow: "hidden",
+          boxShadow: "var(--page-card-shadow, 0 8px 30px rgba(0,0,0,0.08))",
+          border: "1px solid rgba(148,163,184,0.18)",
+          backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
+        }}
+      >
+        {resolvedUrl ? (
+          <Box
+            component="iframe"
+            title={query || "Map"}
+            src={resolvedUrl}
+            loading="lazy"
+            style={{ border: 0 }}
+            sx={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}
+            allowFullScreen
+          />
+        ) : (
+          <Box sx={{ p: 4, textAlign: "center", color: "text.secondary" }}>
+            Map unavailable
+          </Box>
+        )}
+      </Box>
+    </Container>
+  );
+};
+
 const Footer = ({ text, maxWidth }) => (
   <Container maxWidth={toContainerMax(maxWidth)}>
     <Divider sx={{ my: 2 }} />
@@ -3508,6 +3561,7 @@ const registry = {
   logoCloud: LogoCloud,
   stats: Stats,
   contact: ContactBlock,
+  mapEmbed: MapEmbed,
   contactForm: ContactFormSection,
   footer: Footer,
   bookingCtaBar: BookingCtaBar
