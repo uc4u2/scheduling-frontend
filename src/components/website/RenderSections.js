@@ -3175,11 +3175,12 @@ const BookingCtaBar = ({
   <Box sx={{ position: "sticky", bottom: 16, zIndex: 1200 }}>
     <Container maxWidth="lg">
       <Box
+        className="booking-cta-card"
         sx={{
           p: 2,
           borderRadius: 3,
           boxShadow: 6,
-          bgcolor: "background.paper",
+          bgcolor: "var(--page-card-bg, rgba(255,255,255,0.12))",
           display: "flex",
           gap: 2,
           alignItems: "center",
@@ -3187,7 +3188,7 @@ const BookingCtaBar = ({
           border: (t) => `1px solid ${t.palette.divider}`
         }}
       >
-        <HtmlTypo variant="subtitle1" sx={{ fontWeight: 700, m: 0 }}>
+        <HtmlTypo variant="subtitle1" className="booking-cta-text" sx={{ fontWeight: 700, m: 0 }}>
           {text}
         </HtmlTypo>
         <Button href={buttonLink} variant="contained" size="large">
