@@ -459,20 +459,136 @@ export default function SectionInspector({
           return item || {};
         };
         const toValue = (item) => item?.assetKey || item?.url || item?.src || "";
-      return (
-        <Stack spacing={1.25} sx={{ p: 2 }}>
-          <Header title="Gallery" />
-          <TextField
-            label="Title"
-            size="small"
-            value={p.title || ""}
-            onChange={(e) => onChangeProp("title", e.target.value)}
-            fullWidth
-          />
-          <Typography variant="caption">Images</Typography>
-          <Stack spacing={1}>
-            {(p.images || []).map((raw, idx) => {
-              const item = normalizeItem(raw);
+        return (
+          <Stack spacing={1.25} sx={{ p: 2 }}>
+            <Header title="Gallery" />
+            <TextField
+              label="Title"
+              size="small"
+              value={p.title || ""}
+              onChange={(e) => onChangeProp("title", e.target.value)}
+              fullWidth
+            />
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2">Layout</Typography>
+            <Stack direction="row" spacing={1}>
+              <TextField
+                label="Columns (xs)"
+                size="small"
+                type="number"
+                value={p.columnsXs ?? 2}
+                onChange={(e) => onChangeProp("columnsXs", Number(e.target.value))}
+                inputProps={{ min: 1, max: 6 }}
+                fullWidth
+              />
+              <TextField
+                label="Columns (sm)"
+                size="small"
+                type="number"
+                value={p.columnsSm ?? 2}
+                onChange={(e) => onChangeProp("columnsSm", Number(e.target.value))}
+                inputProps={{ min: 1, max: 6 }}
+                fullWidth
+              />
+              <TextField
+                label="Columns (md)"
+                size="small"
+                type="number"
+                value={p.columnsMd ?? 3}
+                onChange={(e) => onChangeProp("columnsMd", Number(e.target.value))}
+                inputProps={{ min: 1, max: 6 }}
+                fullWidth
+              />
+            </Stack>
+            <TextField
+              label="Tile gap (px)"
+              size="small"
+              type="number"
+              value={p.gap ?? 18}
+              onChange={(e) => onChangeProp("gap", Number(e.target.value))}
+              inputProps={{ min: 0, max: 64 }}
+              fullWidth
+            />
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2">Tile</Typography>
+            <TextField
+              label="Aspect ratio"
+              size="small"
+              value={p.tileAspectRatio || "4/5"}
+              onChange={(e) => onChangeProp("tileAspectRatio", e.target.value)}
+              fullWidth
+            />
+            <Stack direction="row" spacing={1}>
+              <TextField
+                label="Border radius (px)"
+                size="small"
+                type="number"
+                value={p.tileBorderRadius ?? 20}
+                onChange={(e) => onChangeProp("tileBorderRadius", Number(e.target.value))}
+                inputProps={{ min: 0, max: 64 }}
+                fullWidth
+              />
+              <TextField
+                label="Border (CSS)"
+                size="small"
+                value={p.tileBorder || "1px solid rgba(255,255,255,0.35)"}
+                onChange={(e) => onChangeProp("tileBorder", e.target.value)}
+                fullWidth
+              />
+            </Stack>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={Boolean(p.tileHoverLift ?? true)}
+                  onChange={(_, chk) => onChangeProp("tileHoverLift", chk)}
+                />
+              }
+              label="Hover lift"
+            />
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2">Lightbox</Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={Boolean(p.lightboxEnabled ?? true)}
+                  onChange={(_, chk) => onChangeProp("lightboxEnabled", chk)}
+                />
+              }
+              label="Enable lightbox"
+            />
+            <Stack direction="row" spacing={1}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(p.lightboxLoop ?? true)}
+                    onChange={(_, chk) => onChangeProp("lightboxLoop", chk)}
+                  />
+                }
+                label="Loop"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(p.lightboxShowArrows ?? true)}
+                    onChange={(_, chk) => onChangeProp("lightboxShowArrows", chk)}
+                  />
+                }
+                label="Arrows"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(p.lightboxCloseOnBackdrop ?? true)}
+                    onChange={(_, chk) => onChangeProp("lightboxCloseOnBackdrop", chk)}
+                  />
+                }
+                label="Close on backdrop"
+              />
+            </Stack>
+            <Typography variant="caption">Images</Typography>
+            <Stack spacing={1}>
+              {(p.images || []).map((raw, idx) => {
+                const item = normalizeItem(raw);
               return (
               <Stack key={idx} spacing={0.5} sx={{ p: 1, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                 <ImageField
