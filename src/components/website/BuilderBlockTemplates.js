@@ -27,10 +27,25 @@ export const NEW_BLOCKS = {
     type: "gallery",
     props: {
       title: "Our work",
+      layout: "grid",
+      columns: { xs: 2, sm: 2, md: 3 },
+      gap: 18,
+      tile: {
+        aspectRatio: "4/5",
+        borderRadius: 20,
+        border: "1px solid rgba(255,255,255,0.35)",
+        hoverLift: true
+      },
+      lightbox: {
+        enabled: true,
+        loop: true,
+        showArrows: true,
+        closeOnBackdrop: true
+      },
       images: [
-        "https://images.unsplash.com/photo-1519827119039-d53d2d2a4389?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1512295767273-ac109ac3acfa?q=80&w=800&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=800&auto=format&fit=crop",
+        { url: "https://images.unsplash.com/photo-1519827119039-d53d2d2a4389?q=80&w=800&auto=format&fit=crop", alt: "Gallery item 1" },
+        { url: "https://images.unsplash.com/photo-1512295767273-ac109ac3acfa?q=80&w=800&auto=format&fit=crop", alt: "Gallery item 2" },
+        { url: "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=800&auto=format&fit=crop", alt: "Gallery item 3" },
       ],
     },
   }),

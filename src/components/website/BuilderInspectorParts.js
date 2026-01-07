@@ -453,6 +453,12 @@ export default function SectionInspector({
       );
 
     case "gallery":
+      {
+        const normalizeItem = (item) => {
+          if (typeof item === "string") return { url: item, alt: "" };
+          return item || {};
+        };
+        const toValue = (item) => item?.assetKey || item?.url || item?.src || "";
       return (
         <Stack spacing={1.25} sx={{ p: 2 }}>
           <Header title="Gallery" />
@@ -465,18 +471,34 @@ export default function SectionInspector({
           />
           <Typography variant="caption">Images</Typography>
           <Stack spacing={1}>
-            {(p.images || []).map((url, idx) => (
+            {(p.images || []).map((raw, idx) => {
+              const item = normalizeItem(raw);
+              return (
               <Stack key={idx} spacing={0.5} sx={{ p: 1, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                 <ImageField
                   label={`Image ${idx + 1}`}
-                  value={url}
+                  value={toValue(item)}
                   onChange={(newUrl) => {
                     const next = [...(p.images || [])];
-                    if (newUrl) next[idx] = newUrl;
-                    else next.splice(idx, 1);
+                    if (newUrl) {
+                      next[idx] = { ...item, url: newUrl, assetKey: item?.assetKey && !String(newUrl || "").startsWith("http") ? newUrl : item?.assetKey };
+                    } else {
+                      next.splice(idx, 1);
+                    }
                     onChangeProp("images", next);
                   }}
                   companyId={companyId}
+                />
+                <TextField
+                  label="Alt text"
+                  size="small"
+                  value={item?.alt || ""}
+                  onChange={(e) => {
+                    const next = [...(p.images || [])];
+                    next[idx] = { ...item, alt: e.target.value };
+                    onChangeProp("images", next);
+                  }}
+                  fullWidth
                 />
                 <Stack direction="row" spacing={1}>
                   <Button
@@ -491,11 +513,12 @@ export default function SectionInspector({
                   </Button>
                 </Stack>
               </Stack>
-            ))}
+              );
+            })}
             <Button
               size="small"
               variant="outlined"
-              onClick={() => onChangeProp("images", [...(p.images || []), ""])}
+              onClick={() => onChangeProp("images", [...(p.images || []), { url: "", alt: "" }])}
             >
               Add image
             </Button>
@@ -507,6 +530,7 @@ export default function SectionInspector({
           <CommonFields block={block} onChangeRoot={applyRoot} />
         </Stack>
       );
+      }
 
     case "galleryCarousel":
       return (

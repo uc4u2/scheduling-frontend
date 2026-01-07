@@ -4,17 +4,20 @@ import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import {
   Box, Container, Stack, Typography, Button, Grid, Card, CardContent, CardMedia,
-  Divider, Accordion, AccordionSummary, AccordionDetails, Chip, IconButton, Avatar
+  Divider, Accordion, AccordionSummary, AccordionDetails, Chip, IconButton, Avatar,
+  Dialog
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
 import SmartServiceGrid from "./SmartServiceGrid";
 import { safeHtml } from "../../utils/safeHtml";
 import { normalizeInlineHtml } from "../../utils/html";
 import { toPlain } from "../../utils/html";
 import ContactFormSection from "./ContactFormSection";
+import buildImgixUrl from "../../utils/imgix";
 // -----------------------------------------------------------------------------
 // Utilities
 // -----------------------------------------------------------------------------
@@ -3195,12 +3198,93 @@ const BookingCtaBar = ({
   </Box>
 );
 
-const Gallery = ({ title, images = [], columns = 3, titleAlign, maxWidth }) => {
+const Gallery = ({
+  title,
+  images = [],
+  columns = 3,
+  titleAlign,
+  maxWidth,
+  layout = "grid",
+  gap = 16,
+  tile = {},
+  lightbox = {}
+}) => {
   const list = Array.isArray(images) ? images : [];
-  const toSrc = (it) => (typeof it === "string" ? it : it?.src || "");
+  const normalizeItem = (it) => {
+    if (typeof it === "string") return { url: it };
+    return it || {};
+  };
   const toAlt = (it) => (typeof it === "string" ? "" : (it?.alt || ""));
+  const toPath = (it) => {
+    if (typeof it === "string") return it;
+    return it?.assetKey || it?.url || it?.src || "";
+  };
+  const parseAspectRatio = (value) => {
+    if (!value) return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    const raw = String(value);
+    if (raw.includes("/")) {
+      const [a, b] = raw.split("/").map((v) => Number(v));
+      if (Number.isFinite(a) && Number.isFinite(b) && b !== 0) return a / b;
+    }
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  };
+  const ratio = parseAspectRatio(tile?.aspectRatio);
+  const thumbSize = ratio ? { w: 800, h: Math.round(800 / ratio), fit: "crop" } : { w: 800, fit: "crop" };
+  const fullSize = { w: 2000, fit: "max" };
+  const borderRadius = tile?.borderRadius ?? 16;
+  const border = tile?.border || "1px solid rgba(148,163,184,0.25)";
+  const hoverLift = tile?.hoverLift ?? false;
+  const lightboxEnabled = lightbox?.enabled ?? false;
+  const [activeIndex, setActiveIndex] = useState(null);
 
-  const colConf = { 1: 12, 2: 6, 3: 4, 4: 3, 6: 2 }[columns] || 4;
+  const columnsConf = (() => {
+    if (columns && typeof columns === "object") {
+      return {
+        xs: columns.xs || 2,
+        sm: columns.sm || columns.xs || 2,
+        md: columns.md || columns.sm || columns.xs || 3,
+      };
+    }
+    const num = Number(columns) || 3;
+    return { xs: 1, sm: Math.min(2, num), md: num };
+  })();
+
+  const gridTemplate = {
+    xs: `repeat(${columnsConf.xs}, minmax(0, 1fr))`,
+    sm: `repeat(${columnsConf.sm}, minmax(0, 1fr))`,
+    md: `repeat(${columnsConf.md}, minmax(0, 1fr))`,
+  };
+
+  const handleOpen = (index) => {
+    if (!lightboxEnabled) return;
+    setActiveIndex(index);
+  };
+  const closeLightbox = () => setActiveIndex(null);
+  const showArrows = lightbox?.showArrows ?? true;
+  const loop = lightbox?.loop ?? true;
+
+  const currentItem = activeIndex != null ? normalizeItem(list[activeIndex]) : null;
+  const currentPath = currentItem ? toPath(currentItem) : "";
+  const currentFull = currentPath ? buildImgixUrl(currentPath, fullSize) : "";
+
+  const goPrev = () => {
+    if (activeIndex == null) return;
+    if (activeIndex === 0) {
+      if (loop) setActiveIndex(list.length - 1);
+    } else {
+      setActiveIndex(activeIndex - 1);
+    }
+  };
+  const goNext = () => {
+    if (activeIndex == null) return;
+    if (activeIndex === list.length - 1) {
+      if (loop) setActiveIndex(0);
+    } else {
+      setActiveIndex(activeIndex + 1);
+    }
+  };
 
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
@@ -3209,24 +3293,137 @@ const Gallery = ({ title, images = [], columns = 3, titleAlign, maxWidth }) => {
           {title}
         </HtmlTypo>
       )}
-      <Grid container spacing={2}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: gridTemplate,
+          gap: typeof gap === "number" ? `${gap}px` : gap,
+        }}
+      >
         {list.map((item, i) => {
-          const src = toSrc(item);
-          if (!src) return null;
+          const normalized = normalizeItem(item);
+          const path = toPath(normalized);
+          if (!path) return null;
+          const thumb = buildImgixUrl(path, thumbSize);
           return (
-            <Grid key={i} item xs={12} sm={6} md={colConf}>
-              <Box sx={{ borderRadius: 2, overflow: "hidden", lineHeight: 0, boxShadow: 1 }}>
-                <img
-                  src={src}
-                  alt={toAlt(item)}
-                  loading="lazy"
-                  style={{ display: "block", width: "100%", height: "auto" }}
-                />
-              </Box>
-            </Grid>
+            <Box
+              key={i}
+              role={lightboxEnabled ? "button" : undefined}
+              onClick={() => handleOpen(i)}
+              sx={{
+                borderRadius,
+                border,
+                overflow: "hidden",
+                lineHeight: 0,
+                cursor: lightboxEnabled ? "pointer" : "default",
+                boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
+                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                ...(hoverLift
+                  ? {
+                      "&:hover": {
+                        transform: "translateY(-4px)",
+                        boxShadow: "0 16px 32px rgba(15,23,42,0.18)",
+                      },
+                    }
+                  : {}),
+              }}
+            >
+              <Box
+                component="img"
+                src={thumb}
+                alt={toAlt(normalized)}
+                loading="lazy"
+                sx={{
+                  display: "block",
+                  width: "100%",
+                  height: "auto",
+                  aspectRatio: ratio ? `${ratio}` : "auto",
+                  objectFit: "cover",
+                }}
+              />
+            </Box>
           );
         })}
-      </Grid>
+      </Box>
+
+      <Dialog
+        open={activeIndex != null}
+        onClose={(event, reason) => {
+          if (reason === "backdropClick" && lightbox?.closeOnBackdrop === false) return;
+          closeLightbox();
+        }}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: "transparent",
+            boxShadow: "none",
+            overflow: "visible",
+          },
+        }}
+      >
+        {currentFull && (
+          <Box sx={{ position: "relative", display: "flex", justifyContent: "center" }}>
+            <IconButton
+              onClick={closeLightbox}
+              sx={{
+                position: "absolute",
+                top: -48,
+                right: 0,
+                color: "#fff",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                "&:hover": { backgroundColor: "rgba(0,0,0,0.65)" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+            {showArrows && list.length > 1 && (
+              <>
+                <IconButton
+                  onClick={goPrev}
+                  sx={{
+                    position: "absolute",
+                    left: -56,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#fff",
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    "&:hover": { backgroundColor: "rgba(0,0,0,0.65)" },
+                  }}
+                >
+                  <ArrowBackIosNewIcon />
+                </IconButton>
+                <IconButton
+                  onClick={goNext}
+                  sx={{
+                    position: "absolute",
+                    right: -56,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#fff",
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    "&:hover": { backgroundColor: "rgba(0,0,0,0.65)" },
+                  }}
+                >
+                  <ArrowForwardIosIcon />
+                </IconButton>
+              </>
+            )}
+            <Box
+              component="img"
+              src={currentFull}
+              alt={toAlt(currentItem)}
+              sx={{
+                maxWidth: "100%",
+                maxHeight: "80vh",
+                borderRadius: 3,
+                border: "1px solid rgba(255,255,255,0.15)",
+                backgroundColor: "#111827",
+              }}
+            />
+          </Box>
+        )}
+      </Dialog>
     </Container>
   );
 };
