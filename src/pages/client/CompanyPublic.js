@@ -1467,9 +1467,15 @@ const siteTitle = useMemo(() => {
   const overrideContent = useMemo(() => {
     if (!renderOverride) return null;
     const styleProps = renderOverride.styleProps || null;
+    const servicesHeading =
+      currentPage?.content?.meta?.servicesHeading ||
+      currentPage?.content?.meta?.services_heading ||
+      currentPage?.content?.meta?.servicesTitle ||
+      currentPage?.content?.meta?.services_title ||
+      "";
     switch (renderOverride.type) {
       case "services-classic":
-        return <ServiceListEmbedded slug={slug} pageStyle={styleProps} />;
+        return <ServiceListEmbedded slug={slug} pageStyle={styleProps} heading={servicesHeading} />;
       case "products":
         return <ProductListEmbedded slug={slug} pageStyle={styleProps} />;
       case "basket":
@@ -1482,7 +1488,7 @@ const siteTitle = useMemo(() => {
       default:
         return null;
     }
-  }, [renderOverride, slug, jobFromQuery]);
+  }, [renderOverride, slug, jobFromQuery, currentPage]);
 
   if (loading) {
     return <Box sx={{ p: 6, textAlign: "center" }}><CircularProgress /></Box>;

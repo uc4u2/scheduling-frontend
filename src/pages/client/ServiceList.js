@@ -186,7 +186,7 @@ const pageStyleToBackgroundSx = (style) => {
   return sx;
 };
 
-const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, pageStyleOverride }) => {
+const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, pageStyleOverride, headingOverride }) => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
@@ -200,17 +200,19 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     () => resolveServicePageMeta(siteContext),
     [siteContext]
   );
-  const serviceHeading = useMemo(
-    () =>
+  const serviceHeading = useMemo(() => {
+    const override = String(headingOverride || "").trim();
+    if (override) return override;
+    return (
       String(
         serviceMeta.servicesHeading ||
           serviceMeta.services_heading ||
           serviceMeta.servicesTitle ||
           serviceMeta.services_title ||
           ""
-      ).trim() || "Available Services",
-    [serviceMeta]
-  );
+      ).trim() || "Available Services"
+    );
+  }, [serviceMeta, headingOverride]);
   const cssVarStyle = useMemo(() => {
     const vars = pageStyleToCssVars(pageStyle);
     return Object.keys(vars).length ? vars : undefined;
@@ -683,7 +685,7 @@ const ServiceList = () => {
 
 export default ServiceList;
 
-export function ServiceListEmbedded({ slug, pageStyle }) {
+export function ServiceListEmbedded({ slug, pageStyle, heading }) {
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
   return (
@@ -692,6 +694,7 @@ export function ServiceListEmbedded({ slug, pageStyle }) {
       isModalView={false}
       origin={origin}
       pageStyleOverride={pageStyle}
+      headingOverride={heading}
     />
   );
 }
