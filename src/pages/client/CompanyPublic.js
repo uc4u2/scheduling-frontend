@@ -1491,11 +1491,36 @@ const siteTitle = useMemo(() => {
     const servicesHeading =
       String(servicesHeadingRaw || "").trim() ||
       (servicesLabel ? `Available ${pluralize(servicesLabel)}` : "");
+    const productsMetaSource =
+      pages?.find((p) => String(p?.slug || "").toLowerCase() === "products") ||
+      pages?.find((p) => String(p?.slug || "").toLowerCase() === "products-classic") ||
+      currentPage;
+    const productsHeading =
+      productsMetaSource?.content?.meta?.productsHeading ||
+      productsMetaSource?.content?.meta?.products_heading ||
+      productsMetaSource?.content?.meta?.productsTitle ||
+      productsMetaSource?.content?.meta?.products_title ||
+      productsMetaSource?.menu_title ||
+      productsMetaSource?.title ||
+      "";
+    const productsSubheading =
+      productsMetaSource?.content?.meta?.productsSubheading ||
+      productsMetaSource?.content?.meta?.products_subheading ||
+      productsMetaSource?.content?.meta?.productsSubtitle ||
+      productsMetaSource?.content?.meta?.products_subtitle ||
+      "";
     switch (renderOverride.type) {
       case "services-classic":
         return <ServiceListEmbedded slug={slug} pageStyle={styleProps} heading={servicesHeading} />;
       case "products":
-        return <ProductListEmbedded slug={slug} pageStyle={styleProps} />;
+        return (
+          <ProductListEmbedded
+            slug={slug}
+            pageStyle={styleProps}
+            heading={productsHeading}
+            subheading={productsSubheading}
+          />
+        );
       case "basket":
         return <MyBasketEmbedded slug={slug} pageStyle={styleProps} />;
       case "jobs":

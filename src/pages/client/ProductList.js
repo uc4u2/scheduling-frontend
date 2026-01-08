@@ -27,7 +27,13 @@ import { addProductToCart, loadCart, CartErrorCodes } from "../../utils/cart";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
-const ProductListBase = ({ slugOverride, disableShell = false, pageStyleOverride = null }) => {
+const ProductListBase = ({
+  slugOverride,
+  disableShell = false,
+  pageStyleOverride = null,
+  headingOverride,
+  subheadingOverride,
+}) => {
   const { slug: routeSlug } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -79,6 +85,48 @@ const ProductListBase = ({ slugOverride, disableShell = false, pageStyleOverride
   const [snack, setSnack] = useState({ open: false, msg: "" });
   const [sortKey, setSortKey] = useState("featured");
   const [inStockOnly, setInStockOnly] = useState(false);
+
+  const productsPage = useMemo(() => {
+    const pages = Array.isArray(sitePayload?.pages) ? sitePayload.pages : [];
+    return (
+      pages.find((p) => String(p?.slug || "").toLowerCase() === "products") ||
+      pages.find((p) => String(p?.slug || "").toLowerCase() === "products-classic") ||
+      null
+    );
+  }, [sitePayload]);
+
+  const productsMeta = useMemo(() => {
+    const meta = productsPage?.content?.meta || {};
+    return meta && typeof meta === "object" ? meta : {};
+  }, [productsPage]);
+
+  const productsHeading = useMemo(() => {
+    const override = String(headingOverride || "").trim();
+    if (override) return override;
+    const metaHeading = String(
+      productsMeta.productsHeading ||
+        productsMeta.products_heading ||
+        productsMeta.productsTitle ||
+        productsMeta.products_title ||
+        ""
+    ).trim();
+    if (metaHeading) return metaHeading;
+    return productsPage?.menu_title || productsPage?.title || "Products";
+  }, [headingOverride, productsMeta, productsPage]);
+
+  const productsSubheading = useMemo(() => {
+    const override = String(subheadingOverride || "").trim();
+    if (override) return override;
+    const metaSub = String(
+      productsMeta.productsSubheading ||
+        productsMeta.products_subheading ||
+        productsMeta.productsSubtitle ||
+        productsMeta.products_subtitle ||
+        ""
+    ).trim();
+    if (metaSub) return metaSub;
+    return "Browse items available for purchase. Add them to your basket and check out when you are ready.";
+  }, [subheadingOverride, productsMeta]);
 
   useEffect(() => {
     if (!slug) return;
@@ -193,10 +241,10 @@ const ProductListBase = ({ slugOverride, disableShell = false, pageStyleOverride
     >
       <Box sx={{ mb: 4, textAlign: "center" }}>
         <Typography variant="h3" fontWeight={800} gutterBottom>
-          Products
+          {productsHeading}
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Browse items available for purchase. Add them to your basket and check out when you are ready.
+          {productsSubheading}
         </Typography>
         {hasCartItems && (
           <Button
@@ -403,12 +451,14 @@ const ProductList = (props) => <ProductListBase {...props} />;
 
 export default ProductList;
 
-export function ProductListEmbedded({ slug, pageStyle }) {
+export function ProductListEmbedded({ slug, pageStyle, heading, subheading }) {
   return (
     <ProductListBase
       slugOverride={slug}
       disableShell
       pageStyleOverride={pageStyle}
+      headingOverride={heading}
+      subheadingOverride={subheading}
     />
   );
 }

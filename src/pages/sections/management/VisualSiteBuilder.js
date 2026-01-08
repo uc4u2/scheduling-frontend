@@ -2457,6 +2457,48 @@ const autoProvisionIfEmpty = useCallback(
               fullWidth
             />
           )}
+          {["products", "products-classic"].includes(String(editing.slug || "").toLowerCase()) && (
+            <>
+              <TextField
+                label="Products heading"
+                size="small"
+                value={editing?.content?.meta?.productsHeading || ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setEditing((cur) => {
+                    const content = cur.content || {};
+                    const meta = content.meta || {};
+                    return withLiftedLayout({
+                      ...cur,
+                      content: { ...content, meta: { ...meta, productsHeading: value } },
+                    });
+                  });
+                }}
+                helperText="Shown as the title on the Products page."
+                fullWidth
+              />
+              <TextField
+                label="Products subheading"
+                size="small"
+                value={editing?.content?.meta?.productsSubheading || ""}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setEditing((cur) => {
+                    const content = cur.content || {};
+                    const meta = content.meta || {};
+                    return withLiftedLayout({
+                      ...cur,
+                      content: { ...content, meta: { ...meta, productsSubheading: value } },
+                    });
+                  });
+                }}
+                helperText="Shown below the Products heading."
+                fullWidth
+                multiline
+                minRows={2}
+              />
+            </>
+          )}
           <TextField
             label={t("manager.visualBuilder.pages.settings.fields.sortOrder")}
             size="small"
