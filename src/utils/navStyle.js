@@ -28,7 +28,7 @@ export const normalizeNavStyle = (raw = {}) => {
   const src = typeof raw === "object" && raw !== null ? raw : {};
 
   const variant = String(src.variant || base.variant || "").trim().toLowerCase();
-  base.variant = ["pill", "underline", "overline", "doubleline", "ghost", "link", "text", "button"].includes(variant)
+  base.variant = ["pill", "underline", "overline", "doubleline", "sideline", "sideline-all", "ghost", "link", "text", "button"].includes(variant)
     ? variant
     : base.variant;
 
@@ -172,6 +172,16 @@ export const createNavButtonStyles = (style) => {
       } else {
         base.paddingBottom = `${tokens.padding_y + 2}px`;
       }
+    } else if (variant === "sideline" || variant === "sideline-all") {
+      base.backgroundColor = "transparent";
+      base.color = active ? colors.activeText : colors.text;
+      base.borderRadius = 0;
+      base.boxShadow = "none";
+      const lineColor = colors.activeBg || colors.bg || colors.text || "currentColor";
+      const thickness = active ? "3px" : variant === "sideline-all" ? "2px" : "2px";
+      const color = active || variant === "sideline-all" ? lineColor : "transparent";
+      base.borderLeft = `${thickness} solid ${color}`;
+      base.borderRight = `${thickness} solid ${color}`;
     } else {
       base.backgroundColor = "transparent";
       base.color = active ? colors.activeText : colors.text;
@@ -193,6 +203,12 @@ export const createNavButtonStyles = (style) => {
               : {
                   borderBottom: `3px solid ${colors.bgHover || colors.bg || colors.text || "currentColor"}`,
                 }),
+          }
+        : variant === "sideline" || variant === "sideline-all"
+        ? {
+            color: colors.textHover,
+            borderLeft: `3px solid ${colors.bgHover || colors.bg || colors.text || "currentColor"}`,
+            borderRight: `3px solid ${colors.bgHover || colors.bg || colors.text || "currentColor"}`,
           }
         : {
             backgroundColor: colors.bgHover,

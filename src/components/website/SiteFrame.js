@@ -118,7 +118,7 @@ export default function SiteFrame({
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
   const headerTextColor = headerConfig?.text || themeOverrides?.header?.text || theme.palette.text.primary;
   const navButtonStyling = useMemo(() => {
-    const useReadableText = ["ghost", "underline", "overline", "doubleline", "link", "text"].includes(navStyle?.variant);
+    const useReadableText = ["ghost", "underline", "overline", "doubleline", "sideline", "sideline-all", "link", "text"].includes(navStyle?.variant);
     const fallbackText = pickTextColorForBg(headerBg);
     const preferred = navStyle?.text || headerTextColor;
     const bgLum = getLuminance(headerBg);

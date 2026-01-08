@@ -37,6 +37,8 @@ const VARIANT_OPTIONS = [
   { value: "underline", label: "Underline" },
   { value: "overline", label: "Overline" },
   { value: "doubleline", label: "Double Line" },
+  { value: "sideline", label: "Side Lines (Active)" },
+  { value: "sideline-all", label: "Side Lines (All)" },
   { value: "ghost", label: "Outline / Ghost" },
   { value: "link", label: "Link" },
   { value: "text", label: "Plain text" },
