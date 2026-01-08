@@ -128,6 +128,16 @@ const resolveServicePageStyle = (context) => {
   return null;
 };
 
+const resolveServicePageMeta = (context) => {
+  if (!context) return {};
+  const pages = Array.isArray(context.pages) ? context.pages : [];
+  const target = pages.find(
+    (p) => String(p?.slug || "").toLowerCase() === "services-classic"
+  );
+  const meta = target?.content?.meta || {};
+  return meta && typeof meta === "object" ? meta : {};
+};
+
 const toPx = (val) => (val === 0 || Number.isFinite(val) ? `${val}px` : undefined);
 
 const pageStyleToCssVars = (style) => {
@@ -185,6 +195,21 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
   const pageStyle = useMemo(
     () => pageStyleOverride || resolveServicePageStyle(siteContext),
     [pageStyleOverride, siteContext]
+  );
+  const serviceMeta = useMemo(
+    () => resolveServicePageMeta(siteContext),
+    [siteContext]
+  );
+  const serviceHeading = useMemo(
+    () =>
+      String(
+        serviceMeta.servicesHeading ||
+          serviceMeta.services_heading ||
+          serviceMeta.servicesTitle ||
+          serviceMeta.services_title ||
+          ""
+      ).trim() || "Available Services",
+    [serviceMeta]
   );
   const cssVarStyle = useMemo(() => {
     const vars = pageStyleToCssVars(pageStyle);
@@ -402,7 +427,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
           }}
         >
           <Typography variant="h4" fontWeight={800} sx={{ color: "var(--page-heading-color, inherit)" }}>
-            Available Services
+            {serviceHeading}
           </Typography>
 
           {departments.length > 0 && (

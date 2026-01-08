@@ -2437,6 +2437,26 @@ const autoProvisionIfEmpty = useCallback(
             onChange={(e) => updatePageMeta({ menu_title: e.target.value })}
             fullWidth
           />
+          {String(editing.slug || "").toLowerCase() === "services-classic" && (
+            <TextField
+              label="Services heading"
+              size="small"
+              value={editing?.content?.meta?.servicesHeading || ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                setEditing((cur) => {
+                  const content = cur.content || {};
+                  const meta = content.meta || {};
+                  return withLiftedLayout({
+                    ...cur,
+                    content: { ...content, meta: { ...meta, servicesHeading: value } },
+                  });
+                });
+              }}
+              helperText="Shown as the title on the Services page."
+              fullWidth
+            />
+          )}
           <TextField
             label={t("manager.visualBuilder.pages.settings.fields.sortOrder")}
             size="small"
