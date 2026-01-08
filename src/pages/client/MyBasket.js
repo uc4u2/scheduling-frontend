@@ -107,6 +107,19 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     return `?${qs.toString()}`;
   }, [searchParams]);
 
+  const productsHref = useMemo(() => {
+    if (!slug) return "";
+    const keys = ["embed", "mode", "dialog", "primary", "text"];
+    const qs = new URLSearchParams();
+    qs.set("page", "products");
+    keys.forEach((key) => {
+      const val = searchParams.get(key);
+      if (val) qs.set(key, val);
+    });
+    const query = qs.toString();
+    return query ? `/${slug}?${query}` : `/${slug}`;
+  }, [slug, searchParams]);
+
   const [items, setItems] = useState(() => loadCart());
   const [snack, setSnack] = useState({ open: false, msg: "" });
   const [siteLoading, setSiteLoading] = useState(false);
@@ -316,7 +329,10 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     }
     setCheckoutOpen(true);
   };
-  const continueShopping = () => navigate(`/${slug}/products${embedSuffix}`);
+  const continueShopping = () => {
+    if (!productsHref) return;
+    navigate(productsHref);
+  };
 
   const totals = useMemo(() => {
     const serviceTotal = items
