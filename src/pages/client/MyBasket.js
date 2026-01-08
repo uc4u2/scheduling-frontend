@@ -16,6 +16,7 @@ import {
   Stack,
   TextField,
   Typography,
+  CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -23,11 +24,11 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import CloseIcon from "@mui/icons-material/Close";
-import PublicPageShell from "./PublicPageShell";
+import SiteFrame from "../../components/website/SiteFrame";
 import Checkout from "./Checkout";
 import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart";
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
-import { api as apiClient } from "../../utils/api";
+import { api as apiClient, publicSite } from "../../utils/api";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./ServiceList";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
@@ -108,6 +109,8 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
 
   const [items, setItems] = useState(() => loadCart());
   const [snack, setSnack] = useState({ open: false, msg: "" });
+  const [siteLoading, setSiteLoading] = useState(false);
+  const [sitePayload, setSitePayload] = useState(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutBg, setCheckoutBg] = useState(null);
   const [checkoutCardBg, setCheckoutCardBg] = useState(null);
@@ -150,6 +153,29 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     })();
     return () => { cancelled = true; };
   }, [slug]);
+
+  useEffect(() => {
+    if (!slug || disableShell) return;
+    let mounted = true;
+    setSiteLoading(true);
+    publicSite
+      .getBySlug(slug)
+      .then((data) => {
+        if (!mounted) return;
+        setSitePayload(data);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setSitePayload(null);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setSiteLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [slug, disableShell]);
 
   useEffect(() => {
     if (!holdMinutes || holdMinutes <= 0 || serviceItems.length === 0) {
@@ -651,7 +677,34 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     return content;
   }
 
-  return <PublicPageShell activeKey="__basket">{content}</PublicPageShell>;
+  if (disableShell) {
+    return content;
+  }
+
+  const renderShell = (node) => {
+    if (!slug) return node;
+    return (
+      <SiteFrame
+        slug={slug}
+        activeKey="basket"
+        initialSite={sitePayload || undefined}
+        disableFetch={Boolean(sitePayload)}
+        wrapChildrenInContainer={false}
+      >
+        {node}
+      </SiteFrame>
+    );
+  };
+
+  if (siteLoading && !sitePayload) {
+    return renderShell(
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return renderShell(content);
 };
 
 const MyBasket = (props) => <MyBasketBase {...props} />;

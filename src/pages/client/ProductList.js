@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { api } from "../../utils/api";
+import { api, publicSite } from "../../utils/api";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -21,7 +21,7 @@ import {
 } from "@mui/material";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import InfoIcon from "@mui/icons-material/Info";
-import PublicPageShell from "./PublicPageShell";
+import SiteFrame from "../../components/website/SiteFrame";
 import { pageStyleToCssVars, pageStyleToBackgroundSx } from "./ServiceList";
 import { addProductToCart, loadCart, CartErrorCodes } from "../../utils/cart";
 
@@ -73,6 +73,8 @@ const ProductListBase = ({ slugOverride, disableShell = false, pageStyleOverride
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [siteLoading, setSiteLoading] = useState(false);
+  const [sitePayload, setSitePayload] = useState(null);
   const [error, setError] = useState("");
   const [snack, setSnack] = useState({ open: false, msg: "" });
   const [sortKey, setSortKey] = useState("featured");
@@ -99,6 +101,29 @@ const ProductListBase = ({ slugOverride, disableShell = false, pageStyleOverride
       alive = false;
     };
   }, [slug]);
+
+  useEffect(() => {
+    if (!slug || disableShell) return;
+    let mounted = true;
+    setSiteLoading(true);
+    publicSite
+      .getBySlug(slug)
+      .then((data) => {
+        if (!mounted) return;
+        setSitePayload(data);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setSitePayload(null);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setSiteLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [slug, disableShell]);
 
   const visibleProducts = useMemo(() => {
     let list = Array.isArray(products) ? [...products] : [];
@@ -348,7 +373,30 @@ const ProductListBase = ({ slugOverride, disableShell = false, pageStyleOverride
     return content;
   }
 
-  return <PublicPageShell activeKey="__products">{content}</PublicPageShell>;
+  const renderShell = (node) => {
+    if (!slug) return node;
+    return (
+      <SiteFrame
+        slug={slug}
+        activeKey="products"
+        initialSite={sitePayload || undefined}
+        disableFetch={Boolean(sitePayload)}
+        wrapChildrenInContainer={false}
+      >
+        {node}
+      </SiteFrame>
+    );
+  };
+
+  if (siteLoading && !sitePayload) {
+    return renderShell(
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return renderShell(content);
 };
 
 const ProductList = (props) => <ProductListBase {...props} />;
