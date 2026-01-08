@@ -20,8 +20,33 @@ import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import SiteFrame from "../../components/website/SiteFrame";
 import { addProductToCart, CartErrorCodes } from "../../utils/cart";
+import { pageStyleToCssVars, pageStyleToBackgroundSx } from "./ServiceList";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
+
+const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
+
+const cloneStyle = (val) => {
+  if (!isPlainObject(val)) return null;
+  try {
+    return JSON.parse(JSON.stringify(val));
+  } catch {
+    return { ...val };
+  }
+};
+
+const extractPageStyleProps = (page) => {
+  if (!page) return null;
+  const sections = Array.isArray(page?.content?.sections) ? page.content.sections : [];
+  const section = sections.find((s) => s?.type === "pageStyle");
+  if (section?.props && isPlainObject(section.props)) {
+    const copy = cloneStyle(section.props);
+    if (copy && Object.keys(copy).length) return copy;
+  }
+  const meta = cloneStyle(page?.content?.meta?.pageStyle);
+  if (meta && Object.keys(meta).length) return meta;
+  return null;
+};
 
 const ProductDetails = () => {
   const { slug: routeSlug, productId } = useParams();
@@ -39,24 +64,24 @@ const ProductDetails = () => {
     }
   }, [routeSlug, searchParams]);
 
-  const embedSuffix = useMemo(() => {
-    const keys = ["embed", "mode", "dialog", "primary", "text"];
-    const pairs = keys
-      .map((key) => {
-        const val = searchParams.get(key);
-        return val ? [key, val] : null;
-      })
-      .filter(Boolean);
-    if (!pairs.length) return "";
-    const qs = new URLSearchParams();
-    pairs.forEach(([key, val]) => qs.set(key, val));
-    return `?${qs.toString()}`;
-  }, [searchParams]);
   const basketHref = useMemo(() => {
     if (!slug) return "";
     const keys = ["embed", "mode", "dialog", "primary", "text"];
     const qs = new URLSearchParams();
     qs.set("page", "basket");
+    keys.forEach((key) => {
+      const val = searchParams.get(key);
+      if (val) qs.set(key, val);
+    });
+    const query = qs.toString();
+    return query ? `/${slug}?${query}` : `/${slug}`;
+  }, [slug, searchParams]);
+
+  const productsHref = useMemo(() => {
+    if (!slug) return "";
+    const keys = ["embed", "mode", "dialog", "primary", "text"];
+    const qs = new URLSearchParams();
+    qs.set("page", "products");
     keys.forEach((key) => {
       const val = searchParams.get(key);
       if (val) qs.set(key, val);
@@ -121,6 +146,25 @@ const ProductDetails = () => {
     };
   }, [slug]);
 
+  const productsPage = useMemo(() => {
+    const pages = Array.isArray(sitePayload?.pages) ? sitePayload.pages : [];
+    return (
+      pages.find((p) => String(p?.slug || "").toLowerCase() === "products") ||
+      pages.find((p) => String(p?.slug || "").toLowerCase() === "products-classic") ||
+      null
+    );
+  }, [sitePayload]);
+
+  const pageStyle = useMemo(() => extractPageStyleProps(productsPage), [productsPage]);
+  const cssVarStyle = useMemo(() => {
+    const vars = pageStyleToCssVars(pageStyle);
+    return Object.keys(vars || {}).length ? vars : undefined;
+  }, [pageStyle]);
+  const backgroundSx = useMemo(
+    () => pageStyleToBackgroundSx(pageStyle),
+    [pageStyle]
+  );
+
   const handleAdd = () => {
     if (!product || soldOut) return;
     const qty = Math.max(1, Number(quantity) || 1);
@@ -137,8 +181,8 @@ const ProductDetails = () => {
   };
 
   const goBack = () => {
-    if (!slug) return;
-    navigate(`/${slug}/products${embedSuffix}`);
+    if (!productsHref) return;
+    navigate(productsHref);
   };
   const goBasket = () => {
     if (!basketHref) return;
@@ -330,7 +374,13 @@ const ProductDetails = () => {
   }
 
   const content = (
-    <Container sx={{ py: { xs: 4, md: 6 } }}>
+    <Container
+      sx={{
+        py: { xs: 4, md: 6 },
+        ...backgroundSx,
+      }}
+      style={cssVarStyle}
+    >
       {body}
       <Snackbar
         open={snack.open}
