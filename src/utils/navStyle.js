@@ -28,7 +28,7 @@ export const normalizeNavStyle = (raw = {}) => {
   const src = typeof raw === "object" && raw !== null ? raw : {};
 
   const variant = String(src.variant || base.variant || "").trim().toLowerCase();
-  base.variant = ["pill", "underline", "overline", "ghost", "link", "text", "button"].includes(variant)
+  base.variant = ["pill", "underline", "overline", "doubleline", "ghost", "link", "text", "button"].includes(variant)
     ? variant
     : base.variant;
 
@@ -145,15 +145,24 @@ export const createNavButtonStyles = (style) => {
         colors.bg || colors.text || "rgba(148,163,184,0.45)"
       }`;
       base.boxShadow = "none";
-    } else if (variant === "underline" || variant === "overline") {
+    } else if (variant === "underline" || variant === "overline" || variant === "doubleline") {
       base.backgroundColor = "transparent";
       base.color = active ? colors.activeText : colors.text;
       base.borderRadius = 0;
       base.boxShadow = "none";
       const lineColor = colors.activeBg || colors.bg || "currentColor";
-      const lineProp = variant === "overline" ? "borderTop" : "borderBottom";
+      const lineProp =
+        variant === "overline"
+          ? "borderTop"
+          : variant === "doubleline"
+          ? "borderTop"
+          : "borderBottom";
       base[lineProp] = active ? `3px solid ${lineColor}` : "3px solid transparent";
-      if (variant === "overline") {
+      if (variant === "doubleline") {
+        base.borderBottom = active ? `3px solid ${lineColor}` : "3px solid transparent";
+        base.paddingTop = `${tokens.padding_y + 2}px`;
+        base.paddingBottom = `${tokens.padding_y + 2}px`;
+      } else if (variant === "overline") {
         base.paddingTop = `${tokens.padding_y + 2}px`;
       } else {
         base.paddingBottom = `${tokens.padding_y + 2}px`;
@@ -164,12 +173,17 @@ export const createNavButtonStyles = (style) => {
     }
 
     base["&:hover"] =
-      variant === "underline" || variant === "overline"
+      variant === "underline" || variant === "overline" || variant === "doubleline"
         ? {
             color: colors.textHover,
             ...(variant === "overline"
               ? {
                   borderTop: `3px solid ${colors.bgHover || colors.bg || "currentColor"}`,
+                }
+              : variant === "doubleline"
+              ? {
+                  borderTop: `3px solid ${colors.bgHover || colors.bg || "currentColor"}`,
+                  borderBottom: `3px solid ${colors.bgHover || colors.bg || "currentColor"}`,
                 }
               : {
                   borderBottom: `3px solid ${colors.bgHover || colors.bg || "currentColor"}`,

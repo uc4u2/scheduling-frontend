@@ -36,6 +36,7 @@ const VARIANT_OPTIONS = [
   { value: "button", label: "Solid Button" },
   { value: "underline", label: "Underline" },
   { value: "overline", label: "Overline" },
+  { value: "doubleline", label: "Double Line" },
   { value: "ghost", label: "Outline / Ghost" },
   { value: "link", label: "Link" },
   { value: "text", label: "Plain text" },
