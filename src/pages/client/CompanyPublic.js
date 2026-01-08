@@ -1471,12 +1471,26 @@ const siteTitle = useMemo(() => {
       pages?.find((p) => String(p?.slug || "").toLowerCase() === "services-classic") ||
       pages?.find((p) => String(p?.slug || "").toLowerCase() === "services") ||
       currentPage;
-    const servicesHeading =
+    const servicesHeadingRaw =
       servicesMetaSource?.content?.meta?.servicesHeading ||
       servicesMetaSource?.content?.meta?.services_heading ||
       servicesMetaSource?.content?.meta?.servicesTitle ||
       servicesMetaSource?.content?.meta?.services_title ||
       "";
+    const servicesLabel =
+      servicesMetaSource?.menu_title ||
+      servicesMetaSource?.title ||
+      "";
+    const pluralize = (label) => {
+      const trimmed = String(label || "").trim();
+      if (!trimmed) return "";
+      if (/available/i.test(trimmed)) return trimmed;
+      if (/[sS]$/.test(trimmed)) return trimmed;
+      return `${trimmed}s`;
+    };
+    const servicesHeading =
+      String(servicesHeadingRaw || "").trim() ||
+      (servicesLabel ? `Available ${pluralize(servicesLabel)}` : "");
     switch (renderOverride.type) {
       case "services-classic":
         return <ServiceListEmbedded slug={slug} pageStyle={styleProps} heading={servicesHeading} />;
