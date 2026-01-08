@@ -26,7 +26,7 @@ import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
 import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
 import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
 import FormatAlignJustifyIcon from "@mui/icons-material/FormatAlignJustify";
-import { ImageField } from "./BuilderInspectorParts";
+import { ImageField, VideoField } from "./BuilderInspectorParts";
 import EnterpriseRichTextEditor from "./EnterpriseRichTextEditor";
 
 // Normalizers: prevent <p style="..."> and raw tags from landing in data
@@ -229,6 +229,15 @@ const FieldColor = ({ label, value, onCommit }) => (
 
 const FieldImage = ({ label, value, onCommit, companyId }) => (
   <ImageField
+    label={label}
+    value={value || ""}
+    onChange={(url) => onCommit(url)}
+    companyId={companyId}
+  />
+);
+
+const FieldVideo = ({ label, value, onCommit, companyId }) => (
+  <VideoField
     label={label}
     value={value || ""}
     onChange={(url) => onCommit(url)}
@@ -505,6 +514,18 @@ const FieldObjectArray = ({ label, value, onCommit, fields = [], companyId }) =>
                 );
               }
 
+              if (sub.type === "video") {
+                return (
+                  <VideoField
+                    key={rk}
+                    label={sub.label || rk}
+                    value={subVal || ""}
+                    onChange={(url) => updateRow(url)}
+                    companyId={companyId}
+                  />
+                );
+              }
+
               return (
                 <TextField
                   key={rk}
@@ -700,6 +721,18 @@ export default function SchemaInspector({ schema, value = {}, onChange, companyI
           if (f.type === "image") {
             return (
               <FieldImage
+                key={key}
+                label={label}
+                value={val}
+                onCommit={(nv) => setWhole(key, nv)}
+                companyId={companyId}
+              />
+            );
+          }
+
+          if (f.type === "video") {
+            return (
+              <FieldVideo
                 key={key}
                 label={label}
                 value={val}

@@ -500,6 +500,18 @@ const HeroCarousel = ({
           {!!s.image && (
             <Box aria-hidden sx={{ position: "absolute", inset: 0, backgroundImage: `url(${s.image})`, backgroundSize: "cover", backgroundPosition: s.backgroundPosition || "center", pointerEvents: "none", ...(brightness && brightness !== 1 ? { filter: `brightness(${brightness})` } : {}) }} />
           )}
+          {!!s.backgroundVideo && (
+            <Box aria-hidden sx={{ position: "absolute", inset: 0, lineHeight: 0 }}>
+              <video
+                src={s.backgroundVideo}
+                autoPlay
+                muted
+                loop
+                playsInline
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </Box>
+          )}
           <Box sx={{ position: "absolute", inset: 0, background: colorWithOpacity(overlayColor, clamp(overlay, 0, 1)), pointerEvents: "none" }} />
           {overlayGradient && <Box sx={{ position: "absolute", inset: 0, background: overlayGradient, pointerEvents: "none" }} />}
         </Box>

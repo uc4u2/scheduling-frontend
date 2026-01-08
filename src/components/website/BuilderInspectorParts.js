@@ -6,11 +6,14 @@ import {
   Button,
   Divider,
   FormControlLabel,
+  IconButton,
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import { website } from "../../utils/api";
 import { useTranslation } from "react-i18next";
 
@@ -213,9 +216,14 @@ export function ImageField({ label, value, onChange, companyId }) {
         handleFiles(e.dataTransfer.files);
       }}
     >
-      <Typography variant="caption" sx={{ display: "block", mb: 0.75 }}>
-        {label}
-      </Typography>
+      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.75 }}>
+        <Typography variant="caption">{label}</Typography>
+        <Tooltip title="Images: JPG/PNG/WebP, max 5MB.">
+          <IconButton size="small" sx={{ p: 0.25 }}>
+            <InfoOutlined fontSize="inherit" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
 
       {/* URL input so you can paste external images too */}
       <TextField
@@ -269,6 +277,159 @@ export function ImageField({ label, value, onChange, companyId }) {
           <input
             type="file"
             accept="image/*"
+            hidden
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+        </Button>
+        {inputUrl && (
+          <Button size="small" onClick={() => applyUrl("")}>
+            {t("manager.visualBuilder.inspector.imageField.clear")}
+          </Button>
+        )}
+      </Stack>
+    </Box>
+  );
+}
+
+export function VideoField({ label, value, onChange, companyId }) {
+  const { t } = useTranslation();
+  const [dragOver, setDragOver] = useState(false);
+  const [inputUrl, setInputUrl] = useState(value || "");
+  const [broken, setBroken] = useState(false);
+
+  useEffect(() => {
+    setInputUrl(value || "");
+    setBroken(false);
+  }, [value]);
+
+  const toAbsoluteUrl = (maybeUrl) => {
+    if (!maybeUrl) return "";
+    try {
+      // eslint-disable-next-line no-new
+      new URL(maybeUrl);
+      return maybeUrl;
+    } catch {
+      const base = website?.baseUrl || window.location.origin;
+      return new URL(maybeUrl.replace(/^\/+/, "/"), base).href;
+    }
+  };
+
+  const applyUrl = (u) => {
+    const abs = toAbsoluteUrl((u || "").trim());
+    setInputUrl(abs);
+    setBroken(false);
+    onChange?.(abs);
+  };
+
+  const handleFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    const MAX_BYTES = 5 * 1024 * 1024; // 5MB guard
+    if (files[0].size > MAX_BYTES) {
+      alert("Video is too large. Max size 5MB. Please upload a smaller MP4/WebM.");
+      return;
+    }
+    try {
+      const res = await website.uploadMedia(files[0], { companyId });
+      const item = res?.items?.[0];
+      const raw =
+        item?.url ||
+        item?.url_public ||
+        (item?.stored_name
+          ? website.mediaFileUrl(companyId, item.stored_name)
+          : "");
+      applyUrl(raw);
+    } catch (e) {
+      console.error("upload failed", e);
+      if (e?.response?.status === 413) {
+        alert("Video is too large. Max size 5MB. Please upload a smaller MP4/WebM.");
+      } else {
+        alert(t("manager.visualBuilder.inspector.imageField.uploadFailed"));
+      }
+    }
+  };
+
+  return (
+    <Box
+      sx={{
+        border: "1px dashed",
+        borderColor: dragOver ? "primary.main" : "divider",
+        borderRadius: 1,
+        p: 1.25,
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        handleFiles(e.dataTransfer.files);
+      }}
+    >
+      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.75 }}>
+        <Typography variant="caption">{label}</Typography>
+        <Tooltip title="Videos: MP4/WebM, max 5MB.">
+          <IconButton size="small" sx={{ p: 0.25 }}>
+            <InfoOutlined fontSize="inherit" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+
+      <TextField
+        size="small"
+        placeholder="https://..."
+        value={inputUrl}
+        onChange={(e) => setInputUrl(e.target.value)}
+        onBlur={() => applyUrl(inputUrl)}
+        fullWidth
+        sx={{ mb: 1 }}
+      />
+
+      {inputUrl ? (
+        <video
+          src={inputUrl}
+          muted
+          loop
+          playsInline
+          onError={() => setBroken(true)}
+          onLoadedData={() => setBroken(false)}
+          style={{
+            width: "100%",
+            maxHeight: 200,
+            objectFit: "cover",
+            borderRadius: 6,
+            background: "#000",
+          }}
+        />
+      ) : (
+        <Box
+          sx={{
+            height: 120,
+            bgcolor: "background.default",
+            borderRadius: 1,
+            display: "grid",
+            placeItems: "center",
+            color: "text.secondary",
+            fontSize: 13,
+          }}
+        >
+          Drop a video or paste a URL
+        </Box>
+      )}
+
+      {broken && (
+        <Typography variant="caption" color="error" sx={{ mt: 0.5, display: "block" }}>
+          Video failed to load. Check the URL or file type.
+        </Typography>
+      )}
+
+      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+        <Button size="small" variant="outlined" component="label">
+          Upload video
+          <input
+            type="file"
+            accept="video/*"
             hidden
             onChange={(e) => handleFiles(e.target.files)}
           />

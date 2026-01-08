@@ -45,7 +45,7 @@ export const SCHEMA_REGISTRY = {
 
       // Backgrounds
       { name: "backgroundUrl",      type: "image",  label: "Background image", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.backgroundImage" },
-      { name: "backgroundVideo",    type: "string", label: "Background video URL (mp4/webm)" },
+      { name: "backgroundVideo",    type: "video",  label: "Background video (mp4/webm)" },
       { name: "backgroundPosition", type: "select", label: "Background position", options: ["center","top","bottom","left","right"], default: "center" },
 
       // Overlay (slider as requested)
@@ -452,6 +452,7 @@ export const SCHEMA_REGISTRY = {
       { name: "slides",         type: "objectArray", label: "Slides",
         fields: [
           { name: "image",              type: "image",   label: "Background image" },
+          { name: "backgroundVideo",    type: "video",   label: "Background video (mp4/webm)" },
           { name: "backgroundPosition", type: "text",    label: "Background position", placeholder: "center" },
           { name: "eyebrow",            type: "richinline", label: "Eyebrow" },
           { name: "heading",            type: "richinline", label: "Heading" },
