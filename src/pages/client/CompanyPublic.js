@@ -20,6 +20,7 @@ import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider"
 import PublicReviewList from "./PublicReviewList";
 import { resolveSiteHref, transformLinksDeep } from "../../components/website/linking";
 import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../../utils/navStyle";
+import { getLuminance, pickTextColorForBg } from "../../utils/color";
 import { navSettings } from "../../utils/api";
 import NavStyleHydrator from "../../components/website/NavStyleHydrator";
 import { ServiceListEmbedded } from "./ServiceList";
@@ -1063,13 +1064,34 @@ const siteTitle = useMemo(() => {
 
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
   const headerTextColor = headerConfig?.text || themeOverrides?.header?.text || "inherit";
-  const navButtonStyling = useMemo(
-    () => (active) => ({
-      ...navButtonSx(active),
-      color: headerTextColor,
-    }),
-    [navButtonSx, headerTextColor]
-  );
+  const navButtonStyling = useMemo(() => {
+    const useReadableText = ["ghost", "underline", "link", "text"].includes(navStyle?.variant);
+    const fallbackText = pickTextColorForBg(headerBg);
+    const preferred = navStyle?.text || headerTextColor;
+    const bgLum = getLuminance(headerBg);
+    const prefLum = getLuminance(preferred);
+    const readableText =
+      bgLum != null && prefLum != null && Math.abs(bgLum - prefLum) < 0.45
+        ? fallbackText
+        : preferred || fallbackText;
+    return (active) => {
+      const base = navButtonSx(active);
+      if (useReadableText) {
+        base.color = readableText;
+        if (base["&:hover"]) {
+          base["&:hover"] = { ...base["&:hover"], color: readableText };
+        }
+        if (navStyle?.variant === "ghost") {
+          base.border = `1px solid ${readableText}`;
+          if (base["&:hover"]) {
+            base["&:hover"] = { ...base["&:hover"], border: `1px solid ${readableText}` };
+          }
+        }
+        return base;
+      }
+      return { ...base, color: headerTextColor };
+    };
+  }, [navButtonSx, headerTextColor, headerBg, navStyle?.variant, navStyle?.text]);
 
   const showBrandText = headerConfig?.show_brand_text !== false;
   const navBrandName = useMemo(() => {

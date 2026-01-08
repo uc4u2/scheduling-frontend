@@ -26,6 +26,8 @@ import {
   formatCopyrightText,
 } from "../../utils/footerDefaults";
 import { api } from "../../utils/api";
+import { createNavButtonStyles, normalizeNavStyle } from "../../utils/navStyle";
+import { getLuminance, pickTextColorForBg } from "../../utils/color";
 
 const clampNumber = (value, min, max, fallback) => {
   const num = Number(value);
@@ -105,6 +107,44 @@ export default function SiteFrame({
     footerConfig?.link_color ||
     themeOverrides?.footer?.text ||
     theme.palette.primary.main;
+  const rawNavStyle =
+    site?.nav_style ||
+    site?.settings?.nav_style ||
+    site?.website?.nav_style ||
+    site?.website_setting?.settings?.nav_style ||
+    {};
+  const navStyle = useMemo(() => normalizeNavStyle(rawNavStyle), [rawNavStyle]);
+  const navButtonSx = useMemo(() => createNavButtonStyles(navStyle), [navStyle]);
+  const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
+  const headerTextColor = headerConfig?.text || themeOverrides?.header?.text || theme.palette.text.primary;
+  const navButtonStyling = useMemo(() => {
+    const useReadableText = ["ghost", "underline", "link", "text"].includes(navStyle?.variant);
+    const fallbackText = pickTextColorForBg(headerBg);
+    const preferred = navStyle?.text || headerTextColor;
+    const bgLum = getLuminance(headerBg);
+    const prefLum = getLuminance(preferred);
+    const readableText =
+      bgLum != null && prefLum != null && Math.abs(bgLum - prefLum) < 0.45
+        ? fallbackText
+        : preferred || fallbackText;
+    return (active) => {
+      const base = navButtonSx(active);
+      if (useReadableText) {
+        base.color = readableText;
+        if (base["&:hover"]) {
+          base["&:hover"] = { ...base["&:hover"], color: readableText };
+        }
+        if (navStyle?.variant === "ghost") {
+          base.border = `1px solid ${readableText}`;
+          if (base["&:hover"]) {
+            base["&:hover"] = { ...base["&:hover"], border: `1px solid ${readableText}` };
+          }
+        }
+        return base;
+      }
+      return { ...base, color: headerTextColor };
+    };
+  }, [navButtonSx, headerTextColor, headerBg, navStyle?.variant, navStyle?.text, theme.palette.text.primary]);
 
   // auth state for showing login / my bookings / logout
   const token = (typeof localStorage !== "undefined" && localStorage.getItem("token")) || "";
@@ -341,18 +381,19 @@ export default function SiteFrame({
     </>
   );
 
-  const renderSessionButtons = (color = "inherit", onItemClick) =>
+  const renderSessionButtons = (onItemClick) =>
     clientLoggedIn ? (
       <>
         <Button
           component={RouterLink}
           to={myBookingsHref()}
-          color={pathname.startsWith("/dashboard") ? "primary" : color}
+          color="inherit"
           onClick={onItemClick}
+          sx={navButtonStyling(pathname.startsWith("/dashboard"))}
         >
           {nav.mybookings_tab_label || "My Bookings"}
         </Button>
-        <Button onClick={doLogout} color={color}>
+        <Button onClick={doLogout} color="inherit" sx={navButtonStyling(false)}>
           {nav.logout_tab_label || "Log out"}
         </Button>
       </>
@@ -360,8 +401,9 @@ export default function SiteFrame({
       <Button
         component={RouterLink}
         to={loginHref()}
-        color={pathname === "/login" ? "primary" : color}
+        color="inherit"
         onClick={onItemClick}
+        sx={navButtonStyling(pathname === "/login")}
       >
         {nav.login_tab_label || "Login"}
       </Button>
@@ -430,7 +472,7 @@ export default function SiteFrame({
           )}
 
           {/* auth-aware */}
-          {renderSessionButtons("inherit")}
+          {renderSessionButtons()}
         </Stack>
 
         <Box sx={{ ml: "auto" }} />
@@ -491,12 +533,14 @@ export default function SiteFrame({
     <>
       {navLinks.map((item, idx) => {
         const props = resolveLinkProps(item.href);
+        const active = Boolean(props?.to && pathname.includes(String(props.to).split("?")[0]));
         return (
           <Button
             key={`${item.label}-${idx}`}
             {...props}
             color="inherit"
             size="small"
+            sx={navButtonStyling(active)}
           >
             {item.label || "Link"}
           </Button>
@@ -508,11 +552,12 @@ export default function SiteFrame({
           to={reviewsHref()}
           color={pathname.includes("/reviews") ? "primary" : "inherit"}
           size="small"
+          sx={navButtonStyling(pathname.includes("/reviews"))}
         >
           {nav.reviews_tab_label || "Reviews"}
         </Button>
       )}
-      {renderSessionButtons("inherit")}
+      {renderSessionButtons()}
     </>
   );
 
@@ -520,13 +565,14 @@ export default function SiteFrame({
     <Stack spacing={1} alignItems="stretch">
       {navLinks.map((item, idx) => {
         const props = resolveLinkProps(item.href);
+        const active = Boolean(props?.to && pathname.includes(String(props.to).split("?")[0]));
         return (
           <Button
             key={`${item.label}-${idx}`}
             {...props}
             color="inherit"
             fullWidth
-            sx={{ justifyContent: "flex-start" }}
+            sx={{ ...navButtonStyling(active), justifyContent: "flex-start" }}
             onClick={handleMobileClose}
           >
             {item.label || "Link"}
@@ -539,13 +585,13 @@ export default function SiteFrame({
           to={reviewsHref()}
           color={pathname.includes("/reviews") ? "primary" : "inherit"}
           fullWidth
-          sx={{ justifyContent: "flex-start" }}
+          sx={{ ...navButtonStyling(pathname.includes("/reviews")), justifyContent: "flex-start" }}
           onClick={handleMobileClose}
         >
           {nav.reviews_tab_label || "Reviews"}
         </Button>
       )}
-      {renderSessionButtons("inherit", handleMobileClose)}
+      {renderSessionButtons(handleMobileClose)}
     </Stack>
   );
 
