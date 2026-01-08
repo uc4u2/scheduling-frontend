@@ -12,6 +12,7 @@ import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SmartServiceGrid from "./SmartServiceGrid";
 import { safeHtml } from "../../utils/safeHtml";
 import { normalizeInlineHtml } from "../../utils/html";
@@ -986,7 +987,7 @@ const Testimonials = ({ title, items = [], titleAlign, maxWidth }) => {
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
-        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: titleAlign || "center" }}>
+        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: "center" }}>
           {title}
         </HtmlTypo>
       )}
@@ -1351,7 +1352,7 @@ const FAQ = ({ title, items = [], titleAlign, maxWidth }) => {
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
-        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: titleAlign || "left" }}>
+        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: titleAlign || "center" }}>
           {title}
         </HtmlTypo>
       )}
@@ -3543,6 +3544,312 @@ const Gallery = ({
   );
 };
 
+const VideoGallery = ({
+  title,
+  videos = [],
+  columns,
+  columnsXs,
+  columnsSm,
+  columnsMd,
+  titleAlign,
+  maxWidth,
+  layout = "grid",
+  gap,
+  tile,
+  tileAspectRatio,
+  tileBorderRadius,
+  tileBorder,
+  tileHoverLift,
+  lightbox,
+  lightboxEnabled,
+  lightboxLoop,
+  lightboxShowArrows,
+  lightboxCloseOnBackdrop,
+  ctaText,
+  ctaLink,
+}) => {
+  const list = Array.isArray(videos) ? videos : [];
+  const resolvedTile = tile || {
+    aspectRatio: tileAspectRatio,
+    borderRadius: tileBorderRadius,
+    border: tileBorder,
+    hoverLift: tileHoverLift
+  };
+  const resolvedLightbox = lightbox || {
+    enabled: lightboxEnabled,
+    loop: lightboxLoop,
+    showArrows: lightboxShowArrows,
+    closeOnBackdrop: lightboxCloseOnBackdrop
+  };
+  const resolvedGap = gap ?? 16;
+  const resolvedColumns =
+    columns ||
+    (columnsXs || columnsSm || columnsMd
+      ? { xs: columnsXs, sm: columnsSm, md: columnsMd }
+      : 3);
+
+  const normalizeItem = (it) => (typeof it === "string" ? { video: it } : it || {});
+  const toVideo = (it) => it?.video || it?.url || it?.src || it?.assetKey || it?.videoUrl || "";
+  const toPoster = (it) => it?.poster || it?.posterUrl || it?.posterAssetKey || "";
+  const toCaption = (it) => it?.caption || "";
+
+  const parseAspectRatio = (value) => {
+    if (!value) return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    const raw = String(value);
+    if (raw.includes("/")) {
+      const [a, b] = raw.split("/").map((v) => Number(v));
+      if (Number.isFinite(a) && Number.isFinite(b) && b !== 0) return a / b;
+    }
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  };
+  const ratio = parseAspectRatio(resolvedTile?.aspectRatio);
+  const borderRadius = resolvedTile?.borderRadius ?? 0;
+  const border = resolvedTile?.border || "1px solid rgba(148,163,184,0.25)";
+  const hoverLift = resolvedTile?.hoverLift ?? false;
+  const lightboxOn = resolvedLightbox?.enabled ?? false;
+  const [activeIndex, setActiveIndex] = useState(null);
+
+  const columnsConf = (() => {
+    if (resolvedColumns && typeof resolvedColumns === "object") {
+      return {
+        xs: resolvedColumns.xs || 2,
+        sm: resolvedColumns.sm || resolvedColumns.xs || 2,
+        md: resolvedColumns.md || resolvedColumns.sm || resolvedColumns.xs || 3,
+      };
+    }
+    const num = Number(resolvedColumns) || 3;
+    return { xs: 1, sm: Math.min(2, num), md: num };
+  })();
+
+  const gridTemplate = {
+    xs: `repeat(${columnsConf.xs}, minmax(0, 1fr))`,
+    sm: `repeat(${columnsConf.sm}, minmax(0, 1fr))`,
+    md: `repeat(${columnsConf.md}, minmax(0, 1fr))`,
+  };
+
+  const handleOpen = (index) => {
+    if (!lightboxOn) return;
+    setActiveIndex(index);
+  };
+  const closeLightbox = () => setActiveIndex(null);
+  const showArrows = resolvedLightbox?.showArrows ?? true;
+  const loop = resolvedLightbox?.loop ?? true;
+
+  const currentItem = activeIndex != null ? normalizeItem(list[activeIndex]) : null;
+  const currentVideo = currentItem ? toVideo(currentItem) : "";
+  const currentPoster = currentItem ? toPoster(currentItem) : "";
+  const posterUrl = currentPoster ? buildImgixUrl(currentPoster, { w: 1400, fit: "crop" }) : "";
+
+  const goPrev = () => {
+    if (activeIndex == null) return;
+    if (activeIndex === 0) {
+      if (loop) setActiveIndex(list.length - 1);
+    } else {
+      setActiveIndex(activeIndex - 1);
+    }
+  };
+  const goNext = () => {
+    if (activeIndex == null) return;
+    if (activeIndex === list.length - 1) {
+      if (loop) setActiveIndex(0);
+    } else {
+      setActiveIndex(activeIndex + 1);
+    }
+  };
+
+  const theme = useTheme();
+  const smDown = useMediaQuery(theme.breakpoints.down("sm"));
+  const prefersReducedMotion = typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const saveData = typeof navigator !== "undefined" &&
+    navigator.connection &&
+    navigator.connection.saveData;
+  const effectiveType = typeof navigator !== "undefined" &&
+    navigator.connection &&
+    navigator.connection.effectiveType;
+  const lowData =
+    saveData ||
+    (typeof effectiveType === "string" && /(^|\\b)(2g|slow-2g)\\b/i.test(effectiveType));
+  const allowAutoplay = !(smDown || lowData || prefersReducedMotion);
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      {title && (
+        <HtmlTypo variant="h4" sx={{ mb: 2, fontWeight: 800, textAlign: titleAlign || "left" }}>
+          {title}
+        </HtmlTypo>
+      )}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: gridTemplate,
+          gap: typeof resolvedGap === "number" ? `${resolvedGap}px` : resolvedGap,
+        }}
+      >
+        {list.map((item, i) => {
+          const normalized = normalizeItem(item);
+          const videoUrl = toVideo(normalized);
+          if (!videoUrl) return null;
+          const poster = toPoster(normalized);
+          const thumb = poster ? buildImgixUrl(poster, { w: 900, fit: "crop" }) : "";
+          return (
+            <Box
+              key={i}
+              role={lightboxOn ? "button" : undefined}
+              onClick={() => handleOpen(i)}
+              sx={{
+                borderRadius,
+                border,
+                overflow: "hidden",
+                lineHeight: 0,
+                cursor: lightboxOn ? "pointer" : "default",
+                boxShadow: "0 8px 24px rgba(15,23,42,0.12)",
+                transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                ...(hoverLift
+                  ? {
+                      "&:hover": {
+                        transform: "translateY(-4px)",
+                        boxShadow: "0 16px 32px rgba(15,23,42,0.18)",
+                      },
+                    }
+                  : {}),
+              }}
+            >
+              <Box
+                sx={{
+                  position: "relative",
+                  width: "100%",
+                  aspectRatio: ratio ? `${ratio}` : "16/9",
+                  backgroundColor: "#0f172a",
+                }}
+              >
+                <video
+                  src={videoUrl}
+                  poster={thumb || undefined}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay={allowAutoplay}
+                  preload="metadata"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              </Box>
+              {toCaption(normalized) && (
+                <Box sx={{ px: 1.5, py: 1, backgroundColor: "rgba(15,23,42,0.06)" }}>
+                  <HtmlTypo variant="subtitle2" sx={{ m: 0 }}>
+                    {toCaption(normalized)}
+                  </HtmlTypo>
+                </Box>
+              )}
+            </Box>
+          );
+        })}
+      </Box>
+
+      {ctaText && (
+        <Box sx={{ mt: 3, textAlign: "center" }}>
+          <Button href={ctaLink || "#"} variant="contained">
+            {toPlain(ctaText)}
+          </Button>
+        </Box>
+      )}
+
+      <Dialog
+        open={activeIndex != null}
+        onClose={(event, reason) => {
+          if (reason === "backdropClick" && resolvedLightbox?.closeOnBackdrop === false) return;
+          closeLightbox();
+        }}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: "transparent",
+            boxShadow: "none",
+            overflow: "visible",
+          },
+        }}
+      >
+        {currentVideo && (
+          <Box sx={{ position: "relative", display: "flex", justifyContent: "center" }}>
+            <IconButton
+              onClick={closeLightbox}
+              sx={{
+                position: "absolute",
+                top: -48,
+                right: 0,
+                color: "#fff",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                "&:hover": { backgroundColor: "rgba(0,0,0,0.65)" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+            {showArrows && list.length > 1 && (
+              <>
+                <IconButton
+                  onClick={goPrev}
+                  sx={{
+                    position: "absolute",
+                    left: -56,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#fff",
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    "&:hover": { backgroundColor: "rgba(0,0,0,0.65)" },
+                  }}
+                >
+                  <ArrowBackIosNewIcon />
+                </IconButton>
+                <IconButton
+                  onClick={goNext}
+                  sx={{
+                    position: "absolute",
+                    right: -56,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#fff",
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    "&:hover": { backgroundColor: "rgba(0,0,0,0.65)" },
+                  }}
+                >
+                  <ArrowForwardIosIcon />
+                </IconButton>
+              </>
+            )}
+            <Box
+              sx={{
+                maxWidth: "100%",
+                maxHeight: "80vh",
+                borderRadius: 3,
+                border: "1px solid rgba(255,255,255,0.15)",
+                backgroundColor: "#111827",
+                overflow: "hidden",
+              }}
+            >
+              <video
+                src={currentVideo}
+                poster={posterUrl || undefined}
+                controls
+                playsInline
+                style={{ width: "100%", height: "100%", display: "block" }}
+              />
+            </Box>
+          </Box>
+        )}
+      </Dialog>
+    </Container>
+  );
+};
+
 // -----------------------------------------------------------------------------
 // Registry
 // -----------------------------------------------------------------------------
@@ -3558,6 +3865,7 @@ const registry = {
   serviceGrid: ServiceGrid,
   serviceGridSmart: SmartServiceGrid,
   gallery: Gallery,
+  videoGallery: VideoGallery,
   galleryCarousel: GalleryCarousel,
   testimonials: Testimonials,
   featurePillars: FeaturePillars,
