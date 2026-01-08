@@ -35,6 +35,7 @@ const VARIANT_OPTIONS = [
   { value: "pill", label: "Pill / Filled" },
   { value: "button", label: "Solid Button" },
   { value: "underline", label: "Underline" },
+  { value: "overline", label: "Overline" },
   { value: "ghost", label: "Outline / Ghost" },
   { value: "link", label: "Link" },
   { value: "text", label: "Plain text" },

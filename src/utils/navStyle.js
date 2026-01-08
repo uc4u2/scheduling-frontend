@@ -28,7 +28,7 @@ export const normalizeNavStyle = (raw = {}) => {
   const src = typeof raw === "object" && raw !== null ? raw : {};
 
   const variant = String(src.variant || base.variant || "").trim().toLowerCase();
-  base.variant = ["pill", "underline", "ghost", "link", "text", "button"].includes(variant)
+  base.variant = ["pill", "underline", "overline", "ghost", "link", "text", "button"].includes(variant)
     ? variant
     : base.variant;
 
@@ -145,27 +145,35 @@ export const createNavButtonStyles = (style) => {
         colors.bg || colors.text || "rgba(148,163,184,0.45)"
       }`;
       base.boxShadow = "none";
-    } else if (variant === "underline") {
+    } else if (variant === "underline" || variant === "overline") {
       base.backgroundColor = "transparent";
       base.color = active ? colors.activeText : colors.text;
       base.borderRadius = 0;
       base.boxShadow = "none";
-      base.borderBottom = active
-        ? `3px solid ${colors.activeBg || colors.bg || "currentColor"}`
-        : "3px solid transparent";
-      base.paddingBottom = `${tokens.padding_y + 2}px`;
+      const lineColor = colors.activeBg || colors.bg || "currentColor";
+      const lineProp = variant === "overline" ? "borderTop" : "borderBottom";
+      base[lineProp] = active ? `3px solid ${lineColor}` : "3px solid transparent";
+      if (variant === "overline") {
+        base.paddingTop = `${tokens.padding_y + 2}px`;
+      } else {
+        base.paddingBottom = `${tokens.padding_y + 2}px`;
+      }
     } else {
       base.backgroundColor = "transparent";
       base.color = active ? colors.activeText : colors.text;
     }
 
     base["&:hover"] =
-      variant === "underline"
+      variant === "underline" || variant === "overline"
         ? {
             color: colors.textHover,
-            borderBottom: `3px solid ${
-              colors.bgHover || colors.bg || "currentColor"
-            }`,
+            ...(variant === "overline"
+              ? {
+                  borderTop: `3px solid ${colors.bgHover || colors.bg || "currentColor"}`,
+                }
+              : {
+                  borderBottom: `3px solid ${colors.bgHover || colors.bg || "currentColor"}`,
+                }),
           }
         : {
             backgroundColor: colors.bgHover,
