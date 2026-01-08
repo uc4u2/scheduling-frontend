@@ -374,21 +374,17 @@ const ProductDetails = () => {
   }
 
   const content = (
-    <Container
-      sx={{
-        py: { xs: 4, md: 6 },
-        ...backgroundSx,
-      }}
-      style={cssVarStyle}
-    >
-      {body}
-      <Snackbar
-        open={snack.open}
-        autoHideDuration={3000}
-        onClose={() => setSnack({ open: false, msg: "" })}
-        message={snack.msg}
-      />
-    </Container>
+    <Box sx={{ ...backgroundSx, minHeight: "70vh" }} style={cssVarStyle}>
+      <Container sx={{ py: { xs: 4, md: 6 } }}>
+        {body}
+        <Snackbar
+          open={snack.open}
+          autoHideDuration={3000}
+          onClose={() => setSnack({ open: false, msg: "" })}
+          message={snack.msg}
+        />
+      </Container>
+    </Box>
   );
 
   const renderShell = (node) => {
