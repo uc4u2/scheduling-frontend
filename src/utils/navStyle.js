@@ -150,16 +150,21 @@ export const createNavButtonStyles = (style) => {
       base.color = active ? colors.activeText : colors.text;
       base.borderRadius = 0;
       base.boxShadow = "none";
-      const lineColor = colors.activeBg || colors.bg || "currentColor";
+      const lineColor = colors.activeBg || colors.bg || colors.text || "currentColor";
       const lineProp =
         variant === "overline"
           ? "borderTop"
           : variant === "doubleline"
           ? "borderTop"
           : "borderBottom";
-      base[lineProp] = active ? `3px solid ${lineColor}` : "3px solid transparent";
       if (variant === "doubleline") {
-        base.borderBottom = active ? `3px solid ${lineColor}` : "3px solid transparent";
+        const thickness = active ? "3px" : "2px";
+        base.borderTop = `${thickness} solid ${lineColor}`;
+        base.borderBottom = `${thickness} solid ${lineColor}`;
+      } else {
+        base[lineProp] = active ? `3px solid ${lineColor}` : "3px solid transparent";
+      }
+      if (variant === "doubleline") {
         base.paddingTop = `${tokens.padding_y + 2}px`;
         base.paddingBottom = `${tokens.padding_y + 2}px`;
       } else if (variant === "overline") {
@@ -182,11 +187,11 @@ export const createNavButtonStyles = (style) => {
                 }
               : variant === "doubleline"
               ? {
-                  borderTop: `3px solid ${colors.bgHover || colors.bg || "currentColor"}`,
-                  borderBottom: `3px solid ${colors.bgHover || colors.bg || "currentColor"}`,
+                  borderTop: `3px solid ${colors.bgHover || colors.bg || colors.text || "currentColor"}`,
+                  borderBottom: `3px solid ${colors.bgHover || colors.bg || colors.text || "currentColor"}`,
                 }
               : {
-                  borderBottom: `3px solid ${colors.bgHover || colors.bg || "currentColor"}`,
+                  borderBottom: `3px solid ${colors.bgHover || colors.bg || colors.text || "currentColor"}`,
                 }),
           }
         : {
