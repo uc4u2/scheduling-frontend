@@ -1467,11 +1467,15 @@ const siteTitle = useMemo(() => {
   const overrideContent = useMemo(() => {
     if (!renderOverride) return null;
     const styleProps = renderOverride.styleProps || null;
+    const servicesMetaSource =
+      pages?.find((p) => String(p?.slug || "").toLowerCase() === "services-classic") ||
+      pages?.find((p) => String(p?.slug || "").toLowerCase() === "services") ||
+      currentPage;
     const servicesHeading =
-      currentPage?.content?.meta?.servicesHeading ||
-      currentPage?.content?.meta?.services_heading ||
-      currentPage?.content?.meta?.servicesTitle ||
-      currentPage?.content?.meta?.services_title ||
+      servicesMetaSource?.content?.meta?.servicesHeading ||
+      servicesMetaSource?.content?.meta?.services_heading ||
+      servicesMetaSource?.content?.meta?.servicesTitle ||
+      servicesMetaSource?.content?.meta?.services_title ||
       "";
     switch (renderOverride.type) {
       case "services-classic":
@@ -1488,7 +1492,7 @@ const siteTitle = useMemo(() => {
       default:
         return null;
     }
-  }, [renderOverride, slug, jobFromQuery, currentPage]);
+  }, [renderOverride, slug, jobFromQuery, currentPage, pages]);
 
   if (loading) {
     return <Box sx={{ p: 6, textAlign: "center" }}><CircularProgress /></Box>;
