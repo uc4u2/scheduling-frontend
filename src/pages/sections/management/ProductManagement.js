@@ -126,8 +126,13 @@ const ProductManagement = ({ token }) => {
         await api.patch(`/inventory/products/${editing.id}`, payload, auth);
         notify(t("manager.product.messages.updated"));
       } else {
-        await api.post(`/inventory/products`, payload, auth);
-        notify(t("manager.product.messages.added"));
+        const { data: saved } = await api.post(`/inventory/products`, payload, auth);
+        const baseMessage = t("manager.product.messages.added");
+        if (!form.sku && saved?.sku) {
+          notify(`${baseMessage} (SKU: ${saved.sku})`);
+        } else {
+          notify(baseMessage);
+        }
       }
       handleClose();
       load();
@@ -311,6 +316,7 @@ const ProductManagement = ({ token }) => {
                 value={form.sku}
                 onChange={handleChange("sku")}
                 fullWidth
+                helperText="Leave blank to auto-generate"
               />
               <TextField
                 label={t("manager.product.labels.name")}
