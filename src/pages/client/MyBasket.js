@@ -488,20 +488,22 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
               Review services and products before completing your purchase.
             </Typography>
           </Box>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
-            <Button variant="outlined" onClick={continueShopping} sx={{ width: { xs: "100%", sm: "auto" } }}>
-              Continue shopping
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<ShoppingCartCheckoutIcon />}
-              onClick={proceed}
-              disabled={items.length === 0 || mixedCart}
-              sx={{ width: { xs: "100%", sm: "auto" } }}
-            >
-              Proceed to checkout
-            </Button>
-          </Stack>
+          {items.length > 0 && (
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
+              <Button variant="outlined" onClick={continueShopping} sx={{ width: { xs: "100%", sm: "auto" } }}>
+                Continue shopping
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<ShoppingCartCheckoutIcon />}
+                onClick={proceed}
+                disabled={mixedCart}
+                sx={{ width: { xs: "100%", sm: "auto" } }}
+              >
+                Proceed to checkout
+              </Button>
+            </Stack>
+          )}
         </Stack>
 
         {typeof holdMinutes === "number" && holdMinutes > 0 && serviceItems.length > 0 && holdState.overall !== null && (
