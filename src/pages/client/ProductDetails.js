@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { api } from "../../utils/api";
+import { api, publicSite } from "../../utils/api";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -18,7 +18,7 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
-import PublicPageShell from "./PublicPageShell";
+import SiteFrame from "../../components/website/SiteFrame";
 import { addProductToCart, CartErrorCodes } from "../../utils/cart";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
@@ -67,6 +67,8 @@ const ProductDetails = () => {
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [siteLoading, setSiteLoading] = useState(false);
+  const [sitePayload, setSitePayload] = useState(null);
   const [error, setError] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -95,6 +97,29 @@ const ProductDetails = () => {
       alive = false;
     };
   }, [slug, productId]);
+
+  useEffect(() => {
+    if (!slug) return;
+    let mounted = true;
+    setSiteLoading(true);
+    publicSite
+      .getBySlug(slug)
+      .then((data) => {
+        if (!mounted) return;
+        setSitePayload(data);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setSitePayload(null);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setSiteLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [slug]);
 
   const handleAdd = () => {
     if (!product || soldOut) return;
@@ -316,7 +341,30 @@ const ProductDetails = () => {
     </Container>
   );
 
-  return <PublicPageShell activeKey="__products">{content}</PublicPageShell>;
+  const renderShell = (node) => {
+    if (!slug) return node;
+    return (
+      <SiteFrame
+        slug={slug}
+        activeKey="products"
+        initialSite={sitePayload || undefined}
+        disableFetch={Boolean(sitePayload)}
+        wrapChildrenInContainer={false}
+      >
+        {node}
+      </SiteFrame>
+    );
+  };
+
+  if (siteLoading && !sitePayload) {
+    return renderShell(
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return renderShell(content);
 };
 
 export default ProductDetails;
