@@ -2089,6 +2089,83 @@ const autoProvisionIfEmpty = useCallback(
     }
   };
 
+  const slugify = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .replace(/-+/g, "-");
+
+  const buildDuplicateSlug = (base, existing) => {
+    const cleanBase = slugify(base) || "page";
+    const baseSlug = `duplicated${cleanBase}`;
+    let candidate = baseSlug;
+    let idx = 2;
+    while (existing.has(candidate)) {
+      candidate = `${baseSlug}-${idx}`;
+      idx += 1;
+    }
+    existing.add(candidate);
+    return candidate;
+  };
+
+  const prefixDuplicate = (value, fallback = "Page") => {
+    const trimmed = String(value || "").trim();
+    return trimmed ? `Duplicated ${trimmed}` : `Duplicated ${fallback}`;
+  };
+
+  const duplicateSelectedPages = async () => {
+    if (!companyId) return;
+    const targets = selectedPageIds.length
+      ? selectedPageIds
+      : editing?.id
+        ? [editing.id]
+        : [];
+    if (!targets.length) return;
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      const existingSlugs = new Set(
+        pages.map((p) => String(p.slug || "").toLowerCase())
+      );
+      const createdPages = [];
+      for (const id of targets) {
+        const source =
+          id === editing?.id ? editing : pages.find((p) => p.id === id);
+        if (!source) continue;
+        const next = JSON.parse(JSON.stringify(source));
+        delete next.id;
+        next.slug = buildDuplicateSlug(next.slug || next.title || "page", existingSlugs);
+        next.title = prefixDuplicate(next.title || next.slug, "Page");
+        next.menu_title = prefixDuplicate(next.menu_title || next.title, "Page");
+        if (next.seo_title) next.seo_title = prefixDuplicate(next.seo_title, "Page");
+        if (next.og_title) next.og_title = prefixDuplicate(next.og_title, "Page");
+        next.canonical_path = "";
+        const payload = serializePage(ensureSectionIds(withLiftedLayout(next)));
+        const r = await wb.createPage(companyId, payload);
+        const created = ensureSectionIds(
+          withLiftedLayout(normalizePage(r.data || payload))
+        );
+        createdPages.push(created);
+      }
+      if (createdPages.length) {
+        setPages((prev) => [...createdPages, ...prev]);
+        setSelectedId(createdPages[0].id);
+        setEditing(createdPages[0]);
+        setSelectedBlock(-1);
+        setSelectedPageIds([]);
+        setMsg(t("manager.visualBuilder.messages.created"));
+      }
+    } catch (e) {
+      console.error(e);
+      setErr(t("manager.visualBuilder.errors.savePage"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /* ----- LAB import helpers ----- */
   const importLabSettings = () => {
     try {
@@ -2659,6 +2736,14 @@ const autoProvisionIfEmpty = useCallback(
             label={t("manager.visualBuilder.pages.settings.toggles.autosave")}
           />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="flex-end" sx={{ pt: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={duplicateSelectedPages}
+              disabled={busy || !companyId || !selectedPageIds.length}
+            >
+              Duplicate selected
+            </Button>
             <Button
               size="small"
               variant="outlined"
