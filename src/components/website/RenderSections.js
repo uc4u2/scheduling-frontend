@@ -689,13 +689,16 @@ const cardRadius = 8;
         className={rowClass}
         sx={{
           display: "flex",
+          width: "100%",
+          maxWidth: { xs: "100%", md: 980 },
+          mx: "auto",
           flexDirection: {
             xs: "column",
             md: align === "right" ? "row-reverse" : "row"
           },
           alignItems: "center",
           justifyContent: "center",
-          gap: { xs: 1, md: 0 },
+          gap: { xs: 1, md: 1.5 },
         }}
       >
         {textBlock}
