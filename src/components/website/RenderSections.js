@@ -611,11 +611,11 @@ const cardRadius = 8;
         key="text"
         className="zig-text"
         sx={{
-          flex: "0 1 48%",
+          flex: "1 1 0%",
           minWidth: 0,
-          width: { xs: "100%", md: "48%" },
-          maxWidth: { xs: "100%", md: 420 },
-          mx: "auto"
+          width: { xs: "100%", md: "50%" },
+          maxWidth: "none",
+          mx: 0
         }}
       >
         {item.eyebrow && (
@@ -655,10 +655,10 @@ const cardRadius = 8;
         key="image"
         className="zig-img"
         sx={{
-          flex: "0 1 48%",
-          width: { xs: "100%", md: "48%" },
-          maxWidth: { xs: "100%", md: 520 },
-          mx: "auto",
+          flex: "1 1 0%",
+          width: { xs: "100%", md: "50%" },
+          maxWidth: "none",
+          mx: 0,
           borderRadius: cardRadius,
           overflow: "hidden",
           boxShadow: (t) => t.shadows[6],
@@ -695,7 +695,7 @@ const cardRadius = 8;
           },
           alignItems: "center",
           justifyContent: "center",
-          gap: { xs: 1.5, md: 1 },
+          gap: { xs: 1, md: 0 },
         }}
       >
         {textBlock}
