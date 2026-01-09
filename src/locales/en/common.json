@@ -66,7 +66,8 @@
           "bullets": [
             "Open the Website Builder and select the page you want to edit (Home, Services, etc.).",
             "Each page is made of 'sections' (Hero, Gallery, Service Grid, Rich Text, FAQ, etc.).",
-            "Click a section card to select it; the editor shows its fields on the right."
+            "Click a section card to select it; the editor shows its fields on the right.",
+            "Select pages with checkboxes to bulk-update settings or duplicate them."
           ]
         },
         "editText": {
@@ -74,7 +75,8 @@
           "bullets": [
             "Headings & body: click the field and type. Rich text fields support basic formatting.",
             "Per-section controls include alignment, max width, padding, and optional 'bleed' (edge-to-edge).",
-            "Advanced users: each section has an 'Advanced: raw JSON props' area for exact control."
+            "Advanced users: each section has an 'Advanced: raw JSON props' area for exact control.",
+            "Blog posts are managed inside the Blog section (title, date, images, and body)."
           ]
         },
         "images": {
@@ -83,6 +85,7 @@
             "Any image field supports upload from your device (Upload or drag & drop).",
             "Galleries & carousels: add multiple items with 'Add image', each slot has its own uploader.",
             "Service cards and logo clouds also include uploadable image fields.",
+            "Hero sections also accept background video (optional).",
             "Uploaded files go to Assets and can be reused across pages."
           ],
           "footnote": "Tip: Prefer JPG/WEBP. Hero ~1600-2400px wide; gallery ~1200px. Large files are auto-sized; variants are created for faster pages."
@@ -102,14 +105,16 @@
           "bullets": [
             "Save Draft frequently - your changes are stored but not visible to the public.",
             "Preview shows the page as visitors would see it (without publishing).",
-            "Publish pushes the current draft live to your website."
+            "Publish pushes the current draft live to your website.",
+            "Autosave can be toggled per page in Page Settings."
           ]
         },
         "navigation": {
           "title": "6) Navigation menu",
           "bullets": [
             "Open Navigation to add, remove, or reorder menu items.",
-            "Link items to a page (slug) or an external URL."
+            "Link items to a page (slug) or an external URL.",
+            "Legal and footer links use the same page slugs (privacy, terms, cookies)."
           ]
         },
         "revisions": {
