@@ -776,7 +776,7 @@ const FeatureZigzagModern = ({
           border: "1px solid rgba(148,163,184,0.25)",
           borderRadius: 24,
           p: { xs: 2.5, md: 3.5 },
-          boxShadow: "0 18px 40px rgba(15,23,42,0.12)"
+          boxShadow: "none"
         }}
       >
         {item.eyebrow && (
@@ -821,8 +821,8 @@ const FeatureZigzagModern = ({
           borderRadius: 28,
           overflow: "hidden",
           aspectRatio: { xs: "4 / 3", md: "5 / 4" },
-          boxShadow: "0 28px 60px rgba(15,23,42,0.18)",
-          backgroundColor: "rgba(15,23,42,0.06)"
+          boxShadow: "none",
+          backgroundColor: "transparent"
         }}
       >
         {imageSrc && (
