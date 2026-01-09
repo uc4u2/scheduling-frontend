@@ -159,6 +159,9 @@ export const SCHEMA_REGISTRY = {
           { name: "name",  type: "richinline", label: "Name" },
           { name: "role",  type: "richinline", label: "Role" },
           { name: "image", type: "image",      label: "Photo" },
+          { name: "email", type: "string",     label: "Email" },
+          { name: "linkedin", type: "string",  label: "LinkedIn URL" },
+          { name: "website", type: "string",   label: "Website URL" },
         ],
       },
       { name: "columnsXs",   type: "number", label: "Columns (xs)", min: 1, max: 6, step: 1, default: 1 },
@@ -460,6 +463,86 @@ export const SCHEMA_REGISTRY = {
       { name: "gutterX",     type: "number", label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
       { name: "bleedLeft",   type: "boolean", label: "Bleed left" },
       { name: "bleedRight",  type: "boolean", label: "Bleed right" }
+    ]
+  },
+
+  /* ---------------------- TEAM METRICS ---------------------- */
+  teamMetrics: {
+    title: "Team Metrics",
+    fields: [
+      { name: "title",     type: "richinline", label: "Title" },
+      { name: "subtitle",  type: "richtext",   label: "Subtitle", minRows: 3 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Metrics",
+        fields: [
+          { name: "value",   type: "richinline", label: "Value (e.g., 12+ yrs)" },
+          { name: "label",   type: "richinline", label: "Label" },
+          { name: "caption", type: "richtext",   label: "Caption (optional)", minRows: 2 },
+        ],
+      },
+      { name: "titleAlign",  type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth",    type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",     type: "number", label: "Inner gutter (px)", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",   type: "boolean", label: "Bleed left" },
+      { name: "bleedRight",  type: "boolean", label: "Bleed right" },
+    ]
+  },
+
+  /* --------------------- CULTURE VALUES --------------------- */
+  cultureValues: {
+    title: "Culture & Values",
+    fields: [
+      { name: "title",     type: "richinline", label: "Title" },
+      { name: "subtitle",  type: "richtext",   label: "Subtitle", minRows: 3 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Values",
+        fields: [
+          { name: "icon",   type: "richinline", label: "Icon (emoji or short text)" },
+          { name: "title",  type: "richinline", label: "Value" },
+          { name: "text",   type: "richtext",   label: "Description", minRows: 2 },
+        ],
+      },
+      { name: "columnsXs",  type: "number", label: "Columns (xs)", min: 1, max: 6, step: 1, default: 1 },
+      { name: "columnsSm",  type: "number", label: "Columns (sm)", min: 1, max: 6, step: 1, default: 2 },
+      { name: "columnsMd",  type: "number", label: "Columns (md)", min: 1, max: 6, step: 1, default: 3 },
+      { name: "gap",        type: "number", label: "Tile gap (px)", min: 0, max: 64, step: 1, default: 18 },
+      { name: "titleAlign", type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth",   type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",    type: "number", label: "Inner gutter (px)", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",  type: "boolean", label: "Bleed left" },
+      { name: "bleedRight", type: "boolean", label: "Bleed right" }
+    ]
+  },
+
+  /* ------------------- PROCESS & STANDARDS ------------------ */
+  processSteps: {
+    title: "Process & Standards",
+    fields: [
+      { name: "title",     type: "richinline", label: "Title" },
+      { name: "subtitle",  type: "richtext",   label: "Subtitle", minRows: 3 },
+      {
+        name: "steps",
+        type: "objectArray",
+        label: "Steps",
+        fields: [
+          { name: "title",       type: "richinline", label: "Step title" },
+          { name: "description", type: "richtext",   label: "Description", minRows: 2 },
+          { name: "meta",        type: "richinline", label: "Meta (optional)" },
+        ],
+      },
+      { name: "columnsXs",  type: "number", label: "Columns (xs)", min: 1, max: 6, step: 1, default: 1 },
+      { name: "columnsSm",  type: "number", label: "Columns (sm)", min: 1, max: 6, step: 1, default: 2 },
+      { name: "columnsMd",  type: "number", label: "Columns (md)", min: 1, max: 6, step: 1, default: 3 },
+      { name: "gap",        type: "number", label: "Tile gap (px)", min: 0, max: 64, step: 1, default: 18 },
+      { name: "titleAlign", type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth",   type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",    type: "number", label: "Inner gutter (px)", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",  type: "boolean", label: "Bleed left" },
+      { name: "bleedRight", type: "boolean", label: "Bleed right" }
     ]
   },
 

@@ -196,6 +196,71 @@ featureStories: {
     ],
   },
 
+  teamMetrics: {
+    fields: [
+      { name: "title", type: "string", label: "Title" },
+      { name: "subtitle", type: "text", label: "Subtitle", minRows: 3 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Metrics",
+        fields: [
+          { name: "value", type: "string", label: "Value" },
+          { name: "label", type: "string", label: "Label" },
+          { name: "caption", type: "text", label: "Caption (optional)", minRows: 2 },
+        ],
+      },
+      { name: "titleAlign", type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | full" },
+    ],
+  },
+
+  cultureValues: {
+    fields: [
+      { name: "title", type: "string", label: "Title" },
+      { name: "subtitle", type: "text", label: "Subtitle", minRows: 3 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Values",
+        fields: [
+          { name: "icon", type: "string", label: "Icon (emoji or short text)" },
+          { name: "title", type: "string", label: "Value" },
+          { name: "text", type: "text", label: "Description", minRows: 2 },
+        ],
+      },
+      { name: "columnsXs", type: "number", label: "Columns (xs)", min: 1, max: 6, default: 1 },
+      { name: "columnsSm", type: "number", label: "Columns (sm)", min: 1, max: 6, default: 2 },
+      { name: "columnsMd", type: "number", label: "Columns (md)", min: 1, max: 6, default: 3 },
+      { name: "gap", type: "number", label: "Tile gap (px)", min: 0, max: 64, default: 18 },
+      { name: "titleAlign", type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | full" },
+    ],
+  },
+
+  processSteps: {
+    fields: [
+      { name: "title", type: "string", label: "Title" },
+      { name: "subtitle", type: "text", label: "Subtitle", minRows: 3 },
+      {
+        name: "steps",
+        type: "objectArray",
+        label: "Steps",
+        fields: [
+          { name: "title", type: "string", label: "Step title" },
+          { name: "description", type: "text", label: "Description", minRows: 2 },
+          { name: "meta", type: "string", label: "Meta (optional)" },
+        ],
+      },
+      { name: "columnsXs", type: "number", label: "Columns (xs)", min: 1, max: 6, default: 1 },
+      { name: "columnsSm", type: "number", label: "Columns (sm)", min: 1, max: 6, default: 2 },
+      { name: "columnsMd", type: "number", label: "Columns (md)", min: 1, max: 6, default: 3 },
+      { name: "gap", type: "number", label: "Tile gap (px)", min: 0, max: 64, default: 18 },
+      { name: "titleAlign", type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | full" },
+    ],
+  },
+
   serviceGrid: {
     fields: [
       { name: "title", type: "string", label: "Title" },
@@ -263,6 +328,9 @@ featureStories: {
           { name: "name", type: "string", label: "Name" },
           { name: "role", type: "string", label: "Role" },
           { name: "image", type: "image", label: "Photo" },
+          { name: "email", type: "string", label: "Email" },
+          { name: "linkedin", type: "string", label: "LinkedIn URL" },
+          { name: "website", type: "string", label: "Website URL" },
         ],
       },
       { name: "columnsXs", type: "number", label: "Columns (xs)", min: 1, max: 6, default: 1 },

@@ -13,6 +13,9 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import EmailIcon from "@mui/icons-material/Email";
+import LanguageIcon from "@mui/icons-material/Language";
+import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import SmartServiceGrid from "./SmartServiceGrid";
 import { safeHtml } from "../../utils/safeHtml";
 import { normalizeInlineHtml } from "../../utils/html";
@@ -1465,10 +1468,245 @@ const TeamGrid = ({
                     {toPlain(member.role)}
                   </Typography>
                 )}
+                {(member?.email || member?.linkedin || member?.website) && (
+                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                    {member?.email && (
+                      <IconButton
+                        size="small"
+                        component="a"
+                        href={`mailto:${member.email}`}
+                        aria-label="Email"
+                        sx={{ color: "var(--page-link-color, inherit)" }}
+                      >
+                        <EmailIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                    {member?.linkedin && (
+                      <IconButton
+                        size="small"
+                        component="a"
+                        href={member.linkedin}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="LinkedIn"
+                        sx={{ color: "var(--page-link-color, inherit)" }}
+                      >
+                        <LinkedInIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                    {member?.website && (
+                      <IconButton
+                        size="small"
+                        component="a"
+                        href={member.website}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="Website"
+                        sx={{ color: "var(--page-link-color, inherit)" }}
+                      >
+                        <LanguageIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Stack>
+                )}
               </Box>
             </Box>
           );
         })}
+      </Box>
+    </Container>
+  );
+};
+
+const TeamMetrics = ({
+  title,
+  subtitle,
+  items = [],
+  titleAlign = "center",
+  maxWidth,
+}) => {
+  const list = toArray(items);
+  const align = titleAlign || "center";
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      {title && (
+        <HtmlTypo variant="h4" sx={{ mb: 1.5, fontWeight: 800, textAlign: align }}>
+          {title}
+        </HtmlTypo>
+      )}
+      {subtitle && (
+        <HtmlTypo variant="body2" sx={{ mb: 4, textAlign: align }}>
+          {subtitle}
+        </HtmlTypo>
+      )}
+      <Grid container spacing={3}>
+        {list.map((m, i) => (
+          <Grid item xs={12} sm={6} md={4} key={i}>
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: "var(--page-card-radius, 0px)",
+                backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.08))",
+                border: "1px solid rgba(148,163,184,0.25)",
+                height: "100%",
+              }}
+            >
+              {m?.value && (
+                <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+                  {toPlain(m.value)}
+                </Typography>
+              )}
+              {m?.label && (
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  {toPlain(m.label)}
+                </Typography>
+              )}
+              {m?.caption && (
+                <HtmlTypo variant="body2" sx={{ mt: 1, color: "var(--page-body-color, inherit)" }}>
+                  {m.caption}
+                </HtmlTypo>
+              )}
+            </Box>
+          </Grid>
+        ))}
+      </Grid>
+    </Container>
+  );
+};
+
+const CultureValues = ({
+  title,
+  subtitle,
+  items = [],
+  columnsXs = 1,
+  columnsSm = 2,
+  columnsMd = 3,
+  gap = 18,
+  titleAlign = "center",
+  maxWidth,
+}) => {
+  const list = toArray(items);
+  const align = titleAlign || "center";
+  const gridTemplate = {
+    xs: `repeat(${columnsXs || 1}, minmax(0, 1fr))`,
+    sm: `repeat(${columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
+    md: `repeat(${columnsMd || columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
+  };
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      {title && (
+        <HtmlTypo variant="h4" sx={{ mb: 1.5, fontWeight: 800, textAlign: align }}>
+          {title}
+        </HtmlTypo>
+      )}
+      {subtitle && (
+        <HtmlTypo variant="body2" sx={{ mb: 4, textAlign: align }}>
+          {subtitle}
+        </HtmlTypo>
+      )}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: gridTemplate,
+          gap: typeof gap === "number" ? `${gap}px` : gap,
+        }}
+      >
+        {list.map((v, i) => (
+          <Box
+            key={i}
+            sx={{
+              p: 3,
+              borderRadius: "var(--page-card-radius, 0px)",
+              backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.08))",
+              border: "1px solid rgba(148,163,184,0.25)",
+            }}
+          >
+            {v?.icon && (
+              <Typography variant="h5" sx={{ mb: 1 }}>
+                {toPlain(v.icon)}
+              </Typography>
+            )}
+            {v?.title && (
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                {toPlain(v.title)}
+              </Typography>
+            )}
+            {v?.text && (
+              <HtmlTypo variant="body2" sx={{ color: "var(--page-body-color, inherit)" }}>
+                {v.text}
+              </HtmlTypo>
+            )}
+          </Box>
+        ))}
+      </Box>
+    </Container>
+  );
+};
+
+const ProcessSteps = ({
+  title,
+  subtitle,
+  steps = [],
+  columnsXs = 1,
+  columnsSm = 2,
+  columnsMd = 3,
+  gap = 18,
+  titleAlign = "center",
+  maxWidth,
+}) => {
+  const list = toArray(steps);
+  const align = titleAlign || "center";
+  const gridTemplate = {
+    xs: `repeat(${columnsXs || 1}, minmax(0, 1fr))`,
+    sm: `repeat(${columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
+    md: `repeat(${columnsMd || columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
+  };
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      {title && (
+        <HtmlTypo variant="h4" sx={{ mb: 1.5, fontWeight: 800, textAlign: align }}>
+          {title}
+        </HtmlTypo>
+      )}
+      {subtitle && (
+        <HtmlTypo variant="body2" sx={{ mb: 4, textAlign: align }}>
+          {subtitle}
+        </HtmlTypo>
+      )}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: gridTemplate,
+          gap: typeof gap === "number" ? `${gap}px` : gap,
+        }}
+      >
+        {list.map((s, i) => (
+          <Box
+            key={i}
+            sx={{
+              p: 3,
+              borderRadius: "var(--page-card-radius, 0px)",
+              backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.08))",
+              border: "1px solid rgba(148,163,184,0.25)",
+            }}
+          >
+            {s?.title && (
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                {toPlain(s.title)}
+              </Typography>
+            )}
+            {s?.description && (
+              <HtmlTypo variant="body2" sx={{ color: "var(--page-body-color, inherit)" }}>
+                {s.description}
+              </HtmlTypo>
+            )}
+            {s?.meta && (
+              <HtmlTypo variant="caption" sx={{ display: "block", mt: 1 }}>
+                {s.meta}
+              </HtmlTypo>
+            )}
+          </Box>
+        ))}
       </Box>
     </Container>
   );
@@ -3975,6 +4213,9 @@ const registry = {
   pricingTable: PricingTable,
   faq: FAQ,
   teamGrid: TeamGrid,
+  teamMetrics: TeamMetrics,
+  cultureValues: CultureValues,
+  processSteps: ProcessSteps,
   cta: CTA,
   richText: RichText,
   textFree: FreeText,
