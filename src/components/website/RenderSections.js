@@ -722,7 +722,19 @@ const cardRadius = 8;
   );
 };
 
-const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign, maxWidth, titleColor, subtitleColor }) => {
+const ServiceGrid = ({
+  title,
+  subtitle,
+  items = [],
+  ctaText,
+  ctaLink,
+  titleAlign,
+  maxWidth,
+  titleColor,
+  subtitleColor,
+  hoverLift,
+  imageHoverScale
+}) => {
   const list = toArray(items);
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
@@ -757,15 +769,38 @@ const ServiceGrid = ({ title, subtitle, items = [], ctaText, ctaLink, titleAlign
           const chips = toArray(s.chips);
           return (
             <Grid item xs={12} sm={6} md={4} key={i}>
-              <Card sx={{ height: "100%" }}>
+              <Card
+                sx={{
+                  height: "100%",
+                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                  ...(hoverLift
+                    ? {
+                        "&:hover": {
+                          transform: "translateY(-4px)",
+                          boxShadow: "0 18px 36px rgba(15,23,42,0.18)",
+                        },
+                        "&:hover .service-grid-image": {
+                          transform: `scale(${Number(imageHoverScale) > 0 ? imageHoverScale : 1.04})`,
+                        },
+                      }
+                    : {}),
+                }}
+              >
                 {s.image && (
-                  <CardMedia
-                    component="img"
-                    height="160"
-                    image={s.image}
-                    alt=""
-                    loading="lazy"
-                  />
+                  <Box sx={{ overflow: "hidden" }}>
+                    <CardMedia
+                      component="img"
+                      height="160"
+                      image={s.image}
+                      alt=""
+                      loading="lazy"
+                      className="service-grid-image"
+                      sx={{
+                        transition: "transform 0.25s ease",
+                        transform: "scale(1)",
+                      }}
+                    />
+                  </Box>
                 )}
                 <CardContent sx={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
                   <Typography fontWeight={700} sx={{ width: "100%", textAlign: "center" }}>{toPlain(s.name)}</Typography>
