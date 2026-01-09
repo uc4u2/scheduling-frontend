@@ -614,7 +614,7 @@ const cardRadius = 8;
           flex: 1,
           minWidth: 0,
           width: { xs: "100%", md: "50%" },
-          maxWidth: { xs: "100%", md: 500 },
+          maxWidth: { xs: "100%", md: 460 },
           mx: "auto"
         }}
       >
@@ -695,7 +695,7 @@ const cardRadius = 8;
           },
           alignItems: "center",
           justifyContent: "center",
-          gap: { xs: 2.5, md: 3.5 },
+          gap: { xs: 2, md: 2 },
         }}
       >
         {textBlock}
