@@ -614,7 +614,8 @@ const cardRadius = 8;
           flex: 1,
           minWidth: 0,
           width: { xs: "100%", md: "50%" },
-          maxWidth: { xs: "100%", md: 560 }
+          maxWidth: { xs: "100%", md: 500 },
+          mx: "auto"
         }}
       >
         {item.eyebrow && (
@@ -694,7 +695,7 @@ const cardRadius = 8;
           },
           alignItems: "center",
           justifyContent: "center",
-          gap: { xs: 3, md: 5 },
+          gap: { xs: 2.5, md: 3.5 },
         }}
       >
         {textBlock}
