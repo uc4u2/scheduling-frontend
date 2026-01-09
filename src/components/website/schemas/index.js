@@ -221,6 +221,36 @@ featureStories: {
     ],
   },
 
+  videoGallery: {
+    fields: [
+      { name: "title", type: "string", label: "Title" },
+      {
+        name: "videos",
+        type: "objectArray",
+        label: "Videos",
+        fields: [
+          { name: "video", type: "video", label: "Video (mp4/webm)" },
+          { name: "poster", type: "image", label: "Poster image (optional)" },
+          { name: "caption", type: "string", label: "Caption (optional)" },
+        ],
+      },
+      { name: "columnsXs", type: "number", label: "Columns (xs)", min: 1, max: 6, default: 2 },
+      { name: "columnsSm", type: "number", label: "Columns (sm)", min: 1, max: 6, default: 2 },
+      { name: "columnsMd", type: "number", label: "Columns (md)", min: 1, max: 6, default: 3 },
+      { name: "gap", type: "number", label: "Tile gap (px)", min: 0, max: 64, default: 18 },
+      { name: "tileAspectRatio", type: "string", label: "Tile aspect ratio", placeholder: "16/9" },
+      { name: "tileBorderRadius", type: "number", label: "Tile border radius (px)", min: 0, max: 64, default: 0 },
+      { name: "tileBorder", type: "string", label: "Tile border (CSS)" },
+      { name: "tileHoverLift", type: "boolean", label: "Hover lift", default: true },
+      { name: "lightboxEnabled", type: "boolean", label: "Lightbox enabled", default: true },
+      { name: "lightboxLoop", type: "boolean", label: "Lightbox loop", default: true },
+      { name: "lightboxShowArrows", type: "boolean", label: "Lightbox arrows", default: true },
+      { name: "lightboxCloseOnBackdrop", type: "boolean", label: "Close on backdrop", default: true },
+      { name: "ctaText", type: "string", label: "CTA text (optional)" },
+      { name: "ctaLink", type: "string", label: "CTA link" },
+    ],
+  },
+
   galleryCarousel: {
     fields: [
       { name: "title", type: "string", label: "Title" },
