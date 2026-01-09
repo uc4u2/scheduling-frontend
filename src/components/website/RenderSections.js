@@ -661,7 +661,7 @@ const cardRadius = 8;
           mx: 0,
           borderRadius: cardRadius,
           overflow: "hidden",
-          boxShadow: (t) => t.shadows[6],
+          boxShadow: "none",
           minHeight: { xs: 260, md: 360 },
           aspectRatio: { xs: "4 / 3", md: "16 / 9" },
           display: "flex"
