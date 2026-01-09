@@ -490,7 +490,20 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
           </Box>
           {items.length > 0 && (
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
-              <Button variant="outlined" onClick={continueShopping} sx={{ width: { xs: "100%", sm: "auto" } }}>
+              <Button
+                variant="outlined"
+                onClick={continueShopping}
+                sx={{
+                  width: { xs: "100%", sm: "auto" },
+                  borderRadius: "var(--page-btn-radius, 12px)",
+                  color: "var(--page-link-color, inherit)",
+                  borderColor: "var(--page-link-color, rgba(148,163,184,0.6))",
+                  "&:hover": {
+                    borderColor: "var(--page-link-color, currentColor)",
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                  },
+                }}
+              >
                 Continue shopping
               </Button>
               <Button
@@ -498,7 +511,17 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
                 startIcon={<ShoppingCartCheckoutIcon />}
                 onClick={proceed}
                 disabled={mixedCart}
-                sx={{ width: { xs: "100%", sm: "auto" } }}
+                sx={{
+                  width: { xs: "100%", sm: "auto" },
+                  borderRadius: "var(--page-btn-radius, 12px)",
+                  backgroundColor: "var(--page-btn-bg, #2563eb)",
+                  color: "var(--page-btn-color, #fff)",
+                  boxShadow: "var(--page-btn-shadow, none)",
+                  "&:hover": {
+                    backgroundColor: "var(--page-btn-bg, #2563eb)",
+                    filter: "brightness(0.95)",
+                  },
+                }}
               >
                 Proceed to checkout
               </Button>
@@ -525,7 +548,21 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
         {items.length === 0 ? (
           <Box sx={{ py: 6, textAlign: "center" }}>
             <Typography color="text.secondary">Your basket is empty.</Typography>
-            <Button sx={{ mt: 2 }} variant="contained" onClick={continueShopping}>
+            <Button
+              sx={{
+                mt: 2,
+                borderRadius: "var(--page-btn-radius, 12px)",
+                backgroundColor: "var(--page-btn-bg, #2563eb)",
+                color: "var(--page-btn-color, #fff)",
+                boxShadow: "var(--page-btn-shadow, none)",
+                "&:hover": {
+                  backgroundColor: "var(--page-btn-bg, #2563eb)",
+                  filter: "brightness(0.95)",
+                },
+              }}
+              variant="contained"
+              onClick={continueShopping}
+            >
               Browse products
             </Button>
           </Box>

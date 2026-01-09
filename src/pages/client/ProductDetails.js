@@ -360,10 +360,33 @@ const ProductDetails = () => {
                 startIcon={<ShoppingCartCheckoutIcon />}
                 onClick={handleAdd}
                 disabled={soldOut}
+                sx={{
+                  borderRadius: "var(--page-btn-radius, 12px)",
+                  backgroundColor: "var(--page-btn-bg, #2563eb)",
+                  color: "var(--page-btn-color, #fff)",
+                  boxShadow: "var(--page-btn-shadow, none)",
+                  "&:hover": {
+                    backgroundColor: "var(--page-btn-bg, #2563eb)",
+                    filter: "brightness(0.95)",
+                  },
+                }}
               >
                 Add to basket
               </Button>
-              <Button variant="outlined" size="large" onClick={goBasket}>
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={goBasket}
+                sx={{
+                  borderRadius: "var(--page-btn-radius, 12px)",
+                  color: "var(--page-link-color, inherit)",
+                  borderColor: "var(--page-link-color, rgba(148,163,184,0.6))",
+                  "&:hover": {
+                    borderColor: "var(--page-link-color, currentColor)",
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                  },
+                }}
+              >
                 Go to basket
               </Button>
             </Stack>

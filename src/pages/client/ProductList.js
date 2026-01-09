@@ -226,6 +226,25 @@ const ProductListBase = ({
 
   const pageStyleCssVars = useMemo(() => (pageStyleOverride ? pageStyleToCssVars(pageStyleOverride) : undefined), [pageStyleOverride]);
   const pageStyleBackground = useMemo(() => (pageStyleOverride ? pageStyleToBackgroundSx(pageStyleOverride) : {}), [pageStyleOverride]);
+  const primaryButtonSx = {
+    borderRadius: "var(--page-btn-radius, 12px)",
+    backgroundColor: "var(--page-btn-bg, #2563eb)",
+    color: "var(--page-btn-color, #fff)",
+    boxShadow: "var(--page-btn-shadow, none)",
+    "&:hover": {
+      backgroundColor: "var(--page-btn-bg, #2563eb)",
+      filter: "brightness(0.95)",
+    },
+  };
+  const outlineButtonSx = {
+    borderRadius: "var(--page-btn-radius, 12px)",
+    color: "var(--page-link-color, inherit)",
+    borderColor: "var(--page-link-color, rgba(148,163,184,0.6))",
+    "&:hover": {
+      borderColor: "var(--page-link-color, currentColor)",
+      backgroundColor: "rgba(255,255,255,0.04)",
+    },
+  };
 
   const content = (
     <Container
@@ -249,7 +268,7 @@ const ProductListBase = ({
         {hasCartItems && (
           <Button
             variant="contained"
-            sx={{ mt: 2 }}
+            sx={{ mt: 2, ...primaryButtonSx }}
             startIcon={<ShoppingCartCheckoutIcon />}
             onClick={goToBasket}
           >
@@ -387,7 +406,13 @@ const ProductListBase = ({
                     </Box>
 
                     <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                      <Button variant="outlined" fullWidth startIcon={<InfoIcon />} onClick={() => goToDetails(product.id)}>
+                      <Button
+                        variant="outlined"
+                        fullWidth
+                        startIcon={<InfoIcon />}
+                        onClick={() => goToDetails(product.id)}
+                        sx={outlineButtonSx}
+                      >
                         Details
                       </Button>
                       <Button
@@ -396,6 +421,7 @@ const ProductListBase = ({
                         startIcon={<ShoppingCartCheckoutIcon />}
                         onClick={() => handleAdd(product)}
                         disabled={soldOut}
+                        sx={primaryButtonSx}
                       >
                         Add
                       </Button>
