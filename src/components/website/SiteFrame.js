@@ -186,7 +186,7 @@ export default function SiteFrame({
   }, [site]);
 
   // Helpers to build hrefs (match your previous logic)
-  const reviewsHref  = () => `/${slug}/reviews`;
+  const reviewsHref  = () => `/${slug}?page=reviews`;
   const loginHref    = () => `/login`;
   const myBookingsHref = () => `/dashboard`;
 

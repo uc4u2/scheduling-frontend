@@ -232,7 +232,7 @@ function ShellInner({
     if (navCfg?.reviews_tab_target === "page" && navCfg?.reviews_page_slug) {
       return `/${slug}?page=${encodeURIComponent(navCfg.reviews_page_slug)}`;
     }
-    return `/${slug}/reviews`;
+    return `/${slug}?page=reviews`;
   }, [slug, navCfg]);
 
   const productsHref = useMemo(() => {

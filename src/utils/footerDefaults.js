@@ -12,7 +12,7 @@ export const DEFAULT_FOOTER_COLUMNS = [
     title: "Services",
     links: [
       { label: "Book online", href: "/services" },
-      { label: "Reviews", href: "/reviews" },
+      { label: "Reviews", href: "?page=reviews" },
       { label: "Pricing", href: "?page=pricing" },
       { label: "FAQ", href: "?page=faq" },
     ],
