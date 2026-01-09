@@ -17,11 +17,11 @@ import EmailIcon from "@mui/icons-material/Email";
 import LanguageIcon from "@mui/icons-material/Language";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import SmartServiceGrid from "./SmartServiceGrid";
-import { safeHtml } from "../../utils/safeHtml";
 import { normalizeInlineHtml } from "../../utils/html";
 import { toPlain } from "../../utils/html";
 import ContactFormSection from "./ContactFormSection";
 import buildImgixUrl from "../../utils/imgix";
+import { safeHtml } from "../../utils/safeHtml";
 // -----------------------------------------------------------------------------
 // Utilities
 // -----------------------------------------------------------------------------
@@ -1509,6 +1509,137 @@ const TeamGrid = ({
                     )}
                   </Stack>
                 )}
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+    </Container>
+  );
+};
+
+const BlogList = ({
+  title,
+  subtitle,
+  posts = [],
+  columnsXs = 1,
+  columnsSm = 2,
+  columnsMd = 3,
+  gap = 18,
+  titleAlign = "center",
+  maxWidth,
+  siteSlug,
+}) => {
+  const list = toArray(posts);
+  const align = titleAlign || "center";
+  const gridTemplate = {
+    xs: `repeat(${columnsXs || 1}, minmax(0, 1fr))`,
+    sm: `repeat(${columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
+    md: `repeat(${columnsMd || columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
+  };
+
+  const slugify = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+
+  const resolveSlug = (post) => post?.slug || slugify(post?.title);
+
+  const resolveSiteSlug = () => {
+    if (siteSlug) return siteSlug;
+    if (typeof window === "undefined") return "";
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    if (!parts.length) return "";
+    if (parts[0] === "public") return parts[1] || "";
+    return parts[0];
+  };
+
+  const buildPostHref = (post) => {
+    const postSlug = resolveSlug(post);
+    if (!postSlug) return "#";
+    const baseSlug = resolveSiteSlug();
+    const query = `?page=blog&post=${encodeURIComponent(postSlug)}`;
+    return baseSlug ? `/${baseSlug}${query}` : query;
+  };
+
+  const formatDate = (val) => {
+    if (!val) return "";
+    const d = new Date(val);
+    if (Number.isNaN(d.getTime())) return String(val);
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  };
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      {title && (
+        <HtmlTypo variant="h4" sx={{ mb: 1.5, fontWeight: 800, textAlign: align }}>
+          {title}
+        </HtmlTypo>
+      )}
+      {subtitle && (
+        <HtmlTypo variant="body2" sx={{ mb: 4, textAlign: align }}>
+          {subtitle}
+        </HtmlTypo>
+      )}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: gridTemplate,
+          gap: typeof gap === "number" ? `${gap}px` : gap,
+        }}
+      >
+        {list.map((post, i) => {
+          const cover = post?.coverImage || post?.image || "";
+          const coverUrl = cover ? buildImgixUrl(cover, { w: 1200, fit: "crop" }) : "";
+          const href = buildPostHref(post);
+          return (
+            <Box
+              key={i}
+              sx={{
+                borderRadius: "var(--page-card-radius, 0px)",
+                backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.08))",
+                border: "1px solid rgba(148,163,184,0.25)",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+              }}
+            >
+              {coverUrl && (
+                <Box
+                  component="img"
+                  src={coverUrl}
+                  alt={toPlain(post?.title || "")}
+                  loading="lazy"
+                  sx={{ width: "100%", aspectRatio: "16/9", objectFit: "cover" }}
+                />
+              )}
+              <Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+                {post?.date && (
+                  <Typography variant="caption" sx={{ color: "var(--page-body-color, inherit)" }}>
+                    {formatDate(post.date)}
+                  </Typography>
+                )}
+                {post?.title && (
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    {toPlain(post.title)}
+                  </Typography>
+                )}
+                {post?.excerpt && (
+                  <HtmlTypo variant="body2" sx={{ color: "var(--page-body-color, inherit)" }}>
+                    {post.excerpt}
+                  </HtmlTypo>
+                )}
+                <Button
+                  href={href}
+                  variant="text"
+                  sx={{ alignSelf: "flex-start", px: 0, color: "var(--page-link-color, inherit)" }}
+                >
+                  Read more
+                </Button>
               </Box>
             </Box>
           );
@@ -4213,6 +4344,7 @@ const registry = {
   pricingTable: PricingTable,
   faq: FAQ,
   teamGrid: TeamGrid,
+  blogList: BlogList,
   teamMetrics: TeamMetrics,
   cultureValues: CultureValues,
   processSteps: ProcessSteps,

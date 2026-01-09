@@ -12,6 +12,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Divider,
   Drawer,
   Grid,
@@ -857,6 +858,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [navStyleState, setNavStyleState] = useState(null);
   const [themeOverridesDraft, setThemeOverridesDraft] = useState(defaultThemeOverrides);
   const [pages, setPages] = useState([]);
+  const [selectedPageIds, setSelectedPageIds] = useState([]);
   const [navDraft, setNavDraft] = useState(null);
   const [navSaving, setNavSaving] = useState(false);
   const [navMsg, setNavMsg] = useState("");
@@ -2049,13 +2051,32 @@ const autoProvisionIfEmpty = useCallback(
     try {
       setBusy(true);
       if (editing?.id) {
-        const payload = serializePage(ensureSectionIds(editing));
-        const r = await wb.updatePage(companyId, payload.id, payload);
-        const saved = ensureSectionIds(
-          withLiftedLayout(normalizePage(r.data || payload))
+        const bulkPatch = {
+          show_in_menu: Boolean(editing.show_in_menu ?? true),
+          published: Boolean(editing.published ?? true),
+          autosave: Boolean(editing.autosave ?? true),
+        };
+        const targets = selectedPageIds.length
+          ? selectedPageIds
+          : [editing.id];
+        const updated = await Promise.all(
+          targets.map(async (id) => {
+            const isEditing = id === editing.id;
+            const base = isEditing
+              ? { ...editing, ...bulkPatch }
+              : { ...(pages.find((p) => p.id === id) || {}), ...bulkPatch };
+            const payload = serializePage(ensureSectionIds(withLiftedLayout(base)));
+            const r = await wb.updatePage(companyId, payload.id, payload);
+            return ensureSectionIds(
+              withLiftedLayout(normalizePage(r.data || payload))
+            );
+          })
         );
-        setPages((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
-        setEditing(saved);
+        setPages((prev) =>
+          prev.map((p) => updated.find((u) => u.id === p.id) || p)
+        );
+        const match = updated.find((u) => u.id === editing.id);
+        if (match) setEditing(match);
         setMsg(t("manager.visualBuilder.messages.pageSettingsSaved"));
       } else {
         await onSavePage();
@@ -2370,9 +2391,35 @@ const autoProvisionIfEmpty = useCallback(
         setPageSettingsOpen(next);
       }}
     >
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            {selectedPageIds.length
+              ? `${selectedPageIds.length} selected`
+              : "Select pages to bulk update"}
+          </Typography>
+          <Button
+            size="small"
+            variant="text"
+            disabled={!selectedPageIds.length}
+            onClick={() => setSelectedPageIds([])}
+          >
+            Clear selection
+          </Button>
+        </Stack>
         <List dense sx={{ mb: 1 }}>
           {pages.map((p) => (
             <ListItem key={p.id} disablePadding>
+              <Checkbox
+                size="small"
+                checked={selectedPageIds.includes(p.id)}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(_, checked) => {
+                  setSelectedPageIds((prev) =>
+                    checked ? [...prev, p.id] : prev.filter((id) => id !== p.id)
+                  );
+                }}
+                sx={{ ml: 0.5, mr: 0.5 }}
+              />
               <ListItemButton
                 selected={selectedId === p.id}
               onClick={() => {

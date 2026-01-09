@@ -4,6 +4,7 @@ import {
   AppBar, Box, Button, Chip, Container, Dialog, DialogContent, IconButton,
   Menu, MenuItem, Stack, Toolbar, Tooltip, Typography, Alert, CircularProgress, GlobalStyles, Snackbar,
   Drawer,
+  Grid,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import BrushIcon from "@mui/icons-material/Brush";
@@ -28,6 +29,8 @@ import { ProductListEmbedded } from "./ProductList";
 import { MyBasketEmbedded } from "./MyBasket";
 import { JobsListEmbedded } from "../public/PublicJobsListPage";
 import { JobsDetailEmbedded } from "../public/PublicJobDetailPage";
+import buildImgixUrl from "../../utils/imgix";
+import { safeHtml } from "../../utils/safeHtml";
 import {
   cloneFooterColumns,
   cloneLegalLinks,
@@ -167,11 +170,15 @@ const extractDescription = (sections = []) => {
   return "";
 };
 
-function buildLegalFallbackPage(slug) {
+function buildLegalFallbackPage(slug, pageStyle) {
   const key = String(slug || "").toLowerCase();
   const config = LEGAL_FALLBACK_CONTENT[key];
   if (!config) return null;
-  const sections = [
+  const sections = [];
+  if (pageStyle && Object.keys(pageStyle).length) {
+    sections.push({ type: "pageStyle", props: pageStyle, sx: { py: 0 } });
+  }
+  sections.push(
     {
       type: "heroSplit",
       props: {
@@ -183,7 +190,9 @@ function buildLegalFallbackPage(slug) {
         titleAlign: "left",
         maxWidth: "lg",
       },
-    },
+    }
+  );
+  sections.push(
     ...config.sections.map((sec) => ({
       type: "richText",
       props: {
@@ -191,8 +200,8 @@ function buildLegalFallbackPage(slug) {
         body: sec.paragraphs.map((p) => `<p>${p}</p>`).join(""),
         maxWidth: "md",
       },
-    })),
-  ];
+    }))
+  );
   return {
     slug: key,
     title: config.title,
@@ -200,6 +209,18 @@ function buildLegalFallbackPage(slug) {
     content: { sections },
   };
 }
+
+const pickDefaultPageStyle = (pages = []) => {
+  if (!Array.isArray(pages)) return null;
+  const home = pages.find((p) => p?.is_homepage) || pages[0];
+  const fromHome = extractPageStyleProps(home);
+  if (fromHome) return fromHome;
+  for (const page of pages) {
+    const style = extractPageStyleProps(page);
+    if (style) return style;
+  }
+  return null;
+};
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
 const cloneStyle = (val) => {
   if (!isPlainObject(val)) return null;
@@ -221,6 +242,23 @@ const extractPageStyleProps = (page) => {
   if (metaStyle && Object.keys(metaStyle).length) return metaStyle;
   return null;
 };
+
+const slugify = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+
+const getBlogPostsFromSections = (sections = []) => {
+  const list = Array.isArray(sections) ? sections : [];
+  const blogSection = list.find((s) => s?.type === "blogList");
+  const posts = blogSection?.props?.posts;
+  return Array.isArray(posts) ? posts : [];
+};
+
+const resolvePostSlug = (post) => post?.slug || slugify(post?.title);
 const clamp01 = (n) => {
   const num = Number(n);
   if (!Number.isFinite(num)) return 0;
@@ -419,12 +457,14 @@ export default function CompanyPublic() {
 
   const pageFromQuery = (searchParams.get("page") || "").trim();
   const jobFromQuery = (searchParams.get("job") || "").trim();
+  const blogPostSlug = (searchParams.get("post") || "").trim();
 
   const currentPage = useMemo(() => {
     if (!pages.length) return null;
     if (pageFromQuery) {
       const qRaw = String(pageFromQuery).toLowerCase();
       const q = qRaw === "services" ? "services-classic" : qRaw;
+      const defaultStyle = pickDefaultPageStyle(pages);
 
       const directMatch = pages.find(
         (p) =>
@@ -448,11 +488,24 @@ export default function CompanyPublic() {
       if (q === "my-bookings" || q === "mybookings")
         return { slug: "my-bookings", title: "My Bookings", content: { sections: [] } };
 
-      const legalFallback = buildLegalFallbackPage(q);
+      const legalFallback = buildLegalFallbackPage(q, defaultStyle);
       if (legalFallback) return legalFallback;
     }
     return pages.find((p) => p.is_homepage) || pages[0];
   }, [pages, pageFromQuery]);
+
+  const blogPost = useMemo(() => {
+    if (!currentPage) return null;
+    if (String(currentPage.slug || "").toLowerCase() !== "blog") return null;
+    if (!blogPostSlug) return null;
+    const posts = getBlogPostsFromSections(currentPage?.content?.sections || []);
+    if (!posts.length) return null;
+    const target = blogPostSlug.toLowerCase();
+    return (
+      posts.find((p) => String(resolvePostSlug(p)).toLowerCase() === target) ||
+      null
+    );
+  }, [currentPage, blogPostSlug]);
 
   // ✅ Gate by existing auth info (no new concepts)
   const role = (typeof localStorage !== "undefined" && localStorage.getItem("role")) || "client";
@@ -792,6 +845,18 @@ export default function CompanyPublic() {
       return { sections: [], styleProps, renderOverride: { type: overrideType, styleProps } };
     }
 
+    if (slugLower === "blog" && blogPostSlug) {
+      const posts = getBlogPostsFromSections(currentSections);
+      const target = blogPostSlug.toLowerCase();
+      const post =
+        posts.find((p) => String(resolvePostSlug(p)).toLowerCase() === target) ||
+        null;
+      if (post) {
+        const styleProps = resolveStyleProps();
+        return { sections: [], styleProps, renderOverride: { type: "blog-post", styleProps, post } };
+      }
+    }
+
     const shouldEmbedSpecial = ["my-bookings", "checkout"].includes(slugLower);
 
     if (shouldEmbedSpecial) {
@@ -918,7 +983,9 @@ export default function CompanyPublic() {
 
     const mapped = sections.map((s) => {
       if (!s?.props) return s;
-      const props = transformLinksDeep(s.props, resolver);
+      const extraProps =
+        s.type === "blogList" ? { siteSlug: slug } : {};
+      const props = transformLinksDeep({ ...s.props, ...extraProps }, resolver);
       if (s.type === 'richText' && typeof props.body === 'string') {
         return { ...s, props: { ...props, body: fixIframeBody(props.body) } };
       }
@@ -930,10 +997,16 @@ export default function CompanyPublic() {
       styleProps: extractPageStyleProps(currentPage),
       renderOverride: null,
     };
-  }, [currentPage, slug, pages, nav, siteDefaultPageStyle, servicesHref]);
+  }, [currentPage, slug, pages, nav, siteDefaultPageStyle, servicesHref, blogPostSlug]);
 
   const pageLayout = useMemo(() => {
-    if (renderOverride?.type === "services-classic" || renderOverride?.type === "products" || renderOverride?.type === "basket" || renderOverride?.type === "jobs") {
+    if (
+      renderOverride?.type === "services-classic" ||
+      renderOverride?.type === "products" ||
+      renderOverride?.type === "basket" ||
+      renderOverride?.type === "jobs" ||
+      renderOverride?.type === "blog-post"
+    ) {
       return "full";
     }
     return currentPage?.layout ?? currentPage?.content?.meta?.layout ?? "boxed";
@@ -1148,10 +1221,22 @@ const siteTitle = useMemo(() => {
 
   const slugBaseUrl = useMemo(() => globalSeo.slugBaseUrl || canonicalBase, [globalSeo, canonicalBase]);
 
-  const pageCanonicalUrl = useMemo(
-    () => buildCanonicalUrl(currentPage || { slug }, canonicalBase, slugBaseUrl),
-    [currentPage, canonicalBase, slugBaseUrl, slug]
-  );
+  const pageCanonicalUrl = useMemo(() => {
+    if (blogPost) {
+      const override = (blogPost.canonical_path || blogPost.canonicalPath || "").trim();
+      if (override) {
+        if (override.startsWith("http://") || override.startsWith("https://")) return override;
+        if (override.startsWith("/") || override.startsWith("?")) {
+          return `${canonicalBase || slugBaseUrl || ""}${override}`;
+        }
+      }
+      const base = (canonicalBase || slugBaseUrl || "").replace(/\/$/, "");
+      const postSlug = resolvePostSlug(blogPost);
+      const sep = base.includes("?") ? "&" : "?";
+      return base ? `${base}${sep}page=blog&post=${encodeURIComponent(postSlug)}` : "";
+    }
+    return buildCanonicalUrl(currentPage || { slug }, canonicalBase, slugBaseUrl);
+  }, [blogPost, currentPage, canonicalBase, slugBaseUrl, slug]);
 
   const descriptionFallback = useMemo(() => {
     if (bodySections.length) return extractDescription(bodySections);
@@ -1161,25 +1246,54 @@ const siteTitle = useMemo(() => {
 
   const metaDescription = useMemo(() => {
     return (
+      blogPost?.seo_description ||
+      blogPost?.seoDescription ||
+      blogPost?.excerpt ||
       currentPage?.seo_description ||
       globalSeo.metaDescription ||
       descriptionFallback ||
       `Explore services from ${siteTitle}.`
     );
-  }, [currentPage, globalSeo, descriptionFallback, siteTitle]);
+  }, [blogPost, currentPage, globalSeo, descriptionFallback, siteTitle]);
 
   const metaTitle = useMemo(() => {
     const base =
+      blogPost?.seo_title ||
+      blogPost?.seoTitle ||
+      (blogPost?.title ? `${blogPost.title} — ${siteTitle}` : undefined) ||
       currentPage?.seo_title ||
       globalSeo.metaTitle ||
       (currentPage?.title ? `${currentPage.title} — ${siteTitle}` : siteTitle);
     return base?.replace(/\s+/g, " ").trim();
-  }, [currentPage, globalSeo, siteTitle]);
+  }, [blogPost, currentPage, globalSeo, siteTitle]);
 
-  const metaKeywords = currentPage?.seo_keywords || globalSeo.metaKeywords || "";
-  const ogTitle = currentPage?.og_title || globalSeo.ogTitle || metaTitle;
-  const ogDescription = currentPage?.og_description || globalSeo.ogDescription || metaDescription;
-  const ogImage = currentPage?.og_image_url || globalSeo.ogImage || headerLogoUrl || null;
+  const metaKeywords =
+    blogPost?.seo_keywords ||
+    blogPost?.seoKeywords ||
+    currentPage?.seo_keywords ||
+    globalSeo.metaKeywords ||
+    "";
+  const ogTitle =
+    blogPost?.og_title ||
+    blogPost?.ogTitle ||
+    currentPage?.og_title ||
+    globalSeo.ogTitle ||
+    metaTitle;
+  const ogDescription =
+    blogPost?.og_description ||
+    blogPost?.ogDescription ||
+    currentPage?.og_description ||
+    globalSeo.ogDescription ||
+    metaDescription;
+  const ogImage =
+    blogPost?.og_image_url ||
+    blogPost?.ogImageUrl ||
+    blogPost?.coverImage ||
+    blogPost?.image ||
+    currentPage?.og_image_url ||
+    globalSeo.ogImage ||
+    headerLogoUrl ||
+    null;
   const robots = currentPage?.noindex ? "noindex, nofollow" : undefined;
 
   const structuredDataPayload = useMemo(() => {
@@ -1464,6 +1578,73 @@ const siteTitle = useMemo(() => {
     </Stack>
   );
 
+  const BlogPostEmbedded = ({ post }) => {
+    if (!post) return null;
+    const cover = post.coverImage || post.image || "";
+    const coverUrl = cover ? buildImgixUrl(cover, { w: 1600, fit: "crop" }) : "";
+    const gallery = Array.isArray(post.galleryImages) ? post.galleryImages : [];
+    const backHref = slug ? `/${slug}?page=blog` : "?page=blog";
+    const dateValue = post?.date ? new Date(post.date) : null;
+    const dateLabel =
+      dateValue && !Number.isNaN(dateValue.getTime())
+        ? dateValue.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+        : post?.date || "";
+    return (
+      <Container maxWidth="md" sx={{ py: { xs: 4, md: 6 } }}>
+        <Button
+          component={RouterLink}
+          to={backHref}
+          variant="text"
+          sx={{ mb: 2, color: "var(--page-link-color, inherit)" }}
+        >
+          ← Back to Blog
+        </Button>
+        {dateLabel && (
+          <Typography variant="caption" sx={{ color: "var(--page-body-color, inherit)" }}>
+            {dateLabel}
+          </Typography>
+        )}
+        {post?.title && (
+          <Typography variant="h3" sx={{ fontWeight: 800, mb: 2 }}>
+            {post.title}
+          </Typography>
+        )}
+        {coverUrl && (
+          <Box
+            component="img"
+            src={coverUrl}
+            alt={post.title || ""}
+            sx={{ width: "100%", borderRadius: "var(--page-card-radius, 0px)", mb: 3 }}
+          />
+        )}
+        {post?.body && (
+          <Box
+            sx={{ color: "var(--page-body-color, inherit)" }}
+            dangerouslySetInnerHTML={{ __html: safeHtml(post.body) }}
+          />
+        )}
+        {gallery.length > 0 && (
+          <Grid container spacing={2} sx={{ mt: 3 }}>
+            {gallery.map((img, i) => {
+              const url = img ? buildImgixUrl(img, { w: 1200, fit: "crop" }) : "";
+              if (!url) return null;
+              return (
+                <Grid item xs={12} sm={6} key={i}>
+                  <Box
+                    component="img"
+                    src={url}
+                    alt={`${post.title || "Post"} ${i + 1}`}
+                    sx={{ width: "100%", borderRadius: "var(--page-card-radius, 0px)" }}
+                  />
+                </Grid>
+              );
+            })}
+          </Grid>
+        )}
+      </Container>
+    );
+  };
+
   const overrideContent = useMemo(() => {
     if (!renderOverride) return null;
     const styleProps = renderOverride.styleProps || null;
@@ -1528,6 +1709,8 @@ const siteTitle = useMemo(() => {
           return <JobsDetailEmbedded slug={slug} jobSlug={jobFromQuery} pageStyle={styleProps} />;
         }
         return <JobsListEmbedded slug={slug} pageStyle={styleProps} />;
+      case "blog-post":
+        return <BlogPostEmbedded post={renderOverride.post} />;
       default:
         return null;
     }

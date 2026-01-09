@@ -62,6 +62,27 @@ export const NEW_BLOCKS = {
       ],
     },
   }),
+  blogList: () => ({
+    type: "blogList",
+    props: {
+      title: "Latest articles",
+      subtitle: "Insights and updates from the team.",
+      columnsXs: 1,
+      columnsSm: 2,
+      columnsMd: 3,
+      gap: 18,
+      posts: [
+        {
+          slug: "welcome",
+          title: "Welcome to our blog",
+          date: "2026-01-09",
+          excerpt: "Learn how we deliver consistent, enterprise-grade service experiences.",
+          body: "<p>Share product updates, behind-the-scenes stories, or tips for clients here.</p>",
+          coverImage: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1400&auto=format&fit=crop",
+        },
+      ],
+    },
+  }),
   logoCarousel: () => ({
     type: "logoCarousel",
     props: {

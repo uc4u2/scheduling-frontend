@@ -657,6 +657,43 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  /* -------------------------- BLOG LIST ---------------------- */
+  blogList: {
+    title: "Blog",
+    fields: [
+      { name: "title",       type: "richinline", label: "Title" },
+      { name: "subtitle",    type: "richtext",   label: "Subtitle", minRows: 3 },
+      {
+        name: "posts",
+        type: "objectArray",
+        label: "Posts",
+        fields: [
+          { name: "slug",         type: "string",     label: "Slug (URL id)" },
+          { name: "title",        type: "richinline", label: "Title" },
+          { name: "date",         type: "string",     label: "Date (YYYY-MM-DD)" },
+          { name: "excerpt",      type: "richtext",   label: "Excerpt", minRows: 2 },
+          { name: "body",         type: "richtext",   label: "Body", minRows: 6 },
+          { name: "coverImage",   type: "image",      label: "Cover image" },
+          { name: "galleryImages",type: "imageArray", label: "Gallery images" },
+          { name: "seo_title",    type: "string",     label: "SEO title" },
+          { name: "seo_description", type: "text",    label: "SEO description", minRows: 2 },
+          { name: "seo_keywords", type: "string",     label: "SEO keywords (comma separated)" },
+          { name: "og_image_url", type: "image",      label: "OG image" },
+          { name: "canonical_path", type: "string",   label: "Canonical path (optional)" },
+        ],
+      },
+      { name: "columnsXs",   type: "number", label: "Columns (xs)", min: 1, max: 6, step: 1, default: 1 },
+      { name: "columnsSm",   type: "number", label: "Columns (sm)", min: 1, max: 6, step: 1, default: 2 },
+      { name: "columnsMd",   type: "number", label: "Columns (md)", min: 1, max: 6, step: 1, default: 3 },
+      { name: "gap",         type: "number", label: "Card gap (px)", min: 0, max: 64, step: 1, default: 18 },
+      { name: "titleAlign",  type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth",    type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",     type: "number", label: "Inner gutter (px)", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",   type: "boolean", label: "Bleed left" },
+      { name: "bleedRight",  type: "boolean", label: "Bleed right" },
+    ],
+  },
+
   /* --------------------------- MAP ---------------------- */
   mapEmbed: {
     title: "Map",
