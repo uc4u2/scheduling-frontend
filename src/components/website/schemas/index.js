@@ -99,6 +99,31 @@ export const SCHEMA_REGISTRY = {
     ],
   },
 
+  featureZigzagModern: {
+    fields: [
+      { name: "eyebrow", type: "string", label: "Eyebrow label" },
+      { name: "title", type: "string", label: "Heading" },
+      { name: "supportingText", type: "text", label: "Supporting text", minRows: 3 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Rows",
+        fields: [
+          { name: "eyebrow", type: "string", label: "Eyebrow" },
+          { name: "title", type: "string", label: "Row title" },
+          { name: "body", type: "text", label: "Body copy", minRows: 3 },
+          { name: "ctaText", type: "string", label: "CTA text" },
+          { name: "ctaLink", type: "string", label: "CTA link (URL)" },
+          { name: "imageUrl", type: "image", label: "Image" },
+          { name: "imageAlt", type: "string", label: "Image alt text" },
+          { name: "align", type: "select", label: "Text column side", options: ["left", "right"], default: "left" },
+        ],
+      },
+      { name: "titleAlign", type: "select", label: "Heading alignment", options: ["left","center","right"], default: "left" },
+      { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | 1200px" },
+    ],
+  },
+
 featureStories: {
   fields: [
     { name: "title", type: "string", label: "Title" },

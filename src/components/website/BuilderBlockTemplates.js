@@ -62,6 +62,35 @@ export const NEW_BLOCKS = {
       ],
     },
   }),
+  featureZigzagModern: () => ({
+    type: "featureZigzagModern",
+    props: {
+      title: "Crafted with intention",
+      supportingText: "Modern split cards for storytelling and visuals.",
+      items: [
+        {
+          eyebrow: "Custom commissions",
+          title: "Handmade in Vancouver",
+          body: "Work one-on-one with our studio to design a piece that fits your story.",
+          ctaText: "Start a custom order",
+          ctaLink: "?page=contact",
+          imageUrl: "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?q=80&w=1600&auto=format&fit=crop",
+          imageAlt: "Handmade jewelry",
+          align: "left",
+        },
+        {
+          eyebrow: "Workshops",
+          title: "Learn the craft",
+          body: "Small-group classes covering soldering, texture, and finishing.",
+          ctaText: "View workshops",
+          ctaLink: "?page=programs",
+          imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop",
+          imageAlt: "Jewelry workshop",
+          align: "right",
+        },
+      ],
+    },
+  }),
   blogList: () => ({
     type: "blogList",
     props: {

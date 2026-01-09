@@ -746,6 +746,159 @@ const cardRadius = 8;
   );
 };
 
+const FeatureZigzagModern = ({
+  eyebrow,
+  title,
+  supportingText,
+  titleAlign = "left",
+  maxWidth,
+  items = []
+}) => {
+  const list = toArray(items);
+  const hasHeader = eyebrow || title || supportingText;
+  if (!hasHeader && list.length === 0) return null;
+
+  const renderRow = (item, idx) => {
+    if (!item) return null;
+    const align = item.align === "right" ? "right" : "left";
+    const imageSrc = item.imageUrl || item.image;
+    const imageAlt = item.imageAlt || "";
+
+    const textBlock = (
+      <Box
+        key="text"
+        sx={{
+          order: { xs: 2, md: align === "right" ? 2 : 1 },
+          justifySelf: "center",
+          width: "100%",
+          maxWidth: { xs: "100%", md: 420 },
+          backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
+          border: "1px solid rgba(148,163,184,0.25)",
+          borderRadius: 24,
+          p: { xs: 2.5, md: 3.5 },
+          boxShadow: "0 18px 40px rgba(15,23,42,0.12)"
+        }}
+      >
+        {item.eyebrow && (
+          <HtmlTypo
+            variant="overline"
+            sx={{ letterSpacing: ".2em", textTransform: "uppercase", mb: 1, fontWeight: 600 }}
+          >
+            {item.eyebrow}
+          </HtmlTypo>
+        )}
+        {item.title && (
+          <HtmlTypo variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+            {item.title}
+          </HtmlTypo>
+        )}
+        {item.body && (
+          <HtmlTypo variant="body1" sx={{ color: "var(--page-body-color, text.secondary)" }}>
+            {item.body}
+          </HtmlTypo>
+        )}
+        {item.ctaText && (
+          <Button
+            href={item.ctaLink || "#"}
+            variant="contained"
+            size="large"
+            sx={{ mt: 2 }}
+          >
+            {toPlain(item.ctaText)}
+          </Button>
+        )}
+      </Box>
+    );
+
+    const imageBlock = (
+      <Box
+        key="image"
+        sx={{
+          order: { xs: 1, md: align === "right" ? 1 : 2 },
+          justifySelf: "center",
+          width: "100%",
+          maxWidth: { xs: "100%", md: 460 },
+          borderRadius: 28,
+          overflow: "hidden",
+          aspectRatio: { xs: "4 / 3", md: "5 / 4" },
+          boxShadow: "0 28px 60px rgba(15,23,42,0.18)",
+          backgroundColor: "rgba(15,23,42,0.06)"
+        }}
+      >
+        {imageSrc && (
+          <img
+            src={imageSrc}
+            alt={imageAlt}
+            loading="lazy"
+            style={{
+              display: "block",
+              width: "100%",
+              height: "100%",
+              objectFit: "cover"
+            }}
+          />
+        )}
+      </Box>
+    );
+
+    return (
+      <Box
+        key={idx}
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: "repeat(2, minmax(0, 1fr))"
+          },
+          gap: { xs: 2.5, md: 3.5 },
+          alignItems: "center"
+        }}
+      >
+        {textBlock}
+        {imageBlock}
+      </Box>
+    );
+  };
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      <Stack spacing={{ xs: 4, md: 5 }}>
+        {hasHeader && (
+          <Stack spacing={1} sx={{ textAlign: titleAlign }}>
+            {eyebrow && (
+              <HtmlTypo
+                variant="overline"
+                sx={{
+                  letterSpacing: ".25em",
+                  textTransform: "uppercase",
+                  fontWeight: 600,
+                  color: "var(--page-body-color, currentColor)"
+                }}
+              >
+                {eyebrow}
+              </HtmlTypo>
+            )}
+            {title && (
+              <HtmlTypo variant="h3" sx={{ fontWeight: 800 }}>
+                {title}
+              </HtmlTypo>
+            )}
+            {supportingText && (
+              <HtmlTypo
+                variant="body1"
+                sx={{ color: "var(--page-body-color, text.secondary)" }}
+              >
+                {supportingText}
+              </HtmlTypo>
+            )}
+          </Stack>
+        )}
+        {list.map((item, idx) => renderRow(item, idx))}
+      </Stack>
+    </Container>
+  );
+};
+
 const ServiceGrid = ({
   title,
   subtitle,
@@ -4389,6 +4542,7 @@ const registry = {
   heroCarousel: HeroCarousel,
   heroSplit: HeroSplit,
   featureZigzag: FeatureZigzag,
+  featureZigzagModern: FeatureZigzagModern,
   testimonialCarousel: TestimonialCarousel,
   serviceGrid: ServiceGrid,
   serviceGridSmart: SmartServiceGrid,
