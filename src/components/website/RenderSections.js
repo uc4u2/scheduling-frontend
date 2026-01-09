@@ -1361,7 +1361,7 @@ const FAQ = ({ title, items = [], titleAlign, maxWidth }) => {
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography fontWeight={700}>{toPlain(q.question)}</Typography>
           </AccordionSummary>
-          <AccordionDetails>
+          <AccordionDetails sx={{ color: "var(--page-body-color, inherit)" }}>
             {q.answer ? (
               <HtmlTypo variant="body2" sx={{ color: "inherit" }}>
                 {q.answer}
