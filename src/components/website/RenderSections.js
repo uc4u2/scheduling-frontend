@@ -611,6 +611,9 @@ const cardRadius = 8;
         key="text"
         className="zig-text"
         sx={{
+          flex: 1,
+          minWidth: 0,
+          width: { xs: "100%", md: "50%" },
           maxWidth: { xs: "100%", md: 560 }
         }}
       >
@@ -651,6 +654,10 @@ const cardRadius = 8;
         key="image"
         className="zig-img"
         sx={{
+          flex: 1,
+          width: { xs: "100%", md: "50%" },
+          maxWidth: { xs: "100%", md: 600 },
+          mx: "auto",
           borderRadius: cardRadius,
           overflow: "hidden",
           boxShadow: (t) => t.shadows[6],
@@ -676,7 +683,20 @@ const cardRadius = 8;
     );
 
     return (
-      <Box key={idx} className={rowClass}>
+      <Box
+        key={idx}
+        className={rowClass}
+        sx={{
+          display: "flex",
+          flexDirection: {
+            xs: "column",
+            md: align === "right" ? "row-reverse" : "row"
+          },
+          alignItems: "center",
+          justifyContent: "center",
+          gap: { xs: 3, md: 5 },
+        }}
+      >
         {textBlock}
         {imageBlock}
       </Box>
