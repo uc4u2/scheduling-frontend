@@ -1582,7 +1582,6 @@ const siteTitle = useMemo(() => {
     if (!post) return null;
     const cover = post.coverImage || post.image || "";
     const coverUrl = cover ? buildImgixUrl(cover, { w: 1600, fit: "crop" }) : "";
-    const gallery = Array.isArray(post.galleryImages) ? post.galleryImages : [];
     const backHref = slug ? `/${slug}?page=blog` : "?page=blog";
     const dateValue = post?.date ? new Date(post.date) : null;
     const dateLabel =
@@ -1619,27 +1618,12 @@ const siteTitle = useMemo(() => {
         )}
         {post?.body && (
           <Box
-            sx={{ color: "var(--page-body-color, inherit)" }}
+            sx={{
+              color: "var(--page-body-color, inherit)",
+              "& p": { textAlign: "justify" },
+            }}
             dangerouslySetInnerHTML={{ __html: safeHtml(post.body) }}
           />
-        )}
-        {gallery.length > 0 && (
-          <Grid container spacing={2} sx={{ mt: 3 }}>
-            {gallery.map((img, i) => {
-              const url = img ? buildImgixUrl(img, { w: 1200, fit: "crop" }) : "";
-              if (!url) return null;
-              return (
-                <Grid item xs={12} sm={6} key={i}>
-                  <Box
-                    component="img"
-                    src={url}
-                    alt={`${post.title || "Post"} ${i + 1}`}
-                    sx={{ width: "100%", borderRadius: "var(--page-card-radius, 0px)" }}
-                  />
-                </Grid>
-              );
-            })}
-          </Grid>
         )}
       </Container>
     );
