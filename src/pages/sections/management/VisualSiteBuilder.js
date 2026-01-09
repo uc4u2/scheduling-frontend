@@ -325,7 +325,7 @@ function styleToCssVars(style = {}) {
     const b = parseInt(m[3], 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
-  const cardColor   = style.cardColor || style.cardBg || "rgba(255,255,255,1)";
+  const cardColor   = style.cardBg || style.cardColor || "rgba(255,255,255,1)";
   const cardOpacity = Number.isFinite(style.cardOpacity) ? style.cardOpacity : 1;
   const cardBgValue =
     cardColor.startsWith("#") ? hexToRgba(cardColor, cardOpacity) : cardColor;

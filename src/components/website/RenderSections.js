@@ -3957,7 +3957,7 @@ const pageWrapSx = {
   "--page-body-font":     pageStyle.bodyFont     ?? undefined,
 
   // cards
-  "--page-card-bg":     colorWithOpacity(pageStyle.cardColor || "#ffffff", pageStyle.cardOpacity ?? 0.92),
+  "--page-card-bg":     pageStyle.cardBg || colorWithOpacity(pageStyle.cardColor || "#ffffff", pageStyle.cardOpacity ?? 0.92),
   "--page-card-radius": pageStyle.cardRadius != null ? `${pageStyle.cardRadius}px` : undefined,
   "--page-card-shadow": pageStyle.cardShadow || undefined,
   "--page-card-blur":   pageStyle.cardBlur ? `${pageStyle.cardBlur}px` : undefined,
