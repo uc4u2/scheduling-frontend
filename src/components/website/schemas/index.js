@@ -251,6 +251,29 @@ featureStories: {
     ],
   },
 
+  teamGrid: {
+    fields: [
+      { name: "title", type: "string", label: "Title" },
+      { name: "subtitle", type: "text", label: "Subtitle", minRows: 3 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Team members",
+        fields: [
+          { name: "name", type: "string", label: "Name" },
+          { name: "role", type: "string", label: "Role" },
+          { name: "image", type: "image", label: "Photo" },
+        ],
+      },
+      { name: "columnsXs", type: "number", label: "Columns (xs)", min: 1, max: 6, default: 1 },
+      { name: "columnsSm", type: "number", label: "Columns (sm)", min: 1, max: 6, default: 2 },
+      { name: "columnsMd", type: "number", label: "Columns (md)", min: 1, max: 6, default: 3 },
+      { name: "gap", type: "number", label: "Tile gap (px)", min: 0, max: 64, default: 18 },
+      { name: "titleAlign", type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | full" },
+    ],
+  },
+
   galleryCarousel: {
     fields: [
       { name: "title", type: "string", label: "Title" },

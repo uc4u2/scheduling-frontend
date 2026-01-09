@@ -145,6 +145,34 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  /* -------------------------- TEAM GRID --------------------- */
+  teamGrid: {
+    title: "Team",
+    fields: [
+      { name: "title",       type: "richinline", label: "Title" },
+      { name: "subtitle",    type: "richtext",   label: "Subtitle", minRows: 3 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Team members",
+        fields: [
+          { name: "name",  type: "richinline", label: "Name" },
+          { name: "role",  type: "richinline", label: "Role" },
+          { name: "image", type: "image",      label: "Photo" },
+        ],
+      },
+      { name: "columnsXs",   type: "number", label: "Columns (xs)", min: 1, max: 6, step: 1, default: 1 },
+      { name: "columnsSm",   type: "number", label: "Columns (sm)", min: 1, max: 6, step: 1, default: 2 },
+      { name: "columnsMd",   type: "number", label: "Columns (md)", min: 1, max: 6, step: 1, default: 3 },
+      { name: "gap",         type: "number", label: "Tile gap (px)", min: 0, max: 64, step: 1, default: 18 },
+      { name: "titleAlign",  type: "select", label: "Title alignment", options: ["left","center","right"], default: "center" },
+      { name: "maxWidth",    type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX",     type: "number", label: "Inner gutter (px)", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft",   type: "boolean", label: "Bleed left" },
+      { name: "bleedRight",  type: "boolean", label: "Bleed right" },
+    ],
+  },
+
   /* ----------------------- LOGO CLOUD ----------------------- */
   logoCloud: {
     title: "Logo Cloud",

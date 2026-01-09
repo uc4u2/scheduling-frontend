@@ -1371,7 +1371,107 @@ const FAQ = ({ title, items = [], titleAlign, maxWidth }) => {
        </Accordion>
      ))}
    </Container>
- );
+  );
+};
+
+const TeamGrid = ({
+  title,
+  subtitle,
+  items = [],
+  columnsXs = 1,
+  columnsSm = 2,
+  columnsMd = 3,
+  gap = 18,
+  titleAlign = "center",
+  maxWidth,
+}) => {
+  const list = toArray(items);
+  const align = titleAlign || "center";
+  const gridTemplate = {
+    xs: `repeat(${columnsXs || 1}, minmax(0, 1fr))`,
+    sm: `repeat(${columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
+    md: `repeat(${columnsMd || columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
+  };
+
+  const resolveImage = (it) => {
+    if (!it) return "";
+    if (typeof it === "string") return it;
+    return it.image || it.photo || it.avatar || it.url || it.assetKey || "";
+  };
+
+  return (
+    <Container maxWidth={toContainerMax(maxWidth)}>
+      {title && (
+        <HtmlTypo variant="h4" sx={{ mb: 1.5, fontWeight: 800, textAlign: align }}>
+          {title}
+        </HtmlTypo>
+      )}
+      {subtitle && (
+        <HtmlTypo variant="body2" sx={{ mb: 4, textAlign: align }}>
+          {subtitle}
+        </HtmlTypo>
+      )}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: gridTemplate,
+          gap: typeof gap === "number" ? `${gap}px` : gap,
+        }}
+      >
+        {list.map((member, i) => {
+          const imgPath = resolveImage(member);
+          const imgUrl = imgPath ? buildImgixUrl(imgPath, { w: 1200, fit: "crop" }) : "";
+          return (
+            <Box key={i} sx={{ display: "flex", flexDirection: "column" }}>
+              <Box
+                sx={{
+                  position: "relative",
+                  overflow: "hidden",
+                  borderRadius: "var(--page-card-radius, 0px)",
+                  border: "1px solid rgba(148,163,184,0.25)",
+                  backgroundColor: "rgba(15,23,42,0.35)",
+                  lineHeight: 0,
+                }}
+              >
+                {imgUrl ? (
+                  <Box
+                    component="img"
+                    src={imgUrl}
+                    alt={toPlain(member?.name || "")}
+                    loading="lazy"
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      aspectRatio: "4/5",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                ) : (
+                  <Box sx={{ aspectRatio: "4/5", bgcolor: "rgba(148,163,184,0.12)" }} />
+                )}
+              </Box>
+              <Box sx={{ pt: 1.5, textAlign: "left" }}>
+                {member?.name && (
+                  <Typography
+                    variant="subtitle1"
+                    sx={{ fontWeight: 700, color: "var(--page-link-color, inherit)" }}
+                  >
+                    {toPlain(member.name)}
+                  </Typography>
+                )}
+                {member?.role && (
+                  <Typography variant="body2" sx={{ color: "var(--page-body-color, inherit)" }}>
+                    {toPlain(member.role)}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+    </Container>
+  );
 };
 
 const CTA = ({ title, subtitle, buttonText, buttonLink, titleAlign, maxWidth }) => (
@@ -3874,6 +3974,7 @@ const registry = {
   logoCarousel: LogoCarousel,
   pricingTable: PricingTable,
   faq: FAQ,
+  teamGrid: TeamGrid,
   cta: CTA,
   richText: RichText,
   textFree: FreeText,
