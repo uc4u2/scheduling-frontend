@@ -611,10 +611,10 @@ const cardRadius = 8;
         key="text"
         className="zig-text"
         sx={{
-          flex: 1,
+          flex: "0 1 48%",
           minWidth: 0,
-          width: { xs: "100%", md: "50%" },
-          maxWidth: { xs: "100%", md: 460 },
+          width: { xs: "100%", md: "48%" },
+          maxWidth: { xs: "100%", md: 420 },
           mx: "auto"
         }}
       >
@@ -655,9 +655,9 @@ const cardRadius = 8;
         key="image"
         className="zig-img"
         sx={{
-          flex: 1,
-          width: { xs: "100%", md: "50%" },
-          maxWidth: { xs: "100%", md: 600 },
+          flex: "0 1 48%",
+          width: { xs: "100%", md: "48%" },
+          maxWidth: { xs: "100%", md: 520 },
           mx: "auto",
           borderRadius: cardRadius,
           overflow: "hidden",
@@ -695,7 +695,7 @@ const cardRadius = 8;
           },
           alignItems: "center",
           justifyContent: "center",
-          gap: { xs: 2, md: 2 },
+          gap: { xs: 1.5, md: 1 },
         }}
       >
         {textBlock}
