@@ -595,7 +595,7 @@ const FeatureZigzag = ({
   items = []
 }) => {
   const list = toArray(items);
-const cardRadius = 8;
+const cardRadius = 0;
   const hasHeader = eyebrow || title || supportingText;
   if (!hasHeader && list.length === 0) return null;
 
@@ -774,7 +774,7 @@ const FeatureZigzagModern = ({
           maxWidth: { xs: "100%", md: 420 },
           backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
           border: "1px solid rgba(148,163,184,0.25)",
-          borderRadius: 24,
+          borderRadius: 0,
           p: { xs: 2.5, md: 3.5 },
           boxShadow: "none"
         }}
@@ -818,7 +818,7 @@ const FeatureZigzagModern = ({
           justifySelf: "center",
           width: "100%",
           maxWidth: { xs: "100%", md: 460 },
-          borderRadius: 28,
+          borderRadius: 0,
           overflow: "hidden",
           aspectRatio: { xs: "4 / 3", md: "5 / 4" },
           boxShadow: "none",
