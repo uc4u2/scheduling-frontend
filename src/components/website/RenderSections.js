@@ -772,8 +772,8 @@ const FeatureZigzagModern = ({
           justifySelf: "center",
           width: "100%",
           maxWidth: { xs: "100%", md: 420 },
-          backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
-          border: "1px solid rgba(148,163,184,0.25)",
+          backgroundColor: "transparent",
+          border: "none",
           borderRadius: 0,
           p: { xs: 2.5, md: 3.5 },
           boxShadow: "none"
