@@ -222,6 +222,114 @@ function useAutoplay(len, interval = 4500, disabled = false) {
   return [index, setIndex, setPaused];
 }
 
+const InteractiveTiltMedia = ({ src, alt, sx }) => {
+  const ref = React.useRef(null);
+  const prefersReduced = usePrefersReducedMotion();
+  const rafRef = React.useRef(null);
+  const hoverableRef = React.useRef(true);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia?.("(hover: none)");
+    const update = () => {
+      hoverableRef.current = !(mq?.matches);
+    };
+    update();
+    mq?.addEventListener?.("change", update);
+    return () => mq?.removeEventListener?.("change", update);
+  }, []);
+
+  const applyTransform = (rx, ry, scale, xPct, yPct) => {
+    if (!ref.current) return;
+    const el = ref.current;
+    el.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateY(-6px) scale(${scale})`;
+    if (xPct != null && yPct != null) {
+      el.style.setProperty("--shine-x", `${xPct}%`);
+      el.style.setProperty("--shine-y", `${yPct}%`);
+    }
+  };
+
+  const handlePointerMove = (event) => {
+    if (prefersReduced || !hoverableRef.current) return;
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const xPct = (x / rect.width) * 100;
+    const yPct = (y / rect.height) * 100;
+    const dx = x - rect.width / 2;
+    const dy = y - rect.height / 2;
+    const ry = clamp((dx / rect.width) * 8, -6, 6);
+    const rx = clamp((dy / rect.height) * -8, -6, 6);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      applyTransform(rx, ry, 1.02, xPct, yPct);
+    });
+  };
+
+  const handlePointerLeave = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    applyTransform(0, 0, 1, 50, 50);
+  };
+
+  const handlePointerEnter = () => {
+    if (prefersReduced || !hoverableRef.current) {
+      applyTransform(0, 0, 1.02, 50, 50);
+    }
+  };
+
+  return (
+    <Box
+      ref={ref}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+      onPointerEnter={handlePointerEnter}
+      sx={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        borderRadius: 4,
+        overflow: "hidden",
+        border: "1px solid rgba(255,255,255,0.28)",
+        boxShadow: "0 18px 40px rgba(17,24,39,0.18)",
+        transformStyle: "preserve-3d",
+        willChange: "transform",
+        transition: prefersReduced ? "transform 180ms ease" : "transform 80ms ease",
+        "&::after": {
+          content: '""',
+          position: "absolute",
+          inset: 0,
+          opacity: 0,
+          background:
+            "radial-gradient(320px circle at var(--shine-x, 50%) var(--shine-y, 50%), rgba(255,255,255,0.35), rgba(255,255,255,0) 60%)",
+          transition: "opacity 120ms ease",
+          pointerEvents: "none",
+        },
+        "&:hover::after": {
+          opacity: prefersReduced ? 0.12 : 0.22,
+        },
+        ...(sx || {}),
+      }}
+    >
+      {src && (
+        <Box
+          component="img"
+          src={src}
+          alt={alt || ""}
+          loading="lazy"
+          sx={{
+            display: "block",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            transform: "translateZ(0)",
+          }}
+        />
+      )}
+    </Box>
+  );
+};
+
 const Section = ({ children, sx, id }) => (
   <Box component="section" id={id} sx={{ ...(sx || {}) }}>
     {children}
@@ -573,11 +681,14 @@ const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, m
           }}
         >
           {!!image && (
-            <img
-              alt=""
+            <InteractiveTiltMedia
               src={image}
-              loading="lazy"
-              style={{ display: "block", width: "100%", height: "auto" }}
+              alt=""
+              sx={{
+                borderRadius: "inherit",
+                border: "none",
+                boxShadow: "none"
+              }}
             />
           )}
         </Box>
@@ -668,15 +779,13 @@ const cardRadius = 0;
         }}
       >
         {imageSrc && (
-          <img
+          <InteractiveTiltMedia
             src={imageSrc}
             alt={imageAlt}
-            loading="lazy"
-            style={{
-              display: "block",
-              width: "100%",
-              height: "100%",
-              objectFit: "cover"
+            sx={{
+              borderRadius: 4,
+              border: "1px solid rgba(255,255,255,0.24)",
+              boxShadow: "0 16px 32px rgba(17,24,39,0.16)"
             }}
           />
         )}
@@ -826,15 +935,13 @@ const FeatureZigzagModern = ({
         }}
       >
         {imageSrc && (
-          <img
+          <InteractiveTiltMedia
             src={imageSrc}
             alt={imageAlt}
-            loading="lazy"
-            style={{
-              display: "block",
-              width: "100%",
-              height: "100%",
-              objectFit: "cover"
+            sx={{
+              borderRadius: 4,
+              border: "1px solid rgba(255,255,255,0.24)",
+              boxShadow: "0 16px 32px rgba(17,24,39,0.16)"
             }}
           />
         )}
@@ -4030,7 +4137,7 @@ const Gallery = ({
   const ratio = parseAspectRatio(resolvedTile?.aspectRatio);
   const thumbSize = ratio ? { w: 800, h: Math.round(800 / ratio), fit: "crop" } : { w: 800, fit: "crop" };
   const fullSize = { w: 2000, fit: "max" };
-  const borderRadius = resolvedTile?.borderRadius ?? 0;
+  const borderRadius = resolvedTile?.borderRadius ?? 3;
   const border = resolvedTile?.border || "1px solid rgba(148,163,184,0.25)";
   const hoverLift = resolvedTile?.hoverLift ?? false;
   const lightboxOn = resolvedLightbox?.enabled ?? false;
@@ -4286,7 +4393,7 @@ const VideoGallery = ({
     return Number.isFinite(n) ? n : null;
   };
   const ratio = parseAspectRatio(resolvedTile?.aspectRatio);
-  const borderRadius = resolvedTile?.borderRadius ?? 0;
+  const borderRadius = resolvedTile?.borderRadius ?? 3;
   const border = resolvedTile?.border || "1px solid rgba(148,163,184,0.25)";
   const hoverLift = resolvedTile?.hoverLift ?? false;
   const lightboxOn = resolvedLightbox?.enabled ?? false;
