@@ -643,6 +643,15 @@ export const websiteDomains = {
         ...withCompany(companyId),
       })
       .then((r) => r.data),
+
+  notify: (companyId, enabled) =>
+    api
+      .post(
+        '/api/domains/notify',
+        { company_id: companyId, notify_email_enabled: Boolean(enabled) },
+        withCompany(companyId)
+      )
+      .then((r) => r.data),
 };
 
 // Public JSON (no company header)

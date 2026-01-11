@@ -290,7 +290,11 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
       }
       setActiveAction("notify_opt_in");
       try {
-        await wb.saveSettings(companyId, { domain_notify_email_enabled: Boolean(enabled) });
+        if (websiteDomains?.notify) {
+          await websiteDomains.notify(companyId, enabled);
+        } else {
+          await wb.saveSettings(companyId, { domain_notify_email_enabled: Boolean(enabled) });
+        }
         if (mounted.current) {
           applyStatusPayload({ notify_email_enabled: Boolean(enabled) });
           setError(null);
