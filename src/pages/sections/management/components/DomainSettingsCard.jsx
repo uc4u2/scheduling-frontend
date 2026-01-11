@@ -215,6 +215,7 @@ const DomainSettingsCard = ({
     removeDomain,
     refresh,
     registrarHint,
+    cdnProvider,
     sslStatus,
     sslError,
     notifyEmailEnabled,
