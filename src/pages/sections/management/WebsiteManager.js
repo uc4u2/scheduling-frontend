@@ -146,8 +146,12 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
 
   const domainStatusMeta = useMemo(() => {
     switch (domainSnapshot.status) {
+      case "ssl_active":
       case "verified":
         return { label: t("management.website.domainStatus.verified"), color: "success" };
+      case "verified_dns":
+      case "provisioning_ssl":
+      case "ssl_failed":
       case "pending_dns":
         return { label: t("management.website.domainStatus.pending"), color: "warning" };
       default:

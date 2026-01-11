@@ -87,6 +87,10 @@ export default function DomainHelpDrawer({
     () => ({
       none: { label: t("management.domainHelp.status.none"), color: "default", icon: <ErrorOutlineIcon fontSize="small" /> },
       pending_dns: { label: t("management.domainHelp.status.pending"), color: "warning", icon: <InfoOutlinedIcon fontSize="small" /> },
+      verified_dns: { label: t("management.domainHelp.status.verifiedDns"), color: "info", icon: <InfoOutlinedIcon fontSize="small" /> },
+      provisioning_ssl: { label: t("management.domainHelp.status.provisioning"), color: "warning", icon: <InfoOutlinedIcon fontSize="small" /> },
+      ssl_active: { label: t("management.domainHelp.status.verified"), color: "success", icon: <CheckCircleIcon fontSize="small" /> },
+      ssl_failed: { label: t("management.domainHelp.status.sslFailed"), color: "error", icon: <ErrorOutlineIcon fontSize="small" /> },
       verified: { label: t("management.domainHelp.status.verified"), color: "success", icon: <CheckCircleIcon fontSize="small" /> },
     }),
     [t]
@@ -107,6 +111,10 @@ export default function DomainHelpDrawer({
   );
   const dnsInstructionsItems = useMemo(
     () => t("management.domainHelp.dnsInstructions.items", { returnObjects: true }) || [],
+    [t]
+  );
+  const dnsEntryClarificationItems = useMemo(
+    () => t("management.domainHelp.dnsEntryClarification.items", { returnObjects: true }) || [],
     [t]
   );
   const timingItems = useMemo(
@@ -195,6 +203,11 @@ export default function DomainHelpDrawer({
           title={t("management.domainHelp.dnsInstructions.title")}
           icon={<DnsIcon color="primary" />}
           items={dnsInstructionsItems}
+        />
+        <Callout
+          title={t("management.domainHelp.dnsEntryClarification.title")}
+          icon={<DnsIcon color="primary" />}
+          items={dnsEntryClarificationItems}
         />
         <Callout
           title={t("management.domainHelp.timing.title")}

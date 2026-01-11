@@ -2222,6 +2222,9 @@
       "status": {
         "none": "Not Connected",
         "pending": "Pending DNS",
+        "verifiedDns": "DNS Verified",
+        "provisioning": "SSL Provisioning",
+        "sslFailed": "SSL Failed",
         "verified": "Live"
       },
       "ssl": {
@@ -2259,7 +2262,7 @@
               "Log into GoDaddy and open your domain.",
               "Choose DNS > Manage Zones.",
               "Add a TXT record named _schedulaa and paste the token from this screen.",
-              "Add a CNAME record for www pointing to schedulaa.com, then save your changes."
+              "Add a CNAME record for www pointing to the CNAME target shown in Schedulaa (for example custom-hostnames.schedulaa.com), then save your changes."
             ]
           },
           {
@@ -2374,6 +2377,11 @@
         "urlLabel": "URL",
         "notifyToggle": "Email me when SSL goes live"
       },
+      "steps": {
+        "dnsVerified": "DNS verified",
+        "sslProvisioning": "SSL provisioning",
+        "sslActive": "SSL active"
+      },
       "connect": {
         "description": "Auto-connect uses GoDaddy Domain Connect to apply the TXT and CNAME records for you. After you approve the GoDaddy prompt, we will verify DNS automatically.",
         "registrarDetected": "Detected registrar: {{registrar}}. Edit this if you want to connect a different host.",
@@ -2413,6 +2421,9 @@
       "status": {
         "none": "Not connected",
         "pending": "Pending DNS",
+        "verifiedDns": "DNS verified",
+        "provisioning": "SSL provisioning",
+        "sslFailed": "SSL failed",
         "verified": "Live"
       },
       "ssl": {
@@ -2457,11 +2468,22 @@
           "TXT record: proves you own the domain so only your team can connect it.",
           "CNAME record: routes www to Schedulaa so visitors reach your booking site.",
           "Log into your registrar (GoDaddy, Namecheap, Cloudflare, etc.), open DNS Records or Manage Zones, and add both records exactly as shown.",
-          "TXT record - Name/Host: _schedulaa (or _schedulaa.www if required) | Value: the random token displayed in Schedulaa.",
-          "CNAME record - Name/Host: www | Points to: schedulaa.com.",
+          "TXT record:\n- Name / Host: exactly as shown in Schedulaa (usually _schedulaa or _schedulaa.www)\n- Enter ONLY the host portion (do not include yourdomain.com)\n- Value: the verification token shown in Schedulaa",
+          "CNAME record - Name/Host: www | Points to: the CNAME target shown in Schedulaa (for example custom-hostnames.schedulaa.com).",
           "Save your changes and wait 5-30 minutes for DNS to update, then return to Schedulaa and click Verify DNS.",
           "Once verified, https://www.yourdomain.com is live, SSL auto-issues, and all booking links, Stripe checkouts, and emails use your brand domain.",
           "The TXT value you see in Schedulaa is your verification token; copy it exactly."
+        ]
+      },
+      "dnsEntryClarification": {
+        "title": "How to enter DNS records correctly (Important)",
+        "items": [
+          "Registrars display DNS records differently. Schedulaa always shows the FULL DNS record name, but many registrars (including GoDaddy) expect only the host portion.",
+          "Example: Schedulaa may show: _schedulaa.www.yourdomain.com",
+          "In GoDaddy and similar registrars, you must enter ONLY: Host / Name: _schedulaa.www",
+          "The registrar automatically appends \".yourdomain.com\".",
+          "Do NOT enter the full domain name in the Host / Name field unless your registrar explicitly asks for it.",
+          "If you enter the full domain (for example: _schedulaa.www.yourdomain.com), the record may be rejected or misconfigured."
         ]
       },
       "timing": {
@@ -2499,6 +2521,16 @@
           ]
         },
         {
+          "title": "⚠️ Important for GoDaddy domains",
+          "bullets": [
+            "When purchasing a domain from GoDaddy, do NOT select AIRO / Free Website, \"Create a website\", or forced WWW forwarding.",
+            "Selecting AIRO automatically attaches a website to your domain and locks DNS records.",
+            "This can prevent SSL certificates from issuing even if DNS appears correct.",
+            "If AIRO was selected, contact GoDaddy support and ask them to detach the domain from Websites + Marketing (AIRO) so DNS records can be managed manually.",
+            "Once AIRO is removed, DNS and SSL will work normally."
+          ]
+        },
+        {
           "title": "Generate DNS instructions",
           "bullets": [
             "Enter the domain inside Schedulaa and click Generate DNS Instructions.",
@@ -2510,10 +2542,31 @@
           "title": "Add DNS records at your registrar",
           "bullets": [
             "Create the TXT record named _schedulaa with the token we provide.",
-            "Add the CNAME record for www (or your chosen host) pointing to schedulaa.com.",
+            "Add the CNAME record for www (or your chosen host) pointing to the CNAME target shown in Schedulaa.",
             "Save changes and give DNS a few minutes to propagate before you verify."
           ],
           "tip": "Tip: DNS instructions generated means Schedulaa already created your verification records. Add them to your registrar, save, and click Verify DNS to finish."
+        },
+        {
+          "title": "CNAME vs A records (Do not skip)",
+          "bullets": [
+            "Schedulaa uses CNAME-based routing.",
+            "Use a CNAME record for www → the CNAME target shown in Schedulaa.",
+            "Do NOT use A records pointing to IP addresses.",
+            "Schedulaa does not provide a static IP address. Using A records will break SSL and prevent the site from loading securely.",
+            "If your registrar already has an A record for www, delete it before adding the CNAME."
+          ]
+        },
+        {
+          "title": "www vs apex (root domain) behavior",
+          "bullets": [
+            "We recommend connecting the www version of your domain first (www.yoursite.com).",
+            "Do NOT configure the root/apex domain (yoursite.com) until after www is live and SSL is active.",
+            "After www is working, you may forward your root domain (yoursite.com) to https://www.yoursite.com.",
+            "Do NOT point the root domain to IP addresses.",
+            "Do NOT add CNAME records at the root unless your registrar explicitly supports it.",
+            "Incorrect root domain configuration can interfere with SSL issuance."
+          ]
         },
         {
           "title": "Verify and go live",
@@ -2521,6 +2574,15 @@
             "Back in Schedulaa, click Verify DNS.",
             "When verification succeeds, SSL provisioning starts automatically (Caddy or Cloudflare depending on your plan).",
             "Once SSL is active, flip any marketing links and emails to the new domain."
+          ]
+        },
+        {
+          "title": "What to expect after verification",
+          "bullets": [
+            "After DNS verification, SSL certificates may take 5-30 minutes to activate.",
+            "During this time, the site may show a temporary security warning.",
+            "This resolves automatically once SSL is active.",
+            "No additional DNS changes are required."
           ]
         },
         {
@@ -2545,7 +2607,7 @@
           "title": "GoDaddy manual fallback",
           "bullets": [
             "If Domain Connect fails, open GoDaddy > My Products > DNS > Manage Zones.",
-            "Add TXT _schedulaa with the token from Schedulaa. Add CNAME www pointing to schedulaa.com.",
+            "Add TXT _schedulaa with the token from Schedulaa. Add CNAME www pointing to the CNAME target shown in Schedulaa.",
             "Save and retry verification after a few minutes. Disable proxy or CDN if records still do not resolve."
           ]
         },
@@ -2554,7 +2616,7 @@
           "bullets": [
             "Go to Domain List > Manage > Advanced DNS.",
             "Add a TXT record with host _schedulaa and the verification token, TTL 1 minute or Automatic.",
-            "Add a CNAME record for www pointing to schedulaa.com, save, then verify inside Schedulaa."
+            "Add a CNAME record for www pointing to the CNAME target shown in Schedulaa, save, then verify inside Schedulaa."
           ]
         },
         {
@@ -2580,14 +2642,29 @@
             "fix": "Use the exact record shown in Schedulaa."
           },
           {
+            "issue": "TXT record exists but verification fails",
+            "cause": "The full domain name was entered in the Host field instead of just the host portion.",
+            "fix": "Use only _schedulaa or _schedulaa.www (without .yourdomain.com)."
+          },
+          {
             "issue": "CNAME ignored",
             "cause": "Existing A record for www",
             "fix": "Delete the A record for www before adding the CNAME."
           },
           {
+            "issue": "Domain shows \"Verified\" but site shows SSL error",
+            "cause": "SSL provisioning is still in progress or the browser is using cached TLS data.",
+            "fix": "Wait up to 30 minutes after verification and test in an incognito/private window."
+          },
+          {
             "issue": "Still pending",
             "cause": "DNS cache delay",
             "fix": "Wait 30 minutes, then click Verify DNS again."
+          },
+          {
+            "issue": "Everything looks correct but site does not load on GoDaddy domains",
+            "cause": "The domain is attached to GoDaddy AIRO or has forced forwarding enabled.",
+            "fix": "Contact GoDaddy support and request detachment from Websites + Marketing (AIRO)."
           },
           {
             "issue": "Domain already in use",

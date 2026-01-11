@@ -62,6 +62,26 @@ const buildStatusMeta = (t) => ({
     color: "warning",
     icon: <InfoOutlinedIcon fontSize="small" />,
   },
+  verified_dns: {
+    label: t("management.domainSettings.status.verifiedDns"),
+    color: "info",
+    icon: <InfoOutlinedIcon fontSize="small" />,
+  },
+  provisioning_ssl: {
+    label: t("management.domainSettings.status.provisioning"),
+    color: "warning",
+    icon: <ShieldOutlinedIcon fontSize="small" />,
+  },
+  ssl_active: {
+    label: t("management.domainSettings.status.verified"),
+    color: "success",
+    icon: <CheckCircleIcon fontSize="small" />,
+  },
+  ssl_failed: {
+    label: t("management.domainSettings.status.sslFailed"),
+    color: "error",
+    icon: <ErrorOutlineIcon fontSize="small" />,
+  },
   verified: {
     label: t("management.domainSettings.status.verified"),
     color: "success",
@@ -198,6 +218,8 @@ const DomainSettingsCard = ({
     sslStatus,
     sslError,
     notifyEmailEnabled,
+    cnameWarning,
+    cnameTarget,
     updateNotifyPreference,
     nextRetrySeconds,
     domainConnectSession,
@@ -707,6 +729,10 @@ const DomainSettingsCard = ({
                     notifyProcessing={processing && action === "notify_opt_in"}
                     sslStatus={sslStatus}
                     sslError={sslError}
+                    cnameWarning={cnameWarning}
+                    cnameTarget={cnameTarget}
+                    cdnProvider={cdnProvider}
+                    verifiedAt={verifiedAt}
                   />
                 )}
                 {activeTab === CONNECT_TAB && (
@@ -749,6 +775,10 @@ const DomainSettingsCard = ({
                 notifyProcessing={processing && action === "notify_opt_in"}
                 sslStatus={sslStatus}
                 sslError={sslError}
+                cnameWarning={cnameWarning}
+                cnameTarget={cnameTarget}
+                cdnProvider={cdnProvider}
+                verifiedAt={verifiedAt}
               />
             )}
           </Stack>
@@ -824,8 +854,23 @@ const ManualPanel = ({
   notifyProcessing,
   sslStatus,
   sslError,
+  cnameWarning,
+  cnameTarget,
+  cdnProvider,
+  verifiedAt,
 }) => {
   const { t } = useTranslation();
+  const isLive = ["verified", "ssl_active"].includes(status);
+  const showSslSteps = cdnProvider === "cloudflare";
+  const stepItems = [
+    { key: "dns", label: t("management.domainSettings.steps.dnsVerified"), done: Boolean(verifiedAt) },
+    {
+      key: "ssl",
+      label: t("management.domainSettings.steps.sslProvisioning"),
+      done: Boolean(verifiedAt) && (sslStatus === "pending" || sslStatus === "active"),
+    },
+    { key: "active", label: t("management.domainSettings.steps.sslActive"), done: sslStatus === "active" },
+  ];
   return (
     <Stack spacing={2}>
       <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
@@ -878,7 +923,27 @@ const ManualPanel = ({
         </Alert>
       )}
 
+      {showSslSteps && (
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap">
+          {stepItems.map((step) => (
+            <Chip
+              key={step.key}
+              label={step.label}
+              color={step.done ? "success" : "default"}
+              variant={step.done ? "filled" : "outlined"}
+              size="small"
+            />
+          ))}
+        </Stack>
+      )}
+
       {instructions}
+
+      {cnameWarning && (
+        <Alert severity="warning">
+          {cnameWarning} {cnameTarget ? `(${cnameTarget})` : ""}
+        </Alert>
+      )}
 
       {sslStatus === "pending" && (
         <Alert severity="info" icon={<ShieldOutlinedIcon fontSize="inherit" />}>
@@ -900,7 +965,7 @@ const ManualPanel = ({
             {t("management.domainSettings.manual.liveUrlTitle")}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {status === "verified"
+            {isLive
               ? t("management.domainSettings.manual.liveUrlVerified")
               : t("management.domainSettings.manual.liveUrlPending")}
           </Typography>

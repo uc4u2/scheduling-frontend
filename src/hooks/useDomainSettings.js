@@ -13,6 +13,9 @@ const INITIAL_STATE = {
   registrarHint: null,
   notifyEmailEnabled: false,
   cdnProvider: null,
+  cnameTarget: null,
+  cnameMatches: null,
+  cnameWarning: null,
   instructions: null,
   verificationToken: null,
   nextRetrySeconds: null,
@@ -109,6 +112,19 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "cdn_provider")) {
         next.cdnProvider = payload.cdn_provider ?? null;
+      }
+
+      if (hasOwn(payload, "cname_target")) {
+        next.cnameTarget = payload.cname_target ?? null;
+      }
+
+      if (hasOwn(payload, "cname_matches")) {
+        next.cnameMatches =
+          typeof payload.cname_matches === "boolean" ? payload.cname_matches : null;
+      }
+
+      if (hasOwn(payload, "cname_warning")) {
+        next.cnameWarning = payload.cname_warning || null;
       }
 
       if (hasOwn(payload, "next_retry_seconds")) {
@@ -381,8 +397,8 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
   const derived = useMemo(
     () => ({
-      isVerified: state.status === "verified",
-      isPending: state.status === "pending_dns",
+      isVerified: ["verified", "ssl_active"].includes(state.status),
+      isPending: ["pending_dns", "verified_dns", "provisioning_ssl"].includes(state.status),
       hasDomain: Boolean(state.domain),
       hasInstructions: Boolean(state.instructions),
     }),
