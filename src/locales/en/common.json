@@ -2370,6 +2370,7 @@
         "domainLabel": "Domain",
         "helper": "Enter your domain without www (example: customer.com). We'll connect www automatically.",
         "sslPending": "SSL is provisioning. This usually takes a couple of minutes after DNS is verified.",
+        "sslPendingHint": "Wait for the cooldown to finish, then click Refresh status (not Verify). If SSL is still pending after 10-15 minutes, contact support.",
         "sslError": "SSL provisioning failed: {{error}}",
         "sslRateLimitHint": "Cloudflare is rate-limiting SSL setup. Please wait a few minutes and click Refresh. No DNS changes are needed.",
         "liveUrlTitle": "Live Site URL",
@@ -2661,6 +2662,16 @@
             "issue": "Domain shows \"Verified\" but site shows SSL error",
             "cause": "SSL provisioning is still in progress or the browser is using cached TLS data.",
             "fix": "Wait up to 30 minutes after verification and test in an incognito/private window."
+          },
+          {
+            "issue": "SSL provisioning failed (rate limit)",
+            "cause": "Cloudflare rate-limited SSL setup after repeated retries.",
+            "fix": "Wait a few minutes and click Refresh. No DNS changes are needed."
+          },
+          {
+            "issue": "SSL is still pending after 10-15 minutes",
+            "cause": "Cloudflare may still be issuing the certificate or the status has not refreshed.",
+            "fix": "Click Refresh status (not Verify). If it stays pending, contact Schedulaa support."
           },
           {
             "issue": "Still pending",

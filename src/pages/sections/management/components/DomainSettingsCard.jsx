@@ -949,6 +949,9 @@ const ManualPanel = ({
       {sslStatus === "pending" && (
         <Alert severity="info" icon={<ShieldOutlinedIcon fontSize="inherit" />}>
           {t("management.domainSettings.manual.sslPending")}
+          <Box sx={{ mt: 0.5 }}>
+            {t("management.domainSettings.manual.sslPendingHint")}
+          </Box>
         </Alert>
       )}
 
