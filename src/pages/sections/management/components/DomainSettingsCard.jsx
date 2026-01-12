@@ -44,6 +44,7 @@ import {
   normalizeDomain,
   tenantBaseUrl,
 } from "../../../../utils/tenant";
+import { getUserTimezone } from "../../../../utils/timezone";
 
 const DOCS_URL = "https://schedulaa.com/docs#integrations";
 const SUPPORT_URL = "https://schedulaa.com/help/domains";
@@ -141,7 +142,7 @@ const buildConnectStateCopy = (t) => ({
   },
 });
 
-const formatDateTime = (value, t) => {
+const formatDateTime = (value, t, tz = getUserTimezone()) => {
   if (!value) return t("management.domainSettings.labels.never");
   try {
     const date = value instanceof Date ? value : new Date(value);
@@ -150,6 +151,7 @@ const formatDateTime = (value, t) => {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: tz,
     }).format(date);
   } catch {
     return String(value);
