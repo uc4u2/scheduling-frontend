@@ -2368,7 +2368,7 @@
       },
       "manual": {
         "domainLabel": "Domain",
-        "helper": "Enter the hostname customers will use.",
+        "helper": "Enter your domain without www (example: customer.com). We'll connect www automatically.",
         "sslPending": "SSL is provisioning. This usually takes a couple of minutes after DNS is verified.",
         "sslError": "SSL provisioning failed: {{error}}",
         "liveUrlTitle": "Live Site URL",
@@ -2383,7 +2383,7 @@
         "sslActive": "SSL active"
       },
       "connect": {
-        "description": "Auto-connect uses GoDaddy Domain Connect to apply the TXT and CNAME records for you. After you approve the GoDaddy prompt, we will verify DNS automatically.",
+        "description": "Auto-connect uses GoDaddy Domain Connect to apply the TXT and CNAME records for you. Enter the root domain (no www). After you approve the GoDaddy prompt, we will verify DNS automatically.",
         "registrarDetected": "Detected registrar: {{registrar}}. Edit this if you want to connect a different host.",
         "start": "Connect automatically with GoDaddy",
         "switchManual": "Switch to manual setup",

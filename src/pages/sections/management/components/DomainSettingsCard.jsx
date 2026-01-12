@@ -878,7 +878,7 @@ const ManualPanel = ({
         <TextField
           fullWidth
           label={t("management.domainSettings.manual.domainLabel")}
-          placeholder="www.customer.com"
+          placeholder="customer.com"
           value={domainInput}
           onChange={(event) => {
             if (validationError) setValidationError("");
