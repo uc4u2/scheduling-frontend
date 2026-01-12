@@ -955,6 +955,11 @@ const ManualPanel = ({
       {sslStatus === "error" && sslError && (
         <Alert severity="error" icon={<ShieldOutlinedIcon fontSize="inherit" />}>
           {t("management.domainSettings.manual.sslError", { error: sslError })}
+          {sslError.toLowerCase().includes("too many requests") && (
+            <Box sx={{ mt: 0.5 }}>
+              {t("management.domainSettings.manual.sslRateLimitHint")}
+            </Box>
+          )}
         </Alert>
       )}
 

@@ -2371,6 +2371,7 @@
         "helper": "Enter your domain without www (example: customer.com). We'll connect www automatically.",
         "sslPending": "SSL is provisioning. This usually takes a couple of minutes after DNS is verified.",
         "sslError": "SSL provisioning failed: {{error}}",
+        "sslRateLimitHint": "Cloudflare is rate-limiting SSL setup. Please wait a few minutes and click Refresh. No DNS changes are needed.",
         "liveUrlTitle": "Live Site URL",
         "liveUrlVerified": "Visitors will be directed to your verified custom domain.",
         "liveUrlPending": "Until the domain is verified, schedulaa.com links will remain active.",
