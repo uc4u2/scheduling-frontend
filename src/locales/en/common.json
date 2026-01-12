@@ -2453,7 +2453,7 @@
         "title": "Quick summary",
         "items": [
           "Prefer .com when available—customers trust it the most.",
-          "Start with the www version (www.yoursite.com). You can add the apex later if needed.",
+          "Start with the root domain (yoursite.com). We will connect www automatically.",
           "Avoid trademarks or other brands in your domain to prevent DNS issues.",
           "Generate the TXT + CNAME records from Schedulaa.",
           "Add those records at your DNS provider (GoDaddy, Namecheap, Cloudflare, etc.).",
@@ -2508,7 +2508,7 @@
           "title": "Before you start",
           "bullets": [
             "Confirm you have manager permissions for this company.",
-            "Decide which hostname you want customers to use (we recommend www.yoursite.com for launch).",
+            "Enter your domain without www (example: yoursite.com). We'll connect www automatically.",
             "Have your DNS credentials ready so you can add TXT and CNAME records without delay."
           ]
         },
@@ -2560,8 +2560,8 @@
         {
           "title": "www vs apex (root domain) behavior",
           "bullets": [
-            "We recommend connecting the www version of your domain first (www.yoursite.com).",
-            "Do NOT configure the root/apex domain (yoursite.com) until after www is live and SSL is active.",
+            "Start by connecting your root domain (yoursite.com). Schedulaa sets up www automatically.",
+            "Do NOT configure the root/apex domain (yoursite.com) separately until www is live and SSL is active.",
             "After www is working, you may forward your root domain (yoursite.com) to https://www.yoursite.com.",
             "Do NOT point the root domain to IP addresses.",
             "Do NOT add CNAME records at the root unless your registrar explicitly supports it.",
@@ -2623,8 +2623,8 @@
           "title": "Cloudflare registrar or proxy",
           "bullets": [
             "In Cloudflare, add the TXT and CNAME records under DNS > Records.",
-            "If proxy (orange cloud) is enabled for the CNAME, temporarily switch it to DNS only until verification finishes.",
-            "After SSL is active in Schedulaa, you can re-enable the proxy to leverage Cloudflare caching."
+            "If you are using Cloudflare for SaaS, keep the CNAME proxied (orange cloud) for the SaaS target.",
+            "If you are not using Cloudflare for SaaS, switch the CNAME to DNS only until verification finishes."
           ]
         }
       ],
@@ -2645,6 +2645,11 @@
             "issue": "TXT record exists but verification fails",
             "cause": "The full domain name was entered in the Host field instead of just the host portion.",
             "fix": "Use only _schedulaa or _schedulaa.www (without .yourdomain.com)."
+          },
+          {
+            "issue": "Entered www instead of root domain",
+            "cause": "You entered www.yoursite.com in Schedulaa instead of yoursite.com.",
+            "fix": "It still works. You do not need a new token. Just ensure www is a CNAME to the target shown in Schedulaa."
           },
           {
             "issue": "CNAME ignored",
