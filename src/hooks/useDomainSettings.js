@@ -10,6 +10,7 @@ const INITIAL_STATE = {
   lastChecked: null,
   sslStatus: null,
   sslError: null,
+  ownershipVerification: null,
   registrarHint: null,
   notifyEmailEnabled: false,
   cdnProvider: null,
@@ -100,6 +101,18 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "ssl_error")) {
         next.sslError = payload.ssl_error ?? null;
+      }
+
+      if (hasOwn(payload, "ownership_verification")) {
+        const ownership = payload.ownership_verification || null;
+        if (ownership?.name && ownership?.value) {
+          next.ownershipVerification = {
+            name: ownership.name,
+            value: ownership.value,
+          };
+        } else {
+          next.ownershipVerification = null;
+        }
       }
 
       if (hasOwn(payload, "registrar_hint")) {

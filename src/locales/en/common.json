@@ -2373,6 +2373,8 @@
         "sslPendingHint": "Wait for the cooldown to finish, then click Refresh status (not Verify). If SSL is still pending after 10-15 minutes, contact support.",
         "sslError": "SSL provisioning failed: {{error}}",
         "sslRateLimitHint": "Cloudflare is rate-limiting SSL setup. Please wait a few minutes and click Refresh. No DNS changes are needed.",
+        "ownershipTitle": "Action required: add Cloudflare verification TXT record.",
+        "ownershipHint": "Create a TXT record named {{name}} with value {{value}}. This lets Cloudflare issue SSL for your domain.",
         "liveUrlTitle": "Live Site URL",
         "liveUrlVerified": "Visitors will be directed to your verified custom domain.",
         "liveUrlPending": "Until the domain is verified, schedulaa.com links will remain active.",

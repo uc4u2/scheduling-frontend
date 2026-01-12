@@ -217,6 +217,7 @@ const DomainSettingsCard = ({
     removeDomain,
     refresh,
     registrarHint,
+    ownershipVerification,
     cdnProvider,
     sslStatus,
     sslError,
@@ -732,6 +733,7 @@ const DomainSettingsCard = ({
                     notifyProcessing={processing && action === "notify_opt_in"}
                     sslStatus={sslStatus}
                     sslError={sslError}
+                    ownershipVerification={ownershipVerification}
                     cnameWarning={cnameWarning}
                     cnameTarget={cnameTarget}
                     cdnProvider={cdnProvider}
@@ -778,6 +780,7 @@ const DomainSettingsCard = ({
                 notifyProcessing={processing && action === "notify_opt_in"}
                 sslStatus={sslStatus}
                 sslError={sslError}
+                ownershipVerification={ownershipVerification}
                 cnameWarning={cnameWarning}
                 cnameTarget={cnameTarget}
                 cdnProvider={cdnProvider}
@@ -857,6 +860,7 @@ const ManualPanel = ({
   notifyProcessing,
   sslStatus,
   sslError,
+  ownershipVerification,
   cnameWarning,
   cnameTarget,
   cdnProvider,
@@ -953,6 +957,18 @@ const ManualPanel = ({
           {t("management.domainSettings.manual.sslPending")}
           <Box sx={{ mt: 0.5 }}>
             {t("management.domainSettings.manual.sslPendingHint")}
+          </Box>
+        </Alert>
+      )}
+
+      {sslStatus === "pending" && ownershipVerification?.name && ownershipVerification?.value && (
+        <Alert severity="warning" icon={<InfoOutlinedIcon fontSize="inherit" />}>
+          {t("management.domainSettings.manual.ownershipTitle")}
+          <Box sx={{ mt: 0.5 }}>
+            {t("management.domainSettings.manual.ownershipHint", {
+              name: ownershipVerification.name,
+              value: ownershipVerification.value,
+            })}
           </Box>
         </Alert>
       )}
