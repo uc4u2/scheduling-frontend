@@ -445,34 +445,39 @@ const TroubleshootingTable = ({ title, rows, labels }) => (
   </Box>
 );
 
-const CommandBlock = ({ title, commands, footer }) => (
-  <Box sx={{ mb: 3 }}>
-    {title && (
-      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-        {title}
-      </Typography>
-    )}
-    <Box
-      component="pre"
-      sx={{
-        fontFamily: "monospace",
-        fontSize: 14,
-        p: 2,
-        borderRadius: 1,
-        border: (theme) => `1px solid ${theme.palette.divider}`,
-        backgroundColor: (theme) => theme.palette.action.hover,
-        whiteSpace: "pre-wrap",
-      }}
-    >
-      {(commands || []).join("\n")}
+const CommandBlock = ({ title, commands, footer }) => {
+  if (!commands || commands.length === 0) {
+    return null;
+  }
+  return (
+    <Box sx={{ mb: 3 }}>
+      {title && (
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+          {title}
+        </Typography>
+      )}
+      <Box
+        component="pre"
+        sx={{
+          fontFamily: "monospace",
+          fontSize: 14,
+          p: 2,
+          borderRadius: 1,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          backgroundColor: (theme) => theme.palette.action.hover,
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {(commands || []).join("\n")}
+      </Box>
+      {footer && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          {footer}
+        </Typography>
+      )}
     </Box>
-    {footer && (
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-        {footer}
-      </Typography>
-    )}
-  </Box>
-);
+  );
+};
 
 const SummaryBlock = ({ title, items }) => (
   <Box sx={{ mb: 3 }}>

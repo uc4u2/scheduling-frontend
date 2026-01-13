@@ -2661,13 +2661,11 @@
         ]
       },
       "ownership": {
-        "title": "In summary",
+        "title": "Ownership and safety",
         "items": [
-          "Use www.yourdomain.com.",
-          "Add one TXT and one CNAME.",
-          "SSL is automatic.",
-          "Root domain redirect is optional.",
-          "Schedulaa never owns your domain."
+          "You always keep full control of your domain at your registrar.",
+          "Schedulaa cannot transfer, bill, or renew domains on your behalf.",
+          "We simply verify ownership so the booking site can run securely on your hostname."
         ]
       },
       "supportSections": [
@@ -2681,19 +2679,17 @@
       ],
       "commands": {
         "title": "Check with a command line (optional)",
-        "items": [
-          "nslookup -type=txt _schedulaa.www.yourdomain.com",
-          "nslookup -type=cname www.yourdomain.com"
-        ],
-        "footer": "If both commands return the correct values, return to Schedulaa and click Verify DNS."
+        "items": [],
+        "footer": ""
       },
       "summary": {
         "title": "In summary",
         "items": [
-          "Serve securely over HTTPS.",
-          "Show your company name and branding everywhere.",
-          "Keep SSL renewals automatic without extra tools.",
-          "Stay safe - Schedulaa only connects, never owns your domain."
+          "Use www.yourdomain.com.",
+          "Add one TXT and one CNAME.",
+          "SSL is automatic.",
+          "Root domain redirect is optional.",
+          "Schedulaa never owns your domain."
         ]
       }
     },
