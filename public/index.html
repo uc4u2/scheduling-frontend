@@ -75,8 +75,28 @@
     </script>
     <script>
       (function () {
+        try {
+          var host = (window.location.hostname || "").toLowerCase();
+          var path = window.location.pathname || "/";
+          if (host === "www.schedulaa.com" || host === "schedulaa.com") return;
+          if (path !== "/" && path !== "") return;
+          fetch("/public/tenant", { cache: "no-store" })
+            .then(function (res) {
+              return res.ok ? res.json() : null;
+            })
+            .then(function (data) {
+              if (!data || !data.ok || !data.slug) return;
+              window.location.replace("/" + data.slug);
+            })
+            .catch(function () {});
+        } catch (e) {}
+      })();
+    </script>
+    <script>
+      (function () {
         var path = window.location.pathname || "/";
-        var seg = path.split("/").filter(Boolean)[0] || "";
+        var parts = path.split("/").filter(Boolean);
+        var seg = parts[0] || "";
         var reserved = {
           "about": true,
           "acceptable-use": true,
@@ -124,7 +144,9 @@
           "workforce": true,
           "zapier": true
         };
-        if (seg && !reserved[seg]) {
+        var isCompanyRoute = seg && !reserved[seg];
+        var isPublicCompanyRoute = seg === "public" && Boolean(parts[1]);
+        if (isCompanyRoute || isPublicCompanyRoute) {
           document.documentElement.classList.add("company-boot");
         }
       })();
