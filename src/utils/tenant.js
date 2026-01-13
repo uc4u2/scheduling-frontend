@@ -4,7 +4,17 @@ const FQDN_REGEX = /^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-
 
 export const normalizeDomain = (host = "") => {
   if (!host) return "";
-  return String(host).trim().replace(/\.$/, "").toLowerCase();
+  const normalized = String(host).trim().replace(/\.$/, "").toLowerCase();
+  if (normalized.startsWith("[")) {
+    const end = normalized.indexOf("]");
+    if (end > 0) {
+      return normalized.slice(1, end);
+    }
+  }
+  if (normalized.includes(":")) {
+    return normalized.split(":")[0];
+  }
+  return normalized;
 };
 
 export const isValidHostname = (host) => FQDN_REGEX.test(normalizeDomain(host));
@@ -58,6 +68,15 @@ export function getTenantHostMode(
   const normalizedPrimary = normalizeDomain(primaryHost);
 
   if (!normalizedHost) return "unknown";
+  if (
+    normalizedHost === "localhost" ||
+    normalizedHost === "127.0.0.1" ||
+    normalizedHost === "0.0.0.0" ||
+    normalizedHost === "::1" ||
+    normalizedHost.endsWith(".localhost")
+  ) {
+    return "primary";
+  }
   if (!normalizedPrimary) return "custom";
 
   if (
@@ -78,4 +97,3 @@ export function resolveTenantPreview({ company, domainSnapshot, primaryHost } = 
   const slug = company?.slug || domainSnapshot?.slug || "";
   return tenantBaseUrl({ customDomain, slug, primaryHost });
 }
-
