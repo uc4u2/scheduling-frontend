@@ -25,7 +25,10 @@ import { PROFESSION_OPTIONS } from "../../constants/professions";
 import Meta from "../../components/Meta";
 import JsonLd from "../../components/seo/JsonLd";
 
-const SITE_BASE_URL = "https://www.schedulaa.com";
+const SITE_BASE_URL =
+  (typeof window !== "undefined" && window.location.origin) ||
+  process.env.REACT_APP_FRONTEND_URL ||
+  "https://www.schedulaa.com";
 const PAGE_URL = `${SITE_BASE_URL}/industries`;
 const META = {
   title: "Industry Directory | Schedulaa booking sites by industry",
