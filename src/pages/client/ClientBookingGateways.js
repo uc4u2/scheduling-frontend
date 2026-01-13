@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Box, CircularProgress, Typography, Alert, Button } from "@mui/material";
 import { api } from "../../utils/api";
+import { getTenantHostMode } from "../../utils/tenant";
 
 const getParams = (search) => {
   const qs = new URLSearchParams(search || "");
@@ -39,7 +40,9 @@ const createGateway = (mode) => {
           const nextSlug = data?.slug || "";
           const ok = data?.ok;
           if (nextSlug && ok) {
-            const target = `/${nextSlug}/${destinationSegment}/${encodeURIComponent(appt)}?token=${encodeURIComponent(token)}`;
+            const isCustomDomain = getTenantHostMode() === "custom";
+            const basePath = isCustomDomain ? "" : `/${nextSlug}`;
+            const target = `${basePath}/${destinationSegment}/${encodeURIComponent(appt)}?token=${encodeURIComponent(token)}`;
             navigate(target, { replace: true });
             return;
           }
@@ -89,7 +92,10 @@ const createGateway = (mode) => {
             Go to homepage
           </Button>
           {slug ? (
-            <Button variant="outlined" onClick={() => navigate(`/${slug}`)}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate(getTenantHostMode() === "custom" ? "/" : `/${slug}`)}
+            >
               Visit site
             </Button>
           ) : null}

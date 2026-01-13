@@ -3,6 +3,7 @@ import {
   Box, Paper, Stack, Typography, TextField, Button, Alert, Tabs, Tab
 } from "@mui/material";
 import { api } from "../../utils/api";
+import { getTenantHostMode } from "../../utils/tenant";
 
 export default function PublicClientAuth({ slug }) {
   const [tab, setTab] = useState("login");
@@ -22,7 +23,8 @@ export default function PublicClientAuth({ slug }) {
     localStorage.setItem("role", "client");
     // Optional: persist company scope if your APIs expect it
     // localStorage.setItem("company_id", "<set if you scope to a company>");
-    window.location.assign(`/${slug}/my-bookings`);
+    const target = getTenantHostMode() === "custom" ? "/?page=my-bookings" : `/${slug}/my-bookings`;
+    window.location.assign(target);
   };
 
   const doLogin = async () => {

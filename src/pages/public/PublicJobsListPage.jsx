@@ -26,6 +26,7 @@ import { publicSite } from "../../utils/api";
 import { publicJobs } from "../../utils/publicJobs";
 import CandidateLoginDialog from "../../components/candidate/CandidateLoginDialog";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "../client/ServiceList";
+import { getTenantHostMode } from "../../utils/tenant";
 import {
   CA_PROVINCES,
   COUNTRIES,
@@ -130,6 +131,11 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
   const isEmbeddedJobsPage = embeddedPageParam === "jobs";
   const pageParamKey = isEmbeddedJobsPage ? "pg" : "page";
   const resolvedJobsBasePath = jobsBasePath || `/public/${effectiveSlug}/jobs`;
+  const embeddedRootPath = useMemo(() => {
+    if (!resolvedJobsBasePath.endsWith("/jobs")) return resolvedJobsBasePath || "/";
+    const root = resolvedJobsBasePath.slice(0, -5);
+    return root || "/";
+  }, [resolvedJobsBasePath]);
 
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState([]);
@@ -761,7 +767,7 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
                       job={job}
                       onView={() => {
                         if (isEmbeddedJobsPage) {
-                          navigate(`/${effectiveSlug}?page=jobs&job=${job.slug}`);
+                          navigate(`${embeddedRootPath}?page=jobs&job=${job.slug}`);
                           return;
                         }
                         navigate(`${resolvedJobsBasePath}/${job.slug}`);
@@ -811,7 +817,8 @@ export function PublicJobsListContent({ effectiveSlug, jobsBasePath, pageStyleOv
 }
 
 export function JobsListEmbedded({ slug, pageStyle }) {
-  const basePath = `/${slug}/jobs`;
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = isCustomDomain ? "/jobs" : `/${slug}/jobs`;
   return (
     <PublicJobsListContent
       effectiveSlug={slug}
@@ -821,10 +828,13 @@ export function JobsListEmbedded({ slug, pageStyle }) {
   );
 }
 
-export default function PublicJobsListPage() {
+export default function PublicJobsListPage({ slugOverride }) {
   const { companySlug, slug } = useParams();
-  const effectiveSlug = companySlug || slug;
-  const jobsBasePath = companySlug
+  const effectiveSlug = slugOverride || companySlug || slug;
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const jobsBasePath = isCustomDomain
+    ? "/jobs"
+    : companySlug
     ? `/public/${effectiveSlug}/jobs`
     : `/${effectiveSlug}/jobs`;
   const [sitePayload, setSitePayload] = useState(null);

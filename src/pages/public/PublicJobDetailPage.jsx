@@ -24,6 +24,7 @@ import { publicSite } from "../../utils/api";
 import { publicJobs } from "../../utils/publicJobs";
 import CandidateLoginDialog from "../../components/candidate/CandidateLoginDialog";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "../client/ServiceList";
+import { getTenantHostMode } from "../../utils/tenant";
 
 const formatPay = (job) => {
   const cur = job?.pay_currency || "";
@@ -395,20 +396,25 @@ export function PublicJobDetailContent({
 }
 
 export function JobsDetailEmbedded({ slug, jobSlug, pageStyle }) {
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const jobsBasePath = isCustomDomain ? "/jobs" : `/${slug}?page=jobs`;
   return (
     <PublicJobDetailContent
       effectiveSlug={slug}
       jobSlug={jobSlug}
-      jobsBasePath={`/${slug}?page=jobs`}
+      jobsBasePath={jobsBasePath}
       pageStyleOverride={pageStyle}
     />
   );
 }
 
-export default function PublicJobDetailPage() {
+export default function PublicJobDetailPage({ slugOverride }) {
   const { companySlug, slug, jobSlug } = useParams();
-  const effectiveSlug = companySlug || slug;
-  const jobsBasePath = companySlug
+  const effectiveSlug = slugOverride || companySlug || slug;
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const jobsBasePath = isCustomDomain
+    ? "/jobs"
+    : companySlug
     ? `/public/${effectiveSlug}/jobs`
     : `/${effectiveSlug}/jobs`;
   const [sitePayload, setSitePayload] = useState(null);

@@ -39,6 +39,7 @@ import {
 import { SOCIAL_ICON_MAP, DEFAULT_SOCIAL_ICON } from "../../utils/socialIcons";
 import Meta from "../../components/Meta";
 import JsonLd from "../../components/seo/JsonLd";
+import { getTenantHostMode } from "../../utils/tenant";
 
 const LEGAL_FALLBACK_CONTENT = {
   privacy: {
@@ -425,8 +426,13 @@ const PLACEHOLDER_SITE_TITLES = new Set([
   "FE Test Site",
 ]);
 
-export default function CompanyPublic() {
-  const { slug } = useParams();
+export default function CompanyPublic({ slugOverride }) {
+  const { slug: routeSlug } = useParams();
+  const slug = slugOverride || routeSlug;
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const slugForHref = isCustomDomain ? "" : slug;
+  const basePath = slugForHref ? `/${slugForHref}` : "";
+  const rootPath = basePath || "/";
   const navigate = useNavigate();
   // Persist slug for later redirects (login → dashboard)
   useEffect(() => {
@@ -443,11 +449,11 @@ export default function CompanyPublic() {
     } catch {}
     if (sessionId && slug) {
       navigate({
-        pathname: `/${slug}/checkout/return`,
+        pathname: `${basePath}/checkout/return`,
         search: `?session_id=${encodeURIComponent(sessionId)}`
       }, { replace: true });
     }
-  }, [searchParams, slug, navigate]);
+  }, [searchParams, slug, navigate, basePath]);
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -671,10 +677,10 @@ export default function CompanyPublic() {
 
   const reviewsHref = useCallback(() => {
     if (hasReviewsPage) {
-      return `/${slug}?page=reviews`;
+      return `${rootPath}?page=reviews`;
     }
-    return `/${slug}/reviews`;
-  }, [hasReviewsPage, slug]);
+    return `${basePath}/reviews`;
+  }, [hasReviewsPage, rootPath, basePath]);
 
   const runtimeOverrides = settings?.theme_overrides
     || sitePayload?.theme_overrides
@@ -731,8 +737,8 @@ export default function CompanyPublic() {
   );
 
   const servicesHref = useCallback(
-    () => `/${slug}?page=${encodeURIComponent(servicesPageSlug)}`,
-    [slug, servicesPageSlug]
+    () => `${rootPath}?page=${encodeURIComponent(servicesPageSlug)}`,
+    [rootPath, servicesPageSlug]
   );
 
   // ---- nav builder: respects manager settings or public payload ----
@@ -744,7 +750,7 @@ export default function CompanyPublic() {
     const showReviews  = navOvr.show_reviews_tab  !== false; // default true
 
     const items = [
-      { key: "home",     label: "Home",     href: `/${sitePayloadArg?.slug || slug || ""}` },
+      { key: "home",     label: "Home",     href: rootPath },
       showReviews  && { key: "reviews",  label: "Reviews",  href: reviewsHref()  },
     ].filter(Boolean);
 
@@ -759,9 +765,11 @@ export default function CompanyPublic() {
       .filter((p) => !(p.slug === "my-bookings" && !clientLoggedIn))
       .filter((p) => !["home", "reviews"].includes(p.slug))
       .map((p) => {
-        let href = `/${slug}?page=${encodeURIComponent(p.slug)}`;
+        let href = `${rootPath}?page=${encodeURIComponent(p.slug)}`;
         if (p.slug === "login") href = `/login?site=${encodeURIComponent(slug)}`;
-        if (p.slug === "my-bookings") href = `/dashboard?site=${encodeURIComponent(slug)}`;
+        if (p.slug === "my-bookings") {
+          href = isCustomDomain ? `${rootPath}?page=my-bookings` : `/dashboard?site=${encodeURIComponent(slug)}`;
+        }
         return { key: p.slug, label: p.menu_title || p.title || p.slug, href };
       });
 
@@ -772,7 +780,7 @@ export default function CompanyPublic() {
     }
 
     return [...core, ...others, ...shortcuts];
-  }, [sitePayload, settings, menuPages, nav, slug, reviewsHref, clientLoggedIn]);
+  }, [sitePayload, settings, menuPages, nav, slug, reviewsHref, clientLoggedIn, rootPath, isCustomDomain]);
   // ─────────────────────────────────────────────────────────────────────────────
 
   const rawNavStyle =
@@ -897,8 +905,8 @@ export default function CompanyPublic() {
       );
       if (embedCardBg) qp.set("cardbg", embedCardBg);
       const targetPath = slugLower === "my-bookings" ? "my-bookings" : slugLower;
-      const basePath = targetPath ? `/${slug}/${targetPath}` : `/${slug}`;
-      const src = `${basePath}?${qp.toString()}`;
+      const embedPath = targetPath ? `${basePath}/${targetPath}` : rootPath;
+      const src = `${embedPath}?${qp.toString()}`;
 
       const basePageStyleSection = existingPageStyleSection || homePageStyleSection || null;
       const pageStyleBlock = basePageStyleSection
@@ -929,8 +937,8 @@ export default function CompanyPublic() {
 
     const sections = currentPage?.content?.sections || [];
     const servicesLink = servicesHref();
-    const reviewsLink = `/${slug}?page=reviews`;
-    const jobsLink = `/${slug}/jobs`;
+    const reviewsLink = `${rootPath}?page=reviews`;
+    const jobsLink = `${basePath}/jobs`;
     const servicesAliases = [
       "services",
       "/services",
@@ -945,7 +953,7 @@ export default function CompanyPublic() {
     ];
     const jobsAliases = ["jobs", "/jobs", "?page=jobs", "/?page=jobs", "careers", "/careers"];
     const resolver = (href) => {
-      const base = resolveSiteHref(slug, href, pages);
+      const base = resolveSiteHref(slugForHref, href, pages);
       const clean = String(href || "").trim().toLowerCase();
       if (servicesAliases.includes(clean)) return servicesLink;
       if (["reviews", "/reviews"].includes(clean)) return reviewsLink;
@@ -955,14 +963,16 @@ export default function CompanyPublic() {
     const fixIframeBody = (html) => {
       try {
         let out = String(html || "");
-        out = out.replace(/\{\{\s*slug\s*\}\}/gi, slug);
-        out = out.replace(/%7b%7b\s*slug\s*%7d%7d/gi, slug);
-        out = out.replace(new RegExp(`/${'{'}{'}'}slug${'{'}{'}'}/`, 'gi'), `/${slug}/`);
+        const slugToken = slugForHref || "";
+        const slugPath = slugForHref ? `/${slugForHref}/` : "/";
+        out = out.replace(/\{\{\s*slug\s*\}\}/gi, slugToken);
+        out = out.replace(/%7b%7b\s*slug\s*%7d%7d/gi, slugToken);
+        out = out.replace(new RegExp(`/${'{'}{'}'}slug${'{'}{'}'}/`, 'gi'), slugPath);
         out = out.replace(/(<iframe[^>]*src=")(.*?)("[^>]*>)/gi, (m, p1, url, p3) => {
           try {
             const u = new URL(url, window.location.origin);
             if (u.pathname.startsWith('/dashboard')) {
-              u.pathname = `/${slug}/my-bookings`;
+              u.pathname = `${basePath}/my-bookings`;
               if (!u.searchParams.get('embed')) u.searchParams.set('embed', '1');
             }
             if (!u.searchParams.get('embed')) u.searchParams.set('embed', '1');
@@ -971,7 +981,7 @@ export default function CompanyPublic() {
           } catch {
             const join = url.includes('?') ? '&' : '?';
             let final = `${url}${join}embed=1&site=${encodeURIComponent(slug)}`;
-            final = final.replace(/^\/?dashboard/i, `/${slug}/my-bookings`);
+            final = final.replace(/^\/?dashboard/i, `${basePath}/my-bookings`);
             return `${p1}${final}${p3}`;
           }
         });
@@ -997,7 +1007,7 @@ export default function CompanyPublic() {
       styleProps: extractPageStyleProps(currentPage),
       renderOverride: null,
     };
-  }, [currentPage, slug, pages, nav, siteDefaultPageStyle, servicesHref, blogPostSlug]);
+  }, [currentPage, slug, pages, nav, siteDefaultPageStyle, servicesHref, blogPostSlug, slugForHref, basePath, rootPath]);
 
   const pageLayout = useMemo(() => {
     if (
@@ -1214,10 +1224,11 @@ const siteTitle = useMemo(() => {
     if (globalSeo.slugBaseUrl) return globalSeo.slugBaseUrl;
     if (typeof window !== "undefined") {
       const origin = window.location.origin || "";
+      if (isCustomDomain) return origin;
       return slug ? `${origin.replace(/\/$/, "")}/${slug}` : origin;
     }
     return "";
-  }, [globalSeo, slug]);
+  }, [globalSeo, slug, isCustomDomain]);
 
   const slugBaseUrl = useMemo(() => globalSeo.slugBaseUrl || canonicalBase, [globalSeo, canonicalBase]);
 
@@ -1315,16 +1326,16 @@ const siteTitle = useMemo(() => {
   const normalizeHref = useCallback(
     (href) => {
       const trimmed = (href || "").trim();
-      if (!trimmed) return `/${slug}`;
+      if (!trimmed) return rootPath;
       if (isExternalHref(trimmed)) {
         return trimmed;
       }
       if (trimmed.startsWith("?") || trimmed.startsWith("/")) {
-        return resolveSiteHref(slug, trimmed, pages);
+        return resolveSiteHref(slugForHref, trimmed, pages);
       }
-      return resolveSiteHref(slug, `?page=${trimmed}`, pages);
+      return resolveSiteHref(slugForHref, `?page=${trimmed}`, pages);
     },
-    [slug, pages]
+    [rootPath, slugForHref, pages]
   );
 
   const headerNavItems = Array.isArray(headerConfig?.nav_items) ? headerConfig.nav_items : [];
@@ -1332,11 +1343,12 @@ const siteTitle = useMemo(() => {
 
   const headerNavItemsResolved = useMemo(() => {
     if (!headerNavItems.length) return [];
+    const normalizedRoot = rootPath.replace(/\/$/, "") || "/";
     return headerNavItems.map((item, idx) => {
       const href = normalizeHref(item.href || "");
       const normalized = String(href || "").toLowerCase();
       let active = false;
-      if (normalized === `/${slug}` || normalized === "/" || normalized === `/${slug}/`) {
+      if (normalized === normalizedRoot || normalized === `${normalizedRoot}/` || normalized === "/") {
         active = !currentSlugSafe || currentSlugSafe === "home";
       } else if (normalized.includes("?page=")) {
         const params = new URLSearchParams(normalized.split("?")[1]);
@@ -1350,7 +1362,7 @@ const siteTitle = useMemo(() => {
         active,
       };
     });
-  }, [headerNavItems, normalizeHref, slug, currentSlugSafe]);
+  }, [headerNavItems, normalizeHref, rootPath, currentSlugSafe]);
 
   const navItemsToRender = headerNavItemsResolved.length ? headerNavItemsResolved : navItemsWithActive;
   const hasNavItems = navItemsToRender.length > 0;
@@ -1425,7 +1437,7 @@ const siteTitle = useMemo(() => {
         {headerLogoUrl && (
           <Box
             component={disableLink ? "span" : RouterLink}
-            {...(!disableLink ? { to: `/${slug}` } : {})}
+            {...(!disableLink ? { to: rootPath } : {})}
             sx={{
               display: "inline-flex",
               alignItems: "center",
@@ -1471,7 +1483,7 @@ const siteTitle = useMemo(() => {
       showBrandText,
       navStyle,
       navBrandName,
-      slug,
+      rootPath,
     ]
   );
 
@@ -1582,7 +1594,7 @@ const siteTitle = useMemo(() => {
     if (!post) return null;
     const cover = post.coverImage || post.image || "";
     const coverUrl = cover ? buildImgixUrl(cover, { w: 1600, fit: "crop" }) : "";
-    const backHref = slug ? `/${slug}?page=blog` : "?page=blog";
+    const backHref = `${rootPath}?page=blog`;
     const dateValue = post?.date ? new Date(post.date) : null;
     const dateLabel =
       dateValue && !Number.isNaN(dateValue.getTime())
