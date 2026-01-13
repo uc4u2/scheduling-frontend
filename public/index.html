@@ -75,25 +75,6 @@
     </script>
     <script>
       (function () {
-        try {
-          var host = (window.location.hostname || "").toLowerCase();
-          var path = window.location.pathname || "/";
-          if (host === "www.schedulaa.com" || host === "schedulaa.com") return;
-          if (path !== "/" && path !== "") return;
-          fetch("/public/tenant", { cache: "no-store" })
-            .then(function (res) {
-              return res.ok ? res.json() : null;
-            })
-            .then(function (data) {
-              if (!data || !data.ok || !data.slug) return;
-              window.location.replace("/" + data.slug);
-            })
-            .catch(function () {});
-        } catch (e) {}
-      })();
-    </script>
-    <script>
-      (function () {
         var path = window.location.pathname || "/";
         var parts = path.split("/").filter(Boolean);
         var seg = parts[0] || "";
