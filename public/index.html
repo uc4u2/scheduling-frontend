@@ -75,6 +75,8 @@
     </script>
     <script>
       (function () {
+        var host = (window.location.hostname || "").toLowerCase();
+        var isCustomHost = host && host !== "schedulaa.com" && host !== "www.schedulaa.com";
         var path = window.location.pathname || "/";
         var parts = path.split("/").filter(Boolean);
         var seg = parts[0] || "";
@@ -127,7 +129,7 @@
         };
         var isCompanyRoute = seg && !reserved[seg];
         var isPublicCompanyRoute = seg === "public" && Boolean(parts[1]);
-        if (isCompanyRoute || isPublicCompanyRoute) {
+        if (isCustomHost || isCompanyRoute || isPublicCompanyRoute) {
           document.documentElement.classList.add("company-boot");
         }
       })();
