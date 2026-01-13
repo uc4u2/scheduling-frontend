@@ -37,6 +37,7 @@ import {
 } from "../../utils/currency";
 
 import { getUserTimezone } from "../../utils/timezone";
+import { getTenantHostMode } from "../../utils/tenant";
 
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
 
@@ -869,6 +870,9 @@ export default function BookingConfirmation() {
   const canRenderProductOnly = !raw && !!slugOverride && hasProductContext;
 
   const slugForNav = slugOverride || "";
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = isCustomDomain ? "" : `/${slugForNav}`;
+  const rootPath = basePath || "/";
 
   if (loading) {
     content = (
@@ -1016,13 +1020,13 @@ export default function BookingConfirmation() {
           )}
 
           <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mt: 3 }}>
-            <Button variant="contained" onClick={() => go(`/${slugForNav}`)}>
+            <Button variant="contained" onClick={() => go(rootPath)}>
               Back to site
             </Button>
 
             <Button
               variant="outlined"
-              onClick={() => go(`/${slugForNav}/products`)}
+              onClick={() => go(`${basePath}/products`)}
             >
               Continue shopping
             </Button>
@@ -1049,7 +1053,7 @@ export default function BookingConfirmation() {
       if (cancelLink) {
         window.location.href = cancelLink;
       } else if (slugForNav && bookingId && qsToken) {
-        go(`/${slugForNav}/cancel-booking/${bookingId}?token=${qsToken}`);
+        go(`${basePath}/cancel-booking/${bookingId}?token=${qsToken}`);
       }
     };
 
@@ -1223,7 +1227,7 @@ export default function BookingConfirmation() {
 
             {renderProductSummary()}
 
-            <Button variant="contained" onClick={() => go(`/${slugForNav}`)}>
+            <Button variant="contained" onClick={() => go(rootPath)}>
               Back to site
             </Button>
           </Paper>
@@ -1313,7 +1317,7 @@ export default function BookingConfirmation() {
                 </Button>
               )}
 
-              <Button variant="contained" onClick={() => go(`/${slugForNav}`)}>
+              <Button variant="contained" onClick={() => go(rootPath)}>
                 Done
               </Button>
             </Box>

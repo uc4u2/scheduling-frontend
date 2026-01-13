@@ -24,6 +24,7 @@ import InfoIcon from "@mui/icons-material/Info";
 import SiteFrame from "../../components/website/SiteFrame";
 import { pageStyleToCssVars, pageStyleToBackgroundSx } from "./ServiceList";
 import { addProductToCart, loadCart, CartErrorCodes } from "../../utils/cart";
+import { getTenantHostMode } from "../../utils/tenant";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
@@ -49,6 +50,8 @@ const ProductListBase = ({
       return routeSlug || "";
     }
   }, [slugOverride, routeSlug, searchParams]);
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = isCustomDomain ? "" : `/${slug}`;
 
   const embedSuffix = useMemo(() => {
     if (disableShell) return "";
@@ -74,8 +77,11 @@ const ProductListBase = ({
       if (val) qs.set(key, val);
     });
     const query = qs.toString();
+    if (isCustomDomain) {
+      return query ? `/basket?${query}` : "/basket";
+    }
     return query ? `/${slug}?${query}` : `/${slug}`;
-  }, [slug, searchParams]);
+  }, [slug, searchParams, isCustomDomain]);
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -214,7 +220,7 @@ const ProductListBase = ({
 
   const goToDetails = (productId) => {
     if (!slug) return;
-    navigate(`/${slug}/products/${productId}${embedSuffix}`);
+    navigate(`${basePath}/products/${productId}${embedSuffix}`);
   };
 
   const goToBasket = () => {

@@ -9,6 +9,7 @@ import { Link as RouterLink, useParams, useNavigate, useLocation } from "react-r
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
 import { publicSite } from "../../utils/api"; // added for edit guard + data fetch
 import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../../utils/navStyle";
+import { getTenantHostMode } from "../../utils/tenant";
 import NavStyleHydrator from "../../components/website/NavStyleHydrator";
 
 const PublicSiteContext = createContext(null);
@@ -189,6 +190,9 @@ function ShellInner({
   const theme = useTheme();
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = useMemo(() => (isCustomDomain ? "" : `/${slug}`), [isCustomDomain, slug]);
+  const rootPath = basePath || "/";
 
   const navTokens = useMemo(() => normalizeNavStyle(navStyle), [navStyle]);
 
@@ -230,37 +234,37 @@ function ShellInner({
 
   const reviewsHref = useMemo(() => {
     if (navCfg?.reviews_tab_target === "page" && navCfg?.reviews_page_slug) {
-      return `/${slug}?page=${encodeURIComponent(navCfg.reviews_page_slug)}`;
+      return `${rootPath}?page=${encodeURIComponent(navCfg.reviews_page_slug)}`;
     }
-    return `/${slug}?page=reviews`;
-  }, [slug, navCfg]);
+    return `${rootPath}?page=reviews`;
+  }, [rootPath, navCfg]);
 
   const productsHref = useMemo(() => {
     const target = String(navCfg?.products_page_slug || 'products');
     const hasPage = (pages || []).some((p) => String(p.slug || '').toLowerCase() === target.toLowerCase());
     if (navCfg?.products_tab_target === 'page' && hasPage) {
-      return `/${slug}?page=${encodeURIComponent(target)}`;
+      return `${rootPath}?page=${encodeURIComponent(target)}`;
     }
-    return `/${slug}/products`;
-  }, [slug, navCfg, pages]);
+    return `${basePath}/products`;
+  }, [basePath, rootPath, navCfg, pages]);
 
   const jobsHref = useMemo(() => {
     const target = String(navCfg?.jobs_page_slug || "jobs");
     const hasPage = (pages || []).some((p) => String(p.slug || "").toLowerCase() === target.toLowerCase());
     if (navCfg?.jobs_tab_target === "page" && hasPage) {
-      return `/${slug}?page=${encodeURIComponent(target)}`;
+      return `${rootPath}?page=${encodeURIComponent(target)}`;
     }
-    return `/${slug}/jobs`;
-  }, [slug, navCfg, pages]);
+    return `${basePath}/jobs`;
+  }, [basePath, rootPath, navCfg, pages]);
 
   const basketHref = useMemo(() => {
     const target = String(navCfg?.basket_page_slug || 'basket');
     const hasPage = (pages || []).some((p) => String(p.slug || '').toLowerCase() === target.toLowerCase());
     if (navCfg?.basket_tab_target === 'page' && hasPage) {
-      return `/${slug}?page=${encodeURIComponent(target)}`;
+      return `${rootPath}?page=${encodeURIComponent(target)}`;
     }
-    return `/${slug}/basket`;
-  }, [slug, navCfg, pages]);
+    return `${basePath}/basket`;
+  }, [basePath, rootPath, navCfg, pages]);
 
   const hasMyBookingsPage = useMemo(
     () => (pages || []).some((p) => (p.slug || "").toLowerCase() === "my-bookings"),
@@ -274,8 +278,8 @@ function ShellInner({
       .filter((p) => !(p.slug === "login" && authed))
       .filter((p) => !(p.slug === "my-bookings" && !authed))
       .map((p) => {
-        let to = `/${slug}?page=${encodeURIComponent(p.slug)}`;
-        if (p.slug === "jobs") to = `/${slug}/jobs`;
+        let to = `${rootPath}?page=${encodeURIComponent(p.slug)}`;
+        if (p.slug === "jobs") to = `${basePath}/jobs`;
         if (p.slug === "login") to = `/login?site=${encodeURIComponent(slug)}`;
         if (p.slug === "my-bookings") to = `/dashboard?site=${encodeURIComponent(slug)}`;
         const isActive =
@@ -325,7 +329,7 @@ function ShellInner({
         key: "__products",
         label: navCfg?.products_tab_label || "Products",
         to: productsHref,
-        active: pathname.startsWith(`/${slug}/products`) || activeKey === "__products",
+        active: pathname.startsWith(`${basePath}/products`) || activeKey === "__products",
       });
     }
     if (navCfg?.show_jobs_tab !== false && jobsTarget === 'builtin' && !hasJobsPage) {
@@ -333,7 +337,7 @@ function ShellInner({
         key: "__jobs",
         label: navCfg?.jobs_tab_label || "Jobs",
         to: jobsHref,
-        active: pathname.startsWith(`/${slug}/jobs`) || activeKey === "__jobs",
+        active: pathname.startsWith(`${basePath}/jobs`) || activeKey === "__jobs",
       });
     }
     if (navCfg?.show_basket_tab !== false && basketTarget === 'builtin' && !hasBasketPage) {
@@ -341,11 +345,11 @@ function ShellInner({
         key: "__basket",
         label: navCfg?.basket_tab_label || "My Basket",
         to: basketHref,
-        active: pathname.startsWith(`/${slug}/basket`) || activeKey === "__basket",
+        active: pathname.startsWith(`${basePath}/basket`) || activeKey === "__basket",
       });
     }
     return items;
-  }, [navCfg, reviewsHref, productsHref, jobsHref, basketHref, pathname, slug, authed, pages, mappedMenu]);
+  }, [navCfg, reviewsHref, productsHref, jobsHref, basketHref, pathname, basePath, authed, pages, mappedMenu, activeKey]);
 
   const allNavItems = useMemo(
     () => [...mappedMenu, ...extraTabs],
@@ -367,7 +371,7 @@ function ShellInner({
       localStorage.removeItem("token");
       localStorage.removeItem("role");
     } catch {}
-    navigate(`/${slug}`);
+    navigate(rootPath);
   };
 
   // ---- CSS Variable bridge (for any legacy CSS reading --sched-*) ----
@@ -644,7 +648,7 @@ function ShellInner({
               variant="h6"
               noWrap
               component={RouterLink}
-              to={`/${slug}`}
+              to={rootPath}
               sx={{
                 textDecoration: "none",
                 color: "var(--nav-btn-text, inherit)",

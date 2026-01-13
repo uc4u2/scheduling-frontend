@@ -34,12 +34,15 @@ function hostLabel(url) {
   }
 }
 
-export default function PublicReview() {
-  const { slug, appointmentId } = useParams();
+export default function PublicReview({ slugOverride }) {
+  const { slug: routeSlug, appointmentId } = useParams();
+  const slug = slugOverride || routeSlug;
   const [search] = useSearchParams();
   // accept either ?t= or ?token=
   const token = search.get("token") || search.get("t") || "";
   const navigate = useNavigate();
+  const basePath = slugOverride ? "" : `/${slug}`;
+  const rootPath = basePath || "/";
 
   const [resolved, setResolved] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -205,7 +208,7 @@ export default function PublicReview() {
               <Button
                 variant="contained"
                 startIcon={<HomeIcon />}
-                onClick={() => navigate(`/${slug}`)}
+                onClick={() => navigate(rootPath)}
               >
                 Back to {slug}
               </Button>
@@ -215,7 +218,7 @@ export default function PublicReview() {
                 startIcon={<VolunteerActivismIcon />}
                 onClick={() =>
                   navigate(
-                    `/${slug}/tip/${appointmentId}?token=${encodeURIComponent(token)}`
+                    `${basePath || ""}/tip/${appointmentId}?token=${encodeURIComponent(token)}`
                   )
                 }
               >

@@ -1047,7 +1047,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
 
 /* ---------- outer wrapper (like ServiceList) ---------- */
 
-const MeetWithArtistPage = () => {
+const MeetWithArtistPage = ({ slugOverride }) => {
   const { slug: routeSlug, artistId: artistParam } = useParams();
   const [searchParams] = useSearchParams();
 
@@ -1065,6 +1065,7 @@ const MeetWithArtistPage = () => {
 
   const slug = useMemo(() => {
     const qsSite = searchParams.get("site");
+    if (slugOverride) return slugOverride;
     if (qsSite) return qsSite;
     if (routeSlug) return routeSlug;
     try {

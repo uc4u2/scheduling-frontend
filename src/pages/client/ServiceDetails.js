@@ -34,6 +34,7 @@ import { useTheme, alpha } from "@mui/material/styles";
 import { useNavWithEmbed } from "../../embed";
 import PublicPageShell from "./PublicPageShell";
 import { getUserTimezone } from "../../utils/timezone";
+import { getTenantHostMode } from "../../utils/tenant";
 
 /* ───────────────── helpers ───────────────── */
 /** Build "cart" JSON for the availability endpoint (filter by date and optional artist) */
@@ -127,8 +128,11 @@ const isoFromParts = (dateStr, timeStr, tz) => {
   }
 };
 
-export default function ServiceDetails() {
-  const { slug, serviceId } = useParams();
+export default function ServiceDetails({ slugOverride }) {
+  const { slug: routeSlug, serviceId } = useParams();
+  const slug = slugOverride || routeSlug;
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = useMemo(() => (isCustomDomain ? "" : `/${slug}`), [isCustomDomain, slug]);
   const [searchParams] = useSearchParams();
   const departmentId = searchParams.get("department_id") || "";
   const navigate = useNavWithEmbed();
@@ -567,7 +571,7 @@ export default function ServiceDetails() {
 
       setProviderSheetOpen(false);
       navigate({
-        pathname: `/${slug}/book`,
+        pathname: `${basePath || ""}/book`,
         search:
           `?employee_id=${artist.id}` +
           `&service_id=${serviceId}` +
@@ -579,7 +583,7 @@ export default function ServiceDetails() {
       setCalendarOpen(false);
       return true;
     },
-    [departmentId, navigate, serviceId, slug]
+    [departmentId, navigate, serviceId, basePath]
   );
 
   const handleArtistSelect = useCallback(
@@ -1159,9 +1163,9 @@ export default function ServiceDetails() {
                     fullWidth={isMobile}
                     variant="outlined"
                     sx={bookingButtonOutlinedSx}
-                    onClick={() =>
-                      navigate({
-                        pathname: `/${slug}/services/${serviceId}/employees/${emp.id}`,
+                      onClick={() =>
+                        navigate({
+                        pathname: `${basePath || ""}/services/${serviceId}/employees/${emp.id}`,
                         search: departmentId ? `?department_id=${departmentId}` : "",
                       })
                     }

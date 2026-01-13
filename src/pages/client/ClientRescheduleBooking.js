@@ -42,11 +42,13 @@ const buildDisplay = (svc, tz) => {
 };
 
 /* ───────────────── component ───────────────── */
-export default function ClientRescheduleBooking() {
-  const { slug, bookingId } = useParams();
+export default function ClientRescheduleBooking({ slugOverride }) {
+  const { slug: routeSlug, bookingId } = useParams();
+  const slug = slugOverride || routeSlug;
   const location = useLocation(); // hook at top level
   const navigate = useNavigate();
   const userTz = getUserTimezone();
+  const basePath = slugOverride ? "" : `/${slug}`;
 
   // accept ?token= or legacy ?t=
   const qs = new URLSearchParams(location.search);
@@ -65,7 +67,7 @@ export default function ClientRescheduleBooking() {
   /* ------------ load appointment ------------ */
   useEffect(() => {
     (async () => {
-      if (!bookingId || !qsToken) {
+      if (!bookingId || !qsToken || !slug) {
         setErr("Invalid reschedule link.");
         setLoading(false);
         return;
@@ -149,9 +151,9 @@ export default function ClientRescheduleBooking() {
     (async () => {
       try {
         setSlots([]);
-        const { data } = await api.get(`/public/${slug}/availability`, {
-          noCompanyHeader: true,
-          params: {
+      const { data } = await api.get(`/public/${slug}/availability`, {
+        noCompanyHeader: true,
+        params: {
             artist_id: svc.recruiter?.id || svc.recruiter_id,
             service_id: svc.id || svc.service_id,
             date: selectedDate,
@@ -180,10 +182,11 @@ export default function ClientRescheduleBooking() {
         { noCompanyHeader: true }
       );
       alert("Rescheduled!");
+      const confirmationPath = basePath
+        ? `${basePath}/booking-confirmation/${bookingId}`
+        : `/booking-confirmation/${bookingId}`;
       navigate(
-        `/${slug}/booking-confirmation/${bookingId}?token=${encodeURIComponent(
-          qsToken
-        )}`,
+        `${confirmationPath}?token=${encodeURIComponent(qsToken)}`,
         { replace: true }
       );
     } catch (e) {

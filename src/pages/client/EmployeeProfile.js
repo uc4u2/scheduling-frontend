@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EmployeeAvailabilityCalendar from "./EmployeeAvailabilityCalendar";
+import { getTenantHostMode } from "../../utils/tenant";
 
 const PRESERVED_QUERY_KEYS = [
   "embed",
@@ -29,7 +30,7 @@ const PRESERVED_QUERY_KEYS = [
   "cardbg",
 ];
 
-const EmployeeProfile = () => {
+const EmployeeProfile = ({ slugOverride }) => {
   const { slug: routeSlug, employeeId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -43,7 +44,9 @@ const EmployeeProfile = () => {
       storedSlug = "";
     }
   }
-  const effectiveSlug = (routeSlug || querySlug || storedSlug || "").trim();
+  const effectiveSlug = (slugOverride || routeSlug || querySlug || storedSlug || "").trim();
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = isCustomDomain ? "" : `/${effectiveSlug}`;
 
   const isEmbed = searchParams.get("embed") === "1";
   const serviceId = searchParams.get("service_id");
@@ -117,7 +120,7 @@ const EmployeeProfile = () => {
       qs.set("timezone", slot.timezone);
     }
 
-    navigate(`/${effectiveSlug}/book?${qs.toString()}`);
+    navigate(`${basePath}/book?${qs.toString()}`);
   };
 
   let body = null;

@@ -57,11 +57,14 @@ const toDisplayShape = (payload, tzFallback) => {
 };
 
 /* ---------- component ---------- */
-const ClientCancelBooking = () => {
-  const { slug, bookingId } = useParams();
+const ClientCancelBooking = ({ slugOverride }) => {
+  const { slug: routeSlug, bookingId } = useParams();
+  const slug = slugOverride || routeSlug;
   const qsToken  = new URLSearchParams(useLocation().search).get("token");
   const navigate = useNavigate();
   const userTz   = getUserTimezone();
+  const basePath = slugOverride ? "" : `/${slug}`;
+  const rootPath = basePath || "/";
 
   const [display, setDisplay]   = useState(null);  // normalised info
   const [policy,  setPolicy]    = useState({});
@@ -70,7 +73,7 @@ const ClientCancelBooking = () => {
 
   /* ───────── fetch appointment ───────── */
   useEffect(() => { (async () => {
-    if (!bookingId || !qsToken) {
+    if (!bookingId || !qsToken || !slug) {
       setErr("Invalid cancellation link.");
       return;
     }
@@ -134,7 +137,7 @@ const ClientCancelBooking = () => {
     return (
       <Box p={3}>
         <Alert severity="success">Booking cancelled successfully.</Alert>
-        <Button sx={{ mt: 2 }} onClick={() => navigate(`/${slug}`)}>
+        <Button sx={{ mt: 2 }} onClick={() => navigate(rootPath)}>
           Back to site
         </Button>
       </Box>

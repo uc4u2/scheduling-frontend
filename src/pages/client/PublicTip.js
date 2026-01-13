@@ -105,12 +105,15 @@ const TipForm = ({ onRecorded }) => {
 
 
 /* ----------------------------- Page ----------------------------- */
-export default function PublicTip() {
-  const { slug, appointmentId } = useParams();
+export default function PublicTip({ slugOverride }) {
+  const { slug: routeSlug, appointmentId } = useParams();
+  const slug = slugOverride || routeSlug;
   const [search] = useSearchParams();
   // accept either ?t= or ?token=
   const token = search.get("token") || search.get("t") || "";
   const navigate = useNavigate();
+  const basePath = slugOverride ? "" : `/${slug}`;
+  const rootPath = basePath || "/";
 
   const STRIPE_PK = process.env.REACT_APP_STRIPE_PUBLIC_KEY || "";
 
@@ -295,14 +298,14 @@ export default function PublicTip() {
               Thanks! Your tip was recorded.
             </Alert>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-              <Button variant="contained" onClick={() => navigate(`/${slug}`)}>
+              <Button variant="contained" onClick={() => navigate(rootPath)}>
                 Back to {slug}
               </Button>
               <Button
                 variant="outlined"
                 onClick={() =>
                   navigate(
-                    `/${slug}/review/${appointmentId}?token=${encodeURIComponent(token)}`
+                    `${basePath}/review/${appointmentId}?token=${encodeURIComponent(token)}`
                   )
                 }
               >

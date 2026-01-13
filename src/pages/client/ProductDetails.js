@@ -21,6 +21,7 @@ import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import SiteFrame from "../../components/website/SiteFrame";
 import { addProductToCart, CartErrorCodes } from "../../utils/cart";
 import { pageStyleToCssVars, pageStyleToBackgroundSx } from "./ServiceList";
+import { getTenantHostMode } from "../../utils/tenant";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
@@ -48,7 +49,7 @@ const extractPageStyleProps = (page) => {
   return null;
 };
 
-const ProductDetails = () => {
+const ProductDetails = ({ slugOverride }) => {
   const { slug: routeSlug, productId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -56,13 +57,16 @@ const ProductDetails = () => {
   const slug = useMemo(() => {
     const qs = searchParams.get("site");
     if (qs) return qs;
+    if (slugOverride) return slugOverride;
     if (routeSlug) return routeSlug;
     try {
       return localStorage.getItem("site") || "";
     } catch (err) {
       return routeSlug || "";
     }
-  }, [routeSlug, searchParams]);
+  }, [routeSlug, searchParams, slugOverride]);
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = isCustomDomain ? "" : `/${slug}`;
 
   const basketHref = useMemo(() => {
     if (!slug) return "";
@@ -74,8 +78,11 @@ const ProductDetails = () => {
       if (val) qs.set(key, val);
     });
     const query = qs.toString();
+    if (isCustomDomain) {
+      return query ? `/basket?${query}` : "/basket";
+    }
     return query ? `/${slug}?${query}` : `/${slug}`;
-  }, [slug, searchParams]);
+  }, [slug, searchParams, isCustomDomain]);
 
   const productsHref = useMemo(() => {
     if (!slug) return "";
@@ -87,8 +94,11 @@ const ProductDetails = () => {
       if (val) qs.set(key, val);
     });
     const query = qs.toString();
+    if (isCustomDomain) {
+      return query ? `/products?${query}` : "/products";
+    }
     return query ? `/${slug}?${query}` : `/${slug}`;
-  }, [slug, searchParams]);
+  }, [slug, searchParams, isCustomDomain]);
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);

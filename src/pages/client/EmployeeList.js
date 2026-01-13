@@ -4,9 +4,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   Container, Grid, Card, CardContent, CardActions, Typography, Button, CircularProgress, TextField
 } from "@mui/material";
+import { getTenantHostMode } from "../../utils/tenant";
 
-const EmployeeList = () => {
-  const { slug } = useParams();
+const EmployeeList = ({ slugOverride }) => {
+  const { slug: routeSlug } = useParams();
+  const slug = slugOverride || routeSlug;
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = isCustomDomain ? "" : `/${slug}`;
   const searchParams = new URLSearchParams(window.location.search);
   const departmentId = searchParams.get("department_id") || "";
 
@@ -59,7 +63,9 @@ const EmployeeList = () => {
                   <Button
                     fullWidth
                     variant="contained"
-                    onClick={() => navigate(`/${slug}/employees/${emp.id}?department_id=${departmentId}`)}
+                    onClick={() =>
+                      navigate(`${basePath}/employees/${emp.id}?department_id=${departmentId}`)
+                    }
                   >
                     View Profile
                   </Button>

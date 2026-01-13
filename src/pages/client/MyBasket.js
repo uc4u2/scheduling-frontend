@@ -30,6 +30,7 @@ import { CartTypes, loadCart, removeCartItem, saveCart } from "../../utils/cart"
 import { releasePendingCheckout } from "../../utils/hostedCheckout";
 import { api as apiClient, publicSite } from "../../utils/api";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./ServiceList";
+import { getTenantHostMode } from "../../utils/tenant";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
@@ -90,6 +91,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
       return routeSlug || "";
     }
   }, [routeSlug, searchParams]);
+  const isCustomDomain = getTenantHostMode() === "custom";
 
   const location = useLocation();
 
@@ -117,8 +119,11 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
       if (val) qs.set(key, val);
     });
     const query = qs.toString();
+    if (isCustomDomain) {
+      return query ? `/products?${query}` : "/products";
+    }
     return query ? `/${slug}?${query}` : `/${slug}`;
-  }, [slug, searchParams]);
+  }, [slug, searchParams, isCustomDomain]);
 
   const [items, setItems] = useState(() => loadCart());
   const [snack, setSnack] = useState({ open: false, msg: "" });

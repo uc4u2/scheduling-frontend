@@ -14,10 +14,11 @@ import { useParams } from "react-router-dom";
 import PublicPageShell from "./PublicPageShell";
 import { api } from "../../utils/api";
 
-export default function PublicReviewList({ slug, limit = 20, disableShell = false, compact = false }) {
+export default function PublicReviewList({ slug, slugOverride, limit = 20, disableShell = false, compact = false }) {
   // slug can come from props or the route
   const params = useParams();
   const effectiveSlug = useMemo(() => {
+    if (slugOverride) return slugOverride;
     if (slug) return slug;
     const qs = new URLSearchParams(window.location.search || "");
     const byQs = (qs.get('site') || '').trim();
@@ -442,5 +443,9 @@ export default function PublicReviewList({ slug, limit = 20, disableShell = fals
   );
 
   if (disableShell) return page;
-  return <PublicPageShell activeKey="__reviews">{page}</PublicPageShell>;
+  return (
+    <PublicPageShell activeKey="__reviews" slugOverride={effectiveSlug || undefined}>
+      {page}
+    </PublicPageShell>
+  );
 }

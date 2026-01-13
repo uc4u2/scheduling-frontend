@@ -5,8 +5,9 @@ import { Box } from "@mui/material";
 import BookingFlowContainer from "./BookingFlowContainer";
 import PublicPageShell from "./PublicPageShell";
 
-const EmployeeBooking = () => {
-  const { slug } = useParams(); // e.g. company slug in route, if present
+const EmployeeBooking = ({ slugOverride }) => {
+  const { slug: routeSlug } = useParams(); // e.g. company slug in route, if present
+  const slug = slugOverride || routeSlug;
   const [searchParams] = useSearchParams();
 
   // Get query params for direct booking

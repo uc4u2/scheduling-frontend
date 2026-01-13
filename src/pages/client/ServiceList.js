@@ -29,6 +29,7 @@ import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import { useEmbedConfig } from "../../embed";
 import PublicPageShell, { usePublicSite } from "./PublicPageShell";
+import { getTenantHostMode } from "../../utils/tenant";
 
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
 
@@ -187,6 +188,8 @@ const pageStyleToBackgroundSx = (style) => {
 };
 
 const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, pageStyleOverride, headingOverride }) => {
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = useMemo(() => (isCustomDomain ? "" : `/${effectiveSlug}`), [isCustomDomain, effectiveSlug]);
   const navigate = useNavigate();
   const theme = useTheme();
   const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
@@ -333,7 +336,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
 
   const openService = (serviceId) => {
     const dept = selectedDept ? `?department_id=${selectedDept}` : "";
-    const targetPath = `/${effectiveSlug}/services/${serviceId}${dept}`;
+    const targetPath = `${basePath || ""}/services/${serviceId}${dept}`;
 
     if (disableModal) {
       try {
@@ -373,9 +376,9 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     params.set("mode", "modal");
     params.set("dialog", "1");
     if (selectedDept) params.set("department_id", selectedDept);
-    const base = `${origin}/${effectiveSlug}/services/${bookingServiceId}`;
+    const base = `${origin}${basePath || ""}/services/${bookingServiceId}`;
     return `${base}?${params.toString()}`;
-  }, [bookingServiceId, embedCfg, effectiveSlug, selectedDept, origin]);
+  }, [bookingServiceId, embedCfg, selectedDept, origin, basePath]);
 
   useEffect(() => {
     setBookingLoaded(false);
@@ -638,7 +641,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
   );
 };
 
-const ServiceList = () => {
+const ServiceList = ({ slugOverride }) => {
   const { slug: routeSlug } = useParams();
   const [searchParams] = useSearchParams();
   const effectiveSlug = useMemo(() => {
@@ -652,20 +655,21 @@ const ServiceList = () => {
     try {
       byLs = localStorage.getItem("site") || "";
     } catch {}
-    return (routeSlug || byQs || byPath || byLs || "").trim();
-  }, [routeSlug]);
+    return (slugOverride || routeSlug || byQs || byPath || byLs || "").trim();
+  }, [routeSlug, slugOverride]);
 
   const isEmbed = searchParams.get("embed") === "1";
   const isModalView = isEmbed && searchParams.get("mode") === "modal";
   const disableModal = searchParams.get("dialog") === "1";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const navigate = useNavigate();
+  const isCustomDomain = getTenantHostMode() === "custom";
 
   useEffect(() => {
-    if (!isEmbed && effectiveSlug) {
+    if (!isEmbed && effectiveSlug && !isCustomDomain) {
       navigate(`/${effectiveSlug}?page=services-classic`, { replace: true });
     }
-  }, [isEmbed, effectiveSlug, navigate]);
+  }, [isEmbed, effectiveSlug, navigate, isCustomDomain]);
 
   const content = (
     <ServiceListContent

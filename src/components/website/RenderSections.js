@@ -1051,106 +1051,117 @@ const ServiceGrid = ({
         {list.map((s, i) => {
           const bullets = toArray(s.bullets);
           const chips = toArray(s.chips);
+          const cardHref = s.link || s.href || s.ctaLink;
+          const CardWrapper = cardHref ? Box : React.Fragment;
+          const cardWrapperProps = cardHref
+            ? {
+                component: "a",
+                href: cardHref,
+                sx: { textDecoration: "none", color: "inherit", display: "block", height: "100%" }
+              }
+            : {};
           return (
             <Grid item xs={12} sm={6} md={4} key={i}>
-              <Card
-                sx={{
-                  height: "100%",
-                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                  ...(hoverLift
-                    ? {
-                        "&:hover": {
-                          transform: "translateY(-4px)",
-                          boxShadow: "0 18px 36px rgba(15,23,42,0.18)",
-                        },
-                        "&:hover .service-grid-image": {
-                          transform: `scale(${Number(imageHoverScale) > 0 ? imageHoverScale : 1.04})`,
-                        },
-                      }
-                    : {}),
-                }}
-              >
-                {s.image && (
-                  <Box sx={{ overflow: "hidden" }}>
-                    <CardMedia
-                      component="img"
-                      height="160"
-                      image={s.image}
-                      alt=""
-                      loading="lazy"
-                      className="service-grid-image"
-                      sx={{
-                        transition: "transform 0.25s ease",
-                        transform: "scale(1)",
-                      }}
-                    />
-                  </Box>
-                )}
-                <CardContent sx={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                  <Typography fontWeight={700} sx={{ width: "100%", textAlign: "center" }}>{toPlain(s.name)}</Typography>
-                  {s.description && (
-                    <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-line", width: "100%", textAlign: "center" }}>
-                      {toPlain(s.description)}
-                    </Typography>
-                  )}
-                  {(s.price || s.meta) && (
-                    <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap", justifyContent: "center" }}>
-                      {s.price && <Chip label={toPlain(s.price)} />}
-                      {s.meta && <Chip variant="outlined" label={toPlain(s.meta)} />}
-                    </Stack>
-                  )}
-                  {!!bullets.length && (
-                    <Box
-                      component="ul"
-                      sx={{
-                        m: 0,
-                        mt: 2,
-                        p: 0,
-                        listStyle: "none",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                        color: "text.secondary",
-                        fontSize: "0.95rem",
-                        alignItems: "center",
-                        textAlign: "center",
-                      }}
-                    >
-                      {bullets.map((bullet, idx) => (
-                        <Typography
-                          component="li"
-                          key={idx}
-                          sx={{
-                            position: "relative",
-                            pl: 2,
-                            '&::before': {
-                              content: '""',
-                              position: "absolute",
-                              left: 0,
-                              top: "0.65em",
-                              width: 6,
-                              height: 6,
-                              borderRadius: "50%",
-                              backgroundColor: "primary.main",
-                              opacity: 0.8,
-                              transform: "translateY(-50%)",
-                            },
-                          }}
-                        >
-                          {toPlain(bullet)}
-                        </Typography>
-                      ))}
+              <CardWrapper {...cardWrapperProps}>
+                <Card
+                  sx={{
+                    height: "100%",
+                    transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                    ...(hoverLift
+                      ? {
+                          "&:hover": {
+                            transform: "translateY(-4px)",
+                            boxShadow: "0 18px 36px rgba(15,23,42,0.18)",
+                          },
+                          "&:hover .service-grid-image": {
+                            transform: `scale(${Number(imageHoverScale) > 0 ? imageHoverScale : 1.04})`,
+                          },
+                        }
+                      : {}),
+                  }}
+                >
+                  {s.image && (
+                    <Box sx={{ overflow: "hidden" }}>
+                      <CardMedia
+                        component="img"
+                        height="160"
+                        image={s.image}
+                        alt=""
+                        loading="lazy"
+                        className="service-grid-image"
+                        sx={{
+                          transition: "transform 0.25s ease",
+                          transform: "scale(1)",
+                        }}
+                      />
                     </Box>
                   )}
-                  {!!chips.length && (
-                    <Stack direction="row" spacing={0.75} flexWrap="wrap" rowGap={1} sx={{ mt: 2, justifyContent: "center" }}>
-                      {chips.map((chip, idx) => (
-                        <Chip key={idx} variant="outlined" size="small" label={toPlain(chip)} />
-                      ))}
-                    </Stack>
-                  )}
-                </CardContent>
-              </Card>
+                  <CardContent sx={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                    <Typography fontWeight={700} sx={{ width: "100%", textAlign: "center" }}>{toPlain(s.name)}</Typography>
+                    {s.description && (
+                      <Typography color="text.secondary" variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-line", width: "100%", textAlign: "center" }}>
+                        {toPlain(s.description)}
+                      </Typography>
+                    )}
+                    {(s.price || s.meta) && (
+                      <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap", justifyContent: "center" }}>
+                        {s.price && <Chip label={toPlain(s.price)} />}
+                        {s.meta && <Chip variant="outlined" label={toPlain(s.meta)} />}
+                      </Stack>
+                    )}
+                    {!!bullets.length && (
+                      <Box
+                        component="ul"
+                        sx={{
+                          m: 0,
+                          mt: 2,
+                          p: 0,
+                          listStyle: "none",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                          color: "text.secondary",
+                          fontSize: "0.95rem",
+                          alignItems: "center",
+                          textAlign: "center",
+                        }}
+                      >
+                        {bullets.map((bullet, idx) => (
+                          <Typography
+                            component="li"
+                            key={idx}
+                            sx={{
+                              position: "relative",
+                              pl: 2,
+                              '&::before': {
+                                content: '""',
+                                position: "absolute",
+                                left: 0,
+                                top: "0.65em",
+                                width: 6,
+                                height: 6,
+                                borderRadius: "50%",
+                                backgroundColor: "primary.main",
+                                opacity: 0.8,
+                                transform: "translateY(-50%)",
+                              },
+                            }}
+                          >
+                            {toPlain(bullet)}
+                          </Typography>
+                        ))}
+                      </Box>
+                    )}
+                    {!!chips.length && (
+                      <Stack direction="row" spacing={0.75} flexWrap="wrap" rowGap={1} sx={{ mt: 2, justifyContent: "center" }}>
+                        {chips.map((chip, idx) => (
+                          <Chip key={idx} variant="outlined" size="small" label={toPlain(chip)} />
+                        ))}
+                      </Stack>
+                    )}
+                  </CardContent>
+                </Card>
+              </CardWrapper>
             </Grid>
           );
         })}
