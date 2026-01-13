@@ -6,6 +6,7 @@ import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, getAct
 import { api as apiClient, API_BASE_URL } from "../../utils/api";
 import { buildHostedCheckoutPayload, startHostedCheckout, releasePendingCheckout } from "../../utils/hostedCheckout";
 import { CartTypes, loadCart, saveCart, clearCart } from "../../utils/cart";
+import { getTenantHostMode } from "../../utils/tenant";
 
 import {
   Box,
@@ -352,6 +353,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
 /* ------------------------------------------------------------------ */
 function CheckoutFormCore({
   companySlug,
+  slugOverride,
   service,
   artist,
   slot,
@@ -446,8 +448,10 @@ function CheckoutFormCore({
     try { qsSlug = new URLSearchParams(window.location.search || '').get('site'); } catch {}
     let pathSlug = null;
     try { pathSlug = (window.location.pathname || '').split('/').filter(Boolean)[0] || null; } catch {}
-    return pick(companySlug, qsSlug, pathSlug);
-  }, [companySlug]);
+    return pick(slugOverride, companySlug, qsSlug, pathSlug);
+  }, [companySlug, slugOverride]);
+  const isCustomDomain = getTenantHostMode() === "custom";
+  const basePath = isCustomDomain ? "" : `/${slugLocal || ""}`;
   const currencyCode = useMemo(() => (displayCurrency || "USD").toUpperCase(), [displayCurrency]);
   const embedSuffix = useMemo(() => {
     try {
@@ -1163,17 +1167,17 @@ function CheckoutFormCore({
     const goProducts = () => {
       if (!slugLocal) return;
       const search = buildSearch();
-      navigate({ pathname: `/${slugLocal}/products`, search });
+      navigate({ pathname: `${basePath}/products`, search });
     };
     const goBookings = () => {
       if (!slugLocal) return;
       const search = buildSearch({ page: 'my-bookings' });
-      navigate({ pathname: `/${slugLocal}`, search });
+      navigate({ pathname: basePath || "/", search });
     };
     const goHome = () => {
       if (!slugLocal) return;
       const search = buildSearch();
-      navigate({ pathname: `/${slugLocal}`, search });
+      navigate({ pathname: basePath || "/", search });
     };
     const disableNav = !slugLocal;
 
@@ -1770,7 +1774,8 @@ function CheckoutFormCore({
                 extra.forEach((value, key) => params.set(key, value));
               } catch {}
             }
-            navigate({ pathname: `/${target}`, search: `?${params.toString()}` });
+            const path = isCustomDomain ? "/" : `/${target}`;
+            navigate({ pathname: path, search: `?${params.toString()}` });
           }}
           sx={outlineButtonSx}
         >
@@ -1877,7 +1882,7 @@ function CheckoutFormCore({
 /* ------------------------------------------------------------------ */
 /* Wrapper: initialize Stripe for pay-now OR card-on-file */
 export default function Checkout(props) {
-  const { disableShell = false } = props;
+  const { disableShell = false, slugOverride } = props;
   const params = useParams();
   const urlPathFirst = (() => {
     try {
@@ -2017,6 +2022,7 @@ export default function Checkout(props) {
     <CheckoutFormCore
       {...props}
       companySlug={companySlug}
+      slugOverride={slugOverride}
       paymentsEnabled={paymentsEnabled}
       cardOnFileEnabled={cardOnFileEnabled}
       displayCurrency={displayCurrency}
