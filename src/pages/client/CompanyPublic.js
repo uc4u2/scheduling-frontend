@@ -1327,6 +1327,17 @@ const siteTitle = useMemo(() => {
     (href) => {
       const trimmed = (href || "").trim();
       if (!trimmed) return rootPath;
+      if (isCustomDomain) {
+        const lowered = trimmed.toLowerCase();
+        if (
+          lowered === "home" ||
+          lowered === "/home" ||
+          lowered === "?page=home" ||
+          lowered === "/?page=home"
+        ) {
+          return rootPath;
+        }
+      }
       if (isExternalHref(trimmed)) {
         return trimmed;
       }

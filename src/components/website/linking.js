@@ -7,38 +7,51 @@ export function resolveSiteHref(slug, href, pages = [], opts = { pretty: false }
     return href;
   }
 
+  const normalizedSlug = String(slug || "").trim();
+  const slugPrefix = normalizedSlug ? `/${normalizedSlug}` : "";
+
   // normalize to absolute
   if (!href.startsWith("/")) href = `/${href}`;
   const clean = href.replace(/\/+$/, "");
 
   if (clean.startsWith("/?page=")) {
     const pageSlug = clean.slice(7);
-    if (!pageSlug) return `/${slug}`;
-    if (pageSlug.toLowerCase() === "services") {
-      return `/${slug}?page=services-classic`;
+    if (!pageSlug || pageSlug.toLowerCase() === "home") return slugPrefix || "/";
+    if (!normalizedSlug) {
+      return `/?page=${pageSlug}`;
     }
-    return `/${slug}?page=${pageSlug}`;
+    if (pageSlug.toLowerCase() === "services") {
+      return `${slugPrefix}?page=services-classic`;
+    }
+    return `${slugPrefix}?page=${pageSlug}`;
   }
 
   // app-level routes that *must* be slug-prefixed
   const appRoots = ["/services", "/book", "/tip"];
   if (clean === "/reviews" || clean.startsWith("/reviews/") || clean === "/review") {
-    return `/${slug}?page=reviews`;
+    if (!normalizedSlug) return "/reviews";
+    return `${slugPrefix}?page=reviews`;
   }
   if (appRoots.some((r) => clean === r || clean.startsWith(`${r}/`))) {
-    return `/${slug}${clean}`;
+    return `${slugPrefix || ""}${clean}`;
   }
 
   // website page slugs (home/contact/about etc.) → either ?page= or /site/:slug
   const pageSlugs = new Set(pages.map((p) => `/${p.slug}`));
   if (pageSlugs.has(clean)) {
     const pageSlug = clean.slice(1);
-    return opts.pretty ? `/${slug}/site/${pageSlug}` : `/${slug}?page=${pageSlug}`;
+    if (!normalizedSlug) {
+      return pageSlug.toLowerCase() === "home" ? "/" : `/?page=${pageSlug}`;
+    }
+    return opts.pretty ? `${slugPrefix}/site/${pageSlug}` : `${slugPrefix}?page=${pageSlug}`;
   }
 
   // default internal fallback: treat as website page path
   const asPage = clean.replace(/^\//, "");
-  return opts.pretty ? `/${slug}/site/${asPage}` : `/${slug}?page=${asPage}`;
+  if (!normalizedSlug) {
+    return asPage ? `/?page=${asPage}` : "/";
+  }
+  return opts.pretty ? `${slugPrefix}/site/${asPage}` : `${slugPrefix}?page=${asPage}`;
 }
 
 /** Deeply walk props and rewrite any key that looks like a link. */

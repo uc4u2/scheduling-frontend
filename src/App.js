@@ -320,6 +320,10 @@ const FeatureGate = ({ feature, children }) => {
 
 
 const AppContent = ({ token, setToken }) => {
+  const hostMode = getTenantHostMode(window.location.host);
+  const isCustomDomain = hostMode === "custom";
+  const [tenantSlug, setTenantSlug] = useState(null);
+  const [tenantLoaded, setTenantLoaded] = useState(!isCustomDomain);
   const location = useLocation();
   const isMarketingRoute = MARKETING_PATHS.includes(location.pathname);
   const isApplyRoute = Boolean(matchPath({ path: "/apply/:token" }, location.pathname));
@@ -338,7 +342,10 @@ const AppContent = ({ token, setToken }) => {
     isMeetRoute;
   const slugMatch = matchPath({ path: '/:slug/*' }, location.pathname) || matchPath({ path: '/:slug' }, location.pathname);
   const slugCandidate = slugMatch?.params?.slug?.toLowerCase();
-  const isCompanyRoute = Boolean(slugCandidate && !RESERVED_SLUG_PREFIXES.has(slugCandidate));
+  const isCompanyRoute = Boolean(
+    (isCustomDomain && tenantSlug) ||
+    (slugCandidate && !RESERVED_SLUG_PREFIXES.has(slugCandidate))
+  );
   // Use robust embed config from embed context / storage
   const { isEmbed, primary, text } = useEmbedConfig();
 
@@ -372,6 +379,30 @@ const AppContent = ({ token, setToken }) => {
     document.documentElement.classList.remove("company-boot");
   }, []);
 
+  useEffect(() => {
+    if (!isCustomDomain) return;
+    let alive = true;
+    setTenantLoaded(false);
+    fetch("/public/tenant", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!alive) return;
+        setTenantSlug(data?.ok ? data.slug : null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setTenantSlug(null);
+      })
+      .finally(() => {
+        if (alive) setTenantLoaded(true);
+      });
+    return () => { alive = false; };
+  }, [isCustomDomain]);
+
+  if (isCustomDomain && !tenantLoaded) {
+    return null;
+  }
+
   const showChatBot = !isEmbed && MARKETING_PATHS.includes(location.pathname);
   const showAppChrome = !isEmbed && !isMarketingRoute && !isCompanyRoute && !isNoChromeRoute;
 
@@ -388,9 +419,37 @@ const AppContent = ({ token, setToken }) => {
       <Box className="main-content">
         <Routes>
 
+          {isCustomDomain && tenantSlug && (
+            <>
+              <Route path="/" element={<CompanyPublic slugOverride={tenantSlug} />} />
+              <Route path="/jobs" element={<PublicJobsListPage slugOverride={tenantSlug} />} />
+              <Route path="/jobs/:jobSlug" element={<PublicJobDetailPage slugOverride={tenantSlug} />} />
+              <Route path="/services" element={<ServiceList slugOverride={tenantSlug} />} />
+              <Route path="/services/:serviceId" element={<ServiceDetails slugOverride={tenantSlug} />} />
+              <Route path="/services/:serviceId/employees" element={<EmployeeList slugOverride={tenantSlug} />} />
+              <Route path="/services/:serviceId/employees/:employeeId" element={<EmployeeProfile slugOverride={tenantSlug} />} />
+              <Route path="/products" element={<ProductList slugOverride={tenantSlug} />} />
+              <Route path="/products/:productId" element={<ProductDetails slugOverride={tenantSlug} />} />
+              <Route path="/basket" element={<MyBasket slugOverride={tenantSlug} />} />
+              <Route path="/checkout" element={<Checkout slugOverride={tenantSlug} />} />
+              <Route path="/checkout/return" element={<BookingConfirmation slugOverride={tenantSlug} />} />
+              <Route path="/book/:employeeId/:serviceId" element={<EmployeeBooking slugOverride={tenantSlug} />} />
+              <Route path="/book" element={<EmployeeBooking slugOverride={tenantSlug} />} />
+              <Route path="/booking-confirmation/:bookingId" element={<BookingConfirmation slugOverride={tenantSlug} />} />
+              <Route path="/cancel-booking/:bookingId" element={<ClientCancelBooking slugOverride={tenantSlug} />} />
+              <Route path="/appointment-cancel/:bookingId" element={<ClientCancelBooking slugOverride={tenantSlug} />} />
+              <Route path="/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking slugOverride={tenantSlug} />} />
+              <Route path="/meet/:artistId" element={<MeetWithArtistPage slugOverride={tenantSlug} />} />
+              <Route path="/reviews" element={<PublicReviewList slugOverride={tenantSlug} />} />
+              <Route path="/review/:appointmentId" element={<PublicReview slugOverride={tenantSlug} />} />
+              <Route path="/tip/:appointmentId" element={<PublicTip slugOverride={tenantSlug} />} />
+              <Route path="/:slug/*" element={<Navigate to="/" replace />} />
+            </>
+          )}
+
           {/* Marketing site */}
           <Route element={<PublicLayout token={token} setToken={setToken} />}>
-            <Route path="/" element={<HomePage />} />
+            {!isCustomDomain && <Route path="/" element={<HomePage />} />}
             <Route path="/pricing" element={<PricingPage />} />
           <Route path="/compare" element={<CompareHubPage />} />
           <Route path="/compare/:vendor" element={<ComparisonPage />} />
