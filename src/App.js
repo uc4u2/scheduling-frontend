@@ -376,8 +376,10 @@ const AppContent = ({ token, setToken }) => {
   }, [isEmbed, primary, text]);
 
   useEffect(() => {
-    document.documentElement.classList.remove("company-boot");
-  }, []);
+    if (!isCustomDomain || tenantLoaded) {
+      document.documentElement.classList.remove("company-boot");
+    }
+  }, [isCustomDomain, tenantLoaded]);
 
   useEffect(() => {
     if (!isCustomDomain) return;
