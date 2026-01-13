@@ -166,6 +166,7 @@ export default function DomainHelpDrawer({
   const registrarLabel = registrarHint
     ? t("management.domainHelp.chips.registrarDetected", { registrar: registrarHint })
     : null;
+  const domainLabel = domain ? t("management.domainHelp.domainExample") : null;
 
   const statusChip = statusMeta[status] || statusMeta.none;
   const sslChip = sslStatus ? sslMeta[sslStatus] : null;
@@ -231,7 +232,7 @@ export default function DomainHelpDrawer({
             <Chip label={sslChip.label} color={sslChip.color} size="small" variant="outlined" />
           )}
           {registrarLabel && <Chip label={registrarLabel} size="small" variant="outlined" />}
-          {domain && <Chip label={domain} size="small" variant="outlined" />}
+          {domainLabel && <Chip label={domainLabel} size="small" variant="outlined" />}
           {retryChipLabel && (
             <Chip
               label={retryChipLabel}
