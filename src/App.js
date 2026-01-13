@@ -680,11 +680,10 @@ const App = () => {
   }, [themeName]);
 
   const baseTheme = useMemo(() => {
-    const theme = themeMap[themeName] || coolTheme;
     if (tenantHostMode === "custom") {
-      // TODO: custom domain routing will adjust theming/entrypoints per tenant host.
+      return coolTheme;
     }
-    return theme;
+    return themeMap[themeName] || coolTheme;
   }, [themeName, tenantHostMode]);
 
   return (
