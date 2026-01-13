@@ -2436,10 +2436,10 @@
         "error": "SSL error"
       },
       "chips": {
+        "exampleDomain": "www.example.com",
         "retry": "Retry verify in {{time}}",
         "registrarDetected": "Detected registrar: {{registrar}}"
       },
-      "domainExample": "www.example.com",
       "labels": {
         "quickActions": "Quick actions",
         "registrarPlaybooks": "Registrar playbooks",
