@@ -198,6 +198,10 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   );
 
   const canPublish = useMemo(() => !!settings?.theme || !!settings?.theme_id, [settings]);
+  const companyLogoUrl = useMemo(
+    () => company?.logo_url || company?.logo || "",
+    [company]
+  );
   const hasDraftChanges = Boolean(settings?.has_unpublished_changes);
   const lastPublishedLabel = useMemo(() => {
     const ts = settings?.branding_published_at;
@@ -646,6 +650,7 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
         customDomain={domainSnapshot.domain || settings?.custom_domain}
         primaryHost={settings?.primary_host}
         settings={settings}
+        companyLogoUrl={companyLogoUrl}
         onSave={handleSeoSave}
       />
 

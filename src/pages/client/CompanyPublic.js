@@ -597,8 +597,14 @@ export default function CompanyPublic({ slugOverride }) {
       sitePayload?.website_setting?.favicon_url ||
       sitePayload?.settings?.favicon_url ||
       "";
-    setTenantFavicon(favicon);
-  }, [sitePayload]);
+    const fallbackLogo =
+      headerLogoUrl ||
+      sitePayload?.header?.logo_url ||
+      sitePayload?.header?.logo_asset_url ||
+      sitePayload?.company?.logo_url ||
+      "";
+    setTenantFavicon(favicon || fallbackLogo);
+  }, [sitePayload, headerLogoUrl]);
 
   useEffect(() => {
     if (isManagerForCompany && searchParams.get("edit") === "1") setEditorOpen(true);

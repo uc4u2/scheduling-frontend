@@ -57,6 +57,16 @@ const normalizeUploadUrl = (url) => {
   return "";
 };
 
+const resolveLogoUrl = (logoAsset, fallback) => {
+  const candidate =
+    logoAsset?.url ||
+    logoAsset?.url_public ||
+    logoAsset?.href ||
+    logoAsset?.src ||
+    fallback;
+  return typeof candidate === "string" ? candidate : "";
+};
+
 const SeoSettingsCard = ({
   companyId,
   companySlug,
@@ -64,6 +74,7 @@ const SeoSettingsCard = ({
   customDomain,
   primaryHost,
   settings,
+  companyLogoUrl,
   onSave,
 }) => {
   const { enqueueSnackbar } = useSnackbar();
@@ -130,6 +141,26 @@ const SeoSettingsCard = ({
   const previewTitle = ogTitle || metaTitle || settings?.site_title || companySlug || "Your business";
   const previewDescription = ogDescription || metaDescription || "Your summary will appear in chat previews.";
   const previewImage = ogImage || "";
+  const faviconFallback = useMemo(() => {
+    const header = settings?.header || {};
+    const footer = settings?.footer || {};
+    const headerLogo =
+      header.logo_url ||
+      header.logo_asset_url ||
+      header.logo ||
+      "";
+    const footerLogo =
+      footer.logo_url ||
+      footer.logo_asset_url ||
+      footer.logo ||
+      "";
+    return (
+      resolveLogoUrl(header.logo_asset, headerLogo) ||
+      resolveLogoUrl(footer.logo_asset, footerLogo) ||
+      companyLogoUrl ||
+      ""
+    );
+  }, [settings, companyLogoUrl]);
   const previewHost = useMemo(() => {
     const url = canonicalHostUrl || slugBaseUrl;
     try {
@@ -453,7 +484,13 @@ const SeoSettingsCard = ({
                 onChange={(event) => setFaviconUrl(event.target.value)}
                 placeholder={tt("management.domainSettings.seo.placeholders.favicon", "https://example.com/favicon.png")}
                 error={Boolean(faviconUrl && !isHttpsUrl(faviconUrl))}
-                helperText={tt("management.domainSettings.seo.helpers.favicon", "Recommended PNG 32×32 or 48×48 (or .ico), must be https://")}
+                helperText={
+                  faviconUrl
+                    ? tt("management.domainSettings.seo.helpers.favicon", "Recommended PNG 32×32 or 48×48 (or .ico), must be https://")
+                    : faviconFallback
+                    ? tt("management.domainSettings.seo.helpers.faviconFallback", "Fallback: your header logo will be used until you upload a favicon.")
+                    : tt("management.domainSettings.seo.helpers.favicon", "Recommended PNG 32×32 or 48×48 (or .ico), must be https://")
+                }
                 fullWidth
               />
               <Button
