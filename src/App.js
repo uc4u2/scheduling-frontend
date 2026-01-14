@@ -128,6 +128,8 @@ import StripeConnectReturn from "./pages/sections/management/StripeConnectReturn
 
 // CLIENT PORTAL (canonical public page)
 import CompanyPublic from "./pages/client/CompanyPublic";
+import PublicClientAuth from "./pages/client/PublicClientAuth";
+import PublicPageShell from "./pages/client/PublicPageShell";
 import ServiceList from "./pages/client/ServiceList";
 import ServiceDetails from "./pages/client/ServiceDetails";
 import EmployeeList from "./pages/client/EmployeeList";
@@ -462,6 +464,22 @@ const AppContent = ({ token, setToken }) => {
 
           {isCustomDomain && tenantSlug && (
             <>
+              <Route
+                path="/login"
+                element={
+                  <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                    <PublicClientAuth slug={tenantSlug} />
+                  </PublicPageShell>
+                }
+              />
+              <Route
+                path="/register"
+                element={
+                  <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                    <PublicClientAuth slug={tenantSlug} />
+                  </PublicPageShell>
+                }
+              />
               <Route path="/" element={<CompanyPublic slugOverride={tenantSlug} />} />
               <Route path="/jobs" element={<PublicJobsListPage slugOverride={tenantSlug} />} />
               <Route path="/jobs/:jobSlug" element={<PublicJobDetailPage slugOverride={tenantSlug} />} />
