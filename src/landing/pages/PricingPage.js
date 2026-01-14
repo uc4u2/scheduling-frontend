@@ -47,7 +47,7 @@ const ASSURANCE_ICON_MAP = {
 const DEFAULT_META = {
   title: "Schedulaa Pricing | Launch on your own domain with automatic SSL",
   description:
-    "Compare Starter, Pro, and Business plans. All plans include a custom domain with automatic SSL, plus unified booking, scheduling, payroll, and automation.",
+    "Compare Starter, Pro, and Business plans. All plans include a custom domain with automatic SSL, plus booking and website essentials, with scheduling, payroll, and automation on Pro and Business.",
   canonical: "https://www.schedulaa.com/pricing",
   keywords: "Schedulaa pricing, booking software pricing, payroll SaaS pricing, website builder plans",
   og: {
@@ -65,7 +65,7 @@ const DEFAULT_HERO = {
     "Launch on your own domain with automatic SSL.",
   ],
   subtitle:
-    "Custom domains (TXT/CNAME) with automatic SSL are included on every plan. Start with Starter for website + booking, then add staff, payroll, and automations on Pro and Business.",
+    "Custom domains (TXT/CNAME) with automatic SSL are included on every plan. Start with Starter for website + booking, then add staff scheduling, payroll, and automations on Pro and Business.",
   primaryCta: { label: "Start free trial" },
   secondaryCta: { label: "Compare plans" },
   badge: {
@@ -102,7 +102,7 @@ const DEFAULT_PLANS = [
     { type: "heading", text: "Capacity" },
     "1 staff seat and 1 location (department) included.",
     "Custom domain + automatic SSL included.",
-    "Onboarding workflows as you grow.",
+    "Upgrade for onboarding workflows.",
   ],
     ctaLabel: "Start 14-day free trial",
     ctaTo: HERO_PRIMARY_CTA_TO,
