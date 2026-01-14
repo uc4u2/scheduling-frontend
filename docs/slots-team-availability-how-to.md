@@ -17,6 +17,12 @@ Manager Portal → Shifts & Availability → Team Availability (Enterprise views
 - Control when clients can book each person.
 - Independent from shift assignments (shifts track labor; slots control client booking windows).
 
+## Before you start
+
+1. Make sure the service is active and published.
+2. In **Services**, assign the service to the employee you want clients to book.
+3. Confirm the employee is active and visible for booking.
+
 ## Step 1: Select a team member
 
 1. Open Team Availability.
@@ -42,6 +48,12 @@ Manager Portal → Shifts & Availability → Team Availability (Enterprise views
 1. Click a slot on the calendar.
 2. Update time or delete the slot.
 3. Save changes.
+
+## Step 5: Confirm clients can book
+
+1. Open your public booking page.
+2. Choose the service.
+3. Confirm the employee appears with available times.
 
 ## Tips
 
