@@ -592,6 +592,15 @@ export default function CompanyPublic({ slugOverride }) {
   }, [slug]);
 
   useEffect(() => {
+    const favicon =
+      sitePayload?.favicon_url ||
+      sitePayload?.website_setting?.favicon_url ||
+      sitePayload?.settings?.favicon_url ||
+      "";
+    setTenantFavicon(favicon);
+  }, [sitePayload]);
+
+  useEffect(() => {
     if (isManagerForCompany && searchParams.get("edit") === "1") setEditorOpen(true);
   }, [isManagerForCompany, searchParams]);
 
@@ -2197,4 +2206,20 @@ const siteTitle = useMemo(() => {
       </>
     </ThemeRuntimeProvider>
   );
+}
+
+function setTenantFavicon(href) {
+  if (typeof document === "undefined") return;
+  const next = (href || "").trim();
+  const value = next || "/favicon.ico";
+  const rels = ["icon", "shortcut icon"];
+  rels.forEach((rel) => {
+    let link = document.querySelector(`link[rel='${rel}']`);
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = rel;
+      document.head.appendChild(link);
+    }
+    link.href = value;
+  });
 }
