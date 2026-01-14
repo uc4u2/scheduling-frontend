@@ -139,7 +139,7 @@ export default function PublicReview({ slugOverride }) {
   // ---------------- UI ----------------
   if (loading) {
     return (
-      <PublicPageShell activeKey="__reviews">
+      <PublicPageShell activeKey="__reviews" slugOverride={slug}>
         <Container maxWidth="sm" sx={{ mt: 2, textAlign: "center" }}>
           <CircularProgress />
           <Typography sx={{ mt: 2 }}>Loading…</Typography>
@@ -150,7 +150,7 @@ export default function PublicReview({ slugOverride }) {
 
   if (error) {
     return (
-      <PublicPageShell activeKey="__reviews">
+      <PublicPageShell activeKey="__reviews" slugOverride={slug}>
         <Container maxWidth="sm" sx={{ mt: 2 }}>
           <Alert severity="error">{error}</Alert>
         </Container>
@@ -160,7 +160,7 @@ export default function PublicReview({ slugOverride }) {
 
   if (!resolved) {
     return (
-      <PublicPageShell activeKey="__reviews">
+      <PublicPageShell activeKey="__reviews" slugOverride={slug}>
         <Container maxWidth="sm" sx={{ mt: 2 }}>
           <Alert severity="error">Appointment not found.</Alert>
         </Container>
@@ -284,5 +284,9 @@ export default function PublicReview({ slugOverride }) {
     </Container>
   );
 
-  return <PublicPageShell activeKey="__reviews">{page}</PublicPageShell>;
+  return (
+    <PublicPageShell activeKey="__reviews" slugOverride={slug}>
+      {page}
+    </PublicPageShell>
+  );
 }

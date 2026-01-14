@@ -1033,7 +1033,7 @@ export default function ServiceDetails({ slugOverride }) {
   /* guards */
   if (loading) {
     return (
-      <PublicPageShell activeKey="__services">
+      <PublicPageShell activeKey="__services" slugOverride={slug}>
         <Container sx={{ textAlign: "center", mt: 5, color: buttonPalette.bg }}>
           <CircularProgress sx={{ color: "currentColor" }} />
         </Container>
@@ -1042,7 +1042,7 @@ export default function ServiceDetails({ slugOverride }) {
   }
   if (error) {
     return (
-      <PublicPageShell activeKey="__services">
+      <PublicPageShell activeKey="__services" slugOverride={slug}>
         <Container sx={{ mt: 5 }}>
           <Alert severity="error">{error}</Alert>
         </Container>
@@ -1051,7 +1051,7 @@ export default function ServiceDetails({ slugOverride }) {
   }
   if (!service) {
     return (
-      <PublicPageShell activeKey="__services">
+      <PublicPageShell activeKey="__services" slugOverride={slug}>
         <Container sx={{ mt: 5 }}>
           <Typography variant="h6" color="text.secondary">
             Service not found.
@@ -1691,5 +1691,9 @@ export default function ServiceDetails({ slugOverride }) {
     </Container>
   );
 
-  return <PublicPageShell activeKey="__services">{page}</PublicPageShell>;
+  return (
+    <PublicPageShell activeKey="__services" slugOverride={slug}>
+      {page}
+    </PublicPageShell>
+  );
 }
