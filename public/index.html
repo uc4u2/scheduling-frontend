@@ -151,6 +151,68 @@
     <meta property="og:description" content="Schedulaa unifies scheduling, payroll, websites, and analytics for modern teams." />
     <meta property="og:image" content="https://www.schedulaa.com/og/default.jpg" />
     <meta property="og:site_name" content="Schedulaa" />
+    <script>
+      (function () {
+        var host = window.location.hostname || "";
+        var primaryHost = "schedulaa.com";
+        var isLocal =
+          host === "localhost" ||
+          host === "127.0.0.1" ||
+          host === "0.0.0.0" ||
+          host === "::1" ||
+          host.endsWith(".localhost");
+        var isPrimary = host === primaryHost || host.endsWith("." + primaryHost);
+        if (!host || isLocal || isPrimary) return;
+
+        function upsertMeta(attr, name, content) {
+          if (!name || !content) return;
+          var el = document.head.querySelector('meta[' + attr + '="' + name + '"]');
+          if (!el) {
+            el = document.createElement("meta");
+            el.setAttribute(attr, name);
+            document.head.appendChild(el);
+          }
+          el.setAttribute("content", content);
+        }
+
+        var origin = window.location.origin || "";
+        var originUrl = origin ? origin.replace(/\/$/, "") + "/" : "";
+        upsertMeta("property", "og:url", originUrl);
+        upsertMeta("property", "og:site_name", host);
+
+        fetch("/public/tenant", { cache: "no-store" })
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (data) {
+            if (!data || !data.ok || !data.slug) return null;
+            var url = "/api/public/" + encodeURIComponent(data.slug) + "/website?fields=preview";
+            return fetch(url, { cache: "no-store" }).then(function (res) {
+              return res.ok ? res.json() : null;
+            });
+          })
+          .then(function (payload) {
+            if (!payload) return;
+            var title = payload.title || payload.company_name || host;
+            var hero = payload.preview && payload.preview.hero ? payload.preview.hero : null;
+            var description =
+              (hero && (hero.subheading || hero.heading)) ||
+              ("Visit " + title + ".");
+            var image = hero && hero.image ? hero.image : "";
+            if (image && origin) {
+              if (image.indexOf("http://") !== 0 && image.indexOf("https://") !== 0 && image.indexOf("//") !== 0) {
+                image = new URL(image.replace(/^\//, ""), origin + "/").toString();
+              } else if (image.indexOf("//") === 0) {
+                image = window.location.protocol + image;
+              }
+            }
+            if (title) document.title = title;
+            upsertMeta("name", "description", description);
+            upsertMeta("property", "og:title", title);
+            upsertMeta("property", "og:description", description);
+            if (image) upsertMeta("property", "og:image", image);
+          })
+          .catch(function () {});
+      })();
+    </script>
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Schedulaa</title>
