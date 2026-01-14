@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Avatar,
   Box,
+  Button,
   Chip,
   Divider,
   IconButton,
@@ -15,6 +16,7 @@ import SendIcon from "@mui/icons-material/Send";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 
 const BASE_CHIPS = [
@@ -40,59 +42,25 @@ const PAGE_CHIPS = {
   "/pricing": ["Which plan is right for my business?"],
 };
 
-const ChatBot = ({ companySlug }) => {
+const ChatBot = ({ companySlug, config }) => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState(() => buildIntroMessages());
+  const isTenant = Boolean(companySlug);
+  const navigate = useNavigate();
+  const introMessages = useMemo(
+    () => buildIntroMessages({ isTenant, config }),
+    [isTenant, config]
+  );
+  const [messages, setMessages] = useState(() => introMessages);
   const [loading, setLoading] = useState(false);
-  const [tenantInfo, setTenantInfo] = useState({
-    loading: Boolean(companySlug),
-    enabled: true,
-    name: "",
-  });
 
   useEffect(() => {
-    if (!companySlug) {
-      setTenantInfo({ loading: false, enabled: true, name: "" });
-      return;
-    }
-    let active = true;
-    setTenantInfo((prev) => ({ ...prev, loading: true }));
-    api
-      .get(`/api/public/${encodeURIComponent(companySlug)}/website`, {
-        params: { fields: "preview" },
-        noCompanyHeader: true,
-        noAuth: true,
-      })
-      .then((res) => {
-        if (!active) return;
-        const data = res.data || {};
-        setTenantInfo({
-          loading: false,
-          enabled: Boolean(data.chatbot_enabled),
-          name: data.company_name || data.company?.name || "",
-        });
-      })
-      .catch(() => {
-        if (!active) return;
-        setTenantInfo({ loading: false, enabled: false, name: "" });
-      });
-    return () => {
-      active = false;
-    };
-  }, [companySlug]);
-
-  useEffect(() => {
-    if (!companySlug || tenantInfo.loading) return;
     setMessages((prev) => {
       const hasUserMessage = prev.some((msg) => msg.sender === "user");
       if (hasUserMessage) return prev;
-      return buildIntroMessages({
-        isTenant: true,
-        tenantName: tenantInfo.name,
-      });
+      return introMessages;
     });
-  }, [companySlug, tenantInfo.loading, tenantInfo.name]);
+  }, [introMessages]);
 
   const sendMessage = async (overrideText) => {
     const content = (overrideText ?? input).trim();
@@ -188,17 +156,25 @@ const ChatBot = ({ companySlug }) => {
     </Box>
   );
 
-  const assistantName = tenantInfo.name
-    ? `${tenantInfo.name} Assistant`
+  const assistantName = isTenant
+    ? (config?.assistant_name || "Assistant")
     : "Schedulaa Assistant";
-  const assistantSubtitle = tenantInfo.name
-    ? `Here to help with ${tenantInfo.name} bookings and services`
+  const assistantSubtitle = isTenant
+    ? "Here to help with bookings and services"
     : "Here to help with scheduling, payroll & setup";
-  const assistantInitial = (tenantInfo.name || "Schedulaa").trim().charAt(0) || "S";
+  const assistantInitial = (assistantName || "Schedulaa").trim().charAt(0) || "S";
+  const primaryCta = config?.primary_cta;
+  const secondaryCta = config?.secondary_cta;
+  const hasCtas = Boolean(primaryCta?.label && primaryCta?.href) || Boolean(secondaryCta?.label && secondaryCta?.href);
 
-  if (companySlug && (tenantInfo.loading || !tenantInfo.enabled)) {
-    return null;
-  }
+  const goToCta = (href) => {
+    if (!href) return;
+    if (/^https?:\/\//i.test(href)) {
+      window.location.assign(href);
+      return;
+    }
+    navigate(href);
+  };
 
   return (
     <>
@@ -380,6 +356,38 @@ const ChatBot = ({ companySlug }) => {
             {loading && typingIndicator}
           </Box>
 
+          {hasCtas && (
+            <Box
+              sx={{
+                display: "flex",
+                gap: 1,
+                flexWrap: "wrap",
+                px: 2.5,
+                pb: 1.5,
+                backgroundColor: "background.default",
+              }}
+            >
+              {primaryCta?.label && primaryCta?.href && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => goToCta(primaryCta.href)}
+                >
+                  {primaryCta.label}
+                </Button>
+              )}
+              {secondaryCta?.label && secondaryCta?.href && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => goToCta(secondaryCta.href)}
+                >
+                  {secondaryCta.label}
+                </Button>
+              )}
+            </Box>
+          )}
+
           <Box
             sx={{
               display: "flex",
@@ -427,7 +435,7 @@ function getPathname() {
   return window.location.pathname;
 }
 
-function buildIntroMessages({ isTenant = false, tenantName = "" } = {}) {
+function buildIntroMessages({ isTenant = false, config = null } = {}) {
   const path = getPathname();
   const chips = PAGE_CHIPS[path] || [];
   const tenantChips = [
@@ -436,33 +444,39 @@ function buildIntroMessages({ isTenant = false, tenantName = "" } = {}) {
     "How do I book and pay?",
     "What is your cancellation policy?",
   ];
+  const quickReplies =
+    Array.isArray(config?.quick_replies) && config.quick_replies.length > 0
+      ? config.quick_replies
+      : null;
   const chipList = isTenant
-    ? tenantChips
+    ? (quickReplies || tenantChips)
     : Array.from(new Set([...BASE_CHIPS, ...chips]));
-  const displayName = (tenantName || "this business").trim();
+  const displayName = (config?.assistant_name || "this business").trim();
+  const greetingText =
+    config?.greeting_text ||
+    "I can help with bookings, services, and workshop questions.\nAsk me about schedules, pricing, or booking policies.\nI’ll answer based on this business’s published information.";
   return [
     {
       sender: "bot",
       text: isTenant
-        ? `Hi, I’m the ${displayName} Assistant.\nI can help with bookings, services, and workshop questions.`
+        ? `Hi, I’m the ${displayName}.`
         : "Hi, I’m the Schedulaa Assistant.\nI can help you understand scheduling, time tracking, payroll, and setup.",
     },
     {
       sender: "bot",
       text: isTenant
-        ? "Ask me about services, workshop schedules, pricing, or booking policies."
+        ? greetingText
         : "Schedulaa is an operations OS for service teams.\nBooking → staff scheduling → breaks → time tracking → payroll → QuickBooks/Xero — all in one workflow.",
     },
-    {
+    !isTenant && {
       sender: "bot",
-      text: isTenant
-        ? "I’ll answer based on this business’s published information."
-        : "New AI copilots can generate website copy, build onboarding checklists, summarize attendance trends, and explain payroll changes. Ask me where to find them or how to use them.",
+      text:
+        "New AI copilots can generate website copy, build onboarding checklists, summarize attendance trends, and explain payroll changes. Ask me where to find them or how to use them.",
     },
     {
       sender: "bot",
       text: "What would you like to explore?",
       chips: chipList,
     },
-  ];
+  ].filter(Boolean);
 }

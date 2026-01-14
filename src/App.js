@@ -408,7 +408,44 @@ const AppContent = ({ token, setToken }) => {
     return null;
   }
 
-  const showChatBot = !isEmbed && (MARKETING_PATHS.includes(location.pathname) || Boolean(chatbotSlug));
+  const [chatbotConfig, setChatbotConfig] = useState(null);
+  const [chatbotConfigLoaded, setChatbotConfigLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!chatbotSlug) {
+      setChatbotConfig(null);
+      setChatbotConfigLoaded(false);
+      return;
+    }
+    let alive = true;
+    setChatbotConfigLoaded(false);
+    api
+      .get(`/api/public/${encodeURIComponent(chatbotSlug)}/chatbot-config`, {
+        noAuth: true,
+        noCompanyHeader: true,
+        params: { _ts: Date.now() },
+      })
+      .then((res) => {
+        if (!alive) return;
+        setChatbotConfig(res.data || null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setChatbotConfig(null);
+      })
+      .finally(() => {
+        if (alive) setChatbotConfigLoaded(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [chatbotSlug]);
+
+  const marketingChatbot = MARKETING_PATHS.includes(location.pathname);
+  const tenantChatbotReady = Boolean(
+    chatbotSlug && chatbotConfigLoaded && (chatbotConfig?.enabled ?? true)
+  );
+  const showChatBot = !isEmbed && (marketingChatbot || tenantChatbotReady);
   const showAppChrome = !isEmbed && !isMarketingRoute && !isCompanyRoute && !isNoChromeRoute;
 
   const content = (
@@ -657,7 +694,9 @@ const AppContent = ({ token, setToken }) => {
       </Box>
 
       {showAppChrome && <Footer />}
-      {!isEmbed && showChatBot && <ChatBot token={token} companySlug={chatbotSlug} />}
+      {!isEmbed && showChatBot && (
+        <ChatBot token={token} companySlug={chatbotSlug} config={chatbotSlug ? chatbotConfig : null} />
+      )}
     </BillingBannerProvider>
   );
 

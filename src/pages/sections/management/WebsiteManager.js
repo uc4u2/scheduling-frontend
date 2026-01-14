@@ -93,6 +93,13 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   const [chatbotSaving, setChatbotSaving] = useState(false);
   const [chatbotErr, setChatbotErr] = useState("");
   const [chatbotMsg, setChatbotMsg] = useState("");
+  const [chatbotAssistantName, setChatbotAssistantName] = useState("");
+  const [chatbotGreetingText, setChatbotGreetingText] = useState("");
+  const [chatbotQuickReplies, setChatbotQuickReplies] = useState("");
+  const [chatbotPrimaryCtaLabel, setChatbotPrimaryCtaLabel] = useState("");
+  const [chatbotPrimaryCtaHref, setChatbotPrimaryCtaHref] = useState("");
+  const [chatbotSecondaryCtaLabel, setChatbotSecondaryCtaLabel] = useState("");
+  const [chatbotSecondaryCtaHref, setChatbotSecondaryCtaHref] = useState("");
 
   const applySettingsPayload = useCallback((payload) => {
     if (!payload) return;
@@ -291,6 +298,15 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
             setChatbotEnabled(Boolean(data.enabled));
             setChatbotKnowledge(data.knowledge || "");
             setChatbotUpdatedAt(data.updated_at || null);
+            setChatbotAssistantName(data.assistant_name || "");
+            setChatbotGreetingText(data.greeting_text || "");
+            setChatbotQuickReplies(
+              Array.isArray(data.quick_replies) ? data.quick_replies.join("\n") : ""
+            );
+            setChatbotPrimaryCtaLabel(data.primary_cta?.label || "");
+            setChatbotPrimaryCtaHref(data.primary_cta?.href || "");
+            setChatbotSecondaryCtaLabel(data.secondary_cta?.label || "");
+            setChatbotSecondaryCtaHref(data.secondary_cta?.href || "");
           }
         } else if (alive) {
           setChatbotErr("Unable to load chatbot settings.");
@@ -321,14 +337,39 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
     setChatbotErr("");
     setChatbotMsg("");
     try {
+      const quickReplies = chatbotQuickReplies
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 8);
       const res = await chatbot.saveSettings(companyId, {
         enabled: chatbotEnabled,
         knowledge: chatbotKnowledge,
+        assistant_name: chatbotAssistantName,
+        greeting_text: chatbotGreetingText,
+        quick_replies: quickReplies,
+        primary_cta: {
+          label: chatbotPrimaryCtaLabel,
+          href: chatbotPrimaryCtaHref,
+        },
+        secondary_cta: {
+          label: chatbotSecondaryCtaLabel,
+          href: chatbotSecondaryCtaHref,
+        },
       });
       const data = res.data || {};
       setChatbotEnabled(Boolean(data.enabled));
       setChatbotKnowledge(data.knowledge || "");
       setChatbotUpdatedAt(data.updated_at || null);
+      setChatbotAssistantName(data.assistant_name || "");
+      setChatbotGreetingText(data.greeting_text || "");
+      setChatbotQuickReplies(
+        Array.isArray(data.quick_replies) ? data.quick_replies.join("\n") : ""
+      );
+      setChatbotPrimaryCtaLabel(data.primary_cta?.label || "");
+      setChatbotPrimaryCtaHref(data.primary_cta?.href || "");
+      setChatbotSecondaryCtaLabel(data.secondary_cta?.label || "");
+      setChatbotSecondaryCtaHref(data.secondary_cta?.href || "");
       setChatbotMsg("Chatbot settings saved.");
     } catch (error) {
       const message = error?.displayMessage || error?.response?.data?.error || "Unable to save chatbot settings.";
@@ -633,6 +674,65 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
             }
             label="Enable chatbot on your website"
           />
+
+          <TextField
+            label="Assistant name"
+            placeholder="Acme Studio Assistant"
+            value={chatbotAssistantName}
+            onChange={(event) => setChatbotAssistantName(event.target.value)}
+          />
+
+          <TextField
+            label="Greeting text"
+            placeholder="I can help with bookings, services, and policies."
+            multiline
+            minRows={3}
+            value={chatbotGreetingText}
+            onChange={(event) => setChatbotGreetingText(event.target.value)}
+          />
+
+          <TextField
+            label="Quick replies (one per line, max 8)"
+            placeholder={"Tell me about your business\nWhat services do you offer?\nHow do I book?"}
+            multiline
+            minRows={3}
+            value={chatbotQuickReplies}
+            onChange={(event) => setChatbotQuickReplies(event.target.value)}
+          />
+
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField
+              label="Primary CTA label"
+              placeholder="Book now"
+              value={chatbotPrimaryCtaLabel}
+              onChange={(event) => setChatbotPrimaryCtaLabel(event.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Primary CTA link"
+              placeholder="/book"
+              value={chatbotPrimaryCtaHref}
+              onChange={(event) => setChatbotPrimaryCtaHref(event.target.value)}
+              fullWidth
+            />
+          </Stack>
+
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+            <TextField
+              label="Secondary CTA label"
+              placeholder="View services"
+              value={chatbotSecondaryCtaLabel}
+              onChange={(event) => setChatbotSecondaryCtaLabel(event.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Secondary CTA link"
+              placeholder="/services"
+              value={chatbotSecondaryCtaHref}
+              onChange={(event) => setChatbotSecondaryCtaHref(event.target.value)}
+              fullWidth
+            />
+          </Stack>
 
           <TextField
             label="Business knowledge"
