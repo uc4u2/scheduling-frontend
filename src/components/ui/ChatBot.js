@@ -77,13 +77,11 @@ const ChatBot = ({ companySlug, config }) => {
     setLoading(true);
 
     try {
-      const config = companySlug
-        ? {
-            headers: { "X-Company-Slug": companySlug },
-            noCompanyHeader: true,
-            noAuth: true,
-          }
-        : undefined;
+      const config = {
+        headers: companySlug ? { "X-Company-Slug": companySlug } : undefined,
+        noCompanyHeader: true,
+        noAuth: true,
+      };
       const res = await api.post(
         "/chat",
         {
