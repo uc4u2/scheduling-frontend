@@ -20,6 +20,8 @@ import GroupWorkOutlinedIcon from "@mui/icons-material/GroupWorkOutlined";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
 import { useTranslation } from "react-i18next";
 
+const normalizeItems = (items) => (Array.isArray(items) ? items : []);
+
 const Section = ({ title, icon, items }) => (
   <Box sx={{ mb: 3 }}>
     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
@@ -29,7 +31,7 @@ const Section = ({ title, icon, items }) => (
       </Typography>
     </Stack>
     <List dense sx={{ pt: 0 }}>
-      {items.map((item, index) => (
+      {normalizeItems(items).map((item, index) => (
         <ListItem key={`${title}-${index}`} alignItems="flex-start" sx={{ py: 0.4 }}>
           <ListItemIcon sx={{ minWidth: 28, mt: 0.4 }}>
             <TaskAltIcon fontSize="small" color="primary" />
