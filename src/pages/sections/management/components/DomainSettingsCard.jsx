@@ -243,10 +243,27 @@ const DomainSettingsCard = ({
   const [localInstructions, setLocalInstructions] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(MANUAL_TAB);
+  const [retrySeconds, setRetrySeconds] = useState(0);
 
   useEffect(() => {
     setDomainInput(domain || "");
   }, [domain]);
+
+  useEffect(() => {
+    if (!nextRetrySeconds || Number.isNaN(nextRetrySeconds)) {
+      setRetrySeconds(0);
+      return;
+    }
+    setRetrySeconds(Math.max(0, Math.floor(nextRetrySeconds)));
+  }, [nextRetrySeconds]);
+
+  useEffect(() => {
+    if (retrySeconds <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setRetrySeconds((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [retrySeconds]);
 
   useEffect(() => {
     if (!onDomainChange) return;
@@ -295,8 +312,8 @@ const DomainSettingsCard = ({
   const connectAvailable = registrarHint === CONNECT_REGISTRAR;
   const suggestedDomain = companySlug ? `${companySlug}.com` : "";
   const verifyDisabled =
-    processing || !companyId || status === "none" || Boolean(nextRetrySeconds);
-  const durationLabel = formatDuration(nextRetrySeconds);
+    processing || !companyId || status === "none" || retrySeconds > 0;
+  const durationLabel = formatDuration(retrySeconds);
   const verifyHint = durationLabel
     ? t("management.domainSettings.messages.verifyHint", { time: durationLabel })
     : null;
