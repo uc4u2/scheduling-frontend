@@ -104,6 +104,7 @@ const SeoSettingsCard = ({
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const [ogImageWarning, setOgImageWarning] = useState("");
   const [faviconWarning, setFaviconWarning] = useState("");
+  const [draftNotice, setDraftNotice] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -379,6 +380,7 @@ const SeoSettingsCard = ({
         },
         favicon_url: useLogoFavicon ? null : (faviconUrl || null),
       });
+      setDraftNotice(true);
       enqueueSnackbar(tt("management.domainSettings.seo.notifications.saveSuccess", "SEO settings saved"), {
         variant: "success",
       });
@@ -411,6 +413,22 @@ const SeoSettingsCard = ({
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+      {draftNotice && (
+        <Alert severity="info" sx={{ mb: 2 }} onClose={() => setDraftNotice(false)}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+            <Box sx={{ flex: 1 }}>
+              SEO settings saved as draft. Click Publish in Website & Pages to make changes live.
+            </Box>
+            <Button
+              size="small"
+              variant="outlined"
+              href="/manager/website"
+            >
+              Open Website & Pages
+            </Button>
+          </Stack>
         </Alert>
       )}
 

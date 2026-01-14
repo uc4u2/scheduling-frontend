@@ -1744,6 +1744,26 @@ const siteTitle = useMemo(() => {
   if (err) {
     return <Container maxWidth="md" sx={{ py: 6 }}><Alert severity="error">{err}</Alert></Container>;
   }
+  if (!pages || pages.length === 0) {
+    const managerUrl = `https://${settings?.primary_host || "www.schedulaa.com"}/manager/website`;
+    return (
+      <Container maxWidth="md" sx={{ py: 8 }}>
+        <Alert severity="info">
+          <Stack spacing={2}>
+            <Box>This site is not published yet.</Box>
+            {isManagerForCompany && (
+              <Button
+                variant="outlined"
+                href={managerUrl}
+              >
+                Open Website & Pages
+              </Button>
+            )}
+          </Stack>
+        </Alert>
+      </Container>
+    );
+  }
 
   return (
     <ThemeRuntimeProvider overrides={runtimeOverrides}>
