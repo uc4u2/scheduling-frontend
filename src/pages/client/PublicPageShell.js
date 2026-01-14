@@ -739,8 +739,22 @@ export default function PublicPageShell({
   pageCssVars,
 }) {
   const { slug: routeSlug } = useParams();
-  const slug = slugOverride || routeSlug;
   const { search } = useLocation();
+  const querySlug = useMemo(() => {
+    try {
+      return new URLSearchParams(search).get("site") || "";
+    } catch {
+      return "";
+    }
+  }, [search]);
+  const storedSlug = useMemo(() => {
+    try {
+      return localStorage.getItem("site") || "";
+    } catch {
+      return "";
+    }
+  }, []);
+  const slug = (slugOverride || routeSlug || querySlug || storedSlug || "").trim() || null;
 
   // Persist the site slug so Login can find it even if opened without ?site=
   useEditGuard(); // <-- added call
