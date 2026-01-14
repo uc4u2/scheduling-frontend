@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import LaunchIcon from "@mui/icons-material/Launch";
 import SaveIcon from "@mui/icons-material/Save";
 import { useSnackbar } from "notistack";
@@ -28,6 +29,7 @@ import { useTranslation } from "react-i18next";
 import { tenantBaseUrl, normalizeDomain, isValidHostname } from "../../../../utils/tenant";
 import { SearchSnippetPreview, SocialCardPreview } from "../../../../components/seo/SeoPreview";
 import { API_BASE_URL, wb } from "../../../../utils/api";
+import SeoHelpDrawer from "./SeoHelpDrawer";
 
 const MAX_TITLE = 60;
 const MAX_DESCRIPTION = 155;
@@ -106,6 +108,7 @@ const SeoSettingsCard = ({
   const [ogImageWarning, setOgImageWarning] = useState("");
   const [faviconWarning, setFaviconWarning] = useState("");
   const [draftNotice, setDraftNotice] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -416,6 +419,14 @@ const SeoSettingsCard = ({
         <Typography variant="h6" sx={{ fontWeight: 600, flexGrow: 1 }}>
           {tt("management.domainSettings.seo.title", "SEO & Metadata")}
         </Typography>
+        <Button
+          variant="text"
+          size="small"
+          startIcon={<HelpOutlineIcon fontSize="small" />}
+          onClick={() => setHelpOpen(true)}
+        >
+          Help
+        </Button>
         <Button
           variant="contained"
           size="small"
@@ -859,6 +870,8 @@ const SeoSettingsCard = ({
           </Stack>
         </Box>
       </Stack>
+
+      <SeoHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
     </Paper>
   );
 };
