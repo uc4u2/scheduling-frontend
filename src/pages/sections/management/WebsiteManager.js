@@ -138,7 +138,10 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   const handleSeoSave = useCallback(
     async (seoPayload) => {
       if (!companyId) throw new Error(t("management.website.errors.missingCompany"));
-      const res = await wb.saveSettings(companyId, { seo: seoPayload }, { publish: false });
+      const payload = seoPayload && typeof seoPayload === "object" && seoPayload.seo
+        ? seoPayload
+        : { seo: seoPayload };
+      const res = await wb.saveSettings(companyId, payload, { publish: false });
       applySettingsPayload(res);
       return res;
     },

@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
   Checkbox,
@@ -15,6 +18,8 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LaunchIcon from "@mui/icons-material/Launch";
 import SaveIcon from "@mui/icons-material/Save";
 import { useSnackbar } from "notistack";
@@ -22,6 +27,7 @@ import { useTranslation } from "react-i18next";
 
 import { tenantBaseUrl, normalizeDomain, isValidHostname } from "../../../../utils/tenant";
 import { SearchSnippetPreview, SocialCardPreview } from "../../../../components/seo/SeoPreview";
+import { wb } from "../../../../utils/api";
 
 const MAX_TITLE = 60;
 const MAX_DESCRIPTION = 155;
@@ -41,6 +47,14 @@ const ensureUrl = (value) => {
   if (!value) return "";
   if (/^https?:\/\//i.test(value)) return value;
   return `https://${value}`;
+};
+
+const isHttpsUrl = (value) => /^https:\/\//i.test(value || "");
+
+const normalizeUploadUrl = (url) => {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return "";
 };
 
 const SeoSettingsCard = ({
@@ -63,6 +77,7 @@ const SeoSettingsCard = ({
   const [ogTitle, setOgTitle] = useState(seo.ogTitle || "");
   const [ogDescription, setOgDescription] = useState(seo.ogDescription || "");
   const [ogImage, setOgImage] = useState(seo.ogImage || "");
+  const [faviconUrl, setFaviconUrl] = useState(settings?.favicon_url || "");
   const [canonicalMode, setCanonicalMode] = useState(
     seo.canonicalMode || (domainStatus === "verified" ? "custom" : "slug")
   );
@@ -73,6 +88,8 @@ const SeoSettingsCard = ({
   const [structuredData, setStructuredData] = useState(formatStructuredInput(seo.structuredData));
   const [structuredError, setStructuredError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingOg, setUploadingOg] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -83,6 +100,12 @@ const SeoSettingsCard = ({
     setOgTitle(nextSeo.ogTitle || "");
     setOgDescription(nextSeo.ogDescription || "");
     setOgImage(nextSeo.ogImage || "");
+    setFaviconUrl(
+      settings?.favicon_url ||
+        settings?.settings?.favicon_url ||
+        settings?.website?.favicon_url ||
+        ""
+    );
     setCanonicalMode(nextSeo.canonicalMode || (domainStatus === "verified" ? "custom" : "slug"));
     setCanonicalHost(nextSeo.canonicalHost || customDomain || "");
     setStructuredDataEnabled(Boolean(nextSeo.structuredDataEnabled));
@@ -104,6 +127,76 @@ const SeoSettingsCard = ({
   const descRemaining = MAX_DESCRIPTION - metaDescription.length;
   const canonicalLocked = domainStatus !== "verified";
 
+  const previewTitle = ogTitle || metaTitle || settings?.site_title || companySlug || "Your business";
+  const previewDescription = ogDescription || metaDescription || "Your summary will appear in chat previews.";
+  const previewImage = ogImage || "";
+  const previewHost = useMemo(() => {
+    const url = canonicalHostUrl || slugBaseUrl;
+    try {
+      return new URL(url).host;
+    } catch {
+      return url || "";
+    }
+  }, [canonicalHostUrl, slugBaseUrl]);
+
+  const ogTestCurrentUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    const origin = window.location.origin || "";
+    return origin ? `${origin.replace(/\/$/, "")}/__og` : "";
+  }, []);
+
+  const ogTestSlugUrl = useMemo(() => {
+    if (!companySlug) return "";
+    const host = normalizeDomain(primaryHost) || "schedulaa.com";
+    return `https://${host}/__og?slug=${encodeURIComponent(companySlug)}`;
+  }, [companySlug, primaryHost]);
+
+  const uploadOgImage = async (file) => {
+    if (!file || !companyId) return;
+    setUploadingOg(true);
+    try {
+      const res = await wb.mediaUpload(companyId, file);
+      const url = normalizeUploadUrl(res?.data?.items?.[0]?.url);
+      if (!url) {
+        throw new Error("Upload returned no URL");
+      }
+      setOgImage(url);
+      enqueueSnackbar(tt("management.domainSettings.seo.notifications.uploadOgSuccess", "Open Graph image uploaded"), {
+        variant: "success",
+      });
+    } catch (err) {
+      enqueueSnackbar(
+        err?.displayMessage || err?.message || tt("management.domainSettings.seo.notifications.uploadOgFailed", "Failed to upload OG image."),
+        { variant: "error" }
+      );
+    } finally {
+      setUploadingOg(false);
+    }
+  };
+
+  const uploadFavicon = async (file) => {
+    if (!file || !companyId) return;
+    setUploadingFavicon(true);
+    try {
+      const res = await wb.mediaUpload(companyId, file);
+      const url = normalizeUploadUrl(res?.data?.items?.[0]?.url);
+      if (!url) {
+        throw new Error("Upload returned no URL");
+      }
+      setFaviconUrl(url);
+      enqueueSnackbar(tt("management.domainSettings.seo.notifications.uploadFaviconSuccess", "Favicon uploaded"), {
+        variant: "success",
+      });
+    } catch (err) {
+      enqueueSnackbar(
+        err?.displayMessage || err?.message || tt("management.domainSettings.seo.notifications.uploadFaviconFailed", "Failed to upload favicon."),
+        { variant: "error" }
+      );
+    } finally {
+      setUploadingFavicon(false);
+    }
+  };
+
   const handleCanonicalChange = (_, next) => {
     if (!next) return;
     if (next === "custom" && canonicalLocked) {
@@ -116,8 +209,12 @@ const SeoSettingsCard = ({
   };
 
   const validate = () => {
-    if (ogImage && !/^https?:\/\//i.test(ogImage)) {
+    if (ogImage && !isHttpsUrl(ogImage)) {
       setError(tt("management.domainSettings.seo.errors.invalidOgImage", "Open Graph image must be a valid https:// URL."));
+      return false;
+    }
+    if (faviconUrl && !isHttpsUrl(faviconUrl)) {
+      setError(tt("management.domainSettings.seo.errors.invalidFavicon", "Favicon must be a valid https:// URL."));
       return false;
     }
     if (canonicalMode === "custom" && canonicalLocked) {
@@ -157,16 +254,19 @@ const SeoSettingsCard = ({
         ? JSON.parse(structuredData)
         : null;
       await onSave?.({
-        metaTitle,
-        metaDescription,
-        metaKeywords,
-        ogTitle,
-        ogDescription,
-        ogImage,
-        canonicalMode: canonicalMode === "custom" && !canonicalLocked ? "custom" : "slug",
-        canonicalHost: canonicalMode === "custom" ? normalizeDomain(canonicalHost || customDomain) : null,
-        structuredDataEnabled,
-        structuredData: structuredPayload,
+        seo: {
+          metaTitle,
+          metaDescription,
+          metaKeywords,
+          ogTitle,
+          ogDescription,
+          ogImage,
+          canonicalMode: canonicalMode === "custom" && !canonicalLocked ? "custom" : "slug",
+          canonicalHost: canonicalMode === "custom" ? normalizeDomain(canonicalHost || customDomain) : null,
+          structuredDataEnabled,
+          structuredData: structuredPayload,
+        },
+        favicon_url: faviconUrl || null,
       });
       enqueueSnackbar(tt("management.domainSettings.seo.notifications.saveSuccess", "SEO settings saved"), {
         variant: "success",
@@ -275,11 +375,32 @@ const SeoSettingsCard = ({
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
             Use a 1200×630 hero image and a title like “Schedulaa — Enterprise Tattoo Studio”.
           </Typography>
-          <SocialCardPreview
-            title={ogTitle || metaTitle}
-            description={ogDescription || metaDescription}
-            image={ogImage}
-          />
+          <Box
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 2,
+              p: 2,
+              bgcolor: "background.paper",
+            }}
+          >
+            <SocialCardPreview
+              title={previewTitle}
+              description={previewDescription}
+              image={previewImage}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+              Preview domain: {previewHost || "your-domain.com"}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              Canonical: {canonicalMode === "custom" && !canonicalLocked ? "custom domain" : "schedulaa.com slug"}
+            </Typography>
+            {!ogImage && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                Fallback: homepage hero image will be used for social previews.
+              </Typography>
+            )}
+          </Box>
           <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField
               label={tt("management.domainSettings.seo.fields.ogTitle", "Open Graph Title")}
@@ -291,12 +412,118 @@ const SeoSettingsCard = ({
               value={ogDescription}
               onChange={(event) => setOgDescription(event.target.value)}
             />
-            <TextField
-              label={tt("management.domainSettings.seo.fields.ogImage", "Open Graph Image URL")}
-              value={ogImage}
-              onChange={(event) => setOgImage(event.target.value)}
-              placeholder={tt("management.domainSettings.seo.placeholders.ogImage", "https://example.com/social-preview.jpg")}
-            />
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
+              <TextField
+                label={tt("management.domainSettings.seo.fields.ogImage", "Open Graph Image URL")}
+                value={ogImage}
+                onChange={(event) => setOgImage(event.target.value)}
+                placeholder={tt("management.domainSettings.seo.placeholders.ogImage", "https://example.com/social-preview.jpg")}
+                error={Boolean(ogImage && !isHttpsUrl(ogImage))}
+                helperText={
+                  ogImage
+                    ? tt("management.domainSettings.seo.helpers.ogImage", "Use a 1200×630 HTTPS image.")
+                    : tt("management.domainSettings.seo.helpers.ogImageFallback", "Fallback: homepage hero image will be used for social previews.")
+                }
+                fullWidth
+              />
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUploadIcon />}
+                disabled={uploadingOg || !companyId}
+                sx={{ minWidth: 180 }}
+              >
+                {uploadingOg ? tt("management.domainSettings.seo.buttons.uploading", "Uploading...") : tt("management.domainSettings.seo.buttons.uploadOg", "Upload OG image")}
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    uploadOgImage(file);
+                  }}
+                />
+              </Button>
+            </Stack>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
+              <TextField
+                label={tt("management.domainSettings.seo.fields.favicon", "Favicon URL")}
+                value={faviconUrl}
+                onChange={(event) => setFaviconUrl(event.target.value)}
+                placeholder={tt("management.domainSettings.seo.placeholders.favicon", "https://example.com/favicon.png")}
+                error={Boolean(faviconUrl && !isHttpsUrl(faviconUrl))}
+                helperText={tt("management.domainSettings.seo.helpers.favicon", "Recommended PNG 32×32 or 48×48 (or .ico), must be https://")}
+                fullWidth
+              />
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUploadIcon />}
+                disabled={uploadingFavicon || !companyId}
+                sx={{ minWidth: 180 }}
+              >
+                {uploadingFavicon ? tt("management.domainSettings.seo.buttons.uploading", "Uploading...") : tt("management.domainSettings.seo.buttons.uploadFavicon", "Upload favicon")}
+                <input
+                  type="file"
+                  accept="image/*,.ico"
+                  hidden
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    uploadFavicon(file);
+                  }}
+                />
+              </Button>
+            </Stack>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
+              <Button
+                variant="outlined"
+                endIcon={<LaunchIcon />}
+                href={ogTestCurrentUrl || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                disabled={!ogTestCurrentUrl}
+              >
+                {tt("management.domainSettings.seo.buttons.testOgCurrent", "Test current host preview")}
+              </Button>
+              <Button
+                variant="outlined"
+                endIcon={<LaunchIcon />}
+                href={ogTestSlugUrl || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                disabled={!ogTestSlugUrl}
+              >
+                {tt("management.domainSettings.seo.buttons.testOgSlug", "Test slug preview")}
+              </Button>
+            </Stack>
+            <Accordion sx={{ borderRadius: 2 }} variant="outlined">
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle2">
+                  {tt("management.domainSettings.seo.sections.help", "How social previews work")}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box component="ul" sx={{ pl: 3, mb: 0, mt: 0 }}>
+                  <Typography component="li" variant="body2" sx={{ mb: 0.5 }}>
+                    WhatsApp and similar crawlers don’t execute JavaScript, so Schedulaa serves server-side OG tags for bots.
+                  </Typography>
+                  <Typography component="li" variant="body2" sx={{ mb: 0.5 }}>
+                    Use the Open Graph fields to control how your links appear in chat and social feeds.
+                  </Typography>
+                  <Typography component="li" variant="body2" sx={{ mb: 0.5 }}>
+                    If Open Graph image is empty, the homepage hero image is used automatically.
+                  </Typography>
+                  <Typography component="li" variant="body2" sx={{ mb: 0.5 }}>
+                    Canonical links switch to your custom domain only after it’s verified.
+                  </Typography>
+                  <Typography component="li" variant="body2">
+                    Your root domain should redirect to the www host for consistent previews.
+                  </Typography>
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           </Stack>
         </Box>
 
