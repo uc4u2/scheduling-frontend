@@ -72,6 +72,7 @@ import {
   CloseFullscreen,
   PersonAddAlt as PersonAddAltIcon,
   InfoOutlined,
+  HelpOutline as HelpOutlineIcon,
 } from "@mui/icons-material";
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
@@ -121,6 +122,7 @@ import FeedbackNotes from "./FeedbackNotes";
 import RecruiterAvailabilityTracker from "./RecruiterAvailabilityTracker";
 import ClientProfileSettings from "./pages/client/ClientProfileSettings";
 import ManagerJobOpeningsPage from "./pages/manager/ManagerJobOpeningsPage";
+import EmployeeManagementHelpDrawer from "./pages/sections/management/components/EmployeeManagementHelpDrawer";
 
 // NEW — FullCalendar for the Setmore-style panel
 import FullCalendar from "@fullcalendar/react";
@@ -808,6 +810,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [conversionRequests, setConversionRequests] = useState([]);
   const [conversionLoading, setConversionLoading] = useState(false);
+  const [employeeHelpOpen, setEmployeeHelpOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [confirmArchiveId, setConfirmArchiveId] = useState(null);
@@ -1366,6 +1369,25 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       case "employee-management":
         return (
           <Box>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+              spacing={1}
+              sx={{ mb: 2 }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                Employee Management
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<HelpOutlineIcon />}
+                onClick={() => setEmployeeHelpOpen(true)}
+              >
+                Help
+              </Button>
+            </Stack>
             {isManager && (
               <Paper
                 elevation={0}
@@ -1740,6 +1762,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                 {error || message}
               </Alert>
             </Snackbar>
+            <EmployeeManagementHelpDrawer
+              open={employeeHelpOpen}
+              onClose={() => setEmployeeHelpOpen(false)}
+            />
           </Box>
         );
 
