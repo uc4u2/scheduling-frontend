@@ -84,10 +84,16 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
       open={open}
       onClose={onClose}
       anchor={drawerAnchor}
+      ModalProps={{
+        BackdropProps: {
+          sx: { zIndex: (theme) => theme.zIndex.modal + 1 },
+        },
+      }}
       PaperProps={{
         sx: {
           width: drawerWidth,
           p: 3,
+          zIndex: (theme) => theme.zIndex.modal + 2,
         },
       }}
     >
