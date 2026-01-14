@@ -142,10 +142,38 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
         ? seoPayload
         : { seo: seoPayload };
       const res = await wb.saveSettings(companyId, payload, { publish: false });
-      applySettingsPayload(res);
+      const data = res?.data || res;
+      const nextSeo = payload.seo || {};
+      const nextFavicon = Object.prototype.hasOwnProperty.call(payload, "favicon_url")
+        ? payload.favicon_url
+        : undefined;
+      const hasSeo = data && typeof data === "object" && "seo" in data;
+      if (hasSeo) {
+        applySettingsPayload(res);
+      } else {
+        const fallback = {
+          ...(settings || {}),
+          ...(data && typeof data === "object" ? data : {}),
+          seo: nextSeo,
+          favicon_url: nextFavicon !== undefined ? nextFavicon : settings?.favicon_url,
+        };
+        fallback.settings = {
+          ...(settings?.settings || {}),
+          ...(fallback.settings || {}),
+          seo: nextSeo,
+          favicon_url: nextFavicon !== undefined ? nextFavicon : settings?.settings?.favicon_url,
+        };
+        fallback.website = {
+          ...(settings?.website || {}),
+          ...(fallback.website || {}),
+          seo: nextSeo,
+          favicon_url: nextFavicon !== undefined ? nextFavicon : settings?.website?.favicon_url,
+        };
+        applySettingsPayload({ data: fallback });
+      }
       return res;
     },
-    [companyId, t, applySettingsPayload]
+    [companyId, t, applySettingsPayload, settings]
   );
 
   // computed
