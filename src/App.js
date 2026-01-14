@@ -324,6 +324,8 @@ const AppContent = ({ token, setToken }) => {
   const isCustomDomain = hostMode === "custom";
   const [tenantSlug, setTenantSlug] = useState(null);
   const [tenantLoaded, setTenantLoaded] = useState(!isCustomDomain);
+  const [chatbotConfig, setChatbotConfig] = useState(null);
+  const [chatbotConfigLoaded, setChatbotConfigLoaded] = useState(false);
   const location = useLocation();
   const isMarketingRoute = MARKETING_PATHS.includes(location.pathname);
   const isApplyRoute = Boolean(matchPath({ path: "/apply/:token" }, location.pathname));
@@ -404,13 +406,6 @@ const AppContent = ({ token, setToken }) => {
     return () => { alive = false; };
   }, [isCustomDomain]);
 
-  if (isCustomDomain && !tenantLoaded) {
-    return null;
-  }
-
-  const [chatbotConfig, setChatbotConfig] = useState(null);
-  const [chatbotConfigLoaded, setChatbotConfigLoaded] = useState(false);
-
   useEffect(() => {
     if (!chatbotSlug) {
       setChatbotConfig(null);
@@ -440,6 +435,10 @@ const AppContent = ({ token, setToken }) => {
       alive = false;
     };
   }, [chatbotSlug]);
+
+  if (isCustomDomain && !tenantLoaded) {
+    return null;
+  }
 
   const marketingChatbot = MARKETING_PATHS.includes(location.pathname);
   const tenantChatbotReady = Boolean(
