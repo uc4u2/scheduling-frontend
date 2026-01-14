@@ -27,7 +27,7 @@ import { useTranslation } from "react-i18next";
 
 import { tenantBaseUrl, normalizeDomain, isValidHostname } from "../../../../utils/tenant";
 import { SearchSnippetPreview, SocialCardPreview } from "../../../../components/seo/SeoPreview";
-import { wb } from "../../../../utils/api";
+import { API_BASE_URL, wb } from "../../../../utils/api";
 
 const MAX_TITLE = 60;
 const MAX_DESCRIPTION = 155;
@@ -186,13 +186,22 @@ const SeoSettingsCard = ({
   );
 
   const ogTestCurrentUrl = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    const origin = window.location.origin || "";
-    return origin ? `${origin.replace(/\/$/, "")}/__og` : "";
-  }, []);
+    if (domainStatus !== "verified") return "";
+    const hostUrl = ensureUrl(customDomain || canonicalHost || "");
+    if (!hostUrl) return "";
+    try {
+      return `${new URL(hostUrl).origin}/__og`;
+    } catch {
+      return "";
+    }
+  }, [domainStatus, customDomain, canonicalHost]);
 
   const ogTestSlugUrl = useMemo(() => {
     if (!companySlug) return "";
+    const base = String(API_BASE_URL || "").trim().replace(/\/$/, "");
+    if (/^https?:\/\//i.test(base)) {
+      return `${base}/__og?slug=${encodeURIComponent(companySlug)}`;
+    }
     const host = normalizeDomain(primaryHost) || "schedulaa.com";
     return `https://${host}/__og?slug=${encodeURIComponent(companySlug)}`;
   }, [companySlug, primaryHost]);
