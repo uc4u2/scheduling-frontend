@@ -350,8 +350,12 @@ const DomainSettingsCard = ({
     setError(null);
     try {
       const res = await verifyDomain();
-      const nextStatus = res?.status || (res?.verified ? "verified" : status);
-      if (nextStatus === "verified") {
+      const isVerified =
+        Boolean(res?.verified) ||
+        ["verified", "verified_dns", "ssl_active", "provisioning_ssl"].includes(
+          res?.status
+        );
+      if (isVerified) {
         enqueueSnackbar(
           t("management.domainSettings.notifications.verifySuccess"),
           { variant: "success" }
