@@ -679,6 +679,7 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
         primaryHost={settings?.primary_host}
         settings={settings}
         companyLogoUrl={companyLogoUrl}
+        hasDraftChanges={hasDraftChanges}
         onSave={handleSeoSave}
       />
 

@@ -75,6 +75,7 @@ const SeoSettingsCard = ({
   primaryHost,
   settings,
   companyLogoUrl,
+  hasDraftChanges,
   onSave,
 }) => {
   const { enqueueSnackbar } = useSnackbar();
@@ -402,6 +403,13 @@ const SeoSettingsCard = ({
       setSaving(false);
     }
   };
+
+  const showPublishNotice = draftNotice || hasDraftChanges;
+  const handleGoToPublish = () => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <Paper sx={{ p: 3, mb: 3 }} variant="outlined">
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
@@ -424,8 +432,12 @@ const SeoSettingsCard = ({
           {error}
         </Alert>
       )}
-      {draftNotice && (
-        <Alert severity="info" sx={{ mb: 2 }} onClose={() => setDraftNotice(false)}>
+      {showPublishNotice && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          onClose={!hasDraftChanges ? () => setDraftNotice(false) : undefined}
+        >
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
             <Box sx={{ flex: 1 }}>
               SEO settings saved as draft. Click Publish in Website & Pages to make changes live.
@@ -433,9 +445,9 @@ const SeoSettingsCard = ({
             <Button
               size="small"
               variant="outlined"
-              href="/manager/website"
+              onClick={handleGoToPublish}
             >
-              Open Website & Pages
+              Go to Publish
             </Button>
           </Stack>
         </Alert>
