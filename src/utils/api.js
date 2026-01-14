@@ -1,6 +1,6 @@
 // src/utils/api.js
 import axios from "axios";
-import { getAuthedCompanyId } from "./authedCompany";
+import { clearCachedCompanyId, getAuthedCompanyId } from "./authedCompany";
 import { captureCurrencyFromResponse } from "./currency";
 
 /* ------------------------------ Base URL ------------------------------ */
@@ -109,6 +109,15 @@ api.interceptors.response.use(
     const code = data.code || data.error || data.error_code;
     const userMessage = data.user_message || data.message || data.detail;
     const skipBillingModal = Boolean(error?.config?.skipBillingModal);
+    const companyError = typeof data?.error === "string" ? data.error : null;
+
+    if (
+      (status === 403 || status === 400) &&
+      (companyError === "Company mismatch" || companyError === "X-Company-Id required")
+    ) {
+      try { clearCachedCompanyId(); } catch {}
+      error.companyIdReset = true;
+    }
 
     if (status === 412 || code === 'STRIPE_ONBOARDING_INCOMPLETE') {
       error.code = code || 'STRIPE_ONBOARDING_INCOMPLETE';
