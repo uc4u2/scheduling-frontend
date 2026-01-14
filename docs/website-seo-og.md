@@ -12,6 +12,16 @@ What you can control
 Where to edit
 Manager Dashboard → Website & Pages → SEO & Metadata
 
+Step-by-step setup
+1) Open Manager Dashboard.
+2) Go to Website & Pages.
+3) Open the SEO & Metadata section.
+4) Fill in Meta Title, Meta Description, and (optional) Meta Keywords.
+5) Fill in Open Graph Title/Description and add an Open Graph Image URL.
+6) (Optional) Upload a favicon, or keep the logo fallback.
+7) Click Save to store a draft.
+8) Click Publish in Website & Pages to make changes live.
+
 Key behaviors
 - Saving SEO fields stores a draft. Click Publish in Website & Pages to make it live.
 - If Open Graph image is empty, the homepage hero image is used as a fallback.
