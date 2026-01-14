@@ -1,6 +1,7 @@
 
 // src/pages/sections/management/components/SeoSettingsCard.jsx
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Accordion,
@@ -82,6 +83,7 @@ const SeoSettingsCard = ({
 }) => {
   const { enqueueSnackbar } = useSnackbar();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const seo = settings?.seo || {};
   const tt = (key, defaultValue, options = {}) => t(key, { defaultValue, ...options });
 
@@ -409,8 +411,7 @@ const SeoSettingsCard = ({
 
   const showPublishNotice = draftNotice || hasDraftChanges;
   const handleGoToPublish = () => {
-    if (typeof window === "undefined") return;
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigate("/manager/website/editor");
   };
 
   return (
