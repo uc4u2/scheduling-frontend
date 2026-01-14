@@ -2337,6 +2337,52 @@
         "errors": {
           "invalidStructuredData": "Structured data must be valid JSON."
         }
+      },
+      "employeeHelp": {
+        "title": "Employee Access Guide",
+        "subtitle": "Use this to decide which access toggles to enable for each team member.",
+        "quickSummary": {
+          "title": "Quick summary",
+          "items": [
+            "Managers have full access to payroll, scheduling, settings, and the service catalog.",
+            "Employees are limited by the toggles you enable below.",
+            "HR onboarding access does not grant service, product, or add-on management."
+          ]
+        },
+        "roles": {
+          "title": "Role basics",
+          "items": [
+            "Employee: core staff tools (schedule, bookings, time clock).",
+            "Manager: full admin access across settings, payroll, and catalog."
+          ]
+        },
+        "toggles": {
+          "title": "Access toggles",
+          "items": [
+            "HR onboarding access: manage onboarding forms and candidate profiles.",
+            "Limited HR onboarding: view HR tabs and read candidate profiles only.",
+            "Supervisor access: shift, time tracking, leaves, swap approvals, master calendar.",
+            "Payroll access: payroll runs, tax forms, ROE, T4/W-2, invoices."
+          ]
+        },
+        "availability": {
+          "title": "Availability & slots",
+          "items": [
+            "Employees can edit their own availability only when HR onboarding access is enabled and workspace settings allow it.",
+            "Team availability views and assigning slots for other employees require manager access."
+          ]
+        },
+        "examples": {
+          "title": "Common setups",
+          "items": [
+            "Front desk coordinator: Employee + HR onboarding (no payroll).",
+            "Team lead: Employee + Supervisor access.",
+            "Payroll admin: Employee + Payroll access."
+          ]
+        },
+        "actions": {
+          "close": "Close guide"
+        }
       }
     },
     "domainHelp": {
