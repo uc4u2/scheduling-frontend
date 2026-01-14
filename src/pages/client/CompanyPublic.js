@@ -904,8 +904,9 @@ export default function CompanyPublic({ slugOverride }) {
         Number.isFinite(styleProps.cardOpacity) ? styleProps.cardOpacity : undefined
       );
       if (embedCardBg) qp.set("cardbg", embedCardBg);
-      const targetPath = slugLower === "my-bookings" ? "my-bookings" : slugLower;
-      const embedPath = targetPath ? `${basePath}/${targetPath}` : rootPath;
+      const isMyBookings = slugLower === "my-bookings";
+      const targetPath = isMyBookings ? null : slugLower;
+      const embedPath = isMyBookings ? "/dashboard" : (targetPath ? `${basePath}/${targetPath}` : rootPath);
       const src = `${embedPath}?${qp.toString()}`;
 
       const basePageStyleSection = existingPageStyleSection || homePageStyleSection || null;
