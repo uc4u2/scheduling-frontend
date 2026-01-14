@@ -592,21 +592,6 @@ export default function CompanyPublic({ slugOverride }) {
   }, [slug]);
 
   useEffect(() => {
-    const favicon =
-      sitePayload?.favicon_url ||
-      sitePayload?.website_setting?.favicon_url ||
-      sitePayload?.settings?.favicon_url ||
-      "";
-    const fallbackLogo =
-      headerLogoUrl ||
-      sitePayload?.header?.logo_url ||
-      sitePayload?.header?.logo_asset_url ||
-      sitePayload?.company?.logo_url ||
-      "";
-    setTenantFavicon(favicon || fallbackLogo);
-  }, [sitePayload, headerLogoUrl]);
-
-  useEffect(() => {
     if (isManagerForCompany && searchParams.get("edit") === "1") setEditorOpen(true);
   }, [isManagerForCompany, searchParams]);
 
@@ -1159,6 +1144,21 @@ const siteTitle = useMemo(() => {
         company?.logo_url
     );
   }, [headerConfig, company, resolveMediaUrl]);
+
+  useEffect(() => {
+    const favicon =
+      sitePayload?.favicon_url ||
+      sitePayload?.website_setting?.favicon_url ||
+      sitePayload?.settings?.favicon_url ||
+      "";
+    const fallbackLogo =
+      headerLogoUrl ||
+      sitePayload?.header?.logo_url ||
+      sitePayload?.header?.logo_asset_url ||
+      sitePayload?.company?.logo_url ||
+      "";
+    setTenantFavicon(favicon || fallbackLogo);
+  }, [sitePayload, headerLogoUrl]);
 
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
   const headerTextColor = headerConfig?.text || themeOverrides?.header?.text || "inherit";
