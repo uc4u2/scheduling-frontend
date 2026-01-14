@@ -96,7 +96,7 @@ const SeoSettingsCard = ({
   const [faviconUrl, setFaviconUrl] = useState(settings?.favicon_url || "");
   const [useLogoFavicon, setUseLogoFavicon] = useState(!settings?.favicon_url);
   const [canonicalMode, setCanonicalMode] = useState(
-    seo.canonicalMode || (domainStatus === "verified" ? "custom" : "slug")
+    seo.canonicalMode || (["verified", "verified_dns", "ssl_active", "provisioning_ssl"].includes(domainStatus) ? "custom" : "slug")
   );
   const [canonicalHost, setCanonicalHost] = useState(seo.canonicalHost || customDomain || "");
   const [structuredDataEnabled, setStructuredDataEnabled] = useState(
@@ -113,6 +113,11 @@ const SeoSettingsCard = ({
   const [helpOpen, setHelpOpen] = useState(false);
   const [error, setError] = useState(null);
 
+  const domainVerified = useMemo(
+    () => ["verified", "verified_dns", "ssl_active", "provisioning_ssl"].includes(domainStatus),
+    [domainStatus]
+  );
+
   useEffect(() => {
     const nextSeo = settings?.seo || {};
     setMetaTitle(nextSeo.metaTitle || "");
@@ -128,11 +133,11 @@ const SeoSettingsCard = ({
         "";
     setFaviconUrl(nextFavicon);
     setUseLogoFavicon(!nextFavicon);
-    setCanonicalMode(nextSeo.canonicalMode || (domainStatus === "verified" ? "custom" : "slug"));
+    setCanonicalMode(nextSeo.canonicalMode || (domainVerified ? "custom" : "slug"));
     setCanonicalHost(nextSeo.canonicalHost || customDomain || "");
     setStructuredDataEnabled(Boolean(nextSeo.structuredDataEnabled));
     setStructuredData(formatStructuredInput(nextSeo.structuredData));
-  }, [settings, domainStatus, customDomain]);
+  }, [settings, domainVerified, customDomain]);
 
   const slugBaseUrl = useMemo(() => {
     return seo.slugBaseUrl || tenantBaseUrl({ slug: companySlug, primaryHost });
@@ -147,7 +152,7 @@ const SeoSettingsCard = ({
 
   const titleRemaining = MAX_TITLE - metaTitle.length;
   const descRemaining = MAX_DESCRIPTION - metaDescription.length;
-  const canonicalLocked = domainStatus !== "verified";
+  const canonicalLocked = !domainVerified;
 
   const previewTitle = ogTitle || metaTitle || settings?.site_title || companySlug || "Your business";
   const previewDescription = ogDescription || metaDescription || "Your summary will appear in chat previews.";
@@ -192,7 +197,7 @@ const SeoSettingsCard = ({
   );
 
   const ogTestCurrentUrl = useMemo(() => {
-    if (domainStatus !== "verified") return "";
+    if (!domainVerified) return "";
     const hostUrl = ensureUrl(customDomain || canonicalHost || "");
     if (!hostUrl) return "";
     try {
