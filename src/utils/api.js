@@ -41,6 +41,8 @@ const inferBase = () => {
       ) {
         return "https://scheduling-application.onrender.com";
       }
+      // Custom domains should still call the shared backend.
+      return "https://scheduling-application.onrender.com";
     }
   } catch {}
   return "/";
