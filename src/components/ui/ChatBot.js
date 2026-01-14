@@ -82,6 +82,18 @@ const ChatBot = ({ companySlug }) => {
     };
   }, [companySlug]);
 
+  useEffect(() => {
+    if (!companySlug || tenantInfo.loading) return;
+    setMessages((prev) => {
+      const hasUserMessage = prev.some((msg) => msg.sender === "user");
+      if (hasUserMessage) return prev;
+      return buildIntroMessages({
+        isTenant: true,
+        tenantName: tenantInfo.name,
+      });
+    });
+  }, [companySlug, tenantInfo.loading, tenantInfo.name]);
+
   const sendMessage = async (overrideText) => {
     const content = (overrideText ?? input).trim();
     if (!content) return;
@@ -415,22 +427,37 @@ function getPathname() {
   return window.location.pathname;
 }
 
-function buildIntroMessages() {
+function buildIntroMessages({ isTenant = false, tenantName = "" } = {}) {
   const path = getPathname();
   const chips = PAGE_CHIPS[path] || [];
-  const chipList = Array.from(new Set([...BASE_CHIPS, ...chips]));
+  const tenantChips = [
+    "Tell me about your business",
+    "What workshops do you offer?",
+    "How do I book and pay?",
+    "What is your cancellation policy?",
+  ];
+  const chipList = isTenant
+    ? tenantChips
+    : Array.from(new Set([...BASE_CHIPS, ...chips]));
+  const displayName = (tenantName || "this business").trim();
   return [
     {
       sender: "bot",
-      text: "Hi, I’m the Schedulaa Assistant.\nI can help you understand scheduling, time tracking, payroll, and setup.",
+      text: isTenant
+        ? `Hi, I’m the ${displayName} Assistant.\nI can help with bookings, services, and workshop questions.`
+        : "Hi, I’m the Schedulaa Assistant.\nI can help you understand scheduling, time tracking, payroll, and setup.",
     },
     {
       sender: "bot",
-      text: "Schedulaa is an operations OS for service teams.\nBooking → staff scheduling → breaks → time tracking → payroll → QuickBooks/Xero — all in one workflow.",
+      text: isTenant
+        ? "Ask me about services, workshop schedules, pricing, or booking policies."
+        : "Schedulaa is an operations OS for service teams.\nBooking → staff scheduling → breaks → time tracking → payroll → QuickBooks/Xero — all in one workflow.",
     },
     {
       sender: "bot",
-      text: "New AI copilots can generate website copy, build onboarding checklists, summarize attendance trends, and explain payroll changes. Ask me where to find them or how to use them.",
+      text: isTenant
+        ? "I’ll answer based on this business’s published information."
+        : "New AI copilots can generate website copy, build onboarding checklists, summarize attendance trends, and explain payroll changes. Ask me where to find them or how to use them.",
     },
     {
       sender: "bot",
