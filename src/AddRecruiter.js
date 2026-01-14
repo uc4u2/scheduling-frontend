@@ -24,6 +24,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import Snackbar from "@mui/material/Snackbar";
 import api from "./utils/api";
 import { getUserTimezone } from "./utils/timezone";
@@ -32,6 +33,7 @@ import { useDepartments } from "./pages/sections/hooks/useRecruiterDepartments";
 import TimezoneSelect from "./components/TimezoneSelect";
 import useBillingStatus from "./components/billing/useBillingStatus";
 import { formatBillingNextDateLabel } from "./components/billing/billingLabels";
+import AddMemberHelpDrawer from "./pages/sections/management/components/AddMemberHelpDrawer";
 
 const PASSWORD_HELP =
   "8+ chars, uppercase, lowercase, number, and symbol required.";
@@ -73,6 +75,7 @@ const AddRecruiter = () => {
   const [seatDialogError, setSeatDialogError] = useState("");
   const [seatNotice, setSeatNotice] = useState("");
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
+  const [helpOpen, setHelpOpen] = useState(false);
   const departments = useDepartments();
   const { status: billingStatus } = useBillingStatus();
   const seatNextBillingLabel = formatBillingNextDateLabel({
@@ -309,6 +312,25 @@ const passwordStrength = useMemo(() => {
           boxShadow: (t) => t.shadows[1],
         }}
       >
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent="space-between"
+          spacing={1}
+          sx={{ mb: 2 }}
+        >
+          <Typography variant="h5" fontWeight={700}>
+            Add Team Member
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<HelpOutlineIcon />}
+            onClick={() => setHelpOpen(true)}
+          >
+            Help
+          </Button>
+        </Stack>
 
         {submitState.status === "success" && (
           <Snackbar
@@ -702,6 +724,7 @@ const passwordStrength = useMemo(() => {
             )}
           </DialogActions>
         </Dialog>
+        <AddMemberHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
       </Paper>
     </Box>
   );
