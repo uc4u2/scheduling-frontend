@@ -442,7 +442,7 @@ const AppContent = ({ token, setToken }) => {
 
   const marketingChatbot = MARKETING_PATHS.includes(location.pathname);
   const tenantChatbotReady = Boolean(
-    chatbotSlug && chatbotConfigLoaded && (chatbotConfig?.enabled ?? true)
+    chatbotSlug && chatbotConfigLoaded && chatbotConfig && chatbotConfig.enabled === true
   );
   const showChatBot = !isEmbed && (marketingChatbot || tenantChatbotReady);
   const showAppChrome = !isEmbed && !isMarketingRoute && !isCompanyRoute && !isNoChromeRoute;
