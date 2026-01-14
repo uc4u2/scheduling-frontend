@@ -1,7 +1,7 @@
 // src/pages/sections/management/WebsiteManager.js
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import api, { wb } from "../../../utils/api";
+import api, { wb, chatbot } from "../../../utils/api";
 import {
   Box,
   Button,
@@ -54,6 +54,8 @@ const EMPTY_FORM = {
   noindex: false,
 };
 
+const CHATBOT_MAX_CHARS = 20000;
+
 const WebsiteManager = ({ companyId: companyIdProp }) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -83,6 +85,14 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   const [openTheme, setOpenTheme] = useState(false);
 
   const [domainSnapshot, setDomainSnapshot] = useState({ status: "none", domain: "", verifiedAt: null });
+
+  const [chatbotEnabled, setChatbotEnabled] = useState(false);
+  const [chatbotKnowledge, setChatbotKnowledge] = useState("");
+  const [chatbotUpdatedAt, setChatbotUpdatedAt] = useState(null);
+  const [chatbotLoading, setChatbotLoading] = useState(true);
+  const [chatbotSaving, setChatbotSaving] = useState(false);
+  const [chatbotErr, setChatbotErr] = useState("");
+  const [chatbotMsg, setChatbotMsg] = useState("");
 
   const applySettingsPayload = useCallback((payload) => {
     if (!payload) return;
@@ -235,12 +245,16 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
       setLoading(true);
       setErr("");
       setMsg("");
+      setChatbotErr("");
+      setChatbotMsg("");
+      setChatbotLoading(true);
 
       try {
-        const [companyRes, themesRes, settingsRes] = await Promise.allSettled([
+        const [companyRes, themesRes, settingsRes, chatbotRes] = await Promise.allSettled([
           api.get("/admin/company-profile", { params: { company_id: companyId } }),
           wb.listThemes(companyId),
-        wb.getSettings(companyId),
+          wb.getSettings(companyId),
+          chatbot.getSettings(companyId),
         ]);
 
         let companyData = null;
@@ -271,6 +285,17 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
           setErr((prev) => prev || t("management.website.errors.settingsLoad"));
         }
 
+        if (chatbotRes.status === "fulfilled") {
+          const data = chatbotRes.value?.data || {};
+          if (alive) {
+            setChatbotEnabled(Boolean(data.enabled));
+            setChatbotKnowledge(data.knowledge || "");
+            setChatbotUpdatedAt(data.updated_at || null);
+          }
+        } else if (alive) {
+          setChatbotErr("Unable to load chatbot settings.");
+        }
+
         const slug =
           companyData?.slug ||
           settingsData?.slug ||
@@ -280,6 +305,7 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
         await loadPages(slug);
       } finally {
         if (alive) setLoading(false);
+        if (alive) setChatbotLoading(false);
       }
     };
 
@@ -288,6 +314,29 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
       alive = false;
     };
   }, [companyId, loadPages, t, applySettingsPayload]);
+
+  const saveChatbotSettings = async () => {
+    if (!companyId) return;
+    setChatbotSaving(true);
+    setChatbotErr("");
+    setChatbotMsg("");
+    try {
+      const res = await chatbot.saveSettings(companyId, {
+        enabled: chatbotEnabled,
+        knowledge: chatbotKnowledge,
+      });
+      const data = res.data || {};
+      setChatbotEnabled(Boolean(data.enabled));
+      setChatbotKnowledge(data.knowledge || "");
+      setChatbotUpdatedAt(data.updated_at || null);
+      setChatbotMsg("Chatbot settings saved.");
+    } catch (error) {
+      const message = error?.displayMessage || error?.response?.data?.error || "Unable to save chatbot settings.";
+      setChatbotErr(message);
+    } finally {
+      setChatbotSaving(false);
+    }
+  };
 
   const refreshPages = async () => {
     if (!companyId) return;
@@ -555,6 +604,63 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
         settings={settings}
         onSave={handleSeoSave}
       />
+
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack spacing={2}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Box>
+              <Typography variant="h6">Chatbot</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Control the assistant shown on your public website.
+              </Typography>
+            </Box>
+            {chatbotLoading && <CircularProgress size={20} />}
+          </Stack>
+
+          {(chatbotMsg || chatbotErr) && (
+            <Box>
+              {chatbotMsg && <Alert severity="success">{chatbotMsg}</Alert>}
+              {chatbotErr && <Alert severity="error" sx={{ mt: chatbotMsg ? 1 : 0 }}>{chatbotErr}</Alert>}
+            </Box>
+          )}
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={chatbotEnabled}
+                onChange={(event) => setChatbotEnabled(event.target.checked)}
+              />
+            }
+            label="Enable chatbot on your website"
+          />
+
+          <TextField
+            label="Business knowledge"
+            placeholder="Add your business description, services, hours, policies, and FAQs."
+            multiline
+            minRows={6}
+            value={chatbotKnowledge}
+            onChange={(event) => setChatbotKnowledge(event.target.value)}
+            helperText={`${chatbotKnowledge.length}/${CHATBOT_MAX_CHARS} characters`}
+          />
+
+          {chatbotUpdatedAt && (
+            <Typography variant="caption" color="text.secondary">
+              Last updated: {new Date(chatbotUpdatedAt).toLocaleString()}
+            </Typography>
+          )}
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button
+              variant="contained"
+              onClick={saveChatbotSettings}
+              disabled={chatbotSaving || chatbotLoading}
+            >
+              {chatbotSaving ? "Saving…" : "Save chatbot settings"}
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
 
       <Paper sx={{ p: 2, mb: 3 }}>
         <Stack

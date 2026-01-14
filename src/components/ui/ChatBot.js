@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Avatar,
   Box,
@@ -40,11 +40,47 @@ const PAGE_CHIPS = {
   "/pricing": ["Which plan is right for my business?"],
 };
 
-const ChatBot = () => {
+const ChatBot = ({ companySlug }) => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState(() => buildIntroMessages());
   const [loading, setLoading] = useState(false);
+  const [tenantInfo, setTenantInfo] = useState({
+    loading: Boolean(companySlug),
+    enabled: true,
+    name: "",
+  });
+
+  useEffect(() => {
+    if (!companySlug) {
+      setTenantInfo({ loading: false, enabled: true, name: "" });
+      return;
+    }
+    let active = true;
+    setTenantInfo((prev) => ({ ...prev, loading: true }));
+    api
+      .get(`/api/public/${encodeURIComponent(companySlug)}/website`, {
+        params: { fields: "preview" },
+        noCompanyHeader: true,
+        noAuth: true,
+      })
+      .then((res) => {
+        if (!active) return;
+        const data = res.data || {};
+        setTenantInfo({
+          loading: false,
+          enabled: Boolean(data.chatbot_enabled),
+          name: data.company_name || data.company?.name || "",
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setTenantInfo({ loading: false, enabled: false, name: "" });
+      });
+    return () => {
+      active = false;
+    };
+  }, [companySlug]);
 
   const sendMessage = async (overrideText) => {
     const content = (overrideText ?? input).trim();
@@ -61,9 +97,20 @@ const ChatBot = () => {
     setLoading(true);
 
     try {
-      const res = await api.post("/chat", {
-        message: content,
-      });
+      const config = companySlug
+        ? {
+            headers: { "X-Company-Slug": companySlug },
+            noCompanyHeader: true,
+            noAuth: true,
+          }
+        : undefined;
+      const res = await api.post(
+        "/chat",
+        {
+          message: content,
+        },
+        config
+      );
 
       setMessages((prev) => {
         const withoutErrors = prev.filter((msg) => msg.type !== "error");
@@ -129,6 +176,18 @@ const ChatBot = () => {
     </Box>
   );
 
+  const assistantName = tenantInfo.name
+    ? `${tenantInfo.name} Assistant`
+    : "Schedulaa Assistant";
+  const assistantSubtitle = tenantInfo.name
+    ? `Here to help with ${tenantInfo.name} bookings and services`
+    : "Here to help with scheduling, payroll & setup";
+  const assistantInitial = (tenantInfo.name || "Schedulaa").trim().charAt(0) || "S";
+
+  if (companySlug && (tenantInfo.loading || !tenantInfo.enabled)) {
+    return null;
+  }
+
   return (
     <>
       {!open && (
@@ -183,14 +242,14 @@ const ChatBot = () => {
                   fontSize: 16,
                 }}
               >
-                S
+                {assistantInitial}
               </Avatar>
               <Box>
                 <Typography variant="subtitle1" fontWeight={700}>
-                  Schedulaa Assistant
+                  {assistantName}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Here to help with scheduling, payroll & setup
+                  {assistantSubtitle}
                 </Typography>
               </Box>
               <IconButton

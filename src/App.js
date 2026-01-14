@@ -346,6 +346,9 @@ const AppContent = ({ token, setToken }) => {
     (isCustomDomain && tenantSlug) ||
     (slugCandidate && !RESERVED_SLUG_PREFIXES.has(slugCandidate))
   );
+  const chatbotSlug = isCustomDomain
+    ? tenantSlug
+    : (slugCandidate && !RESERVED_SLUG_PREFIXES.has(slugCandidate) ? slugCandidate : null);
   // Use robust embed config from embed context / storage
   const { isEmbed, primary, text } = useEmbedConfig();
 
@@ -405,7 +408,7 @@ const AppContent = ({ token, setToken }) => {
     return null;
   }
 
-  const showChatBot = !isEmbed && MARKETING_PATHS.includes(location.pathname);
+  const showChatBot = !isEmbed && (MARKETING_PATHS.includes(location.pathname) || Boolean(chatbotSlug));
   const showAppChrome = !isEmbed && !isMarketingRoute && !isCompanyRoute && !isNoChromeRoute;
 
   const content = (
@@ -654,7 +657,7 @@ const AppContent = ({ token, setToken }) => {
       </Box>
 
       {showAppChrome && <Footer />}
-      {!isEmbed && showChatBot && <ChatBot token={token} />}
+      {!isEmbed && showChatBot && <ChatBot token={token} companySlug={chatbotSlug} />}
     </BillingBannerProvider>
   );
 

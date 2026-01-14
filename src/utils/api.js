@@ -856,6 +856,25 @@ export const wb = {
   listThemes: async (companyId) => websiteAdmin.listThemes({ companyId }),
 };
 
+export const chatbot = {
+  async getSettings(companyId) {
+    const fallback = getAuthedCompanyId?.();
+    const cid = companyId ?? fallback;
+    const headers = cid ? { "X-Company-Id": String(cid) } : {};
+    return api.get("/api/chatbot/settings", { headers, params: { _ts: Date.now() } });
+  },
+
+  async saveSettings(companyId, payload) {
+    const fallback = getAuthedCompanyId?.();
+    const cid = companyId ?? fallback;
+    const headers = {
+      "Content-Type": "application/json",
+      ...(cid ? { "X-Company-Id": String(cid) } : {}),
+    };
+    return api.put("/api/chatbot/settings", payload, { headers });
+  },
+};
+
 export const navSettings = {
   async getStyle(companyId, config = {}) {
     const res = await api.get("/admin/website/nav-style", {
