@@ -84,16 +84,17 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
       open={open}
       onClose={onClose}
       anchor={drawerAnchor}
-      ModalProps={{
-        BackdropProps: {
-          sx: { zIndex: (theme) => theme.zIndex.modal + 1 },
-        },
+      ModalProps={{ keepMounted: true }}
+      sx={{
+        zIndex: (theme) => theme.zIndex.modal + 2000,
+        "& .MuiDrawer-paper": { zIndex: "inherit" },
       }}
       PaperProps={{
         sx: {
           width: drawerWidth,
           p: 3,
-          zIndex: (theme) => theme.zIndex.modal + 2,
+          maxWidth: "100vw",
+          zIndex: "inherit",
         },
       }}
     >
