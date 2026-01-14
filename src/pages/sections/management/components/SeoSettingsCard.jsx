@@ -89,6 +89,7 @@ const SeoSettingsCard = ({
   const [ogDescription, setOgDescription] = useState(seo.ogDescription || "");
   const [ogImage, setOgImage] = useState(seo.ogImage || "");
   const [faviconUrl, setFaviconUrl] = useState(settings?.favicon_url || "");
+  const [useLogoFavicon, setUseLogoFavicon] = useState(!settings?.favicon_url);
   const [canonicalMode, setCanonicalMode] = useState(
     seo.canonicalMode || (domainStatus === "verified" ? "custom" : "slug")
   );
@@ -101,6 +102,8 @@ const SeoSettingsCard = ({
   const [saving, setSaving] = useState(false);
   const [uploadingOg, setUploadingOg] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [ogImageWarning, setOgImageWarning] = useState("");
+  const [faviconWarning, setFaviconWarning] = useState("");
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -111,12 +114,13 @@ const SeoSettingsCard = ({
     setOgTitle(nextSeo.ogTitle || "");
     setOgDescription(nextSeo.ogDescription || "");
     setOgImage(nextSeo.ogImage || "");
-    setFaviconUrl(
+    const nextFavicon =
       settings?.favicon_url ||
         settings?.settings?.favicon_url ||
         settings?.website?.favicon_url ||
-        ""
-    );
+        "";
+    setFaviconUrl(nextFavicon);
+    setUseLogoFavicon(!nextFavicon);
     setCanonicalMode(nextSeo.canonicalMode || (domainStatus === "verified" ? "custom" : "slug"));
     setCanonicalHost(nextSeo.canonicalHost || customDomain || "");
     setStructuredDataEnabled(Boolean(nextSeo.structuredDataEnabled));
@@ -170,6 +174,16 @@ const SeoSettingsCard = ({
     }
   }, [canonicalHostUrl, slugBaseUrl]);
 
+  const effectiveFaviconUrl = useMemo(
+    () => (useLogoFavicon ? "" : faviconUrl),
+    [useLogoFavicon, faviconUrl]
+  );
+
+  const faviconPreviewUrl = useMemo(
+    () => (useLogoFavicon ? faviconFallback : faviconUrl),
+    [useLogoFavicon, faviconFallback, faviconUrl]
+  );
+
   const ogTestCurrentUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
     const origin = window.location.origin || "";
@@ -207,6 +221,7 @@ const SeoSettingsCard = ({
 
   const uploadFavicon = async (file) => {
     if (!file || !companyId) return;
+    if (useLogoFavicon) return;
     setUploadingFavicon(true);
     try {
       const res = await wb.mediaUpload(companyId, file);
@@ -239,12 +254,77 @@ const SeoSettingsCard = ({
     setCanonicalMode(next);
   };
 
+  useEffect(() => {
+    let alive = true;
+    if (!ogImage || !isHttpsUrl(ogImage)) {
+      setOgImageWarning("");
+      return undefined;
+    }
+    const img = new Image();
+    img.onload = () => {
+      if (!alive) return;
+      const w = img.naturalWidth || 0;
+      const h = img.naturalHeight || 0;
+      if (!w || !h) {
+        setOgImageWarning("");
+        return;
+      }
+      const ratio = w / h;
+      const ratioDiff = Math.abs(ratio - 1.91);
+      if (w < 1000 || h < 500 || ratioDiff > 0.2) {
+        setOgImageWarning("Recommended size is 1200×630 (1.91:1). Current image may crop poorly.");
+      } else {
+        setOgImageWarning("");
+      }
+    };
+    img.onerror = () => {
+      if (!alive) return;
+      setOgImageWarning("Could not load the Open Graph image to verify dimensions.");
+    };
+    img.src = ogImage;
+    return () => {
+      alive = false;
+    };
+  }, [ogImage]);
+
+  useEffect(() => {
+    let alive = true;
+    const target = useLogoFavicon ? faviconFallback : faviconUrl;
+    if (!target || !isHttpsUrl(target)) {
+      setFaviconWarning("");
+      return undefined;
+    }
+    const img = new Image();
+    img.onload = () => {
+      if (!alive) return;
+      const w = img.naturalWidth || 0;
+      const h = img.naturalHeight || 0;
+      if (!w || !h) {
+        setFaviconWarning("");
+        return;
+      }
+      if (Math.max(w, h) > 64) {
+        setFaviconWarning("Recommended favicon size is 32×32 or 48×48 (max 64×64).");
+      } else {
+        setFaviconWarning("");
+      }
+    };
+    img.onerror = () => {
+      if (!alive) return;
+      setFaviconWarning("Could not load the favicon to verify dimensions.");
+    };
+    img.src = target;
+    return () => {
+      alive = false;
+    };
+  }, [useLogoFavicon, faviconFallback, faviconUrl]);
+
   const validate = () => {
     if (ogImage && !isHttpsUrl(ogImage)) {
       setError(tt("management.domainSettings.seo.errors.invalidOgImage", "Open Graph image must be a valid https:// URL."));
       return false;
     }
-    if (faviconUrl && !isHttpsUrl(faviconUrl)) {
+    if (!useLogoFavicon && faviconUrl && !isHttpsUrl(faviconUrl)) {
       setError(tt("management.domainSettings.seo.errors.invalidFavicon", "Favicon must be a valid https:// URL."));
       return false;
     }
@@ -297,7 +377,7 @@ const SeoSettingsCard = ({
           structuredDataEnabled,
           structuredData: structuredPayload,
         },
-        favicon_url: faviconUrl || null,
+        favicon_url: useLogoFavicon ? null : (faviconUrl || null),
       });
       enqueueSnackbar(tt("management.domainSettings.seo.notifications.saveSuccess", "SEO settings saved"), {
         variant: "success",
@@ -457,6 +537,33 @@ const SeoSettingsCard = ({
                 }
                 fullWidth
               />
+              <Box
+                sx={{
+                  width: 96,
+                  height: 64,
+                  borderRadius: 1,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: ogImage ? "transparent" : "action.hover",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                }}
+              >
+                {ogImage ? (
+                  <img
+                    alt="OG preview"
+                    src={ogImage}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <Typography variant="caption" color="text.secondary" align="center">
+                    Using hero fallback
+                  </Typography>
+                )}
+              </Box>
               <Button
                 variant="outlined"
                 component="label"
@@ -477,33 +584,77 @@ const SeoSettingsCard = ({
                 />
               </Button>
             </Stack>
+            {ogImageWarning && (
+              <Alert severity="warning">{ogImageWarning}</Alert>
+            )}
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={useLogoFavicon}
+                    onChange={(event) => setUseLogoFavicon(event.target.checked)}
+                  />
+                }
+                label={tt("management.domainSettings.seo.fields.useLogoFavicon", "Use header/logo as favicon (recommended)")}
+              />
+            </Stack>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
               <TextField
                 label={tt("management.domainSettings.seo.fields.favicon", "Favicon URL")}
-                value={faviconUrl}
+                value={effectiveFaviconUrl}
                 onChange={(event) => setFaviconUrl(event.target.value)}
                 placeholder={tt("management.domainSettings.seo.placeholders.favicon", "https://example.com/favicon.png")}
-                error={Boolean(faviconUrl && !isHttpsUrl(faviconUrl))}
+                error={Boolean(effectiveFaviconUrl && !isHttpsUrl(effectiveFaviconUrl))}
                 helperText={
-                  faviconUrl
+                  useLogoFavicon
+                    ? tt("management.domainSettings.seo.helpers.faviconFallback", "Fallback: your header logo will be used until you upload a favicon.")
+                    : effectiveFaviconUrl
                     ? tt("management.domainSettings.seo.helpers.favicon", "Recommended PNG 32×32 or 48×48 (or .ico), must be https://")
                     : faviconFallback
                     ? tt("management.domainSettings.seo.helpers.faviconFallback", "Fallback: your header logo will be used until you upload a favicon.")
                     : tt("management.domainSettings.seo.helpers.favicon", "Recommended PNG 32×32 or 48×48 (or .ico), must be https://")
                 }
+                disabled={useLogoFavicon}
                 fullWidth
               />
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 1,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: faviconPreviewUrl ? "transparent" : "action.hover",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                }}
+              >
+                {faviconPreviewUrl ? (
+                  <img
+                    alt="Favicon preview"
+                    src={faviconPreviewUrl}
+                    style={{ width: 32, height: 32, objectFit: "contain" }}
+                  />
+                ) : (
+                  <Typography variant="caption" color="text.secondary">
+                    —
+                  </Typography>
+                )}
+              </Box>
               <Button
                 variant="outlined"
                 component="label"
                 startIcon={<CloudUploadIcon />}
-                disabled={uploadingFavicon || !companyId}
+                disabled={uploadingFavicon || !companyId || useLogoFavicon}
                 sx={{ minWidth: 180 }}
               >
                 {uploadingFavicon ? tt("management.domainSettings.seo.buttons.uploading", "Uploading...") : tt("management.domainSettings.seo.buttons.uploadFavicon", "Upload favicon")}
                 <input
                   type="file"
-                  accept="image/*,.ico"
+                  accept="image/png,image/x-icon,.ico"
                   hidden
                   onChange={(event) => {
                     const file = event.target.files?.[0];
@@ -513,6 +664,14 @@ const SeoSettingsCard = ({
                 />
               </Button>
             </Stack>
+            {useLogoFavicon && faviconFallback && (
+              <Typography variant="caption" color="text.secondary">
+                Using logo fallback
+              </Typography>
+            )}
+            {faviconWarning && (
+              <Alert severity="warning">{faviconWarning}</Alert>
+            )}
             <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }}>
               <Button
                 variant="outlined"
