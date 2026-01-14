@@ -47,7 +47,7 @@ Schedulaa is an Operations OS. Payroll is only one piece of the platform. Every 
 | -------- | -------------- | --------- | ---------------- | --------- |
 | Starter  | 1              | 1         | No               | $19.99/mo |
 | Pro      | Up to 5        | 1         | Yes (with payslip portal) | $49.99/mo |
-| Business | Up to 10       | 2         | Yes (full payroll + W‑2/T4/ROE) | $119.99/mo |
+| Business | Up to 10       | 5         | Yes (full payroll + W‑2/T4/ROE) | $119.99/mo |
 
 Add-ons:
 
