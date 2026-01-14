@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   Box,
   Button,
@@ -18,9 +17,57 @@ import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import GroupWorkOutlinedIcon from "@mui/icons-material/GroupWorkOutlined";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
-import { useTranslation } from "react-i18next";
 
 const normalizeItems = (items) => (Array.isArray(items) ? items : []);
+
+const COPY = {
+  title: "Employee Access Guide",
+  subtitle: "Use this to decide which access toggles to enable for each team member.",
+  sections: {
+    quickSummary: {
+      title: "Quick summary",
+      items: [
+        "Managers have full access to payroll, scheduling, settings, and the service catalog.",
+        "Employees are limited by the toggles you enable below.",
+        "HR onboarding access does not grant service, product, or add-on management.",
+      ],
+    },
+    roles: {
+      title: "Role basics",
+      items: [
+        "Employee: core staff tools (schedule, bookings, time clock).",
+        "Manager: full admin access across settings, payroll, and catalog.",
+      ],
+    },
+    toggles: {
+      title: "Access toggles",
+      items: [
+        "HR onboarding access: manage onboarding forms and candidate profiles.",
+        "Limited HR onboarding: view HR tabs and read candidate profiles only.",
+        "Supervisor access: shift, time tracking, leaves, swap approvals, master calendar.",
+        "Payroll access: payroll runs, tax forms, ROE, T4/W-2, invoices.",
+      ],
+    },
+    availability: {
+      title: "Availability & slots",
+      items: [
+        "Employees can edit their own availability only when HR onboarding access is enabled and workspace settings allow it.",
+        "Team availability views and assigning slots for other employees require manager access.",
+      ],
+    },
+    examples: {
+      title: "Common setups",
+      items: [
+        "Front desk coordinator: Employee + HR onboarding (no payroll).",
+        "Team lead: Employee + Supervisor access.",
+        "Payroll admin: Employee + Payroll access.",
+      ],
+    },
+  },
+  actions: {
+    close: "Close guide",
+  },
+};
 
 const Section = ({ title, icon, items }) => (
   <Box sx={{ mb: 3 }}>
@@ -47,36 +94,9 @@ const Section = ({ title, icon, items }) => (
 );
 
 export default function EmployeeManagementHelpDrawer({ open, onClose, anchor, width }) {
-  const { t, i18n } = useTranslation();
   const isSmall = useMediaQuery("(max-width:900px)");
   const drawerAnchor = anchor || (isSmall ? "bottom" : "right");
   const drawerWidth = width ?? (isSmall ? "100%" : 420);
-  const fallbackT = useMemo(() => i18n.getFixedT("en"), [i18n]);
-  const safeT = (key, options) => {
-    const value = t(key, options);
-    return value === key ? fallbackT(key, options) : value;
-  };
-
-  const quickSummary = useMemo(
-    () => safeT("management.employeeHelp.quickSummary.items", { returnObjects: true }) || [],
-    [safeT]
-  );
-  const roles = useMemo(
-    () => safeT("management.employeeHelp.roles.items", { returnObjects: true }) || [],
-    [safeT]
-  );
-  const toggles = useMemo(
-    () => safeT("management.employeeHelp.toggles.items", { returnObjects: true }) || [],
-    [safeT]
-  );
-  const availability = useMemo(
-    () => safeT("management.employeeHelp.availability.items", { returnObjects: true }) || [],
-    [safeT]
-  );
-  const examples = useMemo(
-    () => safeT("management.employeeHelp.examples.items", { returnObjects: true }) || [],
-    [safeT]
-  );
 
   return (
     <Drawer
@@ -100,42 +120,42 @@ export default function EmployeeManagementHelpDrawer({ open, onClose, anchor, wi
       <Box sx={{ p: 3 }}>
         <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
           <HelpOutlineIcon />
-          <Typography variant="h5">{safeT("management.employeeHelp.title")}</Typography>
+          <Typography variant="h5">{COPY.title}</Typography>
         </Stack>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {safeT("management.employeeHelp.subtitle")}
+          {COPY.subtitle}
         </Typography>
 
         <Section
-          title={safeT("management.employeeHelp.quickSummary.title")}
+          title={COPY.sections.quickSummary.title}
           icon={<PeopleOutlineIcon color="primary" />}
-          items={quickSummary}
+          items={COPY.sections.quickSummary.items}
         />
         <Section
-          title={safeT("management.employeeHelp.roles.title")}
+          title={COPY.sections.roles.title}
           icon={<ManageAccountsIcon color="primary" />}
-          items={roles}
+          items={COPY.sections.roles.items}
         />
         <Section
-          title={safeT("management.employeeHelp.toggles.title")}
+          title={COPY.sections.toggles.title}
           icon={<SecurityOutlinedIcon color="primary" />}
-          items={toggles}
+          items={COPY.sections.toggles.items}
         />
         <Section
-          title={safeT("management.employeeHelp.availability.title")}
+          title={COPY.sections.availability.title}
           icon={<GroupWorkOutlinedIcon color="primary" />}
-          items={availability}
+          items={COPY.sections.availability.items}
         />
         <Section
-          title={safeT("management.employeeHelp.examples.title")}
+          title={COPY.sections.examples.title}
           icon={<PeopleOutlineIcon color="primary" />}
-          items={examples}
+          items={COPY.sections.examples.items}
         />
 
         <Divider sx={{ my: 2 }} />
         <Stack direction="row" justifyContent="flex-end">
           <Button variant="outlined" onClick={onClose}>
-            {safeT("management.employeeHelp.actions.close")}
+            {COPY.actions.close}
           </Button>
         </Stack>
       </Box>
