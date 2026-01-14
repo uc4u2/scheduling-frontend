@@ -21,3 +21,9 @@ Manager Portal → Website & Pages → Website Manager → Public URL
 - Basket / Checkout: `https://www.schedulaa.com/{slug}/basket`
 
 If a user asks “Where do clients book?” send them to the Booking URL.
+
+## Related guides
+
+- `frontend/docs/custom-domain-guide.md`
+- `frontend/docs/domain-settings-how-to.md`
+- `frontend/docs/website-seo-og.md`
