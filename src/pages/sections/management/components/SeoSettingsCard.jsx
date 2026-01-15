@@ -182,6 +182,12 @@ const SeoSettingsCard = ({
   const [ogTitle, setOgTitle] = useState(seo.ogTitle || "");
   const [ogDescription, setOgDescription] = useState(seo.ogDescription || "");
   const [ogImage, setOgImage] = useState(seo.ogImage || "");
+  const [googleSiteVerification, setGoogleSiteVerification] = useState(
+    seo.googleSiteVerification || ""
+  );
+  const [googleDnsVerification, setGoogleDnsVerification] = useState(
+    seo.googleDnsVerification || ""
+  );
   const [faviconUrl, setFaviconUrl] = useState(settings?.favicon_url || "");
   const [useLogoFavicon, setUseLogoFavicon] = useState(!settings?.favicon_url);
   const [canonicalMode, setCanonicalMode] = useState(
@@ -218,6 +224,8 @@ const SeoSettingsCard = ({
     setOgTitle(nextSeo.ogTitle || "");
     setOgDescription(nextSeo.ogDescription || "");
     setOgImage(nextSeo.ogImage || "");
+    setGoogleSiteVerification(nextSeo.googleSiteVerification || "");
+    setGoogleDnsVerification(nextSeo.googleDnsVerification || "");
     const nextFavicon =
       settings?.favicon_url ||
         settings?.settings?.favicon_url ||
@@ -326,6 +334,14 @@ const SeoSettingsCard = ({
       return "";
     }
   }, [canonicalHostUrl, slugBaseUrl]);
+  const googleMetaTag = useMemo(() => {
+    if (!googleSiteVerification) return "";
+    return `<meta name="google-site-verification" content="${googleSiteVerification}">`;
+  }, [googleSiteVerification]);
+  const googleDnsRecord = useMemo(() => {
+    if (!googleDnsVerification) return "";
+    return `google-site-verification=${googleDnsVerification}`;
+  }, [googleDnsVerification]);
   const titleRemaining = MAX_TITLE - metaTitle.length;
   const descRemaining = MAX_DESCRIPTION - metaDescription.length;
   const canonicalLocked = !domainVerified;
@@ -598,6 +614,8 @@ const SeoSettingsCard = ({
           ogTitle,
           ogDescription,
           ogImage,
+          googleSiteVerification: googleSiteVerification || null,
+          googleDnsVerification: googleDnsVerification || null,
           canonicalMode: canonicalMode === "custom" && !canonicalLocked ? "custom" : "slug",
           canonicalHost: canonicalMode === "custom" ? normalizeDomain(canonicalHost || customDomain) : null,
           structuredDataEnabled,
@@ -1206,6 +1224,59 @@ const SeoSettingsCard = ({
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
                 Search engines use these files to discover your published pages.
               </Typography>
+            </Box>
+
+            <Box>
+              <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Google Search Console
+                </Typography>
+                <Tooltip
+                  title="Verify your domain in Google Search Console so Google trusts your sitemap and canonical URLs."
+                  arrow
+                  placement="top"
+                >
+                  <IconButton size="small" sx={{ p: 0.25 }}>
+                    <InfoOutlinedIcon fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+              <Stack spacing={1.5}>
+                <TextField
+                  size="small"
+                  label={labelWithTip(
+                    "Meta verification token",
+                    "Paste the token from Google Search Console (HTML tag method)."
+                  )}
+                  value={googleSiteVerification}
+                  onChange={(e) => setGoogleSiteVerification(e.target.value.trim())}
+                  placeholder="e.g., abc123XYZ"
+                  helperText="Google will confirm ownership by reading a meta tag on your homepage."
+                />
+                <TextField
+                  size="small"
+                  label="Meta tag preview"
+                  value={googleMetaTag || "Paste a token to generate the meta tag."}
+                  InputProps={{ readOnly: true }}
+                />
+                <TextField
+                  size="small"
+                  label={labelWithTip(
+                    "DNS TXT token (optional)",
+                    "If you prefer DNS verification, paste the token from Google."
+                  )}
+                  value={googleDnsVerification}
+                  onChange={(e) => setGoogleDnsVerification(e.target.value.trim())}
+                  placeholder="e.g., xyz987TOKEN"
+                  helperText="Use DNS only if you manage your registrar records."
+                />
+                <TextField
+                  size="small"
+                  label="DNS TXT record preview"
+                  value={googleDnsRecord || "Paste a DNS token to generate the TXT record."}
+                  InputProps={{ readOnly: true }}
+                />
+              </Stack>
             </Box>
 
             <FormControlLabel

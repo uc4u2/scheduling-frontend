@@ -83,6 +83,14 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
           "You can open the links from the SEO & Metadata card to verify what search engines will see.",
         ],
       },
+      {
+        title: "Google Search Console",
+        body: [
+          "Paste the verification token from Google to prove you own the domain.",
+          "Use the meta tag method unless you manage DNS records yourself.",
+          "After verification, submit your sitemap to speed up indexing.",
+        ],
+      },
     ],
     []
   );

@@ -40,6 +40,12 @@ Sitemap & robots
 - If your custom domain is not verified yet, they use your schedulaa.com slug URL.
 - Search engines use these files to discover published pages.
 
+Google Search Console verification
+- In SEO & Metadata → Advanced settings, paste the Google verification token.
+- Use the Meta verification token for the HTML tag method in Google Search Console.
+- If you prefer DNS verification, paste the DNS TXT token and add it at your registrar.
+- After verification, submit your sitemap URL in Google Search Console.
+
 Testing your preview
 - Use the “Test preview” buttons in SEO & Metadata.
 - If a bot is not showing your updates, make sure you clicked Publish.
