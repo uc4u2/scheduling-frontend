@@ -503,13 +503,15 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/review/:appointmentId" element={<PublicReview slugOverride={tenantSlug} />} />
               <Route path="/tip/:appointmentId" element={<PublicTip slugOverride={tenantSlug} />} />
               <Route path="/:slug/*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}
 
           {/* Marketing site */}
-          <Route element={<PublicLayout token={token} setToken={setToken} />}>
-            {!isCustomDomain && <Route path="/" element={<HomePage />} />}
-            <Route path="/pricing" element={<PricingPage />} />
+          {!isCustomDomain && (
+            <Route element={<PublicLayout token={token} setToken={setToken} />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/pricing" element={<PricingPage />} />
           <Route path="/compare" element={<CompareHubPage />} />
           <Route path="/compare/:vendor" element={<ComparisonPage />} />
           <Route path="/alternatives" element={<AlternativesHubPage />} />
@@ -561,7 +563,8 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/acceptable-use" element={<AcceptableUsePage />} />
             <Route path="/data-processing" element={<DataProcessingAddendumPage />} />
             <Route path="/security" element={<SecurityPage />} />
-          </Route>
+            </Route>
+          )}
           {/* Auth */}
           <Route path="/login" element={<Login setToken={setToken} />} />
           <Route path="/register" element={<Register />} />

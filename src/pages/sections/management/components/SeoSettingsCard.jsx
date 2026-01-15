@@ -150,6 +150,25 @@ const SeoSettingsCard = ({
     return ensureUrl(canonicalHost || customDomain || "");
   }, [canonicalMode, domainStatus, canonicalHost, customDomain, slugBaseUrl]);
 
+  const sitemapUrl = useMemo(() => {
+    const base = canonicalHostUrl || slugBaseUrl;
+    if (!base) return "";
+    try {
+      return new URL("/sitemap.xml", base).toString();
+    } catch {
+      return "";
+    }
+  }, [canonicalHostUrl, slugBaseUrl]);
+
+  const robotsUrl = useMemo(() => {
+    const base = canonicalHostUrl || slugBaseUrl;
+    if (!base) return "";
+    try {
+      return new URL("/robots.txt", base).toString();
+    } catch {
+      return "";
+    }
+  }, [canonicalHostUrl, slugBaseUrl]);
   const titleRemaining = MAX_TITLE - metaTitle.length;
   const descRemaining = MAX_DESCRIPTION - metaDescription.length;
   const canonicalLocked = !domainVerified;
@@ -845,6 +864,39 @@ const SeoSettingsCard = ({
                 {tt("management.domainSettings.seo.buttons.open", "Open")}
               </Button>
             </Stack>
+
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                Sitemap & robots
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  endIcon={<LaunchIcon />}
+                  href={sitemapUrl || undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  disabled={!sitemapUrl}
+                >
+                  Sitemap.xml
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  endIcon={<LaunchIcon />}
+                  href={robotsUrl || undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  disabled={!robotsUrl}
+                >
+                  Robots.txt
+                </Button>
+              </Stack>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                Search engines use these files to discover your published pages.
+              </Typography>
+            </Box>
 
             <FormControlLabel
               control={

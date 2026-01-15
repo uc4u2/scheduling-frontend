@@ -33,6 +33,11 @@ Tips for best previews
 - Favicon: use 32×32 or 48×48 PNG (or .ico), hosted on https.
 - Keep titles under ~60 characters and descriptions under ~155 characters.
 
+Sitemap & robots
+- Your public sitemap lives at `/sitemap.xml` on your domain.
+- Robots rules live at `/robots.txt` on your domain.
+- Search engines use these files to discover published pages.
+
 Testing your preview
 - Use the “Test preview” buttons in SEO & Metadata.
 - If a bot is not showing your updates, make sure you clicked Publish.
