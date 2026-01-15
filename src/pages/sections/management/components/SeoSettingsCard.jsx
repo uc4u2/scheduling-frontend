@@ -270,11 +270,11 @@ const SeoSettingsCard = ({
   }, [seo.slugBaseUrl, companySlug, primaryHost]);
 
   const canonicalHostUrl = useMemo(() => {
-    if (canonicalMode !== "custom" || domainStatus !== "verified") {
+    if (canonicalMode !== "custom" || !domainVerified) {
       return slugBaseUrl;
     }
     return ensureUrl(canonicalHost || customDomain || "");
-  }, [canonicalMode, domainStatus, canonicalHost, customDomain, slugBaseUrl]);
+  }, [canonicalMode, domainVerified, canonicalHost, customDomain, slugBaseUrl]);
 
   useEffect(() => {
     setStructuredFields((prev) => ({
@@ -303,7 +303,9 @@ const SeoSettingsCard = ({
   ]);
 
   const sitemapUrl = useMemo(() => {
-    const base = canonicalHostUrl || slugBaseUrl;
+    const base = domainVerified && customDomain
+      ? ensureUrl(customDomain)
+      : canonicalHostUrl || slugBaseUrl;
     if (!base) return "";
     try {
       return new URL("/sitemap.xml", base).toString();
@@ -313,7 +315,9 @@ const SeoSettingsCard = ({
   }, [canonicalHostUrl, slugBaseUrl]);
 
   const robotsUrl = useMemo(() => {
-    const base = canonicalHostUrl || slugBaseUrl;
+    const base = domainVerified && customDomain
+      ? ensureUrl(customDomain)
+      : canonicalHostUrl || slugBaseUrl;
     if (!base) return "";
     try {
       return new URL("/robots.txt", base).toString();
