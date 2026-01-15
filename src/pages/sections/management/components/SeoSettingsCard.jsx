@@ -46,10 +46,63 @@ const formatStructuredInput = (value) => {
   }
 };
 
+const parseStructuredInput = (value) => {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  if (typeof value !== "string") return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
 const ensureUrl = (value) => {
   if (!value) return "";
   if (/^https?:\/\//i.test(value)) return value;
   return `https://${value}`;
+};
+
+const buildStructuredSchema = (fields) => {
+  const sameAs = (fields.sameAs || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const addressFields = {
+    "@type": "PostalAddress",
+    streetAddress: fields.streetAddress,
+    addressLocality: fields.city,
+    addressRegion: fields.region,
+    postalCode: fields.postalCode,
+    addressCountry: fields.country,
+  };
+  const address = Object.entries(addressFields).reduce((acc, [key, value]) => {
+    if (!value || (key === "@type" && !fields.hasAddress)) return acc;
+    acc[key] = value;
+    return acc;
+  }, {});
+
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": fields.type || "LocalBusiness",
+    name: fields.name,
+    url: ensureUrl(fields.url),
+    telephone: fields.phone,
+    email: fields.email,
+    priceRange: fields.priceRange,
+  };
+
+  if (fields.logo) schema.logo = ensureUrl(fields.logo);
+  if (sameAs.length) schema.sameAs = sameAs.map(ensureUrl);
+  if (fields.hasAddress && Object.keys(address).length > 1) {
+    schema.address = address;
+  }
+
+  return Object.entries(schema).reduce((acc, [key, value]) => {
+    if (!value || (Array.isArray(value) && !value.length)) return acc;
+    acc[key] = value;
+    return acc;
+  }, {});
 };
 
 const isHttpsUrl = (value) => /^https:\/\//i.test(value || "");
@@ -68,6 +121,23 @@ const resolveLogoUrl = (logoAsset, fallback) => {
     logoAsset?.src ||
     fallback;
   return typeof candidate === "string" ? candidate : "";
+};
+
+const defaultStructuredFields = {
+  name: "",
+  url: "",
+  logo: "",
+  phone: "",
+  email: "",
+  priceRange: "",
+  type: "LocalBusiness",
+  hasAddress: false,
+  streetAddress: "",
+  city: "",
+  region: "",
+  postalCode: "",
+  country: "",
+  sameAs: "",
 };
 
 const SeoSettingsCard = ({
@@ -102,7 +172,9 @@ const SeoSettingsCard = ({
   const [structuredDataEnabled, setStructuredDataEnabled] = useState(
     Boolean(seo.structuredDataEnabled)
   );
+  const [structuredAdvanced, setStructuredAdvanced] = useState(false);
   const [structuredData, setStructuredData] = useState(formatStructuredInput(seo.structuredData));
+  const [structuredFields, setStructuredFields] = useState(defaultStructuredFields);
   const [structuredError, setStructuredError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploadingOg, setUploadingOg] = useState(false);
@@ -136,7 +208,42 @@ const SeoSettingsCard = ({
     setCanonicalMode(nextSeo.canonicalMode || (domainVerified ? "custom" : "slug"));
     setCanonicalHost(nextSeo.canonicalHost || customDomain || "");
     setStructuredDataEnabled(Boolean(nextSeo.structuredDataEnabled));
-    setStructuredData(formatStructuredInput(nextSeo.structuredData));
+    const parsedStructured = parseStructuredInput(nextSeo.structuredData);
+    if (parsedStructured && typeof parsedStructured === "object") {
+      setStructuredAdvanced(false);
+      setStructuredFields((prev) => ({
+        ...prev,
+        name: parsedStructured.name || "",
+        url: parsedStructured.url || "",
+        logo: parsedStructured.logo || "",
+        phone: parsedStructured.telephone || "",
+        email: parsedStructured.email || "",
+        priceRange: parsedStructured.priceRange || "",
+        type: parsedStructured["@type"] || "LocalBusiness",
+        hasAddress: Boolean(parsedStructured.address),
+        streetAddress: parsedStructured.address?.streetAddress || "",
+        city: parsedStructured.address?.addressLocality || "",
+        region: parsedStructured.address?.addressRegion || "",
+        postalCode: parsedStructured.address?.postalCode || "",
+        country: parsedStructured.address?.addressCountry || "",
+        sameAs: Array.isArray(parsedStructured.sameAs)
+          ? parsedStructured.sameAs.join(", ")
+          : (typeof parsedStructured.sameAs === "string" ? parsedStructured.sameAs : ""),
+      }));
+      setStructuredData(formatStructuredInput(parsedStructured));
+    } else if (nextSeo.structuredData) {
+      setStructuredAdvanced(true);
+      setStructuredData(formatStructuredInput(nextSeo.structuredData));
+    } else {
+      setStructuredAdvanced(false);
+      setStructuredData("");
+      setStructuredFields((prev) => ({
+        ...prev,
+        name: settings?.site_title || companySlug || "",
+        url: "",
+        logo: "",
+      }));
+    }
   }, [settings, domainVerified, customDomain]);
 
   const slugBaseUrl = useMemo(() => {
@@ -149,6 +256,32 @@ const SeoSettingsCard = ({
     }
     return ensureUrl(canonicalHost || customDomain || "");
   }, [canonicalMode, domainStatus, canonicalHost, customDomain, slugBaseUrl]);
+
+  useEffect(() => {
+    setStructuredFields((prev) => ({
+      ...prev,
+      url: prev.url || canonicalHostUrl || slugBaseUrl,
+      logo: prev.logo || companyLogoUrl || "",
+      name: prev.name || settings?.site_title || companySlug || "",
+    }));
+  }, [canonicalHostUrl, slugBaseUrl, companyLogoUrl, settings, companySlug]);
+
+  useEffect(() => {
+    if (!structuredDataEnabled || !structuredAdvanced) return;
+    if (structuredData.trim()) return;
+    const generated = buildStructuredSchema({
+      ...structuredFields,
+      url: structuredFields.url || canonicalHostUrl || slugBaseUrl,
+    });
+    setStructuredData(JSON.stringify(generated, null, 2));
+  }, [
+    structuredDataEnabled,
+    structuredAdvanced,
+    structuredData,
+    structuredFields,
+    canonicalHostUrl,
+    slugBaseUrl,
+  ]);
 
   const sitemapUrl = useMemo(() => {
     const base = canonicalHostUrl || slugBaseUrl;
@@ -379,7 +512,7 @@ const SeoSettingsCard = ({
         return false;
       }
     }
-    if (structuredDataEnabled && structuredData.trim()) {
+    if (structuredDataEnabled && structuredAdvanced && structuredData.trim()) {
       try {
         JSON.parse(structuredData);
         setStructuredError(null);
@@ -401,9 +534,17 @@ const SeoSettingsCard = ({
     setSaving(true);
     setError(null);
     try {
-      const structuredPayload = structuredDataEnabled && structuredData.trim()
-        ? JSON.parse(structuredData)
-        : null;
+      let structuredPayload = null;
+      if (structuredDataEnabled) {
+        if (structuredAdvanced && structuredData.trim()) {
+          structuredPayload = JSON.parse(structuredData);
+        } else if (!structuredAdvanced) {
+          structuredPayload = buildStructuredSchema({
+            ...structuredFields,
+            url: structuredFields.url || canonicalHostUrl || slugBaseUrl,
+          });
+        }
+      }
       await onSave?.({
         seo: {
           metaTitle,
@@ -908,22 +1049,136 @@ const SeoSettingsCard = ({
               label={tt("management.domainSettings.seo.fields.structuredData", "Include structured data (schema.org)")}
             />
             {structuredDataEnabled && (
+              <FormControlLabel
+                sx={{ mt: -1 }}
+                control={
+                  <Checkbox
+                    checked={structuredAdvanced}
+                    onChange={(_, checked) => setStructuredAdvanced(checked)}
+                    size="small"
+                  />
+                }
+                label="Advanced (edit raw JSON)"
+              />
+            )}
+            {structuredDataEnabled && !structuredAdvanced && (
+              <Stack spacing={2}>
+                <TextField
+                  label="Business name"
+                  value={structuredFields.name}
+                  onChange={(event) => setStructuredFields((prev) => ({ ...prev, name: event.target.value }))}
+                />
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                  <TextField
+                    label="Website URL"
+                    value={structuredFields.url}
+                    onChange={(event) => setStructuredFields((prev) => ({ ...prev, url: event.target.value }))}
+                    helperText="Use your public homepage URL."
+                    fullWidth
+                  />
+                  <TextField
+                    label="Logo URL"
+                    value={structuredFields.logo}
+                    onChange={(event) => setStructuredFields((prev) => ({ ...prev, logo: event.target.value }))}
+                    helperText="Optional. Use a square logo if possible."
+                    fullWidth
+                  />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                  <TextField
+                    label="Phone"
+                    value={structuredFields.phone}
+                    onChange={(event) => setStructuredFields((prev) => ({ ...prev, phone: event.target.value }))}
+                    fullWidth
+                  />
+                  <TextField
+                    label="Email"
+                    value={structuredFields.email}
+                    onChange={(event) => setStructuredFields((prev) => ({ ...prev, email: event.target.value }))}
+                    fullWidth
+                  />
+                </Stack>
+                <TextField
+                  label="Business type"
+                  value={structuredFields.type}
+                  onChange={(event) => setStructuredFields((prev) => ({ ...prev, type: event.target.value }))}
+                  helperText="Example: LocalBusiness, BeautySalon, Spa, MedicalBusiness."
+                />
+                <TextField
+                  label="Price range"
+                  value={structuredFields.priceRange}
+                  onChange={(event) => setStructuredFields((prev) => ({ ...prev, priceRange: event.target.value }))}
+                  helperText="Example: $$ or $$$."
+                />
+                <TextField
+                  label="Social links"
+                  value={structuredFields.sameAs}
+                  onChange={(event) => setStructuredFields((prev) => ({ ...prev, sameAs: event.target.value }))}
+                  helperText="Comma-separated links (Instagram, Facebook, LinkedIn)."
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={structuredFields.hasAddress}
+                      onChange={(_, checked) => setStructuredFields((prev) => ({ ...prev, hasAddress: checked }))}
+                    />
+                  }
+                  label="Include business address"
+                />
+                {structuredFields.hasAddress && (
+                  <Stack spacing={1.5}>
+                    <TextField
+                      label="Street address"
+                      value={structuredFields.streetAddress}
+                      onChange={(event) => setStructuredFields((prev) => ({ ...prev, streetAddress: event.target.value }))}
+                    />
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                      <TextField
+                        label="City"
+                        value={structuredFields.city}
+                        onChange={(event) => setStructuredFields((prev) => ({ ...prev, city: event.target.value }))}
+                        fullWidth
+                      />
+                      <TextField
+                        label="State/Province"
+                        value={structuredFields.region}
+                        onChange={(event) => setStructuredFields((prev) => ({ ...prev, region: event.target.value }))}
+                        fullWidth
+                      />
+                    </Stack>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+                      <TextField
+                        label="Postal code"
+                        value={structuredFields.postalCode}
+                        onChange={(event) => setStructuredFields((prev) => ({ ...prev, postalCode: event.target.value }))}
+                        fullWidth
+                      />
+                      <TextField
+                        label="Country"
+                        value={structuredFields.country}
+                        onChange={(event) => setStructuredFields((prev) => ({ ...prev, country: event.target.value }))}
+                        fullWidth
+                      />
+                    </Stack>
+                  </Stack>
+                )}
+                <Typography variant="caption" color="text.secondary">
+                  We generate the JSON-LD schema for you using these fields.
+                </Typography>
+              </Stack>
+            )}
+            {structuredDataEnabled && structuredAdvanced && (
               <TextField
                 multiline
-                minRows={4}
+                minRows={6}
                 value={structuredData}
                 onChange={(e) => setStructuredData(e.target.value)}
                 placeholder={`{
   "@context": "https://schema.org"
 }`}
                 error={Boolean(structuredError)}
-                helperText={structuredError || tt("management.domainSettings.seo.helpers.structuredData", "Paste valid JSON-LD to include business schema")}
+                helperText={structuredError || "Paste valid JSON-LD if you need full control."}
               />
-            )}
-            {structuredDataEnabled && (
-              <Typography variant="caption" color="text.secondary">
-                Example: Organization schema with your studio name, logo URL, customer service phone, and social links.
-              </Typography>
             )}
           </Stack>
         </Box>
