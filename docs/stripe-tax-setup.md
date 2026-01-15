@@ -5,6 +5,8 @@ description: Connect Stripe, enable automatic tax, and configure card-on-file fe
 
 Use this checklist to turn on payments, tax, and saved cards for services.
 
+For field-by-field explanations in Checkout Pro, see **Stripe Payments & Card on File** in Docs.
+
 ## 1) Company Profile (one-time)
 1) Go to **Company Profile**.
 2) Set **Country** and **Province/State**.
