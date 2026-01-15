@@ -7,6 +7,37 @@ description: Guide to the Manager Portal → Advanced Management workspace for s
 
 Use the **Advanced Management** sidebar inside the manager portal to configure the operational data model behind booking and payroll. The workspace is composed of dedicated tabs/cards—each backed by the React modules under `src/pages/sections/management/`.
 
+## Stripe Connect banner
+
+If the banner shows **Stripe Connect charges disabled**, click:
+- **Finish Stripe setup** or **Resume onboarding** to complete Stripe Connect.
+- Use **Open Payments Hub** to jump into payment tools.
+
+## Tabs overview (what each tab does)
+
+Use these tabs to manage daily operations:
+
+- **Services**: Create or edit bookable services (name, duration, price, description).
+- **Products**: Manage retail products and inventory.
+- **Product Orders**: Review and fulfill product purchases.
+- **Assign Services**: Assign which staff can perform each service.
+- **Promotions**: Create promo codes and discounts.
+- **Campaigns**: Run marketing campaigns tied to segments.
+- **Add-ons**: Create optional upsells tied to services.
+- **Slots**: Define bookable time slots beyond shifts (client availability).
+- **Resources**: Manage rooms, chairs, or equipment capacity.
+- **Employee Availability**: Set staff availability and exceptions.
+- **Shift Templates**: Build reusable shift patterns.
+- **Client Bookings**: View client-facing bookings and details.
+- **Manager Bookings**: Admin tools for edits, reassignment, and notes.
+- **Manual Payments / Invoices**: Create manual charges or invoices.
+- **Payments & Refunds**: Review charges, issue refunds, track balances.
+- **Analytics (Overview)**: Open dashboards for revenue, utilization, and trends.
+
+Buttons:
+- **Open Payments Hub** opens payment tools in a dedicated view.
+- **Advanced Analytics (pop-up)** opens the analytics dashboard in a modal.
+
 ## Services Catalog
 
 - **Component:** `ServiceManagement.js`
