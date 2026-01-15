@@ -2194,12 +2194,35 @@ const siteTitle = useMemo(() => {
             width: "100%",
           }}
         >
+          <Box
+            sx={{
+              display: { xs: "flex", md: "none" },
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              gridColumn: headerBrandGridColumn,
+              ...logoEdgePlacement,
+            }}
+          >
+            <IconButton onClick={handleMobileOpen} sx={{ color: headerTextColor }}>
+              <MenuIcon />
+            </IconButton>
+            <Box sx={{ flex: 1, display: "flex", justifyContent: "center" }}>
+              {renderHeaderBrandContent()}
+            </Box>
+            <Box sx={{ minWidth: 36, display: "flex", justifyContent: "flex-end" }}>
+              {headerSocialInline && headerSocialLinks.length > 0
+                ? renderHeaderSocialIcons({ inline: true, placement: "after" })
+                : null}
+            </Box>
+          </Box>
           <Stack
             direction="row"
             spacing={1.25}
             alignItems="center"
             justifyContent={{ xs: "space-between", md: headerLogoAlign }}
             sx={{
+              display: { xs: "none", md: "flex" },
               width: "100%",
               maxWidth:
                 headerConfig.layout === "split" && !headerFullWidth
