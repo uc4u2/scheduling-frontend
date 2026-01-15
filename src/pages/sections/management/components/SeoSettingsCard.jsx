@@ -10,6 +10,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Chip,
   Divider,
   FormControlLabel,
   IconButton,
@@ -1037,8 +1038,19 @@ const SeoSettingsCard = ({
               arrow
               placement="top"
             >
-              <InfoOutlinedIcon fontSize="inherit" />
+              <IconButton size="small" sx={{ p: 0.25 }}>
+                <InfoOutlinedIcon fontSize="inherit" />
+              </IconButton>
             </Tooltip>
+            <Chip
+              label="Search visibility"
+              size="small"
+              sx={{
+                ml: 0.5,
+                bgcolor: "action.hover",
+                fontWeight: 600,
+              }}
+            />
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             {tt("management.domainSettings.seo.sections.advancedHint", "Control canonical hosts and structured data for better indexing.")}
@@ -1046,7 +1058,16 @@ const SeoSettingsCard = ({
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
             Point crawlers at your custom domain and optionally embed JSON-LD Organization data.
           </Typography>
-          <Stack spacing={2}>
+          <Stack
+            spacing={2.5}
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              bgcolor: "background.paper",
+            }}
+          >
             <Box>
               <Stack direction="row" alignItems="center" spacing={0.5}>
                 <Typography variant="caption" color="text.secondary">
@@ -1057,7 +1078,9 @@ const SeoSettingsCard = ({
                   arrow
                   placement="top"
                 >
-                  <InfoOutlinedIcon fontSize="inherit" />
+                  <IconButton size="small" sx={{ p: 0.25 }}>
+                    <InfoOutlinedIcon fontSize="inherit" />
+                  </IconButton>
                 </Tooltip>
               </Stack>
               <ToggleButtonGroup
@@ -1065,7 +1088,23 @@ const SeoSettingsCard = ({
                 exclusive
                 size="small"
                 onChange={handleCanonicalChange}
-                sx={{ mt: 1 }}
+                sx={{
+                  mt: 1,
+                  bgcolor: "action.hover",
+                  borderRadius: 999,
+                  p: 0.25,
+                  "& .MuiToggleButton-root": {
+                    border: 0,
+                    borderRadius: 999,
+                    px: 1.5,
+                    textTransform: "none",
+                    fontWeight: 600,
+                  },
+                  "& .MuiToggleButton-root.Mui-selected": {
+                    bgcolor: "background.paper",
+                    boxShadow: 1,
+                  },
+                }}
               >
                 <ToggleButton value="slug">
                   <Tooltip title="Use your schedulaa.com/slug URL as canonical." arrow placement="top">
@@ -1101,28 +1140,29 @@ const SeoSettingsCard = ({
               )}
             </Box>
 
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-              <TextField
-                size="small"
-                fullWidth
-                InputProps={{ readOnly: true }}
-                value={canonicalHostUrl}
-                label={labelWithTip(
-                  tt("management.domainSettings.seo.fields.previewTitle", "Preview URL"),
-                  "This is the URL search engines will treat as canonical."
-                )}
-              />
-              <Button
-                variant="outlined"
-                endIcon={<LaunchIcon />}
-                href={canonicalHostUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                disabled={!canonicalHostUrl}
-              >
-                {tt("management.domainSettings.seo.buttons.open", "Open")}
-              </Button>
-            </Stack>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                <TextField
+                  size="small"
+                  fullWidth
+                  InputProps={{ readOnly: true }}
+                  value={canonicalHostUrl}
+                  label={labelWithTip(
+                    tt("management.domainSettings.seo.fields.previewTitle", "Preview URL"),
+                    "This is the URL search engines will treat as canonical."
+                  )}
+                />
+                <Button
+                  variant="outlined"
+                  endIcon={<LaunchIcon />}
+                  href={canonicalHostUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  disabled={!canonicalHostUrl}
+                  sx={{ minWidth: 120 }}
+                >
+                  {tt("management.domainSettings.seo.buttons.open", "Open")}
+                </Button>
+              </Stack>
 
             <Box>
               <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
@@ -1134,7 +1174,9 @@ const SeoSettingsCard = ({
                   arrow
                   placement="top"
                 >
-                  <InfoOutlinedIcon fontSize="inherit" />
+                  <IconButton size="small" sx={{ p: 0.25 }}>
+                    <InfoOutlinedIcon fontSize="inherit" />
+                  </IconButton>
                 </Tooltip>
               </Stack>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
