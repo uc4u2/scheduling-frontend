@@ -36,6 +36,8 @@ Tips for best previews
 Sitemap & robots
 - Your public sitemap lives at `/sitemap.xml` on your domain.
 - Robots rules live at `/robots.txt` on your domain.
+- If your custom domain is verified, those URLs use your custom domain.
+- If your custom domain is not verified yet, they use your schedulaa.com slug URL.
 - Search engines use these files to discover published pages.
 
 Testing your preview

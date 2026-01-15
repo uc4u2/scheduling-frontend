@@ -75,6 +75,14 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
           "If bots are still showing old data, publish and try again later. Some platforms cache previews.",
         ],
       },
+      {
+        title: "Sitemap and robots",
+        body: [
+          "Your sitemap lives at /sitemap.xml and robots rules at /robots.txt.",
+          "After your custom domain is verified, those files use your custom domain instead of schedulaa.com.",
+          "You can open the links from the SEO & Metadata card to verify what search engines will see.",
+        ],
+      },
     ],
     []
   );
