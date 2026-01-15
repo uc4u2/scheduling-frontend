@@ -17,6 +17,84 @@ Managers access these controls from the Manager Portal → **Advanced Management
 - **Xero / QuickBooks**: Accounting exports + ledger sync.
 - **Integration Activity**: Webhook and API status feed.
 
+## Workspace tab (step-by-step)
+
+Use this to control workspace-wide profile details and policies.
+
+1) Open **Advanced Management → Settings → Workspace**.
+2) Confirm your **company name, logo, timezone, and locale**.
+3) Set default policies used across bookings and payroll.
+4) Click **Save** to apply changes.
+
+## Profession tab (step-by-step)
+
+Use this to set default rules by profession or service type.
+
+1) Open **Advanced Management → Settings → Profession**.
+2) Choose defaults for service categories, display labels, and staff defaults.
+3) Save changes to apply to new services or templates.
+
+## Embed tab (step-by-step)
+
+Use this to embed booking on your website.
+
+1) Open **Advanced Management → Settings → Embed**.
+2) Copy the embed code for your preferred widget.
+3) Paste it into your site builder (Wix, WordPress, Squarespace).
+4) Test the widget on a live page.
+
+## Reviews & Tips tab (step-by-step)
+
+Use this to control review requests and tipping prompts.
+
+1) Open **Advanced Management → Settings → Reviews & Tips**.
+2) Turn on review requests and choose your timing.
+3) Configure tipping defaults if you accept tips.
+4) Save and publish.
+
+## Artist Visibility tab (step-by-step)
+
+Use this to choose which staff appear in booking.
+
+1) Open **Advanced Management → Settings → Artist Visibility**.
+2) Toggle who is visible to clients.
+3) Save to apply immediately to booking pages.
+
+## Stripe Hub tab (step-by-step)
+
+Use this to connect Stripe and manage gateway status.
+
+1) Open **Advanced Management → Settings → Stripe Hub**.
+2) Click **Connect Stripe** and finish onboarding.
+3) Confirm status shows **Ready to accept payments**.
+4) Use **Open Stripe Dashboard** for reconciliation.
+
+## Checkout Pro & Payments tab (step-by-step)
+
+Use this to control checkout mode, tax behavior, and card-on-file.
+
+1) Open **Advanced Management → Settings → Checkout Pro & Payments**.
+2) Choose **Checkout mode** (Offline, Card on File, Pay during checkout).
+3) Set tax and localization settings.
+4) Save the changes.
+
+## Billing & Subscription tab (step-by-step)
+
+Use this to manage plans and seats.
+
+1) Open **Advanced Management → Settings → Billing & Subscription**.
+2) Review plan, status, and billing dates.
+3) Use **Manage Billing**, **View Plans**, or **Add Seats**.
+4) Click **Sync from Stripe** if you updated billing externally.
+
+## Integration Activity tab (step-by-step)
+
+Use this to monitor integration syncs.
+
+1) Open **Advanced Management → Settings → Integration Activity**.
+2) Review recent syncs and errors.
+3) Use the filters to narrow by integration.
+
 ## Client Video (Jitsi) Tab
 
 Located under Advanced Management → **Settings** → *Client Video (Jitsi)*.
