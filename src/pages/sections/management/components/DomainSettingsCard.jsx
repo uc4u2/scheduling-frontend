@@ -602,6 +602,7 @@ const DomainSettingsCard = ({
   })();
 
   const quickVerify = !verifyDisabled ? helpVerifyDns : undefined;
+  const isVerifiedStatus = ["verified", "ssl_active"].includes(status);
   const quickConnect = connectAvailable ? helpDomainConnect : undefined;
   return (
     <>
@@ -648,7 +649,7 @@ const DomainSettingsCard = ({
                   })}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {status === "verified"
+                  {isVerifiedStatus
                     ? t("management.domainSettings.labels.verifiedAt", {
                         time: formatDateTime(verifiedAt, t),
                       })
