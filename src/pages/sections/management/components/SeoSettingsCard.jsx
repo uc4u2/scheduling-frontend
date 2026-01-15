@@ -179,6 +179,7 @@ const SeoSettingsCard = ({
   const [saving, setSaving] = useState(false);
   const [uploadingOg, setUploadingOg] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [uploadingSchemaLogo, setUploadingSchemaLogo] = useState(false);
   const [ogImageWarning, setOgImageWarning] = useState("");
   const [faviconWarning, setFaviconWarning] = useState("");
   const [draftNotice, setDraftNotice] = useState(false);
@@ -413,6 +414,27 @@ const SeoSettingsCard = ({
       );
     } finally {
       setUploadingFavicon(false);
+    }
+  };
+
+  const uploadSchemaLogo = async (file) => {
+    if (!file || !companyId) return;
+    setUploadingSchemaLogo(true);
+    try {
+      const res = await wb.mediaUpload(companyId, file);
+      const url = normalizeUploadUrl(res?.data?.items?.[0]?.url);
+      if (!url) {
+        throw new Error("Upload returned no URL");
+      }
+      setStructuredFields((prev) => ({ ...prev, logo: url }));
+      enqueueSnackbar("Logo uploaded", { variant: "success" });
+    } catch (err) {
+      enqueueSnackbar(
+        err?.displayMessage || err?.message || "Failed to upload logo.",
+        { variant: "error" }
+      );
+    } finally {
+      setUploadingSchemaLogo(false);
     }
   };
 
@@ -1076,6 +1098,8 @@ const SeoSettingsCard = ({
                     helperText="Use your public homepage URL."
                     fullWidth
                   />
+                </Stack>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
                   <TextField
                     label="Logo URL"
                     value={structuredFields.logo}
@@ -1083,6 +1107,25 @@ const SeoSettingsCard = ({
                     helperText="Optional. Use a square logo if possible."
                     fullWidth
                   />
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUploadIcon />}
+                    disabled={uploadingSchemaLogo || !companyId}
+                    sx={{ minWidth: 160 }}
+                  >
+                    {uploadingSchemaLogo ? "Uploading..." : "Upload logo"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        uploadSchemaLogo(file);
+                      }}
+                    />
+                  </Button>
                 </Stack>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
                   <TextField
