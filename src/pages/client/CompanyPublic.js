@@ -1,10 +1,30 @@
 // src/pages/client/CompanyPublic.js
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AppBar, Box, Button, Chip, Container, Dialog, DialogContent, IconButton,
-  Menu, MenuItem, Stack, Toolbar, Tooltip, Typography, Alert, CircularProgress, GlobalStyles, Snackbar,
+  AppBar,
+  Box,
+  Button,
+  Chip,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Menu,
+  MenuItem,
+  Stack,
+  Toolbar,
+  Tooltip,
+  Typography,
+  Alert,
+  CircularProgress,
+  GlobalStyles,
+  Snackbar,
   Drawer,
   Grid,
+  Paper,
+  TextField,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import BrushIcon from "@mui/icons-material/Brush";
@@ -14,7 +34,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useParams, useSearchParams, Link as RouterLink, useNavigate } from "react-router-dom";
 
-import { wb, API_BASE_URL } from "../../utils/api";
+import { api, wb, API_BASE_URL } from "../../utils/api";
 import { RenderSections } from "../../components/website/RenderSections";
 import VisualSiteBuilder from "../sections/management/VisualSiteBuilder";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
@@ -40,6 +60,7 @@ import { SOCIAL_ICON_MAP, DEFAULT_SOCIAL_ICON } from "../../utils/socialIcons";
 import Meta from "../../components/Meta";
 import JsonLd from "../../components/seo/JsonLd";
 import { getTenantHostMode } from "../../utils/tenant";
+import TimezoneSelect from "../../components/TimezoneSelect";
 
 const LEGAL_FALLBACK_CONTENT = {
   privacy: {
@@ -426,6 +447,231 @@ const PLACEHOLDER_SITE_TITLES = new Set([
   "FE Test Site",
 ]);
 
+function ClientLoginDialog({ open, onClose, onLoginSuccess }) {
+  const dialogPaperSx = {
+    backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+    backgroundImage: "none",
+    color: "var(--page-body-color, #111827)",
+  };
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [timezone, setTimezone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await api.post(`/login`, {
+        email,
+        password,
+        role: "client",
+        timezone,
+      });
+      if (res.data?.access_token) {
+        onLoginSuccess(res.data.access_token);
+        onClose();
+      } else {
+        setError("Login failed.");
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || "Login failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      PaperProps={{ sx: dialogPaperSx }}
+      sx={{
+        "& .MuiDialog-paper": dialogPaperSx,
+        "& .MuiDialogContent-root": {
+          backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+        },
+        "& .MuiDialogTitle-root": {
+          backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+        },
+      }}
+    >
+      <DialogTitle>Client Login</DialogTitle>
+      <DialogContent>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <form onSubmit={handleSubmit} id="client-login-form">
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
+        </form>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={loading}>
+          Cancel
+        </Button>
+        <Button type="submit" form="client-login-form" variant="contained" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
+  const dialogPaperSx = {
+    backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+    backgroundImage: "none",
+    color: "var(--page-body-color, #111827)",
+  };
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [timezone, setTimezone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    if (!firstName || !lastName || !email || !password) {
+      setError("All fields are required.");
+      setLoading(false);
+      return;
+    }
+    try {
+      await api.post(`/register`, {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        password,
+        timezone,
+        role: "client",
+      });
+      const loginRes = await api.post(`/login`, {
+        email,
+        password,
+        role: "client",
+        timezone,
+      });
+      if (loginRes.data?.access_token) {
+        onRegisterSuccess(loginRes.data.access_token);
+        onClose();
+      } else {
+        setError("Registration succeeded but login failed.");
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || "Registration failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xs"
+      PaperProps={{ sx: dialogPaperSx }}
+      sx={{
+        "& .MuiDialog-paper": dialogPaperSx,
+        "& .MuiDialogContent-root": {
+          backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+        },
+        "& .MuiDialogTitle-root": {
+          backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+        },
+      }}
+    >
+      <DialogTitle>Client Sign Up</DialogTitle>
+      <DialogContent>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <form onSubmit={handleSubmit} id="client-register-form">
+          <TextField
+            label="First Name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TextField
+            label="Last Name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TextField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
+        </form>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={loading}>
+          Cancel
+        </Button>
+        <Button type="submit" form="client-register-form" variant="contained" disabled={loading}>
+          {loading ? "Signing up..." : "Sign Up"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 export default function CompanyPublic({ slugOverride }) {
   const { slug: routeSlug } = useParams();
   const slug = slugOverride || routeSlug;
@@ -552,6 +798,8 @@ export default function CompanyPublic({ slugOverride }) {
   const [publishing, setPublishing] = useState(false);
   const [toolbarMsg, setToolbarMsg] = useState("");
   const [publishSnack, setPublishSnack] = useState("");
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
   const hasDraftChanges = Boolean(settings?.has_unpublished_changes);
   const lastPublishedLabel = useMemo(() => {
     const ts = settings?.branding_published_at;
@@ -711,6 +959,22 @@ export default function CompanyPublic({ slugOverride }) {
     window.location.assign("/login");
   };
 
+  const handleClientLoginSuccess = (tokenValue) => {
+    try {
+      localStorage.setItem("token", tokenValue);
+      localStorage.setItem("role", "client");
+    } catch {}
+    window.location.assign(`${rootPath}?page=my-bookings`);
+  };
+
+  const handleClientRegisterSuccess = (tokenValue) => {
+    try {
+      localStorage.setItem("token", tokenValue);
+      localStorage.setItem("role", "client");
+    } catch {}
+    window.location.assign(`${rootPath}?page=my-bookings`);
+  };
+
   const servicesPageSlug = useMemo(() => {
     const overrideSlug = String(nav?.services_page_slug || "").trim();
     if (overrideSlug) {
@@ -866,6 +1130,15 @@ export default function CompanyPublic({ slugOverride }) {
     }
 
     const shouldEmbedSpecial = ["my-bookings", "checkout"].includes(slugLower);
+
+    if (slugLower === "my-bookings" && !clientLoggedIn) {
+      const styleProps = resolveStyleProps();
+      return {
+        sections: [],
+        styleProps,
+        renderOverride: { type: "my-bookings-auth", styleProps },
+      };
+    }
 
     if (shouldEmbedSpecial) {
       const styleProps = resolveStyleProps();
@@ -1727,6 +2000,36 @@ const siteTitle = useMemo(() => {
         );
       case "basket":
         return <MyBasketEmbedded slug={slug} pageStyle={styleProps} />;
+      case "my-bookings-auth":
+        return (
+          <Container maxWidth="sm" sx={{ py: { xs: 5, md: 8 } }}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 3, md: 4 },
+                textAlign: "center",
+                borderRadius: 3,
+                border: (theme) => `1px solid ${theme.palette.divider}`,
+                backgroundColor: "var(--page-card-bg, #fff)",
+              }}
+            >
+              <Typography variant="h5" gutterBottom>
+                My Bookings
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 3 }}>
+                Please sign in to view your bookings and manage appointments.
+              </Typography>
+              <Stack direction="row" spacing={1.5} justifyContent="center" flexWrap="wrap">
+                <Button variant="contained" onClick={() => setLoginDialogOpen(true)}>
+                  Login
+                </Button>
+                <Button variant="outlined" onClick={() => setRegisterDialogOpen(true)}>
+                  Sign Up
+                </Button>
+              </Stack>
+            </Paper>
+          </Container>
+        );
       case "jobs":
         if (jobFromQuery) {
           return <JobsDetailEmbedded slug={slug} jobSlug={jobFromQuery} pageStyle={styleProps} />;
@@ -2077,6 +2380,17 @@ const siteTitle = useMemo(() => {
           </Container>
         )}
       </Box>
+
+      <ClientLoginDialog
+        open={loginDialogOpen}
+        onClose={() => setLoginDialogOpen(false)}
+        onLoginSuccess={handleClientLoginSuccess}
+      />
+      <ClientRegisterDialog
+        open={registerDialogOpen}
+        onClose={() => setRegisterDialogOpen(false)}
+        onRegisterSuccess={handleClientRegisterSuccess}
+      />
 
       {/* Full-screen editor (still rendered only for managers) */}
       {isManagerForCompany && (
