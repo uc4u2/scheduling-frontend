@@ -12,16 +12,19 @@ import {
   Checkbox,
   Divider,
   FormControlLabel,
+  IconButton,
   Paper,
   Stack,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LaunchIcon from "@mui/icons-material/Launch";
 import SaveIcon from "@mui/icons-material/Save";
 import { useSnackbar } from "notistack";
@@ -139,6 +142,21 @@ const defaultStructuredFields = {
   country: "",
   sameAs: "",
 };
+
+const labelWithTip = (label, tip) => (
+  <Stack direction="row" alignItems="center" spacing={0.5} sx={{ lineHeight: 1 }}>
+    <Typography component="span" variant="inherit">
+      {label}
+    </Typography>
+    {tip ? (
+      <Tooltip title={tip} arrow placement="top">
+        <IconButton size="small" sx={{ p: 0.25 }}>
+          <InfoOutlinedIcon fontSize="inherit" />
+        </IconButton>
+      </Tooltip>
+    ) : null}
+  </Stack>
+);
 
 const SeoSettingsCard = ({
   companyId,
@@ -654,9 +672,18 @@ const SeoSettingsCard = ({
 
       <Stack spacing={3}>
         <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            {tt("management.domainSettings.seo.sections.search", "Search result listing")}
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              {tt("management.domainSettings.seo.sections.search", "Search result listing")}
+            </Typography>
+            <Tooltip
+              title="These fields control how your site appears in Google search results."
+              arrow
+              placement="top"
+            >
+              <InfoOutlinedIcon fontSize="inherit" />
+            </Tooltip>
+          </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             {tt("management.domainSettings.seo.sections.searchHint", "Set the title and description Google shows most often.")}
           </Typography>
@@ -677,7 +704,10 @@ const SeoSettingsCard = ({
           />
           <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField
-              label={tt("management.domainSettings.seo.fields.metaTitle", "Meta Title")}
+              label={labelWithTip(
+                tt("management.domainSettings.seo.fields.metaTitle", "Meta Title"),
+                "Appears as the main title in search results."
+              )}
               value={metaTitle}
               onChange={(event) => setMetaTitle(event.target.value.slice(0, 120))}
               helperText={tt(
@@ -688,7 +718,10 @@ const SeoSettingsCard = ({
               inputProps={{ maxLength: 120 }}
             />
             <TextField
-              label={tt("management.domainSettings.seo.fields.metaDescription", "Meta Description")}
+              label={labelWithTip(
+                tt("management.domainSettings.seo.fields.metaDescription", "Meta Description"),
+                "Short summary shown under the title in search results."
+              )}
               value={metaDescription}
               onChange={(event) => setMetaDescription(event.target.value.slice(0, 320))}
               helperText={tt(
@@ -701,7 +734,10 @@ const SeoSettingsCard = ({
               minRows={3}
             />
             <TextField
-              label={tt("management.domainSettings.seo.fields.metaKeywords", "Meta Keywords")}
+              label={labelWithTip(
+                tt("management.domainSettings.seo.fields.metaKeywords", "Meta Keywords"),
+                "Optional keywords that describe your services."
+              )}
               value={metaKeywords}
               onChange={(event) => setMetaKeywords(event.target.value.slice(0, MAX_KEYWORDS))}
               helperText={tt("management.domainSettings.seo.helpers.keywords", "Comma separated (e.g., tattoo, piercing, studio)")}
@@ -715,9 +751,18 @@ const SeoSettingsCard = ({
         <Divider />
 
         <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            {tt("management.domainSettings.seo.sections.social", "Social sharing")}
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              {tt("management.domainSettings.seo.sections.social", "Social sharing")}
+            </Typography>
+            <Tooltip
+              title="Controls how links look when shared in WhatsApp, Facebook, Slack, and SMS."
+              arrow
+              placement="top"
+            >
+              <InfoOutlinedIcon fontSize="inherit" />
+            </Tooltip>
+          </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             {tt("management.domainSettings.seo.sections.socialHint", "Customize the preview cards shown in chat, SMS, and social media.")}
           </Typography>
@@ -752,18 +797,27 @@ const SeoSettingsCard = ({
           </Box>
           <Stack spacing={2} sx={{ mt: 2 }}>
             <TextField
-              label={tt("management.domainSettings.seo.fields.ogTitle", "Open Graph Title")}
+              label={labelWithTip(
+                tt("management.domainSettings.seo.fields.ogTitle", "Open Graph Title"),
+                "Headline shown in social previews."
+              )}
               value={ogTitle}
               onChange={(event) => setOgTitle(event.target.value)}
             />
             <TextField
-              label={tt("management.domainSettings.seo.fields.ogDescription", "Open Graph Description")}
+              label={labelWithTip(
+                tt("management.domainSettings.seo.fields.ogDescription", "Open Graph Description"),
+                "Short summary shown in social previews."
+              )}
               value={ogDescription}
               onChange={(event) => setOgDescription(event.target.value)}
             />
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
               <TextField
-                label={tt("management.domainSettings.seo.fields.ogImage", "Open Graph Image URL")}
+                label={labelWithTip(
+                  tt("management.domainSettings.seo.fields.ogImage", "Open Graph Image URL"),
+                  "Main image for social previews (1200×630 recommended)."
+                )}
                 value={ogImage}
                 onChange={(event) => setOgImage(event.target.value)}
                 placeholder={tt("management.domainSettings.seo.placeholders.ogImage", "https://example.com/social-preview.jpg")}
@@ -833,12 +887,18 @@ const SeoSettingsCard = ({
                     onChange={(event) => setUseLogoFavicon(event.target.checked)}
                   />
                 }
-                label={tt("management.domainSettings.seo.fields.useLogoFavicon", "Use header/logo as favicon (recommended)")}
+                label={labelWithTip(
+                  tt("management.domainSettings.seo.fields.useLogoFavicon", "Use header/logo as favicon (recommended)"),
+                  "If enabled, we use your header logo as the browser tab icon."
+                )}
               />
             </Stack>
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
               <TextField
-                label={tt("management.domainSettings.seo.fields.favicon", "Favicon URL")}
+                label={labelWithTip(
+                  tt("management.domainSettings.seo.fields.favicon", "Favicon URL"),
+                  "Small icon shown in browser tabs (32×32 or 48×48)."
+                )}
                 value={effectiveFaviconUrl}
                 onChange={(event) => setFaviconUrl(event.target.value)}
                 placeholder={tt("management.domainSettings.seo.placeholders.favicon", "https://example.com/favicon.png")}
@@ -964,9 +1024,18 @@ const SeoSettingsCard = ({
         <Divider />
 
         <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            {tt("management.domainSettings.seo.sections.advanced", "Advanced settings")}
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              {tt("management.domainSettings.seo.sections.advanced", "Advanced settings")}
+            </Typography>
+            <Tooltip
+              title="Control canonical URLs and structured data for search engines."
+              arrow
+              placement="top"
+            >
+              <InfoOutlinedIcon fontSize="inherit" />
+            </Tooltip>
+          </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             {tt("management.domainSettings.seo.sections.advancedHint", "Control canonical hosts and structured data for better indexing.")}
           </Typography>
@@ -975,9 +1044,18 @@ const SeoSettingsCard = ({
           </Typography>
           <Stack spacing={2}>
             <Box>
-              <Typography variant="caption" color="text.secondary">
-                {tt("management.domainSettings.seo.fields.canonicalHost", "Canonical host")}
-              </Typography>
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                <Typography variant="caption" color="text.secondary">
+                  {tt("management.domainSettings.seo.fields.canonicalHost", "Canonical host")}
+                </Typography>
+                <Tooltip
+                  title="Canonical tells search engines the preferred version of your pages."
+                  arrow
+                  placement="top"
+                >
+                  <InfoOutlinedIcon fontSize="inherit" />
+                </Tooltip>
+              </Stack>
               <ToggleButtonGroup
                 value={canonicalLocked ? "slug" : canonicalMode}
                 exclusive
@@ -986,16 +1064,27 @@ const SeoSettingsCard = ({
                 sx={{ mt: 1 }}
               >
                 <ToggleButton value="slug">
-                  {tt("management.domainSettings.seo.canonical.slug", "schedulaa.com slug")}
+                  <Tooltip title="Use your schedulaa.com/slug URL as canonical." arrow placement="top">
+                    <Box component="span">
+                      {tt("management.domainSettings.seo.canonical.slug", "schedulaa.com slug")}
+                    </Box>
+                  </Tooltip>
                 </ToggleButton>
                 <ToggleButton value="custom" disabled={canonicalLocked}>
-                  {tt("management.domainSettings.seo.canonical.custom", "Custom domain")}
+                  <Tooltip title="Use your verified custom domain as canonical." arrow placement="top">
+                    <Box component="span">
+                      {tt("management.domainSettings.seo.canonical.custom", "Custom domain")}
+                    </Box>
+                  </Tooltip>
                 </ToggleButton>
               </ToggleButtonGroup>
               {canonicalMode === "custom" && !canonicalLocked && (
                 <TextField
                   sx={{ mt: 2 }}
-                  label={tt("management.domainSettings.seo.fields.customHost", "Custom canonical host")}
+                  label={labelWithTip(
+                    tt("management.domainSettings.seo.fields.customHost", "Custom canonical host"),
+                    "Use your verified domain as the preferred URL."
+                  )}
                   value={canonicalHost}
                   onChange={(e) => setCanonicalHost(e.target.value)}
                   helperText={tt("management.domainSettings.seo.helpers.customHost", "Enter your verified domain, e.g., studio.example.com")}
@@ -1014,7 +1103,10 @@ const SeoSettingsCard = ({
                 fullWidth
                 InputProps={{ readOnly: true }}
                 value={canonicalHostUrl}
-                label={tt("management.domainSettings.seo.fields.previewTitle", "Preview URL")}
+                label={labelWithTip(
+                  tt("management.domainSettings.seo.fields.previewTitle", "Preview URL"),
+                  "This is the URL search engines will treat as canonical."
+                )}
               />
               <Button
                 variant="outlined"
@@ -1029,9 +1121,18 @@ const SeoSettingsCard = ({
             </Stack>
 
             <Box>
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-                Sitemap & robots
-              </Typography>
+              <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Sitemap & robots
+                </Typography>
+                <Tooltip
+                  title="These files help search engines discover your published pages."
+                  arrow
+                  placement="top"
+                >
+                  <InfoOutlinedIcon fontSize="inherit" />
+                </Tooltip>
+              </Stack>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
                 <Button
                   variant="outlined"
@@ -1068,7 +1169,10 @@ const SeoSettingsCard = ({
                   onChange={(_, checked) => setStructuredDataEnabled(checked)}
                 />
               }
-              label={tt("management.domainSettings.seo.fields.structuredData", "Include structured data (schema.org)")}
+              label={labelWithTip(
+                tt("management.domainSettings.seo.fields.structuredData", "Include structured data (schema.org)"),
+                "Adds business info for richer Google results."
+              )}
             />
             {structuredDataEnabled && (
               <FormControlLabel
@@ -1080,19 +1184,22 @@ const SeoSettingsCard = ({
                     size="small"
                   />
                 }
-                label="Advanced (edit raw JSON)"
+                label={labelWithTip(
+                  "Advanced (edit raw JSON)",
+                  "Use this only if you already have a JSON-LD snippet."
+                )}
               />
             )}
             {structuredDataEnabled && !structuredAdvanced && (
               <Stack spacing={2}>
                 <TextField
-                  label="Business name"
+                  label={labelWithTip("Business name", "Your public-facing business name.")}
                   value={structuredFields.name}
                   onChange={(event) => setStructuredFields((prev) => ({ ...prev, name: event.target.value }))}
                 />
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
                   <TextField
-                    label="Website URL"
+                    label={labelWithTip("Website URL", "Your main website address.")}
                     value={structuredFields.url}
                     onChange={(event) => setStructuredFields((prev) => ({ ...prev, url: event.target.value }))}
                     helperText="Use your public homepage URL."
@@ -1101,7 +1208,7 @@ const SeoSettingsCard = ({
                 </Stack>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
                   <TextField
-                    label="Logo URL"
+                    label={labelWithTip("Logo URL", "Square logo works best for search cards.")}
                     value={structuredFields.logo}
                     onChange={(event) => setStructuredFields((prev) => ({ ...prev, logo: event.target.value }))}
                     helperText="Optional. Use a square logo if possible."
@@ -1129,32 +1236,32 @@ const SeoSettingsCard = ({
                 </Stack>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
                   <TextField
-                    label="Phone"
+                    label={labelWithTip("Phone", "Customer-facing phone number.")}
                     value={structuredFields.phone}
                     onChange={(event) => setStructuredFields((prev) => ({ ...prev, phone: event.target.value }))}
                     fullWidth
                   />
                   <TextField
-                    label="Email"
+                    label={labelWithTip("Email", "Public contact email.")}
                     value={structuredFields.email}
                     onChange={(event) => setStructuredFields((prev) => ({ ...prev, email: event.target.value }))}
                     fullWidth
                   />
                 </Stack>
                 <TextField
-                  label="Business type"
+                  label={labelWithTip("Business type", "Use a schema.org type (LocalBusiness, BeautySalon, Spa).")}
                   value={structuredFields.type}
                   onChange={(event) => setStructuredFields((prev) => ({ ...prev, type: event.target.value }))}
                   helperText="Example: LocalBusiness, BeautySalon, Spa, MedicalBusiness."
                 />
                 <TextField
-                  label="Price range"
+                  label={labelWithTip("Price range", "Optional range like $$ or $$$.")}
                   value={structuredFields.priceRange}
                   onChange={(event) => setStructuredFields((prev) => ({ ...prev, priceRange: event.target.value }))}
                   helperText="Example: $$ or $$$."
                 />
                 <TextField
-                  label="Social links"
+                  label={labelWithTip("Social links", "Comma-separated public profiles.")}
                   value={structuredFields.sameAs}
                   onChange={(event) => setStructuredFields((prev) => ({ ...prev, sameAs: event.target.value }))}
                   helperText="Comma-separated links (Instagram, Facebook, LinkedIn)."
@@ -1166,24 +1273,24 @@ const SeoSettingsCard = ({
                       onChange={(_, checked) => setStructuredFields((prev) => ({ ...prev, hasAddress: checked }))}
                     />
                   }
-                  label="Include business address"
+                  label={labelWithTip("Include business address", "Adds your physical address to search results.")}
                 />
                 {structuredFields.hasAddress && (
                   <Stack spacing={1.5}>
                     <TextField
-                      label="Street address"
+                      label={labelWithTip("Street address", "Street and number.")}
                       value={structuredFields.streetAddress}
                       onChange={(event) => setStructuredFields((prev) => ({ ...prev, streetAddress: event.target.value }))}
                     />
                     <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
                       <TextField
-                        label="City"
+                        label={labelWithTip("City", "City or locality.")}
                         value={structuredFields.city}
                         onChange={(event) => setStructuredFields((prev) => ({ ...prev, city: event.target.value }))}
                         fullWidth
                       />
                       <TextField
-                        label="State/Province"
+                        label={labelWithTip("State/Province", "State, province, or region.")}
                         value={structuredFields.region}
                         onChange={(event) => setStructuredFields((prev) => ({ ...prev, region: event.target.value }))}
                         fullWidth
@@ -1191,13 +1298,13 @@ const SeoSettingsCard = ({
                     </Stack>
                     <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
                       <TextField
-                        label="Postal code"
+                        label={labelWithTip("Postal code", "ZIP or postal code.")}
                         value={structuredFields.postalCode}
                         onChange={(event) => setStructuredFields((prev) => ({ ...prev, postalCode: event.target.value }))}
                         fullWidth
                       />
                       <TextField
-                        label="Country"
+                        label={labelWithTip("Country", "Country name (e.g., Canada).")}
                         value={structuredFields.country}
                         onChange={(event) => setStructuredFields((prev) => ({ ...prev, country: event.target.value }))}
                         fullWidth
@@ -1216,6 +1323,10 @@ const SeoSettingsCard = ({
                 minRows={6}
                 value={structuredData}
                 onChange={(e) => setStructuredData(e.target.value)}
+                label={labelWithTip(
+                  "Structured data (JSON-LD)",
+                  "Paste a full JSON-LD snippet if you need advanced control."
+                )}
                 placeholder={`{
   "@context": "https://schema.org"
 }`}
