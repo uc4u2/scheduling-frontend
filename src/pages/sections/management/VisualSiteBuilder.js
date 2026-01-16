@@ -3511,8 +3511,14 @@ const InspectorColumn = (
             </Box>
           ) : (
             <Alert severity="info" sx={{ mb: 2 }}>
-              This section type isn’t mapped to a visual inspector yet. You can
-              still edit its props below.
+              This section type isn’t mapped to a visual inspector yet.
+              {blockType ? (
+                <>
+                  {" "}
+                  Current type: <strong>{blockType}</strong>
+                </>
+              ) : null}{" "}
+              You can still edit its props below.
             </Alert>
           )}
 
