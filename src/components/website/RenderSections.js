@@ -799,7 +799,7 @@ const cardRadius = 0;
         sx={{
           display: "flex",
           width: "100%",
-          maxWidth: { xs: "100%", md: 1300 },
+          maxWidth: { xs: "100%", md: 980 },
           mx: "auto",
           flexDirection: {
             xs: "column",
@@ -878,31 +878,26 @@ const FeatureZigzagModern = ({
         key="text"
         sx={{
           order: { xs: 2, md: align === "right" ? 2 : 1 },
-          justifySelf: { xs: "center", md: align === "right" ? "end" : "start" },
-          alignSelf: "stretch",
-          width: { xs: "100%", md: "100%" },
+          justifySelf: "center",
+          width: "100%",
           maxWidth: { xs: "100%", md: 420 },
           backgroundColor: "transparent",
           border: "none",
           borderRadius: 0,
           p: { xs: 2.5, md: 3.5 },
-          boxShadow: "none",
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          gap: 1
+          boxShadow: "none"
         }}
       >
         {item.eyebrow && (
           <HtmlTypo
             variant="overline"
-            sx={{ letterSpacing: ".2em", textTransform: "uppercase", fontWeight: 600 }}
+            sx={{ letterSpacing: ".2em", textTransform: "uppercase", mb: 1, fontWeight: 600 }}
           >
             {item.eyebrow}
           </HtmlTypo>
         )}
         {item.title && (
-          <HtmlTypo variant="h4" sx={{ fontWeight: 800 }}>
+          <HtmlTypo variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
             {item.title}
           </HtmlTypo>
         )}
@@ -911,13 +906,12 @@ const FeatureZigzagModern = ({
             {item.body}
           </HtmlTypo>
         )}
-        <Box sx={{ flexGrow: 1 }} />
         {item.ctaText && (
           <Button
             href={item.ctaLink || "#"}
             variant="contained"
             size="large"
-            sx={{ mt: "auto", pt: 2 }}
+            sx={{ mt: 2 }}
           >
             {toPlain(item.ctaText)}
           </Button>
@@ -930,20 +924,14 @@ const FeatureZigzagModern = ({
         key="image"
         sx={{
           order: { xs: 1, md: align === "right" ? 1 : 2 },
-          justifySelf: { xs: "center", md: align === "right" ? "start" : "end" },
-          alignSelf: "stretch",
-          width: { xs: "100%", md: "100%" },
+          justifySelf: "center",
+          width: "100%",
           maxWidth: { xs: "100%", md: 460 },
           borderRadius: 0,
           overflow: "hidden",
           aspectRatio: { xs: "4 / 3", md: "5 / 4" },
           boxShadow: "none",
-          backgroundColor: "transparent",
-          height: "100%",
-          minHeight: { xs: 260, md: 360 },
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
+          backgroundColor: "transparent"
         }}
       >
         {imageSrc && (
@@ -969,11 +957,8 @@ const FeatureZigzagModern = ({
             xs: "1fr",
             md: "repeat(2, minmax(0, 1fr))"
           },
-          maxWidth: { xs: "100%", md: 980 },
-          mx: "auto",
-          minHeight: { md: 420 },
-          alignItems: { xs: "stretch", md: "center" },
           gap: { xs: 2.5, md: 3.5 },
+          alignItems: "center"
         }}
       >
         {textBlock}
