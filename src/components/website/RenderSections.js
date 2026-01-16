@@ -879,7 +879,7 @@ const FeatureZigzagModern = ({
         sx={{
           order: { xs: 2, md: align === "right" ? 2 : 1 },
           justifySelf: { xs: "center", md: align === "right" ? "end" : "start" },
-          width: "100%",
+          width: { xs: "100%", md: "auto" },
           maxWidth: { xs: "100%", md: 420 },
           backgroundColor: "transparent",
           border: "none",
@@ -930,7 +930,7 @@ const FeatureZigzagModern = ({
         sx={{
           order: { xs: 1, md: align === "right" ? 1 : 2 },
           justifySelf: { xs: "center", md: align === "right" ? "start" : "end" },
-          width: "100%",
+          width: { xs: "100%", md: "auto" },
           maxWidth: { xs: "100%", md: 460 },
           borderRadius: 0,
           overflow: "hidden",
