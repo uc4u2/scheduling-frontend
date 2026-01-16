@@ -547,3 +547,9 @@ featureStories: {
     note: "This block auto-loads services from your company via API.",
   },
 };
+
+// Aliases to handle legacy / variant section type keys.
+SCHEMA_REGISTRY["collection_showcase"] = SCHEMA_REGISTRY.collectionShowcase;
+SCHEMA_REGISTRY["collection-showcase"] = SCHEMA_REGISTRY.collectionShowcase;
+SCHEMA_REGISTRY.collectionShowcaseSection = SCHEMA_REGISTRY.collectionShowcase;
+SCHEMA_REGISTRY.collectionShowcaseBlock = SCHEMA_REGISTRY.collectionShowcase;
