@@ -878,11 +878,10 @@ const FeatureZigzagModern = ({
         key="text"
         sx={{
           order: { xs: 2, md: align === "right" ? 2 : 1 },
-          justifySelf: { xs: "center", md: align === "right" ? "end" : "start" },
-          width: { xs: "100%", md: "auto" },
+          justifySelf: "stretch",
+          alignSelf: "stretch",
+          width: "100%",
           maxWidth: { xs: "100%", md: 420 },
-          ml: { md: align === "right" ? "auto" : 0 },
-          mr: { md: align === "right" ? 0 : "auto" },
           backgroundColor: "transparent",
           border: "none",
           borderRadius: 0,
@@ -931,11 +930,10 @@ const FeatureZigzagModern = ({
         key="image"
         sx={{
           order: { xs: 1, md: align === "right" ? 1 : 2 },
-          justifySelf: { xs: "center", md: align === "right" ? "start" : "end" },
-          width: { xs: "100%", md: "auto" },
+          justifySelf: "stretch",
+          alignSelf: "stretch",
+          width: "100%",
           maxWidth: { xs: "100%", md: 460 },
-          ml: { md: align === "right" ? 0 : "auto" },
-          mr: { md: align === "right" ? "auto" : 0 },
           borderRadius: 0,
           overflow: "hidden",
           aspectRatio: { xs: "4 / 3", md: "5 / 4" },
@@ -944,7 +942,8 @@ const FeatureZigzagModern = ({
           height: "100%",
           minHeight: { xs: 260, md: "100%" },
           display: "flex",
-          alignItems: "center"
+          alignItems: "center",
+          justifyContent: "center"
         }}
       >
         {imageSrc && (
@@ -973,7 +972,7 @@ const FeatureZigzagModern = ({
           maxWidth: { xs: "100%", md: 980 },
           mx: "auto",
           minHeight: { md: 420 },
-          alignItems: "stretch",
+          alignItems: { xs: "stretch", md: "center" },
           gap: { xs: 2.5, md: 3.5 },
         }}
       >
