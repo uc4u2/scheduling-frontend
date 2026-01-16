@@ -86,8 +86,10 @@ export default function SeoHelpDrawer({ open, onClose, anchor, width }) {
       {
         title: "Google Search Console",
         body: [
-          "Paste the verification token from Google to prove you own the domain.",
-          "Use the meta tag method unless you manage DNS records yourself.",
+          "Open Google Search Console and add your domain or URL property.",
+          "Choose the HTML tag method, then copy only the token value (not the full tag).",
+          "Paste the token here, click Save, then click Verify in Google.",
+          "If you prefer DNS, paste the DNS token and add it as a TXT record at your registrar.",
           "After verification, submit your sitemap to speed up indexing.",
         ],
       },

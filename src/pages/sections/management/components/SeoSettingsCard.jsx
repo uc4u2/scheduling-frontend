@@ -1246,12 +1246,12 @@ const SeoSettingsCard = ({
                   size="small"
                   label={labelWithTip(
                     "Meta verification token",
-                    "Paste the token from Google Search Console (HTML tag method)."
+                    "Google Search Console → Verification → HTML tag. Copy the token only."
                   )}
                   value={googleSiteVerification}
                   onChange={(e) => setGoogleSiteVerification(e.target.value.trim())}
                   placeholder="e.g., abc123XYZ"
-                  helperText="Google will confirm ownership by reading a meta tag on your homepage."
+                  helperText="Paste the token, click Save, then return to Google and press Verify."
                 />
                 <TextField
                   size="small"
@@ -1263,12 +1263,12 @@ const SeoSettingsCard = ({
                   size="small"
                   label={labelWithTip(
                     "DNS TXT token (optional)",
-                    "If you prefer DNS verification, paste the token from Google."
+                    "Google Search Console → DNS method. Copy the TXT token only."
                   )}
                   value={googleDnsVerification}
                   onChange={(e) => setGoogleDnsVerification(e.target.value.trim())}
                   placeholder="e.g., xyz987TOKEN"
-                  helperText="Use DNS only if you manage your registrar records."
+                  helperText="Add a TXT record at your domain registrar, then click Verify in Google."
                 />
                 <TextField
                   size="small"
