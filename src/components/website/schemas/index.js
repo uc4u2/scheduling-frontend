@@ -124,6 +124,56 @@ export const SCHEMA_REGISTRY = {
     ],
   },
 
+  collectionShowcase: {
+    fields: [
+      { name: "title", type: "string", label: "Heading" },
+      { name: "subtitle", type: "text", label: "Subheading", minRows: 2 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Carousel items",
+        fields: [
+          { name: "title", type: "string", label: "Title" },
+          { name: "linkText", type: "string", label: "Link label" },
+          { name: "link", type: "string", label: "Link URL" },
+          { name: "image", type: "image", label: "Image" },
+          { name: "imageAlt", type: "string", label: "Image alt text" },
+        ],
+      },
+      {
+        name: "perks",
+        type: "objectArray",
+        label: "Perks row",
+        fields: [
+          { name: "icon", type: "string", label: "Icon label" },
+          { name: "title", type: "string", label: "Title" },
+          { name: "subtitle", type: "string", label: "Subtitle" },
+        ],
+      },
+      { name: "copyTitle", type: "string", label: "Copy heading" },
+      { name: "copyBody", type: "text", label: "Copy body (HTML allowed)", minRows: 4 },
+      { name: "ctaTitle", type: "string", label: "CTA heading" },
+      { name: "ctaSubtitle", type: "text", label: "CTA subtitle", minRows: 2 },
+      { name: "ctaButtonText", type: "string", label: "CTA button text" },
+      { name: "ctaButtonLink", type: "string", label: "CTA button link" },
+      {
+        name: "perView",
+        type: "object",
+        label: "Cards per view",
+        fields: [
+          { name: "desktop", type: "number", label: "Desktop" },
+          { name: "tablet", type: "number", label: "Tablet" },
+          { name: "mobile", type: "number", label: "Mobile" },
+        ],
+      },
+      { name: "showArrows", type: "boolean", label: "Show arrows", default: true },
+      { name: "showDots", type: "boolean", label: "Show dots", default: false },
+      { name: "autoplay", type: "boolean", label: "Autoplay", default: true },
+      { name: "intervalMs", type: "number", label: "Autoplay interval (ms)", default: 4200 },
+      { name: "maxWidth", type: "string", label: "Max width", placeholder: "sm | md | lg | 1200px" },
+    ],
+  },
+
 featureStories: {
   fields: [
     { name: "title", type: "string", label: "Title" },
