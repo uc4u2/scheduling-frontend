@@ -1304,6 +1304,324 @@ const ServiceGrid = ({
   );
 };
 
+const CollectionShowcase = ({
+  title,
+  subtitle,
+  items = [],
+  perks = [],
+  copyTitle,
+  copyBody,
+  ctaTitle,
+  ctaSubtitle,
+  ctaButtonText,
+  ctaButtonLink,
+  maxWidth = "lg",
+  perView = {},
+  showArrows = true,
+  showDots = false,
+  autoplay = true,
+  intervalMs = 4200
+}) => {
+  const entries = toArray(items)
+    .map((item) => ({
+      title: toPlain(item?.title ?? ""),
+      linkText: toPlain(item?.linkText ?? item?.ctaText ?? "Shop now"),
+      link: item?.link || item?.ctaLink || "#",
+      image: item?.image || item?.imageUrl || "",
+      imageAlt: item?.imageAlt || item?.title || "",
+    }))
+    .filter((item) => item.title || item.image);
+
+  const perkList = toArray(perks)
+    .map((item) => ({
+      icon: toPlain(item?.icon ?? ""),
+      title: toPlain(item?.title ?? ""),
+      subtitle: toPlain(item?.subtitle ?? item?.body ?? ""),
+    }))
+    .filter((item) => item.title || item.subtitle);
+
+  const hasCarousel = entries.length > 0;
+  const hasPerks = perkList.length > 0;
+  const hasCopy = copyTitle || copyBody;
+  const hasCta = ctaTitle || ctaSubtitle || ctaButtonText;
+
+  const theme = useTheme();
+  const mdUp = useMediaQuery(theme.breakpoints.up("md"));
+  const smUp = useMediaQuery(theme.breakpoints.up("sm"));
+
+  const perDesktop = clamp(Number(perView?.desktop) || 3, 1, 4);
+  const perTablet = clamp(Number(perView?.tablet) || 2, 1, perDesktop);
+  const perMobile = clamp(Number(perView?.mobile) || 1, 1, perTablet);
+  const cardsPerView = mdUp ? perDesktop : smUp ? perTablet : perMobile;
+
+  const slideCount = Math.max(1, entries.length - cardsPerView + 1);
+  const reduced = usePrefersReducedMotion();
+  const autoplayDisabled = reduced || !autoplay || slideCount <= 1;
+  const interval = clamp(intervalMs || 4200, 1500, 12000);
+  const [index, setIndex, setPaused] = useAutoplay(slideCount, interval, autoplayDisabled);
+
+  React.useEffect(() => {
+    setIndex((prev) => {
+      if (prev >= slideCount) return Math.max(0, slideCount - 1);
+      return prev;
+    });
+  }, [slideCount, setIndex]);
+
+  if (!hasCarousel && !hasPerks && !hasCopy && !hasCta) return null;
+
+  const translate = `translate3d(-${(index * 100) / cardsPerView}%, 0, 0)`;
+  const cardWidth = {
+    xs: `${100 / perMobile}%`,
+    sm: `${100 / perTablet}%`,
+    md: `${100 / perDesktop}%`,
+  };
+
+  const goTo = (next) => {
+    if (slideCount <= 1) return;
+    setIndex(next);
+  };
+  const handlePrev = () => goTo((index - 1 + slideCount) % slideCount);
+  const handleNext = () => goTo((index + 1) % slideCount);
+
+  return (
+    <Box>
+      <Container maxWidth={toContainerMax(maxWidth)}>
+        <Stack spacing={3} alignItems="center" textAlign="center">
+          {(title || subtitle) && (
+            <Stack spacing={1} alignItems="center">
+              {title && (
+                <HtmlTypo variant="h4" sx={{ fontWeight: 800 }}>
+                  {title}
+                </HtmlTypo>
+              )}
+              {subtitle && (
+                <HtmlTypo variant="body1" sx={{ color: "var(--page-body-color, text.secondary)" }}>
+                  {subtitle}
+                </HtmlTypo>
+              )}
+            </Stack>
+          )}
+
+          {hasCarousel && (
+            <Stack spacing={2} sx={{ width: "100%" }}>
+              <Stack direction="row" spacing={2} alignItems="center" justifyContent="center">
+                {showArrows && slideCount > 1 && (
+                  <IconButton aria-label="Show previous" onClick={handlePrev}>
+                    <ArrowBackIosNewIcon fontSize="small" />
+                  </IconButton>
+                )}
+                <Box
+                  sx={{ overflow: "hidden", width: "100%" }}
+                  onMouseEnter={() => !autoplayDisabled && setPaused(true)}
+                  onMouseLeave={() => !autoplayDisabled && setPaused(false)}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      transition: "transform .6s ease",
+                      transform: translate,
+                      gap: { xs: 2, md: 3 },
+                    }}
+                  >
+                    {entries.map((item, idx) => (
+                      <Box
+                        key={idx}
+                        sx={{
+                          flex: {
+                            xs: `0 0 ${cardWidth.xs}`,
+                            sm: `0 0 ${cardWidth.sm}`,
+                            md: `0 0 ${cardWidth.md}`,
+                          },
+                          minWidth: { xs: cardWidth.xs, sm: cardWidth.sm, md: cardWidth.md },
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: "grid",
+                            justifyItems: "center",
+                            textAlign: "center",
+                            rowGap: 1,
+                          }}
+                        >
+                          {item.image && (
+                            <Box
+                              component="img"
+                              src={buildImgixUrl(item.image, { w: 900, fit: "crop" })}
+                              alt={item.imageAlt}
+                              loading="lazy"
+                              sx={{
+                                width: "100%",
+                                maxWidth: 260,
+                                aspectRatio: "1 / 1",
+                                objectFit: "cover",
+                                borderRadius: 3,
+                                border: "1px solid rgba(148,163,184,0.24)",
+                                boxShadow: "0 16px 32px rgba(15,23,42,0.12)",
+                              }}
+                            />
+                          )}
+                          {item.title && (
+                            <Typography sx={{ fontWeight: 700 }}>{item.title}</Typography>
+                          )}
+                          {item.linkText && (
+                            <Button
+                              href={item.link || "#"}
+                              variant="text"
+                              size="small"
+                              sx={{ textTransform: "none", fontWeight: 600 }}
+                            >
+                              {item.linkText}
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+                {showArrows && slideCount > 1 && (
+                  <IconButton aria-label="Show next" onClick={handleNext}>
+                    <ArrowForwardIosIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </Stack>
+              {showDots && slideCount > 1 && (
+                <Stack direction="row" spacing={1} justifyContent="center">
+                  {Array.from({ length: slideCount }).map((_, dotIdx) => (
+                    <Box
+                      key={dotIdx}
+                      component="button"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Go to slide ${dotIdx + 1}`}
+                      aria-current={dotIdx === index}
+                      onClick={() => goTo(dotIdx)}
+                      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && goTo(dotIdx)}
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        bgcolor: dotIdx === index ? "text.primary" : "divider",
+                        cursor: "pointer",
+                        outlineOffset: 2,
+                        border: 0,
+                        padding: 0,
+                      }}
+                    />
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          )}
+
+          {hasPerks && (
+            <>
+              <Divider sx={{ width: "100%", maxWidth: 860 }} />
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={{ xs: 2, sm: 3 }}
+                justifyContent="center"
+                alignItems="center"
+                sx={{ width: "100%" }}
+              >
+                {perkList.map((perk, idx) => (
+                  <Stack key={idx} spacing={0.5} alignItems="center" textAlign="center" sx={{ maxWidth: 180 }}>
+                    <Box
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "50%",
+                        backgroundColor: "var(--page-card-bg, rgba(248,250,252,0.9))",
+                        border: "1px solid rgba(148,163,184,0.24)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 700,
+                        color: "var(--page-heading-color, #0f172a)",
+                      }}
+                    >
+                      {perk.icon || "•"}
+                    </Box>
+                    {perk.title && <Typography sx={{ fontWeight: 600 }}>{perk.title}</Typography>}
+                    {perk.subtitle && (
+                      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                        {perk.subtitle}
+                      </Typography>
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+            </>
+          )}
+
+          {hasCopy && (
+            <Box sx={{ maxWidth: 900, textAlign: "left", width: "100%" }}>
+              {copyTitle && (
+                <HtmlTypo variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
+                  {copyTitle}
+                </HtmlTypo>
+              )}
+              {copyBody && (
+                <Typography
+                  color="text.secondary"
+                  component="div"
+                  dangerouslySetInnerHTML={{ __html: safeHtml(String(copyBody)) }}
+                />
+              )}
+            </Box>
+          )}
+        </Stack>
+      </Container>
+
+      {hasCta && (
+        <Box
+          sx={{
+            mt: { xs: 6, md: 8 },
+            py: { xs: 5, md: 6 },
+            background: "var(--page-secondary-bg, #1f2937)",
+            color: "var(--page-heading-color, #f8fafc)",
+          }}
+        >
+          <Container maxWidth={toContainerMax(maxWidth)}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={3}
+              alignItems={{ xs: "flex-start", md: "center" }}
+              justifyContent="space-between"
+            >
+              <Stack spacing={0.5}>
+                {ctaTitle && (
+                  <Typography variant="h4" sx={{ fontWeight: 800 }}>
+                    {ctaTitle}
+                  </Typography>
+                )}
+                {ctaSubtitle && (
+                  <Typography variant="body1" sx={{ opacity: 0.85 }}>
+                    {ctaSubtitle}
+                  </Typography>
+                )}
+              </Stack>
+              {ctaButtonText && (
+                <Button
+                  href={ctaButtonLink || "#"}
+                  variant="contained"
+                  size="large"
+                  sx={{
+                    backgroundColor: "var(--page-btn-bg, #2563eb)",
+                    color: "var(--page-btn-color, #fff)",
+                  }}
+                >
+                  {toPlain(ctaButtonText)}
+                </Button>
+              )}
+            </Stack>
+          </Container>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
 const GalleryCarousel = ({
   title,
   caption,
@@ -4790,6 +5108,7 @@ const registry = {
   featureZigzagModern: FeatureZigzagModern,
   testimonialCarousel: TestimonialCarousel,
   serviceGrid: ServiceGrid,
+  collectionShowcase: CollectionShowcase,
   serviceGridSmart: SmartServiceGrid,
   gallery: Gallery,
   videoGallery: VideoGallery,
