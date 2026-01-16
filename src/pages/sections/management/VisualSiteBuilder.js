@@ -2288,8 +2288,17 @@ const autoProvisionIfEmpty = useCallback(
   // Compute schema via registry
   const selectedBlockObj = safeSections(editing)[selectedBlock];
   const blockType = selectedBlockObj?.type;
+  const normalizedSchemaKey = blockType
+    ? blockType.replace(/[^a-z0-9]/gi, "").toLowerCase()
+    : "";
+  const normalizedSchemaMatch = normalizedSchemaKey
+    ? Object.keys(SCHEMA_REGISTRY).find(
+        (key) => key.replace(/[^a-z0-9]/gi, "").toLowerCase() === normalizedSchemaKey
+      )
+    : null;
   const schemaForBlock =
     (blockType && SCHEMA_REGISTRY[blockType]) ||
+    (normalizedSchemaMatch ? SCHEMA_REGISTRY[normalizedSchemaMatch] : null) ||
     selectedBlockObj?.schema ||
     null;
 
