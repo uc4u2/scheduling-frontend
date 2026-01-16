@@ -799,7 +799,7 @@ const cardRadius = 0;
         sx={{
           display: "flex",
           width: "100%",
-          maxWidth: { xs: "100%", md: 980 },
+          maxWidth: { xs: "100%", md: 1120 },
           mx: "auto",
           flexDirection: {
             xs: "column",
