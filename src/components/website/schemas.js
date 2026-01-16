@@ -145,6 +145,61 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  /* ------------------- COLLECTION SHOWCASE ------------------ */
+  collectionShowcase: {
+    title: "Collection Showcase",
+    fields: [
+      { name: "title", type: "richinline", label: "Heading" },
+      { name: "subtitle", type: "richtext", label: "Subheading", minRows: 2 },
+      {
+        name: "items",
+        type: "objectArray",
+        label: "Carousel items",
+        fields: [
+          { name: "title", type: "richinline", label: "Title" },
+          { name: "linkText", type: "richinline", label: "Link label" },
+          { name: "link", type: "string", label: "Link URL" },
+          { name: "image", type: "image", label: "Image" },
+          { name: "imageAlt", type: "string", label: "Image alt text" },
+        ],
+      },
+      {
+        name: "perks",
+        type: "objectArray",
+        label: "Perks row",
+        fields: [
+          { name: "icon", type: "richinline", label: "Icon label" },
+          { name: "title", type: "richinline", label: "Title" },
+          { name: "subtitle", type: "text", label: "Subtitle" },
+        ],
+      },
+      { name: "copyTitle", type: "richinline", label: "Copy heading" },
+      { name: "copyBody", type: "richtext", label: "Copy body (HTML allowed)", minRows: 4 },
+      { name: "ctaTitle", type: "richinline", label: "CTA heading" },
+      { name: "ctaSubtitle", type: "richtext", label: "CTA subtitle", minRows: 2 },
+      { name: "ctaButtonText", type: "richinline", label: "CTA button text" },
+      { name: "ctaButtonLink", type: "string", label: "CTA button link" },
+      {
+        name: "perView",
+        type: "object",
+        label: "Cards per view",
+        fields: [
+          { name: "desktop", type: "number", label: "Desktop" },
+          { name: "tablet", type: "number", label: "Tablet" },
+          { name: "mobile", type: "number", label: "Mobile" },
+        ],
+      },
+      { name: "showArrows", type: "boolean", label: "Show arrows", default: true },
+      { name: "showDots", type: "boolean", label: "Show dots", default: false },
+      { name: "autoplay", type: "boolean", label: "Autoplay", default: true },
+      { name: "intervalMs", type: "number", label: "Autoplay interval (ms)", min: 1500, max: 12000, step: 100 },
+      { name: "maxWidth", type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
+      { name: "gutterX", type: "number", label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft", type: "boolean", label: "Bleed left" },
+      { name: "bleedRight", type: "boolean", label: "Bleed right" },
+    ],
+  },
+
   /* -------------------------- TEAM GRID --------------------- */
   teamGrid: {
     title: "Team",
