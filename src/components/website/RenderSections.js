@@ -878,7 +878,7 @@ const FeatureZigzagModern = ({
         key="text"
         sx={{
           order: { xs: 2, md: align === "right" ? 2 : 1 },
-          justifySelf: "center",
+          justifySelf: { xs: "center", md: align === "right" ? "end" : "start" },
           width: "100%",
           maxWidth: { xs: "100%", md: 420 },
           backgroundColor: "transparent",
@@ -924,7 +924,7 @@ const FeatureZigzagModern = ({
         key="image"
         sx={{
           order: { xs: 1, md: align === "right" ? 1 : 2 },
-          justifySelf: "center",
+          justifySelf: { xs: "center", md: align === "right" ? "start" : "end" },
           width: "100%",
           maxWidth: { xs: "100%", md: 460 },
           borderRadius: 0,
