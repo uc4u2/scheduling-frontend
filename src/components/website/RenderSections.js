@@ -1017,9 +1017,47 @@ const ServiceGrid = ({
   titleColor,
   subtitleColor,
   hoverLift,
-  imageHoverScale
+  imageHoverScale,
+  lightboxEnabled = true
 }) => {
   const list = toArray(items);
+  const imageItems = [];
+  const imageIndexMap = {};
+  list.forEach((item, idx) => {
+    if (!item || !item.image) return;
+    imageIndexMap[idx] = imageItems.length;
+    imageItems.push({
+      src: item.image,
+      alt: item.imageAlt || item.name || ""
+    });
+  });
+  const [activeIndex, setActiveIndex] = useState(null);
+  const lightboxOn = !!lightboxEnabled && imageItems.length > 0;
+  const openLightbox = (idx) => {
+    if (!lightboxOn) return;
+    const mapped = imageIndexMap[idx];
+    if (mapped === undefined) return;
+    setActiveIndex(mapped);
+  };
+  const closeLightbox = () => setActiveIndex(null);
+  const currentItem = activeIndex != null ? imageItems[activeIndex] : null;
+  const currentFull = currentItem?.src ? buildImgixUrl(currentItem.src, { w: 2000, fit: "max" }) : "";
+  const goPrev = () => {
+    if (activeIndex == null) return;
+    if (activeIndex === 0) {
+      setActiveIndex(imageItems.length - 1);
+    } else {
+      setActiveIndex(activeIndex - 1);
+    }
+  };
+  const goNext = () => {
+    if (activeIndex == null) return;
+    if (activeIndex === imageItems.length - 1) {
+      setActiveIndex(0);
+    } else {
+      setActiveIndex(activeIndex + 1);
+    }
+  };
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
@@ -1081,11 +1119,23 @@ const ServiceGrid = ({
                   }}
                 >
                   {s.image && (
-                    <Box sx={{ overflow: "hidden" }}>
+                    <Box
+                      role={lightboxOn ? "button" : undefined}
+                      onClick={(event) => {
+                        if (!lightboxOn) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openLightbox(i);
+                      }}
+                      sx={{
+                        overflow: "hidden",
+                        cursor: lightboxOn ? "pointer" : "default"
+                      }}
+                    >
                       <CardMedia
                         component="img"
                         height="160"
-                        image={s.image}
+                        image={buildImgixUrl(s.image, { w: 900, fit: "crop" })}
                         alt=""
                         loading="lazy"
                         className="service-grid-image"
@@ -1173,6 +1223,83 @@ const ServiceGrid = ({
           </Button>
         </Stack>
       )}
+      <Dialog
+        open={activeIndex != null}
+        onClose={(event, reason) => {
+          if (reason === "backdropClick") return;
+          closeLightbox();
+        }}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: "transparent",
+            boxShadow: "none",
+            overflow: "visible",
+          },
+        }}
+      >
+        {currentFull && (
+          <Box sx={{ position: "relative", display: "flex", justifyContent: "center" }}>
+            <IconButton
+              onClick={closeLightbox}
+              sx={{
+                position: "absolute",
+                top: -48,
+                right: 0,
+                color: "#fff",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                "&:hover": { backgroundColor: "rgba(0,0,0,0.65)" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+            {imageItems.length > 1 && (
+              <>
+                <IconButton
+                  onClick={goPrev}
+                  sx={{
+                    position: "absolute",
+                    left: -56,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#fff",
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    "&:hover": { backgroundColor: "rgba(0,0,0,0.65)" },
+                  }}
+                >
+                  <ArrowBackIosNewIcon />
+                </IconButton>
+                <IconButton
+                  onClick={goNext}
+                  sx={{
+                    position: "absolute",
+                    right: -56,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#fff",
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    "&:hover": { backgroundColor: "rgba(0,0,0,0.65)" },
+                  }}
+                >
+                  <ArrowForwardIosIcon />
+                </IconButton>
+              </>
+            )}
+            <Box
+              component="img"
+              src={currentFull}
+              alt={currentItem?.alt || ""}
+              sx={{
+                maxWidth: "100%",
+                maxHeight: "80vh",
+                borderRadius: 2,
+                border: "1px solid rgba(255,255,255,0.2)",
+              }}
+            />
+          </Box>
+        )}
+      </Dialog>
     </Container>
   );
 };
