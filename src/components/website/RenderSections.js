@@ -16,6 +16,11 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import EmailIcon from "@mui/icons-material/Email";
 import LanguageIcon from "@mui/icons-material/Language";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import VerifiedIcon from "@mui/icons-material/Verified";
+import ReplayIcon from "@mui/icons-material/Replay";
+import DiamondOutlinedIcon from "@mui/icons-material/DiamondOutlined";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import SmartServiceGrid from "./SmartServiceGrid";
 import { normalizeInlineHtml } from "../../utils/html";
 import { toPlain } from "../../utils/html";
@@ -1383,6 +1388,16 @@ const CollectionShowcase = ({
   const handlePrev = () => goTo((index - 1 + slideCount) % slideCount);
   const handleNext = () => goTo((index + 1) % slideCount);
 
+  const perkIcon = (label) => {
+    const key = String(label || "").toLowerCase();
+    if (!key) return null;
+    if (key.includes("ship") || key.includes("delivery")) return <LocalShippingIcon />;
+    if (key.includes("warranty") || key.includes("guarantee")) return <VerifiedIcon />;
+    if (key.includes("return") || key.includes("exchange")) return <ReplayIcon />;
+    if (key.includes("secure") || key.includes("diamond") || key.includes("quality")) return <DiamondOutlinedIcon />;
+    return null;
+  };
+
   return (
     <Box>
       <Container maxWidth={toContainerMax(maxWidth)}>
@@ -1528,19 +1543,14 @@ const CollectionShowcase = ({
                   <Stack key={idx} spacing={0.5} alignItems="center" textAlign="center" sx={{ maxWidth: 180 }}>
                     <Box
                       sx={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: "50%",
-                        backgroundColor: "var(--page-card-bg, rgba(248,250,252,0.9))",
-                        border: "1px solid rgba(148,163,184,0.24)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontWeight: 700,
                         color: "var(--page-heading-color, #0f172a)",
+                        fontSize: 28,
                       }}
                     >
-                      {perk.icon || "•"}
+                      {perkIcon(perk.icon) || <LocalOfferIcon />}
                     </Box>
                     {perk.title && <Typography sx={{ fontWeight: 600 }}>{perk.title}</Typography>}
                     {perk.subtitle && (
