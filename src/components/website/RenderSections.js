@@ -885,19 +885,23 @@ const FeatureZigzagModern = ({
           border: "none",
           borderRadius: 0,
           p: { xs: 2.5, md: 3.5 },
-          boxShadow: "none"
+          boxShadow: "none",
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          gap: 1
         }}
       >
         {item.eyebrow && (
           <HtmlTypo
             variant="overline"
-            sx={{ letterSpacing: ".2em", textTransform: "uppercase", mb: 1, fontWeight: 600 }}
+            sx={{ letterSpacing: ".2em", textTransform: "uppercase", fontWeight: 600 }}
           >
             {item.eyebrow}
           </HtmlTypo>
         )}
         {item.title && (
-          <HtmlTypo variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+          <HtmlTypo variant="h4" sx={{ fontWeight: 800 }}>
             {item.title}
           </HtmlTypo>
         )}
@@ -906,12 +910,13 @@ const FeatureZigzagModern = ({
             {item.body}
           </HtmlTypo>
         )}
+        <Box sx={{ flexGrow: 1 }} />
         {item.ctaText && (
           <Button
             href={item.ctaLink || "#"}
             variant="contained"
             size="large"
-            sx={{ mt: 2 }}
+            sx={{ mt: "auto", pt: 2 }}
           >
             {toPlain(item.ctaText)}
           </Button>
@@ -931,7 +936,11 @@ const FeatureZigzagModern = ({
           overflow: "hidden",
           aspectRatio: { xs: "4 / 3", md: "5 / 4" },
           boxShadow: "none",
-          backgroundColor: "transparent"
+          backgroundColor: "transparent",
+          height: "100%",
+          minHeight: { xs: 260, md: "100%" },
+          display: "flex",
+          alignItems: "center"
         }}
       >
         {imageSrc && (
@@ -957,8 +966,11 @@ const FeatureZigzagModern = ({
             xs: "1fr",
             md: "repeat(2, minmax(0, 1fr))"
           },
+          maxWidth: { xs: "100%", md: 980 },
+          mx: "auto",
+          minHeight: { md: 420 },
+          alignItems: "stretch",
           gap: { xs: 2.5, md: 3.5 },
-          alignItems: "center"
         }}
       >
         {textBlock}
