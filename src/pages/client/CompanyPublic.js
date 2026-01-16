@@ -1607,6 +1607,8 @@ const siteTitle = useMemo(() => {
     }
   }, [globalSeo]);
 
+  const googleSiteVerification = (globalSeo.googleSiteVerification || "").trim();
+
   const isExternalHref = (href) => {
     const trimmed = (href || "").trim();
     return /^https?:/i.test(trimmed) || trimmed.startsWith("mailto:") || trimmed.startsWith("tel:");
@@ -2079,6 +2081,7 @@ const siteTitle = useMemo(() => {
           robots={robots}
           og={{ title: ogTitle, description: ogDescription, image: ogImage, url: pageCanonicalUrl }}
           twitter={{ title: ogTitle, description: ogDescription, image: ogImage }}
+          meta={googleSiteVerification ? { "google-site-verification": googleSiteVerification } : {}}
         />
         {structuredDataPayload && <JsonLd data={structuredDataPayload} />}
         <GlobalStyles

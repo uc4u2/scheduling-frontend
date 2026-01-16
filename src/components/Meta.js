@@ -29,7 +29,7 @@ const resolveCanonical = (explicit) => {
   return `${origin}${pathname || ""}${search || ""}`.replace(/\/+$/, pathname ? "" : "/");
 };
 
-const Meta = ({ title, description, canonical, robots, og = {}, twitter = {} }) => {
+const Meta = ({ title, description, canonical, robots, og = {}, twitter = {}, meta = {} }) => {
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
 
@@ -78,6 +78,9 @@ const Meta = ({ title, description, canonical, robots, og = {}, twitter = {} }) 
     const twitterEntries = Object.entries(twitterPayload).filter(([, value]) => Boolean(value));
     twitterEntries.forEach(([key, value]) => setMetaTag("name", `twitter:${key}`, value));
 
+    const metaEntries = Object.entries(meta || {}).filter(([, value]) => Boolean(value));
+    metaEntries.forEach(([key, value]) => setMetaTag("name", key, value));
+
     return () => {
       document.title = previousTitle;
       if (resolvedDescription) removeMetaTag("name", "description");
@@ -98,8 +101,9 @@ const Meta = ({ title, description, canonical, robots, og = {}, twitter = {} }) 
 
       ogEntries.forEach(([key]) => removeMetaTag("property", `og:${key}`));
       twitterEntries.forEach(([key]) => removeMetaTag("name", `twitter:${key}`));
+      metaEntries.forEach(([key]) => removeMetaTag("name", key));
     };
-  }, [title, description, canonical, robots, og, twitter]);
+  }, [title, description, canonical, robots, og, twitter, meta]);
 
   return null;
 };
