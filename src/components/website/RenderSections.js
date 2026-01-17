@@ -1350,7 +1350,10 @@ const CollectionShowcase = ({
 
   const hasCarousel = entries.length > 0;
   const hasPerks = perkList.length > 0;
-  const hasCopy = copyTitle || copyBody;
+  const normalizedCopyBody = copyBody ? safeHtml(String(copyBody)).trim() : "";
+  const strippedCopyBody = normalizedCopyBody.replace(/<[^>]*>/g, "").trim();
+  const hasCopyBody = Boolean(strippedCopyBody);
+  const hasCopy = Boolean(copyTitle) || hasCopyBody;
   const hasCta = ctaTitle || ctaSubtitle || ctaButtonText;
 
   const theme = useTheme();
@@ -1577,11 +1580,11 @@ const CollectionShowcase = ({
                   {copyTitle}
                 </HtmlTypo>
               )}
-              {copyBody && (
+              {hasCopyBody && (
                 <Typography
                   color="text.secondary"
                   component="div"
-                  dangerouslySetInnerHTML={{ __html: safeHtml(String(copyBody)) }}
+                  dangerouslySetInnerHTML={{ __html: normalizedCopyBody }}
                 />
               )}
             </Box>
