@@ -252,6 +252,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingServiceId, setBookingServiceId] = useState(null);
   const [bookingFullScreen, setBookingFullScreen] = useState(isMdDown);
+  const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
     if (bookingOpen) {
@@ -358,6 +359,13 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     setBookingOpen(false);
     setBookingServiceId(null);
   };
+
+  const openImagePreview = (src, alt) => {
+    if (!src) return;
+    setImagePreview({ src, alt: alt || "Preview" });
+  };
+
+  const closeImagePreview = () => setImagePreview(null);
 
   const bookingService = useMemo(
     () => services.find((svc) => String(svc.id) === String(bookingServiceId)) || null,
@@ -491,7 +499,22 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                     }}
                   >
                     {imageUrl && (
-                      <Box sx={{ position: "relative", pt: "56.25%" }}>
+                      <Box
+                        sx={{
+                          position: "relative",
+                          pt: "56.25%",
+                          overflow: "hidden",
+                          cursor: "zoom-in",
+                          "& img": {
+                            transition: "transform 0.35s ease",
+                            transform: "scale(1)",
+                          },
+                          "&:hover img": {
+                            transform: "scale(1.12)",
+                          },
+                        }}
+                        onClick={() => openImagePreview(imageUrl, service.name)}
+                      >
                         <Box
                           component="img"
                           src={imageUrl}
@@ -557,6 +580,51 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
           </Grid>
         )}
       </Box>
+
+      {!!imagePreview && (
+        <Dialog
+          open={Boolean(imagePreview)}
+          onClose={closeImagePreview}
+          fullWidth
+          maxWidth="sm"
+          PaperProps={{
+            sx: {
+              maxWidth: 560,
+              borderRadius: 2,
+              overflow: "hidden",
+            },
+          }}
+        >
+          <DialogTitle sx={{ py: 1.5 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Typography variant="h6" fontWeight={700} noWrap>
+                {imagePreview?.alt || "Image preview"}
+              </Typography>
+              <Tooltip title="Close">
+                <IconButton onClick={closeImagePreview} size="small">
+                  <CloseIcon />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </DialogTitle>
+          <DialogContent dividers sx={{ p: 0 }}>
+            <Box
+              component="img"
+              src={imagePreview?.src}
+              alt={imagePreview?.alt || "Preview"}
+              loading="lazy"
+              sx={{
+                width: "100%",
+                height: "auto",
+                display: "block",
+                maxHeight: "70vh",
+                objectFit: "contain",
+                bgcolor: "background.paper",
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {!disableModal && (
         <Dialog

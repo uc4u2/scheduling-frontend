@@ -12,15 +12,21 @@ import {
   Container,
   FormControlLabel,
   Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
   MenuItem,
   Snackbar,
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import ShoppingCartCheckoutIcon from "@mui/icons-material/ShoppingCartCheckout";
 import InfoIcon from "@mui/icons-material/Info";
+import CloseIcon from "@mui/icons-material/Close";
 import SiteFrame from "../../components/website/SiteFrame";
 import { pageStyleToCssVars, pageStyleToBackgroundSx } from "./ServiceList";
 import { addProductToCart, loadCart, CartErrorCodes } from "../../utils/cart";
@@ -91,6 +97,7 @@ const ProductListBase = ({
   const [snack, setSnack] = useState({ open: false, msg: "" });
   const [sortKey, setSortKey] = useState("featured");
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
 
   const productsPage = useMemo(() => {
     const pages = Array.isArray(sitePayload?.pages) ? sitePayload.pages : [];
@@ -223,6 +230,13 @@ const ProductListBase = ({
     navigate(`${basePath}/products/${productId}${embedSuffix}`);
   };
 
+  const openImagePreview = (src, alt) => {
+    if (!src) return;
+    setImagePreview({ src, alt: alt || "Preview" });
+  };
+
+  const closeImagePreview = () => setImagePreview(null);
+
   const goToBasket = () => {
     if (!basketHref) return;
     navigate(basketHref);
@@ -346,7 +360,15 @@ const ProductListBase = ({
                         height="220"
                         image={product.images[0].url}
                         alt={product.name}
-                        sx={{ objectFit: "cover" }}
+                        sx={{
+                          objectFit: "cover",
+                          cursor: "zoom-in",
+                          transition: "transform 0.35s ease",
+                          "&:hover": {
+                            transform: "scale(1.12)",
+                          },
+                        }}
+                        onClick={() => openImagePreview(product.images[0].url, product.name)}
                       />
                     ) : (
                       <Box
@@ -446,6 +468,51 @@ const ProductListBase = ({
         onClose={() => setSnack({ open: false, msg: "" })}
         message={snack.msg}
       />
+
+      {!!imagePreview && (
+        <Dialog
+          open={Boolean(imagePreview)}
+          onClose={closeImagePreview}
+          fullWidth
+          maxWidth="sm"
+          PaperProps={{
+            sx: {
+              maxWidth: 560,
+              borderRadius: 2,
+              overflow: "hidden",
+            },
+          }}
+        >
+          <DialogTitle sx={{ py: 1.5 }}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Typography variant="h6" fontWeight={700} noWrap>
+                {imagePreview?.alt || "Image preview"}
+              </Typography>
+              <Tooltip title="Close">
+                <IconButton onClick={closeImagePreview} size="small">
+                  <CloseIcon />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </DialogTitle>
+          <DialogContent dividers sx={{ p: 0 }}>
+            <Box
+              component="img"
+              src={imagePreview?.src}
+              alt={imagePreview?.alt || "Preview"}
+              loading="lazy"
+              sx={{
+                width: "100%",
+                height: "auto",
+                display: "block",
+                maxHeight: "70vh",
+                objectFit: "contain",
+                bgcolor: "background.paper",
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </Container>
   );
 
