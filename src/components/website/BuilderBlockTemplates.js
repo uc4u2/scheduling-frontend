@@ -144,13 +144,7 @@ export const NEW_BLOCKS = {
           subtitle: "Here when you need us",
         },
       ],
-      copyTitle: "Built for busy teams and loyal clients",
-      copyBody:
-        "<p>Discover curated offerings, standout services, and seasonal highlights designed to help your clients book faster and return more often.</p><p>Use this space to spotlight what makes your business different and guide visitors toward your most important services.</p><p>Update the copy any time to keep your homepage fresh and aligned with your goals.</p>",
-      ctaTitle: "Stay in touch",
-      ctaSubtitle: "Reach out now and we will help you plan the next step.",
-      ctaButtonText: "Contact us now",
-      ctaButtonLink: "?page=contact",
+      // Optional: add copyTitle/copyBody/cta fields if you want the long-form block.
     },
   }),
   richText: () => ({
