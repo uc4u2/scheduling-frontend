@@ -62,6 +62,72 @@ export const NEW_BLOCKS = {
       ],
     },
   }),
+  collectionShowcase: () => ({
+    type: "collectionShowcase",
+    props: {
+      title: "Want to see more?",
+      subtitle: "Browse more highlights and client favorites.",
+      items: [
+        {
+          title: "Signature services",
+          linkText: "Shop now",
+          link: "?page=services-classic",
+          image: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1400&auto=format&fit=crop",
+          imageAlt: "Signature services",
+        },
+        {
+          title: "Best sellers",
+          linkText: "Shop now",
+          link: "?page=services-classic",
+          image: "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?q=80&w=1400&auto=format&fit=crop",
+          imageAlt: "Best sellers",
+        },
+        {
+          title: "Seasonal favorites",
+          linkText: "Shop now",
+          link: "?page=services-classic",
+          image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1400&auto=format&fit=crop",
+          imageAlt: "Seasonal favorites",
+        },
+        {
+          title: "Gift cards",
+          linkText: "Shop now",
+          link: "?page=contact",
+          image: "https://images.unsplash.com/photo-1495435229349-e86db7bfa013?q=80&w=1400&auto=format&fit=crop",
+          imageAlt: "Gift cards",
+        },
+      ],
+      perks: [
+        {
+          icon: "Fast",
+          title: "Fast booking",
+          subtitle: "Reserve in minutes",
+        },
+        {
+          icon: "Flex",
+          title: "Flexible options",
+          subtitle: "Customizable plans",
+        },
+        {
+          icon: "Secure",
+          title: "Secure checkout",
+          subtitle: "Trusted payments",
+        },
+        {
+          icon: "Support",
+          title: "Dedicated support",
+          subtitle: "Here when you need us",
+        },
+      ],
+      copyTitle: "Built for busy teams and loyal clients",
+      copyBody:
+        "<p>Discover curated offerings, standout services, and seasonal highlights designed to help your clients book faster and return more often.</p><p>Use this space to spotlight what makes your business different and guide visitors toward your most important services.</p><p>Update the copy any time to keep your homepage fresh and aligned with your goals.</p>",
+      ctaTitle: "Stay in touch",
+      ctaSubtitle: "Reach out now and we will help you plan the next step.",
+      ctaButtonText: "Contact us now",
+      ctaButtonLink: "?page=contact",
+    },
+  }),
   featureZigzagModern: () => ({
     type: "featureZigzagModern",
     props: {

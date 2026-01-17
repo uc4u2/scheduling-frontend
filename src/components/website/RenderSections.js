@@ -21,6 +21,9 @@ import VerifiedIcon from "@mui/icons-material/Verified";
 import ReplayIcon from "@mui/icons-material/Replay";
 import DiamondOutlinedIcon from "@mui/icons-material/DiamondOutlined";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import SpeedIcon from "@mui/icons-material/Speed";
+import TuneIcon from "@mui/icons-material/Tune";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 import SmartServiceGrid from "./SmartServiceGrid";
 import { normalizeInlineHtml } from "../../utils/html";
 import { toPlain } from "../../utils/html";
@@ -1391,6 +1394,9 @@ const CollectionShowcase = ({
   const perkIcon = (label) => {
     const key = String(label || "").toLowerCase();
     if (!key) return null;
+    if (key.includes("fast") || key.includes("speed")) return <SpeedIcon />;
+    if (key.includes("flex")) return <TuneIcon />;
+    if (key.includes("support") || key.includes("help")) return <SupportAgentIcon />;
     if (key.includes("ship") || key.includes("delivery")) return <LocalShippingIcon />;
     if (key.includes("warranty") || key.includes("guarantee")) return <VerifiedIcon />;
     if (key.includes("return") || key.includes("exchange")) return <ReplayIcon />;
@@ -1567,7 +1573,7 @@ const CollectionShowcase = ({
           {hasCopy && (
             <Box sx={{ maxWidth: 900, textAlign: "left", width: "100%" }}>
               {copyTitle && (
-                <HtmlTypo variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
+                <HtmlTypo variant="h5" sx={{ fontWeight: 800, mb: 1, textAlign: "center" }}>
                   {copyTitle}
                 </HtmlTypo>
               )}

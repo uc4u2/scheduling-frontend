@@ -2977,6 +2977,9 @@ const autoProvisionIfEmpty = useCallback(
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("gallery")}>
             {t("manager.visualBuilder.sections.add.gallery")}
           </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("collectionShowcase")}>
+            {t("manager.visualBuilder.sections.add.collectionShowcase")}
+          </Button>
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("textFree")}>
             {t("manager.visualBuilder.sections.add.textFree")}
           </Button>
