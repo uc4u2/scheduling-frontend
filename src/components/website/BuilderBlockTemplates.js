@@ -62,6 +62,31 @@ export const NEW_BLOCKS = {
       ],
     },
   }),
+  heroCarousel: () => ({
+    type: "heroCarousel",
+    props: {
+      align: "left",
+      heroHeight: 72,
+      overlay: 0.35,
+      overlayColor: "#0f172a",
+      brightness: -0.1,
+      autoplay: true,
+      intervalMs: 6000,
+      slides: [
+        {
+          image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2000&auto=format&fit=crop",
+          backgroundPosition: "center",
+          eyebrow: "Your studio",
+          heading: "Tell your story with motion",
+          subheading: "Rotate hero slides to highlight workshops, services, and products.",
+          ctaText: "Book now",
+          ctaLink: "?page=services-classic",
+          secondaryCtaText: "Shop products",
+          secondaryCtaLink: "?page=products",
+        },
+      ],
+    },
+  }),
   collectionShowcase: () => ({
     type: "collectionShowcase",
     props: {
@@ -128,6 +153,15 @@ export const NEW_BLOCKS = {
       ctaButtonLink: "?page=contact",
     },
   }),
+  richText: () => ({
+    type: "richText",
+    props: {
+      title: "Tell your story",
+      body:
+        "<p>Use this space for longer-form storytelling, studio values, or a detailed service overview.</p>",
+      align: "left",
+    },
+  }),
   featureZigzagModern: () => ({
     type: "featureZigzagModern",
     props: {
@@ -155,6 +189,85 @@ export const NEW_BLOCKS = {
           align: "right",
         },
       ],
+    },
+  }),
+  logoCloud: () => ({
+    type: "logoCloud",
+    props: {
+      title: "Choose a format that fits",
+      caption: "Showcase workshops, commissions, or bundles.",
+      supportingText: "Highlight offerings with quick pricing and CTA links.",
+      titleAlign: "center",
+      supportingTextAlign: "center",
+      variant: "cards",
+      showLabels: true,
+      maxWidth: "xl",
+      logos: [
+        {
+          label: "Intro Workshop",
+          meta: "$1,500",
+          caption: "Foundations in 4 hours",
+          features: ["Tools included", "Take-home piece", "Small group"],
+          ctaText: "Book intro",
+          ctaLink: "?page=programs",
+          highlight: true,
+        },
+        {
+          label: "Advanced Workshop",
+          meta: "$2,000",
+          caption: "Stone setting & design",
+          features: ["Intro required", "Weekend sessions", "Hands-on coaching"],
+          ctaText: "Book advanced",
+          ctaLink: "?page=programs",
+        },
+        {
+          label: "Custom Commission",
+          meta: "From $450",
+          caption: "Handmade on request",
+          features: ["Design consult", "Custom sizing", "Delivery planning"],
+          ctaText: "Start a commission",
+          ctaLink: "?page=contact",
+        },
+      ],
+    },
+  }),
+  cta: () => ({
+    type: "cta",
+    props: {
+      heading: "Ready to get started?",
+      subheading: "Book a session or reach out with a custom request.",
+      ctaText: "Contact us",
+      ctaLink: "?page=contact",
+      titleAlign: "center",
+    },
+  }),
+  teamGrid: () => ({
+    type: "teamGrid",
+    props: {
+      title: "Meet the team",
+      subtitle: "Small, dedicated, and client-focused.",
+      titleAlign: "center",
+      columnsXs: 1,
+      columnsSm: 2,
+      columnsMd: 3,
+      items: [
+        {
+          name: "Team member",
+          role: "Founder",
+          image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=1200&auto=format&fit=crop",
+          email: "hello@example.com",
+          linkedin: "https://www.linkedin.com",
+          website: "https://www.example.com",
+        },
+      ],
+    },
+  }),
+  bookingCtaBar: () => ({
+    type: "bookingCtaBar",
+    props: {
+      text: "Book a slot that fits your schedule in minutes.",
+      buttonText: "Book now",
+      buttonLink: "?page=services-classic",
     },
   }),
   blogList: () => ({

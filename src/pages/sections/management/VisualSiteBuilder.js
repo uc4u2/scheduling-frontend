@@ -2971,14 +2971,26 @@ const autoProvisionIfEmpty = useCallback(
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("hero")}>
             {t("manager.visualBuilder.sections.add.hero")}
           </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("heroCarousel")}>
+            {t("manager.visualBuilder.sections.add.heroCarousel")}
+          </Button>
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("text")}>
             {t("manager.visualBuilder.sections.add.text")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("richText")}>
+            {t("manager.visualBuilder.sections.add.richText")}
           </Button>
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("gallery")}>
             {t("manager.visualBuilder.sections.add.gallery")}
           </Button>
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("collectionShowcase")}>
             {t("manager.visualBuilder.sections.add.collectionShowcase")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("featureZigzagModern")}>
+            {t("manager.visualBuilder.sections.add.featureZigzagModern")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("logoCloud")}>
+            {t("manager.visualBuilder.sections.add.logoCloud")}
           </Button>
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("textFree")}>
             {t("manager.visualBuilder.sections.add.textFree")}
@@ -2992,11 +3004,20 @@ const autoProvisionIfEmpty = useCallback(
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("serviceGrid")}>
             {t("manager.visualBuilder.sections.add.services")}
           </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("teamGrid")}>
+            {t("manager.visualBuilder.sections.add.teamGrid")}
+          </Button>
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("contact")}>
             {t("manager.visualBuilder.sections.add.contact")}
           </Button>
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("contactForm")}>
             {t("manager.visualBuilder.sections.add.contactForm")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("cta")}>
+            {t("manager.visualBuilder.sections.add.cta")}
+          </Button>
+          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("bookingCtaBar")}>
+            {t("manager.visualBuilder.sections.add.bookingCtaBar")}
           </Button>
           <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("footer")}>
             {t("manager.visualBuilder.sections.add.footer")}
