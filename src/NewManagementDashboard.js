@@ -17,6 +17,7 @@ import {
   AccordionDetails,
   Dialog,
   DialogTitle,
+  DialogContent,
   DialogActions,
   Select,
   InputLabel,
@@ -77,13 +78,14 @@ import {
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import api from "./utils/api";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import AllEmployeeSlotsCalendar from "./pages/sections/AllEmployeeSlotsCalendar";
 import SecondNewManagementDashboard from "./pages/sections/management/SecondNewManagementDashboard";
 import ZapierIntegrationPage from "./pages/settings/ZapierIntegrationPage";
+import ManagerPaymentsView from "./pages/sections/management/ManagerPaymentsView";
 
 // Sections imports
 import Overview from "./pages/sections/Overview";
@@ -217,6 +219,9 @@ const menuConfig = [
 
   // Integrations
   { label: "Zapier", key: "zapier", icon: <ApiIcon /> },
+
+  // Booking checkout (calendar + payments)
+  { label: "Booking Checkout", key: "booking-checkout", icon: <CalendarToday /> },
 
   // Billing
   { label: "Billing & Subscription", key: "billing", icon: <Paid /> },
@@ -708,6 +713,226 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
   );
 };
 
+/* ─────────────────────────────────────────────────────────
+   BookingCheckoutPanel — calendar + quick actions
+─────────────────────────────────────────────────────────── */
+const BookingCheckoutPanel = ({ token }) => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isSmall = useMediaQuery(theme.breakpoints.down("md"));
+
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [calendarView, setCalendarView] = useState("timeGridWeek");
+  const [selected, setSelected] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+
+  const statusColor = (status) => {
+    const key = String(status || "").toLowerCase();
+    if (key === "completed") return theme.palette.success.light;
+    if (key === "no-show" || key === "no_show") return theme.palette.error.light;
+    if (key === "cancelled") return theme.palette.grey[400];
+    return theme.palette.info.light;
+  };
+
+  const loadBookings = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get("/api/manager/bookings");
+      const list = Array.isArray(data) ? data : data?.bookings || [];
+      setBookings(list);
+      setError("");
+    } catch (err) {
+      setError(err?.response?.data?.error || "Failed to load bookings.");
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) return;
+    loadBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const events = bookings
+    .map((b) => {
+      const start =
+        b.start_iso_local ||
+        (b.local_date && b.local_start_time ? `${b.local_date}T${b.local_start_time}` : null);
+      const end =
+        b.end_iso_local ||
+        (b.local_date && b.local_end_time ? `${b.local_date}T${b.local_end_time}` : null);
+      if (!start) return null;
+      const clientName = b?.client?.full_name || b?.client?.email || "Client";
+      const serviceName = b?.service?.name || "Service";
+      return {
+        id: String(b.id),
+        title: `${serviceName} • ${clientName}`,
+        start,
+        end: end || start,
+        backgroundColor: statusColor(b.status),
+        borderColor: statusColor(b.status),
+        textColor: theme.palette.text.primary,
+      };
+    })
+    .filter(Boolean);
+
+  const handleEventClick = (info) => {
+    const booking = bookings.find((b) => String(b.id) === String(info.event.id));
+    if (!booking) return;
+    setSelected(booking);
+    setDetailsOpen(true);
+  };
+
+  const handleMarkCompleted = async () => {
+    if (!selected) return;
+    try {
+      await api.post(`/api/manager/bookings/${selected.id}/complete`, {});
+      setSnackbar({ open: true, message: "Booking marked completed.", severity: "success" });
+      setDetailsOpen(false);
+      loadBookings();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.error || "Failed to mark completed.",
+        severity: "error",
+      });
+    }
+  };
+
+  const handleCollectPayment = () => {
+    if (!selected) return;
+    const params = new URLSearchParams(location.search);
+    params.set("view", "payments-hub");
+    params.set("appointmentId", String(selected.id));
+    params.set("intent", "collect");
+    navigate(`/manager/dashboard?${params.toString()}`);
+  };
+
+  const isPaid = (status) => String(status || "").toLowerCase() === "paid";
+
+  return (
+    <ManagementFrame>
+      <Stack spacing={2}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
+          <Box>
+            <Typography variant="h5" fontWeight={700}>
+              Booking Checkout Calendar
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Click a booking to mark it completed and collect payment.
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
+            <ToggleButtonGroup
+              value={calendarView}
+              exclusive
+              onChange={(_, v) => v && setCalendarView(v)}
+              size="small"
+            >
+              <ToggleButton value="timeGridDay">Day</ToggleButton>
+              <ToggleButton value="timeGridWeek">Week</ToggleButton>
+              <ToggleButton value="dayGridMonth">Month</ToggleButton>
+            </ToggleButtonGroup>
+            <Button variant="outlined" size="small" onClick={loadBookings} disabled={loading}>
+              {loading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </Stack>
+        </Stack>
+
+        {error && <Alert severity="error">{error}</Alert>}
+
+        <Paper
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
+          }}
+        >
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView={calendarView}
+            key={`booking-cal-${calendarView}`}
+            events={events}
+            height={isSmall ? "auto" : 700}
+            headerToolbar={{
+              left: "prev,next today",
+              center: "title",
+              right: "",
+            }}
+            eventClick={handleEventClick}
+            nowIndicator
+          />
+        </Paper>
+      </Stack>
+
+      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Booking Actions</DialogTitle>
+        <DialogContent dividers>
+          {selected ? (
+            <Stack spacing={1.25}>
+              <Typography variant="subtitle2" color="text.secondary">
+                {selected?.service?.name || "Service"} • {selected?.client?.full_name || selected?.client?.email || "Client"}
+              </Typography>
+              <Typography variant="body2">
+                {selected?.local_date || selected?.date} {selected?.local_start_time || selected?.start_time}{" "}
+                {selected?.appointment_timezone ? `(${selected.appointment_timezone})` : ""}
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Chip size="small" label={selected.status || "booked"} />
+                <Chip size="small" label={selected.payment_status || "unpaid"} variant="outlined" />
+              </Stack>
+            </Stack>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No booking selected.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDetailsOpen(false)}>Close</Button>
+          <Button
+            variant="outlined"
+            onClick={handleMarkCompleted}
+            disabled={!selected || String(selected.status || "").toLowerCase() === "completed"}
+          >
+            Mark Completed
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleCollectPayment}
+            disabled={!selected || isPaid(selected?.payment_status)}
+          >
+            Collect Payment
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </ManagementFrame>
+  );
+};
+
 const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -788,6 +1013,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         keys.add(item.key);
       }
     });
+    // Allow deep-linked payment hub without showing it in the sidebar.
+    keys.add("payments-hub");
     return Array.from(keys);
   }, [filteredMenuConfig]);
   // Sidebar state
@@ -1771,6 +1998,24 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
       case "advanced-management":
         return <SecondNewManagementDashboard token={token} />;
+
+      case "booking-checkout":
+        return <BookingCheckoutPanel token={token} />;
+
+      case "payments-hub":
+        return (
+          <ManagementFrame>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6" fontWeight={700}>
+                Payments & Refunds
+              </Typography>
+              <Button variant="outlined" onClick={() => setSelectedView("booking-checkout")}>
+                Back to Booking Checkout
+              </Button>
+            </Stack>
+            <ManagerPaymentsView />
+          </ManagementFrame>
+        );
 
       // Other dashboard sections render here
       case "overview":

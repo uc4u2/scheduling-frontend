@@ -823,6 +823,25 @@ const RowActions = ({ row }) => {
           </MenuItem>
         )}
 
+        {!["completed", "cancelled", "no_show"].includes(
+          String(row.status || "").toLowerCase().replace("-", "_")
+        ) && (
+          <MenuItem
+            onClick={async () => {
+              await handleAction(
+                row.id,
+                "complete",
+                t("manager.bookings.snackbar.completed", {
+                  defaultValue: "Booking marked completed",
+                })
+              );
+              handleClose();
+            }}
+          >
+            {t("manager.bookings.actions.complete", { defaultValue: "Mark Completed" })}
+          </MenuItem>
+        )}
+
         <MenuItem
           onClick={() => {
             handleReassignOpen(row);
@@ -1554,7 +1573,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
 
 
 
