@@ -22,6 +22,7 @@ import {
   Select,
   InputLabel,
   FormControl,
+  InputAdornment,
   FormControlLabel,
   Drawer,
   List,
@@ -729,6 +730,15 @@ const BookingCheckoutPanel = ({ token }) => {
   const [selected, setSelected] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+  const [baseAmount, setBaseAmount] = useState("");
+  const [extraAmount, setExtraAmount] = useState("");
+  const [tipMode, setTipMode] = useState("0");
+  const [customTip, setCustomTip] = useState("");
+  const [invoiceUrl, setInvoiceUrl] = useState("");
+  const [offlineOpen, setOfflineOpen] = useState(false);
+  const [offlineMethod, setOfflineMethod] = useState("cash");
+  const [offlineNote, setOfflineNote] = useState("");
+  const [baseLocked, setBaseLocked] = useState(false);
 
   const statusColor = (status) => {
     const key = String(status || "").toLowerCase();
@@ -737,6 +747,13 @@ const BookingCheckoutPanel = ({ token }) => {
     if (key === "cancelled") return theme.palette.grey[400];
     return theme.palette.info.light;
   };
+
+  const parseAmount = (val) => {
+    const num = Number(val);
+    return Number.isFinite(num) ? num : 0;
+  };
+
+  const toCents = (val) => Math.round(parseAmount(val) * 100);
 
   const loadBookings = async () => {
     setLoading(true);
@@ -786,6 +803,24 @@ const BookingCheckoutPanel = ({ token }) => {
     const booking = bookings.find((b) => String(b.id) === String(info.event.id));
     if (!booking) return;
     setSelected(booking);
+    const baseCandidate =
+      booking?.service?.base_price ??
+      booking?.base_price ??
+      booking?.amount ??
+      booking?.total ??
+      0;
+    const baseValue = Number.isFinite(Number(baseCandidate)) ? Number(baseCandidate) : 0;
+    const hasBase =
+      booking?.service?.base_price != null ||
+      booking?.base_price != null ||
+      booking?.amount != null ||
+      booking?.total != null;
+    setBaseAmount(baseValue ? String(baseValue) : "");
+    setExtraAmount("");
+    setTipMode("0");
+    setCustomTip("");
+    setInvoiceUrl("");
+    setBaseLocked(Boolean(hasBase && baseValue > 0));
     setDetailsOpen(true);
   };
 
@@ -807,14 +842,114 @@ const BookingCheckoutPanel = ({ token }) => {
 
   const handleCollectPayment = () => {
     if (!selected) return;
+    const base = parseAmount(baseAmount);
+    const extra = parseAmount(extraAmount);
+    const tip = tipMode === "custom" ? parseAmount(customTip) : (base + extra) * (Number(tipMode) / 100);
+    const total = Math.max(0, base + extra + tip);
     const params = new URLSearchParams(location.search);
     params.set("view", "payments-hub");
     params.set("appointmentId", String(selected.id));
     params.set("intent", "collect");
+    params.set("amount", total.toFixed(2));
+    params.set("extra", extra.toFixed(2));
+    params.set("tip", tip.toFixed(2));
     navigate(`/manager/dashboard?${params.toString()}`);
   };
 
+  const handleCreateInvoice = async () => {
+    if (!selected) return;
+    const base = parseAmount(baseAmount);
+    const extra = parseAmount(extraAmount);
+    const tip = tipMode === "custom" ? parseAmount(customTip) : (base + extra) * (Number(tipMode) / 100);
+    const total = Math.max(0, base + extra + tip);
+    const amountCents = Math.round(total * 100);
+    if (amountCents <= 0) {
+      setSnackbar({ open: true, message: "Enter a valid amount to invoice.", severity: "error" });
+      return;
+    }
+    const clientId = selected?.client?.id;
+    const clientEmail = (selected?.client?.email || "").trim();
+    if (!clientId && !clientEmail) {
+      setSnackbar({
+        open: true,
+        message: "Missing client info: need client ID or email to create payment link.",
+        severity: "error",
+      });
+      return;
+    }
+    const currency = (selected?.currency || "USD").toUpperCase();
+    const description = `Booking #${selected.id} • ${selected?.service?.name || "Service"}`;
+    try {
+      const { data } = await api.post("/api/manager/manual-payments", {
+        appointment_id: selected.id,
+        currency,
+        description,
+        amount_cents: amountCents,
+        client_id: clientId,
+        client_email: clientEmail || undefined,
+        client_name: selected?.client?.full_name || undefined,
+      });
+      const url = data?.checkout_url || data?.invoice?.hosted_invoice_url || "";
+      if (url) setInvoiceUrl(url);
+      setSnackbar({ open: true, message: "Payment link created.", severity: "success" });
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 412 && err?.response?.data?.onboarding_url) {
+        setSnackbar({
+          open: true,
+          message: "Stripe onboarding incomplete. Finish setup to create payment links.",
+          severity: "warning",
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: err?.response?.data?.error || "Failed to create payment link.",
+          severity: "error",
+        });
+      }
+    }
+  };
+
+  const handleCopyInvoice = async () => {
+    if (!invoiceUrl) return;
+    try {
+      await navigator.clipboard.writeText(invoiceUrl);
+      setSnackbar({ open: true, message: "Payment link copied.", severity: "success" });
+    } catch {
+      setSnackbar({ open: true, message: "Copy failed.", severity: "error" });
+    }
+  };
+
+  const handleMarkPaidOffline = async () => {
+    if (!selected) return;
+    try {
+      await api.post(`/api/manager/bookings/${selected.id}/mark-paid`, {
+        method: offlineMethod,
+        note: offlineNote,
+      });
+      setSnackbar({ open: true, message: "Marked paid (offline).", severity: "success" });
+      setOfflineOpen(false);
+      setDetailsOpen(false);
+      loadBookings();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.error || "Failed to mark paid.",
+        severity: "error",
+      });
+    }
+  };
+
   const isPaid = (status) => String(status || "").toLowerCase() === "paid";
+  const statusKey = String(selected?.status || "").toLowerCase().replace("-", "_");
+  const paymentKey = String(selected?.payment_status || "").toLowerCase();
+  const hasCardOnFile = Boolean(selected?.has_card_on_file || selected?.card_on_file);
+  const currency = (selected?.currency || "USD").toUpperCase();
+  const baseValue = parseAmount(baseAmount);
+  const extraValue = parseAmount(extraAmount);
+  const tipValue =
+    tipMode === "custom" ? parseAmount(customTip) : (baseValue + extraValue) * (Number(tipMode) / 100);
+  const totalValue = Math.max(0, baseValue + extraValue + tipValue);
 
   return (
     <ManagementFrame>
@@ -872,22 +1007,174 @@ const BookingCheckoutPanel = ({ token }) => {
         </Paper>
       </Stack>
 
-      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Booking Actions</DialogTitle>
+      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Collect Payment</DialogTitle>
         <DialogContent dividers>
           {selected ? (
-            <Stack spacing={1.25}>
-              <Typography variant="subtitle2" color="text.secondary">
-                {selected?.service?.name || "Service"} • {selected?.client?.full_name || selected?.client?.email || "Client"}
-              </Typography>
-              <Typography variant="body2">
-                {selected?.local_date || selected?.date} {selected?.local_start_time || selected?.start_time}{" "}
-                {selected?.appointment_timezone ? `(${selected.appointment_timezone})` : ""}
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Chip size="small" label={selected.status || "booked"} />
-                <Chip size="small" label={selected.payment_status || "unpaid"} variant="outlined" />
-              </Stack>
+            <Stack spacing={3}>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">
+                  {selected?.service?.name || "Service"} • {selected?.client?.full_name || selected?.client?.email || "Client"}
+                </Typography>
+                <Typography variant="body2">
+                  {selected?.local_date || selected?.date} {selected?.local_start_time || selected?.start_time}{" "}
+                  {selected?.appointment_timezone ? `(${selected.appointment_timezone})` : ""}
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" mt={1}>
+                  <Chip size="small" label={selected.status || "booked"} />
+                  <Chip size="small" label={selected.payment_status || "unpaid"} variant="outlined" />
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700} mb={1}>
+                  Amount builder
+                </Typography>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+                  <TextField
+                    label="Base amount"
+                    value={baseAmount}
+                    onChange={(e) => setBaseAmount(e.target.value)}
+                    fullWidth
+                    disabled={baseLocked}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">{currency}</InputAdornment>,
+                    }}
+                  />
+                  <TextField
+                    label="Extra amount"
+                    value={extraAmount}
+                    onChange={(e) => setExtraAmount(e.target.value)}
+                    fullWidth
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">{currency}</InputAdornment>,
+                    }}
+                  />
+                </Stack>
+                <Stack spacing={1} mt={2}>
+                  <FormLabel>Tip</FormLabel>
+                  <ToggleButtonGroup
+                    value={tipMode}
+                    exclusive
+                    onChange={(_, v) => v && setTipMode(v)}
+                    size="small"
+                  >
+                    <ToggleButton value="0">0%</ToggleButton>
+                    <ToggleButton value="10">10%</ToggleButton>
+                    <ToggleButton value="15">15%</ToggleButton>
+                    <ToggleButton value="20">20%</ToggleButton>
+                    <ToggleButton value="custom">Custom</ToggleButton>
+                  </ToggleButtonGroup>
+                  {tipMode === "custom" && (
+                    <TextField
+                      label="Custom tip"
+                      value={customTip}
+                      onChange={(e) => setCustomTip(e.target.value)}
+                      sx={{ maxWidth: 240 }}
+                      InputProps={{
+                        endAdornment: <InputAdornment position="end">{currency}</InputAdornment>,
+                      }}
+                    />
+                  )}
+                </Stack>
+                <Stack direction="row" spacing={2} alignItems="center" mt={2}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Billed in {currency}
+                  </Typography>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Customer payments in {currency}
+                  </Typography>
+                </Stack>
+                <Typography variant="h6" mt={1}>
+                  Total: {totalValue.toFixed(2)} {currency}
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700} mb={1}>
+                  Payment methods
+                </Typography>
+                {isPaid(paymentKey) && (
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    This booking is already marked as paid.
+                  </Alert>
+                )}
+                <Stack spacing={1.5}>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={1}>
+                      <Typography fontWeight={600}>Card on file</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {hasCardOnFile ? "Charge the saved card on file." : "No card on file for this client."}
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        onClick={handleCollectPayment}
+                        disabled={!hasCardOnFile || isPaid(paymentKey)}
+                      >
+                        Charge saved card
+                      </Button>
+                    </Stack>
+                  </Paper>
+
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={1}>
+                      <Typography fontWeight={600}>Payment link (invoice)</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Create a hosted payment link and share it with the client.
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        onClick={handleCreateInvoice}
+                        disabled={isPaid(paymentKey)}
+                      >
+                        Create payment link
+                      </Button>
+                      {invoiceUrl && (
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+                          <TextField
+                            label="Hosted payment link"
+                            value={invoiceUrl}
+                            fullWidth
+                            InputProps={{ readOnly: true }}
+                          />
+                          <Button variant="contained" onClick={handleCopyInvoice}>
+                            Copy link
+                          </Button>
+                        </Stack>
+                      )}
+                    </Stack>
+                  </Paper>
+
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={1}>
+                      <Typography fontWeight={600}>Mark as paid (offline)</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Record cash, terminal, or e-transfer payments.
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        onClick={() => setOfflineOpen(true)}
+                        disabled={isPaid(paymentKey)}
+                      >
+                        Mark paid
+                      </Button>
+                    </Stack>
+                  </Paper>
+                </Stack>
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700} mb={1}>
+                  Booking status
+                </Typography>
+                <Button
+                  variant="outlined"
+                  onClick={handleMarkCompleted}
+                  disabled={!selected || statusKey === "completed"}
+                >
+                  Mark Completed
+                </Button>
+              </Box>
             </Stack>
           ) : (
             <Typography variant="body2" color="text.secondary">
@@ -897,19 +1184,40 @@ const BookingCheckoutPanel = ({ token }) => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDetailsOpen(false)}>Close</Button>
-          <Button
-            variant="outlined"
-            onClick={handleMarkCompleted}
-            disabled={!selected || String(selected.status || "").toLowerCase() === "completed"}
-          >
-            Mark Completed
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleCollectPayment}
-            disabled={!selected || isPaid(selected?.payment_status)}
-          >
-            Collect Payment
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={offlineOpen} onClose={() => setOfflineOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Mark as paid</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <FormControl fullWidth>
+              <InputLabel>Method</InputLabel>
+              <Select
+                label="Method"
+                value={offlineMethod}
+                onChange={(e) => setOfflineMethod(e.target.value)}
+              >
+                <MenuItem value="cash">Cash</MenuItem>
+                <MenuItem value="terminal">Terminal</MenuItem>
+                <MenuItem value="etransfer">E-transfer</MenuItem>
+                <MenuItem value="other">Other</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              label="Note (optional)"
+              value={offlineNote}
+              onChange={(e) => setOfflineNote(e.target.value)}
+              fullWidth
+              multiline
+              minRows={2}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOfflineOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleMarkPaidOffline}>
+            Confirm paid
           </Button>
         </DialogActions>
       </Dialog>
