@@ -22,6 +22,7 @@ import {
   Select,
   InputLabel,
   FormControl,
+  FormLabel,
   InputAdornment,
   FormControlLabel,
   Drawer,
@@ -921,6 +922,33 @@ const BookingCheckoutPanel = ({ token }) => {
     }
   };
 
+  const handleStartKiosk = async () => {
+    if (!selected) return;
+    const extraCents = toCents(extraAmount);
+    try {
+      const { data } = await api.post(`/api/manager/bookings/${selected.id}/kiosk-token`, {
+        extra_amount_cents: extraCents,
+      });
+      const token = data?.token;
+      if (!token) {
+        setSnackbar({
+          open: true,
+          message: "Kiosk token unavailable. Try again.",
+          severity: "error",
+        });
+        return;
+      }
+      setDetailsOpen(false);
+      navigate(`/kiosk/pay/${token}`);
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err?.response?.data?.error || "Failed to start kiosk checkout.",
+        severity: "error",
+      });
+    }
+  };
+
   const handleCopyInvoice = async () => {
     if (!invoiceUrl) return;
     try {
@@ -1152,6 +1180,23 @@ const BookingCheckoutPanel = ({ token }) => {
                       <Typography variant="caption" color="text.secondary">
                         Tip: Stripe won’t add tax automatically for saved-card charges. Include tax in the total if needed.
                       </Typography>
+                      <Stack spacing={0.5}>
+                        <Typography variant="body2" color="text.secondary">
+                          Want tax calculated automatically? Use a payment link.
+                        </Typography>
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={handleCreateInvoice}
+                          disabled={isPaid(paymentKey)}
+                          sx={{ alignSelf: "flex-start", px: 0 }}
+                        >
+                          Create payment link (Stripe calculates tax)
+                        </Button>
+                        <Typography variant="caption" color="text.secondary">
+                          Requires Stripe Automatic Tax enabled in Stripe.
+                        </Typography>
+                      </Stack>
                     </Stack>
                   </Paper>
 
@@ -1181,6 +1226,22 @@ const BookingCheckoutPanel = ({ token }) => {
                           </Button>
                         </Stack>
                       )}
+                    </Stack>
+                  </Paper>
+
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={1}>
+                      <Typography fontWeight={600}>Pay on this device</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Hand the device to the client to choose tip and pay by card.
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        onClick={handleStartKiosk}
+                        disabled={isPaid(paymentKey)}
+                      >
+                        Start kiosk checkout
+                      </Button>
                     </Stack>
                   </Paper>
 

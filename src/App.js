@@ -161,6 +161,8 @@ import PublicReviewList from "./pages/client/PublicReviewList";
 import PublicTip from "./pages/client/PublicTip";
 import { useEmbedConfig } from "./embed";
 import ManagerPaymentsView from "./pages/sections/management/ManagerPaymentsView";
+import KioskPayPage from "./pages/kiosk/KioskPayPage";
+import KioskSuccessPage from "./pages/kiosk/KioskSuccessPage";
 import EnterpriseAnalytics from "./pages/sections/management/EnterpriseAnalytics";
 import MarketingCouponBridge from "./pages/client/MarketingCouponBridge";
 import LayoutTuningLab from "./pages/sections/management/LayoutTuningLab";
@@ -338,12 +340,14 @@ const AppContent = ({ token, setToken }) => {
   const isCandidatePortalRoute = Boolean(matchPath({ path: "/candidate/*" }, location.pathname));
   const isDocumentRequestRoute = Boolean(matchPath({ path: "/document-request/:token" }, location.pathname));
   const isMeetRoute = Boolean(matchPath({ path: "/:slug/meet/:token" }, location.pathname));
+  const isKioskRoute = Boolean(matchPath({ path: "/kiosk/*" }, location.pathname));
   const isNoChromeRoute =
     isApplyRoute ||
     isPublicJobsRoute ||
     isCandidatePortalRoute ||
     isDocumentRequestRoute ||
-    isMeetRoute;
+    isMeetRoute ||
+    isKioskRoute;
   const slugMatch = matchPath({ path: '/:slug/*' }, location.pathname) || matchPath({ path: '/:slug' }, location.pathname);
   const slugCandidate = slugMatch?.params?.slug?.toLowerCase();
   const isCompanyRoute = Boolean(
@@ -673,6 +677,10 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/manager/employee-shift-view" element={<EmployeeShiftView />} />
           <Route path="/manager/payments" element={<ManagerPaymentsView token={token} />} />
           <Route path="/manager/analytics" element={<EnterpriseAnalytics />} />
+
+          {/* Kiosk checkout */}
+          <Route path="/kiosk/pay/:token" element={<KioskPayPage />} />
+          <Route path="/kiosk/success" element={<KioskSuccessPage />} />
 
           {/* Public reviews page (/:slug/reviews) */}
           <Route path="/:slug/reviews" element={<PublicReviewList />} />
