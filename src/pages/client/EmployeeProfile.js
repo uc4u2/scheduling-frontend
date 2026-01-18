@@ -85,7 +85,10 @@ const EmployeeProfile = ({ slugOverride }) => {
       .get(
         `/public/${effectiveSlug}/artist/${employeeId}/services${departmentId ? `?department_id=${departmentId}` : ""}`
       )
-      .then((res) => setServices(Array.isArray(res.data) ? res.data : []))
+      .then((res) => {
+        const items = Array.isArray(res.data) ? res.data : [];
+        setServices(items.filter((svc) => svc?.is_active !== false));
+      })
       .catch(() => setServices([]))
       .finally(() => setLoadingServices(false));
   }, [effectiveSlug, employeeId, departmentId]);
