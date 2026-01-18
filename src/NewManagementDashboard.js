@@ -842,28 +842,38 @@ const BookingCheckoutPanel = ({ token }) => {
 
   const handleCollectPayment = () => {
     if (!selected) return;
-    const base = parseAmount(baseAmount);
-    const extra = parseAmount(extraAmount);
-    const tip = tipMode === "custom" ? parseAmount(customTip) : (base + extra) * (Number(tipMode) / 100);
-    const total = Math.max(0, base + extra + tip);
+    const baseCents = toCents(baseAmount);
+    const extraCents = toCents(extraAmount);
+    const tipCents =
+      tipMode === "custom"
+        ? toCents(customTip)
+        : Math.round((baseCents + extraCents) * (Number(tipMode) / 100));
+    const totalCents = Math.max(0, baseCents + extraCents + tipCents);
     const params = new URLSearchParams(location.search);
     params.set("view", "payments-hub");
     params.set("appointmentId", String(selected.id));
     params.set("intent", "collect");
-    params.set("amount", total.toFixed(2));
-    params.set("extra", extra.toFixed(2));
-    params.set("tip", tip.toFixed(2));
+    params.set("currency", currency);
+    params.set("amount_override_cents", String(totalCents));
+    params.set("amount_cents", String(baseCents));
+    params.set("extra_amount_cents", String(extraCents));
+    params.set("tip_amount_cents", String(tipCents));
+    params.set("amount", (totalCents / 100).toFixed(2));
+    params.set("extra", (extraCents / 100).toFixed(2));
+    params.set("tip", (tipCents / 100).toFixed(2));
     navigate(`/manager/dashboard?${params.toString()}`);
   };
 
   const handleCreateInvoice = async () => {
     if (!selected) return;
-    const base = parseAmount(baseAmount);
-    const extra = parseAmount(extraAmount);
-    const tip = tipMode === "custom" ? parseAmount(customTip) : (base + extra) * (Number(tipMode) / 100);
-    const total = Math.max(0, base + extra + tip);
-    const amountCents = Math.round(total * 100);
-    if (amountCents <= 0) {
+    const baseCents = toCents(baseAmount);
+    const extraCents = toCents(extraAmount);
+    const tipCents =
+      tipMode === "custom"
+        ? toCents(customTip)
+        : Math.round((baseCents + extraCents) * (Number(tipMode) / 100));
+    const totalCents = Math.max(0, baseCents + extraCents + tipCents);
+    if (totalCents <= 0) {
       setSnackbar({ open: true, message: "Enter a valid amount to invoice.", severity: "error" });
       return;
     }
@@ -880,15 +890,16 @@ const BookingCheckoutPanel = ({ token }) => {
     const currency = (selected?.currency || "USD").toUpperCase();
     const description = `Booking #${selected.id} • ${selected?.service?.name || "Service"}`;
     try {
-      const { data } = await api.post("/api/manager/manual-payments", {
+      const payload = {
         appointment_id: selected.id,
         currency,
         description,
-        amount_cents: amountCents,
-        client_id: clientId,
-        client_email: clientEmail || undefined,
-        client_name: selected?.client?.full_name || undefined,
-      });
+        amount_cents: totalCents,
+        ...(clientId
+          ? { client_id: clientId }
+          : { client_email: clientEmail, client_name: selected?.client?.full_name || undefined }),
+      };
+      const { data } = await api.post("/api/manager/manual-payments", payload);
       const url = data?.checkout_url || data?.invoice?.hosted_invoice_url || "";
       if (url) setInvoiceUrl(url);
       setSnackbar({ open: true, message: "Payment link created.", severity: "success" });
@@ -945,11 +956,13 @@ const BookingCheckoutPanel = ({ token }) => {
   const paymentKey = String(selected?.payment_status || "").toLowerCase();
   const hasCardOnFile = Boolean(selected?.has_card_on_file || selected?.card_on_file);
   const currency = (selected?.currency || "USD").toUpperCase();
-  const baseValue = parseAmount(baseAmount);
-  const extraValue = parseAmount(extraAmount);
-  const tipValue =
-    tipMode === "custom" ? parseAmount(customTip) : (baseValue + extraValue) * (Number(tipMode) / 100);
-  const totalValue = Math.max(0, baseValue + extraValue + tipValue);
+  const baseCents = toCents(baseAmount);
+  const extraCents = toCents(extraAmount);
+  const tipCents =
+    tipMode === "custom"
+      ? toCents(customTip)
+      : Math.round((baseCents + extraCents) * (Number(tipMode) / 100));
+  const totalCents = Math.max(0, baseCents + extraCents + tipCents);
 
   return (
     <ManagementFrame>
@@ -1086,7 +1099,7 @@ const BookingCheckoutPanel = ({ token }) => {
                   </Typography>
                 </Stack>
                 <Typography variant="h6" mt={1}>
-                  Total: {totalValue.toFixed(2)} {currency}
+                  Total: {(totalCents / 100).toFixed(2)} {currency}
                 </Typography>
               </Box>
 

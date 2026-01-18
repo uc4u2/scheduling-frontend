@@ -1152,9 +1152,17 @@ export default function ManagerPaymentsView({ connect }) {
     const presetIntent = qs.get("intent") || "";
     const presetExtra = qs.get("extra");
     const presetTip = qs.get("tip");
+    const presetCurrency = qs.get("currency");
     if (!apptId) return;
     const booking = bookings.find((x) => String(x.id) === String(apptId));
     if (booking) {
+      if (presetCurrency) {
+        const normalized = normalizeCurrency(presetCurrency);
+        if (normalized && normalized !== displayCurrency) {
+          setDisplayCurrency(normalized);
+          setActiveCurrency(normalized);
+        }
+      }
       openCharge(booking, {
         amount: presetAmt || "",
         note: presetNote || "",
