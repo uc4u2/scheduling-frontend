@@ -277,6 +277,10 @@ export default function ManagerPaymentsView({ connect }) {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedPM, setSelectedPM] = useState("");
   const [amount, setAmount] = useState("");
+  const [chargeExtra, setChargeExtra] = useState("");
+  const [chargeTip, setChargeTip] = useState("");
+  const [chargeIntent, setChargeIntent] = useState("");
+  const [chargeOnboardingUrl, setChargeOnboardingUrl] = useState("");
   const [note, setNote] = useState("");
   const [charging, setCharging] = useState(false);
   const [chargeTxns, setChargeTxns] = useState([]);
@@ -974,12 +978,16 @@ export default function ManagerPaymentsView({ connect }) {
   };
 
   // Open charge dialog (prefill pending balance, else pending tip, else no-show fee)
-  const openCharge = async (booking) => {
+  const openCharge = async (booking, opts = {}) => {
     setChargeBooking(booking);
     setChargeOpen(true);
     setPaymentMethods([]);
     setSelectedPM("");
     setAmount("");
+    setChargeExtra("");
+    setChargeTip("");
+    setChargeIntent("");
+    setChargeOnboardingUrl("");
     setNote("");
     setChargeTxns([]);
     setChargeSummary({
@@ -988,6 +996,14 @@ export default function ManagerPaymentsView({ connect }) {
       pendingBalance: 0,
       pendingTip: 0,
     });
+
+    const hasPresetAmount = Boolean(opts?.amount);
+    if (opts?.intent) setChargeIntent(opts.intent);
+    if (opts?.amount) setAmount(opts.amount);
+    if (opts?.note) setNote(opts.note);
+    if (opts?.extra) setChargeExtra(opts.extra);
+    if (opts?.tip) setChargeTip(opts.tip);
+    setChargeOnboardingUrl("");
 
     if (!booking?.client?.id) {
       setMsg("Missing client for this appointment.");
@@ -1019,11 +1035,12 @@ export default function ManagerPaymentsView({ connect }) {
       setChargeSummary(s);
 
       // Prefill priority: pending balance                                                                                          pending tip                                                                                          no-show fee
-      if (s.pendingBalance > 0) {
+      if (!hasPresetAmount && s.pendingBalance > 0) {
         setAmount(s.pendingBalance.toFixed(2));
-      } else if (s.pendingTip > 0) {
+      } else if (!hasPresetAmount && s.pendingTip > 0) {
         setAmount(s.pendingTip.toFixed(2));
       } else if (
+        !hasPresetAmount &&
         String(booking?.status || "")
           .toLowerCase()
           .replace("-", "_") === "no_show" &&
@@ -1046,6 +1063,11 @@ export default function ManagerPaymentsView({ connect }) {
     if (!selectedPM) return setMsg("Please select a saved card.");
     const amt = Number(amount);
     if (!amt || amt <= 0) return setMsg("Enter a valid amount.");
+    const extraVal = Number(chargeExtra || 0);
+    const tipVal = Number(chargeTip || 0);
+    const amountCents = Math.round(amt * 100);
+    const extraCents = Math.round(extraVal * 100);
+    const tipCents = Math.round(tipVal * 100);
 
     if (hasConnect && !connectChargesEnabled) {
       setSnackbar({
@@ -1064,8 +1086,16 @@ export default function ManagerPaymentsView({ connect }) {
         client_id: chargeBooking.client?.id,
         payment_method_id: selectedPM,
         amount: amt,
+        amount_override: chargeIntent === "collect" ? amt : undefined,
+        amount_override_cents: chargeIntent === "collect" ? amountCents : undefined,
+        amount_cents: amountCents,
+        extra_amount: extraVal,
+        tip_amount: tipVal,
+        extra_amount_cents: extraCents,
+        tip_amount_cents: tipCents,
         currency: (normalizeCurrency(displayCurrency) || "USD").toLowerCase(),
         reason: note || "manager_charge",
+        description: note || "manager_charge",
       });
       setSnackbar({
         open: true,
@@ -1078,7 +1108,15 @@ export default function ManagerPaymentsView({ connect }) {
       if (viewAppt && viewAppt.id === chargeBooking.id)
         await loadPayments(chargeBooking.id, chargeBooking?._tz);
     } catch (e) {
-      if (isStripeOnboardingIncomplete(e)) {
+      if (e?.response?.status === 412 && e?.response?.data?.onboarding_url) {
+        setChargeOnboardingUrl(e.response.data.onboarding_url);
+        setSnackbar({
+          open: true,
+          message:
+            "Stripe onboarding incomplete. Finish setup to charge saved cards.",
+          severity: "warning",
+        });
+      } else if (isStripeOnboardingIncomplete(e)) {
         setSnackbar({
           open: true,
           message:
@@ -1111,12 +1149,19 @@ export default function ManagerPaymentsView({ connect }) {
     const apptId = qs.get("appointmentId");
     const presetAmt = qs.get("amount");
     const presetNote = qs.get("note");
+    const presetIntent = qs.get("intent") || "";
+    const presetExtra = qs.get("extra");
+    const presetTip = qs.get("tip");
     if (!apptId) return;
     const booking = bookings.find((x) => String(x.id) === String(apptId));
     if (booking) {
-      openCharge(booking);
-      if (presetAmt) setAmount(presetAmt);
-      if (presetNote) setNote(presetNote);
+      openCharge(booking, {
+        amount: presetAmt || "",
+        note: presetNote || "",
+        intent: presetIntent || "",
+        extra: presetExtra || "",
+        tip: presetTip || "",
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, bookings, location.search]);
@@ -1631,6 +1676,19 @@ export default function ManagerPaymentsView({ connect }) {
               </Alert>
             ) : (
               <>
+                {chargeOnboardingUrl ? (
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    Stripe onboarding incomplete.{" "}
+                    <Button
+                      size="small"
+                      onClick={() =>
+                        window.open(chargeOnboardingUrl, "_blank", "noopener")
+                      }
+                    >
+                      Finish Stripe setup
+                    </Button>
+                  </Alert>
+                ) : null}
                 {/* Prior payments summary for this booking */}
                 {chargeTxns.length > 0 && (
                   <Box
@@ -1680,6 +1738,42 @@ export default function ManagerPaymentsView({ connect }) {
                   >
                     Quick-fill No-Show Fee ({money(noShowFee)})
                   </Button>
+                )}
+
+                {chargeIntent === "collect" && (
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={2}
+                    sx={{
+                      border: 1,
+                      borderColor: "divider",
+                      borderRadius: 1,
+                      p: 2,
+                      mb: 2,
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Extra
+                      </Typography>
+                      <Typography fontWeight={600}>
+                        {money(Number(chargeExtra || 0))}
+                      </Typography>
+                    </Box>
+                    <Divider
+                      orientation="vertical"
+                      flexItem
+                      sx={{ display: { xs: "none", sm: "block" } }}
+                    />
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Tip
+                      </Typography>
+                      <Typography fontWeight={600}>
+                        {money(Number(chargeTip || 0))}
+                      </Typography>
+                    </Box>
+                  </Stack>
                 )}
 
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>

@@ -27,6 +27,7 @@ import {
   Checkbox,
   Menu as MuiMenu,
   Backdrop,
+  InputAdornment,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -154,6 +155,18 @@ const ManagerBookings = ({ slug, connect }) => {
   const [reassignDialog, setReassignDialog] = useState(false);
   const [paymentDialog, setPaymentDialog] = useState(false);
   const [payments, setPayments] = useState([]);
+  const [collectOpen, setCollectOpen] = useState(false);
+  const [collectBooking, setCollectBooking] = useState(null);
+  const [collectBaseAmount, setCollectBaseAmount] = useState(0);
+  const [collectExtraAmount, setCollectExtraAmount] = useState("");
+  const [collectTipPreset, setCollectTipPreset] = useState("0");
+  const [collectTipCustom, setCollectTipCustom] = useState("");
+  const [collectNotes, setCollectNotes] = useState("");
+  const [collectCreatingLink, setCollectCreatingLink] = useState(false);
+  const [collectLink, setCollectLink] = useState("");
+  const [collectInvoiceId, setCollectInvoiceId] = useState(null);
+  const [collectOnboardingUrl, setCollectOnboardingUrl] = useState("");
+  const [collectShowQr, setCollectShowQr] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -559,6 +572,174 @@ const handleEditSave = async () => {
     }
   };
 
+  const resolveBaseAmount = (row) => {
+    const candidates = [
+      row?.total_price,
+      row?.total,
+      row?.amount,
+      row?.price,
+      row?.service?.base_price,
+      row?.service?.price,
+    ];
+    const val = candidates.find((v) => Number(v) > 0);
+    return Number(val || 0);
+  };
+
+  const resolveTipAmount = (base, extra, preset, custom) => {
+    const baseTotal = Number(base || 0) + Number(extra || 0);
+    if (preset === "custom") {
+      const customVal = Number(custom || 0);
+      return Number.isFinite(customVal) && customVal > 0 ? customVal : 0;
+    }
+    const pct = Number(preset || 0);
+    if (!Number.isFinite(pct) || pct <= 0) return 0;
+    return Number((baseTotal * (pct / 100)).toFixed(2));
+  };
+
+  const collectExtraNum = Number(collectExtraAmount || 0);
+  const collectTipAmount = resolveTipAmount(
+    collectBaseAmount,
+    collectExtraNum,
+    collectTipPreset,
+    collectTipCustom
+  );
+  const collectTotalAmount = Number(
+    (Number(collectBaseAmount || 0) + collectExtraNum + collectTipAmount).toFixed(2)
+  );
+
+  const resetCollectState = () => {
+    setCollectBooking(null);
+    setCollectBaseAmount(0);
+    setCollectExtraAmount("");
+    setCollectTipPreset("0");
+    setCollectTipCustom("");
+    setCollectNotes("");
+    setCollectCreatingLink(false);
+    setCollectLink("");
+    setCollectInvoiceId(null);
+    setCollectOnboardingUrl("");
+    setCollectShowQr(false);
+  };
+
+  const openCollectPayment = (row) => {
+    setCollectBooking(row);
+    setCollectBaseAmount(resolveBaseAmount(row));
+    setCollectExtraAmount("");
+    setCollectTipPreset("0");
+    setCollectTipCustom("");
+    setCollectNotes("");
+    setCollectLink("");
+    setCollectInvoiceId(null);
+    setCollectOnboardingUrl("");
+    setCollectShowQr(false);
+    setCollectOpen(true);
+  };
+
+  const handleCollectCharge = () => {
+    if (!collectBooking) return;
+    const extra = Number(collectExtraAmount || 0);
+    const tipAmount = resolveTipAmount(
+      collectBaseAmount,
+      extra,
+      collectTipPreset,
+      collectTipCustom
+    );
+    const total = Number(
+      (Number(collectBaseAmount || 0) + extra + tipAmount).toFixed(2)
+    );
+    const params = new URLSearchParams({
+      appointmentId: String(collectBooking.id || ""),
+      clientId: String(collectBooking.client?.id || ""),
+      amount: String(total),
+      tip: String(tipAmount),
+      extra: String(extra),
+      note: collectNotes || "",
+      intent: "collect",
+    });
+    navigate(`/manager/payments?${params.toString()}`);
+    setCollectOpen(false);
+  };
+
+  const handleCollectLink = async () => {
+    if (!collectBooking) return;
+    if (!collectBooking?.client?.id && !collectBooking?.client?.email) {
+      setSnackbar({
+        open: true,
+        message: "Missing client info: need client ID or email to create payment link.",
+        severity: "error",
+      });
+      return;
+    }
+    const extra = Number(collectExtraAmount || 0);
+    const tipAmount = resolveTipAmount(
+      collectBaseAmount,
+      extra,
+      collectTipPreset,
+      collectTipCustom
+    );
+    const total = Number(
+      (Number(collectBaseAmount || 0) + extra + tipAmount).toFixed(2)
+    );
+    if (total <= 0) {
+      setSnackbar({ open: true, message: "Enter a valid amount.", severity: "error" });
+      return;
+    }
+
+    setCollectCreatingLink(true);
+    setCollectLink("");
+    setCollectInvoiceId(null);
+    setCollectOnboardingUrl("");
+    try {
+      const currency = (collectBooking?.currency || "CAD").toUpperCase();
+      const payload = {
+        amount_cents: Math.round(total * 100),
+        currency,
+        appointment_id: collectBooking.id,
+        description: collectNotes || "Service payment",
+      };
+      if (collectBooking?.client?.id) {
+        payload.client_id = collectBooking.client.id;
+      } else if (collectBooking?.client?.email) {
+        payload.client_email = collectBooking.client.email;
+        if (collectBooking?.client?.full_name) {
+          payload.client_name = collectBooking.client.full_name;
+        }
+      }
+      const res = await api.post("/api/manager/manual-payments", payload);
+      const body = res.data || {};
+      const invoice = body.invoice || body;
+      const link = body.checkout_url || body.payment_url || invoice.hosted_invoice_url || "";
+      if (invoice?.id) setCollectInvoiceId(invoice.id);
+      if (link) setCollectLink(link);
+      setSnackbar({ open: true, message: "Payment link created.", severity: "success" });
+    } catch (e) {
+      if (e?.response?.status === 412 && e?.response?.data?.onboarding_url) {
+        setCollectOnboardingUrl(e.response.data.onboarding_url);
+        setSnackbar({
+          open: true,
+          message: "Stripe onboarding incomplete. Finish setup to create payment links.",
+          severity: "warning",
+        });
+      } else {
+      setSnackbar({
+        open: true,
+        message: e?.response?.data?.error || "Failed to create payment link.",
+        severity: "error",
+      });
+      }
+    } finally {
+      setCollectCreatingLink(false);
+    }
+  };
+
+  const handleCopyCollectLink = () => {
+    if (!collectLink) return;
+    navigator.clipboard
+      .writeText(collectLink)
+      .then(() => setSnackbar({ open: true, message: "Link copied.", severity: "success" }))
+      .catch(() => setSnackbar({ open: true, message: "Could not copy link.", severity: "error" }));
+  };
+
   const handleCharge = (row, presetAmount = "", presetNote = "") => {
     const params = new URLSearchParams({
       appointmentId: String(row.id || ""),
@@ -668,6 +849,18 @@ const RowActions = ({ row }) => {
         >
           {t("manager.bookings.actions.payments")}
         </MenuItem>
+
+        {String(row.status || "").toLowerCase() === "completed" &&
+          String(row.payment_status || "").toLowerCase() !== "paid" && (
+          <MenuItem
+            onClick={() => {
+              openCollectPayment(row);
+              handleClose();
+            }}
+          >
+            Collect payment
+          </MenuItem>
+        )}
 
         {hasCardOnFile && (
           <>
@@ -1144,6 +1337,170 @@ const RowActions = ({ row }) => {
             </DialogActions>
           </Dialog>
 
+          {/* Collect Payment Dialog */}
+          <Dialog
+            open={collectOpen}
+            onClose={() => {
+              setCollectOpen(false);
+              resetCollectState();
+            }}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>Collect payment</DialogTitle>
+            <DialogContent dividers>
+              <Stack spacing={2}>
+                <TextField
+                  label="Base total"
+                  value={collectBaseAmount.toFixed(2)}
+                  helperText={`Billed in ${(collectBooking?.currency || "CAD").toUpperCase()}`}
+                  InputProps={{
+                    readOnly: true,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        {(collectBooking?.currency || "CAD").toUpperCase()}
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Customer payments in {(collectBooking?.currency || "CAD").toUpperCase()}
+                </Typography>
+                <TextField
+                  label="Extra amount"
+                  value={collectExtraAmount}
+                  onChange={(e) => setCollectExtraAmount(e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        {(collectBooking?.currency || "CAD").toUpperCase()}
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Tip
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {["0", "10", "15", "20", "custom"].map((opt) => (
+                      <Chip
+                        key={opt}
+                        label={opt === "custom" ? "Custom" : `${opt}%`}
+                        color={collectTipPreset === opt ? "primary" : "default"}
+                        onClick={() => setCollectTipPreset(opt)}
+                        variant={collectTipPreset === opt ? "filled" : "outlined"}
+                      />
+                    ))}
+                  </Stack>
+                  {collectTipPreset === "custom" && (
+                    <TextField
+                      sx={{ mt: 2 }}
+                      label="Custom tip"
+                      value={collectTipCustom}
+                      onChange={(e) => setCollectTipCustom(e.target.value)}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            {(collectBooking?.currency || "CAD").toUpperCase()}
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  )}
+                </Box>
+                <TextField
+                  label="Total"
+                  value={collectTotalAmount.toFixed(2)}
+                  InputProps={{
+                    readOnly: true,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        {(collectBooking?.currency || "CAD").toUpperCase()}
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField
+                  label="Notes"
+                  value={collectNotes}
+                  onChange={(e) => setCollectNotes(e.target.value)}
+                  multiline
+                  minRows={2}
+                />
+
+                {collectOnboardingUrl ? (
+                  <Alert severity="warning">
+                    Stripe onboarding incomplete.{" "}
+                    <Button
+                      size="small"
+                      onClick={() => window.open(collectOnboardingUrl, "_blank", "noopener")}
+                    >
+                      Finish Stripe setup
+                    </Button>
+                  </Alert>
+                ) : null}
+
+                {collectLink ? (
+                  <Stack spacing={1}>
+                    <Alert severity="success">
+                      Payment link ready. Share with the client to pay on their phone.
+                    </Alert>
+                    <TextField
+                      label="Hosted invoice link"
+                      value={collectLink}
+                      InputProps={{ readOnly: true }}
+                    />
+                    <Stack direction="row" spacing={1}>
+                      <Button variant="outlined" onClick={handleCopyCollectLink}>
+                        Copy link
+                      </Button>
+                      {collectInvoiceId ? (
+                        <Button
+                          variant="outlined"
+                          onClick={() => window.open(collectLink, "_blank", "noopener")}
+                        >
+                          Open link
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="outlined"
+                        onClick={() => setCollectShowQr((prev) => !prev)}
+                      >
+                        {collectShowQr ? "Hide QR" : "Show QR"}
+                      </Button>
+                    </Stack>
+                    {collectShowQr ? (
+                      <Alert severity="info">
+                        QR is optional. Use “Copy link” to share with the client.
+                      </Alert>
+                    ) : null}
+                  </Stack>
+                ) : null}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => {
+                  setCollectOpen(false);
+                  resetCollectState();
+                }}
+              >
+                Close
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleCollectLink}
+                disabled={collectCreatingLink}
+              >
+                {collectCreatingLink ? "Creating link..." : "Pay on client phone"}
+              </Button>
+              <Button variant="contained" onClick={handleCollectCharge}>
+                Charge saved card
+              </Button>
+            </DialogActions>
+          </Dialog>
+
           {/* Payments Dialog */}
           <Dialog open={paymentDialog} onClose={() => setPaymentDialog(false)} maxWidth="md" fullWidth>
             <DialogTitle>{t("manager.bookings.dialog.payments.title")}</DialogTitle>
@@ -1197,20 +1554,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
