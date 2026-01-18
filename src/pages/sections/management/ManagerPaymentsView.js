@@ -36,6 +36,7 @@ import {
   ListItemText,
   Snackbar,
   Tooltip,
+  IconButton,
   FormLabel,
   Switch,
   InputAdornment,
@@ -1784,6 +1785,27 @@ export default function ManagerPaymentsView({ connect }) {
                   </Stack>
                 )}
 
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <FormLabel>Charge amount</FormLabel>
+                  <Tooltip
+                    title={
+                      <Box>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Tax on saved-card charges
+                        </Typography>
+                        <Typography variant="body2">
+                          Tax isn’t calculated automatically for saved-card charges.
+                          If you charge tax, include it in the amount (e.g., $50 + 13% = $56.50).
+                          For automatic tax, use Payment link / Invoice or Pay during checkout.
+                        </Typography>
+                      </Box>
+                    }
+                  >
+                    <IconButton size="small">
+                      <InfoOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                   <TextField
                     label={`Amount (${displayCurrency})`}
@@ -1800,6 +1822,9 @@ export default function ManagerPaymentsView({ connect }) {
                     fullWidth
                   />
                 </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Saved-card charges are amount-only. If tax applies, include it in the amount.
+                </Typography>
               </>
             )}
           </DialogContent>

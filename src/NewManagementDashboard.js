@@ -1115,7 +1115,30 @@ const BookingCheckoutPanel = ({ token }) => {
                 <Stack spacing={1.5}>
                   <Paper variant="outlined" sx={{ p: 2 }}>
                     <Stack spacing={1}>
-                      <Typography fontWeight={600}>Card on file</Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography fontWeight={600}>Card on file</Typography>
+                        <Tooltip
+                          title={
+                            <Box>
+                              <Typography variant="subtitle2" gutterBottom>
+                                Tax on Card-on-file charges
+                              </Typography>
+                              <Typography variant="body2">
+                                Tax is not calculated automatically when charging a saved card.
+                                If you charge tax (GST/HST/Sales tax), add it to the amount manually.
+                                For automatic tax calculation, use Payment link / Invoice or Pay during checkout.
+                              </Typography>
+                              <Typography variant="body2" sx={{ mt: 1 }}>
+                                Example: Service $50 + 13% tax ($6.50) → Charge $56.50.
+                              </Typography>
+                            </Box>
+                          }
+                        >
+                          <IconButton size="small">
+                            <InfoOutlined fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                       <Typography variant="body2" color="text.secondary">
                         {hasCardOnFile ? "Charge the saved card on file." : "No card on file for this client."}
                       </Typography>
@@ -1126,6 +1149,9 @@ const BookingCheckoutPanel = ({ token }) => {
                       >
                         Charge saved card
                       </Button>
+                      <Typography variant="caption" color="text.secondary">
+                        Tip: Stripe won’t add tax automatically for saved-card charges. Include tax in the total if needed.
+                      </Typography>
                     </Stack>
                   </Paper>
 
