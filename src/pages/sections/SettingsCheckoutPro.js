@@ -60,6 +60,55 @@ const CURRENCY_OPTIONS = getCurrencyOptions();
 export default function SettingsCheckoutPro() {
   const { t } = useTranslation();
   const token = useMemo(() => localStorage.getItem("token") || "", []);
+  const cardOnFileTaxTooltip = (
+    <Box sx={{ maxWidth: 360, whiteSpace: "normal" }}>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        Tax on Card-on-file charges
+      </Typography>
+      <Typography variant="body2" sx={{ mb: 0.75 }}>
+        Tax is not calculated automatically when charging a saved card.
+        If you charge tax (GST/HST/Sales tax), add it to the amount manually.
+        For automatic tax calculation, use Payment link / Invoice or Pay during checkout.
+      </Typography>
+      <Typography variant="body2">
+        Example: Service $50 + 13% tax ($6.50) → Charge $56.50.
+      </Typography>
+    </Box>
+  );
+  const offlineTaxTooltip = (
+    <Box sx={{ maxWidth: 340, whiteSpace: "normal" }}>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        Offline booking (manual payment)
+      </Typography>
+      <Typography variant="body2">
+        Payments are collected later, outside of Stripe. If you charge tax,
+        include it in the amount you collect.
+      </Typography>
+    </Box>
+  );
+  const payNowTaxTooltip = (
+    <Box sx={{ maxWidth: 340, whiteSpace: "normal" }}>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        Pay during checkout (Stripe)
+      </Typography>
+      <Typography variant="body2">
+        Stripe can calculate tax automatically during checkout when Automatic
+        Tax is enabled in your Stripe dashboard.
+      </Typography>
+    </Box>
+  );
+  const pricesIncludeTaxTooltip = (
+    <Box sx={{ maxWidth: 360, whiteSpace: "normal" }}>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        Prices include tax
+      </Typography>
+      <Typography variant="body2">
+        If enabled, displayed prices already include tax. Stripe will back the
+        tax out during checkout when Automatic Tax is on. Saved-card charges are
+        still amount-only, so include tax in the amount you charge.
+      </Typography>
+    </Box>
+  );
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -328,7 +377,14 @@ export default function SettingsCheckoutPro() {
                     control={<Radio />}
                     label={
                       <Stack spacing={0.5} alignItems="flex-start">
-                        <Typography variant="body2">{t("settings.checkout.modes.offline.title")}</Typography>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Typography variant="body2">{t("settings.checkout.modes.offline.title")}</Typography>
+                          <Tooltip title={offlineTaxTooltip}>
+                            <IconButton size="small" aria-label="tax info">
+                              <InfoOutlined fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
                         <Typography variant="caption" color="text.secondary">
                           {t("settings.checkout.modes.offline.description")}
                         </Typography>
@@ -340,7 +396,14 @@ export default function SettingsCheckoutPro() {
                     control={<Radio />}
                     label={
                       <Stack spacing={0.5} alignItems="flex-start">
-                        <Typography variant="body2">{t("settings.checkout.modes.cardOnFile.title")}</Typography>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Typography variant="body2">{t("settings.checkout.modes.cardOnFile.title")}</Typography>
+                          <Tooltip title={cardOnFileTaxTooltip}>
+                            <IconButton size="small" aria-label="tax info">
+                              <InfoOutlined fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
                         <Typography variant="caption" color="text.secondary">
                           {t("settings.checkout.modes.cardOnFile.description")}
                         </Typography>
@@ -352,7 +415,14 @@ export default function SettingsCheckoutPro() {
                     control={<Radio />}
                     label={
                       <Stack spacing={0.5} alignItems="flex-start">
-                        <Typography variant="body2">{t("settings.checkout.modes.payNow.title")}</Typography>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Typography variant="body2">{t("settings.checkout.modes.payNow.title")}</Typography>
+                          <Tooltip title={payNowTaxTooltip}>
+                            <IconButton size="small" aria-label="tax info">
+                              <InfoOutlined fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
                         <Typography variant="caption" color="text.secondary">
                           {t("settings.checkout.modes.payNow.description")}
                         </Typography>
@@ -437,7 +507,16 @@ export default function SettingsCheckoutPro() {
             <Grid item xs={12} md={6}>
               <FormControlLabel
                 control={<Switch checked={pricesIncludeTax} onChange={(e) => setPricesIncludeTax(e.target.checked)} />}
-                label={t("settings.checkout.pricesIncludeTax.label")}
+                label={
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <span>{t("settings.checkout.pricesIncludeTax.label")}</span>
+                    <Tooltip title={pricesIncludeTaxTooltip}>
+                      <IconButton size="small" aria-label="tax info">
+                        <InfoOutlined fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                }
               />
               <Typography variant="caption" color="text.secondary" display="block">
                 {t("settings.checkout.pricesIncludeTax.helper")}
