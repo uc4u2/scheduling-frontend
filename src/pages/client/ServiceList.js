@@ -536,7 +536,18 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                       <Typography variant="h6" fontWeight={700} sx={{ color: "var(--page-heading-color, inherit)" }}>
                         {service.name}
                       </Typography>
-                      <Typography variant="body2" sx={{ mt: 1.2, minHeight: 56, color: "var(--page-body-color, inherit)" }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          mt: 1.2,
+                          minHeight: 56,
+                          color: "var(--page-body-color, inherit)",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 4,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
                         {service.description || "No description available."}
                       </Typography>
                       <Typography
