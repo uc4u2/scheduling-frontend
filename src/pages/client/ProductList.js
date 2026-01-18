@@ -344,7 +344,7 @@ const ProductListBase = ({
           {inStockOnly ? "No products currently in stock." : "No products available right now."}
         </Typography>
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={3} justifyContent="center">
           {visibleProducts.map((product) => {
             const quantity = Number(product.qty_on_hand || 0);
             const soldOut = Boolean(product.track_stock) && quantity <= 0;
