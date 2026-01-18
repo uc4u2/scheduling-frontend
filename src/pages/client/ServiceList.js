@@ -474,7 +474,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
             No services available{selectedDept ? " in this department" : ""}.
           </Typography>
         ) : (
-          <Grid container spacing={3}>
+          <Grid container spacing={3} justifyContent="center">
             {services.map((service) => {
               const duration = numOr(service.duration, null);
               const price = service.base_price;
