@@ -2184,10 +2184,17 @@ const TeamGrid = ({
 }) => {
   const list = toArray(items);
   const align = titleAlign || "center";
-  const gridTemplate = {
-    xs: `repeat(${columnsXs || 1}, minmax(0, 1fr))`,
-    sm: `repeat(${columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
-    md: `repeat(${columnsMd || columnsSm || columnsXs || 1}, minmax(0, 1fr))`,
+  const gapValue = typeof gap === "number" ? gap : 0;
+  const columnsConf = {
+    xs: columnsXs || 1,
+    sm: columnsSm || columnsXs || 1,
+    md: columnsMd || columnsSm || columnsXs || 1,
+  };
+  const calcBasis = (count) => `calc(${(100 / count).toFixed(4)}% - ${gapValue}px)`;
+  const itemBasis = {
+    xs: calcBasis(columnsConf.xs),
+    sm: calcBasis(columnsConf.sm),
+    md: calcBasis(columnsConf.md),
   };
 
   const resolveImage = (it) => {
@@ -2210,8 +2217,9 @@ const TeamGrid = ({
       )}
       <Box
         sx={{
-          display: "grid",
-          gridTemplateColumns: gridTemplate,
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
           gap: typeof gap === "number" ? `${gap}px` : gap,
         }}
       >
@@ -2219,7 +2227,17 @@ const TeamGrid = ({
           const imgPath = resolveImage(member);
           const imgUrl = imgPath ? buildImgixUrl(imgPath, { w: 1200, fit: "crop" }) : "";
           return (
-            <Box key={i} sx={{ display: "flex", flexDirection: "column" }}>
+            <Box
+              key={i}
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                flex: "0 0 auto",
+                flexBasis: itemBasis,
+                maxWidth: itemBasis,
+                width: "100%",
+              }}
+            >
               <Box
                 sx={{
                   position: "relative",
@@ -4292,13 +4310,16 @@ const TestimonialTiles = ({
       ) : (
         <Box
           sx={{
-            display: "grid",
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
             gap,
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
           }}
         >
           {entries.map((item, idx) => (
-            <Tile key={idx} item={item} />
+            <Box key={idx} sx={{ flex: "1 1 240px", maxWidth: 360 }}>
+              <Tile item={item} />
+            </Box>
           ))}
         </Box>
       )}
