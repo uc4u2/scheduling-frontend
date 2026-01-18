@@ -4630,10 +4630,12 @@ const Gallery = ({
     return { xs: 1, sm: Math.min(2, num), md: num };
   })();
 
-  const gridTemplate = {
-    xs: `repeat(${columnsConf.xs}, minmax(0, 1fr))`,
-    sm: `repeat(${columnsConf.sm}, minmax(0, 1fr))`,
-    md: `repeat(${columnsConf.md}, minmax(0, 1fr))`,
+  const gapValue = typeof resolvedGap === "number" ? resolvedGap : 0;
+  const calcBasis = (count) => `calc(${(100 / count).toFixed(4)}% - ${gapValue}px)`;
+  const itemBasis = {
+    xs: calcBasis(columnsConf.xs),
+    sm: calcBasis(columnsConf.sm),
+    md: calcBasis(columnsConf.md),
   };
 
   const handleOpen = (index) => {
@@ -4674,8 +4676,9 @@ const Gallery = ({
       )}
       <Box
         sx={{
-          display: "grid",
-          gridTemplateColumns: gridTemplate,
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
           gap: typeof resolvedGap === "number" ? `${resolvedGap}px` : resolvedGap,
         }}
       >
@@ -4690,6 +4693,10 @@ const Gallery = ({
               role={lightboxOn ? "button" : undefined}
               onClick={() => handleOpen(i)}
               sx={{
+                flex: "0 0 auto",
+                flexBasis: itemBasis,
+                maxWidth: itemBasis,
+                width: "100%",
                 borderRadius,
                 border,
                 overflow: "hidden",
@@ -4886,10 +4893,12 @@ const VideoGallery = ({
     return { xs: 1, sm: Math.min(2, num), md: num };
   })();
 
-  const gridTemplate = {
-    xs: `repeat(${columnsConf.xs}, minmax(0, 1fr))`,
-    sm: `repeat(${columnsConf.sm}, minmax(0, 1fr))`,
-    md: `repeat(${columnsConf.md}, minmax(0, 1fr))`,
+  const gapValue = typeof resolvedGap === "number" ? resolvedGap : 0;
+  const calcBasis = (count) => `calc(${(100 / count).toFixed(4)}% - ${gapValue}px)`;
+  const itemBasis = {
+    xs: calcBasis(columnsConf.xs),
+    sm: calcBasis(columnsConf.sm),
+    md: calcBasis(columnsConf.md),
   };
 
   const handleOpen = (index) => {
@@ -4947,8 +4956,9 @@ const VideoGallery = ({
       )}
       <Box
         sx={{
-          display: "grid",
-          gridTemplateColumns: gridTemplate,
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "center",
           gap: typeof resolvedGap === "number" ? `${resolvedGap}px` : resolvedGap,
         }}
       >
@@ -4964,6 +4974,10 @@ const VideoGallery = ({
               role={lightboxOn ? "button" : undefined}
               onClick={() => handleOpen(i)}
               sx={{
+                flex: "0 0 auto",
+                flexBasis: itemBasis,
+                maxWidth: itemBasis,
+                width: "100%",
                 borderRadius,
                 border,
                 overflow: "hidden",
