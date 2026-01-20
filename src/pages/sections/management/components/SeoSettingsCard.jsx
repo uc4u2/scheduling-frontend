@@ -286,6 +286,13 @@ const SeoSettingsCard = ({
     return ensureUrl(canonicalHost || customDomain || "");
   }, [canonicalMode, domainVerified, canonicalHost, customDomain, slugBaseUrl]);
 
+  const searchPreviewUrl = useMemo(() => {
+    if (domainVerified && customDomain) {
+      return ensureUrl(customDomain);
+    }
+    return canonicalHostUrl || slugBaseUrl;
+  }, [domainVerified, customDomain, canonicalHostUrl, slugBaseUrl]);
+
   useEffect(() => {
     setStructuredFields((prev) => ({
       ...prev,
@@ -716,7 +723,7 @@ const SeoSettingsCard = ({
           </Typography>
           <SearchSnippetPreview
             title={metaTitle || settings?.site_title}
-            url={canonicalHostUrl || slugBaseUrl}
+            url={searchPreviewUrl}
             description={
               metaDescription ||
               tt(
