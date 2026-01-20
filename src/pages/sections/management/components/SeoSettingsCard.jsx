@@ -213,8 +213,8 @@ const SeoSettingsCard = ({
   const [error, setError] = useState(null);
 
   const domainVerified = useMemo(
-    () => Boolean(settings?.domain_verified_at) || domainStatusVerified,
-    [settings?.domain_verified_at, domainStatusVerified]
+    () => Boolean(customDomain) && (Boolean(settings?.domain_verified_at) || domainStatusVerified),
+    [customDomain, settings?.domain_verified_at, domainStatusVerified]
   );
 
   useEffect(() => {
