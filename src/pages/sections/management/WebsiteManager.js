@@ -107,8 +107,14 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
     setSettings(data);
     if (data) {
       setDomainSnapshot((prev) => {
+        const hasDomainStatus = Object.prototype.hasOwnProperty.call(data, "domain_status");
+        const hasCustomDomain = Object.prototype.hasOwnProperty.call(data, "custom_domain");
+        const hasVerifiedAt = Object.prototype.hasOwnProperty.call(data, "domain_verified_at");
+        if (!hasDomainStatus && !hasCustomDomain && !hasVerifiedAt) {
+          return prev;
+        }
         const verifiedAt = data.domain_verified_at || prev.verifiedAt || null;
-        const hasVerifiedAt = Boolean(verifiedAt);
+        const isVerified = Boolean(verifiedAt);
         const explicitStatus = data.domain_status && data.domain_status !== "none"
           ? data.domain_status
           : "";
@@ -116,7 +122,7 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
           ...prev,
           status: explicitStatus
             || (data.custom_domain
-              ? hasVerifiedAt
+              ? isVerified
                 ? "verified"
                 : "pending_dns"
               : "none"),
