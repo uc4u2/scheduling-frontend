@@ -106,17 +106,21 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
     const data = payload?.data ?? payload;
     setSettings(data);
     if (data) {
+      const verifiedAt = data.domain_verified_at || prev.verifiedAt || null;
+      const hasVerifiedAt = Boolean(verifiedAt);
+      const explicitStatus = data.domain_status && data.domain_status !== "none"
+        ? data.domain_status
+        : "";
       setDomainSnapshot((prev) => ({
         ...prev,
-        status:
-          data.domain_status ||
-          (data.custom_domain
-            ? data.domain_verified_at
+        status: explicitStatus
+          || (data.custom_domain
+            ? hasVerifiedAt
               ? "verified"
               : "pending_dns"
             : "none"),
         domain: data.custom_domain || prev.domain || "",
-        verifiedAt: data.domain_verified_at || prev.verifiedAt || null,
+        verifiedAt,
       }));
     }
   }, []);

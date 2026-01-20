@@ -190,8 +190,9 @@ const SeoSettingsCard = ({
   );
   const [faviconUrl, setFaviconUrl] = useState(settings?.favicon_url || "");
   const [useLogoFavicon, setUseLogoFavicon] = useState(!settings?.favicon_url);
+  const domainStatusVerified = ["verified", "verified_dns", "ssl_active", "provisioning_ssl"].includes(domainStatus);
   const [canonicalMode, setCanonicalMode] = useState(
-    seo.canonicalMode || (["verified", "verified_dns", "ssl_active", "provisioning_ssl"].includes(domainStatus) ? "custom" : "slug")
+    seo.canonicalMode || ((settings?.domain_verified_at || domainStatusVerified) ? "custom" : "slug")
   );
   const [canonicalHost, setCanonicalHost] = useState(seo.canonicalHost || customDomain || "");
   const [structuredDataEnabled, setStructuredDataEnabled] = useState(
@@ -212,8 +213,8 @@ const SeoSettingsCard = ({
   const [error, setError] = useState(null);
 
   const domainVerified = useMemo(
-    () => ["verified", "verified_dns", "ssl_active", "provisioning_ssl"].includes(domainStatus),
-    [domainStatus]
+    () => Boolean(settings?.domain_verified_at) || domainStatusVerified,
+    [settings?.domain_verified_at, domainStatusVerified]
   );
 
   useEffect(() => {
