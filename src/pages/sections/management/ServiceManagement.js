@@ -16,6 +16,13 @@ import {
   Paper,
   Stack,
   CircularProgress,
+  Divider,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  Radio,
+  RadioGroup,
+  Checkbox,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { Add, Edit, Delete, PhotoCamera, CloudUpload, DeleteOutline } from "@mui/icons-material";
@@ -27,6 +34,9 @@ const emptyForm = {
   duration: 60,
   base_price: 0,
   description: "",
+  booking_mode: "one_to_one",
+  default_capacity: 1,
+  allow_packages: false,
 };
 
 const ServiceManagement = ({ token }) => {
@@ -49,6 +59,24 @@ const ServiceManagement = ({ token }) => {
       { field: "name", headerName: t("manager.service.columns.name"), flex: 1 },
       { field: "category", headerName: t("manager.service.columns.category"), flex: 1 },
       { field: "duration", headerName: t("manager.service.columns.duration"), width: 100 },
+      {
+        field: "booking_mode",
+        headerName: t("manager.service.columns.bookingMode", "Booking type"),
+        width: 140,
+        valueFormatter: (params) =>
+          params.value === "group"
+            ? t("manager.service.booking.group", "Group")
+            : t("manager.service.booking.oneToOne", "1:1"),
+      },
+      {
+        field: "default_capacity",
+        headerName: t("manager.service.columns.capacity", "Capacity"),
+        width: 110,
+        valueFormatter: (params) =>
+          params.row?.booking_mode === "group"
+            ? Number(params.value || 1)
+            : "-",
+      },
       {
         field: "base_price",
         headerName: t("manager.service.columns.price"),
@@ -110,7 +138,17 @@ const ServiceManagement = ({ token }) => {
 
   const show = (row = null) => {
     setEditing(row);
-    setForm(row ? { ...row } : emptyForm);
+    if (row) {
+      setForm({
+        ...emptyForm,
+        ...row,
+        booking_mode: row.booking_mode || "one_to_one",
+        default_capacity: Number(row.default_capacity || 1),
+        allow_packages: Boolean(row.allow_packages),
+      });
+    } else {
+      setForm(emptyForm);
+    }
     setOpen(true);
   };
 
@@ -284,6 +322,76 @@ const ServiceManagement = ({ token }) => {
             margin="dense"
             value={form.description}
             onChange={(event) => setForm({ ...form, description: event.target.value })}
+          />
+
+          <Divider sx={{ my: 2 }} />
+
+          <Typography variant="subtitle1" fontWeight={600}>
+            {t("manager.service.dialog.bookingSettings", "Booking settings")}
+          </Typography>
+
+          <FormControl component="fieldset" sx={{ mt: 1 }}>
+            <FormLabel component="legend">
+              {t("manager.service.dialog.bookingType", "Booking type")}
+            </FormLabel>
+            <RadioGroup
+              row
+              value={form.booking_mode}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  booking_mode: event.target.value,
+                  default_capacity:
+                    event.target.value === "group"
+                      ? Math.max(1, Number(form.default_capacity || 1))
+                      : 1,
+                })
+              }
+            >
+              <FormControlLabel
+                value="one_to_one"
+                control={<Radio />}
+                label={t("manager.service.booking.oneToOne", "One-to-one")}
+              />
+              <FormControlLabel
+                value="group"
+                control={<Radio />}
+                label={t("manager.service.booking.group", "Group / Class")}
+              />
+            </RadioGroup>
+          </FormControl>
+
+          {form.booking_mode === "group" && (
+            <TextField
+              label={t("manager.service.dialog.defaultCapacity", "Default capacity")}
+              type="number"
+              fullWidth
+              margin="dense"
+              inputProps={{ min: 1 }}
+              value={form.default_capacity}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  default_capacity: Math.max(1, Number(event.target.value) || 1),
+                })
+              }
+            />
+          )}
+
+          <FormControlLabel
+            sx={{ mt: 1 }}
+            control={
+              <Checkbox
+                checked={Boolean(form.allow_packages)}
+                onChange={(event) =>
+                  setForm({ ...form, allow_packages: event.target.checked })
+                }
+              />
+            }
+            label={t(
+              "manager.service.dialog.allowPackages",
+              "Allow package redemption"
+            )}
           />
         </DialogContent>
         <DialogActions>
