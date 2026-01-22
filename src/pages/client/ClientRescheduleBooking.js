@@ -15,7 +15,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../utils/api"; // ✅ named import (axios instance)
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
-import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel, slotIsFullGroup } from "../../utils/bookingSlots";
 
 /* ───────────────── helpers ────────────────── */
 const ymd = (d) =>
@@ -339,7 +339,7 @@ export default function ClientRescheduleBooking({ slugOverride }) {
       <Box display="flex" flexWrap="wrap" gap={1} mb={3}>
         {slots.map((s) => {
           const seatsLeft = resolveSeatsLeft(s);
-          const isFullGroup = s.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+          const isFullGroup = slotIsFullGroup(s);
           const seatsLabel = slotSeatsLabel(s);
           return (
             <Button
@@ -352,7 +352,7 @@ export default function ClientRescheduleBooking({ slugOverride }) {
               }}
             >
               {s.start_time}
-              {s.mode === "group" && seatsLabel ? ` • ${seatsLabel}` : ""}
+              {s.mode === "group" && seatsLabel ? seatsLabel : ""}
             </Button>
           );
         })}

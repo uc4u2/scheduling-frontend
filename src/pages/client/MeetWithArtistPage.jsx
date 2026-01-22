@@ -29,7 +29,7 @@ import ScheduleIcon from "@mui/icons-material/Schedule";
 import SiteFrame from "../../components/website/SiteFrame";
 import { publicSite } from "../../utils/api";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./ServiceList";
-import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel, slotIsFullGroup } from "../../utils/bookingSlots";
 
 /* ---------- helpers shared with ServiceList ---------- */
 
@@ -565,7 +565,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
         {selectedSlotsForDate.map((slot) => {
           const isSelected = String(slot.id) === String(selectedSlotId);
           const seatsLeft = resolveSeatsLeft(slot);
-          const isFullGroup = slot.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+          const isFullGroup = slotIsFullGroup(slot);
           const seatsLabel = slotSeatsLabel(slot);
           return (
             <Button
@@ -598,7 +598,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
               }}
             >
               {formatTimeForViewer(slot)}
-              {slot.mode === "group" && seatsLabel ? ` • ${seatsLabel}` : ""}
+              {slot.mode === "group" && seatsLabel ? seatsLabel : ""}
             </Button>
           );
         })}

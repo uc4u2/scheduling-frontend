@@ -288,7 +288,7 @@ deduped.sort((a, b) => {
       day: "numeric",
     });
 const countTxt = s._count > 1 ? ` (${s._count})` : "";
-const seatsTxt = s.mode === "group" && slotSeatsLabel(s) ? ` • ${slotSeatsLabel(s)}` : "";
+const seatsTxt = s.mode === "group" && slotSeatsLabel(s) ? slotSeatsLabel(s) : "";
     return {
       id: s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`,
      title: s.type === "booked"

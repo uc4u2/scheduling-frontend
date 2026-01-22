@@ -14,7 +14,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 
 import { DateTime } from "luxon";
 import { api } from "../../utils/api";
-import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel, slotIsFullGroup } from "../../utils/bookingSlots";
 
 export default function ModernBookingCalendar({
   companySlug,
@@ -162,7 +162,7 @@ export default function ModernBookingCalendar({
         >
           {slotsForSelectedDate.map((slot) => {
             const seatsLeft = resolveSeatsLeft(slot);
-            const isFullGroup = slot.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+            const isFullGroup = slotIsFullGroup(slot);
             const seatsLabel = slotSeatsLabel(slot);
             return (
             <Button
@@ -180,7 +180,7 @@ export default function ModernBookingCalendar({
               }}
             >
               {slot.start_time} - {slot.end_time}
-              {slot.mode === "group" && seatsLabel ? ` • ${seatsLabel}` : ""}
+              {slot.mode === "group" && seatsLabel ? seatsLabel : ""}
             </Button>
           )})}
         </Box>

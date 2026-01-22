@@ -24,5 +24,11 @@ export const slotIsAvailable = (slot) => {
 export const slotSeatsLabel = (slot) => {
   if (!slot || slot.mode !== "group") return "";
   const seatsLeft = resolveSeatsLeft(slot);
-  return Number.isFinite(seatsLeft) ? `${seatsLeft} left` : "";
+  return Number.isFinite(seatsLeft) ? ` • ${seatsLeft} left` : "";
+};
+
+export const slotIsFullGroup = (slot) => {
+  if (!slot || slot.mode !== "group") return false;
+  const seatsLeft = resolveSeatsLeft(slot);
+  return Number.isFinite(seatsLeft) && seatsLeft <= 0;
 };

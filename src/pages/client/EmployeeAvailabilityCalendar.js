@@ -23,7 +23,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
-import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel, slotIsFullGroup } from "../../utils/bookingSlots";
 
 /* ───────────────── helpers ────────────────── */
 const ymd = (d) =>
@@ -377,7 +377,7 @@ export default function EmployeeAvailabilityCalendar({
         const { time } = buildDisplayFromISO(iso);
         const label = time || s.start_time;
         const seatsLeft = resolveSeatsLeft(s);
-        const isFullGroup = s.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+        const isFullGroup = slotIsFullGroup(s);
         const seatsLabel = slotSeatsLabel(s);
 
         return (
@@ -414,7 +414,7 @@ export default function EmployeeAvailabilityCalendar({
             }}
           >
             {label}
-            {s.mode === "group" && seatsLabel ? ` • ${seatsLabel}` : ""}
+            {s.mode === "group" && seatsLabel ? seatsLabel : ""}
           </Button>
         );
       })}

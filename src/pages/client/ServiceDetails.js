@@ -36,7 +36,7 @@ import { useNavWithEmbed } from "../../embed";
 import PublicPageShell from "./PublicPageShell";
 import { getUserTimezone } from "../../utils/timezone";
 import { getTenantHostMode } from "../../utils/tenant";
-import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel, slotIsFullGroup } from "../../utils/bookingSlots";
 
 /* ───────────────── helpers ───────────────── */
 /** Build "cart" JSON for the availability endpoint (filter by date and optional artist) */
@@ -862,9 +862,9 @@ export default function ServiceDetails({ slugOverride }) {
               {s.count > 1 ? ` • ${s.count}` : ""}
               {selected && s.mode === "group" && slotSeatsLabel(s) ? (
                 <>
-                  {` • ${slotSeatsLabel(s)}`}
+                  {slotSeatsLabel(s)}
                   {s.count > 1 && (
-                    <Tooltip title="Seats left are per provider.">
+                    <Tooltip title="Seats left may vary by provider.">
                       <Box
                         component="span"
                         sx={{
