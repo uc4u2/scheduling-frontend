@@ -451,6 +451,8 @@ export default function ServiceDetails({ slugOverride }) {
             key,
             date: selectedDateStr, // UI-selected day
             start_utc: startUtc,
+            mode: s.mode,
+            seats_left: Number.isFinite(seatsLeft) ? seatsLeft : null,
             providers: [
               {
                 id: emp.id,
@@ -465,15 +467,25 @@ export default function ServiceDetails({ slugOverride }) {
           });
         } else {
           const curr = map.get(key);
+          if (s.mode === "group") {
+            curr.mode = "group";
+          }
+          if (Number.isFinite(seatsLeft)) {
+            if (!Number.isFinite(curr.seats_left)) {
+              curr.seats_left = seatsLeft;
+            } else {
+              curr.seats_left = Math.min(curr.seats_left, seatsLeft);
+            }
+          }
           if (!curr.providers.some((p) => p.id === emp.id)) {
             curr.providers.push({
               id: emp.id,
               full_name: emp.full_name,
               timezone: tz,
-              start_time_local: startLocal,
-              profile_image_url: profileImage,
-              mode: s.mode,
-              seats_left: seatsLeft,
+                start_time_local: startLocal,
+                profile_image_url: profileImage,
+                mode: s.mode,
+                seats_left: seatsLeft,
             });
           }
         }
@@ -869,6 +881,9 @@ export default function ServiceDetails({ slugOverride }) {
             >
               {timeFromUTCForViewer(s.start_utc)}
               {s.count > 1 ? ` • ${s.count}` : ""}
+              {selected && s.mode === "group" && Number.isFinite(s.seats_left)
+                ? ` • ${s.seats_left} left`
+                : ""}
             </Button>
           );
         })}
