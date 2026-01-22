@@ -128,6 +128,29 @@ const isoFromParts = (dateStr, timeStr, tz) => {
   }
 };
 
+const resolveSeatsLeft = (slot) => {
+  if (!slot) return null;
+  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
+  const capacity = Number(slot.capacity);
+  const bookedCount = Number(slot.booked_count);
+  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
+    return Math.max(capacity - bookedCount, 0);
+  }
+  return null;
+};
+
+const slotIsAvailable = (slot) => {
+  if (!slot) return false;
+  if (slot.type && slot.type !== "available") return false;
+  if (slot.status === "unavailable") return false;
+  if (slot.origin === "shift") return false;
+  if (slot.mode === "group") {
+    const seatsLeft = resolveSeatsLeft(slot);
+    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
+  }
+  return !slot.booked;
+};
+
 export default function ServiceDetails({ slugOverride }) {
   const { slug: routeSlug, serviceId } = useParams();
   const slug = slugOverride || routeSlug;
@@ -374,12 +397,7 @@ export default function ServiceDetails({ slugOverride }) {
       const slots = Array.isArray(data?.slots)
         ? data.slots
         : (Array.isArray(data?.times) ? data.times : []);
-      const clean = slots.filter(
-        (s) =>
-          !s.booked &&
-          (s.type ? s.type === "available" : true) &&
-          s.origin !== "shift"
-      );
+      const clean = slots.filter((s) => slotIsAvailable(s));
       
       if (clean.length) return clean;
     } catch {
@@ -406,11 +424,7 @@ export default function ServiceDetails({ slugOverride }) {
           : Array.isArray(data?.times)
           ? data.times
           : [];
-        return slots.filter((s) => {
-          const typeOk = s.type ? s.type === "available" : true;
-          const statusOk = s.status ? s.status === "available" : true;
-          return !s.booked && typeOk && statusOk && s.origin !== "shift";
-        });
+        return slots.filter((s) => slotIsAvailable(s));
       } catch {
         return [];
       }
@@ -425,10 +439,11 @@ export default function ServiceDetails({ slugOverride }) {
         const startUtc =
           s.start_utc ||
           (s.date && s.start_time ? isoFromParts(s.date, s.start_time, tz) : null);
-        if (!startUtc || (s.type && s.type !== "available") || s.status === "unavailable") continue;
+        if (!startUtc || !slotIsAvailable(s)) continue;
 
         const key = startUtc;
         const startLocal = s.start_time || timeHMInTZ(startUtc, tz);
+        const seatsLeft = resolveSeatsLeft(s);
 
         const profileImage = emp.profile_image_url || s.profile_image_url || "";
         if (!map.has(key)) {
@@ -443,6 +458,8 @@ export default function ServiceDetails({ slugOverride }) {
                 timezone: tz,
                 start_time_local: startLocal,
                 profile_image_url: profileImage,
+                mode: s.mode,
+                seats_left: seatsLeft,
               },
             ],
           });
@@ -455,6 +472,8 @@ export default function ServiceDetails({ slugOverride }) {
               timezone: tz,
               start_time_local: startLocal,
               profile_image_url: profileImage,
+              mode: s.mode,
+              seats_left: seatsLeft,
             });
           }
         }
@@ -775,6 +794,11 @@ export default function ServiceDetails({ slugOverride }) {
                     <Typography variant="caption" color="text.secondary" noWrap>
                       {p.start_time_local} • {service?.name}
                     </Typography>
+                    {p.mode === "group" && Number.isFinite(p.seats_left) && (
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        Seats left: {p.seats_left}
+                      </Typography>
+                    )}
                   </Box>
                 </Stack>
                 <Button

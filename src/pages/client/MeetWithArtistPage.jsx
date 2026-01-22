@@ -149,6 +149,29 @@ const formatTimeForViewer = (slot) => {
   return dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 };
 
+const resolveSeatsLeft = (slot) => {
+  if (!slot) return null;
+  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
+  const capacity = Number(slot.capacity);
+  const bookedCount = Number(slot.booked_count);
+  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
+    return Math.max(capacity - bookedCount, 0);
+  }
+  return null;
+};
+
+const slotIsAvailable = (slot) => {
+  if (!slot) return false;
+  if (slot.type && slot.type !== "available") return false;
+  if (slot.status === "unavailable") return false;
+  if (slot.origin === "shift") return false;
+  if (slot.mode === "group") {
+    const seatsLeft = resolveSeatsLeft(slot);
+    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
+  }
+  return !slot.booked;
+};
+
 /* Normalize + filter backend slots (drop anything in the past) */
 function normalizeSlots(raw, fallbackTz) {
   const now = new Date();
@@ -163,6 +186,7 @@ function normalizeSlots(raw, fallbackTz) {
     if (!iso) return;
     const when = new Date(iso);
     if (when < now) return; // hide past slots completely
+    if (!slotIsAvailable(s)) return;
     normalized.push({ ...s, timezone, iso, when });
   });
 
@@ -562,11 +586,14 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
       >
         {selectedSlotsForDate.map((slot) => {
           const isSelected = String(slot.id) === String(selectedSlotId);
+          const seatsLeft = resolveSeatsLeft(slot);
+          const isFullGroup = slot.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
           return (
             <Button
               key={slot.id}
               size="small"
-              onClick={() => handleSelectSlot(slot)}
+              disabled={isFullGroup}
+              onClick={() => !isFullGroup && handleSelectSlot(slot)}
               sx={{
                 borderRadius: buttonRadius,
                 textTransform: "none",
@@ -592,6 +619,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
               }}
             >
               {formatTimeForViewer(slot)}
+              {slot.mode === "group" && Number.isFinite(seatsLeft) ? ` • ${seatsLeft} left` : ""}
             </Button>
           );
         })}

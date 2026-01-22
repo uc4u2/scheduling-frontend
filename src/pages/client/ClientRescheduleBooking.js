@@ -24,6 +24,29 @@ const ymd = (d) =>
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
+const resolveSeatsLeft = (slot) => {
+  if (!slot) return null;
+  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
+  const capacity = Number(slot.capacity);
+  const bookedCount = Number(slot.booked_count);
+  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
+    return Math.max(capacity - bookedCount, 0);
+  }
+  return null;
+};
+
+const slotIsAvailable = (slot) => {
+  if (!slot) return false;
+  if (slot.type && slot.type !== "available") return false;
+  if (slot.status === "unavailable") return false;
+  if (slot.origin === "shift") return false;
+  if (slot.mode === "group") {
+    const seatsLeft = resolveSeatsLeft(slot);
+    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
+  }
+  return !slot.booked;
+};
+
 const buildDisplay = (svc, tz) => {
   const tzName = svc.timezone || tz;
   if (svc.local_date && (svc.local_start_time || svc.local_time)) {
@@ -159,7 +182,7 @@ export default function ClientRescheduleBooking({ slugOverride }) {
             date: selectedDate,
           },
         });
-        setSlots((data.slots || []).filter((s) => s.type === "available"));
+        setSlots((data.slots || []).filter((s) => slotIsAvailable(s)));
       } catch {
         setSlots([]);
       }
@@ -336,16 +359,24 @@ export default function ClientRescheduleBooking({ slugOverride }) {
       )}
 
       <Box display="flex" flexWrap="wrap" gap={1} mb={3}>
-        {slots.map((s) => (
-          <Button
-            key={s.start_time}
-            variant={selectedTime === s.start_time ? "contained" : "outlined"}
-            size="small"
-            onClick={() => setSelectedTime(s.start_time)}
-          >
-            {s.start_time}
-          </Button>
-        ))}
+        {slots.map((s) => {
+          const seatsLeft = resolveSeatsLeft(s);
+          const isFullGroup = s.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+          return (
+            <Button
+              key={s.start_time}
+              variant={selectedTime === s.start_time ? "contained" : "outlined"}
+              size="small"
+              disabled={isFullGroup}
+              onClick={() => {
+                if (!isFullGroup) setSelectedTime(s.start_time);
+              }}
+            >
+              {s.start_time}
+              {s.mode === "group" && Number.isFinite(seatsLeft) ? ` • ${seatsLeft} left` : ""}
+            </Button>
+          );
+        })}
       </Box>
 
       <Typography variant="h6" sx={{ mb: 2 }}>

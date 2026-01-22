@@ -15,6 +15,29 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DateTime } from "luxon";
 import { api } from "../../utils/api";
 
+const resolveSeatsLeft = (slot) => {
+  if (!slot) return null;
+  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
+  const capacity = Number(slot.capacity);
+  const bookedCount = Number(slot.booked_count);
+  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
+    return Math.max(capacity - bookedCount, 0);
+  }
+  return null;
+};
+
+const slotIsAvailable = (slot) => {
+  if (!slot) return false;
+  if (slot.type && slot.type !== "available") return false;
+  if (slot.status === "unavailable") return false;
+  if (slot.origin === "shift") return false;
+  if (slot.mode === "group") {
+    const seatsLeft = resolveSeatsLeft(slot);
+    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
+  }
+  return !slot.booked;
+};
+
 export default function ModernBookingCalendar({
   companySlug,
   artistId,
@@ -61,6 +84,7 @@ export default function ModernBookingCalendar({
 
       // Group slots by date string (YYYY-MM-DD)
       const grouped = (data.slots || []).reduce((acc, slot) => {
+        if (!slotIsAvailable(slot)) return acc;
         (acc[slot.date] = acc[slot.date] || []).push(slot);
         return acc;
       }, {});
@@ -158,11 +182,15 @@ export default function ModernBookingCalendar({
             DateTime.DATE_FULL
           )}`}
         >
-          {slotsForSelectedDate.map((slot) => (
+          {slotsForSelectedDate.map((slot) => {
+            const seatsLeft = resolveSeatsLeft(slot);
+            const isFullGroup = slot.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+            return (
             <Button
               key={`${slot.date}-${slot.start_time}`}
               variant="outlined"
-              onClick={() => onSlotSelect(slot)}
+              onClick={() => !isFullGroup && onSlotSelect(slot)}
+              disabled={isFullGroup}
               role="listitem"
               aria-label={`Select time slot from ${slot.start_time} to ${slot.end_time}`}
               sx={{
@@ -173,8 +201,9 @@ export default function ModernBookingCalendar({
               }}
             >
               {slot.start_time} - {slot.end_time}
+              {slot.mode === "group" && Number.isFinite(seatsLeft) ? ` • ${seatsLeft} left` : ""}
             </Button>
-          ))}
+          )})}
         </Box>
       </Box>
     </LocalizationProvider>

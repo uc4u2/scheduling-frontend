@@ -34,6 +34,29 @@ const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 const AUTO_SELECT_FIRST_TIME = true;
 const sheetSafePadding = "calc(env(safe-area-inset-bottom) + 16px)";
 
+const resolveSeatsLeft = (slot) => {
+  if (!slot) return null;
+  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
+  const capacity = Number(slot.capacity);
+  const bookedCount = Number(slot.booked_count);
+  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
+    return Math.max(capacity - bookedCount, 0);
+  }
+  return null;
+};
+
+const slotIsAvailable = (slot) => {
+  if (!slot) return false;
+  if (slot.type && slot.type !== "available") return false;
+  if (slot.status === "unavailable") return false;
+  if (slot.origin === "shift") return false;
+  if (slot.mode === "group") {
+    const seatsLeft = resolveSeatsLeft(slot);
+    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
+  }
+  return !slot.booked;
+};
+
 /**
  * Build display date/time using backend-prepared local fields when available.
  * If backends later add day-level hints, this remains compatible.
@@ -190,11 +213,7 @@ export default function EmployeeAvailabilityCalendar({
         });
 
         const sourceSlots = Array.isArray(data?.slots) ? data.slots : [];
-        const daySlots = sourceSlots.filter((slot) => {
-          const typeOk = slot.type ? slot.type === "available" : true;
-          const statusOk = slot.status ? slot.status === "available" : true;
-          return typeOk && statusOk && slot.origin !== "shift";
-        });
+        const daySlots = sourceSlots.filter((slot) => slotIsAvailable(slot));
         setSlots(daySlots);
         setSelectedTime((prev) =>
           daySlots.some((s) => s.start_time === prev) ? prev : ""
@@ -379,6 +398,8 @@ export default function EmployeeAvailabilityCalendar({
         const iso = isoFromParts(selectedDate, s.start_time, s.timezone || userTz);
         const { time } = buildDisplayFromISO(iso);
         const label = time || s.start_time;
+        const seatsLeft = resolveSeatsLeft(s);
+        const isFullGroup = s.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
 
         return (
           <Button
@@ -386,11 +407,13 @@ export default function EmployeeAvailabilityCalendar({
             variant={selectedTime === s.start_time ? "contained" : "outlined"}
             size="small"
             onClick={() => {
+              if (isFullGroup) return;
               setSelectedTime(s.start_time);
               if (isMobile) {
                 setTimeSheetOpen(false);
               }
             }}
+            disabled={isFullGroup}
             data-time-chip={idx === 0 ? "1" : undefined}
             fullWidth={variant === "drawer"}
             sx={{
@@ -412,6 +435,7 @@ export default function EmployeeAvailabilityCalendar({
             }}
           >
             {label}
+            {s.mode === "group" && Number.isFinite(seatsLeft) ? ` • ${seatsLeft} left` : ""}
           </Button>
         );
       })}
