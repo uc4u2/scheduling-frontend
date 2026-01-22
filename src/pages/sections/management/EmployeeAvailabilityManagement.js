@@ -17,6 +17,7 @@ import {
   Paper,
   Stack,
   useMediaQuery,
+  Divider,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import api from "../../../utils/api";
@@ -73,6 +74,8 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   /* ─────────────────────────────── Service‑slot state ─────────────────────────── */
   const [slotDate, setSlotDate] = useState("");
   const [slotStartTime, setSlotStartTime] = useState("");
+  const [serviceSlots, setServiceSlots] = useState([]);
+  const [loadingServiceSlots, setLoadingServiceSlots] = useState(false);
   const [assignedShifts, setAssignedShifts] = useState([]);
   const [loadingShifts, setLoadingShifts] = useState(false);
   const overtimeCount = useMemo(() => {
@@ -208,6 +211,28 @@ useEffect(() => {
   loadAssignedShifts();
 }, [loadAssignedShifts]);
 
+const loadServiceSlots = useCallback(() => {
+  if (!selectedEmployeeId) {
+    setServiceSlots([]);
+    return;
+  }
+  setLoadingServiceSlots(true);
+  api
+    .get(`/api/manager/employees/${selectedEmployeeId}/availability`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .then((r) => {
+      const slots = r.data || [];
+      setServiceSlots(slots.filter((slot) => slot.service_id || slot.serviceId));
+    })
+    .catch(() => setServiceSlots([]))
+    .finally(() => setLoadingServiceSlots(false));
+}, [selectedEmployeeId, token]);
+
+useEffect(() => {
+  loadServiceSlots();
+}, [loadServiceSlots]);
+
   /* ─────────────────────────────── Filters & selects ───────────────────────────── */
   const filteredEmployees = useMemo(
     () =>
@@ -220,6 +245,19 @@ useEffect(() => {
     () => employees.find((e) => e.id === selectedEmployeeId),
     [employees, selectedEmployeeId]
   );
+
+  const serviceNameById = useMemo(() => {
+    const map = new Map();
+    services.forEach((s) => map.set(String(s.id), s.name));
+    return map;
+  }, [services]);
+
+  const resolveSeatsLeft = (slot) => {
+    if (typeof slot.seats_left === "number") return slot.seats_left;
+    const capacity = Number(slot.capacity || 1);
+    const booked = Number(slot.booked_count || (slot.booked ? 1 : 0));
+    return Math.max(0, capacity - booked);
+  };
 
   const handleDepartmentChange = (e) => {
     setSelectedDepartment(e.target.value);
@@ -297,6 +335,7 @@ useEffect(() => {
     } finally {
       setLoading(false);
     }
+    loadServiceSlots();
   };
 
   const saveRecurringSlots = async () => {
@@ -736,6 +775,59 @@ useEffect(() => {
               value={slotStartTime}
               onChange={(e) => setSlotStartTime(e.target.value)}
             />
+          </Grid>
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
+              Service slots
+            </Typography>
+            {loadingServiceSlots ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={18} />
+                <Typography variant="body2" color="text.secondary">
+                  Loading slots…
+                </Typography>
+              </Stack>
+            ) : serviceSlots.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No service slots yet.
+              </Typography>
+            ) : (
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1}>
+                  {serviceSlots.map((slot) => {
+                    const slotServiceId = slot.service_id || slot.serviceId;
+                    const serviceName = serviceNameById.get(String(slotServiceId)) || "Service";
+                    const modeLabel = slot.mode === "group" ? "Group" : "1:1";
+                    const capacity = Number(slot.capacity || 1);
+                    const seatsLeft = resolveSeatsLeft(slot);
+                    return (
+                      <Box
+                        key={`${slot.date}-${slot.start_time}-${slotServiceId}-${slot.id || ""}`}
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: "1.3fr 1.2fr 0.8fr 0.7fr 0.8fr",
+                          gap: 1,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Typography variant="body2">
+                          {slot.date} • {slot.start_time}
+                        </Typography>
+                        <Typography variant="body2">{serviceName}</Typography>
+                        <Typography variant="body2">{modeLabel}</Typography>
+                        <Typography variant="body2">
+                          {slot.mode === "group" ? capacity : "-"}
+                        </Typography>
+                        <Typography variant="body2">
+                          {slot.mode === "group" ? `${seatsLeft}/${capacity}` : "-"}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Paper>
+            )}
           </Grid>
         </Grid>
       )}

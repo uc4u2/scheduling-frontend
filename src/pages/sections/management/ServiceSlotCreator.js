@@ -65,6 +65,18 @@ const ServiceSlotCreator = ({ token }) => {
     return employees.filter((e) => String(e.department_id) === String(selectedDepartment));
   }, [employees, selectedDepartment]);
 
+  const serviceById = useMemo(
+    () => new Map(services.map((s) => [String(s.id), s])),
+    [services]
+  );
+
+  const selectedServiceMeta = serviceById.get(String(selectedService));
+  const formatServiceLabel = (svc) => {
+    const modeLabel = svc.booking_mode === "group" ? "Group" : "1:1";
+    const cap = svc.booking_mode === "group" ? ` • cap ${Number(svc.default_capacity || 1)}` : "";
+    return `${svc.name} (${svc.duration} min) • ${modeLabel}${cap}`;
+  };
+
   // ✅ Handle slot creation
   const handleCreateSlot = async () => {
     if (!selectedEmployee || !selectedService || !date || !startTime) {
@@ -172,11 +184,26 @@ const ServiceSlotCreator = ({ token }) => {
             </MenuItem>
             {services.map((svc) => (
               <MenuItem key={svc.id} value={svc.id}>
-                {svc.name} ({svc.duration} min)
+                {formatServiceLabel(svc)}
               </MenuItem>
             ))}
           </TextField>
         </Grid>
+
+        {selectedServiceMeta && (
+          <Grid item xs={12}>
+            <Alert severity="info">
+              Booking type:{" "}
+              {selectedServiceMeta.booking_mode === "group" ? "Group / Class" : "One-to-one"}
+              {selectedServiceMeta.booking_mode === "group" && (
+                <>
+                  {" "}
+                  • Capacity {Number(selectedServiceMeta.default_capacity || 1)}
+                </>
+              )}
+            </Alert>
+          </Grid>
+        )}
 
         {/* Date */}
         <Grid item xs={12} sm={3}>

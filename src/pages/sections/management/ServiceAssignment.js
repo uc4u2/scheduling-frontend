@@ -67,6 +67,12 @@ const ServiceAssignment = ({ token }) => {
   /* ─────────── helpers ─────────── */
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
+  const formatServiceLabel = (svc) => {
+    const modeLabel = svc.booking_mode === "group" ? "Group" : "1:1";
+    const cap = svc.booking_mode === "group" ? ` • cap ${Number(svc.default_capacity || 1)}` : "";
+    return `${svc.name} • ${modeLabel}${cap}`;
+  };
+
   /* =================================================================
      FETCH ALL DATA
   ================================================================= */
@@ -353,7 +359,7 @@ const ServiceAssignment = ({ token }) => {
 
               <Autocomplete
                 options={services}
-                getOptionLabel={o => o.name}
+                getOptionLabel={o => formatServiceLabel(o)}
                 value={form.service}
                 onChange={(_, v) =>
                   setForm({
@@ -367,6 +373,15 @@ const ServiceAssignment = ({ token }) => {
                 renderInput={params => <TextField {...params} label="Service" margin="dense" />}
                 sx={{ mt: 2 }}
               />
+              {form.service && (
+                <Typography variant="caption" color="text.secondary">
+                  Booking type:{" "}
+                  {form.service.booking_mode === "group" ? "Group / Class" : "One-to-one"}
+                  {form.service.booking_mode === "group" && (
+                    <> • Capacity {Number(form.service.default_capacity || 1)}</>
+                  )}
+                </Typography>
+              )}
 
               <TextField
                 label="Price Override ($)"
