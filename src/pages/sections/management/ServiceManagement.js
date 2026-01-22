@@ -20,6 +20,11 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   FormControl,
   FormControlLabel,
   FormLabel,
@@ -27,6 +32,7 @@ import {
   Radio,
   RadioGroup,
   Checkbox,
+  MenuItem,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -53,8 +59,9 @@ const emptyForm = {
 };
 
 const emptyPackageForm = {
-  template_id: null,
+  id: null,
   name: "",
+  service_id: "",
   session_qty: 5,
   price: 0,
   expires_in: "",
@@ -68,8 +75,11 @@ const ServiceManagement = ({ token }) => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [packagesOpen, setPackagesOpen] = useState(false);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+  const [packages, setPackages] = useState([]);
   const [packageForm, setPackageForm] = useState(emptyPackageForm);
-  const [packageLoading, setPackageLoading] = useState(false);
+  const [editingPackage, setEditingPackage] = useState(null);
   const [snk, setSnk] = useState({ open: false, key: "" });
   const [imageModal, setImageModal] = useState(false);
   const [imageTarget, setImageTarget] = useState(null);
@@ -170,13 +180,8 @@ const ServiceManagement = ({ token }) => {
         default_capacity: Number(row.default_capacity || 1),
         allow_packages: Boolean(row.allow_packages),
       });
-      setPackageForm(emptyPackageForm);
-      if (row.allow_packages) {
-        loadPackageTemplate(row.id, row.name);
-      }
     } else {
       setForm(emptyForm);
-      setPackageForm(emptyPackageForm);
     }
     setOpen(true);
   };
@@ -185,7 +190,6 @@ const ServiceManagement = ({ token }) => {
     setOpen(false);
     setEditing(null);
     setForm(emptyForm);
-    setPackageForm(emptyPackageForm);
   };
 
   const handleDelete = async (id) => {
@@ -202,35 +206,11 @@ const ServiceManagement = ({ token }) => {
 
   const save = async () => {
     try {
-      if (form.allow_packages) {
-        if (packageLoading) {
-          setSnk({ open: true, key: "Package settings are still loading." });
-          return;
-        }
-        const sessionQty = Math.max(1, Number(packageForm.session_qty) || 1);
-        const price = Number(packageForm.price) || 0;
-        const expiresIn =
-          packageForm.expires_in === "" ? null : Number(packageForm.expires_in);
-        if (sessionQty < 1 || price < 0) {
-          setSnk({ open: true, key: "Package settings need valid values." });
-          return;
-        }
-        if (Number.isFinite(expiresIn) && expiresIn < 1) {
-          setSnk({ open: true, key: "Expiry must be 1 day or more." });
-          return;
-        }
-      }
       if (editing) {
         await api.put(`/booking/services/${editing.id}`, form, auth);
-        if (form.allow_packages) {
-          await upsertPackageTemplate(editing.id, form.name);
-        }
         setSnk({ open: true, key: "manager.service.messages.updated" });
       } else {
-        const { data } = await api.post(`/booking/services`, form, auth);
-        if (form.allow_packages && data?.id) {
-          await upsertPackageTemplate(data.id, form.name);
-        }
+        await api.post(`/booking/services`, form, auth);
         setSnk({ open: true, key: "manager.service.messages.added" });
       }
       handleCloseDialog();
@@ -241,51 +221,95 @@ const ServiceManagement = ({ token }) => {
     }
   };
 
-  const loadPackageTemplate = async (serviceId, serviceName) => {
-    if (!serviceId) return;
-    setPackageLoading(true);
+  const loadPackages = async () => {
+    setPackagesLoading(true);
     try {
-      const { data } = await api.get(`/booking/packages?service_id=${serviceId}`, auth);
-      const tmpl = Array.isArray(data) ? data[0] : null;
-      if (tmpl) {
-        setPackageForm({
-          template_id: tmpl.id,
-          name: tmpl.name || "",
-          session_qty: Number(tmpl.session_qty || 1),
-          price: Number(tmpl.price || 0),
-          expires_in: tmpl.expires_in ?? "",
-        });
-      } else {
-        setPackageForm({
-          ...emptyPackageForm,
-          name: serviceName ? `${serviceName} package` : "",
-        });
-      }
+      const { data } = await api.get(`/booking/packages`, auth);
+      setPackages(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("ServiceManagement loadPackageTemplate error", err);
+      console.error("ServiceManagement loadPackages error", err);
+      setSnk({ open: true, key: "Unable to load packages." });
     } finally {
-      setPackageLoading(false);
+      setPackagesLoading(false);
     }
   };
 
-  const upsertPackageTemplate = async (serviceId, serviceName) => {
+  const openPackages = () => {
+    setPackagesOpen(true);
+    setEditingPackage(null);
+    setPackageForm(emptyPackageForm);
+    loadPackages();
+  };
+
+  const closePackages = () => {
+    setPackagesOpen(false);
+    setEditingPackage(null);
+    setPackageForm(emptyPackageForm);
+  };
+
+  const editPackage = (pkg) => {
+    setEditingPackage(pkg);
+    setPackageForm({
+      id: pkg.id,
+      name: pkg.name || "",
+      service_id: pkg.service_id || pkg.service?.id || "",
+      session_qty: Number(pkg.session_qty || 1),
+      price: Number(pkg.price || 0),
+      expires_in: pkg.expires_in ?? "",
+    });
+  };
+
+  const savePackage = async () => {
     const sessionQty = Math.max(1, Number(packageForm.session_qty) || 1);
     const price = Number(packageForm.price) || 0;
-    const expiresIn = packageForm.expires_in === "" ? null : Number(packageForm.expires_in);
+    const expiresIn =
+      packageForm.expires_in === "" ? null : Number(packageForm.expires_in);
+    if (!packageForm.service_id) {
+      setSnk({ open: true, key: "Select a service for this package." });
+      return;
+    }
+    if (sessionQty < 1 || price < 0) {
+      setSnk({ open: true, key: "Package settings need valid values." });
+      return;
+    }
+    if (Number.isFinite(expiresIn) && expiresIn < 1) {
+      setSnk({ open: true, key: "Expiry must be 1 day or more." });
+      return;
+    }
     const payload = {
-      name: packageForm.name || (serviceName ? `${serviceName} package` : "Package"),
-      service_id: serviceId,
+      name:
+        packageForm.name ||
+        `${services.find((s) => s.id === packageForm.service_id)?.name || "Package"}`,
+      service_id: packageForm.service_id,
       session_qty: sessionQty,
       price,
       expires_in: Number.isFinite(expiresIn) ? expiresIn : null,
     };
-    if (packageForm.template_id) {
-      await api.patch(`/booking/packages/${packageForm.template_id}`, payload, auth);
-      return;
+    try {
+      if (editingPackage?.id) {
+        await api.patch(`/booking/packages/${editingPackage.id}`, payload, auth);
+      } else {
+        await api.post(`/booking/packages`, payload, auth);
+      }
+      setSnk({ open: true, key: "Package saved." });
+      setEditingPackage(null);
+      setPackageForm(emptyPackageForm);
+      loadPackages();
+    } catch (err) {
+      console.error("ServiceManagement savePackage error", err);
+      setSnk({ open: true, key: "Package save failed." });
     }
-    const { data } = await api.post(`/booking/packages`, payload, auth);
-    if (data?.id) {
-      setPackageForm((prev) => ({ ...prev, template_id: data.id }));
+  };
+
+  const deletePackage = async (pkgId) => {
+    if (!window.confirm("Delete this package?")) return;
+    try {
+      await api.delete(`/booking/packages/${pkgId}`, auth);
+      setSnk({ open: true, key: "Package deleted." });
+      loadPackages();
+    } catch (err) {
+      console.error("ServiceManagement deletePackage error", err);
+      setSnk({ open: true, key: "Package delete failed." });
     }
   };
 
@@ -368,6 +392,13 @@ const ServiceManagement = ({ token }) => {
 
       <Button startIcon={<Add />} variant="contained" sx={{ mb: 2 }} onClick={() => show()}>
         {t("manager.service.buttonAdd")}
+      </Button>
+      <Button
+        variant="outlined"
+        sx={{ mb: 2, ml: 1 }}
+        onClick={openPackages}
+      >
+        {t("manager.service.buttonPackages", "Packages")}
       </Button>
 
       <Paper>
@@ -522,12 +553,6 @@ const ServiceManagement = ({ token }) => {
                 onChange={(event) => {
                   const checked = event.target.checked;
                   setForm({ ...form, allow_packages: checked });
-                  if (checked && !packageForm.name) {
-                    setPackageForm((prev) => ({
-                      ...prev,
-                      name: form.name ? `${form.name} package` : prev.name,
-                    }));
-                  }
                 }}
               />
             }
@@ -544,140 +569,191 @@ const ServiceManagement = ({ token }) => {
               </Stack>
             }
           />
-
-          {form.allow_packages && (
-            <Box mt={2}>
-              <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  {t("manager.service.dialog.packageSettings", "Package settings")}
-                </Typography>
-                <Tooltip title="Define how many sessions and the price for a prepaid package tied to this service.">
-                  <IconButton size="small" aria-label="Package settings info">
-                    <InfoOutlined fontSize="inherit" />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-
-              {packageLoading ? (
-                <Stack direction="row" alignItems="center" spacing={1} py={1}>
-                  <CircularProgress size={18} />
-                  <Typography variant="body2" color="text.secondary">
-                    {t("manager.service.dialog.packageLoading", "Loading package settings...")}
-                  </Typography>
-                </Stack>
-              ) : (
-                <Stack spacing={1}>
-                  <TextField
-                    label={t("manager.service.dialog.packageName", "Package name")}
-                    fullWidth
-                    margin="dense"
-                    value={packageForm.name}
-                    onChange={(event) =>
-                      setPackageForm({ ...packageForm, name: event.target.value })
-                    }
-                    placeholder={
-                      form.name ? `${form.name} package` : "5 sessions for $400"
-                    }
-                  />
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                    <TextField
-                      label={
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <span>
-                            {t(
-                              "manager.service.dialog.packageSessions",
-                              "Sessions in package"
-                            )}
-                          </span>
-                          <Tooltip title="Number of credits in the package. Each booking uses 1 credit.">
-                            <IconButton size="small" aria-label="Package sessions info">
-                              <InfoOutlined fontSize="inherit" />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      }
-                      type="number"
-                      fullWidth
-                      margin="dense"
-                      inputProps={{ min: 1 }}
-                      value={packageForm.session_qty}
-                      onChange={(event) =>
-                        setPackageForm({
-                          ...packageForm,
-                          session_qty: Math.max(1, Number(event.target.value) || 1),
-                        })
-                      }
-                    />
-                    <TextField
-                      label={
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <span>
-                            {t("manager.service.dialog.packagePrice", "Package price")}
-                          </span>
-                          <Tooltip title="Total amount the client pays for the full package.">
-                            <IconButton size="small" aria-label="Package price info">
-                              <InfoOutlined fontSize="inherit" />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
-                      }
-                      type="number"
-                      fullWidth
-                      margin="dense"
-                      value={packageForm.price}
-                      onChange={(event) =>
-                        setPackageForm({
-                          ...packageForm,
-                          price: Number(event.target.value) || 0,
-                        })
-                      }
-                    />
-                  </Stack>
-                  <TextField
-                    label={
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <span>
-                          {t(
-                            "manager.service.dialog.packageExpiry",
-                            "Expires in (days)"
-                          )}
-                        </span>
-                        <Tooltip title="Credits expire this many days after purchase. Leave blank for no expiry.">
-                          <IconButton size="small" aria-label="Package expiry info">
-                            <InfoOutlined fontSize="inherit" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    }
-                    type="number"
-                    fullWidth
-                    margin="dense"
-                    inputProps={{ min: 0 }}
-                    value={packageForm.expires_in}
-                    onChange={(event) =>
-                      setPackageForm({
-                        ...packageForm,
-                        expires_in: event.target.value,
-                      })
-                    }
-                    helperText={t(
-                      "manager.service.dialog.packageExpiryHelp",
-                      "Leave blank for no expiration."
-                    )}
-                  />
-                </Stack>
-              )}
-            </Box>
-          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>{t("manager.service.dialog.cancel")}</Button>
           <Button
             onClick={save}
             variant="contained"
-            disabled={Boolean(form.allow_packages && packageLoading)}
+            disabled={Boolean(form.allow_packages && packagesLoading)}
           >
             {editing ? t("manager.service.dialog.update") : t("manager.service.dialog.create")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={packagesOpen} onClose={closePackages} maxWidth="md" fullWidth>
+        <DialogTitle>{t("manager.service.packages.title", "Package templates")}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2}>
+            <Typography variant="body2" color="text.secondary">
+              {t(
+                "manager.service.packages.subtitle",
+                "Create prepaid packages tied to a specific service. One package per service."
+              )}
+            </Typography>
+
+            <Stack spacing={1}>
+              <TextField
+                label={t("manager.service.packages.name", "Package name")}
+                fullWidth
+                margin="dense"
+                value={packageForm.name}
+                onChange={(event) =>
+                  setPackageForm({ ...packageForm, name: event.target.value })
+                }
+              />
+              <TextField
+                select
+                label={t("manager.service.packages.service", "Service")}
+                fullWidth
+                margin="dense"
+                value={packageForm.service_id}
+                onChange={(event) =>
+                  setPackageForm({ ...packageForm, service_id: event.target.value })
+                }
+              >
+                {services.map((svc) => (
+                  <MenuItem key={svc.id} value={svc.id}>
+                    {svc.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <TextField
+                  label={
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <span>
+                        {t("manager.service.packages.sessions", "Sessions in package")}
+                      </span>
+                      <Tooltip title="Number of credits in the package. Each booking uses 1 credit.">
+                        <IconButton size="small" aria-label="Package sessions info">
+                          <InfoOutlined fontSize="inherit" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  }
+                  type="number"
+                  fullWidth
+                  margin="dense"
+                  inputProps={{ min: 1 }}
+                  value={packageForm.session_qty}
+                  onChange={(event) =>
+                    setPackageForm({
+                      ...packageForm,
+                      session_qty: Math.max(1, Number(event.target.value) || 1),
+                    })
+                  }
+                />
+                <TextField
+                  label={
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <span>{t("manager.service.packages.price", "Package price")}</span>
+                      <Tooltip title="Total amount the client pays for the full package.">
+                        <IconButton size="small" aria-label="Package price info">
+                          <InfoOutlined fontSize="inherit" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  }
+                  type="number"
+                  fullWidth
+                  margin="dense"
+                  value={packageForm.price}
+                  onChange={(event) =>
+                    setPackageForm({
+                      ...packageForm,
+                      price: Number(event.target.value) || 0,
+                    })
+                  }
+                />
+              </Stack>
+              <TextField
+                label={
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <span>{t("manager.service.packages.expiry", "Expires in (days)")}</span>
+                    <Tooltip title="Credits expire this many days after purchase. Leave blank for no expiry.">
+                      <IconButton size="small" aria-label="Package expiry info">
+                        <InfoOutlined fontSize="inherit" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                }
+                type="number"
+                fullWidth
+                margin="dense"
+                inputProps={{ min: 0 }}
+                value={packageForm.expires_in}
+                onChange={(event) =>
+                  setPackageForm({
+                    ...packageForm,
+                    expires_in: event.target.value,
+                  })
+                }
+                helperText={t("manager.service.packages.expiryHelp", "Leave blank for no expiration.")}
+              />
+            </Stack>
+
+            <Button variant="contained" onClick={savePackage}>
+              {editingPackage ? t("manager.service.packages.update", "Update package") : t("manager.service.packages.create", "Create package")}
+            </Button>
+
+            <Divider />
+
+            {packagesLoading ? (
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <CircularProgress size={18} />
+                <Typography variant="body2" color="text.secondary">
+                  {t("manager.service.packages.loading", "Loading packages...")}
+                </Typography>
+              </Stack>
+            ) : (
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t("manager.service.packages.table.name", "Package")}</TableCell>
+                    <TableCell>{t("manager.service.packages.table.service", "Service")}</TableCell>
+                    <TableCell>{t("manager.service.packages.table.sessions", "Sessions")}</TableCell>
+                    <TableCell>{t("manager.service.packages.table.price", "Price")}</TableCell>
+                    <TableCell>{t("manager.service.packages.table.expires", "Expires")}</TableCell>
+                    <TableCell align="right">{t("manager.service.packages.table.actions", "Actions")}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {packages.map((pkg) => (
+                    <TableRow key={pkg.id}>
+                      <TableCell>{pkg.name}</TableCell>
+                      <TableCell>{pkg.service?.name || pkg.service_id}</TableCell>
+                      <TableCell>{pkg.session_qty}</TableCell>
+                      <TableCell>{Number(pkg.price || 0).toFixed(2)}</TableCell>
+                      <TableCell>{pkg.expires_in ? `${pkg.expires_in} days` : "No expiry"}</TableCell>
+                      <TableCell align="right">
+                        <IconButton onClick={() => editPackage(pkg)}>
+                          <Edit />
+                        </IconButton>
+                        <IconButton color="error" onClick={() => deletePackage(pkg.id)}>
+                          <DeleteOutline />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {packages.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6}>
+                        <Typography variant="body2" color="text.secondary" align="center">
+                          {t("manager.service.packages.empty", "No packages yet.")}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closePackages}>
+            {t("manager.service.packages.close", "Close")}
           </Button>
         </DialogActions>
       </Dialog>
