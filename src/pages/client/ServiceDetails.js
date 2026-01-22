@@ -28,6 +28,7 @@ import {
   Collapse,
   useMediaQuery,
   SwipeableDrawer,
+  Tooltip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useTheme, alpha } from "@mui/material/styles";
@@ -35,6 +36,7 @@ import { useNavWithEmbed } from "../../embed";
 import PublicPageShell from "./PublicPageShell";
 import { getUserTimezone } from "../../utils/timezone";
 import { getTenantHostMode } from "../../utils/tenant";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
 
 /* ───────────────── helpers ───────────────── */
 /** Build "cart" JSON for the availability endpoint (filter by date and optional artist) */
@@ -126,29 +128,6 @@ const isoFromParts = (dateStr, timeStr, tz) => {
   } catch {
     return null;
   }
-};
-
-const resolveSeatsLeft = (slot) => {
-  if (!slot) return null;
-  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
-  const capacity = Number(slot.capacity);
-  const bookedCount = Number(slot.booked_count);
-  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
-    return Math.max(capacity - bookedCount, 0);
-  }
-  return null;
-};
-
-const slotIsAvailable = (slot) => {
-  if (!slot) return false;
-  if (slot.type && slot.type !== "available") return false;
-  if (slot.status === "unavailable") return false;
-  if (slot.origin === "shift") return false;
-  if (slot.mode === "group") {
-    const seatsLeft = resolveSeatsLeft(slot);
-    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
-  }
-  return !slot.booked;
 };
 
 export default function ServiceDetails({ slugOverride }) {
@@ -881,9 +860,34 @@ export default function ServiceDetails({ slugOverride }) {
             >
               {timeFromUTCForViewer(s.start_utc)}
               {s.count > 1 ? ` • ${s.count}` : ""}
-              {selected && s.mode === "group" && Number.isFinite(s.seats_left)
-                ? ` • ${s.seats_left} left`
-                : ""}
+              {selected && s.mode === "group" && slotSeatsLabel(s) ? (
+                <>
+                  {` • ${slotSeatsLabel(s)}`}
+                  {s.count > 1 && (
+                    <Tooltip title="Seats left are per provider.">
+                      <Box
+                        component="span"
+                        sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          ml: 0.75,
+                          width: 16,
+                          height: 16,
+                          borderRadius: "50%",
+                          border: `1px solid ${calendarText}`,
+                          fontSize: "0.7rem",
+                          lineHeight: 1,
+                          fontWeight: 700,
+                        }}
+                        aria-label="Seats left are per provider."
+                      >
+                        i
+                      </Box>
+                    </Tooltip>
+                  )}
+                </>
+              ) : null}
             </Button>
           );
         })}

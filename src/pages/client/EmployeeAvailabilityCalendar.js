@@ -23,6 +23,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
 
 /* ───────────────── helpers ────────────────── */
 const ymd = (d) =>
@@ -33,29 +34,6 @@ const ymd = (d) =>
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 const AUTO_SELECT_FIRST_TIME = true;
 const sheetSafePadding = "calc(env(safe-area-inset-bottom) + 16px)";
-
-const resolveSeatsLeft = (slot) => {
-  if (!slot) return null;
-  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
-  const capacity = Number(slot.capacity);
-  const bookedCount = Number(slot.booked_count);
-  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
-    return Math.max(capacity - bookedCount, 0);
-  }
-  return null;
-};
-
-const slotIsAvailable = (slot) => {
-  if (!slot) return false;
-  if (slot.type && slot.type !== "available") return false;
-  if (slot.status === "unavailable") return false;
-  if (slot.origin === "shift") return false;
-  if (slot.mode === "group") {
-    const seatsLeft = resolveSeatsLeft(slot);
-    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
-  }
-  return !slot.booked;
-};
 
 /**
  * Build display date/time using backend-prepared local fields when available.
@@ -400,6 +378,7 @@ export default function EmployeeAvailabilityCalendar({
         const label = time || s.start_time;
         const seatsLeft = resolveSeatsLeft(s);
         const isFullGroup = s.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+        const seatsLabel = slotSeatsLabel(s);
 
         return (
           <Button
@@ -435,7 +414,7 @@ export default function EmployeeAvailabilityCalendar({
             }}
           >
             {label}
-            {s.mode === "group" && Number.isFinite(seatsLeft) ? ` • ${seatsLeft} left` : ""}
+            {s.mode === "group" && seatsLabel ? ` • ${seatsLabel}` : ""}
           </Button>
         );
       })}

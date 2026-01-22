@@ -14,29 +14,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 
 import { DateTime } from "luxon";
 import { api } from "../../utils/api";
-
-const resolveSeatsLeft = (slot) => {
-  if (!slot) return null;
-  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
-  const capacity = Number(slot.capacity);
-  const bookedCount = Number(slot.booked_count);
-  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
-    return Math.max(capacity - bookedCount, 0);
-  }
-  return null;
-};
-
-const slotIsAvailable = (slot) => {
-  if (!slot) return false;
-  if (slot.type && slot.type !== "available") return false;
-  if (slot.status === "unavailable") return false;
-  if (slot.origin === "shift") return false;
-  if (slot.mode === "group") {
-    const seatsLeft = resolveSeatsLeft(slot);
-    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
-  }
-  return !slot.booked;
-};
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
 
 export default function ModernBookingCalendar({
   companySlug,
@@ -185,6 +163,7 @@ export default function ModernBookingCalendar({
           {slotsForSelectedDate.map((slot) => {
             const seatsLeft = resolveSeatsLeft(slot);
             const isFullGroup = slot.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+            const seatsLabel = slotSeatsLabel(slot);
             return (
             <Button
               key={`${slot.date}-${slot.start_time}`}
@@ -201,7 +180,7 @@ export default function ModernBookingCalendar({
               }}
             >
               {slot.start_time} - {slot.end_time}
-              {slot.mode === "group" && Number.isFinite(seatsLeft) ? ` • ${seatsLeft} left` : ""}
+              {slot.mode === "group" && seatsLabel ? ` • ${seatsLabel}` : ""}
             </Button>
           )})}
         </Box>

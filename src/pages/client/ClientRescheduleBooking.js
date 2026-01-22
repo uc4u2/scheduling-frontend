@@ -15,6 +15,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../utils/api"; // ✅ named import (axios instance)
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
 
 /* ───────────────── helpers ────────────────── */
 const ymd = (d) =>
@@ -23,29 +24,6 @@ const ymd = (d) =>
   ).padStart(2, "0")}`;
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
-
-const resolveSeatsLeft = (slot) => {
-  if (!slot) return null;
-  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
-  const capacity = Number(slot.capacity);
-  const bookedCount = Number(slot.booked_count);
-  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
-    return Math.max(capacity - bookedCount, 0);
-  }
-  return null;
-};
-
-const slotIsAvailable = (slot) => {
-  if (!slot) return false;
-  if (slot.type && slot.type !== "available") return false;
-  if (slot.status === "unavailable") return false;
-  if (slot.origin === "shift") return false;
-  if (slot.mode === "group") {
-    const seatsLeft = resolveSeatsLeft(slot);
-    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
-  }
-  return !slot.booked;
-};
 
 const buildDisplay = (svc, tz) => {
   const tzName = svc.timezone || tz;
@@ -362,6 +340,7 @@ export default function ClientRescheduleBooking({ slugOverride }) {
         {slots.map((s) => {
           const seatsLeft = resolveSeatsLeft(s);
           const isFullGroup = s.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+          const seatsLabel = slotSeatsLabel(s);
           return (
             <Button
               key={s.start_time}
@@ -373,7 +352,7 @@ export default function ClientRescheduleBooking({ slugOverride }) {
               }}
             >
               {s.start_time}
-              {s.mode === "group" && Number.isFinite(seatsLeft) ? ` • ${seatsLeft} left` : ""}
+              {s.mode === "group" && seatsLabel ? ` • ${seatsLabel}` : ""}
             </Button>
           );
         })}

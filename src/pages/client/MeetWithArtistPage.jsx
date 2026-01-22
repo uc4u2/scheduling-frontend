@@ -29,6 +29,7 @@ import ScheduleIcon from "@mui/icons-material/Schedule";
 import SiteFrame from "../../components/website/SiteFrame";
 import { publicSite } from "../../utils/api";
 import { pageStyleToBackgroundSx, pageStyleToCssVars } from "./ServiceList";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
 
 /* ---------- helpers shared with ServiceList ---------- */
 
@@ -147,29 +148,6 @@ const formatTimeForViewer = (slot) => {
   if (!iso) return slot.start_time || "";
   const dt = new Date(iso);
   return dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-};
-
-const resolveSeatsLeft = (slot) => {
-  if (!slot) return null;
-  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
-  const capacity = Number(slot.capacity);
-  const bookedCount = Number(slot.booked_count);
-  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
-    return Math.max(capacity - bookedCount, 0);
-  }
-  return null;
-};
-
-const slotIsAvailable = (slot) => {
-  if (!slot) return false;
-  if (slot.type && slot.type !== "available") return false;
-  if (slot.status === "unavailable") return false;
-  if (slot.origin === "shift") return false;
-  if (slot.mode === "group") {
-    const seatsLeft = resolveSeatsLeft(slot);
-    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
-  }
-  return !slot.booked;
 };
 
 /* Normalize + filter backend slots (drop anything in the past) */
@@ -588,6 +566,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
           const isSelected = String(slot.id) === String(selectedSlotId);
           const seatsLeft = resolveSeatsLeft(slot);
           const isFullGroup = slot.mode === "group" && seatsLeft !== null && seatsLeft <= 0;
+          const seatsLabel = slotSeatsLabel(slot);
           return (
             <Button
               key={slot.id}
@@ -619,7 +598,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
               }}
             >
               {formatTimeForViewer(slot)}
-              {slot.mode === "group" && Number.isFinite(seatsLeft) ? ` • ${seatsLeft} left` : ""}
+              {slot.mode === "group" && seatsLabel ? ` • ${seatsLabel}` : ""}
             </Button>
           );
         })}

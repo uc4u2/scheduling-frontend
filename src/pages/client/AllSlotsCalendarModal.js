@@ -27,6 +27,7 @@ import { api } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatSlot } from "../../utils/timezone-wrapper";
 import { useTheme, alpha } from "@mui/material/styles";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
 
 const fmtDate = (isoDate) =>
   new Date(isoDate).toLocaleDateString(undefined, {
@@ -35,29 +36,6 @@ const fmtDate = (isoDate) =>
     month: "long",
     day: "numeric",
   });
-
-const resolveSeatsLeft = (slot) => {
-  if (!slot) return null;
-  if (Number.isFinite(slot.seats_left)) return slot.seats_left;
-  const capacity = Number(slot.capacity);
-  const bookedCount = Number(slot.booked_count);
-  if (!Number.isNaN(capacity) && !Number.isNaN(bookedCount)) {
-    return Math.max(capacity - bookedCount, 0);
-  }
-  return null;
-};
-
-const slotIsAvailable = (slot) => {
-  if (!slot) return false;
-  if (slot.type && slot.type !== "available") return false;
-  if (slot.status === "unavailable") return false;
-  if (slot.origin === "shift") return false;
-  if (slot.mode === "group") {
-    const seatsLeft = resolveSeatsLeft(slot);
-    return seatsLeft === null ? !slot.booked : seatsLeft > 0;
-  }
-  return !slot.booked;
-};
 
 /** Build "cart" JSON for the availability endpoint (filter by date and optional artist) */
 function buildCartPayload({ date, artistId = null }) {
@@ -310,8 +288,7 @@ deduped.sort((a, b) => {
       day: "numeric",
     });
 const countTxt = s._count > 1 ? ` (${s._count})` : "";
-const seatsTxt =
-  s.mode === "group" && Number.isFinite(s.seats_left) ? ` • ${s.seats_left} left` : "";
+const seatsTxt = s.mode === "group" && slotSeatsLabel(s) ? ` • ${slotSeatsLabel(s)}` : "";
     return {
       id: s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`,
      title: s.type === "booked"
