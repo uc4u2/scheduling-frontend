@@ -17,15 +17,28 @@ import {
   Stack,
   CircularProgress,
   Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   FormControl,
   FormControlLabel,
   FormLabel,
+  Tooltip,
   Radio,
   RadioGroup,
   Checkbox,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import { Add, Edit, Delete, PhotoCamera, CloudUpload, DeleteOutline } from "@mui/icons-material";
+import {
+  Add,
+  Edit,
+  Delete,
+  PhotoCamera,
+  CloudUpload,
+  DeleteOutline,
+  InfoOutlined,
+  ExpandMore,
+} from "@mui/icons-material";
 import api from "../../../utils/api";
 
 const emptyForm = {
@@ -39,6 +52,14 @@ const emptyForm = {
   allow_packages: false,
 };
 
+const emptyPackageForm = {
+  template_id: null,
+  name: "",
+  session_qty: 5,
+  price: 0,
+  expires_in: "",
+};
+
 const ServiceManagement = ({ token }) => {
   const { t, i18n } = useTranslation();
 
@@ -47,10 +68,13 @@ const ServiceManagement = ({ token }) => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [packageForm, setPackageForm] = useState(emptyPackageForm);
+  const [packageLoading, setPackageLoading] = useState(false);
   const [snk, setSnk] = useState({ open: false, key: "" });
   const [imageModal, setImageModal] = useState(false);
   const [imageTarget, setImageTarget] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -146,8 +170,13 @@ const ServiceManagement = ({ token }) => {
         default_capacity: Number(row.default_capacity || 1),
         allow_packages: Boolean(row.allow_packages),
       });
+      setPackageForm(emptyPackageForm);
+      if (row.allow_packages) {
+        loadPackageTemplate(row.id, row.name);
+      }
     } else {
       setForm(emptyForm);
+      setPackageForm(emptyPackageForm);
     }
     setOpen(true);
   };
@@ -156,6 +185,7 @@ const ServiceManagement = ({ token }) => {
     setOpen(false);
     setEditing(null);
     setForm(emptyForm);
+    setPackageForm(emptyPackageForm);
   };
 
   const handleDelete = async (id) => {
@@ -172,11 +202,35 @@ const ServiceManagement = ({ token }) => {
 
   const save = async () => {
     try {
+      if (form.allow_packages) {
+        if (packageLoading) {
+          setSnk({ open: true, key: "Package settings are still loading." });
+          return;
+        }
+        const sessionQty = Math.max(1, Number(packageForm.session_qty) || 1);
+        const price = Number(packageForm.price) || 0;
+        const expiresIn =
+          packageForm.expires_in === "" ? null : Number(packageForm.expires_in);
+        if (sessionQty < 1 || price < 0) {
+          setSnk({ open: true, key: "Package settings need valid values." });
+          return;
+        }
+        if (Number.isFinite(expiresIn) && expiresIn < 1) {
+          setSnk({ open: true, key: "Expiry must be 1 day or more." });
+          return;
+        }
+      }
       if (editing) {
         await api.put(`/booking/services/${editing.id}`, form, auth);
+        if (form.allow_packages) {
+          await upsertPackageTemplate(editing.id, form.name);
+        }
         setSnk({ open: true, key: "manager.service.messages.updated" });
       } else {
-        await api.post(`/booking/services`, form, auth);
+        const { data } = await api.post(`/booking/services`, form, auth);
+        if (form.allow_packages && data?.id) {
+          await upsertPackageTemplate(data.id, form.name);
+        }
         setSnk({ open: true, key: "manager.service.messages.added" });
       }
       handleCloseDialog();
@@ -184,6 +238,54 @@ const ServiceManagement = ({ token }) => {
     } catch (err) {
       console.error("ServiceManagement save error", err);
       setSnk({ open: true, key: "manager.service.messages.saveFailed" });
+    }
+  };
+
+  const loadPackageTemplate = async (serviceId, serviceName) => {
+    if (!serviceId) return;
+    setPackageLoading(true);
+    try {
+      const { data } = await api.get(`/booking/packages?service_id=${serviceId}`, auth);
+      const tmpl = Array.isArray(data) ? data[0] : null;
+      if (tmpl) {
+        setPackageForm({
+          template_id: tmpl.id,
+          name: tmpl.name || "",
+          session_qty: Number(tmpl.session_qty || 1),
+          price: Number(tmpl.price || 0),
+          expires_in: tmpl.expires_in ?? "",
+        });
+      } else {
+        setPackageForm({
+          ...emptyPackageForm,
+          name: serviceName ? `${serviceName} package` : "",
+        });
+      }
+    } catch (err) {
+      console.error("ServiceManagement loadPackageTemplate error", err);
+    } finally {
+      setPackageLoading(false);
+    }
+  };
+
+  const upsertPackageTemplate = async (serviceId, serviceName) => {
+    const sessionQty = Math.max(1, Number(packageForm.session_qty) || 1);
+    const price = Number(packageForm.price) || 0;
+    const expiresIn = packageForm.expires_in === "" ? null : Number(packageForm.expires_in);
+    const payload = {
+      name: packageForm.name || (serviceName ? `${serviceName} package` : "Package"),
+      service_id: serviceId,
+      session_qty: sessionQty,
+      price,
+      expires_in: Number.isFinite(expiresIn) ? expiresIn : null,
+    };
+    if (packageForm.template_id) {
+      await api.patch(`/booking/packages/${packageForm.template_id}`, payload, auth);
+      return;
+    }
+    const { data } = await api.post(`/booking/packages`, payload, auth);
+    if (data?.id) {
+      setPackageForm((prev) => ({ ...prev, template_id: data.id }));
     }
   };
 
@@ -253,9 +355,16 @@ const ServiceManagement = ({ token }) => {
 
   return (
     <Box p={3}>
-      <Typography variant="h4" mb={2}>
-        {t("manager.service.title")}
-      </Typography>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+        <Typography variant="h4">{t("manager.service.title")}</Typography>
+        <Button
+          variant="outlined"
+          startIcon={<InfoOutlined />}
+          onClick={() => setHelpOpen(true)}
+        >
+          {t("manager.service.help", "Help")}
+        </Button>
+      </Stack>
 
       <Button startIcon={<Add />} variant="contained" sx={{ mb: 2 }} onClick={() => show()}>
         {t("manager.service.buttonAdd")}
@@ -326,13 +435,31 @@ const ServiceManagement = ({ token }) => {
 
           <Divider sx={{ my: 2 }} />
 
-          <Typography variant="subtitle1" fontWeight={600}>
-            {t("manager.service.dialog.bookingSettings", "Booking settings")}
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Typography variant="subtitle1" fontWeight={600}>
+              {t("manager.service.dialog.bookingSettings", "Booking settings")}
+            </Typography>
+            <Tooltip
+              title="Choose how this service is booked and whether packages can be used."
+            >
+              <IconButton size="small" aria-label="Booking settings info">
+                <InfoOutlined fontSize="inherit" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
 
           <FormControl component="fieldset" sx={{ mt: 1 }}>
             <FormLabel component="legend">
-              {t("manager.service.dialog.bookingType", "Booking type")}
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <span>{t("manager.service.dialog.bookingType", "Booking type")}</span>
+                <Tooltip
+                  title="One-to-one is a single client per time slot. Group/Class allows multiple clients up to the slot capacity."
+                >
+                  <IconButton size="small" aria-label="Booking type info">
+                    <InfoOutlined fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
             </FormLabel>
             <RadioGroup
               row
@@ -363,7 +490,16 @@ const ServiceManagement = ({ token }) => {
 
           {form.booking_mode === "group" && (
             <TextField
-              label={t("manager.service.dialog.defaultCapacity", "Default capacity")}
+              label={
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <span>{t("manager.service.dialog.defaultCapacity", "Default capacity")}</span>
+                  <Tooltip title="Maximum seats available per slot for this group service.">
+                    <IconButton size="small" aria-label="Default capacity info">
+                      <InfoOutlined fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              }
               type="number"
               fullWidth
               margin="dense"
@@ -383,21 +519,294 @@ const ServiceManagement = ({ token }) => {
             control={
               <Checkbox
                 checked={Boolean(form.allow_packages)}
-                onChange={(event) =>
-                  setForm({ ...form, allow_packages: event.target.checked })
-                }
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setForm({ ...form, allow_packages: checked });
+                  if (checked && !packageForm.name) {
+                    setPackageForm((prev) => ({
+                      ...prev,
+                      name: form.name ? `${form.name} package` : prev.name,
+                    }));
+                  }
+                }}
               />
             }
-            label={t(
-              "manager.service.dialog.allowPackages",
-              "Allow package redemption"
-            )}
+            label={
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <span>
+                  {t("manager.service.dialog.allowPackages", "Allow package redemption")}
+                </span>
+                <Tooltip title="Lets clients book this service using a prepaid package balance.">
+                  <IconButton size="small" aria-label="Package redemption info">
+                    <InfoOutlined fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            }
           />
+
+          {form.allow_packages && (
+            <Box mt={2}>
+              <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  {t("manager.service.dialog.packageSettings", "Package settings")}
+                </Typography>
+                <Tooltip title="Define how many sessions and the price for a prepaid package tied to this service.">
+                  <IconButton size="small" aria-label="Package settings info">
+                    <InfoOutlined fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+
+              {packageLoading ? (
+                <Stack direction="row" alignItems="center" spacing={1} py={1}>
+                  <CircularProgress size={18} />
+                  <Typography variant="body2" color="text.secondary">
+                    {t("manager.service.dialog.packageLoading", "Loading package settings...")}
+                  </Typography>
+                </Stack>
+              ) : (
+                <Stack spacing={1}>
+                  <TextField
+                    label={t("manager.service.dialog.packageName", "Package name")}
+                    fullWidth
+                    margin="dense"
+                    value={packageForm.name}
+                    onChange={(event) =>
+                      setPackageForm({ ...packageForm, name: event.target.value })
+                    }
+                    placeholder={
+                      form.name ? `${form.name} package` : "5 sessions for $400"
+                    }
+                  />
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                    <TextField
+                      label={
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <span>
+                            {t(
+                              "manager.service.dialog.packageSessions",
+                              "Sessions in package"
+                            )}
+                          </span>
+                          <Tooltip title="Number of credits in the package. Each booking uses 1 credit.">
+                            <IconButton size="small" aria-label="Package sessions info">
+                              <InfoOutlined fontSize="inherit" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      }
+                      type="number"
+                      fullWidth
+                      margin="dense"
+                      inputProps={{ min: 1 }}
+                      value={packageForm.session_qty}
+                      onChange={(event) =>
+                        setPackageForm({
+                          ...packageForm,
+                          session_qty: Math.max(1, Number(event.target.value) || 1),
+                        })
+                      }
+                    />
+                    <TextField
+                      label={
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <span>
+                            {t("manager.service.dialog.packagePrice", "Package price")}
+                          </span>
+                          <Tooltip title="Total amount the client pays for the full package.">
+                            <IconButton size="small" aria-label="Package price info">
+                              <InfoOutlined fontSize="inherit" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      }
+                      type="number"
+                      fullWidth
+                      margin="dense"
+                      value={packageForm.price}
+                      onChange={(event) =>
+                        setPackageForm({
+                          ...packageForm,
+                          price: Number(event.target.value) || 0,
+                        })
+                      }
+                    />
+                  </Stack>
+                  <TextField
+                    label={
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <span>
+                          {t(
+                            "manager.service.dialog.packageExpiry",
+                            "Expires in (days)"
+                          )}
+                        </span>
+                        <Tooltip title="Credits expire this many days after purchase. Leave blank for no expiry.">
+                          <IconButton size="small" aria-label="Package expiry info">
+                            <InfoOutlined fontSize="inherit" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    }
+                    type="number"
+                    fullWidth
+                    margin="dense"
+                    inputProps={{ min: 0 }}
+                    value={packageForm.expires_in}
+                    onChange={(event) =>
+                      setPackageForm({
+                        ...packageForm,
+                        expires_in: event.target.value,
+                      })
+                    }
+                    helperText={t(
+                      "manager.service.dialog.packageExpiryHelp",
+                      "Leave blank for no expiration."
+                    )}
+                  />
+                </Stack>
+              )}
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>{t("manager.service.dialog.cancel")}</Button>
-          <Button onClick={save} variant="contained">
+          <Button
+            onClick={save}
+            variant="contained"
+            disabled={Boolean(form.allow_packages && packageLoading)}
+          >
             {editing ? t("manager.service.dialog.update") : t("manager.service.dialog.create")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{t("manager.service.help.title", "Service setup help")}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2}>
+            <Typography variant="body2" color="text.secondary">
+              {t(
+                "manager.service.help.subtitle",
+                "Use services for appointments, classes, and workshops. Keep each service clear and easy to book."
+              )}
+            </Typography>
+
+            <Accordion defaultExpanded>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="subtitle1">
+                  {t("manager.service.help.quickStart", "Quick start")}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  <Typography variant="body2">
+                    {t(
+                      "manager.service.help.quickStart.step1",
+                      "1) Add a service name and category your clients understand."
+                    )}
+                  </Typography>
+                  <Typography variant="body2">
+                    {t(
+                      "manager.service.help.quickStart.step2",
+                      "2) Set the duration and base price shown in booking."
+                    )}
+                  </Typography>
+                  <Typography variant="body2">
+                    {t(
+                      "manager.service.help.quickStart.step3",
+                      "3) Choose booking type and save."
+                    )}
+                  </Typography>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="subtitle1">
+                  {t("manager.service.help.bookingType", "Booking type")}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  <Typography variant="body2">
+                    {t(
+                      "manager.service.help.bookingType.oneToOne",
+                      "One-to-one: one client per time slot."
+                    )}
+                  </Typography>
+                  <Typography variant="body2">
+                    {t(
+                      "manager.service.help.bookingType.group",
+                      "Group/Class: multiple clients can book the same slot up to capacity."
+                    )}
+                  </Typography>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="subtitle1">
+                  {t("manager.service.help.capacity", "Default capacity")}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Typography variant="body2">
+                  {t(
+                    "manager.service.help.capacity.text",
+                    "For group services, set how many seats are available per time slot."
+                  )}
+                </Typography>
+              </AccordionDetails>
+            </Accordion>
+
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="subtitle1">
+                  {t("manager.service.help.packages", "Allow package redemption")}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={1}>
+                  <Typography variant="body2">
+                    {t(
+                      "manager.service.help.packages.desc",
+                      "Lets clients book using a prepaid package balance instead of paying each time."
+                    )}
+                  </Typography>
+                  <Typography variant="body2">
+                    {t(
+                      "manager.service.help.packages.example",
+                      "Example: A “5 facials for $400” package gives 5 credits. Each booking uses 1 credit."
+                    )}
+                  </Typography>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Typography variant="subtitle1">
+                  {t("manager.service.help.images", "Images & description")}
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Typography variant="body2">
+                  {t(
+                    "manager.service.help.images.text",
+                    "Add 1–3 images and a short description so clients know what to expect."
+                  )}
+                </Typography>
+              </AccordionDetails>
+            </Accordion>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setHelpOpen(false)}>
+            {t("manager.service.help.close", "Close")}
           </Button>
         </DialogActions>
       </Dialog>
