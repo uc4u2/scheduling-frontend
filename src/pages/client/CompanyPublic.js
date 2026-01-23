@@ -25,6 +25,7 @@ import {
   Grid,
   Paper,
   TextField,
+  Link,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import BrushIcon from "@mui/icons-material/Brush";
@@ -461,6 +462,7 @@ function ClientLoginDialog({ open, onClose, onLoginSuccess }) {
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -487,57 +489,132 @@ function ClientLoginDialog({ open, onClose, onLoginSuccess }) {
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="xs"
-      PaperProps={{ sx: dialogPaperSx }}
-      sx={{
-        "& .MuiDialog-paper": dialogPaperSx,
-        "& .MuiDialogContent-root": {
-          backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
-        },
-        "& .MuiDialogTitle-root": {
-          backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
-        },
-      }}
-    >
-      <DialogTitle>Client Login</DialogTitle>
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: dialogPaperSx }}
+        sx={{
+          "& .MuiDialog-paper": dialogPaperSx,
+          "& .MuiDialogContent-root": {
+            backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+          },
+          "& .MuiDialogTitle-root": {
+            backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+          },
+        }}
+      >
+        <DialogTitle>Client Login</DialogTitle>
+        <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <form onSubmit={handleSubmit} id="client-login-form">
+            <TextField
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              fullWidth
+              required
+              margin="normal"
+            />
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              fullWidth
+              required
+              margin="normal"
+            />
+            <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
+          </form>
+          <Box sx={{ mt: 1 }}>
+            <Link component="button" variant="body2" onClick={() => setForgotOpen(true)}>
+              Forgot password?
+            </Link>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" form="client-login-form" variant="contained" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <ForgotPasswordDialog open={forgotOpen} onClose={() => setForgotOpen(false)} />
+    </>
+  );
+}
+
+function ForgotPasswordDialog({ open, onClose }) {
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    if (!email) {
+      setError("Email is required.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.post(
+        "/forgot-password",
+        { email },
+        { noAuth: true, noCompanyHeader: true }
+      );
+      setMessage(res.data?.message || "Reset email sent.");
+    } catch (err) {
+      setError(err.response?.data?.error || "Request failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+      <DialogTitle>Reset Password</DialogTitle>
       <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
-        <form onSubmit={handleSubmit} id="client-login-form">
+        {message && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            {message}
+          </Alert>
+        )}
+        <form onSubmit={handleSubmit} id="client-forgot-password-form">
           <TextField
             label="Email"
             type="email"
+            fullWidth
+            required
+            margin="normal"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            fullWidth
-            required
-            margin="normal"
           />
-          <TextField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            fullWidth
-            required
-            margin="normal"
-          />
-          <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
         </form>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>
-          Cancel
+          Close
         </Button>
-        <Button type="submit" form="client-login-form" variant="contained" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
+        <Button type="submit" form="client-forgot-password-form" variant="contained" disabled={loading}>
+          {loading ? "Sending..." : "Send reset email"}
         </Button>
       </DialogActions>
     </Dialog>
@@ -555,6 +632,7 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
@@ -565,8 +643,13 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    if (!firstName || !lastName || !email || !password) {
+    if (!firstName || !lastName || !email || !password || !passwordConfirm) {
       setError("All fields are required.");
+      setLoading(false);
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setError("Passwords do not match.");
       setLoading(false);
       return;
     }
@@ -576,6 +659,7 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
         last_name: lastName,
         email,
         password,
+        password_confirm: passwordConfirm,
         timezone,
         role: "client",
       });
@@ -592,7 +676,13 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
         setError("Registration succeeded but login failed.");
       }
     } catch (err) {
-      setError(err.response?.data?.error || "Registration failed.");
+      const data = err.response?.data;
+      if (data?.field_errors) {
+        const firstFieldError = Object.values(data.field_errors)[0];
+        setError(firstFieldError || "Registration failed.");
+      } else {
+        setError(data?.error || "Registration failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -653,6 +743,15 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TextField
+            label="Confirm Password"
+            type="password"
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
             fullWidth
             required
             margin="normal"

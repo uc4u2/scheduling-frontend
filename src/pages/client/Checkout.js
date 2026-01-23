@@ -13,12 +13,14 @@ import {
   Typography,
   Alert,
   TextField,
+  MenuItem,
   Divider,
   List,
   ListItem,
   ListItemText,
   IconButton,
   Button,
+  Link,
   Stack,
   Dialog,
   DialogTitle,
@@ -105,6 +107,7 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -132,72 +135,147 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="xs"
-      PaperProps={{
-        sx: {
-          ...dialogPaperSx,
-        },
-      }}
-      sx={{
-        "& .MuiDialog-paper": dialogPaperSx,
-        "& .MuiDialogContent-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" },
-        "& .MuiDialogTitle-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" },
-      }}
-    >
-      <DialogTitle sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" }}>
-        Client Login
-      </DialogTitle>
-      <DialogContent sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" }}>
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            ...dialogPaperSx,
+          },
+        }}
+        sx={{
+          "& .MuiDialog-paper": dialogPaperSx,
+          "& .MuiDialogContent-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" },
+          "& .MuiDialogTitle-root": { backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" },
+        }}
+      >
+        <DialogTitle sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" }}>
+          Client Login
+        </DialogTitle>
+        <DialogContent sx={{ backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))" }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          <form onSubmit={handleSubmit} id="login-dialog-form">
+            <TextField
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              fullWidth
+              required
+              margin="normal"
+            />
+
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              fullWidth
+              required
+              margin="normal"
+            />
+
+            <TimezoneSelect
+              label="Timezone"
+              value={timezone}
+              onChange={setTimezone}
+            />
+          </form>
+          <Box sx={{ mt: 1 }}>
+            <Link component="button" variant="body2" onClick={() => setForgotOpen(true)}>
+              Forgot password?
+            </Link>
+          </Box>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="login-dialog-form"
+            variant="contained"
+            disabled={loading}
+          >
+            {loading ? "Logging in..." : "Login"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <ForgotPasswordDialog open={forgotOpen} onClose={() => setForgotOpen(false)} />
+    </>
+  );
+}
+
+function ForgotPasswordDialog({ open, onClose }) {
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    if (!email) {
+      setError("Email is required.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await apiClient.post(
+        "/forgot-password",
+        { email },
+        { noAuth: true, noCompanyHeader: true }
+      );
+      setMessage(res.data?.message || "Reset email sent.");
+    } catch (err) {
+      setError(err.response?.data?.error || "Request failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+      <DialogTitle>Reset Password</DialogTitle>
+      <DialogContent>
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
-
-        <form onSubmit={handleSubmit} id="login-dialog-form">
+        {message && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            {message}
+          </Alert>
+        )}
+        <form onSubmit={handleSubmit} id="forgot-password-form">
           <TextField
             label="Email"
             type="email"
+            fullWidth
+            required
+            margin="normal"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            fullWidth
-            required
-            margin="normal"
-          />
-
-          <TextField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            fullWidth
-            required
-            margin="normal"
-          />
-
-          <TimezoneSelect
-            label="Timezone"
-            value={timezone}
-            onChange={setTimezone}
           />
         </form>
       </DialogContent>
-
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>
-          Cancel
+          Close
         </Button>
-        <Button
-          type="submit"
-          form="login-dialog-form"
-          variant="contained"
-          disabled={loading}
-        >
-          {loading ? "Logging in..." : "Login"}
+        <Button type="submit" form="forgot-password-form" variant="contained" disabled={loading}>
+          {loading ? "Sending..." : "Send reset email"}
         </Button>
       </DialogActions>
     </Dialog>
@@ -419,7 +497,7 @@ function CheckoutFormCore({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const activePaymentMode = useMemo(() => {
+  const basePaymentMode = useMemo(() => {
     const mode = (policy?.mode || "").toLowerCase();
     if (paymentsEnabled) {
       if (mode === "deposit") return "deposit";
@@ -428,10 +506,6 @@ function CheckoutFormCore({
     if (cardOnFileEnabled) return "capture";
     return "off";
   }, [paymentsEnabled, cardOnFileEnabled, policy?.mode]);
-  const showCaptureOption = activePaymentMode === "capture";
-  const showPayOption = activePaymentMode === "pay" || activePaymentMode === "deposit";
-  const showOnlinePayment = activePaymentMode !== "off";
-  const payButtonLabel = activePaymentMode === "deposit" ? "Pay Deposit & Book" : "Pay & Book";
 
   // Resolve a reliable slug for API calls, even if props/params are missing
   const slugLocal = useMemo(() => {
@@ -476,6 +550,9 @@ function CheckoutFormCore({
   const [client, setClient] = useState(null);
   const [guest, setGuest] = useState({ name: "", email: "" });
   const [cart, setCart] = useState([]);
+  const [clientPackages, setClientPackages] = useState([]);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+  const [packagesError, setPackagesError] = useState("");
 
   const [dlgSvcOpen, setDlgSvcOpen] = useState(false);
   const [dlgAddonOpen, setDlgAddonOpen] = useState(false);
@@ -509,10 +586,40 @@ function CheckoutFormCore({
   }, []);
 
   useEffect(() => {
+    if (!client?.id) {
+      setClientPackages([]);
+      setPackagesLoading(false);
+      setPackagesError("");
+      return;
+    }
+    let active = true;
+    setPackagesLoading(true);
+    setPackagesError("");
+    apiClient
+      .get("/me/packages")
+      .then(({ data }) => {
+        if (!active) return;
+        setClientPackages(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setPackagesError("Unable to load packages.");
+        setClientPackages([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setPackagesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [client?.id]);
+
+  useEffect(() => {
     const saved = loadCart();
     let mutated = false;
     const normalized = saved.map((item) => {
-      if (isProduct(item) || item?.hold_started_at) return item;
+      if (isProduct(item) || isPackage(item) || item?.hold_started_at) return item;
       mutated = true;
       return { ...item, hold_started_at: new Date().toISOString() };
     });
@@ -532,12 +639,13 @@ function CheckoutFormCore({
       return;
     }
 
-  const newItem = {
-    id: `${service.id}-${slot.date}-${slot.start_time}`,
-    type: CartTypes.SERVICE,
-    service_id: service.id,
-    service_name: service.name,
+    const newItem = {
+      id: `${service.id}-${slot.date}-${slot.start_time}`,
+      type: CartTypes.SERVICE,
+      service_id: service.id,
+      service_name: service.name,
       price: Number(service.base_price ?? 0),
+      allow_packages: Boolean(service.allow_packages),
       artist_name: artist?.full_name || artist?.name || "Provider",
       artist_id: artist?.id,
       date: slot.date,
@@ -547,12 +655,12 @@ function CheckoutFormCore({
       addons: slot.addons || [],
       couponApplied: false,
       coupon: null,
-    tip_mode: "percent",
-    tip_value: 0,
-    tip_amount: 0,
-    quantity: 1,
-    hold_started_at: new Date().toISOString(),
-  };
+      tip_mode: "percent",
+      tip_value: 0,
+      tip_amount: 0,
+      quantity: 1,
+      hold_started_at: new Date().toISOString(),
+    };
 
     const merged = [...saved.filter((i) => i.id !== newItem.id), newItem];
     saveCart(merged);
@@ -600,16 +708,39 @@ function CheckoutFormCore({
 
   const getQuantity = (item) => Math.max(1, Number(item?.quantity || 1));
   const isProduct = (item) => (item?.type || CartTypes.SERVICE) === CartTypes.PRODUCT;
+  const isPackage = (item) => (item?.type || CartTypes.SERVICE) === CartTypes.PACKAGE;
+  const isPackageActive = (pkg) => {
+    const remaining = Number(pkg?.remaining ?? 0);
+    if (!Number.isFinite(remaining) || remaining <= 0) return false;
+    const expiresAt = pkg?.expires_at || pkg?.expiresAt;
+    if (!expiresAt) return true;
+    const ts = Date.parse(expiresAt);
+    if (!Number.isFinite(ts)) return true;
+    return ts > Date.now();
+  };
+  const packagesForService = (serviceId) =>
+    clientPackages.filter((pkg) => {
+      const svcId =
+        pkg?.template?.service_id ??
+        pkg?.package_template?.service_id ??
+        pkg?.service_id;
+      return Number(svcId) === Number(serviceId) && isPackageActive(pkg);
+    });
 
   const lineSubtotal = (item) => {
     if (isProduct(item)) {
       return Number(item.price || 0) * getQuantity(item);
     }
-    return Number(item.price || 0) + getAddons(item).reduce((s, a) => s + Number(a.base_price || 0), 0);
+    if (isPackage(item)) {
+      return Number(item.price || 0) * getQuantity(item);
+    }
+    const base = item.client_package_id ? 0 : Number(item.price || 0);
+    return base + getAddons(item).reduce((s, a) => s + Number(a.base_price || 0), 0);
   };
 
   const lineDiscount = (item) => {
-    if (isProduct(item)) return 0;
+    if (isProduct(item) || isPackage(item)) return 0;
+    if (item.client_package_id) return 0;
     if (!item.couponApplied || !item.coupon) return 0;
     const base = lineSubtotal(item);
     if (item.coupon.discount_percent != null && Number(item.coupon.discount_percent) > 0) {
@@ -622,7 +753,7 @@ function CheckoutFormCore({
   };
 
   const recomputeTip = (item) => {
-    if (isProduct(item)) return { ...item };
+    if (isProduct(item) || isPackage(item)) return { ...item };
     const i = { ...item };
     if (i.tip_mode === "percent") {
       i.tip_amount = Math.max(0, (Number(i.tip_value || 0) / 100) * lineSubtotal(i));
@@ -631,16 +762,21 @@ function CheckoutFormCore({
   };
 
   const serviceItems = useMemo(
-    () => cart.filter((item) => !isProduct(item)),
+    () => cart.filter((item) => !isProduct(item) && !isPackage(item)),
     [cart]
   );
   const productItems = useMemo(
     () => cart.filter((item) => isProduct(item)),
     [cart]
   );
+  const packageItems = useMemo(
+    () => cart.filter((item) => isPackage(item)),
+    [cart]
+  );
 
   const serviceSubtotal = serviceItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
   const productSubtotal = productItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
+  const packageSubtotal = packageItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
   const totalDiscount = serviceItems.reduce((sum, item) => sum + lineDiscount(item), 0);
 
   const tipAllowedNow = paymentsEnabled;
@@ -648,8 +784,28 @@ function CheckoutFormCore({
     ? serviceItems.reduce((sum, item) => sum + Number(item.tip_amount || 0), 0)
     : 0;
 
-  const totalBeforeDiscount = serviceSubtotal + productSubtotal;
-  const finalTotal = Math.max(0, serviceSubtotal - totalDiscount) + totalTip + productSubtotal;
+  const totalBeforeDiscount = serviceSubtotal + productSubtotal + packageSubtotal;
+  const finalTotal = Math.max(0, serviceSubtotal - totalDiscount) + totalTip + productSubtotal + packageSubtotal;
+  const hasPackageRedemptions = serviceItems.some((item) => Boolean(item.client_package_id));
+  const packageOnlyTotal = hasPackageRedemptions && productItems.length === 0 && finalTotal <= 0;
+  const hasPackagePurchase = packageItems.length > 0;
+  const effectivePaymentMode = useMemo(() => {
+    if (productItems.length > 0 || packageItems.length > 0) {
+      return paymentsEnabled ? "pay" : "off";
+    }
+    return basePaymentMode;
+  }, [productItems.length, packageItems.length, paymentsEnabled, basePaymentMode]);
+  const showCaptureOption = effectivePaymentMode === "capture";
+  const showPayOption = effectivePaymentMode === "pay" || effectivePaymentMode === "deposit";
+  const showOnlinePayment = effectivePaymentMode !== "off";
+  const payButtonLabel = (() => {
+    if (productItems.length > 0 || packageItems.length > 0) return "Pay now";
+    if (effectivePaymentMode === "deposit") return "Pay Deposit & Book";
+    return "Pay & Book";
+  })();
+  const bookButtonLabel = productItems.length > 0 && serviceItems.length === 0
+    ? "Place order"
+    : "Book";
 
   const [holdState, setHoldState] = useState({ overall: null, perItem: {} });
 
@@ -789,7 +945,7 @@ function CheckoutFormCore({
     try {
       const updatedCart = await Promise.all(
         cart.map(async (item) => {
-          if (isProduct(item)) return item;
+          if (isProduct(item) || isPackage(item) || item.client_package_id) return item;
           try {
             const { data } = await apiClient.post(`/booking/coupons/validate`, {
               code: couponCode.trim(),
@@ -809,7 +965,7 @@ function CheckoutFormCore({
         })
       );
 
-      const anyValid = updatedCart.some((item) => !isProduct(item) && item.couponApplied);
+      const anyValid = updatedCart.some((item) => !isProduct(item) && !isPackage(item) && item.couponApplied);
       if (!anyValid) {
         setCouponError("Coupon does not apply to any services");
         persist(updatedCart.map(({ couponApplied, coupon, ...rest }) => rest));
@@ -848,6 +1004,21 @@ function CheckoutFormCore({
     persist(updated);
   };
 
+  const setPackageForItem = (id, packageId) => {
+    const normalizedId = packageId ? Number(packageId) : null;
+    const updated = cart.map((i) => {
+      if (i.id !== id) return i;
+      const next = {
+        ...i,
+        client_package_id: normalizedId,
+        couponApplied: normalizedId ? false : i.couponApplied,
+        coupon: normalizedId ? null : i.coupon,
+      };
+      return next.tip_mode === "percent" ? recomputeTip(next) : next;
+    });
+    persist(updated);
+  };
+
   // UPDATED: accept optional setupIntentId too
   const bookServiceLines = async (
     paymentIntentId = null,
@@ -856,13 +1027,16 @@ function CheckoutFormCore({
   ) => {
     if (serviceItems.length === 0) return [];
 
-    const compactCart = serviceItems.map(({ service_id, artist_id, date, start_time, addon_ids }) => ({
-      service_id,
-      artist_id,
-      date,
-      start_time,
-      addon_ids,
-    }));
+    const compactCart = serviceItems.map(
+      ({ service_id, artist_id, date, start_time, addon_ids, client_package_id }) => ({
+        service_id,
+        artist_id,
+        date,
+        start_time,
+        addon_ids,
+        client_package_id: client_package_id ?? null,
+      })
+    );
 
     const headers = {
       "Idempotency-Key": window.crypto?.randomUUID?.() ?? String(Date.now()),
@@ -878,6 +1052,7 @@ function CheckoutFormCore({
         addon_ids: getAddonIds(it),
         client_name: client?.full_name || guest.name,
         client_email: client?.email || guest.email,
+        ...(it.client_package_id ? { client_package_id: it.client_package_id } : {}),
         ...(paymentIntentId ? { payment_intent_id: paymentIntentId } : {}),
         ...(setupIntentId ? { setup_intent_id: setupIntentId } : {}),
         ...(it.couponApplied && it.coupon ? { coupon_code: it.coupon.code } : {}),
@@ -979,27 +1154,34 @@ function CheckoutFormCore({
       setErr("Unable to determine company. Please reload the page or navigate from the site home.");
       return;
     }
-    if (serviceItems.length === 0 && productItems.length === 0) {
+    if (serviceItems.length === 0 && productItems.length === 0 && packageItems.length === 0) {
       setErr("Your cart is empty.");
       return;
     }
-    if (finalTotal <= 0) {
+    if (packageItems.length > 0) {
+      setErr("Package purchases require online payment.");
+      return;
+    }
+    if (finalTotal <= 0 && !packageOnlyTotal) {
       setErr("Cart total must be greater than zero.");
       return;
     }
-    if (serviceItems.length > 0 && productItems.length > 0) {
+    if ((serviceItems.length > 0 && productItems.length > 0) || (packageItems.length > 0 && (serviceItems.length > 0 || productItems.length > 0))) {
       setErr("Services and retail products must be checked out separately. Please complete one checkout before starting another.");
       return;
     }
     setErr("");
     setLoading(true);
     try {
-      const serviceResults = await bookServiceLines();
-      if (!serviceResults.length) {
+      const serviceResults = serviceItems.length > 0 ? await bookServiceLines() : [];
+      if (serviceItems.length > 0 && !serviceResults.length) {
         return;
       }
 
-      const productOrder = normalizeProductOrder(await submitProductOrder({ allowUnpaid: true }));
+      const productOrder =
+        productItems.length > 0
+          ? normalizeProductOrder(await submitProductOrder({ allowUnpaid: true }))
+          : null;
       finalizeSuccess({ serviceResults, productOrder });
     } catch (ex) {
       setErr(ex.message || "Booking failed");
@@ -1023,15 +1205,15 @@ function CheckoutFormCore({
       return;
     }
 
-    if (serviceItems.length === 0 && productItems.length === 0) {
+    if (serviceItems.length === 0 && productItems.length === 0 && packageItems.length === 0) {
       setErr("Your cart is empty.");
       return;
     }
     if (finalTotal <= 0) {
-      setErr("Cart total must be greater than zero.");
+      setErr("No payment is due. Use Confirm booking to apply your package credits.");
       return;
     }
-    if (serviceItems.length > 0 && productItems.length > 0) {
+    if ((serviceItems.length > 0 && productItems.length > 0) || (packageItems.length > 0 && (serviceItems.length > 0 || productItems.length > 0))) {
       setErr("Services and retail products must be checked out separately. Please complete one checkout before starting another.");
       return;
     }
@@ -1040,7 +1222,7 @@ function CheckoutFormCore({
     setLoading(true);
 
     try {
-      const policyMode = activePaymentMode === "deposit" ? "deposit" : "pay";
+      const policyMode = effectivePaymentMode === "deposit" ? "deposit" : "pay";
 
       const payload = buildHostedCheckoutPayload({
         cartItems: cart,
@@ -1080,11 +1262,15 @@ function CheckoutFormCore({
       return;
     }
     if (serviceItems.length === 0) {
-      setErr("Please add at least one service to continue.");
+      setErr("Save card is only available for service bookings. Please add a service to continue.");
       return;
     }
-    if (productItems.length > 0) {
-      setErr("Saving a card on file is only available for service bookings. Please remove products to continue.");
+    if (productItems.length > 0 || packageItems.length > 0) {
+      setErr("Save card is only available for service bookings. Please remove products or packages to continue.");
+      return;
+    }
+    if (finalTotal <= 0) {
+      setErr("No payment is due. Use Confirm booking to apply your package credits.");
       return;
     }
 
@@ -1133,11 +1319,15 @@ function CheckoutFormCore({
 
   const handleLoginSuccess = (token) => {
     localStorage.setItem("token", token);
+    localStorage.setItem("role", "client");
+    localStorage.setItem("clientToken", token);
     syncClientFromToken(token);
   };
 
   const handleRegisterSuccess = (token) => {
     localStorage.setItem("token", token);
+    localStorage.setItem("role", "client");
+    localStorage.setItem("clientToken", token);
     syncClientFromToken(token);
   };
 
@@ -1373,6 +1563,12 @@ function CheckoutFormCore({
       >
         {cart.map((it) => {
           const subtotal = lineSubtotal(it);
+          const packageOptions =
+            client && it.allow_packages ? packagesForService(it.service_id) : [];
+          const remainingCredits = packageOptions.reduce((sum, pkg) => {
+            const remaining = Number(pkg?.remaining ?? 0);
+            return sum + (Number.isFinite(remaining) ? remaining : 0);
+          }, 0);
 
           if (isProduct(it)) {
             const quantity = getQuantity(it);
@@ -1389,6 +1585,7 @@ function CheckoutFormCore({
               >
                 <ListItemText
                   primary={it.name}
+                  secondaryTypographyProps={{ component: "div" }}
                   secondary={
                     <Box>
                       <Typography variant="body2">
@@ -1400,6 +1597,61 @@ function CheckoutFormCore({
                       <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>
                         Line total {formatCurrency(subtotal, currencyCode)}
                       </Typography>
+                    </Box>
+                  }
+                />
+              </ListItem>
+            );
+          }
+
+          if (isPackage(it)) {
+            const quantity = getQuantity(it);
+            const sessions = Number(it.session_qty || 0);
+            const displayName = it.package_name || `${sessions}-Session ${it.service_name || "Package"}`;
+            const expiresIn = Number(it.expires_in || 0);
+            return (
+              <ListItem
+                key={it.id}
+                divider
+                alignItems="flex-start"
+                secondaryAction={
+                  <IconButton color="error" onClick={() => removeItem(it.id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                }
+              >
+                <ListItemText
+                  primary={displayName}
+                  secondaryTypographyProps={{ component: "div" }}
+                  secondary={
+                    <Box>
+                      {it.service_name && (
+                        <Typography variant="body2">
+                          For {it.service_name}
+                        </Typography>
+                      )}
+                      {Number.isFinite(sessions) && sessions > 0 && (
+                        <Typography variant="body2">
+                          {sessions} sessions
+                        </Typography>
+                      )}
+                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>
+                        Line total {formatCurrency(subtotal, currencyCode)}
+                      </Typography>
+                      {Number.isFinite(expiresIn) && expiresIn > 0 ? (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                          Expires in {expiresIn} days
+                        </Typography>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                          No expiration
+                        </Typography>
+                      )}
+                      {quantity > 1 && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                          Quantity {quantity}
+                        </Typography>
+                      )}
                     </Box>
                   }
                 />
@@ -1424,6 +1676,7 @@ function CheckoutFormCore({
             >
               <ListItemText
                 primary={`${it.service_name}   ${it.artist_name}`}
+                secondaryTypographyProps={{ component: "div" }}
                 secondary={
                   <Box>
                     <Typography variant="body2">
@@ -1451,6 +1704,61 @@ function CheckoutFormCore({
                         onDelete={() => removeCouponFromItem(it.id)}
                         sx={{ mt: 1 }}
                       />
+                    )}
+
+                    {client && it.allow_packages && (
+                      <Box sx={{ mt: 1.5 }}>
+                        {packagesLoading ? (
+                          <Typography variant="caption" color="text.secondary">
+                            Loading packages…
+                          </Typography>
+                        ) : packagesError ? (
+                          <Typography variant="caption" color="error">
+                            {packagesError}
+                          </Typography>
+                        ) : packageOptions.length === 0 ? (
+                          <Typography variant="caption" color="text.secondary">
+                            No active packages available for this service.
+                          </Typography>
+                        ) : (
+                          <>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                              You have {remainingCredits} credit{remainingCredits === 1 ? "" : "s"} for this service.
+                            </Typography>
+                            <TextField
+                              select
+                              label="Use package"
+                              size="small"
+                              value={it.client_package_id ?? ""}
+                              onChange={(e) => setPackageForItem(it.id, e.target.value)}
+                              sx={{ minWidth: { xs: "100%", sm: 260 } }}
+                            >
+                              <MenuItem value="">Pay normally</MenuItem>
+                              {packageOptions.map((pkg) => {
+                                const pkgName =
+                                  pkg?.template?.name ||
+                                  pkg?.name ||
+                                  "Package";
+                                const remaining = Number(pkg?.remaining ?? 0);
+                                return (
+                                  <MenuItem key={pkg.id} value={pkg.id}>
+                                    {pkgName} ({remaining} left)
+                                  </MenuItem>
+                                );
+                              })}
+                            </TextField>
+                          </>
+                        )}
+                        {it.client_package_id && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block", mt: 0.5 }}
+                          >
+                            Package applied. Service price covered.
+                          </Typography>
+                        )}
+                      </Box>
                     )}
 
                     <Box sx={{ mt: 1.5 }}>
@@ -1608,15 +1916,19 @@ function CheckoutFormCore({
       )}
 
       {/* Card   show when either pay-now or card-on-file is enabled */}
-      {activePaymentMode !== "off" ? (
+      {effectivePaymentMode !== "off" ? (
         <Alert severity="info" sx={{ mb: 2, ...infoAlertSx }}>
-          {activePaymentMode === "capture"
-            ? "We'll save your card securely with Stripe. You'll be charged later by the manager."
-            : "You'll enter your payment details on Stripe's secure checkout page."}
+          {hasPackagePurchase && !paymentsEnabled
+            ? "Online payments are disabled for this company. Package purchases require online payment."
+            : effectivePaymentMode === "capture"
+              ? "We'll save your card securely with Stripe. You'll be charged later by the manager."
+              : "You'll enter your payment details on Stripe's secure checkout page."}
         </Alert>
       ) : (
         <Alert severity="info" sx={{ mb: 2, ...infoAlertSx }}>
-          Online payments are currently disabled for this company. Your booking will be created as <strong>unpaid</strong>.
+          {hasPackagePurchase
+            ? "Online payments are disabled for this company. Package purchases require online payment."
+            : <>Online payments are currently disabled for this company. Your booking will be created as <strong>unpaid</strong>.</>}
         </Alert>
       )}
 
@@ -1633,20 +1945,33 @@ function CheckoutFormCore({
           <TextField fullWidth disabled sx={{ mb: 2 }} label="Email" value={client.email} />
 
           {/* If Stripe on ? show Pay & Book, and if allowed ? Save Card & Book */}
-          {showOnlinePayment ? (
+          {packageOnlyTotal ? (
+            <Button
+              fullWidth
+              variant="contained"
+              disabled={loading}
+              onClick={bookWithoutPayment}
+              sx={primaryButtonSx}
+            >
+              {loading ? <CircularProgress size={24} /> : "Confirm booking"}
+            </Button>
+          ) : showOnlinePayment ? (
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 1 }}>
-              {showPayOption && (
+              {(showPayOption || hasPackagePurchase) && (
                 <Button
                   fullWidth
                   variant="contained"
-                  disabled={loading}
+                  disabled={loading || (!showPayOption && hasPackagePurchase)}
                   onClick={payAndBook}
                   sx={primaryButtonSx}
                 >
                   {loading ? <CircularProgress size={24} /> : payButtonLabel}
                 </Button>
               )}
-              {showCaptureOption && (
+              {showCaptureOption &&
+                serviceItems.length > 0 &&
+                productItems.length === 0 &&
+                packageItems.length === 0 && (
                 <Button
                   fullWidth
                   variant="outlined"
@@ -1666,7 +1991,7 @@ function CheckoutFormCore({
               onClick={bookWithoutPayment}
               sx={primaryButtonSx}
             >
-              {loading ? <CircularProgress size={24} /> : "Book"}
+              {loading ? <CircularProgress size={24} /> : bookButtonLabel}
             </Button>
           )}
         </>
@@ -1716,19 +2041,22 @@ function CheckoutFormCore({
             {/* Guest buttons mirror the client section */}
             {showOnlinePayment ? (
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                {showPayOption && (
+                {(showPayOption || hasPackagePurchase) && (
                   <Button
                     fullWidth
                     variant="contained"
                     type="button"
-                    disabled={loading || !guestOk}
+                    disabled={loading || !guestOk || (!showPayOption && hasPackagePurchase)}
                     onClick={payAndBook}
                     sx={primaryButtonSx}
                   >
                     {loading ? <CircularProgress size={24} /> : payButtonLabel}
                   </Button>
                 )}
-                {showCaptureOption && (
+                {showCaptureOption &&
+                  serviceItems.length > 0 &&
+                  productItems.length === 0 &&
+                  packageItems.length === 0 && (
                   <Button
                     fullWidth
                     variant="outlined"
@@ -1750,8 +2078,13 @@ function CheckoutFormCore({
                 onClick={bookWithoutPayment}
                 sx={primaryButtonSx}
               >
-                {loading ? <CircularProgress size={24} /> : "Book"}
+                {loading ? <CircularProgress size={24} /> : bookButtonLabel}
               </Button>
+            )}
+            {hasPackagePurchase && !showPayOption && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                Package purchases require online payment. Enable checkout to sell packages.
+              </Typography>
             )}
           </form>
         </>

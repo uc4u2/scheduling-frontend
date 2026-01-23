@@ -4,9 +4,9 @@ import React, { useState, useEffect } from "react";
 import { Box, Tabs, Tab } from "@mui/material";
 import ClientDashboardOverview from "./client/ClientDashboardOverview";
 import ClientBookings from "./client/ClientBookings";
-import ClientInvoices from "./client/ClientInvoices";
 import ClientProfile from "./client/ClientProfile";
 import ClientNotifications from "./client/ClientNotifications";
+import ClientPackages from "./client/ClientPackages";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
 
@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 const tabLabels = [
   "Overview",
   "Bookings",
-  "Invoices",
+  "Packages",
   "Notifications",
   "Profile"
 ];
@@ -23,7 +23,7 @@ const tabLabels = [
 const tabHashMap = {
   "#overview": 0,
   "#bookings": 1,
-  "#invoices": 2,
+  "#packages": 2,
   "#notifications": 3,
   "#profile": 4,
 };
@@ -80,7 +80,7 @@ export default function ClientDashboard() {
       <Box sx={{ p: { xs: 1, sm: 3 } }}>
         {tab === 0 && <ClientDashboardOverview />}
         {tab === 1 && <ClientBookings />}
-        {tab === 2 && <ClientInvoices />}
+        {tab === 2 && <ClientPackages />}
         {tab === 3 && <ClientNotifications />}
         {tab === 4 && <ClientProfile />}
       </Box>

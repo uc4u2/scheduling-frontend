@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
-  Box, Paper, Stack, Typography, TextField, Button, Alert, Tabs, Tab
+  Box, Paper, Stack, Typography, TextField, Button, Alert, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, Link
 } from "@mui/material";
 import { api } from "../../utils/api";
 import { getTenantHostMode } from "../../utils/tenant";
@@ -9,6 +9,11 @@ export default function PublicClientAuth({ slug }) {
   const [tab, setTab] = useState("login");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotMessage, setForgotMessage] = useState("");
+  const [forgotError, setForgotError] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
 
   // login form
   const [email, setEmail] = useState("");
@@ -57,6 +62,28 @@ export default function PublicClientAuth({ slug }) {
     } finally { setBusy(false); }
   };
 
+  const doForgotPassword = async () => {
+    setForgotError("");
+    setForgotMessage("");
+    if (!forgotEmail) {
+      setForgotError("Email is required.");
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      const { data } = await api.post(
+        "/forgot-password",
+        { email: forgotEmail },
+        { noAuth: true, noCompanyHeader: true }
+      );
+      setForgotMessage(data?.message || "Reset email sent.");
+    } catch (e) {
+      setForgotError(e?.response?.data?.error || "Request failed.");
+    } finally {
+      setForgotBusy(false);
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 420, mx: "auto", mt: 6 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
@@ -75,6 +102,13 @@ export default function PublicClientAuth({ slug }) {
           )}
           <TextField label="Email"    type="email"    value={email}    onChange={e=>setEmail(e.target.value)} fullWidth />
           <TextField label="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} fullWidth />
+          {tab === "login" && (
+            <Box>
+              <Link component="button" variant="body2" onClick={() => setForgotOpen(true)}>
+                Forgot password?
+              </Link>
+            </Box>
+          )}
           {tab === "login" ? (
             <Button variant="contained" onClick={doLogin} disabled={busy}>
               {busy ? "Logging in..." : "Login"}
@@ -86,6 +120,29 @@ export default function PublicClientAuth({ slug }) {
           )}
         </Stack>
       </Paper>
+      <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Reset Password</DialogTitle>
+        <DialogContent>
+          {forgotError && <Alert severity="error" sx={{ mb: 2 }}>{forgotError}</Alert>}
+          {forgotMessage && <Alert severity="success" sx={{ mb: 2 }}>{forgotMessage}</Alert>}
+          <TextField
+            label="Email"
+            type="email"
+            fullWidth
+            margin="normal"
+            value={forgotEmail}
+            onChange={(e) => setForgotEmail(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setForgotOpen(false)} disabled={forgotBusy}>
+            Close
+          </Button>
+          <Button variant="contained" onClick={doForgotPassword} disabled={forgotBusy}>
+            {forgotBusy ? "Sending..." : "Send reset email"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

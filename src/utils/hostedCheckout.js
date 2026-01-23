@@ -76,6 +76,20 @@ export const buildHostedCheckoutPayload = ({
       return;
     }
 
+    if (itemType === CartTypes.PACKAGE) {
+      const templateId = coerceNumber(item?.package_template_id);
+      const quantity = Math.max(1, coerceNumber(item?.quantity) || 1);
+      if (!templateId || quantity <= 0) {
+        throw new Error("Invalid package entry in cart.");
+      }
+      itemsPayload.push({
+        type: "package",
+        package_template_id: templateId,
+        quantity,
+      });
+      return;
+    }
+
     const serviceId = coerceNumber(item?.service_id);
     const artistId = coerceNumber(item?.artist_id);
     const date = item?.date || item?.local_date;
@@ -92,6 +106,10 @@ export const buildHostedCheckoutPayload = ({
       date,
       start_time: startTime,
     };
+    const clientPackageId = coerceNumber(item?.client_package_id);
+    if (clientPackageId) {
+      entry.client_package_id = clientPackageId;
+    }
 
     const addonIds = collectAddonIds(item);
     if (addonIds.length) {
@@ -99,8 +117,9 @@ export const buildHostedCheckoutPayload = ({
     }
 
     const linePrice = coerceNumber(item?.price ?? item?.line_price);
-    if (linePrice != null && linePrice >= 0) {
-      entry.line_price = Number(linePrice.toFixed(2));
+    const normalizedLinePrice = clientPackageId ? 0 : linePrice;
+    if (normalizedLinePrice != null && normalizedLinePrice >= 0) {
+      entry.line_price = Number(normalizedLinePrice.toFixed(2));
     }
 
     const tipAmount = coerceNumber(item?.tip_amount ?? item?.tip);
@@ -110,7 +129,10 @@ export const buildHostedCheckoutPayload = ({
       entry.tip_amount = 0;
     }
 
-    const couponCode = item?.couponApplied && item?.coupon?.code ? String(item.coupon.code).trim() : null;
+    const couponCode =
+      !clientPackageId && item?.couponApplied && item?.coupon?.code
+        ? String(item.coupon.code).trim()
+        : null;
     if (couponCode) {
       entry.coupon_code = couponCode;
     }
@@ -120,7 +142,8 @@ export const buildHostedCheckoutPayload = ({
 
   const serviceCount = itemsPayload.filter((entry) => (entry.type || "service") === "service").length;
   const productCount = itemsPayload.filter((entry) => entry.type === "product").length;
-  if (serviceCount && productCount) {
+  const packageCount = itemsPayload.filter((entry) => entry.type === "package").length;
+  if ((serviceCount && productCount) || (packageCount && (serviceCount || productCount))) {
     const err = new Error("Services and retail products must be checked out separately. Please complete one checkout before starting another.");
     err.code = CartErrorCodes.MIXED_TYPES;
     throw err;
@@ -268,4 +291,3 @@ export const releasePendingCheckout = async ({ slug, reason = "user_cancelled", 
     return { released: false, status: "error", error, pendingCheckoutId };
   }
 };
-

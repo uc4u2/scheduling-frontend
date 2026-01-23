@@ -18,6 +18,8 @@ export default function ClientDashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [packageSummary, setPackageSummary] = useState({ totalCredits: 0, activePackages: 0 });
+  const [packagesLoading, setPackagesLoading] = useState(false);
 
   // NEW: client signals + messages
   const [signals, setSignals] = useState(null);            // { ip, city, region, country, tz, user_agent, device, last_channel }
@@ -44,6 +46,7 @@ export default function ClientDashboardOverview() {
     setSignalsLoading(true);
     setSignalsErr("");
     setMsgErr("");
+    setPackagesLoading(true);
     const now = new Date();
 
     // Core cards
@@ -51,8 +54,9 @@ export default function ClientDashboardOverview() {
       api.get(`/api/client/bookings`, auth),
       api.get(`/invoices`, auth),
       api.get(`/notifications?status=unread`, auth),
+      api.get(`/me/packages`, auth).catch(() => ({ data: [] })),
     ])
-      .then(([bookingsRes, invoicesRes, notifsRes]) => {
+      .then(([bookingsRes, invoicesRes, notifsRes, packagesRes]) => {
         const bookings = bookingsRes.data.bookings || [];
         const futureBookings = bookings.filter(b => {
           const tz = b.timezone || userTimezone;
@@ -75,12 +79,26 @@ export default function ClientDashboardOverview() {
           unreadNotifs: (notifsRes.data || []).length,
           bookings,
         });
+
+        const pkgs = Array.isArray(packagesRes?.data) ? packagesRes.data : [];
+        const totalCredits = pkgs.reduce((sum, pkg) => {
+          const remaining = Number(pkg?.remaining ?? 0);
+          return sum + (Number.isFinite(remaining) ? remaining : 0);
+        }, 0);
+        setPackageSummary({
+          totalCredits,
+          activePackages: pkgs.length,
+        });
       })
       .catch(() => {
         // keep the page usable even if one call fails
         setOverview((prev) => prev || { nextBooking: null, unpaidCount: 0, unreadNotifs: 0, bookings: [] });
+        setPackageSummary({ totalCredits: 0, activePackages: 0 });
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setPackagesLoading(false);
+      });
 
     // Client telemetry (IP/geo/device/last channel)
     const p2 = Promise.all([
@@ -230,23 +248,6 @@ export default function ClientDashboardOverview() {
           </Card>
         </Grid>
 
-        {/* Unpaid Invoices */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={4}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary">Unpaid Invoices</Typography>
-              {loading ? (
-                <Skeleton height={60} />
-              ) : (
-                <Typography variant="h4" color={overview?.unpaidCount > 0 ? "error" : "text.primary"}>
-                  {overview?.unpaidCount || 0}
-                </Typography>
-              )}
-              <Button href="/dashboard?tab=invoices" size="small" sx={{ mt: 1 }}>View Invoices</Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
         {/* Unread Notifications */}
         <Grid item xs={12} md={4}>
           <Card elevation={4}>
@@ -260,6 +261,30 @@ export default function ClientDashboardOverview() {
                 </Typography>
               )}
               <Button href="/dashboard?tab=notifications" size="small" sx={{ mt: 1 }}>View All</Button>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Package Credits */}
+        <Grid item xs={12} md={4}>
+          <Card elevation={4}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">Package Credits</Typography>
+              {packagesLoading ? (
+                <Skeleton height={60} />
+              ) : (
+                <>
+                  <Typography variant="h4">
+                    {packageSummary.totalCredits || 0}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                    {packageSummary.activePackages || 0} package{packageSummary.activePackages === 1 ? "" : "s"} active
+                  </Typography>
+                </>
+              )}
+              <Button href="/dashboard#packages" size="small" sx={{ mt: 1 }}>
+                View Packages
+              </Button>
             </CardContent>
           </Card>
         </Grid>

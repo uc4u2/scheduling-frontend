@@ -3,6 +3,7 @@ const CART_KEY = "booking_cart";
 export const CartTypes = {
   SERVICE: "service",
   PRODUCT: "product",
+  PACKAGE: "package",
 };
 
 export const CartErrorCodes = {
@@ -14,16 +15,21 @@ const itemType = (item) => (item?.type || CartTypes.SERVICE);
 const ensureCompatibleCart = (targetType, items) => {
   const hasService = items.some((it) => itemType(it) === CartTypes.SERVICE);
   const hasProduct = items.some((it) => itemType(it) === CartTypes.PRODUCT);
+  const hasPackage = items.some((it) => itemType(it) === CartTypes.PACKAGE);
+
+  const treatingAsService = targetType === CartTypes.SERVICE || targetType === CartTypes.PACKAGE;
 
   const mixingServicesAndProducts =
-    (targetType === CartTypes.PRODUCT && hasService) ||
-    (targetType === CartTypes.SERVICE && hasProduct);
+    (targetType === CartTypes.PRODUCT && (hasService || hasPackage)) ||
+    (treatingAsService && hasProduct) ||
+    (targetType === CartTypes.SERVICE && hasPackage) ||
+    (targetType === CartTypes.PACKAGE && hasService);
 
   if (!mixingServicesAndProducts) return;
 
   const err = new Error("Services and retail products must be checked out separately. Please complete one checkout before starting another.");
   err.code = CartErrorCodes.MIXED_TYPES;
-  err.existingType = hasService ? CartTypes.SERVICE : CartTypes.PRODUCT;
+  err.existingType = hasProduct ? CartTypes.PRODUCT : hasPackage ? CartTypes.PACKAGE : CartTypes.SERVICE;
   err.attemptedType = targetType;
   throw err;
 };
@@ -111,6 +117,31 @@ export function upsertServiceLine(line) {
   };
   const next = [
     ...items.filter((item) => item.id !== line.id),
+    payload,
+  ];
+  saveCart(next);
+  return next;
+}
+
+export function addPackageToCart(pkg) {
+  if (!pkg || !pkg.id) return loadCart();
+  const items = loadCart();
+  ensureCompatibleCart(CartTypes.PACKAGE, items);
+  const id = `package-${pkg.id}`;
+  const payload = {
+    id,
+    type: CartTypes.PACKAGE,
+    package_template_id: pkg.id,
+    package_name: pkg.name,
+    service_id: pkg.service_id ?? pkg.service?.id ?? null,
+    service_name: pkg.service?.name ?? null,
+    session_qty: pkg.session_qty,
+    price: Number(pkg.price || 0),
+    expires_in: pkg.expires_in ?? null,
+    quantity: 1,
+  };
+  const next = [
+    ...items.filter((item) => item.id !== id),
     payload,
   ];
   saveCart(next);

@@ -15,6 +15,7 @@ import {
   MenuItem,
   Alert,
   Box,
+  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -30,6 +31,7 @@ import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import { useEmbedConfig } from "../../embed";
 import PublicPageShell, { usePublicSite } from "./PublicPageShell";
 import { getTenantHostMode } from "../../utils/tenant";
+import { addPackageToCart, CartErrorCodes } from "../../utils/cart";
 
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
 
@@ -216,6 +218,25 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
       ).trim() || "Available Services"
     );
   }, [serviceMeta, headingOverride]);
+  const embedSuffix = useMemo(() => {
+    try {
+      const qs = new URLSearchParams(window.location.search || "");
+      const keys = ["embed", "mode", "dialog", "primary", "text"];
+      const entries = keys
+        .map((key) => {
+          const val = qs.get(key);
+          return val ? [key, val] : null;
+        })
+        .filter(Boolean);
+      if (!entries.length) return "";
+      const next = new URLSearchParams();
+      entries.forEach(([key, val]) => next.set(key, val));
+      const query = next.toString();
+      return query ? `?${query}` : "";
+    } catch {
+      return "";
+    }
+  }, []);
   const cssVarStyle = useMemo(() => {
     const vars = pageStyleToCssVars(pageStyle);
     return Object.keys(vars).length ? vars : undefined;
@@ -246,7 +267,19 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState("");
   const [services, setServices] = useState([]);
+  const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [packagesLoading, setPackagesLoading] = useState(true);
+  const [packagesError, setPackagesError] = useState("");
+  const [packageCheckoutError, setPackageCheckoutError] = useState("");
+  const packageServiceIds = useMemo(() => {
+    const ids = new Set();
+    packages.forEach((pkg) => {
+      const id = pkg?.service_id ?? pkg?.service?.id;
+      if (id != null) ids.add(Number(id));
+    });
+    return ids;
+  }, [packages]);
   const [deptLoading, setDeptLoading] = useState(true);
   const [error, setError] = useState("");
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -290,6 +323,21 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     };
   }, [effectiveSlug]);
 
+  const handleBuyPackage = async (pkg) => {
+    if (!pkg?.id) return;
+    try {
+      setPackageCheckoutError("");
+      addPackageToCart(pkg);
+      navigate(`${basePath}/checkout${embedSuffix || ""}`);
+    } catch (err) {
+      if (err?.code === CartErrorCodes.MIXED_TYPES) {
+        setPackageCheckoutError("Complete your current checkout before purchasing a package.");
+        return;
+      }
+      setPackageCheckoutError("Unable to start checkout.");
+    }
+  };
+
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -327,6 +375,39 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
       active = false;
     };
   }, [effectiveSlug, selectedDept]);
+
+  useEffect(() => {
+    let active = true;
+    setPackagesLoading(true);
+    setPackagesError("");
+
+    if (!effectiveSlug) {
+      if (active) {
+        setPackages([]);
+        setPackagesLoading(false);
+      }
+      return () => {
+        active = false;
+      };
+    }
+
+    api
+      .get(`/public/${effectiveSlug}/packages`, { noCompanyHeader: true })
+      .then((res) => {
+        if (!active) return;
+        setPackages(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setPackages([]);
+        setPackagesError("Failed to load packages.");
+      })
+      .finally(() => active && setPackagesLoading(false));
+
+    return () => {
+      active = false;
+    };
+  }, [effectiveSlug]);
 
   const numOr = (v, d) => (v === null || v === undefined || v === "" ? d : Number(v));
   const formatPrice = (val) => {
@@ -533,9 +614,23 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                       </Box>
                     )}
                     <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" fontWeight={700} sx={{ color: "var(--page-heading-color, inherit)" }}>
-                        {service.name}
-                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                        <Typography variant="h6" fontWeight={700} sx={{ color: "var(--page-heading-color, inherit)" }}>
+                          {service.name}
+                        </Typography>
+                        {packageServiceIds.has(Number(service.id)) && (
+                          <Chip
+                            size="small"
+                            label="Package available"
+                            sx={{
+                              fontWeight: 600,
+                              borderRadius: 999,
+                              backgroundColor: "var(--page-btn-bg, rgba(15,23,42,0.12))",
+                              color: "var(--page-btn-color, inherit)",
+                            }}
+                          />
+                        )}
+                      </Stack>
                       <Typography
                         variant="body2"
                         sx={{
@@ -590,6 +685,102 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
             })}
           </Grid>
         )}
+
+        <Box sx={{ mt: { xs: 5, md: 7 } }}>
+          <Stack spacing={1} sx={{ mb: 3 }}>
+            <Typography variant="h4" fontWeight={800} sx={{ color: "var(--page-heading-color, inherit)" }}>
+              Packages
+            </Typography>
+            <Typography color="text.secondary">
+              Save by booking multiple sessions at once. Each package includes a set number of visits.
+            </Typography>
+          </Stack>
+
+          {packagesLoading ? (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <CircularProgress size={18} />
+              <Typography color="text.secondary">Loading packages…</Typography>
+            </Stack>
+          ) : packages.length === 0 ? (
+            <Typography color="text.secondary">No packages available right now.</Typography>
+          ) : (
+            <>
+              {(packagesError || packageCheckoutError) && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  {packagesError || packageCheckoutError}
+                </Alert>
+              )}
+              <Grid container spacing={3} justifyContent="center">
+                {packages.map((pkg) => {
+                  const svcName = pkg?.service?.name || "Service package";
+                  const rawName = String(pkg?.name || "").trim();
+                  const lowerName = rawName.toLowerCase();
+                  const isGenericName = !rawName || lowerName.includes("template") || lowerName.includes("package");
+                  const displayName = isGenericName
+                    ? `${pkg.session_qty}-Session ${svcName} Pack`
+                    : rawName;
+                  return (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={`pkg-${pkg.id}`}>
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          height: "100%",
+                          borderRadius: "var(--page-card-radius, 18px)",
+                          backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.95))",
+                          boxShadow: "var(--page-card-shadow, 0 12px 32px rgba(15,23,42,0.08))",
+                          border: "1px solid rgba(148,163,184,0.18)",
+                          display: "flex",
+                          flexDirection: "column",
+                          color: "var(--page-body-color)",
+                        }}
+                      >
+                        <CardContent>
+                          <Typography variant="overline" color="text.secondary">
+                            {svcName}
+                          </Typography>
+                          <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
+                            {displayName}
+                          </Typography>
+                          <Typography color="text.secondary" sx={{ mb: 1 }}>
+                            {pkg.session_qty} sessions
+                          </Typography>
+                          <Typography variant="h5" fontWeight={800}>
+                            {formatPrice(pkg.price)}
+                          </Typography>
+                          {pkg.expires_in ? (
+                            <Typography variant="caption" color="text.secondary">
+                              Expires in {pkg.expires_in} days
+                            </Typography>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">
+                              No expiration
+                            </Typography>
+                          )}
+                        </CardContent>
+                        <CardActions sx={{ mt: "auto", px: 2, pb: 2 }}>
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={() => handleBuyPackage(pkg)}
+                            sx={{
+                              backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
+                              color: "var(--page-btn-color, #fff)",
+                              textTransform: "none",
+                              fontWeight: 700,
+                              borderRadius: "var(--page-btn-radius, 12px)",
+                            }}
+                          >
+                            Buy package
+                          </Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </>
+          )}
+        </Box>
       </Box>
 
       {!!imagePreview && (

@@ -8,14 +8,24 @@ import api from "../../utils/api";
 export default function ClientPackages() {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get("/packages").then(res => setPackages(res.data || [])).finally(() => setLoading(false));
+    api
+      .get("/me/packages")
+      .then((res) => setPackages(res.data || []))
+      .catch(() => setError("Unable to load packages."))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
     <Box>
       <Typography variant="h5" gutterBottom>My Packages</Typography>
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
       <Paper>
         <Table>
           <TableHead>

@@ -61,7 +61,7 @@ const emptyForm = {
 const emptyPackageForm = {
   id: null,
   name: "",
-  service_id: "",
+  service_id: null,
   session_qty: 5,
   price: 0,
   expires_in: "",
@@ -566,17 +566,42 @@ const ServiceManagement = ({ token }) => {
                     <InfoOutlined fontSize="inherit" />
                   </IconButton>
                 </Tooltip>
+                <Button
+                  size="small"
+                  variant="text"
+                  onClick={openPackages}
+                  sx={{ textTransform: "none", fontWeight: 600 }}
+                >
+                  {t("manager.service.dialog.managePackages", "Manage packages")}
+                </Button>
               </Stack>
             }
           />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+            {form.allow_packages
+              ? t(
+                  "manager.service.dialog.allowPackagesOn",
+                  "Clients can redeem prepaid packages for this service."
+                )
+              : t(
+                  "manager.service.dialog.allowPackagesOff",
+                  "Clients will pay normally. Packages won’t be usable for this service."
+                )}
+          </Typography>
+          {form.allow_packages && editing?.id && (packagesOpen || packages.length > 0) ? (
+            packages.some((pkg) => Number(pkg.service_id) === Number(editing.id)) ? null : (
+              <Typography variant="caption" color="warning.main" sx={{ mt: 0.5 }}>
+                {t(
+                  "manager.service.dialog.packageMissing",
+                  "No package template exists for this service yet. Create one in Packages."
+                )}
+              </Typography>
+            )
+          ) : null}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>{t("manager.service.dialog.cancel")}</Button>
-          <Button
-            onClick={save}
-            variant="contained"
-            disabled={Boolean(form.allow_packages && packagesLoading)}
-          >
+          <Button onClick={save} variant="contained">
             {editing ? t("manager.service.dialog.update") : t("manager.service.dialog.create")}
           </Button>
         </DialogActions>
@@ -608,13 +633,13 @@ const ServiceManagement = ({ token }) => {
                 label={t("manager.service.packages.service", "Service")}
                 fullWidth
                 margin="dense"
-                value={packageForm.service_id}
+                value={packageForm.service_id ?? ""}
                 onChange={(event) =>
-                  setPackageForm({ ...packageForm, service_id: event.target.value })
+                  setPackageForm({ ...packageForm, service_id: Number(event.target.value) })
                 }
               >
                 {services.map((svc) => (
-                  <MenuItem key={svc.id} value={svc.id}>
+                  <MenuItem key={svc.id} value={Number(svc.id)}>
                     {svc.name}
                   </MenuItem>
                 ))}
