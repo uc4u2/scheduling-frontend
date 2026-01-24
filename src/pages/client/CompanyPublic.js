@@ -26,6 +26,8 @@ import {
   Paper,
   TextField,
   Link,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import BrushIcon from "@mui/icons-material/Brush";
@@ -448,7 +450,7 @@ const PLACEHOLDER_SITE_TITLES = new Set([
   "FE Test Site",
 ]);
 
-function ClientLoginDialog({ open, onClose, onLoginSuccess }) {
+function ClientLoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
   const dialogPaperSx = {
     backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
     backgroundImage: "none",
@@ -474,6 +476,7 @@ function ClientLoginDialog({ open, onClose, onLoginSuccess }) {
         password,
         role: "client",
         timezone,
+        company_slug: companySlug || undefined,
       });
       if (res.data?.access_token) {
         onLoginSuccess(res.data.access_token);
@@ -621,7 +624,7 @@ function ForgotPasswordDialog({ open, onClose }) {
   );
 }
 
-function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
+function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenForgot, companySlug }) {
   const dialogPaperSx = {
     backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
     backgroundImage: "none",
@@ -633,10 +636,12 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [timezone, setTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
   const [error, setError] = useState("");
+  const [accountExists, setAccountExists] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -653,6 +658,11 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
       setLoading(false);
       return;
     }
+    if (!agreedToTerms) {
+      setError("You must accept the Schedulaa User Agreement to create an account.");
+      setLoading(false);
+      return;
+    }
     try {
       await api.post(`/register`, {
         first_name: firstName,
@@ -662,6 +672,8 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
         password_confirm: passwordConfirm,
         timezone,
         role: "client",
+        company_slug: companySlug || undefined,
+        agreed_to_terms: true,
       });
       const loginRes = await api.post(`/login`, {
         email,
@@ -677,7 +689,13 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
       }
     } catch (err) {
       const data = err.response?.data;
-      if (data?.field_errors) {
+      if (data?.error === "account_exists") {
+        setAccountExists(true);
+        setError(
+          data?.message ||
+            "You already have an account on the Schedulaa platform used by this business. Please log in to continue, or use Forgot password."
+        );
+      } else if (data?.field_errors) {
         const firstFieldError = Object.values(data.field_errors)[0];
         setError(firstFieldError || "Registration failed.");
       } else {
@@ -756,6 +774,24 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
             required
             margin="normal"
           />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+              />
+            }
+            label={
+              <span>
+                I agree to the{" "}
+                <Link href="https://www.schedulaa.com/terms" target="_blank" rel="noopener">
+                  Schedulaa User Agreement
+                </Link>
+                .
+              </span>
+            }
+            sx={{ mt: 1 }}
+          />
           <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
         </form>
       </DialogContent>
@@ -767,6 +803,21 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess }) {
           {loading ? "Signing up..." : "Sign Up"}
         </Button>
       </DialogActions>
+      <DialogContent sx={{ pt: 0 }}>
+        <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
+          <Button size="small" onClick={onOpenLogin}>
+            Already have an account? Log in
+          </Button>
+          <Button size="small" onClick={onOpenForgot}>
+            Forgot password?
+          </Button>
+        </Stack>
+        {accountExists && (
+          <Alert severity="info" sx={{ mt: 1 }}>
+            Please log in to continue. If you don’t remember your password, use “Forgot password”.
+          </Alert>
+        )}
+      </DialogContent>
     </Dialog>
   );
 }
@@ -899,6 +950,7 @@ export default function CompanyPublic({ slugOverride }) {
   const [publishSnack, setPublishSnack] = useState("");
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
+  const [forgotDialogOpen, setForgotDialogOpen] = useState(false);
   const hasDraftChanges = Boolean(settings?.has_unpublished_changes);
   const lastPublishedLabel = useMemo(() => {
     const ts = settings?.branding_published_at;
@@ -2510,12 +2562,23 @@ const siteTitle = useMemo(() => {
         open={loginDialogOpen}
         onClose={() => setLoginDialogOpen(false)}
         onLoginSuccess={handleClientLoginSuccess}
+        companySlug={slug}
       />
       <ClientRegisterDialog
         open={registerDialogOpen}
         onClose={() => setRegisterDialogOpen(false)}
         onRegisterSuccess={handleClientRegisterSuccess}
+        onOpenLogin={() => {
+          setRegisterDialogOpen(false);
+          setLoginDialogOpen(true);
+        }}
+        onOpenForgot={() => {
+          setRegisterDialogOpen(false);
+          setForgotDialogOpen(true);
+        }}
+        companySlug={slug}
       />
+      <ForgotPasswordDialog open={forgotDialogOpen} onClose={() => setForgotDialogOpen(false)} />
 
       {/* Full-screen editor (still rendered only for managers) */}
       {isManagerForCompany && (

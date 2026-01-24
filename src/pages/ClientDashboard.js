@@ -16,7 +16,8 @@ const tabLabels = [
   "Bookings",
   "Packages",
   "Notifications",
-  "Profile"
+  "Profile",
+  "Logout"
 ];
 
 // Map for hash navigation
@@ -27,6 +28,8 @@ const tabHashMap = {
   "#notifications": 3,
   "#profile": 4,
 };
+
+const LOGOUT_TAB_INDEX = 5;
 
 function getRoleFromToken(token) {
   if (!token) return null;
@@ -56,6 +59,23 @@ export default function ClientDashboard() {
     }
   }, [navigate]);
 
+  const handleTabChange = (_, value) => {
+    if (value === LOGOUT_TAB_INDEX) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("clientToken");
+      localStorage.removeItem("role");
+      const params = new URLSearchParams(window.location.search);
+      const siteSlug = params.get("site");
+      if (siteSlug) {
+        window.location.assign("/?page=my-bookings");
+      } else {
+        navigate("/login");
+      }
+      return;
+    }
+    setTab(value);
+  };
+
   return (
     <Box sx={{
       width: "100%",
@@ -66,7 +86,7 @@ export default function ClientDashboard() {
       <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
         <Tabs
           value={tab}
-          onChange={(_, value) => setTab(value)}
+          onChange={handleTabChange}
           centered
           variant="scrollable"
           scrollButtons="auto"

@@ -29,6 +29,7 @@ import {
   CircularProgress,
   ListItemButton,
   Checkbox,
+  FormControlLabel,
   ListItemIcon,
   Chip,
   Paper,
@@ -77,7 +78,7 @@ const normalizeProductOrder = (payload) => {
 
 /* ------------------------------------------------------------------ */
 /* LoginDialog component (unchanged) */
-function LoginDialog({ open, onClose, onLoginSuccess }) {
+function LoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const dialogPaperSx = {
     backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
@@ -119,6 +120,7 @@ function LoginDialog({ open, onClose, onLoginSuccess }) {
         password,
         role: selectedRole,
         timezone,
+        company_slug: companySlug || undefined,
       });
 
       if (selectedRole === "client" && res.data.access_token) {
@@ -284,7 +286,7 @@ function ForgotPasswordDialog({ open, onClose }) {
 
 /* ------------------------------------------------------------------ */
 /* RegisterDialog component (unchanged) */
-function RegisterDialog({ open, onClose, onRegisterSuccess }) {
+function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenForgot, companySlug }) {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
   const dialogPaperSx = {
     backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
@@ -296,19 +298,27 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
   const [lastName, setLastName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [agreedToTerms, setAgreedToTerms] = React.useState(false);
   const [timezone, setTimezone] = React.useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
   const [error, setError] = React.useState("");
+  const [accountExists, setAccountExists] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setAccountExists(false);
     setLoading(true);
 
     if (!firstName || !lastName || !email || !password) {
       setError("All fields are required.");
+      setLoading(false);
+      return;
+    }
+    if (!agreedToTerms) {
+      setError("You must accept the Schedulaa User Agreement to create an account.");
       setLoading(false);
       return;
     }
@@ -319,8 +329,11 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
         last_name: lastName,
         email,
         password,
+        password_confirm: password,
         timezone,
         role: "client",
+        company_slug: companySlug || undefined,
+        agreed_to_terms: true,
       });
       const loginRes = await api.post(`/login`, {
         email,
@@ -335,7 +348,16 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
         setError("Registration succeeded but login failed.");
       }
     } catch (err) {
-      setError(err.response?.data?.error || "Registration failed.");
+      const data = err.response?.data;
+      if (data?.error === "account_exists") {
+        setAccountExists(true);
+        setError(
+          data?.message ||
+            "You already have an account on the Schedulaa platform used by this business. Please log in to continue, or use Forgot password."
+        );
+      } else {
+        setError(data?.error || "Registration failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -408,6 +430,24 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
             value={timezone}
             onChange={setTimezone}
           />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+              />
+            }
+            label={
+              <span>
+                I agree to the{" "}
+                <Link href="https://www.schedulaa.com/terms" target="_blank" rel="noopener">
+                  Schedulaa User Agreement
+                </Link>
+                .
+              </span>
+            }
+            sx={{ mt: 1 }}
+          />
         </form>
       </DialogContent>
 
@@ -424,6 +464,21 @@ function RegisterDialog({ open, onClose, onRegisterSuccess }) {
           {loading ? "Registering..." : "Sign Up"}
         </Button>
       </DialogActions>
+      <DialogContent sx={{ pt: 0 }}>
+        <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center">
+          <Button size="small" onClick={onOpenLogin}>
+            Already have an account? Log in
+          </Button>
+          <Button size="small" onClick={onOpenForgot}>
+            Forgot password?
+          </Button>
+        </Stack>
+        {accountExists && (
+          <Alert severity="info" sx={{ mt: 1 }}>
+            Please log in to continue. If you don’t remember your password, use “Forgot password”.
+          </Alert>
+        )}
+      </DialogContent>
     </Dialog>
   );
 }
@@ -568,6 +623,7 @@ function CheckoutFormCore({
 
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
+  const [forgotDialogOpen, setForgotDialogOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -2202,12 +2258,23 @@ function CheckoutFormCore({
         open={loginDialogOpen}
         onClose={() => setLoginDialogOpen(false)}
         onLoginSuccess={handleLoginSuccess}
+        companySlug={companySlug}
       />
       <RegisterDialog
         open={registerDialogOpen}
         onClose={() => setRegisterDialogOpen(false)}
         onRegisterSuccess={handleRegisterSuccess}
+        onOpenLogin={() => {
+          setRegisterDialogOpen(false);
+          setLoginDialogOpen(true);
+        }}
+        onOpenForgot={() => {
+          setRegisterDialogOpen(false);
+          setForgotDialogOpen(true);
+        }}
+        companySlug={companySlug}
       />
+      <ForgotPasswordDialog open={forgotDialogOpen} onClose={() => setForgotDialogOpen(false)} />
     </Box>
   );
 }

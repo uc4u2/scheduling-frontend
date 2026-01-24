@@ -22,6 +22,7 @@ export default function SettingsClientVideo() {
     jitsi_domain: "https://meet.jit.si",
     room_prefix: "appt",
     stable_room_per_appointment: true,
+    group_share_meeting_link: true,
   });
 
   useEffect(() => {
@@ -90,6 +91,12 @@ export default function SettingsClientVideo() {
             <FormControlLabel
               control={<Switch checked={p.stable_room_per_appointment} onChange={(e)=>setP({ ...p, stable_room_per_appointment: e.target.checked })} />}
               label={t("settings.clientVideo.fields.stableRoom")}
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={<Switch checked={p.group_share_meeting_link} onChange={(e)=>setP({ ...p, group_share_meeting_link: e.target.checked })} />}
+              label={t("settings.clientVideo.fields.groupShare")}
             />
           </Grid>
 

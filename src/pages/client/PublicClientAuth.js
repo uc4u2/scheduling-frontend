@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
-  Box, Paper, Stack, Typography, TextField, Button, Alert, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, Link
+  Box, Paper, Stack, Typography, TextField, Button, Alert, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, Link, Checkbox, FormControlLabel
 } from "@mui/material";
 import { api } from "../../utils/api";
 import { getTenantHostMode } from "../../utils/tenant";
@@ -21,6 +21,7 @@ export default function PublicClientAuth({ slug }) {
   // register form
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
 
   const finish = (token) => {
@@ -47,9 +48,14 @@ export default function PublicClientAuth({ slug }) {
 
   const doRegister = async () => {
     setError(""); setBusy(true);
+    if (!agreedToTerms) {
+      setError("You must accept the Schedulaa User Agreement to create an account.");
+      setBusy(false);
+      return;
+    }
     try {
       await api.post(`/register`, {
-        first_name: first, last_name: last, email, password, timezone: tz, role: "client"
+        first_name: first, last_name: last, email, password, timezone: tz, role: "client", agreed_to_terms: true
       }, { noAuth: true, noCompanyHeader: true });
       // auto-login for convenience
       const { data } = await api.post(`/login`, {
@@ -58,7 +64,15 @@ export default function PublicClientAuth({ slug }) {
       if (!data?.access_token) throw new Error("No token");
       finish(data.access_token);
     } catch (e) {
-      setError(e?.response?.data?.error || "Registration failed.");
+      const data = e?.response?.data;
+      if (data?.error === "account_exists") {
+        setError(
+          data?.message ||
+            "You already have an account on the Schedulaa platform used by this business. Please log in to continue, or use Forgot password."
+        );
+      } else {
+        setError(data?.error || "Registration failed.");
+      }
     } finally { setBusy(false); }
   };
 
@@ -108,6 +122,25 @@ export default function PublicClientAuth({ slug }) {
                 Forgot password?
               </Link>
             </Box>
+          )}
+          {tab === "register" && (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                />
+              }
+              label={
+                <span>
+                  I agree to the{" "}
+                  <Link href="https://www.schedulaa.com/terms" target="_blank" rel="noopener">
+                    Schedulaa User Agreement
+                  </Link>
+                  .
+                </span>
+              }
+            />
           )}
           {tab === "login" ? (
             <Button variant="contained" onClick={doLogin} disabled={busy}>

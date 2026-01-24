@@ -1960,6 +1960,7 @@
           "helper": "Used in room name"
         },
         "stableRoom": "Stable per appointment",
+        "groupShare": "Group sessions share one meeting link (recommended)",
         "includeInEmails": "Include video link in client emails"
       },
       "actions": {

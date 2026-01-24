@@ -2,14 +2,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box, Paper, Typography, Grid, Card, CardContent, Skeleton, Button,
-  Dialog, DialogContent, Divider, Chip, Link, Stack, TextField,
-  IconButton, Tooltip, Alert, LinearProgress
+  Dialog, DialogContent, Divider, Chip, Link, Stack,
+  IconButton, Tooltip
 } from "@mui/material";
-import SendIcon from "@mui/icons-material/Send";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import api from "../../utils/api";
-import BookingChart from "../../components/charts/BookingChart";
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
 
@@ -18,20 +15,6 @@ export default function ClientDashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [packageSummary, setPackageSummary] = useState({ totalCredits: 0, activePackages: 0 });
-  const [packagesLoading, setPackagesLoading] = useState(false);
-
-  // NEW: client signals + messages
-  const [signals, setSignals] = useState(null);            // { ip, city, region, country, tz, user_agent, device, last_channel }
-  const [signalHistory, setSignalHistory] = useState([]);  // recent events
-  const [signalsLoading, setSignalsLoading] = useState(false);
-  const [signalsErr, setSignalsErr] = useState("");
-
-  const [messages, setMessages] = useState([]);            // [{id, from, body, sent_at}]
-  const [msgText, setMsgText] = useState("");
-  const [msgSending, setMsgSending] = useState(false);
-  const [msgErr, setMsgErr] = useState("");
-
   const userTimezone = getUserTimezone();
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
@@ -43,20 +26,13 @@ export default function ClientDashboardOverview() {
 
   function loadEverything() {
     setLoading(true);
-    setSignalsLoading(true);
-    setSignalsErr("");
-    setMsgErr("");
-    setPackagesLoading(true);
     const now = new Date();
 
     // Core cards
     const p1 = Promise.all([
       api.get(`/api/client/bookings`, auth),
-      api.get(`/invoices`, auth),
-      api.get(`/notifications?status=unread`, auth),
-      api.get(`/me/packages`, auth).catch(() => ({ data: [] })),
     ])
-      .then(([bookingsRes, invoicesRes, notifsRes, packagesRes]) => {
+      .then(([bookingsRes]) => {
         const bookings = bookingsRes.data.bookings || [];
         const futureBookings = bookings.filter(b => {
           const tz = b.timezone || userTimezone;
@@ -73,60 +49,22 @@ export default function ClientDashboardOverview() {
             })
           : null;
 
+        const recentBooking = bookings.length ? bookings[0] : null;
+
         setOverview({
           nextBooking,
-          unpaidCount: (invoicesRes.data || []).filter((i) => i.status !== "paid").length,
-          unreadNotifs: (notifsRes.data || []).length,
+          recentBooking,
           bookings,
-        });
-
-        const pkgs = Array.isArray(packagesRes?.data) ? packagesRes.data : [];
-        const totalCredits = pkgs.reduce((sum, pkg) => {
-          const remaining = Number(pkg?.remaining ?? 0);
-          return sum + (Number.isFinite(remaining) ? remaining : 0);
-        }, 0);
-        setPackageSummary({
-          totalCredits,
-          activePackages: pkgs.length,
         });
       })
       .catch(() => {
         // keep the page usable even if one call fails
-        setOverview((prev) => prev || { nextBooking: null, unpaidCount: 0, unreadNotifs: 0, bookings: [] });
-        setPackageSummary({ totalCredits: 0, activePackages: 0 });
+        setOverview((prev) => prev || { nextBooking: null, bookings: [] });
       })
       .finally(() => {
         setLoading(false);
-        setPackagesLoading(false);
       });
-
-    // Client telemetry (IP/geo/device/last channel)
-    const p2 = Promise.all([
-      api.get(`/api/client/telemetry`, auth).catch(() => null),
-      api.get(`/api/client/telemetry/history?limit=5`, auth).catch(() => null),
-    ])
-      .then(([sigRes, histRes]) => {
-        if (!sigRes?.data) throw new Error("telemetry not available");
-        setSignals(sigRes.data || null);
-        setSignalHistory(histRes?.data?.events || []);
-      })
-      .catch(() => {
-        setSignals(null);
-        setSignalHistory([]);
-        setSignalsErr("Client signals not available yet.");
-      })
-      .finally(() => setSignalsLoading(false));
-
-    // Client messages (thread with the company/manager)
-    const p3 = api
-      .get(`/api/client/messages?limit=20`, auth)
-      .then((r) => setMessages(r?.data?.messages || []))
-      .catch(() => {
-        setMessages([]);
-        setMsgErr("Messages are not available.");
-      });
-
-    return Promise.allSettled([p1, p2, p3]);
+    return Promise.allSettled([p1]);
   }
 
   const handleViewDetails = (booking) => {
@@ -134,66 +72,7 @@ export default function ClientDashboardOverview() {
     setDetailOpen(true);
   };
 
-  // Send a message to manager (will also email from the server side if you wire it to do so)
-  const sendMessage = async () => {
-    const body = (msgText || "").trim();
-    if (!body) return;
-    setMsgSending(true);
-    setMsgErr("");
-    try {
-      const { data } = await api.post(`/api/client/messages`, { body }, auth);
-      // Optimistic append
-      const newMsg = data?.message || {
-        id: `tmp_${Date.now()}`,
-        from: "client",
-        body,
-        sent_at: new Date().toISOString(),
-      };
-      setMessages((prev) => [newMsg, ...prev]);
-      setMsgText("");
-    } catch (e) {
-      setMsgErr(e?.response?.data?.error || "Failed to send message");
-    } finally {
-      setMsgSending(false);
-    }
-  };
-
-  // Ask browser for location and push to server
-  const shareLocation = () => {
-    if (!navigator.geolocation) {
-      setSignalsErr("Geolocation is not supported by your browser.");
-      return;
-    }
-    setSignalsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          await api.post(`/api/client/telemetry/geo`, {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            tz: userTimezone,
-          }, auth);
-          await loadEverything(); // refresh signals/history
-        } catch {
-          setSignalsErr("Failed to save your location.");
-        } finally {
-          setSignalsLoading(false);
-        }
-      },
-      () => {
-        setSignalsErr("Location permission denied.");
-        setSignalsLoading(false);
-      },
-      { enableHighAccuracy: false, timeout: 8000 }
-    );
-  };
-
   // Small helpers
-  const chip = (label, color = "default") => (
-    <Chip size="small" label={label} color={color} sx={{ mr: 1, mb: 1 }} />
-  );
-
   return (
     <Box sx={{ p: 2 }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
@@ -241,6 +120,37 @@ export default function ClientDashboardOverview() {
                     View Details
                   </Button>
                 </>
+              ) : overview?.recentBooking ? (
+                <>
+                  {(() => {
+                    const b = overview.recentBooking;
+                    const tz = b.timezone || userTimezone;
+                    const iso = isoFromParts(b.date, b.start_time, tz);
+                    const dateObj = new Date(iso);
+                    return (
+                      <>
+                        <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
+                          Most recent booking
+                        </Typography>
+                        <Typography variant="h6">
+                          {formatDate(dateObj)} {formatTime(dateObj)}
+                        </Typography>
+                        <Typography variant="body2">
+                          {b.service} <br />
+                          With: {b.recruiter}
+                        </Typography>
+                      </>
+                    );
+                  })()}
+                  <Button
+                    size="small"
+                    sx={{ mt: 1 }}
+                    variant="outlined"
+                    onClick={() => handleViewDetails(overview.recentBooking)}
+                  >
+                    View Details
+                  </Button>
+                </>
               ) : (
                 <Typography>No upcoming bookings</Typography>
               )}
@@ -248,172 +158,7 @@ export default function ClientDashboardOverview() {
           </Card>
         </Grid>
 
-        {/* Unread Notifications */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={4}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary">Unread Notifications</Typography>
-              {loading ? (
-                <Skeleton height={60} />
-              ) : (
-                <Typography variant="h4" color={overview?.unreadNotifs > 0 ? "primary" : "text.primary"}>
-                  {overview?.unreadNotifs || 0}
-                </Typography>
-              )}
-              <Button href="/dashboard?tab=notifications" size="small" sx={{ mt: 1 }}>View All</Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Package Credits */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={4}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary">Package Credits</Typography>
-              {packagesLoading ? (
-                <Skeleton height={60} />
-              ) : (
-                <>
-                  <Typography variant="h4">
-                    {packageSummary.totalCredits || 0}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                    {packageSummary.activePackages || 0} package{packageSummary.activePackages === 1 ? "" : "s"} active
-                  </Typography>
-                </>
-              )}
-              <Button href="/dashboard#packages" size="small" sx={{ mt: 1 }}>
-                View Packages
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* NEW — Client Signals (IP/Geo/Device/Channel) */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={4}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                <Typography variant="subtitle2" color="text.secondary">Client Signals</Typography>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<MyLocationIcon />}
-                    onClick={shareLocation}
-                  >
-                    Share Location
-                  </Button>
-                </Stack>
-              </Stack>
-
-              {signalsLoading && <LinearProgress sx={{ mb: 1 }} />}
-
-              {signalsErr && <Alert severity="warning" sx={{ mb: 1 }}>{signalsErr}</Alert>}
-
-              {!signals ? (
-                <Typography variant="body2" color="text.secondary">
-                  We’ll show your IP, city, timezone, and recent booking channel here once available.
-                </Typography>
-              ) : (
-                <>
-                  <Stack direction="row" flexWrap="wrap" sx={{ mb: 1 }}>
-                    {signals.ip && chip(`IP: ${signals.ip}`, "default")}
-                    {signals.city && chip(`${signals.city}${signals.region ? ", " + signals.region : ""}`, "default")}
-                    {signals.country && chip(signals.country, "default")}
-                    {signals.tz && chip(`TZ: ${signals.tz}`, "info")}
-                    {signals.device && chip(signals.device, "default")}
-                    {signals.user_agent && chip("UA", "default")}
-                    {signals.last_channel && chip(`Channel: ${signals.last_channel}`, "primary")}
-                  </Stack>
-
-                  {signalHistory?.length > 0 && (
-                    <>
-                      <Divider sx={{ my: 1 }} />
-                      <Typography variant="caption" color="text.secondary">Recent activity</Typography>
-                      <Stack spacing={0.75} sx={{ mt: 0.5 }}>
-                        {signalHistory.map((e, i) => (
-                          <Typography key={i} variant="body2">
-                            • {e.event || "event"} — {e.city ? `${e.city}${e.region ? ", " + e.region : ""}` : "—"} · {e.country || "—"} · {e.tz || "—"} · {new Date(e.at).toLocaleString()}
-                          </Typography>
-                        ))}
-                      </Stack>
-                    </>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* NEW — Messages with Manager */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={4}>
-            <CardContent>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                Messages
-              </Typography>
-
-              {msgErr && <Alert severity="warning" sx={{ mb: 1 }}>{msgErr}</Alert>}
-
-              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Type a message to your provider/manager…"
-                  value={msgText}
-                  onChange={(e) => setMsgText(e.target.value)}
-                />
-                <Button
-                  variant="contained"
-                  endIcon={<SendIcon />}
-                  onClick={sendMessage}
-                  disabled={msgSending || !msgText.trim()}
-                >
-                  Send
-                </Button>
-              </Stack>
-
-              {msgSending && <LinearProgress sx={{ mb: 1 }} />}
-
-              {messages.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">No messages yet.</Typography>
-              ) : (
-                <Stack spacing={1} sx={{ maxHeight: 260, overflow: "auto", pr: 0.5 }}>
-                  {messages.map((m) => (
-                    <Paper
-                      key={m.id}
-                      elevation={m.from === "manager" ? 3 : 1}
-                      sx={{
-                        p: 1.25,
-                        borderLeft: m.from === "manager" ? "4px solid #1976d2" : "4px solid transparent",
-                        bgcolor: m.from === "manager" ? "rgba(25,118,210,0.05)" : undefined,
-                      }}
-                    >
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Typography variant="subtitle2">
-                          {m.from === "manager" ? "Manager" : "You"}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(m.sent_at).toLocaleString()}
-                        </Typography>
-                      </Stack>
-                      <Typography variant="body2" sx={{ mt: 0.5 }}>{m.body}</Typography>
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Booking Chart */}
-        <Grid item xs={12}>
-          <Paper elevation={2} sx={{ p: 2, mt: 1 }}>
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>Booking Activity</Typography>
-            <BookingChart bookings={overview?.bookings || []} loading={loading} />
-          </Paper>
-        </Grid>
+        {/* Overview trimmed to booking card only */}
       </Grid>
 
       {/* Booking Details Dialog */}
