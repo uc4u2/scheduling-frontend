@@ -36,7 +36,14 @@ import { useNavWithEmbed } from "../../embed";
 import PublicPageShell from "./PublicPageShell";
 import { getUserTimezone } from "../../utils/timezone";
 import { getTenantHostMode } from "../../utils/tenant";
-import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel, slotIsFullGroup } from "../../utils/bookingSlots";
+import {
+  resolveSeatsLeft,
+  slotIsAvailable,
+  slotSeatsLabel,
+  slotIsFullGroup,
+  buildClientBookingKey,
+  clientBookedSlot,
+} from "../../utils/bookingSlots";
 
 /* ───────────────── helpers ───────────────── */
 /** Build "cart" JSON for the availability endpoint (filter by date and optional artist) */
@@ -209,6 +216,7 @@ export default function ServiceDetails({ slugOverride }) {
   const [selectionLock, setSelectionLock] = useState(null); // 'auto' | 'user' | null
   const [flowStage, setFlowStage] = useState("idle");
   const [closeGuardActive, setCloseGuardActive] = useState(false);
+  const [clientBookedSet, setClientBookedSet] = useState(new Set());
   /* base data */
   const [service, setService] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -352,6 +360,30 @@ export default function ServiceDetails({ slugOverride }) {
     setTimeSheetOpen(false);
   }, [calendarOpen]);
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setClientBookedSet(new Set());
+      return;
+    }
+    api
+      .get("/api/client/bookings", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const list = res.data?.bookings || res.data || [];
+        const next = new Set();
+        list.forEach((b) => {
+          if (!b?.service_id || !b?.recruiter_id || !b?.date || !b?.start_time) return;
+          next.add(
+            buildClientBookingKey(b.service_id, b.recruiter_id, b.date, b.start_time)
+          );
+        });
+        setClientBookedSet(next);
+      })
+      .catch(() => setClientBookedSet(new Set()));
+  }, []);
+
   /* helper: fetch availability for one employee + one date (canonical route, with safe fallback) */
   const fetchAvail = async (empId, dateStr) => {
     const tz = userTz || "UTC";
@@ -438,6 +470,9 @@ export default function ServiceDetails({ slugOverride }) {
                 full_name: emp.full_name,
                 timezone: tz,
                 start_time_local: startLocal,
+                start_time: s.start_time || startLocal,
+                date: s.date || selectedDateStr,
+                service_id: s.service_id || serviceId,
                 profile_image_url: profileImage,
                 mode: s.mode,
                 seats_left: seatsLeft,
@@ -456,17 +491,20 @@ export default function ServiceDetails({ slugOverride }) {
               curr.seats_left = Math.min(curr.seats_left, seatsLeft);
             }
           }
-          if (!curr.providers.some((p) => p.id === emp.id)) {
-            curr.providers.push({
-              id: emp.id,
-              full_name: emp.full_name,
-              timezone: tz,
+            if (!curr.providers.some((p) => p.id === emp.id)) {
+              curr.providers.push({
+                id: emp.id,
+                full_name: emp.full_name,
+                timezone: tz,
                 start_time_local: startLocal,
+                start_time: s.start_time || startLocal,
+                date: s.date || selectedDateStr,
+                service_id: s.service_id || serviceId,
                 profile_image_url: profileImage,
                 mode: s.mode,
                 seats_left: seatsLeft,
-            });
-          }
+              });
+            }
         }
       }
     }
@@ -795,6 +833,13 @@ export default function ServiceDetails({ slugOverride }) {
                 <Button
                   variant="contained"
                   size="small"
+                  disabled={clientBookedSlot(
+                    clientBookedSet,
+                    p.service_id || serviceId,
+                    p.id,
+                    p.date || selectedDate,
+                    p.start_time
+                  )}
                   onClick={() => handleArtistSelect(p)}
                   sx={{
                     ...bookingButtonSx,
@@ -846,20 +891,35 @@ export default function ServiceDetails({ slugOverride }) {
       >
         {daySlots.map((s) => {
           const selected = s.key === selectedTimeKey;
+          const alreadyBooked = Array.isArray(s.providers)
+            ? s.providers.some((p) =>
+                clientBookedSlot(
+                  clientBookedSet,
+                  p.service_id || serviceId,
+                  p.id,
+                  p.date || selectedDate,
+                  p.start_time
+                )
+              )
+            : false;
           return (
             <Button
               key={s.key}
               size="small"
               onClick={() => selectTimeSlot(s)}
+              disabled={alreadyBooked}
               sx={buildTimeChipSx(selected, variant)}
               title={
-                s.count > 1
+                alreadyBooked
+                  ? "You already booked this slot"
+                  : s.count > 1
                   ? `${s.count} providers available at this time`
                   : "1 provider available at this time"
               }
             >
               {timeFromUTCForViewer(s.start_utc)}
               {s.count > 1 ? ` • ${s.count}` : ""}
+              {alreadyBooked ? " • booked" : ""}
               {selected && s.mode === "group" && slotSeatsLabel(s) ? (
                 <>
                   {slotSeatsLabel(s)}

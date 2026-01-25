@@ -32,3 +32,11 @@ export const slotIsFullGroup = (slot) => {
   const seatsLeft = resolveSeatsLeft(slot);
   return Number.isFinite(seatsLeft) && seatsLeft <= 0;
 };
+
+export const buildClientBookingKey = (serviceId, recruiterId, date, startTime) =>
+  [serviceId, recruiterId, date, startTime].join("|");
+
+export const clientBookedSlot = (bookingSet, serviceId, recruiterId, date, startTime) => {
+  if (!bookingSet || !bookingSet.size) return false;
+  return bookingSet.has(buildClientBookingKey(serviceId, recruiterId, date, startTime));
+};

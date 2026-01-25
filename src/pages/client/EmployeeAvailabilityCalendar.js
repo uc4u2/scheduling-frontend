@@ -23,7 +23,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
-import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel, slotIsFullGroup } from "../../utils/bookingSlots";
+import {
+  resolveSeatsLeft,
+  slotIsAvailable,
+  slotSeatsLabel,
+  slotIsFullGroup,
+  buildClientBookingKey,
+  clientBookedSlot,
+} from "../../utils/bookingSlots";
 
 /* ───────────────── helpers ────────────────── */
 const ymd = (d) =>
@@ -105,6 +112,7 @@ export default function EmployeeAvailabilityCalendar({
   const [priceInfo, setPriceInfo] = useState(null); // optional: fetched price
   const [timeSheetOpen, setTimeSheetOpen] = useState(false);
   const [timeAnnounce, setTimeAnnounce] = useState("");
+  const [clientBookedSet, setClientBookedSet] = useState(new Set());
   const timesRef = useRef(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -216,6 +224,30 @@ export default function EmployeeAvailabilityCalendar({
     };
     run();
   }, [companySlug, artistId, serviceId, departmentId, selectedDate]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setClientBookedSet(new Set());
+      return;
+    }
+    api
+      .get("/api/client/bookings", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const list = res.data?.bookings || res.data || [];
+        const next = new Set();
+        list.forEach((b) => {
+          if (!b?.service_id || !b?.recruiter_id || !b?.date || !b?.start_time) return;
+          next.add(
+            buildClientBookingKey(b.service_id, b.recruiter_id, b.date, b.start_time)
+          );
+        });
+        setClientBookedSet(next);
+      })
+      .catch(() => setClientBookedSet(new Set()));
+  }, []);
 
   useEffect(() => {
     const iso = isoFromParts(
@@ -379,6 +411,13 @@ export default function EmployeeAvailabilityCalendar({
         const seatsLeft = resolveSeatsLeft(s);
         const isFullGroup = slotIsFullGroup(s);
         const seatsLabel = slotSeatsLabel(s);
+        const alreadyBooked = clientBookedSlot(
+          clientBookedSet,
+          serviceId,
+          artistId,
+          selectedDate,
+          s.start_time
+        );
 
         return (
           <Button
@@ -386,13 +425,13 @@ export default function EmployeeAvailabilityCalendar({
             variant={selectedTime === s.start_time ? "contained" : "outlined"}
             size="small"
             onClick={() => {
-              if (isFullGroup) return;
+              if (isFullGroup || alreadyBooked) return;
               setSelectedTime(s.start_time);
               if (isMobile) {
                 setTimeSheetOpen(false);
               }
             }}
-            disabled={isFullGroup}
+            disabled={isFullGroup || alreadyBooked}
             data-time-chip={idx === 0 ? "1" : undefined}
             fullWidth={variant === "drawer"}
             sx={{
@@ -415,6 +454,7 @@ export default function EmployeeAvailabilityCalendar({
           >
             {label}
             {s.mode === "group" && seatsLabel ? seatsLabel : ""}
+            {alreadyBooked ? " • booked" : ""}
           </Button>
         );
       })}

@@ -249,6 +249,14 @@ export default function ClientBookings() {
                   size="small"
                 />
               </Typography>
+              {selected.meeting_link && (
+                <Typography sx={{ mt: 1 }}>
+                  <b>Video:</b>{" "}
+                  <Link href={selected.meeting_link} target="_blank" rel="noreferrer">
+                    Join video
+                  </Link>
+                </Typography>
+              )}
 
               <Divider sx={{ my: 2 }} />
 
