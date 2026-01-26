@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import api from "../../utils/api";
 import { useNavigate, useLocation } from "react-router-dom";
+import { tenantBaseUrl } from "../../utils/tenant";
 
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
@@ -38,6 +39,47 @@ export default function ClientBookings() {
     );
 
   const userTimezone = getUserTimezone();
+  const buildPublicLink = (rawLink) => {
+    if (!rawLink) return null;
+    const fallbackSlug = selected?.company_slug || "";
+    const fallbackBase = tenantBaseUrl({ slug: fallbackSlug });
+    const originBase = (typeof window !== "undefined" && window.location.origin) || "";
+    const companyBase = selected?.company_public_url || originBase || fallbackBase;
+    const slugPrefix = fallbackSlug ? `/${fallbackSlug}` : "";
+
+    try {
+      const linkUrl = new URL(rawLink);
+      const baseUrl = new URL(companyBase);
+      const host = linkUrl.host.toLowerCase();
+      if (host === "schedulaa.com" || host === "www.schedulaa.com") {
+        linkUrl.protocol = baseUrl.protocol;
+        linkUrl.host = baseUrl.host;
+        if (
+          slugPrefix &&
+          baseUrl.host !== "schedulaa.com" &&
+          baseUrl.host !== "www.schedulaa.com" &&
+          linkUrl.pathname.startsWith(slugPrefix + "/")
+        ) {
+          linkUrl.pathname = linkUrl.pathname.replace(slugPrefix, "");
+        }
+        return linkUrl.toString();
+      }
+      return rawLink;
+    } catch {
+      if (rawLink.startsWith("/")) {
+        if (
+          slugPrefix &&
+          companyBase &&
+          !companyBase.includes("schedulaa.com") &&
+          rawLink.startsWith(slugPrefix + "/")
+        ) {
+          return `${companyBase}${rawLink.replace(slugPrefix, "")}`;
+        }
+        return `${companyBase}${rawLink}`;
+      }
+      return rawLink;
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -294,7 +336,7 @@ export default function ClientBookings() {
                     <Button
                       variant="outlined"
                       size="small"
-                      href={selected.reschedule_link}
+                      href={buildPublicLink(selected.reschedule_link)}
                       target="_blank"
                       rel="noopener"
                     >
@@ -306,7 +348,7 @@ export default function ClientBookings() {
                       variant="outlined"
                       color="error"
                       size="small"
-                      href={selected.cancel_link}
+                      href={buildPublicLink(selected.cancel_link)}
                       target="_blank"
                       rel="noopener"
                     >
