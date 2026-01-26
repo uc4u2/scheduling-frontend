@@ -44,7 +44,13 @@ export default function ClientBookings() {
     const fallbackSlug = selected?.company_slug || "";
     const fallbackBase = tenantBaseUrl({ slug: fallbackSlug });
     const originBase = (typeof window !== "undefined" && window.location.origin) || "";
-    const companyBase = selected?.company_public_url || originBase || fallbackBase;
+    const publicUrl = selected?.company_public_url || "";
+    const preferOrigin =
+      originBase &&
+      publicUrl &&
+      (publicUrl.includes("schedulaa.com") || publicUrl.includes("www.schedulaa.com")) &&
+      !originBase.includes("schedulaa.com");
+    const companyBase = preferOrigin ? originBase : publicUrl || originBase || fallbackBase;
     const slugPrefix = fallbackSlug ? `/${fallbackSlug}` : "";
 
     try {
@@ -75,7 +81,15 @@ export default function ClientBookings() {
     if (!rawLink) return null;
     const slug = booking?.company_slug || "";
     const originBase = (typeof window !== "undefined" && window.location.origin) || "";
-    const base = booking?.company_public_url || (originBase ? `${originBase}${slug ? `/${slug}` : ""}` : "");
+    const publicUrl = booking?.company_public_url || "";
+    const preferOrigin =
+      originBase &&
+      publicUrl &&
+      (publicUrl.includes("schedulaa.com") || publicUrl.includes("www.schedulaa.com")) &&
+      !originBase.includes("schedulaa.com");
+    const base =
+      (preferOrigin ? originBase : publicUrl) ||
+      (originBase ? `${originBase}${slug ? `/${slug}` : ""}` : "");
     const slugPrefix = slug ? `/${slug}` : "";
 
     try {
