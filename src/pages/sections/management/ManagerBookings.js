@@ -28,6 +28,7 @@ import {
   Menu as MuiMenu,
   Backdrop,
   InputAdornment,
+  Link,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -1379,6 +1380,14 @@ const RowActions = ({ row }) => {
                   <Typography variant="body2" color="text.secondary">
                     {collectBooking?.client?.email || "—"}
                   </Typography>
+                  {collectBooking?.meeting_link ? (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      <b>Video:</b>{" "}
+                      <Link href={collectBooking.meeting_link} target="_blank" rel="noopener">
+                        Join meeting
+                      </Link>
+                    </Typography>
+                  ) : null}
                 </Box>
                 <TextField
                   label="Base total"
@@ -1584,8 +1593,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
-
 
 
 
