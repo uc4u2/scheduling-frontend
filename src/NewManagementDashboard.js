@@ -718,7 +718,7 @@ const AvailableShiftsPanel = ({ token, openFullScreenOnMount = false, onCloseFul
 /* ─────────────────────────────────────────────────────────
    BookingCheckoutPanel — calendar + quick actions
 ─────────────────────────────────────────────────────────── */
-const BookingCheckoutPanel = ({ token }) => {
+const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -744,6 +744,10 @@ const BookingCheckoutPanel = ({ token }) => {
   const [recruiters, setRecruiters] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const isManager = Boolean(currentUserInfo?.is_manager);
+  const canManageShifts = Boolean(currentUserInfo?.can_manage_shifts);
+  const canCollectPaymentsSelf = Boolean(currentUserInfo?.can_collect_payments_self);
+  const isSelfOnly = canCollectPaymentsSelf && !isManager && !canManageShifts;
 
   const statusColor = (status) => {
     const key = String(status || "").toLowerCase();
@@ -761,6 +765,11 @@ const BookingCheckoutPanel = ({ token }) => {
   const toCents = (val) => Math.round(parseAmount(val) * 100);
 
   const loadFilters = async () => {
+    if (isSelfOnly) {
+      setDepartments([]);
+      setRecruiters([]);
+      return;
+    }
     try {
       const [deptRes, recruiterRes] = await Promise.all([
         api.get("/api/departments"),
@@ -803,6 +812,13 @@ const BookingCheckoutPanel = ({ token }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  useEffect(() => {
+    if (!isSelfOnly) return;
+    if (currentUserInfo?.id) {
+      setSelectedRecruiter(String(currentUserInfo.id));
+    }
+  }, [isSelfOnly, currentUserInfo]);
+
   const recruiterDeptById = useMemo(() => {
     const map = new Map();
     recruiters.forEach((r) => {
@@ -814,6 +830,7 @@ const BookingCheckoutPanel = ({ token }) => {
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => {
       const recruiterId = String(b?.recruiter?.id || b?.recruiter_id || "");
+      if (isSelfOnly && recruiterId !== String(currentUserInfo?.id || "")) return false;
       if (selectedRecruiter && recruiterId !== String(selectedRecruiter)) return false;
       if (selectedDepartment) {
         const deptId = recruiterDeptById.get(recruiterId) || "";
@@ -1067,38 +1084,46 @@ const BookingCheckoutPanel = ({ token }) => {
           </Stack>
         </Stack>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
-          <FormControl sx={{ minWidth: 220 }}>
-            <InputLabel id="booking-checkout-department">Department</InputLabel>
-            <Select
-              labelId="booking-checkout-department"
-              value={selectedDepartment}
-              label="Department"
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-            >
-              <MenuItem value="">All Departments</MenuItem>
-              {departments.map((dept) => (
-                <MenuItem key={dept.id} value={String(dept.id)}>
-                  {dept.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl sx={{ minWidth: 220 }}>
-            <InputLabel id="booking-checkout-employee">Employee</InputLabel>
-            <Select
-              labelId="booking-checkout-employee"
-              value={selectedRecruiter}
-              label="Employee"
-              onChange={(e) => setSelectedRecruiter(e.target.value)}
-            >
-              <MenuItem value="">All Employees</MenuItem>
-              {recruiters.map((rec) => (
-                <MenuItem key={rec.id} value={String(rec.id)}>
-                  {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          {isSelfOnly ? (
+            <Alert severity="info" sx={{ py: 1, width: "100%" }}>
+              Showing only your bookings.
+            </Alert>
+          ) : (
+            <>
+              <FormControl sx={{ minWidth: 220 }}>
+                <InputLabel id="booking-checkout-department">Department</InputLabel>
+                <Select
+                  labelId="booking-checkout-department"
+                  value={selectedDepartment}
+                  label="Department"
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                >
+                  <MenuItem value="">All Departments</MenuItem>
+                  {departments.map((dept) => (
+                    <MenuItem key={dept.id} value={String(dept.id)}>
+                      {dept.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 220 }}>
+                <InputLabel id="booking-checkout-employee">Employee</InputLabel>
+                <Select
+                  labelId="booking-checkout-employee"
+                  value={selectedRecruiter}
+                  label="Employee"
+                  onChange={(e) => setSelectedRecruiter(e.target.value)}
+                >
+                  <MenuItem value="">All Employees</MenuItem>
+                  {recruiters.map((rec) => (
+                    <MenuItem key={rec.id} value={String(rec.id)}>
+                      {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </>
+          )}
         </Stack>
 
         {error && <Alert severity="error">{error}</Alert>}
@@ -1456,6 +1481,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   const canManageOnboarding = Boolean(currentUserInfo?.can_manage_onboarding);
   const canManageOnboardingLimited = Boolean(currentUserInfo?.can_manage_onboarding_limited);
   const canManageShifts = Boolean(currentUserInfo?.can_manage_shifts);
+  const canCollectPaymentsSelf = Boolean(currentUserInfo?.can_collect_payments_self);
   const canManagePayroll = Boolean(currentUserInfo?.can_manage_payroll);
   const hasHrAccess = isManager || canManageOnboarding || canManageOnboardingLimited;
   const hasSupervisorAccess = isManager || canManageShifts;
@@ -1467,7 +1493,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     if (hasHrAccess) allowedGroups.add("employee-group");
     if (canManageShifts) allowedGroups.add("shifts-group");
     if (canManagePayroll) allowedGroups.add("payroll-group");
-    return menuConfig
+    const base = menuConfig
       .filter((item) => allowedGroups.has(item.key))
       .map((item) => {
         if (item.key === "employee-group") {
@@ -1489,7 +1515,13 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         }
         return item;
       });
-  }, [isManager, hasHrAccess, canManageShifts, canManagePayroll]);
+    const allowCheckout = canManageShifts || canCollectPaymentsSelf;
+    if (allowCheckout) {
+      const checkoutItem = menuConfig.find((item) => item.key === "booking-checkout");
+      if (checkoutItem) base.push(checkoutItem);
+    }
+    return base;
+  }, [isManager, hasHrAccess, canManageShifts, canCollectPaymentsSelf, canManagePayroll]);
 
   const menuItems = useMemo(
     () =>
@@ -1841,6 +1873,36 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             ? {
                 ...emp,
                 can_manage_payroll: !enabled,
+              }
+            : emp
+        )
+      );
+    }
+  };
+
+  const handlePaymentSelfToggle = async (id, enabled) => {
+    setEmployees((prev) =>
+      prev.map((emp) =>
+        emp.id === id
+          ? {
+              ...emp,
+              can_collect_payments_self: enabled,
+            }
+          : emp
+      )
+    );
+    try {
+      await api.patch(`/manager/recruiters/${id}`, { can_collect_payments_self: enabled });
+      setMessage("Payment access updated.");
+      fetchEmployees();
+    } catch {
+      setError("Failed to update payment access.");
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === id
+            ? {
+                ...emp,
+                can_collect_payments_self: !enabled,
               }
             : emp
         )
@@ -2393,6 +2455,27 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                               <Stack direction="row" spacing={1} alignItems="center">
                                 <Checkbox
                                   size="small"
+                                  checked={Boolean(e.can_collect_payments_self)}
+                                  onChange={(ev) =>
+                                    handlePaymentSelfToggle(e.id, ev.target.checked)
+                                  }
+                                />
+                                <Typography variant="body2">Collect payments (self only)</Typography>
+                                <Tooltip
+                                  title="Allow this employee to collect payments for their own bookings only."
+                                  placement="top"
+                                >
+                                  <IconButton size="small" aria-label="Collect payments access help">
+                                    <InfoOutlined fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            )}
+
+                            {isManager && (
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Checkbox
+                                  size="small"
                                   checked={Boolean(e.can_manage_payroll)}
                                   onChange={(ev) =>
                                     handlePayrollAccessToggle(e.id, ev.target.checked)
@@ -2510,7 +2593,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
         return <SecondNewManagementDashboard token={token} />;
 
       case "booking-checkout":
-        return <BookingCheckoutPanel token={token} />;
+        return <BookingCheckoutPanel token={token} currentUserInfo={currentUserInfo} />;
 
       case "payments-hub":
         return (
