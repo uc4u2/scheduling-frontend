@@ -54,12 +54,7 @@ export default function ClientBookings() {
       if (host === "schedulaa.com" || host === "www.schedulaa.com") {
         linkUrl.protocol = baseUrl.protocol;
         linkUrl.host = baseUrl.host;
-        if (
-          slugPrefix &&
-          baseUrl.host !== "schedulaa.com" &&
-          baseUrl.host !== "www.schedulaa.com" &&
-          linkUrl.pathname.startsWith(slugPrefix + "/")
-        ) {
+        if (slugPrefix && baseUrl.pathname === "/" && linkUrl.pathname.startsWith(slugPrefix + "/")) {
           linkUrl.pathname = linkUrl.pathname.replace(slugPrefix, "");
         }
         return linkUrl.toString();
@@ -67,15 +62,41 @@ export default function ClientBookings() {
       return rawLink;
     } catch {
       if (rawLink.startsWith("/")) {
-        if (
-          slugPrefix &&
-          companyBase &&
-          !companyBase.includes("schedulaa.com") &&
-          rawLink.startsWith(slugPrefix + "/")
-        ) {
+        if (slugPrefix && companyBase && !companyBase.includes("schedulaa.com") && rawLink.startsWith(slugPrefix + "/")) {
           return `${companyBase}${rawLink.replace(slugPrefix, "")}`;
         }
         return `${companyBase}${rawLink}`;
+      }
+      return rawLink;
+    }
+  };
+
+  const normalizeBookingLink = (rawLink, booking) => {
+    if (!rawLink) return null;
+    const slug = booking?.company_slug || "";
+    const originBase = (typeof window !== "undefined" && window.location.origin) || "";
+    const base = booking?.company_public_url || (originBase ? `${originBase}${slug ? `/${slug}` : ""}` : "");
+    const slugPrefix = slug ? `/${slug}` : "";
+
+    try {
+      const linkUrl = new URL(rawLink);
+      const baseUrl = new URL(base || originBase || rawLink);
+      const host = linkUrl.host.toLowerCase();
+      if (host === "schedulaa.com" || host === "www.schedulaa.com") {
+        linkUrl.protocol = baseUrl.protocol;
+        linkUrl.host = baseUrl.host;
+        if (slugPrefix && baseUrl.pathname === "/" && linkUrl.pathname.startsWith(slugPrefix + "/")) {
+          linkUrl.pathname = linkUrl.pathname.replace(slugPrefix, "");
+        }
+        return linkUrl.toString();
+      }
+      return rawLink;
+    } catch {
+      if (rawLink.startsWith("/")) {
+        if (slugPrefix && base && !base.includes("schedulaa.com") && rawLink.startsWith(slugPrefix + "/")) {
+          return `${base}${rawLink.replace(slugPrefix, "")}`;
+        }
+        return base ? `${base}${rawLink}` : rawLink;
       }
       return rawLink;
     }
@@ -89,7 +110,13 @@ export default function ClientBookings() {
       })
       .then((res) => {
         const data = res.data.bookings || res.data || [];
-        setBookings(data);
+        setBookings(
+          data.map((booking) => ({
+            ...booking,
+            reschedule_link: normalizeBookingLink(booking.reschedule_link, booking),
+            cancel_link: normalizeBookingLink(booking.cancel_link, booking),
+          }))
+        );
       })
       .catch((err) => console.error("Failed to load bookings:", err));
   }, []);
@@ -101,7 +128,15 @@ export default function ClientBookings() {
         .get("/api/client/bookings", {
           headers: { Authorization: 'Bearer ' + token() },
         })
-        .then((res) => setBookings(res.data.bookings || res.data || []))
+        .then((res) =>
+          setBookings(
+            (res.data.bookings || res.data || []).map((booking) => ({
+              ...booking,
+              reschedule_link: normalizeBookingLink(booking.reschedule_link, booking),
+              cancel_link: normalizeBookingLink(booking.cancel_link, booking),
+            }))
+          )
+        )
         .catch((err) => console.error("Failed to load bookings:", err));
     };
 
