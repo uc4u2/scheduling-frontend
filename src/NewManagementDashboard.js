@@ -740,6 +740,10 @@ const BookingCheckoutPanel = ({ token }) => {
   const [offlineMethod, setOfflineMethod] = useState("cash");
   const [offlineNote, setOfflineNote] = useState("");
   const [baseLocked, setBaseLocked] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [recruiters, setRecruiters] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [selectedRecruiter, setSelectedRecruiter] = useState("");
 
   const statusColor = (status) => {
     const key = String(status || "").toLowerCase();
@@ -755,6 +759,27 @@ const BookingCheckoutPanel = ({ token }) => {
   };
 
   const toCents = (val) => Math.round(parseAmount(val) * 100);
+
+  const loadFilters = async () => {
+    try {
+      const [deptRes, recruiterRes] = await Promise.all([
+        api.get("/api/departments"),
+        api.get("/manager/recruiters"),
+      ]);
+      const deptList = Array.isArray(deptRes.data) ? deptRes.data : [];
+      const recList = Array.isArray(recruiterRes.data?.recruiters)
+        ? recruiterRes.data.recruiters
+        : Array.isArray(recruiterRes.data)
+        ? recruiterRes.data
+        : [];
+      setDepartments(deptList);
+      setRecruiters(recList);
+    } catch (err) {
+      console.error("Failed to load booking filters:", err);
+      setDepartments([]);
+      setRecruiters([]);
+    }
+  };
 
   const loadBookings = async () => {
     setLoading(true);
@@ -774,10 +799,31 @@ const BookingCheckoutPanel = ({ token }) => {
   useEffect(() => {
     if (!token) return;
     loadBookings();
+    loadFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const events = bookings
+  const recruiterDeptById = useMemo(() => {
+    const map = new Map();
+    recruiters.forEach((r) => {
+      map.set(String(r.id), String(r.department_id || ""));
+    });
+    return map;
+  }, [recruiters]);
+
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((b) => {
+      const recruiterId = String(b?.recruiter?.id || b?.recruiter_id || "");
+      if (selectedRecruiter && recruiterId !== String(selectedRecruiter)) return false;
+      if (selectedDepartment) {
+        const deptId = recruiterDeptById.get(recruiterId) || "";
+        if (deptId !== String(selectedDepartment)) return false;
+      }
+      return true;
+    });
+  }, [bookings, selectedRecruiter, selectedDepartment, recruiterDeptById]);
+
+  const events = filteredBookings
     .map((b) => {
       const start =
         b.start_iso_local ||
@@ -801,7 +847,7 @@ const BookingCheckoutPanel = ({ token }) => {
     .filter(Boolean);
 
   const handleEventClick = (info) => {
-    const booking = bookings.find((b) => String(b.id) === String(info.event.id));
+    const booking = filteredBookings.find((b) => String(b.id) === String(info.event.id));
     if (!booking) return;
     setSelected(booking);
     const baseCandidate =
@@ -1019,6 +1065,40 @@ const BookingCheckoutPanel = ({ token }) => {
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </Stack>
+        </Stack>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
+          <FormControl sx={{ minWidth: 220 }}>
+            <InputLabel id="booking-checkout-department">Department</InputLabel>
+            <Select
+              labelId="booking-checkout-department"
+              value={selectedDepartment}
+              label="Department"
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+            >
+              <MenuItem value="">All Departments</MenuItem>
+              {departments.map((dept) => (
+                <MenuItem key={dept.id} value={String(dept.id)}>
+                  {dept.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl sx={{ minWidth: 220 }}>
+            <InputLabel id="booking-checkout-employee">Employee</InputLabel>
+            <Select
+              labelId="booking-checkout-employee"
+              value={selectedRecruiter}
+              label="Employee"
+              onChange={(e) => setSelectedRecruiter(e.target.value)}
+            >
+              <MenuItem value="">All Employees</MenuItem>
+              {recruiters.map((rec) => (
+                <MenuItem key={rec.id} value={String(rec.id)}>
+                  {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Stack>
 
         {error && <Alert severity="error">{error}</Alert>}
