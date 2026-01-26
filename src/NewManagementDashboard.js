@@ -1063,6 +1063,22 @@ const BookingCheckoutPanel = ({ token }) => {
                 <Typography variant="body2" color="text.secondary">
                   {selected?.client?.phone || "—"}
                 </Typography>
+                {(() => {
+                  const meetingLink =
+                    selected?.meeting_link ||
+                    selected?.meeting_url ||
+                    selected?.public_meeting_link ||
+                    "";
+                  if (!meetingLink) return null;
+                  return (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      <b>Video:</b>{" "}
+                      <Link href={meetingLink} target="_blank" rel="noopener">
+                        Join meeting
+                      </Link>
+                    </Typography>
+                  );
+                })()}
                 <Typography variant="body2">
                   {selected?.local_date || selected?.date} {selected?.local_start_time || selected?.start_time}{" "}
                   {selected?.appointment_timezone ? `(${selected.appointment_timezone})` : ""}
