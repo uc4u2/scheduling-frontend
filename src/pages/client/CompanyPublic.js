@@ -796,7 +796,11 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
             label={
               <span>
                 I agree to the{" "}
-                <Link href="https://www.schedulaa.com/terms" target="_blank" rel="noopener">
+                <Link
+                  href={`${(typeof window !== "undefined" && window.location.origin) || "https://www.schedulaa.com"}/terms`}
+                  target="_blank"
+                  rel="noopener"
+                >
                   Schedulaa User Agreement
                 </Link>
                 .
