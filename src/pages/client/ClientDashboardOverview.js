@@ -202,10 +202,15 @@ export default function ClientDashboardOverview() {
 
               <Divider sx={{ my: 2 }} />
               <Typography variant="subtitle1">Company Info:</Typography>
-              {selected.company_slug && (
+              {(selected.company_public_url || selected.company_slug) && (
                 <Typography>
                   <b>Company:</b>{" "}
-                  <Link href={`/${selected.company_slug}`} underline="hover" target="_blank" rel="noopener">
+                  <Link
+                    href={selected.company_public_url || `/${selected.company_slug}`}
+                    underline="hover"
+                    target="_blank"
+                    rel="noopener"
+                  >
                     {selected.company_name || selected.company_slug}
                   </Link>
                 </Typography>
@@ -214,12 +219,12 @@ export default function ClientDashboardOverview() {
               {selected.company_phone && <Typography><b>Phone:</b> {selected.company_phone}</Typography>}
               {selected.company_email && <Typography><b>Email:</b> {selected.company_email}</Typography>}
 
-              {selected.company_slug && (
+              {(selected.company_public_url || selected.company_slug) && (
                 <Box sx={{ mt: 2 }}>
                   <Button
                     variant="contained"
                     color="primary"
-                    href={`/${selected.company_slug}`}
+                    href={selected.company_public_url || `/${selected.company_slug}`}
                     target="_blank"
                     rel="noopener"
                   >

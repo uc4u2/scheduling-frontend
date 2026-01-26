@@ -261,11 +261,11 @@ export default function ClientBookings() {
               <Divider sx={{ my: 2 }} />
 
               <Typography variant="subtitle1">Company Info:</Typography>
-              {selected.company_slug && (
+              {(selected.company_public_url || selected.company_slug) && (
                 <Typography>
                   <b>Company:</b>{" "}
                   <Link
-                    href={`/${selected.company_slug}`}
+                    href={selected.company_public_url || `/${selected.company_slug}`}
                     underline="hover"
                     target="_blank"
                   >
@@ -287,6 +287,33 @@ export default function ClientBookings() {
                 <Typography>
                   <b>Email:</b> {selected.company_email}
                 </Typography>
+              )}
+              {(selected.reschedule_link || selected.cancel_link) && (
+                <Box sx={{ mt: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                  {selected.reschedule_link && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      href={selected.reschedule_link}
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      Reschedule
+                    </Button>
+                  )}
+                  {selected.cancel_link && (
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      href={selected.cancel_link}
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </Box>
               )}
 
               {selected.status !== "cancelled" &&
