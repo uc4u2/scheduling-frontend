@@ -1057,6 +1057,12 @@ const BookingCheckoutPanel = ({ token }) => {
                 <Typography variant="subtitle2" color="text.secondary">
                   {selected?.service?.name || "Service"} • {selected?.client?.full_name || selected?.client?.email || "Client"}
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selected?.client?.email || "—"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selected?.client?.phone || "—"}
+                </Typography>
                 <Typography variant="body2">
                   {selected?.local_date || selected?.date} {selected?.local_start_time || selected?.start_time}{" "}
                   {selected?.appointment_timezone ? `(${selected.appointment_timezone})` : ""}

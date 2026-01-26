@@ -138,7 +138,7 @@ const ProductDetails = ({ slugOverride }) => {
     let mounted = true;
     setSiteLoading(true);
     publicSite
-      .getBySlug(slug)
+      .getWebsiteShell(slug)
       .then((data) => {
         if (!mounted) return;
         setSitePayload(data);
@@ -157,7 +157,11 @@ const ProductDetails = ({ slugOverride }) => {
   }, [slug]);
 
   const productsPage = useMemo(() => {
-    const pages = Array.isArray(sitePayload?.pages) ? sitePayload.pages : [];
+    const pages = Array.isArray(sitePayload?.pages)
+      ? sitePayload.pages
+      : Array.isArray(sitePayload?.pages_meta)
+      ? sitePayload.pages_meta
+      : [];
     return (
       pages.find((p) => String(p?.slug || "").toLowerCase() === "products") ||
       pages.find((p) => String(p?.slug || "").toLowerCase() === "products-classic") ||

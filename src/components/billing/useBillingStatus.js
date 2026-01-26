@@ -8,6 +8,20 @@ const useBillingStatus = () => {
 
   useEffect(() => {
     let active = true;
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+    const role = typeof localStorage !== "undefined" ? localStorage.getItem("role") : null;
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
+    const isAdminRoute =
+      path.startsWith("/manager") ||
+      path.startsWith("/admin") ||
+      path.startsWith("/settings") ||
+      path.startsWith("/dashboard");
+    if (!token || role !== "manager" || !isAdminRoute) {
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
     const run = async () => {
       setLoading(true);
       setError("");

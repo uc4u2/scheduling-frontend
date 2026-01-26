@@ -1,6 +1,6 @@
 // src/pages/client/ServiceList.js
 import React, { useEffect, useMemo, useState } from "react";
-import { api } from "../../utils/api";
+import { api, publicSite } from "../../utils/api";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -272,6 +272,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
   const [packagesLoading, setPackagesLoading] = useState(true);
   const [packagesError, setPackagesError] = useState("");
   const [packageCheckoutError, setPackageCheckoutError] = useState("");
+  const [bootstrapLoaded, setBootstrapLoaded] = useState(false);
   const packageServiceIds = useMemo(() => {
     const ids = new Set();
     packages.forEach((pkg) => {
@@ -307,11 +308,23 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
       };
     }
 
-    api
-      .get(`/public/${effectiveSlug}/departments`, { noCompanyHeader: true })
-      .then((res) => {
+    publicSite
+      .getBootstrap(effectiveSlug, "services,departments,packages")
+      .then((data) => {
         if (!active) return;
-        setDepartments(Array.isArray(res.data) ? res.data : []);
+        const payload = data || {};
+        if (Array.isArray(payload.departments)) {
+          setDepartments(payload.departments);
+        }
+        if (Array.isArray(payload.services)) {
+          setServices(payload.services);
+          setLoading(false);
+        }
+        if (Array.isArray(payload.packages)) {
+          setPackages(payload.packages);
+          setPackagesLoading(false);
+        }
+        setBootstrapLoaded(true);
       })
       .catch(() => {
         if (!active) return;
@@ -339,25 +352,12 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
   };
 
   useEffect(() => {
+    if (!selectedDept) return;
     let active = true;
     setLoading(true);
     setError("");
 
-    if (!effectiveSlug) {
-      if (active) {
-        setServices([]);
-        setError("Failed to load services. Please try again.");
-        setLoading(false);
-      }
-      return () => {
-        active = false;
-      };
-    }
-
-    const url = selectedDept
-      ? `/public/${effectiveSlug}/services?department_id=${selectedDept}`
-      : `/public/${effectiveSlug}/services`;
-
+    const url = `/public/${effectiveSlug}/services?department_id=${selectedDept}`;
     api
       .get(url, { noCompanyHeader: true })
       .then((res) => {
@@ -377,19 +377,11 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
   }, [effectiveSlug, selectedDept]);
 
   useEffect(() => {
+    if (!effectiveSlug) return;
+    if (bootstrapLoaded && packages.length) return;
     let active = true;
     setPackagesLoading(true);
     setPackagesError("");
-
-    if (!effectiveSlug) {
-      if (active) {
-        setPackages([]);
-        setPackagesLoading(false);
-      }
-      return () => {
-        active = false;
-      };
-    }
 
     api
       .get(`/public/${effectiveSlug}/packages`, { noCompanyHeader: true })
@@ -416,6 +408,17 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     return `💲${n.toFixed(2)}`;
   };
 
+  const prefetchService = (svcId) => {
+    if (!svcId || !effectiveSlug) return;
+    publicSite.getService(effectiveSlug, svcId, selectedDept);
+    publicSite.getServiceEmployees(effectiveSlug, svcId, selectedDept);
+  };
+
+  useEffect(() => {
+    if (!services.length) return;
+    services.slice(0, 4).forEach((svc) => prefetchService(svc.id));
+  }, [services]);
+
   const openService = (serviceId) => {
     const dept = selectedDept ? `?department_id=${selectedDept}` : "";
     const targetPath = `${basePath || ""}/services/${serviceId}${dept}`;
@@ -431,6 +434,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
       return;
     }
 
+    prefetchService(serviceId);
     setBookingServiceId(serviceId);
     setBookingFullScreen(isMdDown);
     setBookingOpen(true);
@@ -578,6 +582,8 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                       color: "var(--page-body-color)",
                       "&:hover": { transform: "translateY(-2px)" },
                     }}
+                    onMouseEnter={() => prefetchService(service.id)}
+                    onTouchStart={() => prefetchService(service.id)}
                   >
                     {imageUrl && (
                       <Box
@@ -661,6 +667,8 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                         fullWidth
                         variant="contained"
                         onClick={() => openService(service.id)}
+                        onMouseEnter={() => prefetchService(service.id)}
+                        onTouchStart={() => prefetchService(service.id)}
                         sx={{
                           backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
                           color: "var(--page-btn-color, #ffffff)",

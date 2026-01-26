@@ -100,7 +100,11 @@ const ProductListBase = ({
   const [imagePreview, setImagePreview] = useState(null);
 
   const productsPage = useMemo(() => {
-    const pages = Array.isArray(sitePayload?.pages) ? sitePayload.pages : [];
+    const pages = Array.isArray(sitePayload?.pages)
+      ? sitePayload.pages
+      : Array.isArray(sitePayload?.pages_meta)
+      ? sitePayload.pages_meta
+      : [];
     return (
       pages.find((p) => String(p?.slug || "").toLowerCase() === "products") ||
       pages.find((p) => String(p?.slug || "").toLowerCase() === "products-classic") ||
@@ -168,7 +172,7 @@ const ProductListBase = ({
     let mounted = true;
     setSiteLoading(true);
     publicSite
-      .getBySlug(slug)
+      .getWebsiteShell(slug)
       .then((data) => {
         if (!mounted) return;
         setSitePayload(data);

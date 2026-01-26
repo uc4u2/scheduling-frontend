@@ -20,9 +20,17 @@ export default function ClientDashboardOverview() {
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
 
   useEffect(() => {
+    const isMyBookings =
+      typeof window !== "undefined" &&
+      (window.location.search.includes("page=my-bookings") ||
+        window.location.pathname.includes("/client/bookings"));
+    if (!isMyBookings || !token) {
+      setLoading(false);
+      return;
+    }
     loadEverything();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userTimezone]);
+  }, [userTimezone, token]);
 
   function loadEverything() {
     setLoading(true);

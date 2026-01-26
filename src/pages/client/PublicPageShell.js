@@ -31,6 +31,9 @@ const cloneStyle = (val) => {
 
 const extractPageStyleProps = (page) => {
   if (!page) return null;
+  if (page?.page_style && isPlainObject(page.page_style)) {
+    return cloneStyle(page.page_style);
+  }
   const sections = Array.isArray(page?.content?.sections) ? page.content.sections : [];
   const section = sections.find((s) => s?.type === "pageStyle");
   if (section?.props && isPlainObject(section.props)) {
@@ -155,8 +158,8 @@ function useEditGuard() {
     (async () => {
       try {
         // 1) Resolve company id from public site payload
-        const pub = await publicSite.getBySlug(slug);
-        const cid = pub?.company_id || pub?.company?.id;
+        const sitePayload = await publicSite.getWebsiteShell(slug);
+        const cid = sitePayload?.company_id || sitePayload?.company?.id;
         if (cid) {
           localStorage.setItem("company_id", String(cid));
         }
@@ -371,7 +374,7 @@ function ShellInner({
       localStorage.removeItem("token");
       localStorage.removeItem("role");
     } catch {}
-    navigate(rootPath);
+    navigate(`${rootPath}?page=my-bookings`);
   };
 
   // ---- CSS Variable bridge (for any legacy CSS reading --sched-*) ----
@@ -767,18 +770,65 @@ export default function PublicPageShell({
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [site, setSite] = useState(null);
+  const isEmbed = useMemo(() => {
+    try {
+      const qs = new URLSearchParams(search || "");
+      const embedParam = (qs.get("embed") || "").toLowerCase();
+      if (embedParam === "1" || embedParam === "true") return true;
+      if (embedParam === "0" || embedParam === "false") return false;
+      return typeof window !== "undefined" && window.self !== window.top;
+    } catch {
+      return false;
+    }
+  }, [search]);
+
+  const readShellCache = (key) => {
+    try {
+      const raw = sessionStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed?.data) return null;
+      const savedAt = Number(parsed.savedAt || 0);
+      if (savedAt && Date.now() - savedAt > 5 * 60 * 1000) return null;
+      return parsed.data;
+    } catch {
+      return null;
+    }
+  };
+
+  const writeShellCache = (key, data) => {
+    try {
+      sessionStorage.setItem(
+        key,
+        JSON.stringify({ savedAt: Date.now(), data })
+      );
+    } catch {}
+  };
 
   useEffect(() => {
     if (!slug) return;
     let alive = true;
+    const cacheKey = `public_shell:${slug}`;
+    const cached = readShellCache(cacheKey);
+    if (cached) {
+      setSite(cached);
+      setErr("");
+      setLoading(false);
+      if (isEmbed) {
+        return () => {
+          alive = false;
+        };
+      }
+    }
     setLoading(true);
     setErr("");
 
     (async () => {
       try {
-        const ok = await publicSite.getBySlug(slug);
+        const ok = await publicSite.getWebsiteShell(slug);
         if (!alive) return;
         setSite(ok || null);
+        if (ok) writeShellCache(cacheKey, ok);
       } catch (e) {
         if (!alive) return;
         setErr(e?.response?.data?.error || "Failed to load site.");
@@ -789,6 +839,24 @@ export default function PublicPageShell({
 
     return () => { alive = false; };
   }, [slug]);
+
+  useEffect(() => {
+    const heroUrl = site?.preview?.hero?.image;
+    if (!heroUrl) return;
+    const href = String(heroUrl).trim();
+    if (!href) return;
+    const existing = document.querySelector(`link[data-preload-hero="true"][href="${href}"]`);
+    if (existing) return;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = href;
+    link.setAttribute("data-preload-hero", "true");
+    document.head.appendChild(link);
+    return () => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+    };
+  }, [site?.preview?.hero?.image]);
 
   // Prepare content; avoid early returns to keep hooks order stable
   let innerContent = null;
@@ -813,7 +881,11 @@ export default function PublicPageShell({
   }
 
   // Prefer nav + theme overrides from the site payload
-  const pages = Array.isArray(site?.pages) ? site.pages : [];
+  const pages = Array.isArray(site?.pages)
+    ? site.pages
+    : Array.isArray(site?.pages_meta)
+    ? site.pages_meta
+    : [];
   const navCfg =
     site?.settings?.nav_overrides ||
     site?.nav_overrides ||

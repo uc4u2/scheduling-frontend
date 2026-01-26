@@ -1582,7 +1582,7 @@ const CandidateIntakePage = () => {
     }
     setSiteLoading(true);
     publicSite
-      .getBySlug(shellSlug)
+      .getWebsiteShell(shellSlug)
       .then((data) => {
         if (mounted) setSitePayload(data || null);
       })

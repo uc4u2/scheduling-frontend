@@ -66,8 +66,13 @@ export default function ClientDashboard() {
       localStorage.removeItem("role");
       const params = new URLSearchParams(window.location.search);
       const siteSlug = params.get("site");
+      if (params.get("page") === "my-bookings") {
+        const basePath = window.location.pathname || "/";
+        window.location.assign(`${basePath}?page=my-bookings`);
+        return;
+      }
       if (siteSlug) {
-        window.location.assign("/?page=my-bookings");
+        window.location.assign(`/${siteSlug}?page=my-bookings`);
       } else {
         navigate("/login");
       }

@@ -156,7 +156,7 @@ const Login = ({ setToken }) => {
     const site = siteForRedirect();
     if (site) {
       try {
-        const r3 = await publicSite.getBySlug(site);
+        const r3 = await publicSite.getWebsiteShell(site);
         const id = r3?.company_id || r3?.company?.id;
         if (id) {
           localStorage.setItem("company_id", String(id));

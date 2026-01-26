@@ -1089,7 +1089,7 @@ const MeetWithArtistPage = ({ slugOverride }) => {
     if (!slug) return () => {};
     setSiteLoading(true);
     publicSite
-      .getBySlug(slug)
+      .getWebsiteShell(slug)
       .then((data) => {
         if (mounted) setSitePayload(data || null);
       })
@@ -1106,7 +1106,11 @@ const MeetWithArtistPage = ({ slugOverride }) => {
   const siteContext = useMemo(
     () => ({
       site: sitePayload,
-      pages: Array.isArray(sitePayload?.pages) ? sitePayload.pages : [],
+      pages: Array.isArray(sitePayload?.pages)
+        ? sitePayload.pages
+        : Array.isArray(sitePayload?.pages_meta)
+        ? sitePayload.pages_meta
+        : [],
     }),
     [sitePayload]
   );

@@ -122,7 +122,7 @@ export default function DocumentRequestUploadPage() {
     if (!companySlug) return () => {};
     setSiteLoading(true);
     publicSite
-      .getBySlug(companySlug)
+      .getWebsiteShell(companySlug)
       .then((data) => {
         if (mounted) setSitePayload(data || null);
       })

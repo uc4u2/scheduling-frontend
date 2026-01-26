@@ -177,7 +177,7 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     let mounted = true;
     setSiteLoading(true);
     publicSite
-      .getBySlug(slug)
+      .getWebsiteShell(slug)
       .then((data) => {
         if (!mounted) return;
         setSitePayload(data);

@@ -37,7 +37,7 @@ import StorefrontIcon from "@mui/icons-material/Storefront";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useParams, useSearchParams, Link as RouterLink, useNavigate } from "react-router-dom";
 
-import { api, wb, API_BASE_URL } from "../../utils/api";
+import { api, wb, API_BASE_URL, publicSite } from "../../utils/api";
 import { RenderSections } from "../../components/website/RenderSections";
 import VisualSiteBuilder from "../sections/management/VisualSiteBuilder";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
@@ -50,6 +50,7 @@ import NavStyleHydrator from "../../components/website/NavStyleHydrator";
 import { ServiceListEmbedded } from "./ServiceList";
 import { ProductListEmbedded } from "./ProductList";
 import { MyBasketEmbedded } from "./MyBasket";
+import ClientDashboard from "../ClientDashboard";
 import { JobsListEmbedded } from "../public/PublicJobsListPage";
 import { JobsDetailEmbedded } from "../public/PublicJobDetailPage";
 import buildImgixUrl from "../../utils/imgix";
@@ -634,6 +635,7 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -648,7 +650,7 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
     e.preventDefault();
     setError("");
     setLoading(true);
-    if (!firstName || !lastName || !email || !password || !passwordConfirm) {
+    if (!firstName || !lastName || !email || !phone || !password || !passwordConfirm) {
       setError("All fields are required.");
       setLoading(false);
       return;
@@ -668,6 +670,7 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
         first_name: firstName,
         last_name: lastName,
         email,
+        phone,
         password,
         password_confirm: passwordConfirm,
         timezone,
@@ -752,6 +755,15 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TextField
+            label="Phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             fullWidth
             required
             margin="normal"
@@ -969,13 +981,19 @@ export default function CompanyPublic({ slugOverride }) {
     (async () => {
       try {
         setLoading(true); setErr("");
-        const { data } = await wb.publicBySlug(slug);
+        const data = await publicSite.getWebsiteShell(slug);
         if (!alive) return;
         setSitePayload(data || null);
         setCompany(data?.company || null);
-        const normalized = Array.isArray(data?.pages)
-          ? data.pages.map((p) => ({ ...p, content: Array.isArray(p?.content?.sections) ? p.content : { sections: [] } }))
+        const pageList = Array.isArray(data?.pages)
+          ? data.pages
+          : Array.isArray(data?.pages_meta)
+          ? data.pages_meta
           : [];
+        const normalized = pageList.map((p) => ({
+          ...p,
+          content: Array.isArray(p?.content?.sections) ? p.content : { sections: [] },
+        }));
         const cleaned = normalized.filter(
           (p) => String(p.slug || "").toLowerCase() !== "services"
         );
@@ -994,9 +1012,88 @@ export default function CompanyPublic({ slugOverride }) {
     if (isManagerForCompany && searchParams.get("edit") === "1") setEditorOpen(true);
   }, [isManagerForCompany, searchParams]);
 
+  const pageSlugToFetch = useMemo(() => {
+    if (!pages.length) return null;
+    if (pageFromQuery) {
+      const qRaw = String(pageFromQuery).toLowerCase();
+      const q = qRaw === "services" ? "services-classic" : qRaw;
+      const directMatch = pages.find(
+        (p) =>
+          String(p.slug || "").toLowerCase() === q ||
+          String(p.menu_title || "").toLowerCase() === q ||
+          String(p.title || "").toLowerCase() === q
+      );
+      return directMatch?.slug || q;
+    }
+    return pages.find((p) => p.is_homepage)?.slug || pages[0]?.slug || null;
+  }, [pages, pageFromQuery]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!slug || !pageSlugToFetch) return () => {};
+    const existing = pages.find(
+      (p) => String(p.slug || "").toLowerCase() === String(pageSlugToFetch).toLowerCase()
+    );
+    if (existing?.content?.sections?.length) return () => {};
+    (async () => {
+      try {
+        const resp = await publicSite.getPage(slug, pageSlugToFetch);
+        if (!alive) return;
+        const pageData = resp?.page || resp;
+        if (!pageData) return;
+        setPages((prev) => {
+          const next = Array.isArray(prev) ? [...prev] : [];
+          const idx = next.findIndex(
+            (p) => String(p.slug || "").toLowerCase() === String(pageData.slug || "").toLowerCase()
+          );
+          if (idx >= 0) {
+            next[idx] = {
+              ...next[idx],
+              ...pageData,
+              content: Array.isArray(pageData?.content?.sections)
+                ? pageData.content
+                : { sections: [] },
+            };
+          } else {
+            next.push({
+              ...pageData,
+              content: Array.isArray(pageData?.content?.sections)
+                ? pageData.content
+                : { sections: [] },
+            });
+          }
+          return next;
+        });
+      } catch {
+        /* ignore page fetch errors */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [slug, pageSlugToFetch, pages]);
+
+  useEffect(() => {
+    const heroUrl = sitePayload?.preview?.hero?.image;
+    if (!heroUrl) return;
+    const href = String(heroUrl).trim();
+    if (!href) return;
+    const existing = document.querySelector(`link[data-preload-hero="true"][href="${href}"]`);
+    if (existing) return;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = href;
+    link.setAttribute("data-preload-hero", "true");
+    document.head.appendChild(link);
+    return () => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+    };
+  }, [sitePayload?.preview?.hero?.image]);
+
   // Only managers fetch manager-only settings
   useEffect(() => {
-    if (!isManagerForCompany || !company?.id) return;
+    if (!isManagerForCompany || !company?.id || !editorOpen) return;
     let ok = true;
     (async () => {
       try {
@@ -1107,7 +1204,7 @@ export default function CompanyPublic({ slugOverride }) {
       localStorage.removeItem("role");
       // localStorage.removeItem("company_id"); // optional
     } catch {}
-    window.location.assign("/login");
+    window.location.assign(`${rootPath}?page=my-bookings`);
   };
 
   const handleClientLoginSuccess = (tokenValue) => {
@@ -1280,14 +1377,17 @@ export default function CompanyPublic({ slugOverride }) {
       }
     }
 
-    const shouldEmbedSpecial = ["my-bookings", "checkout"].includes(slugLower);
+    const shouldEmbedSpecial = ["checkout"].includes(slugLower);
 
-    if (slugLower === "my-bookings" && !clientLoggedIn) {
+    if (slugLower === "my-bookings") {
       const styleProps = resolveStyleProps();
       return {
         sections: [],
         styleProps,
-        renderOverride: { type: "my-bookings-auth", styleProps },
+        renderOverride: {
+          type: clientLoggedIn ? "my-bookings" : "my-bookings-auth",
+          styleProps,
+        },
       };
     }
 
@@ -2181,6 +2281,12 @@ const siteTitle = useMemo(() => {
                 </Button>
               </Stack>
             </Paper>
+          </Container>
+        );
+      case "my-bookings":
+        return (
+          <Container maxWidth="lg" sx={{ py: { xs: 3, md: 6 } }}>
+            <ClientDashboard />
           </Container>
         );
       case "jobs":

@@ -42,7 +42,7 @@ const PAGE_CHIPS = {
   "/pricing": ["Which plan is right for my business?"],
 };
 
-const ChatBot = ({ companySlug, config }) => {
+const ChatBot = ({ companySlug, config, onOpenChange }) => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const isTenant = Boolean(companySlug);
@@ -178,7 +178,10 @@ const ChatBot = ({ companySlug, config }) => {
     <>
       {!open && (
         <IconButton
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setOpen(true);
+            if (onOpenChange) onOpenChange(true);
+          }}
           sx={{
             position: "fixed",
             bottom: 20,
@@ -240,7 +243,10 @@ const ChatBot = ({ companySlug, config }) => {
               </Box>
               <IconButton
                 size="small"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setOpen(false);
+                  if (onOpenChange) onOpenChange(false);
+                }}
                 sx={{ marginLeft: "auto" }}
               >
                 <CloseIcon fontSize="small" />

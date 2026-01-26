@@ -14,7 +14,7 @@ import {
   Paper,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { wb } from "../../utils/api";
+import { publicSite } from "../../utils/api";
 import { RenderSections } from "../../components/website/RenderSections";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
 import PublicClientAuth from "./PublicClientAuth";
@@ -44,6 +44,8 @@ export default function WebsiteViewer() {
   const [loading, setLoading] = useState(true);
   const [site, setSite] = useState(null);
   const [error, setError] = useState("");
+  const [pageContent, setPageContent] = useState(null);
+  const [pageLoading, setPageLoading] = useState(false);
 
   const go = (to) =>
     navigate(
@@ -58,7 +60,7 @@ export default function WebsiteViewer() {
       try {
         setLoading(true);
         setError("");
-        const { data } = await wb.publicBySlug(slug);
+        const data = await publicSite.getWebsiteShell(slug);
         if (!alive) return;
         setSite(data);
       } catch {
@@ -75,20 +77,52 @@ export default function WebsiteViewer() {
   }, [slug]);
 
   const pages = useMemo(() => {
-    const arr = Array.isArray(site?.pages) ? site.pages : [];
+    const arr = Array.isArray(site?.pages)
+      ? site.pages
+      : Array.isArray(site?.pages_meta)
+      ? site.pages_meta
+      : [];
     return arr
       .filter((p) => p.published !== false)
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   }, [site]);
 
-  const activePage = useMemo(() => {
-    if (!pages.length) return null;
-    if (pageSlug) return pages.find((p) => p.slug === pageSlug) || pages[0];
+  const pageSlugToLoad = useMemo(() => {
+    if (pageSlug) return pageSlug;
     const home =
       pages.find((p) => p.is_homepage) ||
       pages.find((p) => (p.slug || "").toLowerCase() === "home");
-    return home || pages[0];
+    return home?.slug || pages[0]?.slug || null;
   }, [pages, pageSlug]);
+
+  useEffect(() => {
+    if (!slug || !pageSlugToLoad) {
+      setPageContent(null);
+      return;
+    }
+    let alive = true;
+    setPageLoading(true);
+    publicSite
+      .getPage(slug, pageSlugToLoad)
+      .then((data) => {
+        if (!alive) return;
+        setPageContent(data?.page || null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setPageContent(null);
+        setError("Failed to load page.");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setPageLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [slug, pageSlugToLoad]);
+
+  const activePage = pageContent;
 
   const pageLayout = useMemo(
     () => activePage?.layout ?? activePage?.content?.meta?.layout ?? "boxed",
@@ -164,7 +198,7 @@ export default function WebsiteViewer() {
 
   const themeOverrides = site?.theme_overrides || {};
 
-  if (loading) {
+  if (loading || pageLoading) {
     return (
       <Box mt={8} textAlign="center" role="alert" aria-busy="true">
         <CircularProgress />

@@ -666,11 +666,148 @@ export const websiteDomains = {
 };
 
 // Public JSON (no company header)
+const _publicShellCache = new Map();
+const _publicPageCache = new Map();
+const _publicChatbotCache = new Map();
+const _publicServiceCache = new Map();
+const _publicServiceEmployeesCache = new Map();
+const _PUBLIC_CACHE_TTL = 5 * 60 * 1000;
+
+const _getCached = (store, key) => {
+  const cached = store.get(key);
+  if (!cached) return null;
+  const [expiresAt, promise] = cached;
+  if (Date.now() > expiresAt) {
+    store.delete(key);
+    return null;
+  }
+  return promise;
+};
+
+const _setCached = (store, key, promise) => {
+  store.set(key, [Date.now() + _PUBLIC_CACHE_TTL, promise]);
+};
+
 export const publicSite = {
-  getBySlug: (slug) =>
-    api
-      .get(`/api/public/${encodeURIComponent(slug)}/website`, { noCompanyHeader: true })
-      .then((r) => r.data),
+  getBySlug: (slug) => {
+    const keySlug = String(slug || "").trim().toLowerCase();
+    return api
+      .get(`/api/public/${encodeURIComponent(keySlug)}/website`, { noCompanyHeader: true })
+      .then((r) => r.data);
+  },
+  getWebsiteShell: (slug) => {
+    const keySlug = String(slug || "").trim().toLowerCase();
+    const key = `shell:${keySlug}`;
+    const cached = _getCached(_publicShellCache, key);
+    if (cached) return cached;
+    const req = api
+      .get(`/api/public/${encodeURIComponent(keySlug)}/website-shell`, { noCompanyHeader: true })
+      .then((r) => r.data)
+      .catch((err) => {
+        _publicShellCache.delete(key);
+        throw err;
+      });
+    _setCached(_publicShellCache, key, req);
+    return req;
+  },
+  getPage: (slug, pageSlug) => {
+    const keySlug = String(slug || "").trim().toLowerCase();
+    const keyPage = String(pageSlug || "").trim().toLowerCase();
+    const key = `page:${keySlug}:${keyPage}`;
+    const cached = _getCached(_publicPageCache, key);
+    if (cached) return cached;
+    const req = api
+      .get(`/api/public/${encodeURIComponent(keySlug)}/page/${encodeURIComponent(keyPage)}`, {
+        noCompanyHeader: true,
+      })
+      .then((r) => r.data)
+      .catch((err) => {
+        _publicPageCache.delete(key);
+        throw err;
+      });
+    _setCached(_publicPageCache, key, req);
+    return req;
+  },
+  getBootstrap: (slug, include = "services,departments,packages,website_shell") => {
+    const keySlug = String(slug || "").trim().toLowerCase();
+    const keyInclude = String(include || "").trim().toLowerCase();
+    const key = `bootstrap:${keySlug}:${keyInclude}`;
+    const cached = _getCached(_publicShellCache, key);
+    if (cached) return cached;
+    const req = api
+      .get(`/api/public/${encodeURIComponent(keySlug)}/bootstrap`, {
+        noCompanyHeader: true,
+        params: { include: keyInclude },
+      })
+      .then((r) => r.data)
+      .catch((err) => {
+        _publicShellCache.delete(key);
+        throw err;
+      });
+    _setCached(_publicShellCache, key, req);
+    return req;
+  },
+  getService: (slug, serviceId, departmentId) => {
+    const keySlug = String(slug || "").trim().toLowerCase();
+    const keyService = String(serviceId || "").trim();
+    const keyDept = String(departmentId || "").trim() || "all";
+    const key = `service:${keySlug}:${keyService}:${keyDept}`;
+    const cached = _getCached(_publicServiceCache, key);
+    if (cached) return cached;
+    const deptQuery = departmentId ? `?department_id=${encodeURIComponent(departmentId)}` : "";
+    const req = api
+      .get(`/public/${encodeURIComponent(keySlug)}/service/${encodeURIComponent(keyService)}${deptQuery}`, {
+        noCompanyHeader: true,
+        noAuth: true,
+      })
+      .then((r) => r.data)
+      .catch((err) => {
+        _publicServiceCache.delete(key);
+        throw err;
+      });
+    _setCached(_publicServiceCache, key, req);
+    return req;
+  },
+  getServiceEmployees: (slug, serviceId, departmentId) => {
+    const keySlug = String(slug || "").trim().toLowerCase();
+    const keyService = String(serviceId || "").trim();
+    const keyDept = String(departmentId || "").trim() || "all";
+    const key = `service_employees:${keySlug}:${keyService}:${keyDept}`;
+    const cached = _getCached(_publicServiceEmployeesCache, key);
+    if (cached) return cached;
+    const deptQuery = departmentId ? `?department_id=${encodeURIComponent(departmentId)}` : "";
+    const req = api
+      .get(`/public/${encodeURIComponent(keySlug)}/service/${encodeURIComponent(keyService)}/employees${deptQuery}`, {
+        noCompanyHeader: true,
+        noAuth: true,
+      })
+      .then((r) => r.data)
+      .catch((err) => {
+        _publicServiceEmployeesCache.delete(key);
+        throw err;
+      });
+    _setCached(_publicServiceEmployeesCache, key, req);
+    return req;
+  },
+  getChatbotConfig: (slug) => {
+    const keySlug = String(slug || "").trim().toLowerCase();
+    if (!keySlug) return Promise.resolve(null);
+    const key = `chatbot:${keySlug}`;
+    const cached = _getCached(_publicChatbotCache, key);
+    if (cached) return cached;
+    const req = api
+      .get(`/api/public/${encodeURIComponent(keySlug)}/chatbot-config`, {
+        noAuth: true,
+        noCompanyHeader: true,
+      })
+      .then((r) => r.data)
+      .catch((err) => {
+        _publicChatbotCache.delete(key);
+        throw err;
+      });
+    _setCached(_publicChatbotCache, key, req);
+    return req;
+  },
 
   getArtist: (slug, artistIdOrToken) => {
     const key = String(artistIdOrToken || "").trim();

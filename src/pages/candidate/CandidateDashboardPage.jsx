@@ -262,7 +262,7 @@ export default function CandidateDashboardPage() {
     if (!companySlug) return () => {};
     setSiteLoading(true);
     publicSite
-      .getBySlug(companySlug)
+      .getWebsiteShell(companySlug)
       .then((payload) => {
         if (mounted) setSitePayload(payload || null);
       })

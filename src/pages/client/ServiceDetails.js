@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../../utils/api";
+import { api, publicSite } from "../../utils/api";
 import { formatCurrency } from "../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, resolveActiveCurrencyFromCompany, getActiveCurrency } from "../../utils/currency";
 import { useParams, useSearchParams } from "react-router-dom";
@@ -144,6 +144,10 @@ export default function ServiceDetails({ slugOverride }) {
   const basePath = useMemo(() => (isCustomDomain ? "" : `/${slug}`), [isCustomDomain, slug]);
   const [searchParams] = useSearchParams();
   const departmentId = searchParams.get("department_id") || "";
+  const initialArtistId =
+    searchParams.get("employee_id") ||
+    searchParams.get("artist_id") ||
+    "";
   const navigate = useNavWithEmbed();
   const theme = useTheme();
   const userTz = getUserTimezone();
@@ -208,6 +212,8 @@ export default function ServiceDetails({ slugOverride }) {
   const focusTimeoutRef = useRef(null);
   const closeGuardTimerRef = useRef(null);
   const fetchVersionRef = useRef(0);
+  const availCacheRef = useRef(new Map());
+  const availInFlightRef = useRef(new Map());
   const [providerSheetOpen, setProviderSheetOpen] = useState(false);
   const [timeSheetOpen, setTimeSheetOpen] = useState(false);
   const [providerAnnounce, setProviderAnnounce] = useState("");
@@ -217,6 +223,7 @@ export default function ServiceDetails({ slugOverride }) {
   const [flowStage, setFlowStage] = useState("idle");
   const [closeGuardActive, setCloseGuardActive] = useState(false);
   const [clientBookedSet, setClientBookedSet] = useState(new Set());
+  const [activeArtistId, setActiveArtistId] = useState(initialArtistId);
   /* base data */
   const [service, setService] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -227,6 +234,7 @@ export default function ServiceDetails({ slugOverride }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [monthView, setMonthView] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
+  const [debouncedDate, setDebouncedDate] = useState(null);
 
   /**
    * daySlots: array of time-grouped slots keyed by start_utc, e.g.
@@ -330,24 +338,27 @@ export default function ServiceDetails({ slugOverride }) {
       setLoading(false);
       return;
     }
-    const deptQuery = departmentId ? `?department_id=${departmentId}` : "";
     Promise.all([
-      api.get(`/public/${slug}/service/${serviceId}${deptQuery}`, {
-        noCompanyHeader: true,
-        noAuth: true,
-      }),
-      api.get(`/public/${slug}/service/${serviceId}/employees${deptQuery}`, {
-        noCompanyHeader: true,
-        noAuth: true,
-      }),
+      publicSite.getService(slug, serviceId, departmentId),
+      publicSite.getServiceEmployees(slug, serviceId, departmentId),
     ])
-      .then(([svc, empRes]) => {
-        setService(svc.data);
-        setEmployees(empRes.data || []);
+      .then(([svc, emps]) => {
+        setService(svc || null);
+        setEmployees(emps || []);
       })
       .catch(() => setError("Failed to load service information."))
       .finally(() => setLoading(false));
   }, [slug, serviceId, departmentId]);
+
+  useEffect(() => {
+    if (!employees.length) return;
+    const preferred =
+      initialArtistId &&
+      employees.find((e) => String(e.id) === String(initialArtistId))
+        ? String(initialArtistId)
+        : String(employees[0].id);
+    setActiveArtistId(preferred);
+  }, [employees, initialArtistId]);
 
   /* open modal → default to today */
   useEffect(() => {
@@ -355,37 +366,31 @@ export default function ServiceDetails({ slugOverride }) {
     const today = ymd(new Date());
     setMonthView(new Date());
     setSelectedDate(today);
+    setDebouncedDate(today);
     setSelectedTimeKey("");
     setProviderSheetOpen(false);
     setTimeSheetOpen(false);
   }, [calendarOpen]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setClientBookedSet(new Set());
-      return;
-    }
-    api
-      .get("/api/client/bookings", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
-        const list = res.data?.bookings || res.data || [];
-        const next = new Set();
-        list.forEach((b) => {
-          if (!b?.service_id || !b?.recruiter_id || !b?.date || !b?.start_time) return;
-          next.add(
-            buildClientBookingKey(b.service_id, b.recruiter_id, b.date, b.start_time)
-          );
-        });
-        setClientBookedSet(next);
-      })
-      .catch(() => setClientBookedSet(new Set()));
+    if (!selectedDate) return;
+    const handle = setTimeout(() => setDebouncedDate(selectedDate), 300);
+    return () => clearTimeout(handle);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    setClientBookedSet(new Set());
   }, []);
 
   /* helper: fetch availability for one employee + one date (canonical route, with safe fallback) */
-  const fetchAvail = async (empId, dateStr) => {
+  const fetchAvail = async (empId, dateStr, signal) => {
+    const cacheKey = `${slug}|${serviceId}|${empId}|${dateStr}`;
+    const now = Date.now();
+    const cached = availCacheRef.current.get(cacheKey);
+    if (cached && cached.expiresAt > now) return cached.data;
+    const inflight = availInFlightRef.current.get(cacheKey);
+    if (inflight) return inflight;
+
     const tz = userTz || "UTC";
     const cartJSON = buildCartPayload({ date: dateStr, artistId: empId });
 
@@ -400,46 +405,145 @@ export default function ServiceDetails({ slugOverride }) {
     });
     if (departmentId) qs.set("department_id", departmentId);
     if (cartJSON) qs.set("cart", cartJSON);
-    try {
-      const { data } = await api.get(
-        `/public/${slug}/availability?${qs.toString()}`,
-        { noCompanyHeader: true, noAuth: true }
-      );
-      const slots = Array.isArray(data?.slots)
-        ? data.slots
-        : (Array.isArray(data?.times) ? data.times : []);
-      const clean = slots.filter((s) => slotIsAvailable(s));
-      
-      if (clean.length) return clean;
-    } catch {
-      /* ignore and try fallback */
-    }
+    const load = (async () => {
+      try {
+        const { data } = await api.get(
+          `/public/${slug}/availability?${qs.toString()}`,
+          { noCompanyHeader: true, noAuth: true, signal }
+        );
+        const slots = Array.isArray(data?.slots)
+          ? data.slots
+          : (Array.isArray(data?.times) ? data.times : []);
+        const booked = Array.isArray(data?.booked) ? data.booked : [];
+        const svcMinutes = Number(data?.service_duration || service?.duration || 0);
+        const markBookedOverlaps = (items) => {
+          if (!booked.length) return items;
+          return items.map((s) => {
+            const mode = s.mode || "one_to_one";
+            if (mode === "group" && Number.isFinite(s.seats_left) && s.seats_left > 0) {
+              return s;
+            }
+            const stUtc = s.start_utc
+              ? new Date(s.start_utc)
+              : (s.date && s.start_time && s.timezone
+                ? new Date(isoFromParts(s.date, s.start_time, s.timezone))
+                : null);
+            if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
+            const etUtc = s.end_utc
+              ? new Date(s.end_utc)
+              : new Date(stUtc.getTime() + Math.max(svcMinutes, 0) * 60000);
+            const overlaps = booked.some((b) => {
+              const bStart = b.start_utc ? new Date(b.start_utc) : null;
+              const bEnd = b.end_utc ? new Date(b.end_utc) : null;
+              if (!bStart || !bEnd || Number.isNaN(bStart.getTime()) || Number.isNaN(bEnd.getTime())) {
+                return false;
+              }
+              return stUtc < bEnd && etUtc > bStart;
+            });
+            return overlaps ? { ...s, type: "booked" } : s;
+          });
+        };
+        const slotsMarked = markBookedOverlaps(slots);
+        const merged = (() => {
+          const byKey = new Map();
+          for (const s of slotsMarked) {
+            const key = s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`;
+            byKey.set(key, s);
+          }
+          for (const b of booked) {
+            const entry = { ...b, type: "booked" };
+            const key = entry.start_utc || `${entry.date}-${entry.start_time}-${entry.timezone || ""}`;
+            if (!byKey.has(key)) {
+              byKey.set(key, entry);
+            }
+          }
+          return Array.from(byKey.values());
+        })();
+        if (merged.length) return merged;
+      } catch {
+        /* ignore and try fallback */
+      }
 
     // 2) per-artist wrapper (if present)
-    try {
-      const alt = new URLSearchParams({
-        service_id: serviceId,
-        date: dateStr,
-        timezone: tz,
-        explicit_only: 1,
-        respect_rows: 1,
-        ...(departmentId ? { department_id: departmentId } : {}),
-      });
-      if (cartJSON) alt.set("cart", cartJSON);
+      try {
+        const alt = new URLSearchParams({
+          service_id: serviceId,
+          date: dateStr,
+          timezone: tz,
+          explicit_only: 1,
+          respect_rows: 1,
+          ...(departmentId ? { department_id: departmentId } : {}),
+        });
+        if (cartJSON) alt.set("cart", cartJSON);
         const { data } = await api.get(
           `/public/${slug}/artists/${empId}/availability?${alt.toString()}`,
-          { noCompanyHeader: true, noAuth: true }
+          { noCompanyHeader: true, noAuth: true, signal }
         );
         const slots = Array.isArray(data?.slots)
           ? data.slots
           : Array.isArray(data?.times)
           ? data.times
           : [];
-        return slots.filter((s) => slotIsAvailable(s));
+        const booked = Array.isArray(data?.booked) ? data.booked : [];
+        const svcMinutes = Number(data?.service_duration || service?.duration || 0);
+        const markBookedOverlaps = (items) => {
+          if (!booked.length) return items;
+          return items.map((s) => {
+            const mode = s.mode || "one_to_one";
+            if (mode === "group" && Number.isFinite(s.seats_left) && s.seats_left > 0) {
+              return s;
+            }
+            const stUtc = s.start_utc
+              ? new Date(s.start_utc)
+              : (s.date && s.start_time && s.timezone
+                ? new Date(isoFromParts(s.date, s.start_time, s.timezone))
+                : null);
+            if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
+            const etUtc = s.end_utc
+              ? new Date(s.end_utc)
+              : new Date(stUtc.getTime() + Math.max(svcMinutes, 0) * 60000);
+            const overlaps = booked.some((b) => {
+              const bStart = b.start_utc ? new Date(b.start_utc) : null;
+              const bEnd = b.end_utc ? new Date(b.end_utc) : null;
+              if (!bStart || !bEnd || Number.isNaN(bStart.getTime()) || Number.isNaN(bEnd.getTime())) {
+                return false;
+              }
+              return stUtc < bEnd && etUtc > bStart;
+            });
+            return overlaps ? { ...s, type: "booked" } : s;
+          });
+        };
+        const slotsMarked = markBookedOverlaps(slots);
+        const byKey = new Map();
+        for (const s of slotsMarked) {
+          const key = s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`;
+          byKey.set(key, s);
+        }
+        for (const b of booked) {
+          const entry = { ...b, type: "booked" };
+          const key = entry.start_utc || `${entry.date}-${entry.start_time}-${entry.timezone || ""}`;
+          if (!byKey.has(key)) {
+            byKey.set(key, entry);
+          }
+        }
+        return Array.from(byKey.values());
       } catch {
         return [];
       }
-    };
+    })();
+
+    availInFlightRef.current.set(cacheKey, load);
+    try {
+      const data = await load;
+      availCacheRef.current.set(cacheKey, {
+        data,
+        expiresAt: Date.now() + 60_000,
+      });
+      return data;
+    } finally {
+      availInFlightRef.current.delete(cacheKey);
+    }
+  };
 
   /* helper: aggregate by start_utc (so TZ display is always correct) */
   const aggregateByUTC = (selectedDateStr, results) => {
@@ -450,7 +554,7 @@ export default function ServiceDetails({ slugOverride }) {
         const startUtc =
           s.start_utc ||
           (s.date && s.start_time ? isoFromParts(s.date, s.start_time, tz) : null);
-        if (!startUtc || !slotIsAvailable(s)) continue;
+        if (!startUtc) continue;
 
         const key = startUtc;
         const startLocal = s.start_time || timeHMInTZ(startUtc, tz);
@@ -462,6 +566,7 @@ export default function ServiceDetails({ slugOverride }) {
             key,
             date: selectedDateStr, // UI-selected day
             start_utc: startUtc,
+            type: s.type || "available",
             mode: s.mode,
             seats_left: Number.isFinite(seatsLeft) ? seatsLeft : null,
             providers: [
@@ -476,6 +581,7 @@ export default function ServiceDetails({ slugOverride }) {
                 profile_image_url: profileImage,
                 mode: s.mode,
                 seats_left: seatsLeft,
+                type: s.type || "available",
               },
             ],
           });
@@ -483,6 +589,9 @@ export default function ServiceDetails({ slugOverride }) {
           const curr = map.get(key);
           if (s.mode === "group") {
             curr.mode = "group";
+          }
+          if (s.type === "booked") {
+            curr.type = "booked";
           }
           if (Number.isFinite(seatsLeft)) {
             if (!Number.isFinite(curr.seats_left)) {
@@ -513,56 +622,34 @@ export default function ServiceDetails({ slugOverride }) {
       .sort((a, b) => a.start_utc.localeCompare(b.start_utc));
   };
 
-  /* prefetch month dots (any availability that day across any provider) */
+  /* prefetch availability only for the currently selected date (avoid request spam) */
   useEffect(() => {
-    if (!calendarOpen || !employees.length) return;
-
+    if (!calendarOpen || !debouncedDate || !activeArtistId) return;
     let cancelled = false;
-
-    const dayHasAny = async (dStr) => {
-      for (const emp of employees) {
-        try {
-          const slots = await fetchAvail(emp.id, dStr);
-          if (slots.length > 0) return true;
-        } catch {}
-      }
-      return false;
-    };
-
-    const prefetch = async (view) => {
-      setPrefetchingMonth(true);
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    setPrefetchingMonth(true);
+    (async () => {
       try {
-        const lastDay = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const localMap = { ...availableMap };
-        for (let day = 1; day <= lastDay; day++) {
-          if (cancelled) break;
-          const d = new Date(view.getFullYear(), view.getMonth(), day);
-          if (d < today) continue;
-          const dStr = ymd(d);
-          if (localMap[dStr] !== undefined) continue;
-
-          const hasAny = await dayHasAny(dStr);
-          localMap[dStr] = hasAny;
-          if (!cancelled) setAvailableMap((prev) => ({ ...prev, [dStr]: hasAny }));
+        const emp = employees.find((e) => String(e.id) === String(activeArtistId));
+        if (!emp) return;
+        const slots = await fetchAvail(emp.id, debouncedDate, controller?.signal);
+        const hasAny = (slots?.length || 0) > 0;
+        if (!cancelled) {
+          setAvailableMap((prev) => ({ ...prev, [debouncedDate]: hasAny }));
         }
       } finally {
         if (!cancelled) setPrefetchingMonth(false);
       }
-    };
-
-    prefetch(monthView);
+    })();
     return () => {
       cancelled = true;
+      if (controller) controller.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calendarOpen, monthView, employees, slug, serviceId, departmentId]);
+  }, [calendarOpen, debouncedDate, activeArtistId, employees]);
 
   /* fetch per-day availability across ALL providers */
   useEffect(() => {
-    if (!calendarOpen || !selectedDate || !employees.length) {
+    if (!calendarOpen || !debouncedDate || !activeArtistId) {
       setDaySlots([]);
       setSelectedTimeKey("");
       autoScrolledRef.current = false;
@@ -570,25 +657,22 @@ export default function ServiceDetails({ slugOverride }) {
     }
 
     let cancelled = false;
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     const version = ++fetchVersionRef.current;
     setFlowStage("slots-loading");
     (async () => {
       setIsFetchingSlots(true);
       try {
-        const results = await Promise.all(
-          employees.map(async (emp) => {
-            const slots = await fetchAvail(emp.id, selectedDate);
-            return { emp, slots };
-          })
-        );
-
-        const unique = aggregateByUTC(selectedDate, results);
+        const emp = employees.find((e) => String(e.id) === String(activeArtistId));
+        if (!emp) return;
+        const slots = await fetchAvail(emp.id, debouncedDate, controller?.signal);
+        const unique = aggregateByUTC(debouncedDate, [{ emp, slots }]);
 
         if (!cancelled && fetchVersionRef.current === version) {
           setDaySlots(unique || []);
           setAvailableMap((prev) => ({
             ...prev,
-            [selectedDate]: (unique?.length || 0) > 0,
+            [debouncedDate]: (unique?.length || 0) > 0,
           }));
           if (selectedTimeKey && !unique?.some((s) => s.key === selectedTimeKey)) {
             setSelectedTimeKey("");
@@ -607,8 +691,9 @@ export default function ServiceDetails({ slugOverride }) {
 
     return () => {
       cancelled = true;
+      if (controller) controller.abort();
     };
-  }, [calendarOpen, selectedDate, employees, slug, serviceId, departmentId, selectedTimeKey, selectionLock]);
+  }, [calendarOpen, debouncedDate, activeArtistId, employees, slug, serviceId, departmentId, selectedTimeKey, selectionLock]);
 
   const navigateToSlot = useCallback(
     (slot, artist) => {
@@ -833,13 +918,17 @@ export default function ServiceDetails({ slugOverride }) {
                 <Button
                   variant="contained"
                   size="small"
-                  disabled={clientBookedSlot(
-                    clientBookedSet,
-                    p.service_id || serviceId,
-                    p.id,
-                    p.date || selectedDate,
-                    p.start_time
-                  )}
+                  disabled={
+                    selectedSlot?.type === "booked" ||
+                    p.type === "booked" ||
+                    clientBookedSlot(
+                      clientBookedSet,
+                      p.service_id || serviceId,
+                      p.id,
+                      p.date || selectedDate,
+                      p.start_time
+                    )
+                  }
                   onClick={() => handleArtistSelect(p)}
                   sx={{
                     ...bookingButtonSx,
@@ -902,15 +991,18 @@ export default function ServiceDetails({ slugOverride }) {
                 )
               )
             : false;
+          const isBooked = s.type === "booked";
           return (
             <Button
               key={s.key}
               size="small"
               onClick={() => selectTimeSlot(s)}
-              disabled={alreadyBooked}
+              disabled={alreadyBooked || isBooked}
               sx={buildTimeChipSx(selected, variant)}
               title={
-                alreadyBooked
+                isBooked
+                  ? "This slot is already booked"
+                  : alreadyBooked
                   ? "You already booked this slot"
                   : s.count > 1
                   ? `${s.count} providers available at this time`
@@ -919,7 +1011,7 @@ export default function ServiceDetails({ slugOverride }) {
             >
               {timeFromUTCForViewer(s.start_utc)}
               {s.count > 1 ? ` • ${s.count}` : ""}
-              {alreadyBooked ? " • booked" : ""}
+              {(alreadyBooked || isBooked) ? " • booked" : ""}
               {selected && s.mode === "group" && slotSeatsLabel(s) ? (
                 <>
                   {slotSeatsLabel(s)}

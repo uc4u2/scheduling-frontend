@@ -23,11 +23,11 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { api } from "../../utils/api";
+import { api, publicSite } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatSlot } from "../../utils/timezone-wrapper";
 import { useTheme, alpha } from "@mui/material/styles";
-import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
+import { slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
 
 const fmtDate = (isoDate) =>
   new Date(isoDate).toLocaleDateString(undefined, {
@@ -78,100 +78,136 @@ const AllSlotsCalendarModal = ({
   const [error, setError] = useState("");
   const [rawSlots, setRawSlots] = useState([]);
   const [backendTimezone, setBackendTimezone] = useState(null);
+  const [primaryArtistId, setPrimaryArtistId] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [availableArtists, setAvailableArtists] = useState([]);
   const [artistPickerOpen, setArtistPickerOpen] = useState(false);
+  const availCacheRef = useRef(new Map());
+  const availInflightRef = useRef(new Map());
+
+  useEffect(() => {
+    if (!open || !slug || !serviceId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const emps = await publicSite.getServiceEmployees(slug, serviceId, departmentId);
+        if (cancelled) return;
+        setPrimaryArtistId(emps?.[0]?.id || null);
+      } catch {
+        if (cancelled) return;
+        setPrimaryArtistId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, slug, serviceId, departmentId]);
 
   // Fetch slots strictly for a single date
   // AllSlotsCalendarModal.js
 const fetchSlotsForDate = useCallback(
   async (date) => {
-    if (!slug || !serviceId || !date) return;
+    if (!slug || !serviceId || !date || !primaryArtistId) return;
     setLoading(true);
     setError("");
     try {
-      // 1) who can perform this service?
-      const { data: emps } = await api.get(`/public/${slug}/service/${serviceId}/employees`, {
-        params: departmentId ? { department_id: departmentId } : {},
-        noCompanyHeader: true,
-        noAuth: true,
-      });
-
       const userTz = getUserTimezone();
-      const cartJSON = buildCartPayload({ date });
-
-      // 2) fetch availability per-employee (canonical route)
-      const perEmpPromises = (emps || []).map(async (emp) => {
-        const qs = new URLSearchParams({
-          artist_id: emp.id,
-          service_id: serviceId,
-          date,
-          timezone: userTz,
-          explicit_only: 1,  // <- use only manager rows
-          respect_rows: 1,   // <- no auto-subdivision
-          ...(departmentId ? { department_id: departmentId } : {}),
-        });
-        if (cartJSON) qs.set("cart", cartJSON);
-
-        try {
-          const { data } = await api.get(`/public/${slug}/availability?${qs.toString()}`, {
-            noCompanyHeader: true,
-            noAuth: true,
-          });
-          const slots = Array.isArray(data?.slots) ? data.slots
-                      : Array.isArray(data?.times) ? data.times
-                      : [];
-          return slots
-            .filter((s) => slotIsAvailable(s))
-            .map((s) => ({ ...s, date })); // force day label
-        } catch {
-          return [];
+      const cartJSON = buildCartPayload({ date, artistId: primaryArtistId });
+      const cacheKey = `${slug}|${serviceId}|${primaryArtistId}|${date}`;
+      const cached = availCacheRef.current.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        setRawSlots(cached.data);
+        if (!backendTimezone && cached.data.length > 0) {
+          const tz = cached.data.find((s) => s.timezone)?.timezone;
+          setBackendTimezone(tz || userTz);
         }
+        return;
+      }
+      const inflight = availInflightRef.current.get(cacheKey);
+      if (inflight) {
+        const data = await inflight;
+        setRawSlots(data);
+        return;
+      }
+
+      const qs = new URLSearchParams({
+        artist_id: primaryArtistId,
+        service_id: serviceId,
+        date,
+        timezone: userTz,
+        explicit_only: 1,
+        respect_rows: 1,
+        ...(departmentId ? { department_id: departmentId } : {}),
       });
+      if (cartJSON) qs.set("cart", cartJSON);
 
-      const perEmpSlots = await Promise.all(perEmpPromises);
-      const all = perEmpSlots.flat();
+      const load = (async () => {
+        const { data } = await api.get(`/public/${slug}/availability?${qs.toString()}`, {
+          noCompanyHeader: true,
+          noAuth: true,
+        });
+        const slots = Array.isArray(data?.slots)
+          ? data.slots
+          : Array.isArray(data?.times)
+          ? data.times
+          : [];
+        const booked = Array.isArray(data?.booked) ? data.booked : [];
+        const svcMinutes = Number(data?.service_duration || 0);
+        const markBookedOverlaps = (items) => {
+          if (!booked.length) return items;
+          return items.map((s) => {
+            const mode = s.mode || "one_to_one";
+            if (mode === "group" && Number.isFinite(s.seats_left) && s.seats_left > 0) {
+              return s;
+            }
+            const stUtc = s.start_utc
+              ? new Date(s.start_utc)
+              : (s.date && s.start_time && s.timezone
+                ? new Date(`${s.date}T${s.start_time}:00${s.timezone ? "" : "Z"}`)
+                : null);
+            if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
+            const etUtc = s.end_utc
+              ? new Date(s.end_utc)
+              : new Date(stUtc.getTime() + Math.max(svcMinutes, 0) * 60000);
+            const overlaps = booked.some((b) => {
+              const bStart = b.start_utc ? new Date(b.start_utc) : null;
+              const bEnd = b.end_utc ? new Date(b.end_utc) : null;
+              if (!bStart || !bEnd || Number.isNaN(bStart.getTime()) || Number.isNaN(bEnd.getTime())) {
+                return false;
+              }
+              return stUtc < bEnd && etUtc > bStart;
+            });
+            return overlaps ? { ...s, type: "booked" } : s;
+          });
+        };
+        const slotsMarked = markBookedOverlaps(slots);
+        // Merge booked into slots only when the start time doesn't already exist
+        const byKey = new Map();
+        const withDate = slotsMarked.map((s) => ({ ...s, date }));
+        for (const s of withDate) {
+          const key = s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`;
+          byKey.set(key, s);
+        }
+        for (const b of booked) {
+          const entry = { ...b, date: b.date || date, type: "booked" };
+          const key = entry.start_utc || `${entry.date}-${entry.start_time}-${entry.timezone || ""}`;
+          if (!byKey.has(key)) {
+            byKey.set(key, entry);
+          }
+        }
+        return Array.from(byKey.values());
+      })();
 
-
-
-// ── Dedupe by identical start_utc across employees ──────────────────────────
-const groups = new Map();
-for (const s of all) {
-  // robust fallback if start_utc is missing for any reason
-  const key =
-    s.start_utc ||
-    `${s.date}T${s.start_time}|${s.timezone || ""}`;
-  if (!groups.has(key)) groups.set(key, []);
-  groups.get(key).push(s);
-}
-
-// one representative per time, with a count and optional employee ids
-const deduped = [...groups.values()].map((arr) => {
-  const s0 = arr[0];
-  const seatsLefts = arr.map(resolveSeatsLeft).filter((n) => Number.isFinite(n));
-  return {
-    ...s0,
-    _count: arr.length,
-    mode: arr.some((s) => s.mode === "group") ? "group" : s0.mode,
-    seats_left: seatsLefts.length ? Math.max(...seatsLefts) : null,
-    _employee_ids: arr
-      .map((x) => x.employee_id || x.artist_id || x.recruiter_id)
-      .filter(Boolean),
-  };
-});
-
-// sort by time (start_utc preferred)
-deduped.sort((a, b) => {
-  const ka = a.start_utc || `${a.date} ${a.start_time}`;
-  const kb = b.start_utc || `${b.date} ${b.start_time}`;
-  return ka.localeCompare(kb);
-});
-
-
-      setRawSlots(deduped);
-      if (!backendTimezone && deduped.length > 0) {
-   const tz = deduped.find((s) => s.timezone)?.timezone;
+      availInflightRef.current.set(cacheKey, load);
+      const slots = await load;
+      availCacheRef.current.set(cacheKey, {
+        data: slots,
+        expiresAt: Date.now() + 60_000,
+      });
+      setRawSlots(slots);
+      if (!backendTimezone && slots.length > 0) {
+        const tz = slots.find((s) => s.timezone)?.timezone;
         setBackendTimezone(tz || userTz);
       }
     } catch (err) {
@@ -179,10 +215,12 @@ deduped.sort((a, b) => {
       setError("Could not load available slots. Please try again later.");
       setRawSlots([]);
     } finally {
+      const cacheKey = `${slug}|${serviceId}|${primaryArtistId}|${date}`;
+      availInflightRef.current.delete(cacheKey);
       setLoading(false);
     }
   },
-  [slug, serviceId, departmentId, backendTimezone]
+  [slug, serviceId, departmentId, backendTimezone, primaryArtistId]
 );
 
 
@@ -221,7 +259,6 @@ deduped.sort((a, b) => {
     if (open) {
       const start = (initialDate || new Date().toISOString().slice(0, 10));
       setSelectedDate(start);
-      fetchSlotsForDate(start);
 
       requestAnimationFrame(() => {
         const api = calRef.current?.getApi?.();
@@ -233,6 +270,11 @@ deduped.sort((a, b) => {
       setError("");
     }
   }, [open, initialDate, fetchSlotsForDate, isMobile]);
+
+  useEffect(() => {
+    if (!open || !selectedDate || !primaryArtistId) return;
+    fetchSlotsForDate(selectedDate);
+  }, [open, selectedDate, primaryArtistId, fetchSlotsForDate]);
 
   const handleDateClick = (arg) => {
     const clickedDate = arg.dateStr;
@@ -252,6 +294,9 @@ deduped.sort((a, b) => {
   };
 
   const handleSlotClick = async (slot) => {
+    if (slot?.type === "booked") {
+      return;
+    }
     setSelectedSlot(slot);
     await fetchAvailableArtists(slot);
     setArtistPickerOpen(true);

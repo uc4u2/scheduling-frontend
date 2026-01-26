@@ -845,7 +845,7 @@ export default function PublicJobsListPage({ slugOverride }) {
     if (!effectiveSlug) return () => {};
     setSiteLoading(true);
     publicSite
-      .getBySlug(effectiveSlug)
+      .getWebsiteShell(effectiveSlug)
       .then((data) => {
         if (mounted) setSitePayload(data || null);
       })

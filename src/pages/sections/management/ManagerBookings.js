@@ -1369,6 +1369,17 @@ const RowActions = ({ row }) => {
             <DialogTitle>Collect payment</DialogTitle>
             <DialogContent dividers>
               <Stack spacing={2}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Client
+                  </Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {collectBooking?.client?.full_name || "—"}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {collectBooking?.client?.email || "—"}
+                  </Typography>
+                </Box>
                 <TextField
                   label="Base total"
                   value={collectBaseAmount.toFixed(2)}
@@ -1573,7 +1584,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
 
 
 

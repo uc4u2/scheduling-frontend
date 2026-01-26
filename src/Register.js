@@ -28,12 +28,6 @@ const ROLE_OPTIONS = [
     apiValue: "client",
   },
   {
-    value: "employee",
-    label: "Employee",
-    description: "Access your schedule, shifts, or payroll",
-    apiValue: "recruiter",
-  },
-  {
     value: "owner",
     label: "Business Owner",
     description: "Manage your company, team, and online bookings",
@@ -42,7 +36,7 @@ const ROLE_OPTIONS = [
 ];
 
 const getRoleMeta = (value) =>
-  ROLE_OPTIONS.find((option) => option.value === value) || ROLE_OPTIONS[2];
+  ROLE_OPTIONS.find((option) => option.value === value) || ROLE_OPTIONS[1];
 
 const AGREEMENT_VERSION = "2025-11";
 
@@ -50,6 +44,7 @@ const Register = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [timezone, setTimezone] = useState(
@@ -78,7 +73,7 @@ const Register = () => {
   const passwordIsStrong = passwordChecklist.every((req) => req.pass);
   const passwordsMatch = password && password === confirmPassword;
   const canSubmit =
-    Boolean(firstName && lastName && email && password && timezone && role) &&
+    Boolean(firstName && lastName && email && phone && password && timezone && role) &&
     passwordsMatch &&
     !loading &&
     acceptedTerms;
@@ -93,12 +88,18 @@ const Register = () => {
     setError("");
     setMessage("");
     const targetRole = getRoleMeta(role).apiValue;
+    if (targetRole === "recruiter") {
+      setError("Employees are invited by their manager.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await api.post(`/register`, {
         first_name: firstName,
         last_name: lastName,
         email,
+        phone,
         password,
         password_confirm: confirmPassword,
         timezone,
@@ -108,7 +109,8 @@ const Register = () => {
         terms_agreed_at: new Date().toISOString(),
       });
       setMessage(response.data.message);
-      setTimeout(() => navigate("/login"), 1500);
+      const nextPath = targetRole === "client" ? "/industries" : "/login";
+      setTimeout(() => navigate(nextPath), 1500);
     } catch (err) {
       setError(err.response?.data?.error || "Registration failed!");
     }
@@ -204,6 +206,16 @@ const Register = () => {
                 autoComplete="email"
                 required
               />
+              <TextField
+                label="Phone"
+                fullWidth
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                inputProps={{ inputMode: "tel" }}
+                autoComplete="tel"
+                required
+              />
               <PasswordField
                 label="Password"
                 fullWidth
@@ -268,6 +280,9 @@ const Register = () => {
                   </MenuItem>
                 ))}
               </TextField>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+                Employees are invited by their manager.
+              </Typography>
 
               <FormControlLabel
                 control={

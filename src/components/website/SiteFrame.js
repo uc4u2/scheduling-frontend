@@ -25,7 +25,7 @@ import {
   cloneLegalLinks,
   formatCopyrightText,
 } from "../../utils/footerDefaults";
-import { api } from "../../utils/api";
+import { api, publicSite } from "../../utils/api";
 import { createNavButtonStyles, normalizeNavStyle } from "../../utils/navStyle";
 import { getLuminance, pickTextColorForBg } from "../../utils/color";
 
@@ -165,12 +165,9 @@ export default function SiteFrame({
     let cancelled = false;
     setLoading(true);
     setErr("");
-    api
-      .get(`/api/public/${encodeURIComponent(slug)}/website`, {
-        noCompanyHeader: true,
-        noAuth: true,
-      })
-      .then(({ data }) => !cancelled && setSite(data))
+    publicSite
+      .getWebsiteShell(slug)
+      .then((data) => !cancelled && setSite(data))
       .catch(() => !cancelled && setErr("Failed to load site"))
       .finally(() => !cancelled && setLoading(false));
     return () => {
@@ -179,7 +176,11 @@ export default function SiteFrame({
   }, [slug, initialSite, disableFetch]);
 
   const pages = useMemo(() => {
-    const list = Array.isArray(site?.pages) ? site.pages : [];
+    const list = Array.isArray(site?.pages)
+      ? site.pages
+      : Array.isArray(site?.pages_meta)
+      ? site.pages_meta
+      : [];
     return list
       .filter(p => p.show_in_menu)
       .sort((a,b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));

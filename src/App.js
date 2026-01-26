@@ -21,7 +21,7 @@ import {
 } from "./theme";
 
 import { getTenantHostMode } from "./utils/tenant";
-import api from "./utils/api";
+import api, { publicSite } from "./utils/api";
 
 // Components
 import NavBar from "./NavBar";
@@ -414,21 +414,15 @@ const AppContent = ({ token, setToken }) => {
 
   useEffect(() => {
     if (!chatbotSlug) {
-      setChatbotConfig(null);
-      setChatbotConfigLoaded(false);
       return;
     }
     let alive = true;
     setChatbotConfigLoaded(false);
-    api
-      .get(`/api/public/${encodeURIComponent(chatbotSlug)}/chatbot-config`, {
-        noAuth: true,
-        noCompanyHeader: true,
-        params: { _ts: Date.now() },
-      })
+    publicSite
+      .getChatbotConfig(chatbotSlug)
       .then((res) => {
         if (!alive) return;
-        setChatbotConfig(res.data || null);
+        setChatbotConfig(res || null);
       })
       .catch(() => {
         if (!alive) return;
@@ -723,7 +717,11 @@ const AppContent = ({ token, setToken }) => {
 
       {showAppChrome && <Footer />}
       {!isEmbed && showChatBot && (
-        <ChatBot token={token} companySlug={chatbotSlug} config={chatbotSlug ? chatbotConfig : null} />
+        <ChatBot
+          token={token}
+          companySlug={chatbotSlug}
+          config={chatbotSlug ? chatbotConfig : null}
+        />
       )}
     </BillingBannerProvider>
   );

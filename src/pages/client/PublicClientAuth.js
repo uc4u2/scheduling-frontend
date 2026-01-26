@@ -21,6 +21,7 @@ export default function PublicClientAuth({ slug }) {
   // register form
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
+  const [phone, setPhone] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
 
@@ -53,9 +54,21 @@ export default function PublicClientAuth({ slug }) {
       setBusy(false);
       return;
     }
+    if (!first || !last || !email || !phone || !password) {
+      setError("All fields are required.");
+      setBusy(false);
+      return;
+    }
     try {
       await api.post(`/register`, {
-        first_name: first, last_name: last, email, password, timezone: tz, role: "client", agreed_to_terms: true
+        first_name: first,
+        last_name: last,
+        email,
+        phone,
+        password,
+        timezone: tz,
+        role: "client",
+        agreed_to_terms: true
       }, { noAuth: true, noCompanyHeader: true });
       // auto-login for convenience
       const { data } = await api.post(`/login`, {
@@ -115,6 +128,9 @@ export default function PublicClientAuth({ slug }) {
             </Stack>
           )}
           <TextField label="Email"    type="email"    value={email}    onChange={e=>setEmail(e.target.value)} fullWidth />
+          {tab === "register" && (
+            <TextField label="Phone" type="tel" value={phone} onChange={e=>setPhone(e.target.value)} fullWidth />
+          )}
           <TextField label="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} fullWidth />
           {tab === "login" && (
             <Box>

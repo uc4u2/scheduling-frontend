@@ -104,9 +104,12 @@ export default function EmployeeAvailabilityCalendar({
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
   const [selectedDate, setSelectedDate] = useState(() => ymd(new Date()));
+  const [debouncedDate, setDebouncedDate] = useState(() => ymd(new Date()));
   const [slots, setSlots] = useState([]); // availability for selected day
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const cacheRef = useRef(new Map());
+  const inflightRef = useRef(new Map());
   const [selectedTime, setSelectedTime] = useState(""); // "HH:MM"
   const [saving, setSaving] = useState(false);
   const [priceInfo, setPriceInfo] = useState(null); // optional: fetched price
@@ -176,20 +179,56 @@ export default function EmployeeAvailabilityCalendar({
 
   /* ------------ load day slots when selection changes ------------ */
   useEffect(() => {
-    const run = async () => {
-      if (!companySlug || !artistId || !serviceId || !selectedDate) return;
+    if (!selectedDate) return;
+    const handle = setTimeout(() => setDebouncedDate(selectedDate), 300);
+    return () => clearTimeout(handle);
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!companySlug || !artistId || !serviceId || !debouncedDate) return;
+
+    const cacheKey = `${companySlug}|${serviceId}|${artistId}|${debouncedDate}`;
+    const now = Date.now();
+    const cached = cacheRef.current.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      setSlots(cached.data || []);
+      setSelectedTime((prev) =>
+        (cached.data || []).some((s) => s.start_time === prev) ? prev : ""
+      );
+      setLoading(false);
+      return;
+    }
+
+    const inflight = inflightRef.current.get(cacheKey);
+    if (inflight) {
+      inflight
+        .then((data) => {
+          setSlots(data || []);
+          setSelectedTime((prev) =>
+            (data || []).some((s) => s.start_time === prev) ? prev : ""
+          );
+        })
+        .catch(() => {
+          setErr("Unable to load availability.");
+          setSlots([]);
+        })
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    const run = (async () => {
       try {
         setLoading(true);
         setErr("");
         setSlots([]);
 
         // Fetch day availability for this artist/service/date
-        const cartJSON = buildCartPayload({ date: selectedDate, artistId });
+        const cartJSON = buildCartPayload({ date: debouncedDate, artistId });
         const { data } = await api.get(`/public/${companySlug}/availability`, {
           params: {
             artist_id: artistId,
             service_id: serviceId,
-            date: selectedDate,
+            date: debouncedDate,
             timezone: userTz,
             explicit_only: 1,
             respect_rows: 1,
@@ -200,13 +239,8 @@ export default function EmployeeAvailabilityCalendar({
 
         const sourceSlots = Array.isArray(data?.slots) ? data.slots : [];
         const daySlots = sourceSlots.filter((slot) => slotIsAvailable(slot));
-        setSlots(daySlots);
-        setSelectedTime((prev) =>
-          daySlots.some((s) => s.start_time === prev) ? prev : ""
-        );
 
         // Optional: pull simple pricing from your public service endpoint if you have it
-        // (safe no-op if you don't)
         if (!priceInfo) {
           try {
             const svc = await api.get(`/public/${companySlug}/service/${serviceId}`);
@@ -215,15 +249,35 @@ export default function EmployeeAvailabilityCalendar({
             // ignore
           }
         }
-      } catch (e) {
-        setErr("Unable to load availability.");
-        setSlots([]);
-      } finally {
-        setLoading(false);
+
+        return daySlots;
+      } catch {
+        return null;
       }
-    };
-    run();
-  }, [companySlug, artistId, serviceId, departmentId, selectedDate]);
+    })();
+
+    inflightRef.current.set(cacheKey, run);
+    run
+      .then((data) => {
+        if (data === null) {
+          setErr("Unable to load availability.");
+          setSlots([]);
+          return;
+        }
+        setSlots(data);
+        setSelectedTime((prev) =>
+          data.some((s) => s.start_time === prev) ? prev : ""
+        );
+        cacheRef.current.set(cacheKey, {
+          data,
+          expiresAt: Date.now() + 60_000,
+        });
+      })
+      .finally(() => {
+        inflightRef.current.delete(cacheKey);
+        setLoading(false);
+      });
+  }, [companySlug, artistId, serviceId, departmentId, debouncedDate, userTz]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");

@@ -297,6 +297,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
   const [firstName, setFirstName] = React.useState("");
   const [lastName, setLastName] = React.useState("");
   const [email, setEmail] = React.useState("");
+  const [phone, setPhone] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [agreedToTerms, setAgreedToTerms] = React.useState(false);
   const [timezone, setTimezone] = React.useState(
@@ -312,7 +313,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
     setAccountExists(false);
     setLoading(true);
 
-    if (!firstName || !lastName || !email || !password) {
+    if (!firstName || !lastName || !email || !phone || !password) {
       setError("All fields are required.");
       setLoading(false);
       return;
@@ -328,6 +329,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
         first_name: firstName,
         last_name: lastName,
         email,
+        phone,
         password,
         password_confirm: password,
         timezone,
@@ -412,6 +414,15 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+            required
+            margin="normal"
+          />
+          <TextField
+            label="Phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             fullWidth
             required
             margin="normal"
@@ -1212,6 +1223,10 @@ function CheckoutFormCore({
     }
     if (serviceItems.length === 0 && productItems.length === 0 && packageItems.length === 0) {
       setErr("Your cart is empty.");
+      return;
+    }
+    if (productItems.length > 0 && !paymentsEnabled) {
+      setErr("Online payments are disabled for this company. Products require online payment.");
       return;
     }
     if (packageItems.length > 0) {
@@ -2372,7 +2387,7 @@ export default function Checkout(props) {
     }
     setSiteLoading(true);
     publicSite
-      .getBySlug(companySlug)
+      .getWebsiteShell(companySlug)
       .then((data) => {
         if (!mounted) return;
         setSitePayload(data || null);

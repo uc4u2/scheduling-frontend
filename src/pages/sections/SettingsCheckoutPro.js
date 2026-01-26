@@ -567,7 +567,7 @@ export default function SettingsCheckoutPro() {
             <Grid item xs={12} md={6}>{taxRegionOptions}</Grid>
 
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth disabled={chargeCurrencyMode === "LOCALIZED"}>
+              <FormControl fullWidth>
                 <InputLabel id="display-currency-label">{t("settings.checkout.displayCurrency.label")}</InputLabel>
                 <Select
                   labelId="display-currency-label"
@@ -582,7 +582,10 @@ export default function SettingsCheckoutPro() {
               </FormControl>
               {chargeCurrencyMode === "LOCALIZED" && (
                 <Typography variant="caption" color="text.secondary" display="block">
-                  {t("settings.checkout.displayCurrency.helper")}
+                  {t(
+                    "settings.checkout.displayCurrency.helper",
+                    "Localized pricing will follow your tax country by default. You can override it here."
+                  )}
                 </Typography>
               )}
             </Grid>
