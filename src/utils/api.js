@@ -726,6 +726,11 @@ const _keyWithVersion = (key, slug) => {
   const v = _getPublicVersion(slug);
   return v ? `${key}:v=${v}` : key;
 };
+
+const _versionParam = (slug) => {
+  const v = _getPublicVersion(slug);
+  return v ? { v } : {};
+};
 const _publicCacheStores = [
   _publicShellCache,
   _publicPageCache,
@@ -786,7 +791,10 @@ export const publicSite = {
     const cached = _getCached(_publicShellCache, key);
     if (cached) return cached;
     const req = api
-      .get(`/api/public/${encodeURIComponent(keySlug)}/website-shell`, { noCompanyHeader: true })
+      .get(`/api/public/${encodeURIComponent(keySlug)}/website-shell`, {
+        noCompanyHeader: true,
+        params: _versionParam(keySlug),
+      })
       .then((r) => {
         const data = r.data;
         const publishedAt =
@@ -813,6 +821,7 @@ export const publicSite = {
     const req = api
       .get(`/api/public/${encodeURIComponent(keySlug)}/page/${encodeURIComponent(keyPage)}`, {
         noCompanyHeader: true,
+        params: _versionParam(keySlug),
       })
       .then((r) => r.data)
       .catch((err) => {
@@ -831,7 +840,7 @@ export const publicSite = {
     const req = api
       .get(`/api/public/${encodeURIComponent(keySlug)}/bootstrap`, {
         noCompanyHeader: true,
-        params: { include: keyInclude },
+        params: { include: keyInclude, ..._versionParam(keySlug) },
       })
       .then((r) => r.data)
       .catch((err) => {
