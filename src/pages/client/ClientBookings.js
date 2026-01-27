@@ -50,7 +50,14 @@ export default function ClientBookings() {
       publicUrl &&
       (publicUrl.includes("schedulaa.com") || publicUrl.includes("www.schedulaa.com")) &&
       !originBase.includes("schedulaa.com");
-    const companyBase = preferOrigin ? originBase : publicUrl || originBase || fallbackBase;
+    const pathBase =
+      originBase &&
+      fallbackSlug &&
+      typeof window !== "undefined" &&
+      window.location.pathname.startsWith(`/${fallbackSlug}`)
+        ? `${originBase}/${fallbackSlug}`
+        : originBase;
+    const companyBase = preferOrigin ? pathBase : publicUrl || pathBase || fallbackBase;
     const slugPrefix = fallbackSlug ? `/${fallbackSlug}` : "";
 
     try {
@@ -87,9 +94,16 @@ export default function ClientBookings() {
       publicUrl &&
       (publicUrl.includes("schedulaa.com") || publicUrl.includes("www.schedulaa.com")) &&
       !originBase.includes("schedulaa.com");
+    const pathBase =
+      originBase &&
+      slug &&
+      typeof window !== "undefined" &&
+      window.location.pathname.startsWith(`/${slug}`)
+        ? `${originBase}/${slug}`
+        : originBase;
     const base =
-      (preferOrigin ? originBase : publicUrl) ||
-      (originBase ? `${originBase}${slug ? `/${slug}` : ""}` : "");
+      (preferOrigin ? pathBase : publicUrl) ||
+      (pathBase ? pathBase : "");
     const slugPrefix = slug ? `/${slug}` : "";
 
     try {
