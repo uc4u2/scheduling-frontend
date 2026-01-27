@@ -538,7 +538,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/payroll/tools/t4" element={<T4ToolPage />} />
           <Route path="/payroll/tools/w2" element={<W2ToolPage />} />
           <Route path="/payslips" element={<PayslipPortalPage />} />
-          <Route path="/settings/zapier" element={<Navigate to="/manager/dashboard?view=zapier" replace />} />
+          <Route path="/settings/zapier" element={<Navigate to="/manager/zapier" replace />} />
           <Route path="/xero/callback" element={<XeroCallback />} />
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/resources/staffing-formulas" element={<StaffingFormulasPage />} />
@@ -650,6 +650,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/employee/candidates" element={<RecruiterCandidates token={token} />} />
           <Route path="/recruiter-stats/:recruiterId" element={<RecruiterStats token={token} />} />
           <Route path="/manager/dashboard" element={<ManagerDashboard token={token} />} />
+          <Route path="/manager/:view" element={<ManagerDashboard token={token} />} />
           <Route path="/manager/onboarding" element={<OnboardingPage />} />
           <Route
             path="/manager/attendance-summaries"
@@ -659,11 +660,11 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/manager/job-openings" element={<ManagerJobOpeningsPage token={token} />} />
           <Route path="/manager/candidates-management" element={<CandidateManagement />} />
           <Route path="/manager/interview-stages" element={<InterviewStages />} />
-          <Route path="/manager/add-member" element={<AddRecruiter />} />
+          <Route path="/manager/add-member" element={<ManagerDashboard token={token} />} />
           <Route path="/manager/add-recruiter" element={<AddRecruiter />} />
-          <Route path="/manager/payroll" element={<Payroll token={token} />} />
+          <Route path="/manager/payroll" element={<ManagerDashboard token={token} />} />
           <Route path="/manager/payroll/retirement" element={<RetirementPlanPage token={token} />} />
-          <Route path="/manager/employee-profiles" element={<EmployeeProfileForm token={token} />} />
+          <Route path="/manager/employee-profiles" element={<ManagerDashboard token={token} />} />
           <Route path="/manager/service-management" element={<ServiceManagement />} />
           <Route path="/manager/employee-availability" element={<EmployeeAvailabilityManagement />} />
           <Route path="/manager/audit-history" element={<AuditHistory />} />

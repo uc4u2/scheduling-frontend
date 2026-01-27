@@ -2458,6 +2458,7 @@
             "HR onboarding access: manage onboarding forms and candidate profiles.",
             "Limited HR onboarding: view HR tabs and read candidate profiles only.",
             "Supervisor access: shift, time tracking, leaves, swap approvals, master calendar.",
+            "Collect payments (self only): booking checkout for the employee's own clients.",
             "Payroll access: payroll runs, tax forms, ROE, T4/W-2, invoices."
           ]
         },

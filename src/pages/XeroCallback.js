@@ -7,7 +7,7 @@ const XeroCallback = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigate("/manager/dashboard?view=settings", { replace: true });
+      navigate("/manager/settings", { replace: true });
     }, 4000);
     return () => clearTimeout(timer);
   }, [navigate]);
@@ -20,7 +20,7 @@ const XeroCallback = () => {
         <Typography color="text.secondary">
           You can close this tab. We’ll redirect you back to the manager dashboard automatically.
         </Typography>
-        <Button variant="contained" onClick={() => navigate("/manager/dashboard?view=settings", { replace: true })}>
+        <Button variant="contained" onClick={() => navigate("/manager/settings", { replace: true })}>
           Go to Settings
         </Button>
       </Stack>

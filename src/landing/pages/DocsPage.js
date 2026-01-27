@@ -69,12 +69,12 @@ const ACCOUNTING_GUIDE_CONFIG = [
   {
     id: "quickbooks-onboarding",
     translationKey: "quickbooks",
-    ctaHref: "/manager/dashboard?view=settings&tab=quickbooks",
+    ctaHref: "/manager/settings?tab=quickbooks",
   },
   {
     id: "xero-onboarding",
     translationKey: "xero",
-    ctaHref: "/manager/dashboard?view=settings&tab=xero",
+    ctaHref: "/manager/settings?tab=xero",
   },
 ];
 

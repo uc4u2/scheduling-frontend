@@ -925,7 +925,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     params.set("amount", (totalCents / 100).toFixed(2));
     params.set("extra", (extraCents / 100).toFixed(2));
     params.set("tip", (tipCents / 100).toFixed(2));
-    navigate(`/manager/dashboard?${params.toString()}`);
+    navigate(`/manager/payments-hub?${params.toString()}`);
   };
 
   const handleCreateInvoice = async () => {
@@ -1997,9 +1997,14 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     }
   };
 
+  const viewToPath = (viewKey) => {
+    if (!viewKey || viewKey === "__landing__") return "/manager/dashboard";
+    return `/manager/${viewKey}`;
+  };
+
   const handleNavSelect = (viewKey) => {
     if (viewKey === "billing") {
-      navigate("/manager/dashboard?view=settings&tab=billing");
+      navigate("/manager/settings?tab=billing");
       setSelectedView("settings");
       if (isMobileViewport) {
         setMobileDrawerOpen(false);
@@ -2007,6 +2012,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       return;
     }
     setSelectedView(viewKey);
+    navigate(viewToPath(viewKey));
     if (isMobileViewport) {
       setMobileDrawerOpen(false);
     }
@@ -2441,7 +2447,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                                 />
                                 <Typography variant="body2">Supervisor access</Typography>
                                 <Tooltip
-                                  title="Shift & availability tools: Shift Management, Time Tracking, Fraud/Anomalies, Leaves, Swap Approvals, Master Calendar."
+                                  title="Shift & availability tools: Shift Management, Time Tracking, Fraud/Anomalies, Leaves, Swap Approvals, Master Calendar. Includes Booking Checkout access when enabled."
                                   placement="top"
                                 >
                                   <IconButton size="small" aria-label="Supervisor access help">

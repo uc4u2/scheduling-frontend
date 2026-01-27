@@ -14,6 +14,7 @@ import {
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   Dialog,
   DialogActions,
@@ -25,10 +26,11 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import Snackbar from "@mui/material/Snackbar";
 import api from "./utils/api";
 import { getUserTimezone } from "./utils/timezone";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useDepartments } from "./pages/sections/hooks/useRecruiterDepartments";
 import TimezoneSelect from "./components/TimezoneSelect";
 import useBillingStatus from "./components/billing/useBillingStatus";
@@ -44,6 +46,8 @@ const ROLE_OPTIONS = [
 ];
 
 const AddRecruiter = () => {
+  const navigate = useNavigate();
+  const employeeManagementUrl = "/manager/employee-management?focus=employees";
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -319,9 +323,40 @@ const passwordStrength = useMemo(() => {
           spacing={1}
           sx={{ mb: 2 }}
         >
-          <Typography variant="h5" fontWeight={700}>
-            Add Team Member
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h5" fontWeight={700}>
+              Add Team Member
+            </Typography>
+            <Tooltip
+              title={
+                "After creating a team member, open Employee Management to grant access. " +
+                "Step 1: Find the employee. Step 2: Toggle Supervisor/Payroll/HR/Payments as needed. " +
+                "Examples: Team lead = Employee + Supervisor + Collect payments (self only). " +
+                "Front desk coordinator = Employee + HR onboarding (no payroll). " +
+                "Payroll admin = Employee + Payroll access."
+              }
+              placement="top"
+            >
+              <Button
+                size="small"
+                variant="text"
+                startIcon={<InfoOutlinedIcon fontSize="small" />}
+                sx={{ textTransform: "none", fontWeight: 600 }}
+                component="a"
+                href={employeeManagementUrl}
+              >
+                How to set permissions
+              </Button>
+            </Tooltip>
+            <Button
+              size="small"
+              variant="outlined"
+              sx={{ textTransform: "none", fontWeight: 600 }}
+              onClick={() => navigate(employeeManagementUrl)}
+            >
+              Go to Employee Management
+            </Button>
+          </Stack>
           <Button
             variant="outlined"
             size="small"

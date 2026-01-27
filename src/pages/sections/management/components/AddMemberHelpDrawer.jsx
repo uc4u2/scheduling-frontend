@@ -92,6 +92,7 @@ export default function AddMemberHelpDrawer({ open, onClose, anchor, width }) {
           items={[
             "HR onboarding access lets someone manage onboarding forms and candidate profiles.",
             "Supervisor access gives shift and availability tools.",
+            "Collect payments (self only) lets an employee process payments for their own bookings.",
             "Payroll access opens payroll and tax tools.",
           ]}
         />
@@ -118,7 +119,7 @@ export default function AddMemberHelpDrawer({ open, onClose, anchor, width }) {
           <Button
             variant="contained"
             component={RouterLink}
-            to="/manager/dashboard?view=employee-management"
+            to="/manager/employee-management"
           >
             Go to Employee Management
           </Button>

@@ -487,7 +487,7 @@ useEffect(() => {
               <Paper
                 variant="outlined"
                 sx={{ flex: 1, p: 2, cursor: "pointer" }}
-                onClick={() => navigate(`/manager/dashboard?view=team&recruiter=${selectedEmployeeId}`)}
+                onClick={() => navigate(`/manager/team?recruiter=${selectedEmployeeId}`)}
               >
                 <Typography variant="h4" fontWeight={700}>
                   {assignedShifts.length}

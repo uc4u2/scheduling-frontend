@@ -84,7 +84,7 @@ const KioskSuccessPage = () => {
 
           <Button
             variant="outlined"
-            onClick={() => navigate("/manager/dashboard?view=booking-checkout")}
+            onClick={() => navigate("/manager/booking-checkout")}
           >
             Return to manager
           </Button>

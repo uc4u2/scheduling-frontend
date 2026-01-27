@@ -240,9 +240,9 @@ const Overview = () => {
 
   const goToManagerActions = () => {
     if (managerActions.approvalsNeeded > 0) {
-      navigate("/manager/shifts?view=approvals");
+      navigate("/manager/swap-approvals");
     } else {
-      navigate("/manager/shifts?view=swaps");
+      navigate("/manager/swap-approvals");
     }
   };
 
@@ -406,7 +406,7 @@ const Overview = () => {
                 "Swap Requests",
                 pendingSwaps,
                 "#6a1b9a",
-                () => navigate("/manager/shifts?view=swaps")
+                () => navigate("/manager/swap-approvals")
               )}
             </Grid>
             <Grid item xs={12} md={6} lg={3}>
@@ -415,7 +415,7 @@ const Overview = () => {
                 "Awaiting Approval",
                 awaitingManagerSwaps,
                 "#c2185b",
-                () => navigate("/manager/shifts?view=approvals")
+                () => navigate("/manager/swap-approvals")
               )}
             </Grid>
             <Grid item xs={12} md={6} lg={3}>
