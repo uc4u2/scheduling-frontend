@@ -672,6 +672,67 @@ const _publicChatbotCache = new Map();
 const _publicServiceCache = new Map();
 const _publicServiceEmployeesCache = new Map();
 const _PUBLIC_CACHE_TTL = 5 * 60 * 1000;
+const _PUBLIC_VERSION_KEY = "sched_public_site_version";
+const _PUBLIC_CACHE_DEBUG =
+  typeof window !== "undefined" &&
+  (!process.env.NODE_ENV || process.env.NODE_ENV !== "production");
+
+const _getVersionMap = () => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(_PUBLIC_VERSION_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const _setVersionMap = (map) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(_PUBLIC_VERSION_KEY, JSON.stringify(map));
+  } catch {
+    /* noop */
+  }
+};
+
+const _getPublicVersion = (slug) => {
+  const keySlug = String(slug || "").trim().toLowerCase();
+  if (!keySlug) return "";
+  const map = _getVersionMap();
+  return map[keySlug] || "";
+};
+
+const _setPublicVersion = (slug, version, source = "") => {
+  const keySlug = String(slug || "").trim().toLowerCase();
+  if (!keySlug) return;
+  const v = version ? String(version) : "";
+  const map = _getVersionMap();
+  if (v) {
+    map[keySlug] = v;
+    if (_PUBLIC_CACHE_DEBUG) {
+      console.debug(
+        "[publicSite] cache version set",
+        { slug: keySlug, version: v, source: source || "unknown" }
+      );
+    }
+  } else {
+    delete map[keySlug];
+  }
+  _setVersionMap(map);
+};
+
+const _keyWithVersion = (key, slug) => {
+  const v = _getPublicVersion(slug);
+  return v ? `${key}:v=${v}` : key;
+};
+const _publicCacheStores = [
+  _publicShellCache,
+  _publicPageCache,
+  _publicChatbotCache,
+  _publicServiceCache,
+  _publicServiceEmployeesCache,
+];
 
 const _getCached = (store, key) => {
   const cached = store.get(key);
@@ -689,6 +750,30 @@ const _setCached = (store, key, promise) => {
 };
 
 export const publicSite = {
+  setVersion: (slug, version) => {
+    _setPublicVersion(slug, version);
+  },
+  invalidate: (slug) => {
+    const keySlug = String(slug || "").trim().toLowerCase();
+    _publicCacheStores.forEach((store) => {
+      if (!keySlug) {
+        store.clear();
+        return;
+      }
+      for (const key of Array.from(store.keys())) {
+        if (
+          key === `shell:${keySlug}` ||
+          key.startsWith(`page:${keySlug}:`) ||
+          key.startsWith(`bootstrap:${keySlug}:`) ||
+          key.startsWith(`service:${keySlug}:`) ||
+          key.startsWith(`service_employees:${keySlug}:`) ||
+          key.startsWith(`chatbot:${keySlug}`)
+        ) {
+          store.delete(key);
+        }
+      }
+    });
+  },
   getBySlug: (slug) => {
     const keySlug = String(slug || "").trim().toLowerCase();
     return api
@@ -697,12 +782,21 @@ export const publicSite = {
   },
   getWebsiteShell: (slug) => {
     const keySlug = String(slug || "").trim().toLowerCase();
-    const key = `shell:${keySlug}`;
+    const key = _keyWithVersion(`shell:${keySlug}`, keySlug);
     const cached = _getCached(_publicShellCache, key);
     if (cached) return cached;
     const req = api
       .get(`/api/public/${encodeURIComponent(keySlug)}/website-shell`, { noCompanyHeader: true })
-      .then((r) => r.data)
+      .then((r) => {
+        const data = r.data;
+        const publishedAt =
+          data?.branding_published_at ||
+          data?.published_at ||
+          data?.settings?.branding_published_at ||
+          data?.settings?.published_at;
+        if (publishedAt) _setPublicVersion(keySlug, publishedAt, "website-shell");
+        return data;
+      })
       .catch((err) => {
         _publicShellCache.delete(key);
         throw err;
@@ -713,7 +807,7 @@ export const publicSite = {
   getPage: (slug, pageSlug) => {
     const keySlug = String(slug || "").trim().toLowerCase();
     const keyPage = String(pageSlug || "").trim().toLowerCase();
-    const key = `page:${keySlug}:${keyPage}`;
+    const key = _keyWithVersion(`page:${keySlug}:${keyPage}`, keySlug);
     const cached = _getCached(_publicPageCache, key);
     if (cached) return cached;
     const req = api
@@ -731,7 +825,7 @@ export const publicSite = {
   getBootstrap: (slug, include = "services,departments,packages,website_shell") => {
     const keySlug = String(slug || "").trim().toLowerCase();
     const keyInclude = String(include || "").trim().toLowerCase();
-    const key = `bootstrap:${keySlug}:${keyInclude}`;
+    const key = _keyWithVersion(`bootstrap:${keySlug}:${keyInclude}`, keySlug);
     const cached = _getCached(_publicShellCache, key);
     if (cached) return cached;
     const req = api

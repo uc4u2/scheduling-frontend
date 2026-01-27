@@ -62,7 +62,7 @@ import { Link as RouterLink, useLocation } from "react-router-dom";
 import { useTranslation, Trans } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
 
-import { wb, navSettings } from "../../../utils/api";
+import { wb, navSettings, publicSite } from "../../../utils/api";
 import { normalizeNavStyle } from "../../../utils/navStyle";
 import { RenderSections } from "../../../components/website/RenderSections";
 import SiteFrame from "../../../components/website/SiteFrame";
@@ -1796,10 +1796,20 @@ const autoProvisionIfEmpty = useCallback(
         publish: true,
       });
       const brandingPayload = brandingRes?.data || brandingRes || {};
+      if (brandingPayload?.branding_published_at) {
+        publicSite.setVersion(
+          siteSettings?.company?.slug || previewSlug,
+          brandingPayload.branding_published_at,
+          "publish"
+        );
+      }
       applyBrandingFromServer(brandingPayload);
       setSiteSettings(brandingPayload);
 
       await wb.publish(companyId, true);
+      publicSite.invalidate(
+        (siteSettings?.company?.slug || previewSlug || "").toString()
+      );
       const publishedMsg = `${
         t("manager.visualBuilder.messages.sitePublished") || "Site published"
       } ✔`;
