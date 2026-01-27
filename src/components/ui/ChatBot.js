@@ -47,6 +47,11 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
   const [input, setInput] = useState("");
   const isTenant = Boolean(companySlug);
   const navigate = useNavigate();
+  const tenantAccent = "var(--page-btn-bg, var(--sched-primary, #6366F1))";
+  const tenantAccentHover =
+    "var(--page-btn-bg-hover, var(--page-btn-bg, var(--sched-primary, #6366F1)))";
+  const tenantPaper = "var(--sched-paper, #ffffff)";
+  const tenantBg = "var(--sched-bg, #f5f6f8)";
   const introMessages = useMemo(
     () => buildIntroMessages({ isTenant, config }),
     [isTenant, config]
@@ -187,9 +192,11 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
             bottom: 20,
             right: 20,
             zIndex: 2000,
-            backgroundColor: "primary.main",
+            backgroundColor: isTenant ? tenantAccent : "primary.main",
             color: "white",
-            "&:hover": { backgroundColor: "primary.dark" },
+            "&:hover": {
+              backgroundColor: isTenant ? tenantAccentHover : "primary.dark",
+            },
           }}
         >
           <ChatIcon />
@@ -219,12 +226,18 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
             overflow: "hidden",
           }}
         >
-          <Box sx={{ p: 2, pb: 1.5, backgroundColor: "grey.50" }}>
+          <Box
+            sx={{
+              p: 2,
+              pb: 1.5,
+              backgroundColor: isTenant ? tenantBg : "grey.50",
+            }}
+          >
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Avatar
                 sx={{
-                  bgcolor: "primary.main",
-                  color: "primary.contrastText",
+                  bgcolor: isTenant ? tenantAccent : "primary.main",
+                  color: isTenant ? "#fff" : "primary.contrastText",
                   width: 40,
                   height: 40,
                   fontWeight: 700,
@@ -279,7 +292,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
               display: "flex",
               flexDirection: "column",
               gap: 1.25,
-              backgroundColor: "background.default",
+              backgroundColor: isTenant ? tenantBg : "background.default",
             }}
           >
             {messages.map((msg, idx) => {
@@ -300,8 +313,12 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                           width: 28,
                           height: 28,
                           fontSize: 12,
-                          bgcolor: "primary.light",
-                          color: "primary.dark",
+                          bgcolor: isTenant
+                            ? "color-mix(in srgb, var(--page-btn-bg, var(--sched-primary, #6366F1)) 12%, #fff)"
+                            : "primary.light",
+                          color: isTenant
+                            ? "var(--page-btn-bg, var(--sched-primary, #6366F1))"
+                            : "primary.dark",
                         }}
                       >
                         S
@@ -315,9 +332,11 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                         borderRadius: isUser
                           ? "18px 4px 18px 18px"
                           : "4px 18px 18px 18px",
-                        bgcolor: isUser ? "primary.main" : "background.paper",
+                        bgcolor: isUser
+                          ? (isTenant ? tenantAccent : "primary.main")
+                          : (isTenant ? tenantPaper : "background.paper"),
                         color: isUser
-                          ? "primary.contrastText"
+                          ? (isTenant ? "#fff" : "primary.contrastText")
                           : "text.primary",
                         border: (theme) =>
                           isUser
@@ -344,10 +363,14 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                           onClick={() => handleChipClick(label)}
                           sx={{
                             borderRadius: "999px",
-                            borderColor: "primary.light",
+                            borderColor: isTenant ? tenantAccent : "primary.light",
                             "&:hover": {
-                              bgcolor: "primary.light",
-                              color: "primary.dark",
+                              bgcolor: isTenant
+                                ? "color-mix(in srgb, var(--page-btn-bg, var(--sched-primary, #6366F1)) 16%, #fff)"
+                                : "primary.light",
+                              color: isTenant
+                                ? "var(--page-btn-bg, var(--sched-primary, #6366F1))"
+                                : "primary.dark",
                             },
                           }}
                         />
@@ -368,7 +391,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                 flexWrap: "wrap",
                 px: 2.5,
                 pb: 1.5,
-                backgroundColor: "background.default",
+                backgroundColor: isTenant ? tenantBg : "background.default",
               }}
             >
               {primaryCta?.label && primaryCta?.href && (
@@ -376,6 +399,14 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                   variant="contained"
                   size="small"
                   onClick={() => goToCta(primaryCta.href)}
+                  sx={
+                    isTenant
+                      ? {
+                          backgroundColor: tenantAccent,
+                          "&:hover": { backgroundColor: tenantAccentHover },
+                        }
+                      : undefined
+                  }
                 >
                   {primaryCta.label}
                 </Button>
@@ -385,6 +416,19 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                   variant="outlined"
                   size="small"
                   onClick={() => goToCta(secondaryCta.href)}
+                  sx={
+                    isTenant
+                      ? {
+                          borderColor: tenantAccent,
+                          color: tenantAccent,
+                          "&:hover": {
+                            borderColor: tenantAccent,
+                            backgroundColor:
+                              "color-mix(in srgb, var(--page-btn-bg, var(--sched-primary, #6366F1)) 12%, #fff)",
+                          },
+                        }
+                      : undefined
+                  }
                 >
                   {secondaryCta.label}
                 </Button>
@@ -399,7 +443,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
               borderTop: (theme) => `1px solid ${theme.palette.divider}`,
               px: 2,
               py: 1.5,
-              backgroundColor: "grey.50",
+              backgroundColor: isTenant ? tenantBg : "grey.50",
             }}
           >
             <TextField
@@ -422,7 +466,10 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
               }}
               sx={{ mr: 1, "& fieldset": { borderRadius: 999 } }}
             />
-            <IconButton color="primary" onClick={() => sendMessage()}>
+            <IconButton
+              onClick={() => sendMessage()}
+              sx={{ color: isTenant ? tenantAccent : "primary.main" }}
+            >
               <SendIcon />
             </IconButton>
           </Box>
