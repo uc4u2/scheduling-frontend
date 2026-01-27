@@ -15,8 +15,6 @@ import {
 } from "@mui/material";
 import api from "../../utils/api";
 import { useNavigate, useLocation } from "react-router-dom";
-import { tenantBaseUrl } from "../../utils/tenant";
-
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
 
@@ -39,96 +37,6 @@ export default function ClientBookings() {
     );
 
   const userTimezone = getUserTimezone();
-  const buildPublicLink = (rawLink) => {
-    if (!rawLink) return null;
-    const fallbackSlug = selected?.company_slug || "";
-    const fallbackBase = tenantBaseUrl({ slug: fallbackSlug });
-    const originBase = (typeof window !== "undefined" && window.location.origin) || "";
-    const publicUrl = selected?.company_public_url || "";
-    const preferOrigin =
-      originBase &&
-      publicUrl &&
-      (publicUrl.includes("schedulaa.com") || publicUrl.includes("www.schedulaa.com")) &&
-      !originBase.includes("schedulaa.com");
-    const pathBase =
-      originBase &&
-      fallbackSlug &&
-      typeof window !== "undefined" &&
-      window.location.pathname.startsWith(`/${fallbackSlug}`)
-        ? `${originBase}/${fallbackSlug}`
-        : originBase;
-    const companyBase = preferOrigin ? pathBase : publicUrl || pathBase || fallbackBase;
-    const slugPrefix = fallbackSlug ? `/${fallbackSlug}` : "";
-
-    try {
-      const linkUrl = new URL(rawLink);
-      const baseUrl = new URL(companyBase);
-      const host = linkUrl.host.toLowerCase();
-      if (host === "schedulaa.com" || host === "www.schedulaa.com") {
-        linkUrl.protocol = baseUrl.protocol;
-        linkUrl.host = baseUrl.host;
-        if (slugPrefix && baseUrl.pathname === "/" && linkUrl.pathname.startsWith(slugPrefix + "/")) {
-          linkUrl.pathname = linkUrl.pathname.replace(slugPrefix, "");
-        }
-        return linkUrl.toString();
-      }
-      return rawLink;
-    } catch {
-      if (rawLink.startsWith("/")) {
-        if (slugPrefix && companyBase && !companyBase.includes("schedulaa.com") && rawLink.startsWith(slugPrefix + "/")) {
-          return `${companyBase}${rawLink.replace(slugPrefix, "")}`;
-        }
-        return `${companyBase}${rawLink}`;
-      }
-      return rawLink;
-    }
-  };
-
-  const normalizeBookingLink = (rawLink, booking) => {
-    if (!rawLink) return null;
-    const slug = booking?.company_slug || "";
-    const originBase = (typeof window !== "undefined" && window.location.origin) || "";
-    const publicUrl = booking?.company_public_url || "";
-    const preferOrigin =
-      originBase &&
-      publicUrl &&
-      (publicUrl.includes("schedulaa.com") || publicUrl.includes("www.schedulaa.com")) &&
-      !originBase.includes("schedulaa.com");
-    const pathBase =
-      originBase &&
-      slug &&
-      typeof window !== "undefined" &&
-      window.location.pathname.startsWith(`/${slug}`)
-        ? `${originBase}/${slug}`
-        : originBase;
-    const base =
-      (preferOrigin ? pathBase : publicUrl) ||
-      (pathBase ? pathBase : "");
-    const slugPrefix = slug ? `/${slug}` : "";
-
-    try {
-      const linkUrl = new URL(rawLink);
-      const baseUrl = new URL(base || originBase || rawLink);
-      const host = linkUrl.host.toLowerCase();
-      if (host === "schedulaa.com" || host === "www.schedulaa.com") {
-        linkUrl.protocol = baseUrl.protocol;
-        linkUrl.host = baseUrl.host;
-        if (slugPrefix && baseUrl.pathname === "/" && linkUrl.pathname.startsWith(slugPrefix + "/")) {
-          linkUrl.pathname = linkUrl.pathname.replace(slugPrefix, "");
-        }
-        return linkUrl.toString();
-      }
-      return rawLink;
-    } catch {
-      if (rawLink.startsWith("/")) {
-        if (slugPrefix && base && !base.includes("schedulaa.com") && rawLink.startsWith(slugPrefix + "/")) {
-          return `${base}${rawLink.replace(slugPrefix, "")}`;
-        }
-        return base ? `${base}${rawLink}` : rawLink;
-      }
-      return rawLink;
-    }
-  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -138,13 +46,7 @@ export default function ClientBookings() {
       })
       .then((res) => {
         const data = res.data.bookings || res.data || [];
-        setBookings(
-          data.map((booking) => ({
-            ...booking,
-            reschedule_link: normalizeBookingLink(booking.reschedule_link, booking),
-            cancel_link: normalizeBookingLink(booking.cancel_link, booking),
-          }))
-        );
+        setBookings(data);
       })
       .catch((err) => console.error("Failed to load bookings:", err));
   }, []);
@@ -157,13 +59,7 @@ export default function ClientBookings() {
           headers: { Authorization: 'Bearer ' + token() },
         })
         .then((res) =>
-          setBookings(
-            (res.data.bookings || res.data || []).map((booking) => ({
-              ...booking,
-              reschedule_link: normalizeBookingLink(booking.reschedule_link, booking),
-              cancel_link: normalizeBookingLink(booking.cancel_link, booking),
-            }))
-          )
+          setBookings(res.data.bookings || res.data || [])
         )
         .catch((err) => console.error("Failed to load bookings:", err));
     };
@@ -399,7 +295,7 @@ export default function ClientBookings() {
                     <Button
                       variant="outlined"
                       size="small"
-                      href={buildPublicLink(selected.reschedule_link)}
+                      href={selected.reschedule_link}
                       target="_blank"
                       rel="noopener"
                     >
@@ -411,7 +307,7 @@ export default function ClientBookings() {
                       variant="outlined"
                       color="error"
                       size="small"
-                      href={buildPublicLink(selected.cancel_link)}
+                      href={selected.cancel_link}
                       target="_blank"
                       rel="noopener"
                     >
