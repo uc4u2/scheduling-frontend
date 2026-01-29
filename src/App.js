@@ -24,7 +24,7 @@ import { getTenantHostMode } from "./utils/tenant";
 import api, { publicSite } from "./utils/api";
 
 // Components
-import NavBar from "./NavBar";
+import MainNav from "./landing/components/MainNav";
 import Footer from "./components/Footer";
 import PublicLayout from "./layouts/PublicLayout";
 import HomePage from "./landing/pages/HomePage";
@@ -349,7 +349,7 @@ const AppContent = ({ token, setToken }) => {
     isMeetRoute ||
     isKioskRoute;
   const slugMatch = matchPath({ path: '/:slug/*' }, location.pathname) || matchPath({ path: '/:slug' }, location.pathname);
-  const slugCandidate = slugMatch?.params?.slug?.toLowerCase();
+  const slugCandidate = isMarketingRoute ? null : slugMatch?.params?.slug?.toLowerCase();
   const isCompanyRoute = Boolean(
     (isCustomDomain && tenantSlug) ||
     (slugCandidate && !RESERVED_SLUG_PREFIXES.has(slugCandidate))
@@ -445,15 +445,14 @@ const AppContent = ({ token, setToken }) => {
     chatbotSlug && chatbotConfigLoaded && chatbotConfig && chatbotConfig.enabled === true
   );
   const showChatBot = !isEmbed && (marketingChatbot || tenantChatbotReady);
-  const showAppChrome = !isEmbed && !isMarketingRoute && !isCompanyRoute && !isNoChromeRoute;
+  const showAppChrome = !isEmbed && !isCompanyRoute && !isNoChromeRoute;
 
   const content = (
     <BillingBannerProvider>
       <BillingUpgradeController />
       {showAppChrome && (
         <>
-          <NavBar token={token} setToken={setToken} />
-          <Toolbar />
+          <MainNav token={token} setToken={setToken} />
         </>
       )}
 

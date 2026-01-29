@@ -10,7 +10,14 @@ export default function ManagerDashboard({ token }) {
   const location = useLocation();
   const routeParams = useParams();
   const searchParams = new URLSearchParams(location.search);
-  const initialView = routeParams.view || searchParams.get("view") || "__landing__";
+  const pathView = location.pathname.startsWith("/manager/")
+    ? location.pathname.split("/")[2]
+    : null;
+  const initialView =
+    routeParams.view ||
+    (pathView && pathView !== "dashboard" ? pathView : null) ||
+    searchParams.get("view") ||
+    "__landing__";
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: theme.palette.background.default }}>

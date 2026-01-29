@@ -219,17 +219,8 @@ const menuConfig = [
   // Services & Bookings
   { label: "Services & Bookings", key: "advanced-management", icon: <Dashboard /> },
 
-  // Integrations
-  { label: "Zapier", key: "zapier", icon: <ApiIcon /> },
-
   // Booking checkout (calendar + payments)
   { label: "Booking Checkout", key: "booking-checkout", icon: <CalendarToday /> },
-
-  // Billing
-  { label: "Billing & Subscription", key: "billing", icon: <Paid /> },
-
-  // Settings last
-  { labelKey: "manager.menu.settings", key: "settings", icon: <Settings /> },
 ];
 
 const hrMenuConfig = [
@@ -1549,6 +1540,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       if (item.key === "employee-group") {
         keys.add("employee-management");
       }
+      if (item.key === "overview") {
+        keys.add("overview");
+      }
       if (item.children && item.children.length) {
         item.children.forEach((child) => keys.add(child.key));
       } else if (item.key) {
@@ -1557,6 +1551,12 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
     });
     // Allow deep-linked payment hub without showing it in the sidebar.
     keys.add("payments-hub");
+    // Allow settings view even when it is hidden from the sidebar.
+    keys.add("settings");
+    // Allow shift/availability views that are launched from the group header.
+    keys.add("available-slots");
+    keys.add("available-shifts");
+    keys.add("available-shifts-fullscreen");
     return Array.from(keys);
   }, [filteredMenuConfig]);
   // Sidebar state
@@ -1630,6 +1630,12 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
       loadBillingStatus();
     }
   }, [token, isManager]);
+
+  useEffect(() => {
+    if (isManager && selectedView === "__landing__") {
+      setSelectedView("employee-management");
+    }
+  }, [isManager, selectedView]);
 
   useEffect(() => {
     if (initialView && initialView !== selectedView) {
@@ -3189,9 +3195,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
               );
             }
 
-            const isOpen = Boolean(
-              (openGroups[item.key] ?? false) || item.children.some((c) => c.key === selectedView)
-            );
+            const isOpen = Boolean(openGroups[item.key]);
             return (
               <Box key={item.key}>
                 <Tooltip title={!drawerExpanded ? item.label : ""} placement="right" arrow>
@@ -3201,7 +3205,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                       let defaultView = selectedView;
                       if (item.key === "employee-group") defaultView = "employee-management";
                       else if (item.key === "payroll-group") defaultView = "payroll";
-                      else if (item.key === "shifts-group") defaultView = "available-shifts";
+                      else if (item.key === "shifts-group") defaultView = "available-slots";
                       else if (item.key === "overview") defaultView = "overview";
                       setSelectedView(defaultView);
                       setOpenGroups((prev) => ({ ...prev, [item.key]: !isOpen }));

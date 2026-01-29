@@ -40,6 +40,7 @@ import SettingsCheckoutPro from "./SettingsCheckoutPro";
 import SettingsStripeHub from "./SettingsStripeHub";
 import SettingsArtistVisibility from "./SettingsArtistVisibility";
 import SettingsClientVideo from "./SettingsClientVideo";
+import ZapierIntegrationPage from "../settings/ZapierIntegrationPage";
 import SettingsXero from "./SettingsXero";
 import SettingsQuickBooks from "./SettingsQuickBooks";
 import SettingsBillingSubscription from "./SettingsBillingSubscription";
@@ -88,9 +89,10 @@ const Settings = () => {
       'stripe-hub': 6,
       billing: 7,
       subscription: 7,
-      xero: 8,
-      quickbooks: 9,
-      qb: 9,
+      zapier: 8,
+      xero: 9,
+      quickbooks: 10,
+      qb: 10,
       'integration-activity': 11,
       activity: 11,
       checkout: 12,
@@ -645,6 +647,10 @@ const Settings = () => {
     {
       label: t("settings.tabs.billing", "Billing & Subscription"),
       content: <SettingsBillingSubscription />,
+    },
+    {
+      label: t("settings.tabs.zapier", "Zapier"),
+      content: <ZapierIntegrationPage />,
     },
     {
       label: t("settings.tabs.xero", "Xero"),
