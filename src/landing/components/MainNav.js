@@ -91,6 +91,10 @@ const MainNav = ({ token, setToken }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const isAuthenticated = Boolean(token);
+  const isManagerArea = location.pathname.startsWith("/manager");
+  const isEmployeeArea = location.pathname.startsWith("/employee");
+  const isRecruiterArea = location.pathname.startsWith("/recruiter");
+  const showOpsNav = isAuthenticated && (isManagerArea || isEmployeeArea || isRecruiterArea);
   const [productAnchor, setProductAnchor] = useState(null);
   const [resourcesAnchor, setResourcesAnchor] = useState(null);
   const [opsAnchor, setOpsAnchor] = useState(null);
@@ -236,7 +240,7 @@ const MainNav = ({ token, setToken }) => {
 
   const megaPaperSx = {
     mt: 0.75,
-    borderRadius: "4px !important",
+    borderRadius: 4,
     border: `1px solid ${alpha(theme.palette.divider, 0.35)}`,
     boxShadow: `0 24px 60px ${alpha(theme.palette.common.black, 0.18)}`,
     width: "min(760px, calc(100vw - 48px))",
@@ -339,8 +343,8 @@ const MainNav = ({ token, setToken }) => {
         open={open}
         anchorEl={anchorEl}
         onClose={onClose}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        transformOrigin={{ vertical: "top", horizontal: "center" }}
         PaperProps={{
           ref: paperRef,
           sx: megaPaperSx,
@@ -512,7 +516,7 @@ const MainNav = ({ token, setToken }) => {
   const renderMobileDrawer = () => {
     const productMobileLinks = [...productLeftLinks, ...productRightLinks];
     const resourceMobileLinks = [...resourceLeftLinks, ...resourceRightLinks];
-    const mobileLinks = isAuthenticated
+    const mobileLinks = showOpsNav
       ? opsLinks
       : [
           { label: "Product", header: true },
@@ -642,7 +646,7 @@ const MainNav = ({ token, setToken }) => {
         </Box>
 
         <Box sx={{ flex: 1, display: "flex", justifyContent: "center" }}>
-          {isAuthenticated ? renderLoggedInCenter() : renderLoggedOutCenter()}
+          {showOpsNav ? renderLoggedInCenter() : renderLoggedOutCenter()}
         </Box>
 
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
