@@ -62,11 +62,15 @@ const PricingCard = ({
           </Typography>
         )}
         <Typography variant="h3" component="p" fontWeight={700} mt={1}>
-          {price}
+          <Box component="span" dir="ltr">
+            {price}
+          </Box>
         </Typography>
         {priceNote && (
           <Typography variant="body2" color="text.secondary" mt={0.5}>
-            {priceNote}
+            <Box component="span" dir="ltr">
+              {priceNote}
+            </Box>
           </Typography>
         )}
         <Typography variant="body1" color="text.secondary" mt={1}>

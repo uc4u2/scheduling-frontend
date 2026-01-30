@@ -472,7 +472,12 @@ const PricingPage = () => {
         const baseDollars = (baseCents / 100).toFixed(2);
         const discountedDollars = (discountedCents / 100).toFixed(2);
         price = `$${discountedDollars}/mo`;
-        priceNote = `$${baseDollars} → $${discountedDollars}/mo for first ${months} months (then $${baseDollars}/mo)`;
+        priceNote = t("landing.pricingPage.promo.starterNote", {
+          discounted: discountedDollars,
+          base: baseDollars,
+          months,
+          defaultValue: `$${discountedDollars}/mo for first ${months} months. Then $${baseDollars}/mo`,
+        });
       }
 
       return {
@@ -486,11 +491,15 @@ const PricingPage = () => {
         ctaLabel: plan.ctaLabel || heroContent?.primaryCta?.label || DEFAULT_HERO.primaryCta.label,
         ctaTo: plan.ctaTo || HERO_PRIMARY_CTA_TO,
         highlight: Boolean(plan.highlight),
-        badge: plan.badge,
+        badge:
+          plan.badge ||
+          (plan.key === "starter" && promoActive
+            ? t("landing.pricingPage.promo.starterBadge", { defaultValue: "50% off" })
+            : undefined),
         anchorId: plan.anchorId || plan.key || plan.name,
       };
     });
-  }, [plansContent, heroContent, promoConfig]);
+  }, [plansContent, heroContent, promoConfig, t]);
 
   const addons = useMemo(() => {
     if (plansContent?.addons?.items?.length) {

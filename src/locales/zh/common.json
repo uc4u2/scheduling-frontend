@@ -3591,6 +3591,10 @@
         },
         "mediaAlt": "Schedulaa \u5b9a\u4ef7\u4e0e\u5e73\u53f0\u6982\u89c8"
       },
+      "promo": {
+        "starterBadge": "5\u6298\u4f18\u60e0",
+        "starterNote": "${{discounted}} / \u6708\uff0c\u524d {{months}} \u4e2a\u6708\u3002\u4e4b\u540e ${{base}} / \u6708"
+      },
       "plans": {
         "table": {
           "list": [
