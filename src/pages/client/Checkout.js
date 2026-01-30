@@ -38,6 +38,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import { useTheme } from "@mui/material/styles";
 import api from "../../utils/api";
+import PublicBookingUnavailableDialog from "../../components/billing/PublicBookingUnavailableDialog";
 import SiteFrame from "../../components/website/SiteFrame";
 import { publicSite } from "../../utils/api";
 import TimezoneSelect from "../../components/TimezoneSelect";
@@ -635,10 +636,14 @@ function CheckoutFormCore({
 
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
+  const [publicUpgradeOpen, setPublicUpgradeOpen] = useState(false);
+  const [publicUpgradeMessage, setPublicUpgradeMessage] = useState("");
 
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
   const [forgotDialogOpen, setForgotDialogOpen] = useState(false);
+  const [companyContactEmail, setCompanyContactEmail] = useState("");
+  const [companyContactPhone, setCompanyContactPhone] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -654,6 +659,17 @@ function CheckoutFormCore({
         setClient(null);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    const onPublicUnavailable = (event) => {
+      setPublicUpgradeMessage(event?.detail?.message || "");
+      setPublicUpgradeOpen(true);
+    };
+    window.addEventListener("billing:public-unavailable", onPublicUnavailable);
+    return () => {
+      window.removeEventListener("billing:public-unavailable", onPublicUnavailable);
+    };
   }, []);
 
   useEffect(() => {
@@ -1259,6 +1275,12 @@ function CheckoutFormCore({
           : null;
       finalizeSuccess({ serviceResults, productOrder });
     } catch (ex) {
+      const data = ex?.response?.data || {};
+      if (ex?.response?.status === 402 && data?.error === "subscription_required") {
+        setPublicUpgradeMessage(data?.message || "");
+        setPublicUpgradeOpen(true);
+        return;
+      }
       setErr(ex.message || "Booking failed");
     } finally {
       setLoading(false);
@@ -1313,7 +1335,14 @@ function CheckoutFormCore({
         payload,
       });
     } catch (ex) {
-      const message = ex?.response?.data?.error || ex?.message || "Unable to start Stripe Checkout.";
+      const data = ex?.response?.data || {};
+      if (ex?.response?.status === 402 && data?.error === "subscription_required") {
+        setPublicUpgradeMessage(data?.message || "");
+        setPublicUpgradeOpen(true);
+        setLoading(false);
+        return;
+      }
+      const message = data?.error || ex?.message || "Unable to start Stripe Checkout.";
       setErr(message);
       setLoading(false);
     }
@@ -1367,7 +1396,14 @@ function CheckoutFormCore({
         payload,
       });
     } catch (ex) {
-      const message = ex?.response?.data?.error || ex?.message || "Unable to start Stripe Checkout.";
+      const data = ex?.response?.data || {};
+      if (ex?.response?.status === 402 && data?.error === "subscription_required") {
+        setPublicUpgradeMessage(data?.message || "");
+        setPublicUpgradeOpen(true);
+        setLoading(false);
+        return;
+      }
+      const message = data?.error || ex?.message || "Unable to start Stripe Checkout.";
       setErr(message);
       setLoading(false);
     }
@@ -2294,6 +2330,17 @@ function CheckoutFormCore({
         companySlug={companySlug}
       />
       <ForgotPasswordDialog open={forgotDialogOpen} onClose={() => setForgotDialogOpen(false)} />
+      <PublicBookingUnavailableDialog
+        open={publicUpgradeOpen}
+        message={publicUpgradeMessage}
+        contactEmail={companyContactEmail}
+        contactPhone={companyContactPhone}
+        onClose={() => setPublicUpgradeOpen(false)}
+        onBack={() => {
+          setPublicUpgradeOpen(false);
+          onBack?.();
+        }}
+      />
     </Box>
   );
 }
@@ -2358,6 +2405,8 @@ export default function Checkout(props) {
         setCardOnFileEnabled(cardOnFile);
         setPolicy(policyData);
         setHoldMinutes(Number.isFinite(hold) && hold > 0 ? hold : null);
+        setCompanyContactEmail(String(info?.contact_email || info?.email || "").trim());
+        setCompanyContactPhone(String(info?.phone || "").trim());
 
         const rawCurrency = normalizeCurrency(info?.display_currency);
         const inferredCurrency = resolveCurrencyForCountry(info?.country_code || info?.tax_country_code || '');

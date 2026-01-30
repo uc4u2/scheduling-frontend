@@ -7,6 +7,7 @@ const BillingUpgradeController = () => {
   const [requiredPlan, setRequiredPlan] = useState(null);
   const [upgradeMessage, setUpgradeMessage] = useState("");
   const [upgradeAction, setUpgradeAction] = useState("");
+  const [upgradeAudience, setUpgradeAudience] = useState("manager");
   const [seatsOpen, setSeatsOpen] = useState(false);
   const [seatContext, setSeatContext] = useState({ allowed: null, current: null });
 
@@ -15,6 +16,7 @@ const BillingUpgradeController = () => {
       setRequiredPlan(event?.detail?.requiredPlan || null);
       setUpgradeMessage(event?.detail?.message || "");
       setUpgradeAction(event?.detail?.action || "");
+      setUpgradeAudience(event?.detail?.audience || "manager");
       setUpgradeOpen(true);
     };
     const onSeats = (event) => {
@@ -34,13 +36,15 @@ const BillingUpgradeController = () => {
 
   return (
     <>
-      <UpgradeRequiredModal
-        open={upgradeOpen}
-        requiredPlan={requiredPlan}
-        message={upgradeMessage}
-        action={upgradeAction}
-        onClose={() => setUpgradeOpen(false)}
-      />
+      {upgradeAudience !== "public" && (
+        <UpgradeRequiredModal
+          open={upgradeOpen}
+          requiredPlan={requiredPlan}
+          message={upgradeMessage}
+          action={upgradeAction}
+          onClose={() => setUpgradeOpen(false)}
+        />
+      )}
       <SeatsRequiredModal
         open={seatsOpen}
         allowed={seatContext.allowed}

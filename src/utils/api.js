@@ -130,15 +130,27 @@ api.interceptors.response.use(
 
     if (!skipBillingModal && status === 402 && data?.error === "subscription_required") {
       if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("billing:upgrade-required", {
-            detail: {
-              requiredPlan: data?.required_plan || null,
-              message: data?.message || "",
-              action: data?.action || "",
-            },
-          })
-        );
+        const audience = data?.audience || "manager";
+        if (audience === "public") {
+          window.dispatchEvent(
+            new CustomEvent("billing:public-unavailable", {
+              detail: {
+                message: data?.message || "",
+              },
+            })
+          );
+        } else {
+          window.dispatchEvent(
+            new CustomEvent("billing:upgrade-required", {
+              detail: {
+                requiredPlan: data?.required_plan || null,
+                message: data?.message || "",
+                action: data?.action || "",
+                audience,
+              },
+            })
+          );
+        }
       }
     }
 

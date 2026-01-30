@@ -12,6 +12,7 @@ import { buildHostedCheckoutPayload, startHostedCheckout } from "../../utils/hos
 import { CartTypes } from "../../utils/cart";
 import { formatCurrency } from "../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, resolveActiveCurrencyFromCompany, getActiveCurrency } from "../../utils/currency";
+import PublicBookingUnavailableDialog from "../../components/billing/PublicBookingUnavailableDialog";
 
 // ---------- tiny helpers ----------
 const useQuery = () => new URLSearchParams(useLocation().search);
@@ -54,6 +55,8 @@ function CheckoutShell({
   paymentsEnabled,
   cardOnFileEnabled,
   policy,
+  contactEmail,
+  contactPhone,
   onBooked,
 }) {
   const nav = useNavigate();
@@ -64,6 +67,8 @@ function CheckoutShell({
   const mixedCart = hasServiceItems && hasProductItems;
 
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
+  const [publicUpgradeOpen, setPublicUpgradeOpen] = useState(false);
+  const [publicUpgradeMessage, setPublicUpgradeMessage] = useState("");
   const formatMoney = useCallback((value, currencyCode) => formatCurrency(value, currencyCode || displayCurrency), [displayCurrency]);
   const currencyFmt = useCallback((value, currencyCode) => formatMoney(value, currencyCode), [formatMoney]);
   const accentColor = "var(--page-btn-bg, var(--sched-primary))";
@@ -144,6 +149,17 @@ function CheckoutShell({
     border: `1px solid ${borderColor}`,
     "& .MuiAlert-icon": { color: accentColor },
   };
+
+  useEffect(() => {
+    const onPublicUnavailable = (event) => {
+      setPublicUpgradeMessage(event?.detail?.message || "");
+      setPublicUpgradeOpen(true);
+    };
+    window.addEventListener("billing:public-unavailable", onPublicUnavailable);
+    return () => {
+      window.removeEventListener("billing:public-unavailable", onPublicUnavailable);
+    };
+  }, []);
 
   const defaultActive = useMemo(() => {
     const mode = (policy?.mode || "pay").toLowerCase();
@@ -405,7 +421,13 @@ function CheckoutShell({
     try {
       await launchHostedCheckout("pay");
     } catch (ex) {
-      const message = ex?.response?.data?.error || ex?.message || "Checkout failed";
+      const data = ex?.response?.data || {};
+      if (ex?.response?.status === 402 && data?.error === "subscription_required") {
+        setPublicUpgradeMessage(data?.message || "");
+        setPublicUpgradeOpen(true);
+        return;
+      }
+      const message = data?.error || ex?.message || "Checkout failed";
       setError(message);
       throw ex;
     } finally {
@@ -424,7 +446,13 @@ function CheckoutShell({
         await launchHostedCheckout("deposit");
       }
     } catch (ex) {
-      const message = ex?.response?.data?.error || ex?.message || "Deposit not captured";
+      const data = ex?.response?.data || {};
+      if (ex?.response?.status === 402 && data?.error === "subscription_required") {
+        setPublicUpgradeMessage(data?.message || "");
+        setPublicUpgradeOpen(true);
+        return;
+      }
+      const message = data?.error || ex?.message || "Deposit not captured";
       setError(message);
       throw ex;
     } finally {
@@ -438,7 +466,13 @@ function CheckoutShell({
     try {
       await launchHostedCheckout("capture");
     } catch (ex) {
-      const message = ex?.response?.data?.error || ex?.message || "Card authorization failed";
+      const data = ex?.response?.data || {};
+      if (ex?.response?.status === 402 && data?.error === "subscription_required") {
+        setPublicUpgradeMessage(data?.message || "");
+        setPublicUpgradeOpen(true);
+        return;
+      }
+      const message = data?.error || ex?.message || "Card authorization failed";
       setError(message);
       throw ex;
     } finally {
@@ -761,6 +795,17 @@ function CheckoutShell({
           </Button>
         </DialogActions>
       </Dialog>
+      <PublicBookingUnavailableDialog
+        open={publicUpgradeOpen}
+        message={publicUpgradeMessage}
+        contactEmail={contactEmail}
+        contactPhone={contactPhone}
+        onClose={() => setPublicUpgradeOpen(false)}
+        onBack={() => {
+          setPublicUpgradeOpen(false);
+          nav({ pathname: `/${slug}`, search: '?page=services-classic' });
+        }}
+      />
     </Box>
   );
 }
@@ -771,6 +816,8 @@ export default function CheckoutPro({ companySlug: slug }) {
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [cardOnFileEnabled, setCardOnFileEnabled] = useState(false);
   const [policy, setPolicy] = useState(null);
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -791,6 +838,8 @@ export default function CheckoutPro({ companySlug: slug }) {
         setPaymentsEnabled(payNow);
         setCardOnFileEnabled(cardOnly && hasPublishable);
         setPolicy(policyData);
+        setContactEmail(String(cinfo?.contact_email || cinfo?.email || "").trim());
+        setContactPhone(String(cinfo?.phone || "").trim());
       } catch {
         if (!mounted) return;
         setPaymentsEnabled(false);
@@ -817,6 +866,8 @@ export default function CheckoutPro({ companySlug: slug }) {
       paymentsEnabled={paymentsEnabled}
       cardOnFileEnabled={cardOnFileEnabled}
       policy={policy}
+      contactEmail={contactEmail}
+      contactPhone={contactPhone}
       onBooked={() => {}}
     />
   );
