@@ -848,9 +848,24 @@ export default function CompanyPublic({ slugOverride }) {
   const navigate = useNavigate();
   // Persist slug for later redirects (login → dashboard)
   useEffect(() => {
-    if (slug) {
-      try { localStorage.setItem("site", slug); } catch {}
-    }
+    if (!slug) return;
+    const trimmed = String(slug || "").trim();
+    const lowered = trimmed.toLowerCase();
+    const reserved = new Set([
+      "book",
+      "checkout",
+      "public",
+      "api",
+      "manager",
+      "employee",
+      "client",
+      "settings",
+      "billing",
+    ]);
+    if (!trimmed || reserved.has(lowered) || /[/?#]/.test(trimmed)) return;
+    try {
+      localStorage.setItem("site", trimmed);
+    } catch {}
   }, [slug]);
   const [searchParams] = useSearchParams();
 

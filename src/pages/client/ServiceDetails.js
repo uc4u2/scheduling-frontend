@@ -630,10 +630,15 @@ export default function ServiceDetails({ slugOverride }) {
     setPrefetchingMonth(true);
     (async () => {
       try {
-        const emp = employees.find((e) => String(e.id) === String(activeArtistId));
-        if (!emp) return;
-        const slots = await fetchAvail(emp.id, debouncedDate, controller?.signal);
-        const hasAny = (slots?.length || 0) > 0;
+        let hasAny = false;
+        for (const emp of employees) {
+          if (!emp) continue;
+          const slots = await fetchAvail(emp.id, debouncedDate, controller?.signal);
+          if ((slots?.length || 0) > 0) {
+            hasAny = true;
+            break;
+          }
+        }
         if (!cancelled) {
           setAvailableMap((prev) => ({ ...prev, [debouncedDate]: hasAny }));
         }
@@ -663,10 +668,13 @@ export default function ServiceDetails({ slugOverride }) {
     (async () => {
       setIsFetchingSlots(true);
       try {
-        const emp = employees.find((e) => String(e.id) === String(activeArtistId));
-        if (!emp) return;
-        const slots = await fetchAvail(emp.id, debouncedDate, controller?.signal);
-        const unique = aggregateByUTC(debouncedDate, [{ emp, slots }]);
+        const results = await Promise.all(
+          employees.map(async (emp) => ({
+            emp,
+            slots: await fetchAvail(emp.id, debouncedDate, controller?.signal),
+          }))
+        );
+        const unique = aggregateByUTC(debouncedDate, results);
 
         if (!cancelled && fetchVersionRef.current === version) {
           setDaySlots(unique || []);

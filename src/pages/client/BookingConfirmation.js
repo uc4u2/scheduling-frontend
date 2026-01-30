@@ -146,15 +146,40 @@ const CARD_ON_FILE_STATUS_SET = new Set([
   "setup_complete",
 ]);
 
-export default function BookingConfirmation() {
+const RESERVED_SITE_KEYS = new Set([
+  "book",
+  "checkout",
+  "public",
+  "api",
+  "manager",
+  "employee",
+  "client",
+  "settings",
+  "billing",
+]);
+
+const normalizeSiteSlug = (value) => {
+  if (!value || typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const lowered = trimmed.toLowerCase();
+  if (RESERVED_SITE_KEYS.has(lowered)) return null;
+  if (/[/?#]/.test(trimmed)) return null;
+  return trimmed;
+};
+
+export default function BookingConfirmation({ slugOverride: slugProp }) {
   const { slug, bookingId } = useParams();
 
   const [searchParams] = useSearchParams();
 
   const slugOverride =
-    slug ||
-    searchParams.get("site") ||
-    (typeof localStorage !== "undefined" ? localStorage.getItem("site") : null);
+    normalizeSiteSlug(slugProp) ||
+    normalizeSiteSlug(slug) ||
+    normalizeSiteSlug(searchParams.get("site")) ||
+    (typeof localStorage !== "undefined"
+      ? normalizeSiteSlug(localStorage.getItem("site"))
+      : null);
 
   const qsToken = searchParams.get("token");
 
@@ -218,6 +243,15 @@ export default function BookingConfirmation() {
   const stripePollTimerRef = useRef(null);
 
   const MAX_STRIPE_SESSION_POLLS = 4;
+
+  useEffect(() => {
+    if (!slugProp) return;
+    const safeSlug = normalizeSiteSlug(slugProp);
+    if (!safeSlug) return;
+    try {
+      localStorage.setItem("site", safeSlug);
+    } catch {}
+  }, [slugProp]);
 
   const cartClearedRef = useRef(false);
 
