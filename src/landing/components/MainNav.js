@@ -42,6 +42,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useTheme, alpha } from "@mui/material/styles";
 import LanguageSelector from "../../components/LanguageSelector";
 import LogoImage from "../../logo/logo.png";
@@ -86,6 +87,7 @@ const loggedOutLinks = [
 
 const MainNav = ({ token, setToken }) => {
   const theme = useTheme();
+  const { t } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -388,7 +390,7 @@ const MainNav = ({ token, setToken }) => {
         endIcon={<ExpandMoreIcon fontSize="small" />}
         sx={marketingButtonSx(productOpen)}
       >
-        Product
+        {t("landing.nav.product")}
       </Button>
       <MegaMenuPopover
         open={productOpen}
@@ -399,7 +401,7 @@ const MainNav = ({ token, setToken }) => {
         paperRef={productPaperRef}
         leftItems={productLeftLinks}
         rightItems={productRightLinks}
-        leftTitle="Product"
+        leftTitle={t("landing.nav.product")}
         rightTitle="Platform"
       />
 
@@ -409,7 +411,7 @@ const MainNav = ({ token, setToken }) => {
         endIcon={<ExpandMoreIcon fontSize="small" />}
         sx={marketingButtonSx(resourcesOpen)}
       >
-        Resources
+        {t("landing.nav.resources")}
       </Button>
       <MegaMenuPopover
         open={resourcesOpen}
@@ -420,7 +422,7 @@ const MainNav = ({ token, setToken }) => {
         paperRef={resourcesPaperRef}
         leftItems={resourceLeftLinks}
         rightItems={resourceRightLinks}
-        leftTitle="Resources"
+        leftTitle={t("landing.nav.resources")}
         rightTitle="Integrations"
       />
 
@@ -430,7 +432,7 @@ const MainNav = ({ token, setToken }) => {
         startIcon={<MonetizationOnIcon fontSize="small" />}
         sx={marketingButtonSx(isActive("/pricing"))}
       >
-        Pricing
+        {t("landing.nav.pricing")}
       </Button>
     </Stack>
   );
@@ -519,11 +521,11 @@ const MainNav = ({ token, setToken }) => {
     const mobileLinks = showOpsNav
       ? opsLinks
       : [
-          { label: "Product", header: true },
+          { label: t("landing.nav.product"), header: true },
           ...productMobileLinks,
-          { label: "Resources", header: true },
+          { label: t("landing.nav.resources"), header: true },
           ...resourceMobileLinks,
-          { label: "Pricing", to: "/pricing" },
+          { label: t("landing.nav.pricing"), to: "/pricing" },
           ...loggedOutLinks,
         ];
 

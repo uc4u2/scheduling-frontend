@@ -11,6 +11,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Tabs,
+  Tab,
   Snackbar,
   Alert,
   RadioGroup,
@@ -85,19 +87,19 @@ const Settings = () => {
       artist: 4,
       'client-video': 5,
       client: 5,
+      billing: 6,
+      subscription: 6,
       stripe: 6,
       'stripe-hub': 6,
-      billing: 7,
-      subscription: 7,
-      zapier: 8,
-      xero: 9,
-      quickbooks: 10,
-      qb: 10,
-      'integration-activity': 11,
-      activity: 11,
-      checkout: 12,
-      payments: 12,
-      'checkout-pro': 12,
+      checkout: 6,
+      payments: 6,
+      'checkout-pro': 6,
+      zapier: 7,
+      xero: 7,
+      quickbooks: 7,
+      qb: 7,
+      'integration-activity': 7,
+      activity: 7,
     };
     return map[tabParam] ?? 0;
   }, [tabParam]);
@@ -116,6 +118,118 @@ const Settings = () => {
   const [embedDialog, setEmbedDialog] = useState(false);
 
   const professionLabelMap = useMemo(() => new Map(PROFESSION_OPTIONS.map((option) => [option.value, option.label])), []);
+
+  const billingDefault = useMemo(() => {
+    if (tabParam === "stripe" || tabParam === "stripe-hub") return "stripe";
+    if (tabParam === "checkout" || tabParam === "payments" || tabParam === "checkout-pro") return "checkout";
+    return "billing";
+  }, [tabParam]);
+
+  const [billingExpanded, setBillingExpanded] = useState(billingDefault);
+
+  useEffect(() => {
+    setBillingExpanded(billingDefault);
+  }, [billingDefault]);
+
+  const integrationDefault = useMemo(() => {
+    if (tabParam === "zapier") return "zapier";
+    if (tabParam === "xero") return "xero";
+    if (tabParam === "quickbooks" || tabParam === "qb") return "quickbooks";
+    return "activity";
+  }, [tabParam]);
+
+  const [integrationExpanded, setIntegrationExpanded] = useState(integrationDefault);
+
+  useEffect(() => {
+    setIntegrationExpanded(integrationDefault);
+  }, [integrationDefault]);
+
+  const BillingHub = (
+    <Stack spacing={2}>
+      <Box>
+        <Tabs
+          value={billingExpanded}
+          onChange={(_, value) => setBillingExpanded(value)}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          <Tab value="billing" label={t("settings.tabs.billing", "Billing")} />
+          <Tab value="stripe" label={t("settings.tabs.stripeHub", "Stripe Hub")} />
+          <Tab value="checkout" label={t("settings.tabs.checkout", "Checkout Pro & Payments")} />
+        </Tabs>
+        <Divider sx={{ my: 1 }} />
+        <Box sx={{ pt: 2 }}>
+          {billingExpanded === "billing" && <SettingsBillingSubscription />}
+          {billingExpanded === "stripe" && <SettingsStripeHub />}
+          {billingExpanded === "checkout" && <SettingsCheckoutPro />}
+        </Box>
+      </Box>
+    </Stack>
+  );
+
+  const IntegrationHub = (
+    <Stack spacing={2}>
+      <Box>
+        <Tabs
+          value={integrationExpanded}
+          onChange={(_, value) => setIntegrationExpanded(value)}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          <Tab
+            value="activity"
+            label={t("settings.tabs.integrationActivity", "Integration activity")}
+          />
+          <Tab value="zapier" label={t("settings.tabs.zapier", "Zapier")} />
+          <Tab value="xero" label={t("settings.tabs.xero", "Xero")} />
+          <Tab value="quickbooks" label={t("settings.tabs.quickbooks", "QuickBooks")} />
+        </Tabs>
+        <Divider sx={{ my: 1 }} />
+        <Box sx={{ pt: 2 }}>
+          {integrationExpanded === "activity" && (
+            <>
+              <Typography variant="caption" color="text.secondary">
+                {t("settings.integrations.activityDescription", "Monitor integration activity and sync status.")}
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <IntegrationActivityCard />
+              </Box>
+            </>
+          )}
+          {integrationExpanded === "zapier" && (
+            <>
+              <Typography variant="caption" color="text.secondary">
+                {t("settings.integrations.zapierDescription", "Connect automations with Zapier workflows.")}
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <ZapierIntegrationPage />
+              </Box>
+            </>
+          )}
+          {integrationExpanded === "xero" && (
+            <>
+              <Typography variant="caption" color="text.secondary">
+                {t("settings.integrations.xeroDescription", "Sync invoices and payments with Xero.")}
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <SettingsXero />
+              </Box>
+            </>
+          )}
+          {integrationExpanded === "quickbooks" && (
+            <>
+              <Typography variant="caption" color="text.secondary">
+                {t("settings.integrations.quickbooksDescription", "Connect QuickBooks and keep books in sync.")}
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <SettingsQuickBooks />
+              </Box>
+            </>
+          )}
+        </Box>
+      </Box>
+    </Stack>
+  );
 
   // embed snippets (from backend)
   const [snippetWidget, setSnippetWidget] = useState(""); // script (popup)
@@ -641,32 +755,12 @@ const Settings = () => {
       content: <SettingsClientVideo />,
     },
     {
-      label: t("settings.tabs.stripeHub"),
-      content: <SettingsStripeHub />,
-    },
-    {
-      label: t("settings.tabs.billing", "Billing & Subscription"),
-      content: <SettingsBillingSubscription />,
-    },
-    {
-      label: t("settings.tabs.zapier", "Zapier"),
-      content: <ZapierIntegrationPage />,
-    },
-    {
-      label: t("settings.tabs.xero", "Xero"),
-      content: <SettingsXero />,
-    },
-    {
-      label: t("settings.tabs.quickbooks", "QuickBooks"),
-      content: <SettingsQuickBooks />,
+      label: t("settings.tabs.billing", "Billing"),
+      content: BillingHub,
     },
     {
       label: t("settings.tabs.integrationActivity", "Integration activity"),
-      content: <IntegrationActivityCard />,
-    },
-    {
-      label: t("settings.tabs.checkout"),
-      content: <SettingsCheckoutPro />,
+      content: IntegrationHub,
     },
   ];
 

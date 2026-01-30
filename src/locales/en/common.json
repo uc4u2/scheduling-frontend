@@ -144,12 +144,12 @@
         "navStyle": {
           "title": "10) Website Navigation & Menu",
           "bullets": [
-            "Open the “Website Navigation & Menu” panel to style the top bar while you work.",
+            "Open the \u201cWebsite Navigation & Menu\u201d panel to style the top bar while you work.",
             "Pick a variant (pill, underline, ghost, etc.) and set hover / active / background colors.",
-            "Adjust spacing, padding, and the brand/slug font + size — the preview mirrors the nav instantly.",
+            "Adjust spacing, padding, and the brand/slug font + size \u2014 the preview mirrors the nav instantly.",
             "Try Quick Presets for fast inspiration; fine-tune any value and click Save to keep it."
           ],
-          "footnote": "Menu visibility/order still comes from Page Settings (toggle “Show in menu” + sort order)."
+          "footnote": "Menu visibility/order still comes from Page Settings (toggle \u201cShow in menu\u201d + sort order)."
         },
         "livePreview": {
           "title": "11) Live preview & sticky controls",
@@ -661,9 +661,9 @@
   "manager": {
     "menu": {
       "advancedManagement": "Advanced Management",
-      "employeeManagement": "Employee Management",
-      "websitePages": "Website & Pages",
-      "advancedPayroll": "Advanced Payroll",
+      "employeeManagement": "Employee",
+      "websitePages": "Website",
+      "advancedPayroll": "Payroll",
       "shiftsAvailability": "Shifts & Availability",
       "leaves": "Leaves",
       "swapApprovals": "Swap Approvals",
@@ -691,7 +691,26 @@
       "candidateSearch": "Candidate Search",
       "feedbackNotes": "Feedback & Notes",
       "recruiterAvailability": "Recruiter Availability",
-      "recentBookings": "Recent Bookings"
+      "recentBookings": "Recent Bookings",
+      "addMember": "Add team member",
+      "shiftMonitoring": "Shift Monitoring",
+      "fraudAnomalies": "Fraud / Anomalies",
+      "servicesBookings": "Services & Bookings",
+      "bookingCheckout": "Booking Checkout",
+      "jobPostings": "Job Postings",
+      "payrollAudit": "Payroll Audit",
+      "invoices": "Invoices",
+      "candidateProfile": "Candidate Profile"
+    },
+    "employeeManagement": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "activeEmployees": "Active Employees",
+      "department": "Department",
+      "allDepartments": "All Departments",
+      "clearFilter": "Clear filter",
+      "showArchived": "Show archived employees",
+      "rejectPrompt": "Rejection reason (optional):"
     },
     "advanced": {
       "heading": "Advanced Management",
@@ -823,7 +842,7 @@
       "images": {
         "title": "Product Images",
         "upload": "Upload image",
-        "uploading": "Uploading…",
+        "uploading": "Uploading\u2026",
         "empty": "No images yet.",
         "close": "Close"
       },
@@ -902,7 +921,7 @@
           "start": "Start Time (Local)",
           "end": "End Time (Local)",
           "service": "Service",
-          "loading": "Loading services…",
+          "loading": "Loading services\u2026",
           "note": "Manager Note",
           "info": "Changing service will request the backend to re-compute duration and availability (auto_adjust=true). If a conflict occurs, the server will respond with an error and no changes will be saved.",
           "save": "Save",
@@ -1036,7 +1055,7 @@
         "unauthorized": "Access denied. Sign in as a manager to edit the site.",
         "starterCreated": "Starter pages created.",
         "autoprovisionFailed": "Couldn't auto-provision pages. Please try again.",
-        "loading": "Loading site editor…"
+        "loading": "Loading site editor\u2026"
       },
       "auth": {
         "title": "Sign in to edit this site",
@@ -1059,7 +1078,7 @@
         "description": "Manage theme, history, mode, and publishing",
         "tooltips": {
           "guide": "Builder guide",
-          "save": "Save this page (but don’t publish it yet)",
+          "save": "Save this page (but don\u2019t publish it yet)",
           "publish": "Publish your site live (uses the last saved content)",
           "themeOpen": "Open theme designer",
           "themeSignIn": "Sign in as a manager first"
@@ -1108,7 +1127,7 @@
           },
           "sectionSpacing": {
             "label": "Section spacing",
-            "hint": "1 unit ≈ 8px. Example: 6 ≈ 48px between sections."
+            "hint": "1 unit \u2248 8px. Example: 6 \u2248 48px between sections."
           },
           "toggles": {
             "showInMenu": "Show in menu",
@@ -1117,7 +1136,7 @@
             "autosave": "Autosave"
           }
         },
-        "seoPrompt": "Need page-level SEO? Visit <seoLink>Website Manager → SEO</seoLink> to set site defaults.",
+        "seoPrompt": "Need page-level SEO? Visit <seoLink>Website Manager \u2192 SEO</seoLink> to set site defaults.",
         "seo": {
           "cardTitle": "Page SEO & sharing",
           "cardDescription": "Override how this page appears in search results and on social media.",
@@ -1229,14 +1248,14 @@
         "title": "Inspector",
         "description": "Content & advanced props",
         "design": "Design (Theme)",
-        "notMapped": "This section type isn’t mapped to a visual inspector yet. You can still edit its props below.",
+        "notMapped": "This section type isn\u2019t mapped to a visual inspector yet. You can still edit its props below.",
         "sizeSpacing": "Size & spacing",
         "resetTooltip": "Reset to sensible defaults for this section type",
         "reset": "Reset",
         "sectionPadding": "Section padding (Y)",
         "spaceAbove": "Space above (theme units)",
         "spaceBelow": "Space below (theme units)",
-        "tip": "Tip: 1 unit ≈ theme spacing step (often 8px)",
+        "tip": "Tip: 1 unit \u2248 theme spacing step (often 8px)",
         "advanced": "Advanced props",
         "rawProps": {
           "label": "Advanced: raw JSON props",
@@ -1623,7 +1642,10 @@
       "xero": "Xero",
       "quickbooks": "QuickBooks",
       "checkout": "Checkout Pro & Payments",
-      "integrationActivity": "Integration activity"
+      "integrationActivity": "Integration activity",
+      "profession": "Profession",
+      "billing": "Billing",
+      "zapier": "Zapier"
     },
     "stripeHub": {
       "authRequired": "Please sign in as a manager to view Stripe settings.",
@@ -1636,10 +1658,10 @@
       "connect": {
         "title": "Stripe Connect status",
         "description": "Check onboarding progress, charges, and payout readiness.",
-        "loading": "Loading Stripe Connect status…",
+        "loading": "Loading Stripe Connect status\u2026",
         "status": {
-          "ready": "Stripe Connect ready — charges enabled and payouts enabled.",
-          "readyNoPayouts": "Stripe Connect ready — charges enabled; payouts pending.",
+          "ready": "Stripe Connect ready \u2014 charges enabled and payouts enabled.",
+          "readyNoPayouts": "Stripe Connect ready \u2014 charges enabled; payouts pending.",
           "notReady": "Stripe Connect connected but charges are disabled. Finish onboarding in Stripe.",
           "disconnected": "Stripe Connect is not connected yet. Complete onboarding to turn on payments."
         },
@@ -1653,9 +1675,9 @@
         "title": "Checkout & payment mode",
         "description": "Review checkout behaviour, cards on file, and Stripe publishable key.",
         "mode": {
-          "offline": "Offline booking — collect payment outside Stripe.",
-          "cardOnFile": "Card on file — clients secure the booking and managers charge later.",
-          "payNow": "Pay during checkout — clients pay immediately with Stripe."
+          "offline": "Offline booking \u2014 collect payment outside Stripe.",
+          "cardOnFile": "Card on file \u2014 clients secure the booking and managers charge later.",
+          "payNow": "Pay during checkout \u2014 clients pay immediately with Stripe."
         },
         "publishableKey": "Publishable key",
         "copyKey": "Copy publishable key",
@@ -1672,8 +1694,8 @@
           "Complete Stripe Connect onboarding so charges and payouts stay enabled.",
           "Set checkout mode, publishable key, and logo under Checkout Pro & Payments.",
           "Update tax country, region, and display currency in Company Profile.",
-          "Use Advanced Management → Payments to charge cards on file or issue refunds.",
-          "Detailed checkout & tax controls live under Settings → Checkout Pro & Payments (link below)."
+          "Use Advanced Management \u2192 Payments to charge cards on file or issue refunds.",
+          "Detailed checkout & tax controls live under Settings \u2192 Checkout Pro & Payments (link below)."
         ],
         "openPayments": "Open Payments console",
         "openCheckout": "Open Checkout Pro & Payments",
@@ -1684,11 +1706,11 @@
         "intro": "Follow this once and tax will be calculated automatically on every payment.",
         "steps": {
           "app": {
-            "heading": "1) In this app — Company Profile",
+            "heading": "1) In this app \u2014 Company Profile",
             "country": "Set <strong>Country</strong> and <strong>Province/State</strong>.",
             "pricesIncludeTax": {
-              "on": "<strong>Prices include tax</strong>: <em>(currently ON — prices shown include tax)</em>",
-              "off": "<strong>Prices include tax</strong>: <em>(currently OFF — tax will be added on top)</em>"
+              "on": "<strong>Prices include tax</strong>: <em>(currently ON \u2014 prices shown include tax)</em>",
+              "off": "<strong>Prices include tax</strong>: <em>(currently OFF \u2014 tax will be added on top)</em>"
             }
           },
           "connect": {
@@ -1697,22 +1719,22 @@
             "ready": "When it says <strong>Ready to accept payments</strong>, you're all set."
           },
           "stripe": {
-            "heading": "3) In Stripe — turn on Automatic tax",
+            "heading": "3) In Stripe \u2014 turn on Automatic tax",
             "openDashboard": "Click <strong>Open Stripe Dashboard</strong> below.",
-            "navigate": "Go to <strong>Tax → Overview</strong> and switch <strong>Automatic tax</strong> to <strong>ON</strong>.",
+            "navigate": "Go to <strong>Tax \u2192 Overview</strong> and switch <strong>Automatic tax</strong> to <strong>ON</strong>.",
             "origin": "In <strong>Business information</strong>: set your <strong>Origin address</strong> (where your business is based).",
-            "products": "In <strong>Products & prices</strong>: pick a default <strong>tax category</strong> (start with “General — Services”; you can refine per product later).",
+            "products": "In <strong>Products & prices</strong>: pick a default <strong>tax category</strong> (start with \u201cGeneral \u2014 Services\u201d; you can refine per product later).",
             "includeQuestion": "<strong>Include tax in prices?</strong> Choose <strong>No</strong> to add tax on top (most US/CA teams), or <strong>Yes</strong> if your prices already include tax."
           },
           "registrations": {
             "heading": "4) Registrations (where you collect tax)",
-            "open": "Go to <strong>Tax → Registrations</strong>.",
+            "open": "Go to <strong>Tax \u2192 Registrations</strong>.",
             "homeRegion": "Add your <strong>home region</strong> (e.g., Ontario or Texas).",
             "additionalRegions": "Add other provinces/states <strong>only</strong> where you are registered or when Stripe notifies you that a threshold is met.",
             "thresholds": "Enable <strong>Thresholds</strong> monitoring so Stripe alerts you as you grow."
           }
         },
-        "tip": "<strong>Tip:</strong> If your price is $40 and <em>Prices include tax</em> is OFF, customers will see $40 + tax at checkout. If it’s ON, the $40 already contains tax and Stripe will back the tax out automatically.",
+        "tip": "<strong>Tip:</strong> If your price is $40 and <em>Prices include tax</em> is OFF, customers will see $40 + tax at checkout. If it\u2019s ON, the $40 already contains tax and Stripe will back the tax out automatically.",
         "faqs": {
           "title": "FAQs",
           "usRegistration": "<strong>Do I need US registration to sell to US customers?</strong> Only if you meet a state's threshold or choose to register there. Start with your home region; add others as needed.",
@@ -1906,7 +1928,7 @@
         "title": "Employee Permissions (Availability Control)",
         "closeSlots": {
           "label": "Allow employees to Close/Truncate their availability for a day",
-          "hint": "Enables the Bulk ▸ Close rest of day / Truncate day to time actions in the availability calendar"
+          "hint": "Enables the Bulk \u25b8 Close rest of day / Truncate day to time actions in the availability calendar"
         },
         "editSlots": {
           "label": "Allow employees to edit individual availability slots",
@@ -2050,11 +2072,11 @@
         "intro": "Follow this once and tax will be calculated automatically on every payment.",
         "steps": {
           "app": {
-            "heading": "1) In this app — Company Profile",
+            "heading": "1) In this app \u2014 Company Profile",
             "country": "Set <strong>Country</strong> and <strong>Province/State</strong>.",
             "pricesIncludeTax": {
-              "on": "<strong>Prices include tax</strong>: <em>(currently ON — prices shown include tax)</em>",
-              "off": "<strong>Prices include tax</strong>: <em>(currently OFF — tax will be added on top)</em>"
+              "on": "<strong>Prices include tax</strong>: <em>(currently ON \u2014 prices shown include tax)</em>",
+              "off": "<strong>Prices include tax</strong>: <em>(currently OFF \u2014 tax will be added on top)</em>"
             }
           },
           "connect": {
@@ -2063,22 +2085,22 @@
             "ready": "When it says <strong>Ready to accept payments</strong>, you're all set."
           },
           "stripe": {
-            "heading": "3) In Stripe — turn on Automatic tax",
+            "heading": "3) In Stripe \u2014 turn on Automatic tax",
             "openDashboard": "Click <strong>Open Stripe Dashboard</strong> below.",
-            "navigate": "Go to <strong>Tax → Overview</strong> and switch <strong>Automatic tax</strong> to <strong>ON</strong>.",
+            "navigate": "Go to <strong>Tax \u2192 Overview</strong> and switch <strong>Automatic tax</strong> to <strong>ON</strong>.",
             "origin": "In <strong>Business information</strong>: set your <strong>Origin address</strong> (where your business is based).",
-            "products": "In <strong>Products & prices</strong>: pick a default <strong>tax category</strong> (start with “General — Services”; you can refine per product later).",
+            "products": "In <strong>Products & prices</strong>: pick a default <strong>tax category</strong> (start with \u201cGeneral \u2014 Services\u201d; you can refine per product later).",
             "includeQuestion": "<strong>Include tax in prices?</strong> Choose <strong>No</strong> to add tax on top (most US/CA teams), or <strong>Yes</strong> if your prices already include tax."
           },
           "registrations": {
             "heading": "4) Registrations (where you collect tax)",
-            "open": "Go to <strong>Tax → Registrations</strong>.",
+            "open": "Go to <strong>Tax \u2192 Registrations</strong>.",
             "homeRegion": "Add your <strong>home region</strong> (e.g., Ontario or Texas).",
             "additionalRegions": "Add other provinces/states <strong>only</strong> where you are registered or when Stripe notifies you that a threshold is met.",
             "thresholds": "Enable <strong>Thresholds</strong> monitoring so Stripe alerts you as you grow."
           }
         },
-        "tip": "<strong>Tip:</strong> If your price is $40 and <em>Prices include tax</em> is OFF, customers will see $40 + tax at checkout. If it’s ON, the $40 already contains tax and Stripe will back the tax out automatically.",
+        "tip": "<strong>Tip:</strong> If your price is $40 and <em>Prices include tax</em> is OFF, customers will see $40 + tax at checkout. If it\u2019s ON, the $40 already contains tax and Stripe will back the tax out automatically.",
         "faqs": {
           "title": "FAQs",
           "usRegistration": "<strong>Do I need US registration to sell to US customers?</strong> Only if you meet a state's threshold or choose to register there. Start with your home region; add others as needed.",
@@ -2123,6 +2145,12 @@
       "externalId": "External ID",
       "triggeredBy": "Triggered by",
       "message": "Message"
+    },
+    "integrations": {
+      "activityDescription": "Monitor integration activity and sync status.",
+      "zapierDescription": "Connect automations with Zapier workflows.",
+      "xeroDescription": "Sync invoices and payments with Xero.",
+      "quickbooksDescription": "Connect QuickBooks and keep books in sync."
     }
   },
   "management": {
@@ -2522,7 +2550,7 @@
         "items": [
           "Your site will live at www.yourdomain.com.",
           "You will add 2 DNS records (1 TXT, 1 CNAME).",
-          "SSL is automatic — no certificates to manage.",
+          "SSL is automatic \u2014 no certificates to manage.",
           "Your root domain (yourdomain.com) can optionally redirect to www."
         ]
       },
@@ -2559,7 +2587,7 @@
         "title": "Security & SSL",
         "items": [
           "SSL is issued automatically after DNS verification.",
-          "This can take 5–30 minutes.",
+          "This can take 5\u201330 minutes.",
           "During this time, a temporary browser warning is normal.",
           "No action is required from you."
         ]
@@ -2582,7 +2610,7 @@
           ]
         },
         {
-          "title": "⚠️ Important for GoDaddy domains",
+          "title": "\u26a0\ufe0f Important for GoDaddy domains",
           "bullets": [
             "When purchasing a domain from GoDaddy, do NOT select AIRO / Free Website or forced website creation.",
             "If AIRO was selected, contact GoDaddy support and ask them to detach the domain from Websites + Marketing (AIRO)."
@@ -2616,7 +2644,7 @@
           "title": "Root domain (optional)",
           "bullets": [
             "Your site lives at www.yourdomain.com.",
-            "You may optionally redirect yourdomain.com → www.yourdomain.com.",
+            "You may optionally redirect yourdomain.com \u2192 www.yourdomain.com.",
             "This is recommended but not required.",
             "Some DNS providers may temporarily show NXDOMAIN for the root domain. This is normal and does not affect your website."
           ]
@@ -2695,7 +2723,7 @@
             "fix": "Use the exact host shown in Schedulaa."
           },
           {
-            "issue": "www doesn’t load",
+            "issue": "www doesn\u2019t load",
             "cause": "CNAME target is wrong.",
             "fix": "Point www to the CNAME target shown in Schedulaa."
           },
@@ -2705,7 +2733,7 @@
             "fix": "Wait up to 30 minutes."
           },
           {
-            "issue": "Root domain doesn’t load",
+            "issue": "Root domain doesn\u2019t load",
             "cause": "Root domain is optional.",
             "fix": "Use www.yourdomain.com (normal)."
           },
@@ -2813,12 +2841,12 @@
         "copy": {
           "eyebrow": "The unified business OS",
           "heading": "Scheduling, payroll, and online sales that work together.",
-          "body": "Book clients, sell products, manage staff, and publish your website — all powered by Stripe and ready for multi-location operations."
+          "body": "Book clients, sell products, manage staff, and publish your website \u2014 all powered by Stripe and ready for multi-location operations."
         },
         "modules": {
           "scheduling": {
             "label": "Scheduling",
-            "summary": "Let clients book multiple services, reschedule, and self-manage appointments — all synced across staff calendars.",
+            "summary": "Let clients book multiple services, reschedule, and self-manage appointments \u2014 all synced across staff calendars.",
             "stats": [
               {
                 "label": "Recurring slots enabled",
@@ -2916,7 +2944,7 @@
         },
         "commerce": {
           "title": "Commerce that converts",
-          "description": "Sell products, services, and add-ons in one cart — powered by Stripe Checkout.",
+          "description": "Sell products, services, and add-ons in one cart \u2014 powered by Stripe Checkout.",
           "points": [
             "Mixed carts with secure Stripe sessions",
             "Coupons, refunds, and saved cards included",
@@ -2935,8 +2963,8 @@
       },
       "seoSection": {
         "eyebrow": "Why Schedulaa shows up in search",
-        "title": "Built to answer “booking software” searches",
-        "description": "Google surfaces pages that pair fast performance with real, descriptive copy. This section gives crawlers the written context they need—while helping visitors confirm Schedulaa covers scheduling, payroll, and commerce end-to-end.",
+        "title": "Built to answer \u201cbooking software\u201d searches",
+        "description": "Google surfaces pages that pair fast performance with real, descriptive copy. This section gives crawlers the written context they need\u2014while helping visitors confirm Schedulaa covers scheduling, payroll, and commerce end-to-end.",
         "cards": [
           {
             "heading": "Scheduling & client experience",
@@ -2956,7 +2984,7 @@
           },
           {
             "heading": "Commerce, marketing, and analytics",
-            "body": "Stripe Checkout handles mixed carts, memberships, and upsells. Built-in analytics highlight top services, churn risk, and campaign ROI so teams can act on data—not spreadsheets.",
+            "body": "Stripe Checkout handles mixed carts, memberships, and upsells. Built-in analytics highlight top services, churn risk, and campaign ROI so teams can act on data\u2014not spreadsheets.",
             "link": {
               "label": "Compare plans & analytics",
               "to": "/pricing"
@@ -2964,7 +2992,7 @@
           },
           {
             "heading": "Time tracking + payroll exports",
-            "body": "Approved hours arrive with unpaid breaks deducted, OT/missed-break markers attached, and IP/device hints for audits—ready for payroll CSV/PDF.",
+            "body": "Approved hours arrive with unpaid breaks deducted, OT/missed-break markers attached, and IP/device hints for audits\u2014ready for payroll CSV/PDF.",
             "link": {
               "label": "See time tracking & breaks",
               "to": "/features#time-tracking-smart-breaks"
@@ -2993,7 +3021,7 @@
           },
           {
             "title": "Commerce that converts",
-            "description": "Sell products, services, and add-ons in one cart — powered by Stripe Checkout.",
+            "description": "Sell products, services, and add-ons in one cart \u2014 powered by Stripe Checkout.",
             "points": [
               "Mixed carts with secure Stripe sessions and saved cards",
               "Coupons, refunds, and partial refunds included",
@@ -3081,7 +3109,7 @@
       "cta": {
         "eyebrow": "Ready to streamline?",
         "title": "Run bookings, payroll, and online sales from one login.",
-        "description": "Sell products, manage staff, and automate marketing — all from one connected platform built for modern service businesses.",
+        "description": "Sell products, manage staff, and automate marketing \u2014 all from one connected platform built for modern service businesses.",
         "primaryLabel": "Start free",
         "secondaryLabel": "Talk to sales"
       }
@@ -3091,7 +3119,7 @@
         "title": "Schedulaa Platform Features | Scheduling, Payroll, and Online Sales Unified",
         "description": "Schedulaa unifies scheduling, payroll, hiring, website building, and eCommerce for teams. Sell services or products, automate payments, and manage multi-branch operations in one platform.",
         "ogTitle": "Schedulaa Platform Features",
-        "ogDescription": "Book clients, sell products, pay your team – all from one platform."
+        "ogDescription": "Book clients, sell products, pay your team \u2013 all from one platform."
       },
       "hero": {
         "eyebrow": "Platform Highlights",
@@ -3341,7 +3369,7 @@
       "cta": {
         "eyebrow": "Ready to streamline?",
         "title": "Run scheduling, payroll, and online sales from one login.",
-        "description": "Whether you manage a salon, fitness studio, recruiter network, or real estate team — Schedulaa connects bookings, sales, and payroll in one secure workspace.",
+        "description": "Whether you manage a salon, fitness studio, recruiter network, or real estate team \u2014 Schedulaa connects bookings, sales, and payroll in one secure workspace.",
         "primaryCta": {
           "label": "Start free"
         },
@@ -3357,7 +3385,7 @@
         "canonical": "https://www.schedulaa.com/docs",
         "og": {
           "title": "Schedulaa Documentation | Scheduling, Payroll, and Commerce Guides",
-          "description": "Guides, onboarding steps, integrations, and FAQs for scheduling, payroll, and online sales — plus the roadmap for public APIs.",
+          "description": "Guides, onboarding steps, integrations, and FAQs for scheduling, payroll, and online sales \u2014 plus the roadmap for public APIs.",
           "image": "https://www.schedulaa.com/og/docs.jpg"
         }
       },
@@ -3652,7 +3680,7 @@
               {
                 "heading": "1. Why mapping is required",
                 "items": [
-                  "QuickBooks accepts journals only when every category—wages, deductions, FICA/Medicare, net pay, revenue, tax, tips—points to a real account.",
+                  "QuickBooks accepts journals only when every category\u2014wages, deductions, FICA/Medicare, net pay, revenue, tax, tips\u2014points to a real account.",
                   "Schedulaa uses those mappings to build balanced debit/credit lines; when the chips turn green, Sync to QuickBooks is ready."
                 ]
               },
@@ -3661,7 +3689,7 @@
                 "items": [
                   "Under Payroll and Revenue mapping, choose the exact account codes from your QuickBooks chart.",
                   "Need a new account? Create it in QuickBooks and click Refresh (or reconnect) so it appears in the dropdown.",
-                  "Mappings can be edited at any time—future exports automatically use the new accounts."
+                  "Mappings can be edited at any time\u2014future exports automatically use the new accounts."
                 ]
               },
               {
@@ -3680,7 +3708,7 @@
                   "Schedulaa posts a balanced Journal Entry (wages/vacation/tips/commissions debited; income tax, CPP/EI, FICA/Medicare, tips payable, and net pay credited).",
                   "Class/Location tags are attached automatically when departments are mapped.",
                   "No manual edits are required inside QuickBooks.",
-                  "If you prefer Zapier-driven payroll workflows instead of native sync, add an Event hook for “When a payroll payment is requested” and handle journals/approvals in Zapier."
+                  "If you prefer Zapier-driven payroll workflows instead of native sync, add an Event hook for \u201cWhen a payroll payment is requested\u201d and handle journals/approvals in Zapier."
                 ]
               },
               {
@@ -3694,7 +3722,7 @@
               {
                 "heading": "6. Locking periods and backdated exports",
                 "items": [
-                  "Use “Lock exports before” to prevent journals from posting into closed months.",
+                  "Use \u201cLock exports before\u201d to prevent journals from posting into closed months.",
                   "Disable backdated exports if you want strict accounting controls; re-enable when finance approves a historical post."
                 ]
               },
@@ -3702,25 +3730,25 @@
                 "heading": "7. Integration Activity",
                 "items": [
                   "Every export is logged with date, provider, type, status, external ID, and the manager who triggered it.",
-                  "Check Workspace Settings → Integration Activity to confirm QuickBooks sync history or troubleshoot failures."
+                  "Check Workspace Settings \u2192 Integration Activity to confirm QuickBooks sync history or troubleshoot failures."
                 ]
               },
               {
                 "heading": "8. Common questions",
                 "items": [
-                  "Do I need every account pre-created? No—map to existing accounts or create new ones in QuickBooks first, then refresh.",
-                  "Can I change mappings later? Yes—future exports immediately use the new mapping.",
+                  "Do I need every account pre-created? No\u2014map to existing accounts or create new ones in QuickBooks first, then refresh.",
+                  "Can I change mappings later? Yes\u2014future exports immediately use the new mapping.",
                   "Why is the Customer dropdown empty? Essentials/Plus/Advanced expose the list; Simple Start sandboxes do not.",
-                  "Do payroll exports require customers? No—only invoice/sales receipt exports use CustomerRef."
+                  "Do payroll exports require customers? No\u2014only invoice/sales receipt exports use CustomerRef."
                 ]
               },
               {
                 "heading": "9. Quick setup checklist",
                 "items": [
                   "Map payroll expenses and liabilities (including FICA/Medicare if U.S.).",
-                  "Map net pay → bank, plus service/product revenue, tax, and tips payable.",
-                  "Configure default Class/Location/Item/Customer (optional) and Departments ↔ Class/Location mappings.",
-                  "Finalize payroll → Sync to QuickBooks → confirm success in Integration Activity."
+                  "Map net pay \u2192 bank, plus service/product revenue, tax, and tips payable.",
+                  "Configure default Class/Location/Item/Customer (optional) and Departments \u2194 Class/Location mappings.",
+                  "Finalize payroll \u2192 Sync to QuickBooks \u2192 confirm success in Integration Activity."
                 ]
               },
               {
@@ -3751,7 +3779,7 @@
               {
                 "heading": "1. Why mapping is required",
                 "items": [
-                  "Xero accepts a manual journal only when every line—wages, deductions, FICA/Medicare, net pay, revenue, tax, tips—points to a real account.",
+                  "Xero accepts a manual journal only when every line\u2014wages, deductions, FICA/Medicare, net pay, revenue, tax, tips\u2014points to a real account.",
                   "Schedulaa builds those debit/credit lines automatically; green status chips indicate all required kinds are mapped."
                 ]
               },
@@ -3760,7 +3788,7 @@
                 "items": [
                   "Under Payroll and Revenue mapping, choose the account code straight from your Xero chart.",
                   "Need a new account? Create it in Xero, reconnect or refresh, then map it here.",
-                  "Mappings can be changed at any time—future exports reuse the most recent selections."
+                  "Mappings can be changed at any time\u2014future exports reuse the most recent selections."
                 ]
               },
               {
@@ -3778,7 +3806,7 @@
                   "Finalize payroll in Schedulaa, load the run, and click Sync to Xero.",
                   "Schedulaa sends a balanced journal (wages + employer portions + deductions + net pay + tips payable).",
                   "Tracking categories are attached per department or fall back to your default tracking selection.",
-                  "If you want Zapier to orchestrate payroll instead of native sync, add an Event hook for “When a payroll payment is requested” and let Zapier create journals/approvals."
+                  "If you want Zapier to orchestrate payroll instead of native sync, add an Event hook for \u201cWhen a payroll payment is requested\u201d and let Zapier create journals/approvals."
                 ]
               },
               {
@@ -3792,22 +3820,22 @@
                 "heading": "6. Default tracking & lock date",
                 "items": [
                   "Set a default tracking category + option so unmapped transactions still land in the correct cost center.",
-                  "Use “Lock exports before” + “Allow backdated exports” to block journals from posting into closed periods."
+                  "Use \u201cLock exports before\u201d + \u201cAllow backdated exports\u201d to block journals from posting into closed periods."
                 ]
               },
               {
-                "heading": "7. Departments ↔ Tracking",
+                "heading": "7. Departments \u2194 Tracking",
                 "items": [
                   "Map each Schedulaa department to a Xero tracking category option (e.g., Downtown Studio, York Mills).",
-                  "During export, Schedulaa attaches the department’s tracking option; if none exist, it uses your default tracking."
+                  "During export, Schedulaa attaches the department\u2019s tracking option; if none exist, it uses your default tracking."
                 ]
               },
               {
                 "heading": "8. Common questions",
                 "items": [
-                  "Do I need every account pre-created? No—map to existing accounts or add new ones in Xero first, then refresh.",
-                  "Can I change mappings later? Yes—future exports immediately use the updated mapping.",
-                  "Not seeing tracking categories? Add them in Xero (Accounting → Accounting settings → Tracking categories) and click Refresh."
+                  "Do I need every account pre-created? No\u2014map to existing accounts or add new ones in Xero first, then refresh.",
+                  "Can I change mappings later? Yes\u2014future exports immediately use the updated mapping.",
+                  "Not seeing tracking categories? Add them in Xero (Accounting \u2192 Accounting settings \u2192 Tracking categories) and click Refresh."
                 ]
               },
               {
@@ -3815,8 +3843,8 @@
                 "items": [
                   "Map payroll expenses and liabilities (including FICA/Medicare for U.S. entities).",
                   "Map net pay, service/product revenue, tax collected, and tips payable.",
-                  "Configure default tracking + lock date, then map departments ↔ tracking options.",
-                  "Finalize payroll → Sync to Xero → confirm success in Integration Activity."
+                  "Configure default tracking + lock date, then map departments \u2194 tracking options.",
+                  "Finalize payroll \u2192 Sync to Xero \u2192 confirm success in Integration Activity."
                 ]
               }
             ],
@@ -3836,8 +3864,9 @@
     "pricingPage": {
       "meta": {
         "title": "Schedulaa Pricing | Launch on your own domain with automatic SSL",
-        "description": "Compare Starter, Pro, and Business plans. All plans include a custom domain with automatic SSL, plus unified booking, scheduling, payroll, and automation.",
+        "description": "Compare Starter, Pro, and Business plans. All plans include a custom domain with automatic SSL, plus booking and website essentials, with scheduling, payroll, and automation on Pro and Business.",
         "canonical": "https://www.schedulaa.com/pricing",
+        "keywords": "Schedulaa pricing, booking software pricing, payroll SaaS pricing, website builder plans",
         "og": {
           "title": "Schedulaa Pricing",
           "description": "Plans for every stage. Launch on your own domain with automatic SSL included on every plan.",
@@ -3850,7 +3879,7 @@
           "Pricing that grows with you.",
           "Launch on your own domain with automatic SSL."
         ],
-        "subtitle": "Custom domains (TXT/CNAME) with automatic SSL are now included on every plan. Start with Starter for website + booking, then add staff, payroll, and automations on Pro and Business.",
+        "subtitle": "Custom domains (TXT/CNAME) with automatic SSL are included on every plan. Start with Starter for website + booking, then add staff scheduling, payroll, and automations on Pro and Business.",
         "primaryCta": {
           "label": "Start free trial"
         },
@@ -3870,37 +3899,91 @@
               "key": "starter",
               "name": "Starter",
               "price": "$19.99/mo",
-              "description": "Launch your website and start taking bookings and payments — perfect for solo professionals.",
+              "description": "Launch your website and take bookings and payments for solo professionals.",
+              "trialNote": "14-day free trial \u2022 Cancel anytime",
               "features": [
+                {
+                  "type": "heading",
+                  "text": "Core platform"
+                },
+                "Unified booking, website, and payments.",
+                "Secure client and staff portals.",
                 "Website builder with branded pages and templates.",
                 "Online booking, confirmations, and client portal.",
-                "Public “Book with me” link for solo professionals.",
-                "Stripe Checkout with Automatic Tax compliance.",
-                "1 staff seat and 1 location included.",
-                "CSV and PDF reports for revenue and appointments.",
-                "Custom domain + automatic SSL included on this plan."
+                "Public \u201cBook with me\u201d link.",
+                "Stripe Checkout with automatic tax compliance.",
+                {
+                  "type": "heading",
+                  "text": "Operational basics"
+                },
+                "Booking notifications and reminders.",
+                "Embeddable booking widgets.",
+                "Stripe refunds and payment history.",
+                "Basic role-based access.",
+                {
+                  "type": "heading",
+                  "text": "Time & reporting"
+                },
+                "Basic time tracking tied to bookings and shifts.",
+                "CSV/PDF exports for worked hours and revenue.",
+                {
+                  "type": "heading",
+                  "text": "Capacity"
+                },
+                "1 staff seat and 1 location (department) included.",
+                "Custom domain + automatic SSL included.",
+                "Upgrade for onboarding workflows."
               ],
-              "ctaLabel": "Start free trial",
+              "ctaLabel": "Start 14-day free trial",
               "ctaTo": "/register"
             },
             {
               "key": "pro",
               "name": "Pro",
               "price": "$49.99/mo",
-              "description": "For small teams that need staff scheduling, marketing automation, and analytics.",
-            "features": [
-              "Everything in Starter.",
-              "Custom domain + automatic SSL included.",
-              "Up to 5 staff seats and 1 location included.",
-              "Zapier automation for bookings, shifts, timeclock, breaks, PTO, onboarding, and payroll events.",
-              "QuickBooks and Xero exports for payroll and revenue.",
-              "Payroll processing included with Employee Payslip Portal (self-serve PDF downloads).",
-              "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
-              "Advanced Analytics (bookings, revenue, client segments).",
-              "Automated Canadian stat holiday pay and accruals.",
-              "Priority support (business hours)."
-            ],
-              "ctaLabel": "Start Pro",
+              "positioning": "Run daily operations from one system.",
+              "description": "For small teams that need scheduling, automation, and analytics.",
+              "trialNote": "14-day free trial \u2022 Cancel anytime",
+              "features": [
+                "Everything in Starter.",
+                {
+                  "type": "heading",
+                  "text": "Time & Labor"
+                },
+                "Shift-based clock-in and clock-out.",
+                "Break enforcement and auto-deductions.",
+                "Overtime and anomaly flags.",
+                {
+                  "type": "heading",
+                  "text": "Payroll"
+                },
+                "Full payroll runs included (no per-run fees).",
+                "Payroll-ready approvals and audit trails.",
+                "Payroll exports to QuickBooks & Xero.",
+                "Payroll processing with Employee Payslip Portal (self-serve PDFs).",
+                {
+                  "type": "heading",
+                  "text": "Access & control"
+                },
+                "Role-based access for managers and staff.",
+                "Staff permissions and visibility controls.",
+                "Department scheduling and shared calendars.",
+                "Shift swaps, approvals, and live rosters.",
+                {
+                  "type": "heading",
+                  "text": "Analytics & marketing"
+                },
+                "Email campaigns: Broadcast, Win-Back, VIP, No-Show, Anniversary.",
+                "Advanced Analytics (bookings, revenue, client segments).",
+                {
+                  "type": "heading",
+                  "text": "Capacity"
+                },
+                "Up to 5 staff seats and 1 location (department) included.",
+                "Automated Canadian stat holiday pay and accruals.",
+                "Priority support (business hours)."
+              ],
+              "ctaLabel": "Start 14-day free trial",
               "ctaTo": "/register",
               "highlight": true,
               "badge": "Most popular"
@@ -3909,18 +3992,44 @@
               "key": "business",
               "name": "Business",
               "price": "$119.99/mo",
-              "description": "For established teams managing advanced payroll, compliance, and analytics.",
+              "description": "Built for compliance, audits, and multi-location (department) operations.",
+              "trialNote": "14-day free trial \u2022 Cancel anytime",
               "features": [
                 "Everything in Pro.",
-                "10 staff seats and up to 5 locations included.",
-                "Add additional staff seats for $9/mo each (scales with your team).",
-                "Compliance Documents Pack: W-2 (US), T4 (CA), ROE (CA) creation & export (PDF/XML).",
-                "Advanced payroll exports, audits, and tax reports.",
-                "Team scheduling controls (bulk close / keep windows).",
-                "24/7 priority support.",
+                {
+                  "type": "heading",
+                  "text": "Time & Labor"
+                },
+                "Shift-based clock-in and clock-out with break enforcement.",
+                "Overtime, anomaly flags, and audit-ready time records.",
+                {
+                  "type": "heading",
+                  "text": "Payroll"
+                },
+                "Full payroll runs included (no per-run fees).",
+                {
+                  "type": "heading",
+                  "text": "Governance & compliance"
+                },
+                "Audit-ready payroll and compliance records.",
+                "Compliance-ready tax exports (W-2, T4, ROE).",
+                "Multi-location (department) payroll and reporting.",
+                {
+                  "type": "heading",
+                  "text": "Advanced control"
+                },
+                "Branch-level permissions.",
+                "Bulk scheduling controls (close / keep windows).",
+                "Audit-ready operations with reduced compliance risk.",
+                {
+                  "type": "heading",
+                  "text": "Capacity"
+                },
+                "10 staff seats and up to 5 locations (departments) included.",
+                "Add seats for $9/mo each.",
                 "Free branded website included when using Payroll + Scheduling."
               ],
-              "ctaLabel": "Start Business",
+              "ctaLabel": "Start 14-day free trial",
               "ctaTo": "/register"
             }
           ],
@@ -3934,7 +4043,7 @@
               {
                 "key": "extraSeat",
                 "name": "Additional staff seat",
-                "price": "$9/mo"
+                "price": "$9/mo per seat (prorated)"
               }
             ]
           }
@@ -3988,13 +4097,147 @@
       "ctaBanner": {
         "eyebrow": "Launch today",
         "title": "Start your free trial - no credit card required",
-        "description": "Bring scheduling, payments, and payroll into one workspace backed by automatic SSL on your own domain.",
+        "description": "Bring scheduling, payments, and payroll into one workspace with automatic SSL on your domain.",
         "primaryCta": {
           "label": "Start free trial"
         },
         "secondaryCta": {
           "label": "Talk to sales"
         }
+      },
+      "included": {
+        "title": "Included in every plan",
+        "items": [
+          "Custom domains with automatic SSL.",
+          "Role-based access and staff permissions.",
+          "Email and booking notifications.",
+          "Secure Stripe payments with refunds.",
+          "Continuous feature updates."
+        ]
+      },
+      "comparison": {
+        "title": "Schedulaa Feature Comparison",
+        "subtitle": "Compare plans at a glance.",
+        "headers": {
+          "feature": "Feature",
+          "starter": "Starter",
+          "pro": "Pro",
+          "business": "Business"
+        },
+        "values": {
+          "yes": "Yes",
+          "dash": "\u2014",
+          "businessHours": "Business hours",
+          "always": "24 / 7"
+        },
+        "rows": {
+          "price": {
+            "label": "Price",
+            "starter": "$19.99 / mo",
+            "pro": "$49.99 / mo",
+            "business": "$119.99 / mo"
+          },
+          "bestFor": {
+            "label": "Best for",
+            "starter": "Solo professionals",
+            "pro": "Growing teams",
+            "business": "Compliance & multi-location (department) teams"
+          },
+          "website": {
+            "section": "Website & Online Presence",
+            "builder": "Branded website builder & templates",
+            "customDomain": "Custom domain + automatic SSL",
+            "publicBooking": "Public booking pages",
+            "embedded": "Embedded booking widgets",
+            "branding": "Company-level branding"
+          },
+          "booking": {
+            "section": "Booking & Scheduling",
+            "online": "Online booking & confirmations",
+            "reschedule": "Client self-serve rescheduling",
+            "multi": "Multi-service & add-on bookings",
+            "staffScheduling": "Staff scheduling & shift management",
+            "shiftSwaps": "Shift swaps & leave approvals",
+            "bulk": "Bulk scheduling controls"
+          },
+          "time": {
+            "section": "Time Tracking",
+            "clock": "Shift-based clock-in / clock-out",
+            "breakPolicy": "Break policy enforcement",
+            "staggered": "Staggered & windowed breaks",
+            "ipHints": "IP / device audit hints",
+            "overtime": "Overtime & anomaly flags"
+          },
+          "payroll": {
+            "section": "Payroll",
+            "processing": "Payroll processing (US & Canada)",
+            "holiday": "Automated stat holiday pay & accruals",
+            "payslip": "Employee payslip portal (PDF)",
+            "exports": "Advanced payroll exports & audits",
+            "invoicing": "Payroll-linked invoicing"
+          },
+          "compliance": {
+            "section": "Compliance",
+            "revenueReports": "Revenue & appointment reports",
+            "exports": "CSV / PDF exports",
+            "w2": "W-2 (US) generation",
+            "t4": "T4 & ROE (Canada)",
+            "audit": "Compliance-ready audit trails"
+          },
+          "analytics": {
+            "section": "Analytics",
+            "revenueDash": "Revenue & booking dashboards",
+            "utilization": "Utilization & productivity analytics",
+            "segmentation": "Client segmentation & trends",
+            "multiLocation": "Multi-location (department) analytics"
+          },
+          "automation": {
+            "section": "Automation",
+            "notifications": "Email notifications & reminders",
+            "campaigns": "Email campaigns (VIP, Win-back, No-show)",
+            "zapier": "Zapier automation",
+            "workflows": "Workflow automations"
+          },
+          "hiring": {
+            "section": "Hiring",
+            "jobs": "Job postings & public apply links",
+            "resume": "Resume uploads & tracking",
+            "onboarding": "Onboarding workflows",
+            "handoff": "Hiring \u2192 payroll handoff"
+          },
+          "scale": {
+            "section": "Scale",
+            "seatsIncluded": "Staff seats included",
+            "starterSeats": "1",
+            "proSeats": "Up to 5",
+            "businessSeats": "10",
+            "additionalSeats": "Additional staff seats",
+            "seatPrice": "$9 / seat",
+            "multiLocation": "Multi-location support (use departments as locations)",
+            "starterLocations": "1",
+            "proLocations": "1",
+            "businessLocations": "Up to 2",
+            "roleAccess": "Role-based access & permissions",
+            "starterAccess": "Basic",
+            "proAccess": "Advanced",
+            "businessAccess": "Advanced",
+            "branchPermissions": "Branch-level permissions"
+          },
+          "support": {
+            "section": "Support",
+            "standard": "Standard support",
+            "priority": "Priority support",
+            "audit": "Audit & compliance support"
+          }
+        }
+      },
+      "whyTeams": {
+        "title": "Why teams choose Schedulaa",
+        "items": [
+          "Booking, payroll, time tracking, and websites share one data model.",
+          "No syncing errors between shifts, hours, and pay.",
+          "Fewer compliance gaps from disconnected tools."
+        ]
       }
     },
     "aboutPage": {
@@ -4198,11 +4441,11 @@
         "competitor": "Vagaro",
         "metaTitle": "Schedulaa vs Vagaro | Booking, Payroll, and Operations Comparison",
         "metaDescription": "See how Schedulaa compares to Vagaro for booking, payroll, and analytics. Learn which platform fits growing service businesses best.",
-        "heroTitle": "Schedulaa vs Vagaro — Which Platform Is Right for Your Business?",
+        "heroTitle": "Schedulaa vs Vagaro \u2014 Which Platform Is Right for Your Business?",
         "heroSubtitle": "Vagaro focuses on salons and spas. Schedulaa unifies booking, staff scheduling, payroll, e-commerce, and analytics for service brands of any size.",
         "intro": [
           "Both Schedulaa and Vagaro help service-based businesses manage clients and appointments, but their focus is different.",
-          "Vagaro is built primarily for salons and spas, while Schedulaa is designed as an all-in-one operations platform that unifies booking, staff scheduling, payroll, e-commerce, and analytics — from beauty studios to creative agencies."
+          "Vagaro is built primarily for salons and spas, while Schedulaa is designed as an all-in-one operations platform that unifies booking, staff scheduling, payroll, e-commerce, and analytics \u2014 from beauty studios to creative agencies."
         ],
         "executiveOverview": {
           "headers": [
@@ -4276,7 +4519,7 @@
         "differentiators": [
           {
             "title": "Platform identity and brand ownership",
-            "body": "Schedulaa lets you operate under your own domain, logo, and booking experience — ideal for premium or multi-brand businesses. Vagaro’s shared marketplace keeps the Vagaro brand front-and-center for every client interaction."
+            "body": "Schedulaa lets you operate under your own domain, logo, and booking experience \u2014 ideal for premium or multi-brand businesses. Vagaro\u2019s shared marketplace keeps the Vagaro brand front-and-center for every client interaction."
           },
           {
             "title": "Integrated payroll and compliance",
@@ -4292,7 +4535,7 @@
           },
           {
             "title": "Simplicity and cost control",
-            "body": "Flat-rate pricing keeps Schedulaa predictable as teams grow. Vagaro’s per-user and add-on fees can increase quickly for multi-location businesses."
+            "body": "Flat-rate pricing keeps Schedulaa predictable as teams grow. Vagaro\u2019s per-user and add-on fees can increase quickly for multi-location businesses."
           }
         ],
         "summaryTable": {
@@ -4349,7 +4592,7 @@
           }
         ],
         "testimonial": {
-          "quote": "Schedulaa replaced multiple tools for our salon. Bookings, shift tracking, and payroll now happen in one dashboard — clients never leave our domain.",
+          "quote": "Schedulaa replaced multiple tools for our salon. Bookings, shift tracking, and payroll now happen in one dashboard \u2014 clients never leave our domain.",
           "attribution": "BeautyBar Collective, Toronto"
         },
         "conclusion": "Vagaro centralizes the beauty marketplace experience. Schedulaa centralizes your operations under your own brand. If your goal is growth, automation, and independence, Schedulaa provides the structure to scale across teams, services, and countries."
@@ -4358,7 +4601,7 @@
         "competitor": "QuickBooks",
         "metaTitle": "Schedulaa vs QuickBooks | Operations Platform vs Accounting Suite",
         "metaDescription": "Compare Schedulaa and QuickBooks. Learn when to use an all-in-one operations platform instead of an accounting-first tool.",
-        "heroTitle": "Schedulaa vs QuickBooks — All-in-One Operations vs Accounting-First Platforms",
+        "heroTitle": "Schedulaa vs QuickBooks \u2014 All-in-One Operations vs Accounting-First Platforms",
         "heroSubtitle": "QuickBooks focuses on accounting and bookkeeping. Schedulaa unifies booking, scheduling, payroll, and analytics for service-driven teams.",
         "intro": [
           "Both Schedulaa and QuickBooks are essential tools for modern businesses, but they serve different purposes.",
@@ -4504,16 +4747,16 @@
           }
         ],
         "testimonial": {
-      "quote": "Schedulaa unified everything we used to manage separately — bookings, payroll, and analytics — without adding extra licenses.",
-      "attribution": "Photo Artisto Studios, Toronto"
-    },
-    "conclusion": "QuickBooks remains the standard for accounting. Schedulaa extends beyond finance — turning scheduling, team management, and payroll into a single workflow. For service-oriented businesses, this integration saves time, reduces tool overlap, and strengthens brand consistency."
-  },
+          "quote": "Schedulaa unified everything we used to manage separately \u2014 bookings, payroll, and analytics \u2014 without adding extra licenses.",
+          "attribution": "Photo Artisto Studios, Toronto"
+        },
+        "conclusion": "QuickBooks remains the standard for accounting. Schedulaa extends beyond finance \u2014 turning scheduling, team management, and payroll into a single workflow. For service-oriented businesses, this integration saves time, reduces tool overlap, and strengthens brand consistency."
+      },
       "gusto": {
         "competitor": "Gusto",
         "metaTitle": "Schedulaa vs Gusto | Operations OS vs Payroll & HR",
         "metaDescription": "Compare Schedulaa and Gusto. See how an operations-first platform with scheduling, time tracking, and cross-border payroll differs from a U.S.-only payroll and HR provider.",
-        "heroTitle": "Schedulaa vs Gusto — Operations OS vs Payroll-Only Platforms",
+        "heroTitle": "Schedulaa vs Gusto \u2014 Operations OS vs Payroll-Only Platforms",
         "heroSubtitle": "Gusto focuses on payroll and HR. Schedulaa ties together scheduling, time tracking, and cross-border payroll for service teams in Canada and the U.S.",
         "intro": [
           "Both Schedulaa and Gusto can run payroll for small and mid-sized teams, but they start from different places.",
@@ -4543,7 +4786,7 @@
             },
             {
               "label": "Regions & coverage",
-              "schedulaa": "Canada (ex-Québec) and supported U.S. states with federal + state tax engines and ROE/T4/W-2 exports. Local/city payroll taxes are not automated and must be handled externally.",
+              "schedulaa": "Canada (ex-Qu\u00e9bec) and supported U.S. states with federal + state tax engines and ROE/T4/W-2 exports. Local/city payroll taxes are not automated and must be handled externally.",
               "competitor": "U.S. payroll with broad state + local/city tax support and electronic filings. No Canadian T4/ROE support."
             },
             {
@@ -4578,7 +4821,7 @@
             },
             {
               "label": "Automation",
-              "schedulaa": "Automates the flow from schedule → time tracking → payroll → payslips and year-end exports.",
+              "schedulaa": "Automates the flow from schedule \u2192 time tracking \u2192 payroll \u2192 payslips and year-end exports.",
               "competitor": "Automates payroll runs, filings, and HR workflows for U.S.-based employees."
             }
           ]
@@ -4590,7 +4833,7 @@
           },
           {
             "title": "Canada + U.S. payroll in one OS",
-            "body": "Schedulaa supports CRA-style CPP/EI/BPA logic (ex-Québec) and IRS/FICA/state logic for U.S. states in the same platform. Gusto focuses on U.S. payroll only."
+            "body": "Schedulaa supports CRA-style CPP/EI/BPA logic (ex-Qu\u00e9bec) and IRS/FICA/state logic for U.S. states in the same platform. Gusto focuses on U.S. payroll only."
           },
           {
             "title": "Shift-connected earnings",
@@ -4598,7 +4841,7 @@
           },
           {
             "title": "Service-team workflows",
-            "body": "Schedulaa is built for salons, spas, clinics, call centers, and field crews that need booking, staffing, and payroll in sync — not just HR forms and benefits."
+            "body": "Schedulaa is built for salons, spas, clinics, call centers, and field crews that need booking, staffing, and payroll in sync \u2014 not just HR forms and benefits."
           },
           {
             "title": "Automation-driven operations",
@@ -4623,12 +4866,12 @@
             },
             {
               "label": "Payroll & Compliance",
-              "schedulaa": "Built-in CA (ex-Québec) + U.S. engines with ROE/T4/W-2 exports.",
+              "schedulaa": "Built-in CA (ex-Qu\u00e9bec) + U.S. engines with ROE/T4/W-2 exports.",
               "competitor": "U.S. payroll only; no T4/ROE."
             },
             {
               "label": "Operations Automation",
-              "schedulaa": "Automates schedule → time → payroll.",
+              "schedulaa": "Automates schedule \u2192 time \u2192 payroll.",
               "competitor": "Automates payroll, HR tasks, and filings for U.S."
             },
             {
@@ -4670,13 +4913,13 @@
       },
       "adp": {
         "competitor": "ADP",
-        "metaTitle": "Schedulaa vs ADP — Cross-Border Payroll for Service Teams",
+        "metaTitle": "Schedulaa vs ADP \u2014 Cross-Border Payroll for Service Teams",
         "metaDescription": "Compare Schedulaa and ADP. See how an operations-first OS with scheduling, time tracking, and cross-border payroll serves Canadian and U.S. service teams.",
-        "heroTitle": "Schedulaa vs ADP — Cross-Border Payroll for Service Teams",
+        "heroTitle": "Schedulaa vs ADP \u2014 Cross-Border Payroll for Service Teams",
         "heroSubtitle": "ADP is built for large enterprises. Schedulaa gives Canadian and U.S. service teams the same cross-border payroll power in an operations-first OS.",
         "intro": [
           "Both Schedulaa and ADP can handle payroll across regions, but they start from different places.",
-          "ADP is payroll/HR built for enterprises. Schedulaa is operations-first — shifts, time tracking, and cross-border payroll for Canadian and U.S. service teams in one OS."
+          "ADP is payroll/HR built for enterprises. Schedulaa is operations-first \u2014 shifts, time tracking, and cross-border payroll for Canadian and U.S. service teams in one OS."
         ],
         "contextBlock": {
           "title": "Who this is for",
@@ -4702,7 +4945,7 @@
             },
             {
               "label": "Regions & coverage",
-              "schedulaa": "Canada (ex-Québec) and supported U.S. states with federal + state tax engines and ROE/T4/W-2 exports. Local/city payroll taxes are not automated and must be handled externally.",
+              "schedulaa": "Canada (ex-Qu\u00e9bec) and supported U.S. states with federal + state tax engines and ROE/T4/W-2 exports. Local/city payroll taxes are not automated and must be handled externally.",
               "competitor": "U.S. and global payroll with full tax filing (including many local/city taxes) under enterprise contracts."
             },
             {
@@ -4737,7 +4980,7 @@
             },
             {
               "label": "Automation",
-              "schedulaa": "Automates schedule → time tracking → payroll → payslips and year-end exports.",
+              "schedulaa": "Automates schedule \u2192 time tracking \u2192 payroll \u2192 payslips and year-end exports.",
               "competitor": "Automates payroll filings and HR workflows for larger teams."
             }
           ]
@@ -4749,7 +4992,7 @@
           },
           {
             "title": "Canada + U.S. payroll in one OS",
-            "body": "Schedulaa supports CRA-style CPP/EI/BPA logic (ex-Québec) and IRS/FICA/state logic for U.S. states in the same platform. ADP focuses on broader enterprise HR."
+            "body": "Schedulaa supports CRA-style CPP/EI/BPA logic (ex-Qu\u00e9bec) and IRS/FICA/state logic for U.S. states in the same platform. ADP focuses on broader enterprise HR."
           },
           {
             "title": "Shift-connected earnings",
@@ -4757,7 +5000,7 @@
           },
           {
             "title": "Service-team workflows",
-            "body": "Built for salons, spas, clinics, call centers, and field crews that need booking, staffing, and payroll in sync — not just HR forms and benefits."
+            "body": "Built for salons, spas, clinics, call centers, and field crews that need booking, staffing, and payroll in sync \u2014 not just HR forms and benefits."
           },
           {
             "title": "Automation-ready with Zapier",
@@ -4765,7 +5008,7 @@
           },
           {
             "title": "Lower complexity for SMBs",
-            "body": "ADP excels for large enterprises with deep HR needs. Schedulaa keeps cross-border payroll and operations approachable for 10–250 person service teams."
+            "body": "ADP excels for large enterprises with deep HR needs. Schedulaa keeps cross-border payroll and operations approachable for 10\u2013250 person service teams."
           }
         ],
         "summaryTable": {
@@ -4782,12 +5025,12 @@
             },
             {
               "label": "Payroll & Compliance",
-              "schedulaa": "Built-in CA (ex-Québec) + U.S. engines with ROE/T4/W-2 exports.",
+              "schedulaa": "Built-in CA (ex-Qu\u00e9bec) + U.S. engines with ROE/T4/W-2 exports.",
               "competitor": "Enterprise payroll and filings for U.S. and global teams."
             },
             {
               "label": "Operations Automation",
-              "schedulaa": "Automates schedule → time → payroll.",
+              "schedulaa": "Automates schedule \u2192 time \u2192 payroll.",
               "competitor": "Automates payroll filings and HR workflows."
             },
             {
@@ -4822,19 +5065,19 @@
           }
         ],
         "testimonial": {
-          "quote": "Schedulaa lets us run cross-border payroll off the same screen we use to staff our teams. It’s built for how service work actually happens.",
+          "quote": "Schedulaa lets us run cross-border payroll off the same screen we use to staff our teams. It\u2019s built for how service work actually happens.",
           "attribution": "Photo Artisto Studios, Toronto"
         },
-        "conclusion": "ADP remains a strong enterprise option if you need deep HR and multi-country filings. Schedulaa is the better fit when your real pain sits in operations — scheduling shifts, tracking hours, and paying teams correctly across Canada and the U.S. from one Operations OS. Want to see how our tax engines work? Visit the Payroll page for coverage details and scenarios."
+        "conclusion": "ADP remains a strong enterprise option if you need deep HR and multi-country filings. Schedulaa is the better fit when your real pain sits in operations \u2014 scheduling shifts, tracking hours, and paying teams correctly across Canada and the U.S. from one Operations OS. Want to see how our tax engines work? Visit the Payroll page for coverage details and scenarios."
       },
       "quickbooks-payroll": {
         "competitor": "QuickBooks Payroll",
         "metaTitle": "Schedulaa vs QuickBooks Payroll | Real Cost for 20 Employees",
         "metaDescription": "See the true monthly cost of QuickBooks Payroll versus Schedulaa for a 20-employee company. Compare features included at that price.",
-        "heroTitle": "Schedulaa vs QuickBooks Payroll — Real cost for a 20-employee team",
-        "heroSubtitle": "Compare pricing, features, and actual cost per 20-employee company — the most common use case.",
+        "heroTitle": "Schedulaa vs QuickBooks Payroll \u2014 Real cost for a 20-employee team",
+        "heroSubtitle": "Compare pricing, features, and actual cost per 20-employee company \u2014 the most common use case.",
         "intro": [
-          "Compare pricing, features, and actual cost per 20-employee company — the most common use case teams ask us about.",
+          "Compare pricing, features, and actual cost per 20-employee company \u2014 the most common use case teams ask us about.",
           "See what changes when payroll, scheduling, and compliance live in one platform versus buying payroll-only software."
         ],
         "contextBlock": {
@@ -4962,21 +5205,21 @@
           }
         ],
         "testimonial": {
-          "quote": "We were paying for payroll plus two other tools for scheduling and time tracking. Schedulaa combined them — the 20-employee math finally made sense.",
+          "quote": "We were paying for payroll plus two other tools for scheduling and time tracking. Schedulaa combined them \u2014 the 20-employee math finally made sense.",
           "attribution": "Ops Lead, 3-location service brand"
         },
-        "conclusion": "QuickBooks Payroll charges per employee for payroll only. Schedulaa delivers payroll, scheduling, PTO, compliance, and reporting in one platform for $219.99/mo at 20 employees — keeping operations and accounting in sync."
+        "conclusion": "QuickBooks Payroll charges per employee for payroll only. Schedulaa delivers payroll, scheduling, PTO, compliance, and reporting in one platform for $219.99/mo at 20 employees \u2014 keeping operations and accounting in sync."
       },
       "paychex": {
         "competitor": "Paychex",
         "metaTitle": "Schedulaa vs Paychex | Operations-First Payroll vs Enterprise HCM",
         "metaDescription": "Compare Schedulaa and Paychex. See when an operations-first payroll and scheduling platform beats an enterprise HR and payroll outsourcer.",
-        "heroTitle": "Schedulaa vs Paychex — Operations-First Payroll vs Enterprise HCM",
+        "heroTitle": "Schedulaa vs Paychex \u2014 Operations-First Payroll vs Enterprise HCM",
         "heroSubtitle": "Paychex is an enterprise payroll and HCM provider for filings, benefits, and HR outsourcing. Schedulaa is an operations-first platform that links scheduling, time tracking, break compliance, and payroll in one system.",
         "intro": [
           "Both platforms handle payroll, but they solve different problems and workflows.",
           "Paychex starts with HR and compliance outsourcing for U.S. and global organizations.",
-          "Schedulaa starts with how work happens — shifts, breaks, hours, and accurate pay for service teams."
+          "Schedulaa starts with how work happens \u2014 shifts, breaks, hours, and accurate pay for service teams."
         ],
         "contextBlock": {
           "title": "Who this is for",
@@ -5045,7 +5288,7 @@
         "differentiators": [
           {
             "title": "Operations-first, not HR-first",
-            "body": "Schedulaa starts with real schedules, real breaks, and real hours — payroll runs on verified operational data, not manual spreadsheets."
+            "body": "Schedulaa starts with real schedules, real breaks, and real hours \u2014 payroll runs on verified operational data, not manual spreadsheets."
           },
           {
             "title": "Shift-connected earnings",
@@ -5053,7 +5296,7 @@
           },
           {
             "title": "Break compliance built in",
-            "body": "Schedulaa enforces and audits break compliance at the shift level — a critical requirement for service teams that Paychex does not address."
+            "body": "Schedulaa enforces and audits break compliance at the shift level \u2014 a critical requirement for service teams that Paychex does not address."
           },
           {
             "title": "Cross-border payroll calculations",
@@ -5146,7 +5389,7 @@
             "recommendation": "Paychex"
           },
           {
-            "scenario": "Schedulaa to manage operations and produce clean, compliant payroll data — and Paychex to handle filings, remittances, and benefits.",
+            "scenario": "Schedulaa to manage operations and produce clean, compliant payroll data \u2014 and Paychex to handle filings, remittances, and benefits.",
             "recommendation": "Both"
           }
         ],
@@ -5154,17 +5397,17 @@
           "quote": "Schedulaa lets us run payroll off the same screen we use to schedule shifts and enforce breaks. It is built for how service work actually happens.",
           "attribution": "Photo Artisto Studios, Toronto"
         },
-        "conclusion": "Paychex remains a strong enterprise option for payroll filing, benefits, and HR outsourcing. Schedulaa is the better fit when the real challenge is operations — scheduling shifts, enforcing breaks, tracking hours, and preparing payroll accurately across Canada and the U.S. Schedulaa does not try to be a PEO. It makes sure payroll is correct before it ever reaches one.",
+        "conclusion": "Paychex remains a strong enterprise option for payroll filing, benefits, and HR outsourcing. Schedulaa is the better fit when the real challenge is operations \u2014 scheduling shifts, enforcing breaks, tracking hours, and preparing payroll accurately across Canada and the U.S. Schedulaa does not try to be a PEO. It makes sure payroll is correct before it ever reaches one.",
         "competitorName": "Paychex"
       },
       "humi": {
         "competitor": "Humi",
         "metaTitle": "Schedulaa vs Humi | HR-Only vs Operations + HR",
         "metaDescription": "Compare Schedulaa and Humi. See how combining booking, scheduling, payroll, and HR workflows improves service-team efficiency.",
-        "heroTitle": "Schedulaa vs Humi — Operations, Scheduling, and HR in One Connected Platform",
+        "heroTitle": "Schedulaa vs Humi \u2014 Operations, Scheduling, and HR in One Connected Platform",
         "heroSubtitle": "Humi is an HR platform with payroll and benefits. Schedulaa blends HR essentials with booking, scheduling, and client operations.",
         "intro": [
-          "Both Schedulaa and Humi help modern businesses manage people — but they serve different priorities.",
+          "Both Schedulaa and Humi help modern businesses manage people \u2014 but they serve different priorities.",
           "Humi centers on HR, payroll, and benefits administration. Schedulaa combines HR workflows with booking, scheduling, leave requests, and shift management in one system."
         ],
         "executiveOverview": {
@@ -5307,16 +5550,16 @@
           }
         ],
         "testimonial": {
-          "quote": "Schedulaa handles our entire staff lifecycle — from scheduling and shift swaps to payroll and leave management — in one dashboard.",
+          "quote": "Schedulaa handles our entire staff lifecycle \u2014 from scheduling and shift swaps to payroll and leave management \u2014 in one dashboard.",
           "attribution": "VelvetGlow Studios, Toronto"
         },
-        "conclusion": "Humi streamlines traditional HR administration. Schedulaa connects HR with real-time operations — from staff schedules to payroll and client-facing bookings — making it ideal for service-driven teams."
+        "conclusion": "Humi streamlines traditional HR administration. Schedulaa connects HR with real-time operations \u2014 from staff schedules to payroll and client-facing bookings \u2014 making it ideal for service-driven teams."
       },
       "square-appointments": {
         "competitor": "Square Appointments",
         "metaTitle": "Schedulaa vs Square Appointments | Booking System Comparison",
         "metaDescription": "Compare Schedulaa with Square Appointments. Learn when to use a full operations platform instead of a booking-only tool.",
-        "heroTitle": "Schedulaa vs Square Appointments — Complete Operations Platform vs Booking System",
+        "heroTitle": "Schedulaa vs Square Appointments \u2014 Complete Operations Platform vs Booking System",
         "heroSubtitle": "Square Appointments focuses on appointment booking and POS. Schedulaa adds scheduling, payroll, HR, and analytics under your own brand.",
         "intro": [
           "Both Schedulaa and Square Appointments make it easier to schedule clients and accept payments.",
@@ -5475,12 +5718,12 @@
       "xero": {
         "competitor": "Xero",
         "metaTitle": "Schedulaa vs Xero | Operations OS vs Cloud Accounting",
-        "metaDescription": "Compare Schedulaa’s booking, scheduling, payroll, and website tools with Xero’s cloud accounting platform. See why service teams run operations in Schedulaa and sync the numbers to Xero.",
-        "heroTitle": "Schedulaa vs Xero — Run Operations + Keep the Books",
+        "metaDescription": "Compare Schedulaa\u2019s booking, scheduling, payroll, and website tools with Xero\u2019s cloud accounting platform. See why service teams run operations in Schedulaa and sync the numbers to Xero.",
+        "heroTitle": "Schedulaa vs Xero \u2014 Run Operations + Keep the Books",
         "heroSubtitle": "Xero is a world-class accounting ledger. Schedulaa is the operations OS that generates the hours, bookings, and payroll data Xero needs. They complement each other, not replace each other.",
         "intro": [
           "Schedulaa and Xero both serve modern service businesses but at different layers of the stack.",
-          "Schedulaa runs day-to-day operations — client booking, shift scheduling, payroll prep, and branded websites. Xero records those results in the general ledger, runs direct deposit, and files taxes."
+          "Schedulaa runs day-to-day operations \u2014 client booking, shift scheduling, payroll prep, and branded websites. Xero records those results in the general ledger, runs direct deposit, and files taxes."
         ],
         "executiveOverview": {
           "headers": [
@@ -5531,8 +5774,8 @@
             },
             {
               "label": "Role in the Stack",
-              "schedulaa": "Runs the business — where hours, bookings, and payroll data are created.",
-              "competitor": "Keeps the books — where revenue, expenses, and payroll payments are reconciled."
+              "schedulaa": "Runs the business \u2014 where hours, bookings, and payroll data are created.",
+              "competitor": "Keeps the books \u2014 where revenue, expenses, and payroll payments are reconciled."
             },
             {
               "label": "Integrations",
@@ -5553,7 +5796,7 @@
           },
           {
             "title": "Shift-aware payroll vs. ledger payroll",
-            "body": "Schedulaa knows who worked, tips, overtime, and leave policies. Xero’s payroll module focuses on direct deposit and remittance after an external system supplies the hours."
+            "body": "Schedulaa knows who worked, tips, overtime, and leave policies. Xero\u2019s payroll module focuses on direct deposit and remittance after an external system supplies the hours."
           },
           {
             "title": "Website + booking vs. accounting UI",
@@ -5561,7 +5804,7 @@
           },
           {
             "title": "Service-business focus",
-            "body": "Schedulaa was designed for salons, studios, clinics, agencies, tutors, and recruiters. Xero is industry-agnostic accounting; it doesn’t replace an operations platform."
+            "body": "Schedulaa was designed for salons, studios, clinics, agencies, tutors, and recruiters. Xero is industry-agnostic accounting; it doesn\u2019t replace an operations platform."
           },
           {
             "title": "Designed to work together",
@@ -5612,8 +5855,8 @@
             },
             {
               "label": "Role in the Stack",
-              "schedulaa": "Runs daily operations — generates the data accountants need.",
-              "competitor": "Keeps the books — reconciles, files, and moves money."
+              "schedulaa": "Runs daily operations \u2014 generates the data accountants need.",
+              "competitor": "Keeps the books \u2014 reconciles, files, and moves money."
             }
           ]
         },
@@ -5632,16 +5875,16 @@
           }
         ],
         "testimonial": {
-          "quote": "Schedulaa tells us what happened — who worked, which services ran, and what was earned. Xero tells our accountant how it rolls up into the books. Together they finally match.",
+          "quote": "Schedulaa tells us what happened \u2014 who worked, which services ran, and what was earned. Xero tells our accountant how it rolls up into the books. Together they finally match.",
           "attribution": "Multi-location service team, North America"
         },
-        "conclusion": "Xero remains a leading choice for cloud accounting and payroll remittance. Schedulaa focuses on the operational reality of service businesses — from booking and staffing to payroll-ready data and branded portals. Most service brands run daily operations in Schedulaa and sync the results to Xero (or QuickBooks) to keep the books clean."
+        "conclusion": "Xero remains a leading choice for cloud accounting and payroll remittance. Schedulaa focuses on the operational reality of service businesses \u2014 from booking and staffing to payroll-ready data and branded portals. Most service brands run daily operations in Schedulaa and sync the results to Xero (or QuickBooks) to keep the books clean."
       },
       "hubspot-meetings": {
         "competitor": "HubSpot Meetings",
         "metaTitle": "Schedulaa vs HubSpot Meetings | Public Booking Links with Operations Behind Them",
         "metaDescription": "Compare Schedulaa public booking links with HubSpot Meetings. See how live availability, Jitsi links, cancel/reschedule, and candidate profiles stay in sync with scheduling and payroll.",
-        "heroTitle": "Schedulaa vs HubSpot Meetings — Public Links, Operationally Connected",
+        "heroTitle": "Schedulaa vs HubSpot Meetings \u2014 Public Links, Operationally Connected",
         "heroSubtitle": "HubSpot Meetings captures leads. Schedulaa ties public links to staff availability, Jitsi links, cancel/reschedule controls, and candidate profiles.",
         "intro": [
           "Both tools let you share a personal booking link. The difference is what happens after someone books.",
@@ -5708,7 +5951,7 @@
           },
           {
             "title": "Built-in confirmations with Jitsi + cancel/resched",
-            "body": "Every booking ships with a Jitsi link, host/client time labels, and cancel/reschedule controls—no extra workflow setup."
+            "body": "Every booking ships with a Jitsi link, host/client time labels, and cancel/reschedule controls\u2014no extra workflow setup."
           },
           {
             "title": "Candidate enrichment",
@@ -5778,7 +6021,7 @@
         "competitor": "Homebase",
         "metaTitle": "Schedulaa vs Homebase | Booking, Break Enforcement, and Payroll vs Shift Scheduling",
         "metaDescription": "Compare Schedulaa and Homebase. See why service teams that run bookings, break rules, and payroll choose Schedulaa over a shift-only scheduler.",
-        "heroTitle": "Schedulaa vs Homebase — Which Operations Platform Fits Your Service Team?",
+        "heroTitle": "Schedulaa vs Homebase \u2014 Which Operations Platform Fits Your Service Team?",
         "heroSubtitle": "Homebase is great for storefront shift scheduling. Schedulaa unifies client booking, smart breaks, time tracking, and US/CA payroll for service teams.",
         "intro": [
           "Homebase is a popular scheduling/time-clock tool for retail and restaurants. Schedulaa goes further for service teams that juggle bookings, break rules, attendance, and payroll in one workflow.",
@@ -5828,8 +6071,8 @@
               "schedulaa": [
                 "US + Canada payroll workflows",
                 "Regular/OT hour buckets",
-                "Shift deviation → payroll corrections",
-                "Break compliance → labor law protection",
+                "Shift deviation \u2192 payroll corrections",
+                "Break compliance \u2192 labor law protection",
                 "Exports to QuickBooks / Xero",
                 "Support for W-2, T4, ROE files"
               ],
@@ -5851,7 +6094,7 @@
             },
             {
               "label": "Pricing Model",
-              "schedulaa": "Flat tiers + $9 per extra staff; built for 3–100 employees.",
+              "schedulaa": "Flat tiers + $9 per extra staff; built for 3\u2013100 employees.",
               "competitor": "Per-location pricing; payroll as add-on."
             }
           ]
@@ -5859,11 +6102,11 @@
         "differentiators": [
           {
             "title": "Service-first workflows",
-            "body": "Schedulaa links client bookings to staff availability, break rules, and payroll outputs. Homebase doesn’t handle client booking."
+            "body": "Schedulaa links client bookings to staff availability, break rules, and payroll outputs. Homebase doesn\u2019t handle client booking."
           },
           {
             "title": "Break compliance",
-            "body": "Staggered, paid/unpaid, and monitored breaks are built in. Homebase records breaks but doesn’t enforce complex rules."
+            "body": "Staggered, paid/unpaid, and monitored breaks are built in. Homebase records breaks but doesn\u2019t enforce complex rules."
           },
           {
             "title": "Payroll coverage",
@@ -5907,11 +6150,31 @@
             "Homebase"
           ],
           "rows": [
-            { "label": "Break compliance %", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Missing break detection", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Shift deviation analysis", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Audit-ready PDF/CSV", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "IP logging / fraud detection", "schedulaa": "✔", "competitor": "✘" }
+            {
+              "label": "Break compliance %",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Missing break detection",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Shift deviation analysis",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Audit-ready PDF/CSV",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "IP logging / fraud detection",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            }
           ]
         },
         "featureGrid": {
@@ -5921,18 +6184,66 @@
             "Homebase"
           ],
           "rows": [
-            { "label": "Client booking", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Break enforcement", "schedulaa": "✔", "competitor": "Limited" },
-            { "label": "Break compliance %", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Shift deviation", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "IP fraud checks", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Payroll (US/CA)", "schedulaa": "✔", "competitor": "US only" },
-            { "label": "QuickBooks/Xero export", "schedulaa": "✔", "competitor": "Limited" },
-            { "label": "Website builder", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Scheduling", "schedulaa": "✔", "competitor": "✔" },
-            { "label": "Time tracking", "schedulaa": "✔", "competitor": "✔" },
-            { "label": "Swap approvals", "schedulaa": "✔", "competitor": "✔" },
-            { "label": "Multi-location", "schedulaa": "✔", "competitor": "✔" }
+            {
+              "label": "Client booking",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Break enforcement",
+              "schedulaa": "\u2714",
+              "competitor": "Limited"
+            },
+            {
+              "label": "Break compliance %",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Shift deviation",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "IP fraud checks",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Payroll (US/CA)",
+              "schedulaa": "\u2714",
+              "competitor": "US only"
+            },
+            {
+              "label": "QuickBooks/Xero export",
+              "schedulaa": "\u2714",
+              "competitor": "Limited"
+            },
+            {
+              "label": "Website builder",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Scheduling",
+              "schedulaa": "\u2714",
+              "competitor": "\u2714"
+            },
+            {
+              "label": "Time tracking",
+              "schedulaa": "\u2714",
+              "competitor": "\u2714"
+            },
+            {
+              "label": "Swap approvals",
+              "schedulaa": "\u2714",
+              "competitor": "\u2714"
+            },
+            {
+              "label": "Multi-location",
+              "schedulaa": "\u2714",
+              "competitor": "\u2714"
+            }
           ]
         },
         "conclusion": "Homebase is strong for storefront shift scheduling. Schedulaa is better for service teams that need booking, break enforcement, attendance, and payroll tied together under their own brand."
@@ -5941,7 +6252,7 @@
         "competitor": "When I Work",
         "metaTitle": "Schedulaa vs When I Work | Booking + Break Compliance vs Shift Scheduling",
         "metaDescription": "Compare Schedulaa and When I Work. Learn why teams that run bookings, smart breaks, and US/CA payroll choose Schedulaa over a scheduling-only tool.",
-        "heroTitle": "Schedulaa vs When I Work — The Right Choice for Modern Service Teams",
+        "heroTitle": "Schedulaa vs When I Work \u2014 The Right Choice for Modern Service Teams",
         "heroSubtitle": "When I Work excels at scheduling shift workers. Schedulaa unifies booking, smart breaks, attendance, and payroll with branded client experiences.",
         "intro": [
           "When I Work is a respected scheduling/time-tracking app. Schedulaa is an operations platform for teams that also manage clients, bookings, and payroll.",
@@ -5991,7 +6302,7 @@
             },
             {
               "label": "Pricing",
-              "schedulaa": "Flat tiers + $9 per additional staff; predictable for 3–100 employees.",
+              "schedulaa": "Flat tiers + $9 per additional staff; predictable for 3\u2013100 employees.",
               "competitor": "Per-user pricing; add-ons for payroll."
             }
           ]
@@ -6003,7 +6314,7 @@
           },
           {
             "title": "Smart breaks and compliance",
-            "body": "Staggered, paid/unpaid, enforced breaks keep coverage intact. When I Work records breaks but doesn’t enforce them."
+            "body": "Staggered, paid/unpaid, enforced breaks keep coverage intact. When I Work records breaks but doesn\u2019t enforce them."
           },
           {
             "title": "Payroll reach",
@@ -6034,7 +6345,7 @@
         "competitor": "Acuity Scheduling",
         "metaTitle": "Schedulaa vs Acuity Scheduling | Operations OS vs Booking-Only",
         "metaDescription": "Compare Schedulaa and Acuity. Acuity is a polished booking tool; Schedulaa runs booking, scheduling, breaks, payroll (US/CA), websites, and analytics in one platform.",
-        "heroTitle": "Schedulaa vs Acuity Scheduling — Which Platform Fits Your Service Team?",
+        "heroTitle": "Schedulaa vs Acuity Scheduling \u2014 Which Platform Fits Your Service Team?",
         "heroSubtitle": "Acuity delivers beautiful booking. Schedulaa unifies booking, scheduling, break compliance, time tracking, payroll, websites, commerce, and analytics for multi-staff teams.",
         "intro": [
           "Acuity Scheduling is a clean, modern booking system for solo providers and small studios.",
@@ -6054,7 +6365,7 @@
             },
             {
               "label": "Target Users",
-              "schedulaa": "Service teams with 3–100 staff, often multi-location.",
+              "schedulaa": "Service teams with 3\u2013100 staff, often multi-location.",
               "competitor": "Solo providers, freelancers, small studios."
             },
             {
@@ -6133,21 +6444,81 @@
             "Acuity Scheduling"
           ],
           "rows": [
-            { "label": "Client Booking", "schedulaa": "✔", "competitor": "✔" },
-            { "label": "Website Builder", "schedulaa": "✔ (integrated)", "competitor": "✔ (via Squarespace templates)" },
-            { "label": "Internal Staff Scheduling", "schedulaa": "✔", "competitor": "✘ (calendars only)" },
-            { "label": "Break Enforcement", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Time Tracking", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Payroll (US + CA)", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "W-2 / T4 / ROE", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "QuickBooks/Xero Export", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Products + POS", "schedulaa": "✔", "competitor": "Limited (packages only)" },
-            { "label": "Multi-Location Support", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Shift Swaps", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Analytics", "schedulaa": "✔", "competitor": "Partial" },
-            { "label": "Automations", "schedulaa": "Advanced", "competitor": "Basic" },
-            { "label": "Staff Portal", "schedulaa": "✔", "competitor": "✘" },
-            { "label": "Compliance", "schedulaa": "✔", "competitor": "✘" }
+            {
+              "label": "Client Booking",
+              "schedulaa": "\u2714",
+              "competitor": "\u2714"
+            },
+            {
+              "label": "Website Builder",
+              "schedulaa": "\u2714 (integrated)",
+              "competitor": "\u2714 (via Squarespace templates)"
+            },
+            {
+              "label": "Internal Staff Scheduling",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718 (calendars only)"
+            },
+            {
+              "label": "Break Enforcement",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Time Tracking",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Payroll (US + CA)",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "W-2 / T4 / ROE",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "QuickBooks/Xero Export",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Products + POS",
+              "schedulaa": "\u2714",
+              "competitor": "Limited (packages only)"
+            },
+            {
+              "label": "Multi-Location Support",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Shift Swaps",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Analytics",
+              "schedulaa": "\u2714",
+              "competitor": "Partial"
+            },
+            {
+              "label": "Automations",
+              "schedulaa": "Advanced",
+              "competitor": "Basic"
+            },
+            {
+              "label": "Staff Portal",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            },
+            {
+              "label": "Compliance",
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
+            }
           ]
         },
         "fitMatrix": [
@@ -6156,7 +6527,7 @@
             "recommendation": "Acuity Scheduling"
           },
           {
-            "scenario": "You have 3–100 staff and need booking, scheduling, breaks, and payroll together.",
+            "scenario": "You have 3\u2013100 staff and need booking, scheduling, breaks, and payroll together.",
             "recommendation": "Schedulaa"
           },
           {
@@ -6169,8 +6540,8 @@
       "deputy": {
         "competitor": "Deputy",
         "metaTitle": "Schedulaa vs Deputy | Operations OS vs Workforce Scheduling",
-        "metaDescription": "See how Schedulaa stacks up against Deputy. Schedulaa unifies booking, website, payroll, commerce, and analytics, while Deputy focuses on scheduling/time‑clock alone.",
-        "heroTitle": "Schedulaa vs Deputy — Run Your Entire Business, Not Just Shifts",
+        "metaDescription": "See how Schedulaa stacks up against Deputy. Schedulaa unifies booking, website, payroll, commerce, and analytics, while Deputy focuses on scheduling/time\u2011clock alone.",
+        "heroTitle": "Schedulaa vs Deputy \u2014 Run Your Entire Business, Not Just Shifts",
         "heroSubtitle": "Deputy is a strong workforce scheduling app. Schedulaa is the operating system that connects booking, websites, payroll, and analytics to scheduling.",
         "intro": [
           "Deputy shines at employee scheduling, time clocks, and labor compliance. Schedulaa includes all of that plus client booking, websites, payroll, eCommerce, analytics, and marketing automation.",
@@ -6196,7 +6567,7 @@
             {
               "label": "Payroll",
               "schedulaa": "Integrated CA + US payroll engine (W-2, T4, ROE).",
-              "competitor": "Exports timesheets to third-party payroll—no built-in payroll."
+              "competitor": "Exports timesheets to third-party payroll\u2014no built-in payroll."
             },
             {
               "label": "Website & Ecommerce",
@@ -6260,11 +6631,31 @@
             "Deputy"
           ],
           "rows": [
-            { "label": "Break enforcement (paid/unpaid)", "schedulaa": "✔", "competitor": "Limited (no enforcement)" },
-            { "label": "Staggered break rules", "schedulaa": "✔", "competitor": "✖" },
-            { "label": "Break compliance %", "schedulaa": "✔", "competitor": "✖" },
-            { "label": "Missing-break alerts", "schedulaa": "✔", "competitor": "✖" },
-            { "label": "Break deviation tracking", "schedulaa": "✔", "competitor": "✖" }
+            {
+              "label": "Break enforcement (paid/unpaid)",
+              "schedulaa": "\u2714",
+              "competitor": "Limited (no enforcement)"
+            },
+            {
+              "label": "Staggered break rules",
+              "schedulaa": "\u2714",
+              "competitor": "\u2716"
+            },
+            {
+              "label": "Break compliance %",
+              "schedulaa": "\u2714",
+              "competitor": "\u2716"
+            },
+            {
+              "label": "Missing-break alerts",
+              "schedulaa": "\u2714",
+              "competitor": "\u2716"
+            },
+            {
+              "label": "Break deviation tracking",
+              "schedulaa": "\u2714",
+              "competitor": "\u2716"
+            }
           ]
         },
         "featureGrid": {
@@ -6274,10 +6665,26 @@
             "Deputy"
           ],
           "rows": [
-            { "label": "Break Compliance & Enforcement", "schedulaa": "✔", "competitor": "✖" },
-            { "label": "Shift Deviation Insights", "schedulaa": "✔", "competitor": "✖" },
-            { "label": "IP Logging / Fraud Detection", "schedulaa": "✔", "competitor": "✖" },
-            { "label": "End-to-End Booking → Payroll", "schedulaa": "✔", "competitor": "✖" }
+            {
+              "label": "Break Compliance & Enforcement",
+              "schedulaa": "\u2714",
+              "competitor": "\u2716"
+            },
+            {
+              "label": "Shift Deviation Insights",
+              "schedulaa": "\u2714",
+              "competitor": "\u2716"
+            },
+            {
+              "label": "IP Logging / Fraud Detection",
+              "schedulaa": "\u2714",
+              "competitor": "\u2716"
+            },
+            {
+              "label": "End-to-End Booking \u2192 Payroll",
+              "schedulaa": "\u2714",
+              "competitor": "\u2716"
+            }
           ]
         },
         "summaryTable": {
@@ -6289,53 +6696,53 @@
           "rows": [
             {
               "label": "Employee Scheduling",
-              "schedulaa": "✔",
-              "competitor": "✔"
+              "schedulaa": "\u2714",
+              "competitor": "\u2714"
             },
             {
               "label": "Client Booking",
-              "schedulaa": "✔",
-              "competitor": "✘"
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
             },
             {
               "label": "Website Builder & Custom Domain",
-              "schedulaa": "✔",
-              "competitor": "✘"
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
             },
             {
               "label": "Online Store / eCommerce",
-              "schedulaa": "✔",
-              "competitor": "✘"
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
             },
             {
               "label": "Integrated Payroll",
-              "schedulaa": "✔",
-              "competitor": "✘"
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
             },
             {
               "label": "W-2 / T4 / ROE Exports",
-              "schedulaa": "✔",
-              "competitor": "✘"
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
             },
             {
               "label": "Tips & Commissions",
-              "schedulaa": "✔",
+              "schedulaa": "\u2714",
               "competitor": "Partial (via timesheets)"
             },
             {
               "label": "Time Clock / Attendance",
               "schedulaa": "Planned",
-              "competitor": "✔"
+              "competitor": "\u2714"
             },
             {
               "label": "Marketing Automations",
-              "schedulaa": "✔",
-              "competitor": "✘"
+              "schedulaa": "\u2714",
+              "competitor": "\u2718"
             },
             {
               "label": "Revenue Analytics",
-              "schedulaa": "✔",
-              "competitor": "✘ (labor only)"
+              "schedulaa": "\u2714",
+              "competitor": "\u2718 (labor only)"
             }
           ]
         },
@@ -6346,7 +6753,7 @@
           },
           {
             "title": "Payroll + Booking loop",
-            "body": "Schedulaa connects bookings → scheduling → payroll → Xero. Deputy requires separate booking systems and payroll processors."
+            "body": "Schedulaa connects bookings \u2192 scheduling \u2192 payroll \u2192 Xero. Deputy requires separate booking systems and payroll processors."
           },
           {
             "title": "Website & client experience",
@@ -6362,7 +6769,7 @@
           },
           {
             "title": "Shift deviation analytics",
-            "body": "Schedulaa flags late starts, early outs, extended shifts, and overnight overruns. Deputy doesn’t provide per-shift deviation insights without expensive enterprise add-ons."
+            "body": "Schedulaa flags late starts, early outs, extended shifts, and overnight overruns. Deputy doesn\u2019t provide per-shift deviation insights without expensive enterprise add-ons."
           },
           {
             "title": "Fraud prevention & security",
@@ -6389,6 +6796,71 @@
         },
         "conclusion": "Deputy is a great choice when shift scheduling and time clocks are the only requirements. Schedulaa is the better fit when service businesses want to run bookings, websites, scheduling, payroll, commerce, and analytics in one platform and sync it all back to Xero."
       }
+    },
+    "nav": {
+      "product": "Product",
+      "resources": "Resources",
+      "pricing": "Pricing"
+    }
+  },
+  "recruiter": {
+    "tabs": {
+      "calendar": "Calendar",
+      "availability": "My Availability",
+      "invitations": "Invitations",
+      "candidateForms": "Candidate Forms",
+      "questionnaires": "Questionnaires",
+      "upcomingMeetings": "Upcoming Meetings",
+      "myTime": "My Time",
+      "candidateSearch": "Candidate Search",
+      "publicLink": "Public Booking Link",
+      "jobPostings": "Job Postings"
+    }
+  },
+  "billing": {
+    "title": "Billing & subscription",
+    "subtitle": "Track your plan, trial, and billing status in one place.",
+    "actions": {
+      "manageBilling": "Manage Billing",
+      "viewPlans": "View Plans",
+      "addSeats": "Add Seats",
+      "syncFromStripe": "Sync from Stripe",
+      "syncing": "Syncing...",
+      "startPlan": "Start plan",
+      "viewLastInvoice": "View last invoice",
+      "cancelSubscription": "Cancel subscription"
+    },
+    "loading": "Loading billing status\u2026",
+    "modeMismatch": {
+      "defaultMessage": "Billing data was created in test mode. Please start your plan again to activate live billing."
+    },
+    "syncErrors": {
+      "multipleSubscriptions": "Multiple subscriptions detected in Stripe. Cancel one in the billing portal, then run Sync."
+    },
+    "seatsOverage": "Seat limit reached. Add seats to keep adding team members.",
+    "syncComplete": "Sync complete. Refresh the page to see the latest status.",
+    "syncErrorDefault": "Unable to sync from Stripe.",
+    "labels": {
+      "plan": "Plan",
+      "status": "Status",
+      "subscription": "Subscription",
+      "trialEnds": "Trial ends",
+      "nextBillingDate": "Next billing date",
+      "nextBillingDateEmpty": "Next billing date: \u2014",
+      "seatsIncluded": "Seats included",
+      "addonSeats": "Addon seats",
+      "totalAllowed": "Total allowed",
+      "activeStaff": "Active staff"
+    },
+    "values": {
+      "inactive": "inactive",
+      "none": "none",
+      "na": "N/A"
+    },
+    "plans": {
+      "starter": "Starter",
+      "pro": "Pro",
+      "business": "Business"
     }
   }
 }

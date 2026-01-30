@@ -1,26 +1,32 @@
 import React, { useState } from "react";
 import { Alert, Box, Button, Divider, Stack, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import SectionCard from "../../components/ui/SectionCard";
 import useBillingStatus from "../../components/billing/useBillingStatus";
 import { openBillingPortal } from "../../components/billing/billingHelpers";
 import api from "../../utils/api";
 import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
 
-const planLabel = (key) => {
-  const map = { starter: "Starter", pro: "Pro", business: "Business" };
-  return map[String(key || "").toLowerCase()] || "Starter";
+const planLabel = (key, t) => {
+  const map = {
+    starter: t("billing.plans.starter"),
+    pro: t("billing.plans.pro"),
+    business: t("billing.plans.business"),
+  };
+  return map[String(key || "").toLowerCase()] || t("billing.plans.starter");
 };
 
-const formatDate = (value) => {
-  if (!value) return "N/A";
+const formatDate = (value, t) => {
+  if (!value) return t("billing.values.na");
   try {
     return new Date(value).toLocaleDateString();
   } catch {
-    return "N/A";
+    return t("billing.values.na");
   }
 };
 
 const SettingsBillingSubscription = () => {
+  const { t } = useTranslation();
   const { status, loading, error } = useBillingStatus();
   const seatAllowed = Number(status?.seats_allowed || 0);
   const seatIncluded = Number(status?.seats_included || 0);
@@ -45,10 +51,10 @@ const SettingsBillingSubscription = () => {
     setSyncState({ loading: true, error: "", message: "" });
     try {
       await api.post("/billing/sync-from-stripe");
-      setSyncState({ loading: false, error: "", message: "Sync complete. Refresh the page to see the latest status." });
+      setSyncState({ loading: false, error: "", message: t("billing.syncComplete") });
     } catch (err) {
       const apiError = err?.response?.data;
-      const message = apiError?.message || apiError?.error || "Unable to sync from Stripe.";
+      const message = apiError?.message || apiError?.error || t("billing.syncErrorDefault");
       setSyncState({ loading: false, error: message, message: "" });
     }
   };
@@ -65,26 +71,26 @@ const SettingsBillingSubscription = () => {
   return (
     <Box>
       <SectionCard
-        title="Billing & subscription"
-        subtitle="Track your plan, trial, and billing status in one place."
+        title={t("billing.title")}
+        subtitle={t("billing.subtitle")}
         actions={
           <Stack direction="row" spacing={1} flexWrap="wrap">
             <Button size="small" variant="outlined" onClick={() => openBillingPortal()}>
-              Manage Billing
+              {t("billing.actions.manageBilling")}
             </Button>
             <Button size="small" variant="outlined" onClick={() => (window.location.href = "/pricing")}>
-              View Plans
+              {t("billing.actions.viewPlans")}
             </Button>
             <Button size="small" variant="contained" onClick={handleAddSeats}>
-              Add Seats
+              {t("billing.actions.addSeats")}
             </Button>
             <Button size="small" variant="outlined" onClick={handleSync} disabled={syncState.loading}>
-              {syncState.loading ? "Syncing..." : "Sync from Stripe"}
+              {syncState.loading ? t("billing.actions.syncing") : t("billing.actions.syncFromStripe")}
             </Button>
           </Stack>
         }
       >
-        {loading && <Typography variant="body2">Loading billing status…</Typography>}
+        {loading && <Typography variant="body2">{t("billing.loading")}</Typography>}
         {!loading && error && (
           <Typography variant="body2" color="error">
             {error}
@@ -98,61 +104,57 @@ const SettingsBillingSubscription = () => {
                 onClose={handleModeMismatchDismiss}
                 action={
                   <Button color="inherit" size="small" onClick={() => (window.location.href = "/pricing")}>
-                    Start plan
+                    {t("billing.actions.startPlan")}
                   </Button>
                 }
               >
-                {status.message ||
-                  "Billing data was created in test mode. Please start your plan again to activate live billing."}
+                {status.message || t("billing.modeMismatch.defaultMessage")}
               </Alert>
             )}
             {status.sync_error === "multiple_subscriptions" && (
-              <Alert severity="warning">
-                Multiple subscriptions detected in Stripe. Cancel one in the billing portal, then run Sync.
-              </Alert>
+              <Alert severity="warning">{t("billing.syncErrors.multipleSubscriptions")}</Alert>
             )}
-            {status.seats_overage && (
-              <Alert severity="info">
-                Seat limit reached. Add seats to keep adding team members.
-              </Alert>
-            )}
+            {status.seats_overage && <Alert severity="info">{t("billing.seatsOverage")}</Alert>}
             {syncState.message && <Alert severity="success">{syncState.message}</Alert>}
             {syncState.error && <Alert severity="error">{syncState.error}</Alert>}
             <Stack direction="row" spacing={3} flexWrap="wrap">
               <Typography variant="body2">
-                <strong>Plan:</strong> {planLabel(status.plan_key)}
+                <strong>{t("billing.labels.plan")}:</strong> {planLabel(status.plan_key, t)}
               </Typography>
               <Typography variant="body2">
-                <strong>Status:</strong> {status.status || "inactive"}
+                <strong>{t("billing.labels.status")}:</strong> {status.status || t("billing.values.inactive")}
               </Typography>
               <Typography variant="body2">
-                <strong>Subscription:</strong> {status.subscription_state || "none"}
+                <strong>{t("billing.labels.subscription")}:</strong> {status.subscription_state || t("billing.values.none")}
               </Typography>
             </Stack>
             <Stack direction="row" spacing={3} flexWrap="wrap">
               <Typography variant="body2">
-                <strong>Trial ends:</strong> {formatDate(status.trial_end)}
+                <strong>{t("billing.labels.trialEnds")}:</strong> {formatDate(status.trial_end, t)}
               </Typography>
               <Typography variant="body2">
-                <strong>{formatBillingNextDateLabel({
-                  nextBillingDate: status.next_billing_date,
-                  trialEnd: status.trial_end,
-                })}</strong>
+                <strong>
+                  {formatBillingNextDateLabel({
+                    nextBillingDate: status.next_billing_date,
+                    trialEnd: status.trial_end,
+                    t,
+                  })}
+                </strong>
               </Typography>
             </Stack>
             <Divider sx={{ my: 1 }} />
             <Stack direction="row" spacing={3} flexWrap="wrap">
               <Typography variant="body2">
-                <strong>Seats included:</strong> {seatIncluded}
+                <strong>{t("billing.labels.seatsIncluded")}:</strong> {seatIncluded}
               </Typography>
               <Typography variant="body2">
-                <strong>Addon seats:</strong> {seatAddon}
+                <strong>{t("billing.labels.addonSeats")}:</strong> {seatAddon}
               </Typography>
               <Typography variant="body2">
-                <strong>Total allowed:</strong> {seatAllowed}
+                <strong>{t("billing.labels.totalAllowed")}:</strong> {seatAllowed}
               </Typography>
               <Typography variant="body2">
-                <strong>Active staff:</strong> {activeStaff}
+                <strong>{t("billing.labels.activeStaff")}:</strong> {activeStaff}
               </Typography>
             </Stack>
             <Stack direction="row" spacing={1} flexWrap="wrap">
@@ -162,11 +164,11 @@ const SettingsBillingSubscription = () => {
                   variant="text"
                   onClick={() => window.open(status.latest_invoice_url, "_blank", "noopener")}
                 >
-                  View last invoice
+                  {t("billing.actions.viewLastInvoice")}
                 </Button>
               )}
               <Button size="small" variant="text" onClick={() => openBillingPortal()}>
-                Cancel subscription
+                {t("billing.actions.cancelSubscription")}
               </Button>
             </Stack>
           </Stack>

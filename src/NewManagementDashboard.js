@@ -147,15 +147,15 @@ const overviewChildrenConfig = [
   { labelKey: "manager.menu.teamActivityOverview", key: "team-activity", icon: <Dashboard /> },
   { labelKey: "manager.menu.masterCalendar", key: "master-calendar", icon: <CalendarToday /> },
   { labelKey: "manager.menu.candidateFunnel", key: "candidate-funnel", icon: <Assignment /> },
-  { label: "Job Postings", key: "job-openings", icon: <Assignment /> },
+  { labelKey: "manager.menu.jobPostings", key: "job-openings", icon: <Assignment /> },
   { labelKey: "manager.menu.recruiterPerformance", key: "recruiter-performance", icon: <History /> },
   { labelKey: "manager.menu.candidateSearch", key: "candidate-search", icon: <People /> },
   { labelKey: "manager.menu.feedbackNotes", key: "feedback-notes", icon: <Article /> },
   { labelKey: "manager.menu.recruiterAvailability", key: "recruiter-availability", icon: <CalendarToday /> },
   { labelKey: "manager.menu.recentBookings", key: "recent-bookings", icon: <History /> },
-  { label: "Payroll Audit History", key: "audit", icon: <History /> },
-  { label: "Monthly Attendance Calendar", key: "attendance", icon: <CalendarToday /> },
-  { label: "Candidate Profile", key: "candidate-profile", icon: <PersonAddAltIcon /> },
+  { labelKey: "manager.menu.auditHistory", key: "audit", icon: <History /> },
+  { labelKey: "manager.menu.attendanceCalendar", key: "attendance", icon: <CalendarToday /> },
+  { labelKey: "manager.menu.candidateProfile", key: "candidate-profile", icon: <PersonAddAltIcon /> },
 ];
 
 
@@ -165,10 +165,11 @@ const menuConfig = [
     labelKey: "manager.menu.employeeManagement",
     key: "employee-group",
     icon: <People />,
+    tooltip: "Employee Management: team roster, profiles, roles, and access.",
     children: [
       { labelKey: "manager.menu.companyProfile", key: "CompanyProfile", icon: <Business /> },
       { labelKey: "manager.menu.employeeProfiles", key: "employee-profiles", icon: <FolderShared /> },
-      { label: "Add team member", key: "add-member", icon: <PersonAddAltIcon /> },
+      { labelKey: "manager.menu.addMember", key: "add-member", icon: <PersonAddAltIcon /> },
     ],
   },
 
@@ -179,9 +180,9 @@ const menuConfig = [
     icon: <CalendarToday />,
     children: [
       { labelKey: "manager.menu.shiftManagement", key: "team", icon: <People /> },
-      { label: "Shift Monitoring", key: "shift-monitoring", icon: <History /> },
+      { labelKey: "manager.menu.shiftMonitoring", key: "shift-monitoring", icon: <History /> },
       { labelKey: "manager.menu.timeTracking", key: "time-tracking", icon: <History /> },
-      { label: "Fraud / Anomalies", key: "time-tracking-fraud", icon: <History /> },
+      { labelKey: "manager.menu.fraudAnomalies", key: "time-tracking-fraud", icon: <History /> },
       { labelKey: "manager.menu.leaves", key: "leaves", icon: <Assignment /> },
       { labelKey: "manager.menu.swapApprovals", key: "swap-approvals", icon: <Assignment /> },
     ],
@@ -192,6 +193,7 @@ const menuConfig = [
     labelKey: "manager.menu.advancedPayroll",
     key: "payroll-group",
     icon: <Paid />,
+    tooltip: "Payroll tools: payroll runs, taxes, ROE, T4/W2, and invoices.",
     children: [
       { labelKey: "manager.menu.payroll", key: "payroll", icon: <Paid /> },
       { labelKey: "manager.menu.savedPayrolls", key: "saved-payrolls", icon: <FolderShared /> },
@@ -200,8 +202,8 @@ const menuConfig = [
       { labelKey: "manager.menu.t4", key: "T4", icon: <ReceiptLong /> },
       { labelKey: "manager.menu.w2", key: "W2", icon: <ReceiptLong /> },
       { labelKey: "manager.menu.payrollRaw", key: "payroll-raw", icon: <ReceiptLong /> },
-      { label: "Payroll Audit", key: "payroll-audit", icon: <History /> },
-      { label: "Invoices", key: "invoices", icon: <ReceiptLong /> },
+      { labelKey: "manager.menu.payrollAudit", key: "payroll-audit", icon: <History /> },
+      { labelKey: "manager.menu.invoices", key: "invoices", icon: <ReceiptLong /> },
     ],
   },
 
@@ -214,13 +216,13 @@ const menuConfig = [
   },
 
   // Website & pages
-  { labelKey: "manager.menu.websitePages", key: "website-pages", icon: <Article /> },
+  { labelKey: "manager.menu.websitePages", key: "website-pages", icon: <Article />, tooltip: "Website & Pages: site builder, pages, SEO, and publish." },
 
   // Services & Bookings
-  { label: "Services & Bookings", key: "advanced-management", icon: <Dashboard /> },
+  { labelKey: "manager.menu.servicesBookings", key: "advanced-management", icon: <Dashboard /> },
 
   // Booking checkout (calendar + payments)
-  { label: "Booking Checkout", key: "booking-checkout", icon: <CalendarToday /> },
+  { labelKey: "manager.menu.bookingCheckout", key: "booking-checkout", icon: <CalendarToday /> },
 ];
 
 const hrMenuConfig = [
@@ -1927,7 +1929,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   };
 
   const handleRejectConversion = async (candidateId) => {
-    const reason = window.prompt("Rejection reason (optional):") || "";
+    const reason = window.prompt(t("manager.employeeManagement.rejectPrompt")) || "";
     try {
       await api.post(`/manager/candidates/${candidateId}/reject-conversion`, { reason });
       setMessage("Conversion rejected.");
@@ -2188,7 +2190,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
               sx={{ mb: 2 }}
             >
               <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                Employee Management
+                {t("manager.employeeManagement.title")}
               </Typography>
               <Button
                 variant="outlined"
@@ -2196,7 +2198,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                 startIcon={<HelpOutlineIcon />}
                 onClick={() => setEmployeeHelpOpen(true)}
               >
-                Help
+                {t("manager.employeeManagement.help")}
               </Button>
             </Stack>
             {isManager && (
@@ -2211,10 +2213,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                 }}
               >
                 <Typography fontWeight={600} gutterBottom>
-                  Need to add a new team member?
+                  {t("manager.employeeManagement.addMemberTitle")}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Use the dedicated Add Member workspace for the full onboarding form (address, department, payroll, compliance consent).
+                  {t("manager.employeeManagement.addMemberDesc")}
                 </Typography>
                 <Button
                   sx={{ mt: 2 }}
@@ -2222,7 +2224,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                   onClick={() => navigate("/manager/add-member")}
                   startIcon={<PersonAddAltIcon />}
                 >
-                  Launch Add Member
+                  {t("manager.employeeManagement.addMemberCta")}
                 </Button>
               </Paper>
             )}
@@ -2231,22 +2233,26 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
               <Accordion defaultExpanded sx={{ mb: 2 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="h6" sx={headerStyle}>
-                    Pending Employee Conversions
+                    {t("manager.employeeManagement.pendingTitle")}
                   </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   {conversionLoading ? (
-                    <Typography color="text.secondary">Loading conversion requests...</Typography>
+                    <Typography color="text.secondary">
+                      {t("manager.employeeManagement.pendingLoading")}
+                    </Typography>
                   ) : conversionRequests.length === 0 ? (
-                    <Typography color="text.secondary">No pending conversion requests.</Typography>
+                    <Typography color="text.secondary">
+                      {t("manager.employeeManagement.pendingEmpty")}
+                    </Typography>
                   ) : (
                     <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell>Candidate</TableCell>
-                          <TableCell>Email</TableCell>
-                          <TableCell>Requested</TableCell>
-                          <TableCell>Actions</TableCell>
+                          <TableCell>{t("manager.employeeManagement.table.candidate")}</TableCell>
+                          <TableCell>{t("manager.employeeManagement.table.email")}</TableCell>
+                          <TableCell>{t("manager.employeeManagement.table.requested")}</TableCell>
+                          <TableCell>{t("manager.employeeManagement.table.actions")}</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -2275,10 +2281,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                             <TableCell>
                               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                                 <Button size="small" variant="contained" onClick={() => handleApproveConversion(req.id)}>
-                                  Approve
+                                  {t("manager.employeeManagement.approve")}
                                 </Button>
                                 <Button size="small" variant="outlined" color="warning" onClick={() => handleRejectConversion(req.id)}>
-                                  Reject
+                                  {t("manager.employeeManagement.reject")}
                                 </Button>
                               </Stack>
                             </TableCell>
@@ -2295,7 +2301,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" sx={headerStyle}>
-                  Active Employees
+                  {t("manager.employeeManagement.activeEmployees")}
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -2307,16 +2313,16 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                   sx={{ mb: 2 }}
                 >
                   <FormControl size="small" fullWidth>
-                    <InputLabel>Department</InputLabel>
+                    <InputLabel>{t("manager.employeeManagement.department")}</InputLabel>
                     <Select
-                      label="Department"
+                      label={t("manager.employeeManagement.department")}
                       value={departmentFilter}
                       onChange={(e) => {
                         setDepartmentFilter(e.target.value);
                         setSelectedForComparison([]);
                       }}
                     >
-                      <MenuItem value="">All Departments</MenuItem>
+                      <MenuItem value="">{t("manager.employeeManagement.allDepartments")}</MenuItem>
                       {getDepartmentArray(departments).map((d) => (
                         <MenuItem key={d.id} value={d.id}>
                           {d.name}
@@ -2332,7 +2338,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                     }}
                     sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
                   >
-                    Clear filter
+                    {t("manager.employeeManagement.clearFilter")}
                   </Button>
                   <FormControlLabel
                     control={
@@ -2341,7 +2347,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
                         onChange={(e) => setIncludeArchivedEmployees(e.target.checked)}
                       />
                     }
-                    label="Show archived employees"
+                    label={t("manager.employeeManagement.showArchived")}
                   />
                 </Stack>
 
@@ -3162,7 +3168,12 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             const hasChildren = Array.isArray(item.children) && item.children.length > 0;
             if (!hasChildren) {
               return (
-                <Tooltip key={item.key} title={!drawerExpanded ? item.label : ""} placement="right" arrow>
+                <Tooltip
+                  key={item.key}
+                  title={item.tooltip || item.label}
+                  placement="right"
+                  arrow
+                >
                   <ListItemButton
                     selected={selectedView === item.key}
                     onClick={() => handleNavSelect(item.key)}
@@ -3198,7 +3209,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
             const isOpen = Boolean(openGroups[item.key]);
             return (
               <Box key={item.key}>
-                <Tooltip title={!drawerExpanded ? item.label : ""} placement="right" arrow>
+                <Tooltip title={item.tooltip || item.label} placement="right" arrow>
                   <ListItemButton
                     selected={selectedView === item.key || isOpen}
                     onClick={() => {

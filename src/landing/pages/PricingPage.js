@@ -261,6 +261,12 @@ const PricingPage = () => {
   const assurancesContent = content?.assurances || {};
   const ribbonContent = content?.ribbon || DEFAULT_RIBBON;
   const ctaContent = content?.ctaBanner || DEFAULT_CTA;
+  const includedContent = content?.included || {};
+  const comparisonContent = content?.comparison || {};
+  const comparisonHeaders = comparisonContent.headers || {};
+  const comparisonValues = comparisonContent.values || {};
+  const comparisonRows = comparisonContent.rows || {};
+  const whyTeamsContent = content?.whyTeams || {};
   const pricingSchemas = useMemo(
     () => [
       {
@@ -602,24 +608,14 @@ const PricingPage = () => {
           }}
         >
           <Typography variant="h6" fontWeight={700} gutterBottom>
-            Included in every plan
+            {includedContent.title}
           </Typography>
           <Stack spacing={1}>
-            <Typography variant="body2" color="text.secondary">
-              Custom domains with automatic SSL.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Role-based access and staff permissions.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Email and booking notifications.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Secure Stripe payments with refunds.
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Continuous feature updates.
-            </Typography>
+            {(includedContent.items || []).map((item) => (
+              <Typography key={item} variant="body2" color="text.secondary">
+                {item}
+              </Typography>
+            ))}
           </Stack>
         </Paper>
         <Box
@@ -631,359 +627,467 @@ const PricingPage = () => {
           }}
         >
           <Typography variant="h5" fontWeight={700} gutterBottom>
-            Schedulaa Feature Comparison
+            {comparisonContent.title}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Compare plans at a glance.
+            {comparisonContent.subtitle}
           </Typography>
           <Box sx={{ overflowX: "auto" }}>
             <Table size="small" sx={{ minWidth: 720 }}>
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Feature</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Starter</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Pro</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Business</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    {comparisonHeaders.feature}
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    {comparisonHeaders.starter}
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    {comparisonHeaders.pro}
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    {comparisonHeaders.business}
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 <TableRow>
-                  <TableCell>Price</TableCell>
-                  <TableCell>$19.99 / mo</TableCell>
-                  <TableCell>$49.99 / mo</TableCell>
-                  <TableCell>$119.99 / mo</TableCell>
+                  <TableCell>{comparisonRows.price?.label}</TableCell>
+                  <TableCell>{comparisonRows.price?.starter}</TableCell>
+                  <TableCell>{comparisonRows.price?.pro}</TableCell>
+                  <TableCell>{comparisonRows.price?.business}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Best for</TableCell>
-                  <TableCell>Solo professionals</TableCell>
-                  <TableCell>Growing teams</TableCell>
-                  <TableCell>Compliance & multi-location (department) teams</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Website & Online Presence
+                  <TableCell>{comparisonRows.bestFor?.label}</TableCell>
+                  <TableCell>{comparisonRows.bestFor?.starter}</TableCell>
+                  <TableCell>{comparisonRows.bestFor?.pro}</TableCell>
+                  <TableCell>
+                    {comparisonRows.bestFor?.business}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Branded website builder & templates</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Custom domain + automatic SSL</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Public booking pages</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Embedded booking widgets</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Company-level branding</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                </TableRow>
-                <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Booking & Scheduling
+                    {comparisonRows.website?.section}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Online booking & confirmations</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.website?.builder}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Client self-serve rescheduling</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.website?.customDomain}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Multi-service & add-on bookings</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.website?.publicBooking}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Staff scheduling & shift management</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.website?.embedded}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Shift swaps & leave approvals</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Bulk scheduling controls</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.website?.branding}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Time Tracking
+                    {comparisonRows.booking?.section}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Shift-based clock-in / clock-out</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.booking?.online}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Break policy enforcement</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.booking?.reschedule ||
+                      "Client self-serve rescheduling"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Staggered & windowed breaks</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.booking?.multi}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>IP / device audit hints</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.booking?.staffScheduling ||
+                      "Staff scheduling & shift management"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Overtime & anomaly flags</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.booking?.shiftSwaps}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    {comparisonRows.booking?.bulk}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Payroll
+                    {comparisonRows.time?.section}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Payroll processing (US & Canada)</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.time?.clock}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Automated stat holiday pay & accruals</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.time?.breakPolicy}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Employee payslip portal (PDF)</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.time?.staggered}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Advanced payroll exports & audits</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.time?.ipHints}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Payroll-linked invoicing</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.time?.overtime}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Compliance
+                    {comparisonRows.payroll?.section}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Revenue & appointment reports</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.payroll?.processing ||
+                      "Payroll processing (US & Canada)"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>CSV / PDF exports</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.payroll?.holiday ||
+                      "Automated stat holiday pay & accruals"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>W-2 (US) generation</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.payroll?.payslip}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>T4 & ROE (Canada)</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.payroll?.exports ||
+                      "Advanced payroll exports & audits"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Compliance-ready audit trails</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.payroll?.invoicing}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Analytics
+                    {comparisonRows.compliance?.section}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Revenue & booking dashboards</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.compliance?.revenueReports ||
+                      "Revenue & appointment reports"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Utilization & productivity analytics</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.compliance?.exports}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Client segmentation & trends</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.compliance?.w2}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Multi-location (department) analytics</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>{comparisonRows.compliance?.t4}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    {comparisonRows.compliance?.audit}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Automation
+                    {comparisonRows.analytics?.section}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Email notifications & reminders</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.analytics?.revenueDash}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Email campaigns (VIP, Win-back, No-show)</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.analytics?.utilization ||
+                      "Utilization & productivity analytics"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Zapier automation</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.analytics?.segmentation ||
+                      "Client segmentation & trends"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Workflow automations</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.analytics?.multiLocation ||
+                      "Multi-location (department) analytics"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Hiring
+                    {comparisonRows.automation?.section}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Job postings & public apply links</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.automation?.notifications ||
+                      "Email notifications & reminders"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Resume uploads & tracking</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.automation?.campaigns ||
+                      "Email campaigns (VIP, Win-back, No-show)"}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Onboarding workflows</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>{comparisonRows.automation?.zapier}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Hiring → payroll handoff</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.automation?.workflows}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Scale
+                    {comparisonRows.hiring?.section}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Staff seats included</TableCell>
-                  <TableCell>1</TableCell>
-                  <TableCell>Up to 5</TableCell>
-                  <TableCell>10</TableCell>
+                  <TableCell>
+                    {comparisonRows.hiring?.jobs}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Additional staff seats</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>$9 / seat</TableCell>
-                  <TableCell>$9 / seat</TableCell>
+                  <TableCell>
+                    {comparisonRows.hiring?.resume}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Multi-location support (use departments as locations)</TableCell>
-                  <TableCell>1</TableCell>
-                  <TableCell>1</TableCell>
-                  <TableCell>Up to 2</TableCell>
+                  <TableCell>
+                    {comparisonRows.hiring?.onboarding}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Role-based access & permissions</TableCell>
-                  <TableCell>Basic</TableCell>
-                  <TableCell>Advanced</TableCell>
-                  <TableCell>Advanced</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Branch-level permissions</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.hiring?.handoff}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                    Support
+                    {comparisonRows.scale?.section}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Standard support</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>{comparisonRows.scale?.seatsIncluded}</TableCell>
+                  <TableCell>{comparisonRows.scale?.starterSeats}</TableCell>
+                  <TableCell>{comparisonRows.scale?.proSeats}</TableCell>
+                  <TableCell>{comparisonRows.scale?.businessSeats}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Priority support</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Business hours</TableCell>
-                  <TableCell>24 / 7</TableCell>
+                  <TableCell>
+                    {comparisonRows.scale?.additionalSeats}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonRows.scale?.seatPrice}</TableCell>
+                  <TableCell>{comparisonRows.scale?.seatPrice}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell>Audit & compliance support</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell>Yes</TableCell>
+                  <TableCell>
+                    {comparisonRows.scale?.multiLocation ||
+                      "Multi-location support (use departments as locations)"}
+                  </TableCell>
+                  <TableCell>{comparisonRows.scale?.starterLocations}</TableCell>
+                  <TableCell>{comparisonRows.scale?.proLocations}</TableCell>
+                  <TableCell>{comparisonRows.scale?.businessLocations}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    {comparisonRows.scale?.roleAccess}
+                  </TableCell>
+                  <TableCell>{comparisonRows.scale?.starterAccess}</TableCell>
+                  <TableCell>{comparisonRows.scale?.proAccess}</TableCell>
+                  <TableCell>{comparisonRows.scale?.businessAccess}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    {comparisonRows.scale?.branchPermissions}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    {comparisonRows.support?.section}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    {comparisonRows.support?.standard}
+                  </TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    {comparisonRows.support?.priority}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.businessHours}</TableCell>
+                  <TableCell>{comparisonValues.always}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    {comparisonRows.support?.audit}
+                  </TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.dash}</TableCell>
+                  <TableCell>{comparisonValues.yes}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -1005,18 +1109,18 @@ const PricingPage = () => {
             }}
           >
             <Typography variant="h6" fontWeight={700} gutterBottom>
-              Why teams choose Schedulaa
+              {whyTeamsContent.title || "Why teams choose Schedulaa"}
             </Typography>
             <Stack spacing={1}>
-              <Typography variant="body2" color="text.secondary">
-                Booking, payroll, time tracking, and websites share one data model.
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                No syncing errors between shifts, hours, and pay.
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Fewer compliance gaps from disconnected tools.
-              </Typography>
+              {(whyTeamsContent.items || [
+                "Booking, payroll, time tracking, and websites share one data model.",
+                "No syncing errors between shifts, hours, and pay.",
+                "Fewer compliance gaps from disconnected tools.",
+              ]).map((item) => (
+                <Typography key={item} variant="body2" color="text.secondary">
+                  {item}
+                </Typography>
+              ))}
             </Stack>
           </Paper>
           <Paper

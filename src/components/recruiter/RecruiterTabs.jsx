@@ -1,19 +1,20 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { Box, Tabs, Tab } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 const TAB_CONFIG = [
-  { value: "calendar", label: "Calendar", path: "/employee?tab=calendar" },
-  { value: "availability", label: "My Availability", path: "/employee?tab=availability" },
-  { value: "invitations", label: "Invitations", path: "/recruiter/invitations" },
-  { value: "candidate-forms", label: "Candidate Forms", path: "/recruiter/invitations?section=forms" },
-  { value: "questionnaires", label: "Questionnaires", path: "/recruiter/questionnaires" },
-  { value: "upcoming-meetings", label: "Upcoming Meetings", path: "/recruiter/upcoming-meetings" },
-  { value: "my-time", label: "My Time", path: "/recruiter/my-time" },
-  { value: "candidate-search", label: "Candidate Search", path: "/employee/candidate-search" },
-  { value: "public-link", label: "Public Booking Link", path: "/recruiter/public-link" },
-  { value: "job-postings", label: "Job Postings", path: "/manager/job-openings" },
+  { value: "calendar", labelKey: "recruiter.tabs.calendar", path: "/employee?tab=calendar" },
+  { value: "availability", labelKey: "recruiter.tabs.availability", path: "/employee?tab=availability" },
+  { value: "invitations", labelKey: "recruiter.tabs.invitations", path: "/recruiter/invitations" },
+  { value: "candidate-forms", labelKey: "recruiter.tabs.candidateForms", path: "/recruiter/invitations?section=forms" },
+  { value: "questionnaires", labelKey: "recruiter.tabs.questionnaires", path: "/recruiter/questionnaires" },
+  { value: "upcoming-meetings", labelKey: "recruiter.tabs.upcomingMeetings", path: "/recruiter/upcoming-meetings" },
+  { value: "my-time", labelKey: "recruiter.tabs.myTime", path: "/recruiter/my-time" },
+  { value: "candidate-search", labelKey: "recruiter.tabs.candidateSearch", path: "/employee/candidate-search" },
+  { value: "public-link", labelKey: "recruiter.tabs.publicLink", path: "/recruiter/public-link" },
+  { value: "job-postings", labelKey: "recruiter.tabs.jobPostings", path: "/manager/job-openings" },
 ];
 
 const LOCAL_TABS = new Set(["availability", "calendar"]);
@@ -58,6 +59,7 @@ const RecruiterTabs = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const hrAccess =
     allowHrAccess !== null && allowHrAccess !== undefined
@@ -115,7 +117,7 @@ const RecruiterTabs = ({
       sx={{ mb: 3 }}
     >
       {tabs.map((tab) => (
-        <Tab key={tab.value} value={tab.value} label={tab.label} />
+        <Tab key={tab.value} value={tab.value} label={tab.labelKey ? t(tab.labelKey) : tab.label} />
       ))}
     </Tabs>
   );
