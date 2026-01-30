@@ -64,6 +64,9 @@ export default function SettingsStripeHub() {
   const [profile, setProfile] = useState(null);
   const [copyNotice, setCopyNotice] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState("");
   const [billingError, setBillingError] = useState("");
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingStatus, setBillingStatus] = useState(null);
@@ -333,6 +336,10 @@ export default function SettingsStripeHub() {
   const chargesEnabled = Boolean(connectStatus?.charges_enabled);
   const payoutsEnabled = Boolean(connectStatus?.payouts_enabled);
   const connected = Boolean(connectStatus?.connected);
+  const connectStatusError = connectStatus?.error || "";
+  const resetEligible = /no such account|does not have access to account|application access may have been revoked|account_closed/i.test(
+    String(connectStatusError || "")
+  );
   const requirementsDue = Array.isArray(connectStatus?.requirements_due)
     ? connectStatus.requirements_due
     : [];
@@ -347,6 +354,26 @@ export default function SettingsStripeHub() {
     `${publishableKey.slice(0, 12)}…${publishableKey.slice(-4)}`;
 
   const chargeCurrencyMode = (profile?.charge_currency_mode || "PLATFORM_FIXED").toUpperCase();
+
+  const handleResetConnect = async () => {
+    setResetError("");
+    setResetLoading(true);
+    try {
+      await stripeConnect.reset({}, { headers });
+      await refreshConnectStatus();
+      setResetDialogOpen(false);
+      await runConnectAction("start");
+    } catch (error) {
+      setResetError(
+        error?.displayMessage ||
+          error?.response?.data?.error ||
+          error?.message ||
+          t("settings.common.saveError")
+      );
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   return (
     <Stack spacing={3}>
@@ -381,6 +408,27 @@ export default function SettingsStripeHub() {
           ) : (
             <>
               {connectError && <Alert severity="error">{connectError}</Alert>}
+              {!connectError && connectStatusError && !resetEligible && (
+                <Alert severity="error">{connectStatusError}</Alert>
+              )}
+              {!connectError && resetEligible && (
+                <Alert severity="warning">
+                  <Stack spacing={1}>
+                    <Typography variant="body2">
+                      {t("settings.stripeHub.reset.banner")}
+                    </Typography>
+                    <Box>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => setResetDialogOpen(true)}
+                      >
+                        {t("settings.stripeHub.reset.cta")}
+                      </Button>
+                    </Box>
+                  </Stack>
+                </Alert>
+              )}
 
               {connected ? (
                 <Alert severity={chargesEnabled ? "success" : "warning"}>
@@ -456,6 +504,28 @@ export default function SettingsStripeHub() {
           )}
         </Stack>
       </SectionCard>
+
+      <Dialog open={resetDialogOpen} onClose={() => setResetDialogOpen(false)}>
+        <DialogTitle>{t("settings.stripeHub.reset.title")}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1}>
+            <Typography variant="body2" color="text.secondary">
+              {t("settings.stripeHub.reset.description")}
+            </Typography>
+            {resetError && <Alert severity="error">{resetError}</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResetDialogOpen(false)} disabled={resetLoading}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="contained" onClick={handleResetConnect} disabled={resetLoading}>
+            {resetLoading
+              ? t("settings.stripeHub.reset.loading")
+              : t("settings.stripeHub.reset.confirm")}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <SectionCard
         title="Subscription & Billing"

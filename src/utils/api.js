@@ -454,6 +454,8 @@ export const stripeConnect = {
     api.post('/connect/start', body, config).then((r) => r.data),
   refreshOnboardingLink: (body = {}, config = {}) =>
     api.post('/connect/refresh-link', body, config).then((r) => r.data),
+  reset: (body = {}, config = {}) =>
+    api.post('/connect/reset', body, config).then((r) => r.data),
   dashboardLogin: (body = {}, config = {}) =>
     api.post('/connect/dashboard-login', body, config).then((r) => r.data),
 };

@@ -9,6 +9,7 @@ const EMPTY_STATUS = {
   details_submitted: false,
   requirements_due: [],
   disabled_reason: null,
+  error: null,
   updated_at: null,
 };
 
@@ -26,6 +27,7 @@ const normalize = (data = {}) => {
     ? data.requirements_due
     : payload.requirements_due;
   payload.disabled_reason = data?.disabled_reason ?? payload.disabled_reason;
+  payload.error = data?.error ?? payload.error;
   payload.updated_at = data?.updated_at ?? payload.updated_at;
   return payload;
 };

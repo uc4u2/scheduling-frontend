@@ -1649,6 +1649,14 @@
     },
     "stripeHub": {
       "authRequired": "Please sign in as a manager to view Stripe settings.",
+      "reset": {
+        "banner": "Your previously connected Stripe account was closed or disconnected. Please reset and reconnect.",
+        "cta": "Reset & Reconnect Stripe",
+        "title": "Reset & Reconnect Stripe",
+        "description": "This will disconnect Stripe payments for your company and require reconnecting. Existing invoices or subscriptions on Schedulaa are not affected.",
+        "confirm": "Reset & Reconnect",
+        "loading": "Resetting..."
+      },
       "buttons": {
         "refreshStatus": "Refresh status",
         "resumeOnboarding": "Resume onboarding",
@@ -3891,6 +3899,10 @@
           "title": "Custom domains + automatic SSL"
         },
         "mediaAlt": "Schedulaa pricing overview showing plans and platform map"
+      },
+      "promo": {
+        "starterBadge": "50% off",
+        "starterNote": "${{discounted}} / mo for first {{months}} months. Then ${{base}} / mo"
       },
       "plans": {
         "table": {
