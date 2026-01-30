@@ -513,6 +513,8 @@ function CheckoutFormCore({
   displayCurrency,
   policy,
   holdMinutes,
+  contactEmail,
+  contactPhone,
 }) {
   const theme = useTheme();
   const accentColor = "var(--page-btn-bg, var(--sched-primary))";
@@ -642,8 +644,8 @@ function CheckoutFormCore({
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
   const [forgotDialogOpen, setForgotDialogOpen] = useState(false);
-  const [companyContactEmail, setCompanyContactEmail] = useState("");
-  const [companyContactPhone, setCompanyContactPhone] = useState("");
+  const companyContactEmail = contactEmail || "";
+  const companyContactPhone = contactPhone || "";
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -2374,6 +2376,8 @@ export default function Checkout(props) {
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const [policy, setPolicy] = useState(null);
   const [holdMinutes, setHoldMinutes] = useState(null);
+  const [companyContactEmail, setCompanyContactEmail] = useState("");
+  const [companyContactPhone, setCompanyContactPhone] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -2496,6 +2500,8 @@ export default function Checkout(props) {
       displayCurrency={displayCurrency}
       policy={policy}
       holdMinutes={holdMinutes}
+      contactEmail={companyContactEmail}
+      contactPhone={companyContactPhone}
     />
   );
 }
