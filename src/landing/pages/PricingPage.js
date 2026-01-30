@@ -80,6 +80,7 @@ const DEFAULT_PLANS = [
     key: "starter",
   name: "Starter",
   price: "$19.99/mo",
+  priceCents: 1999,
   description:
     "Launch your website and take bookings and payments for solo professionals.",
   trialNote: "14-day free trial • Cancel anytime",
@@ -111,6 +112,7 @@ const DEFAULT_PLANS = [
     key: "pro",
     name: "Pro",
     price: "$49.99/mo",
+    priceCents: 4999,
     positioning: "Run daily operations from one system.",
   description:
     "For small teams that need scheduling, automation, and analytics.",
@@ -148,6 +150,7 @@ const DEFAULT_PLANS = [
     key: "business",
     name: "Business",
     price: "$119.99/mo",
+    priceCents: 11999,
     description:
     "Built for compliance, audits, and multi-location (department) operations.",
     trialNote: "14-day free trial • Cancel anytime",
@@ -442,6 +445,11 @@ const PricingPage = () => {
 
   const plans = useMemo(() => {
     const list = plansContent?.list?.length ? plansContent.list : DEFAULT_PLANS;
+    const defaultPriceCents = {
+      starter: 1999,
+      pro: 4999,
+      business: 11999,
+    };
     const starterPromo = promoConfig?.starter || null;
     const promoActive = Boolean(
       starterPromo?.active &&
@@ -449,22 +457,22 @@ const PricingPage = () => {
         Number(starterPromo?.percent_off) < 100
     );
 
-    const parsePrice = (value) => {
-      if (typeof value !== "string") return null;
-      const match = value.match(/([0-9]+(?:\\.[0-9]+)?)/);
-      return match ? Number(match[1]) : null;
-    };
-
     return list.map((plan) => {
-      const basePrice = parsePrice(plan.price);
+      const baseCents =
+        Number(starterPromo?.base_price_cents) ||
+        Number(plan.priceCents) ||
+        defaultPriceCents[plan.key] ||
+        null;
       let price = plan.price;
       let priceNote = plan.priceNote;
-      if (plan.key === "starter" && promoActive && basePrice) {
+      if (plan.key === "starter" && promoActive && baseCents) {
         const pct = Number(starterPromo.percent_off);
         const months = Number(starterPromo.duration_months || 12);
-        const discounted = (basePrice * (1 - pct / 100)).toFixed(2);
-        price = `$${discounted}/mo`;
-        priceNote = `$${basePrice.toFixed(2)} → $${discounted}/mo for first ${months} months (then $${basePrice.toFixed(2)}/mo)`;
+        const discountedCents = Math.round(baseCents * (1 - pct / 100));
+        const baseDollars = (baseCents / 100).toFixed(2);
+        const discountedDollars = (discountedCents / 100).toFixed(2);
+        price = `$${discountedDollars}/mo`;
+        priceNote = `$${baseDollars} → $${discountedDollars}/mo for first ${months} months (then $${baseDollars}/mo)`;
       }
 
       return {
@@ -472,6 +480,7 @@ const PricingPage = () => {
         name: plan.name,
         price,
         priceNote,
+        priceCents: plan.priceCents,
         description: plan.description,
         features: Array.isArray(plan.features) ? plan.features : [],
         ctaLabel: plan.ctaLabel || heroContent?.primaryCta?.label || DEFAULT_HERO.primaryCta.label,
