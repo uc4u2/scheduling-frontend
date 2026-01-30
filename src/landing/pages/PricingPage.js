@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -253,6 +253,26 @@ const PricingPage = () => {
   const marketing = theme.marketing || {};
   const [ctaLoadingKey, setCtaLoadingKey] = useState("");
   const [ctaError, setCtaError] = useState("");
+  const [promoConfig, setPromoConfig] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    const loadPromo = async () => {
+      try {
+        const res = await api.get("/billing/promo-config", {
+          noAuth: true,
+          noCompanyHeader: true,
+        });
+        if (active) setPromoConfig(res?.data || null);
+      } catch (err) {
+        if (active) setPromoConfig(null);
+      }
+    };
+    loadPromo();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const content = useMemo(() => t("landing.pricingPage", { returnObjects: true }), [t]);
   const metaContent = content?.meta || DEFAULT_META;
@@ -422,19 +442,46 @@ const PricingPage = () => {
 
   const plans = useMemo(() => {
     const list = plansContent?.list?.length ? plansContent.list : DEFAULT_PLANS;
-    return list.map((plan) => ({
-      key: plan.key || plan.name,
-      name: plan.name,
-      price: plan.price,
-      description: plan.description,
-      features: Array.isArray(plan.features) ? plan.features : [],
-      ctaLabel: plan.ctaLabel || heroContent?.primaryCta?.label || DEFAULT_HERO.primaryCta.label,
-      ctaTo: plan.ctaTo || HERO_PRIMARY_CTA_TO,
-      highlight: Boolean(plan.highlight),
-      badge: plan.badge,
-      anchorId: plan.anchorId || plan.key || plan.name,
-    }));
-  }, [plansContent, heroContent]);
+    const starterPromo = promoConfig?.starter || null;
+    const promoActive = Boolean(
+      starterPromo?.active &&
+        Number(starterPromo?.percent_off) > 0 &&
+        Number(starterPromo?.percent_off) < 100
+    );
+
+    const parsePrice = (value) => {
+      if (typeof value !== "string") return null;
+      const match = value.match(/([0-9]+(?:\\.[0-9]+)?)/);
+      return match ? Number(match[1]) : null;
+    };
+
+    return list.map((plan) => {
+      const basePrice = parsePrice(plan.price);
+      let price = plan.price;
+      let priceNote = plan.priceNote;
+      if (plan.key === "starter" && promoActive && basePrice) {
+        const pct = Number(starterPromo.percent_off);
+        const months = Number(starterPromo.duration_months || 12);
+        const discounted = (basePrice * (1 - pct / 100)).toFixed(2);
+        price = `$${discounted}/mo`;
+        priceNote = `$${basePrice.toFixed(2)} → $${discounted}/mo for first ${months} months (then $${basePrice.toFixed(2)}/mo)`;
+      }
+
+      return {
+        key: plan.key || plan.name,
+        name: plan.name,
+        price,
+        priceNote,
+        description: plan.description,
+        features: Array.isArray(plan.features) ? plan.features : [],
+        ctaLabel: plan.ctaLabel || heroContent?.primaryCta?.label || DEFAULT_HERO.primaryCta.label,
+        ctaTo: plan.ctaTo || HERO_PRIMARY_CTA_TO,
+        highlight: Boolean(plan.highlight),
+        badge: plan.badge,
+        anchorId: plan.anchorId || plan.key || plan.name,
+      };
+    });
+  }, [plansContent, heroContent, promoConfig]);
 
   const addons = useMemo(() => {
     if (plansContent?.addons?.items?.length) {
