@@ -112,13 +112,13 @@ export default function SalesDealsPage() {
           <Typography variant="body2">
             Prospect: {d.prospect_name || "—"} • {d.prospect_email || "—"}
           </Typography>
-          {d.meta?.type === "reactivation" && (
+          {d.deal_type === "reactivation" && (
             <Typography variant="body2" sx={{ color: "warning.main" }}>
               Reactivation
             </Typography>
           )}
           <Typography variant="body2">
-            Invite sent: {(d.meta?.invite_sent_count || 0)} • {(d.meta?.invite_sent_at || "—")}
+            Invite sent: {(d.invite_sent_count || 0)} • {(d.invite_sent_at || "—")}
           </Typography>
           <Button size="small" variant="outlined" onClick={() => createInvite(d.id)} sx={{ mt: 1 }}>
             Generate invite link
