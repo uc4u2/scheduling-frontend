@@ -70,6 +70,11 @@ import SalesRepsPage from "./admin/pages/SalesRepsPage";
 import SalesDealsPage from "./admin/pages/SalesDealsPage";
 import SalesLedgerPage from "./admin/pages/SalesLedgerPage";
 import AuditLogsPage from "./admin/pages/AuditLogsPage";
+import SalesLogin from "./sales/SalesLogin";
+import SalesShell from "./sales/SalesShell";
+import SalesSummaryPage from "./sales/pages/SalesSummaryPage";
+import SalesDealsPage from "./sales/pages/SalesDealsPage";
+import SalesLedgerPage from "./sales/pages/SalesLedgerPage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
 import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
@@ -247,6 +252,7 @@ const RESERVED_SLUG_PREFIXES = new Set([
   'about',
   'acceptable-use',
   'admin',
+  'sales',
   'analytics',
   'apply',
   'book-slot',
@@ -475,6 +481,13 @@ const AppContent = ({ token, setToken }) => {
             <Route path="sales/ledger" element={<SalesLedgerPage />} />
             <Route path="audit-logs" element={<AuditLogsPage />} />
             <Route path="*" element={<SearchPage />} />
+          </Route>
+          <Route path="/sales/login" element={<SalesLogin />} />
+          <Route path="/sales" element={<SalesShell />}>
+            <Route path="summary" element={<SalesSummaryPage />} />
+            <Route path="deals" element={<SalesDealsPage />} />
+            <Route path="ledger" element={<SalesLedgerPage />} />
+            <Route path="*" element={<SalesSummaryPage />} />
           </Route>
 
           {isCustomDomain && tenantSlug && (
