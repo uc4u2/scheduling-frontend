@@ -32,12 +32,16 @@ export default function SalesDealsPage() {
     setInviteLink(data?.invite_link || "");
   };
 
-  const sendInviteEmail = async (id) => {
+  const sendInviteEmail = async (deal) => {
     setStatus("");
+    if (!deal?.prospect_email) {
+      setStatus("Please set prospect email before sending.");
+      return;
+    }
     try {
-      const { data } = await salesRepApi.post(`/deals/${id}/send-invite-email`, {
-        prospect_name: prospectName,
-        prospect_email: prospectEmail,
+      const { data } = await salesRepApi.post(`/deals/${deal.id}/send-invite-email`, {
+        prospect_name: deal.prospect_name,
+        prospect_email: deal.prospect_email,
       });
       setInviteLink(data?.invite_link || "");
       setStatus("Invite email sent.");
@@ -72,7 +76,7 @@ export default function SalesDealsPage() {
           <Button size="small" variant="outlined" onClick={() => createInvite(d.id)} sx={{ mt: 1 }}>
             Generate invite link
           </Button>
-          <Button size="small" variant="outlined" onClick={() => sendInviteEmail(d.id)} sx={{ mt: 1, ml: 1 }}>
+          <Button size="small" variant="outlined" onClick={() => sendInviteEmail(d)} sx={{ mt: 1, ml: 1 }}>
             Send invite email
           </Button>
         </Paper>
