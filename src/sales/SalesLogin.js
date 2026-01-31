@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import salesRepApi from "../api/salesRepApi";
 
@@ -31,6 +32,9 @@ export default function SalesLogin() {
           <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           {error && <Typography color="error">{error}</Typography>}
           <Button variant="contained" onClick={handleLogin}>Login</Button>
+          <Typography variant="body2">
+            <Link to="/sales/forgot">Forgot password?</Link>
+          </Typography>
         </Stack>
       </Paper>
     </Box>

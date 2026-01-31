@@ -29,8 +29,12 @@ export default function SalesSummaryPage() {
           <Typography variant="h6">{summary.activated}</Typography>
         </Paper>
         <Paper sx={{ p: 2, minWidth: 160 }}>
-          <Typography variant="subtitle2">Paid</Typography>
-          <Typography variant="h6">{summary.paid}</Typography>
+          <Typography variant="subtitle2">Paying</Typography>
+          <Typography variant="h6">{summary.paying}</Typography>
+        </Paper>
+        <Paper sx={{ p: 2, minWidth: 200 }}>
+          <Typography variant="subtitle2">MRR</Typography>
+          <Typography variant="h6">${(summary.mrr_cents / 100).toFixed(2)}</Typography>
         </Paper>
         <Paper sx={{ p: 2, minWidth: 200 }}>
           <Typography variant="subtitle2">Total commission</Typography>

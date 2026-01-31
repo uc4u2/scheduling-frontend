@@ -7,6 +7,7 @@ const drawerWidth = 220;
 const links = [
   { label: "Summary", to: "/sales/summary" },
   { label: "Deals", to: "/sales/deals" },
+  { label: "Customers", to: "/sales/customers" },
   { label: "Ledger", to: "/sales/ledger" },
 ];
 

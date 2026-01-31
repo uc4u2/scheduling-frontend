@@ -71,10 +71,14 @@ import SalesDealsPage from "./admin/pages/SalesDealsPage";
 import SalesLedgerPage from "./admin/pages/SalesLedgerPage";
 import AuditLogsPage from "./admin/pages/AuditLogsPage";
 import SalesLogin from "./sales/SalesLogin";
+import SalesForgotPassword from "./sales/SalesForgotPassword";
+import SalesResetPassword from "./sales/SalesResetPassword";
 import SalesShell from "./sales/SalesShell";
 import SalesSummaryPage from "./sales/pages/SalesSummaryPage";
 import SalesRepDealsPage from "./sales/pages/SalesDealsPage";
+import SalesCustomersPage from "./sales/pages/SalesCustomersPage";
 import SalesRepLedgerPage from "./sales/pages/SalesLedgerPage";
+import SalesRepProfilePage from "./admin/pages/SalesRepProfilePage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
 import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
@@ -477,15 +481,19 @@ const AppContent = ({ token, setToken }) => {
             <Route path="search" element={<SearchPage />} />
             <Route path="tenants/:companyId" element={<Tenant360Page />} />
             <Route path="sales/reps" element={<SalesRepsPage />} />
+            <Route path="sales/reps/:repId" element={<SalesRepProfilePage />} />
             <Route path="sales/deals" element={<SalesDealsPage />} />
             <Route path="sales/ledger" element={<SalesLedgerPage />} />
             <Route path="audit-logs" element={<AuditLogsPage />} />
             <Route path="*" element={<SearchPage />} />
           </Route>
           <Route path="/sales/login" element={<SalesLogin />} />
+          <Route path="/sales/forgot" element={<SalesForgotPassword />} />
+          <Route path="/sales/reset" element={<SalesResetPassword />} />
           <Route path="/sales" element={<SalesShell />}>
             <Route path="summary" element={<SalesSummaryPage />} />
             <Route path="deals" element={<SalesRepDealsPage />} />
+            <Route path="customers" element={<SalesCustomersPage />} />
             <Route path="ledger" element={<SalesRepLedgerPage />} />
             <Route path="*" element={<SalesSummaryPage />} />
           </Route>

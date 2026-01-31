@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Link } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
 
 export default function SalesRepsPage() {
@@ -40,6 +41,9 @@ export default function SalesRepsPage() {
         <Paper key={r.id} sx={{ p: 2, mb: 1 }}>
           <Typography variant="subtitle1">{r.full_name}</Typography>
           <Typography variant="body2">{r.email} • {r.phone || "—"}</Typography>
+          <Button size="small" component={Link} to={`/admin/sales/reps/${r.id}`} sx={{ mt: 1 }}>
+            View profile
+          </Button>
         </Paper>
       ))}
     </Box>

@@ -6,6 +6,9 @@ export default function SalesDealsPage() {
   const [deals, setDeals] = useState([]);
   const [planKey, setPlanKey] = useState("");
   const [inviteLink, setInviteLink] = useState("");
+  const [prospectName, setProspectName] = useState("");
+  const [prospectEmail, setProspectEmail] = useState("");
+  const [status, setStatus] = useState("");
 
   const load = useCallback(async () => {
     const { data } = await salesRepApi.get("/deals");
@@ -17,8 +20,10 @@ export default function SalesDealsPage() {
   }, [load]);
 
   const create = async () => {
-    await salesRepApi.post("/deals", { plan_key: planKey });
+    await salesRepApi.post("/deals", { plan_key: planKey, prospect_name: prospectName, prospect_email: prospectEmail });
     setPlanKey("");
+    setProspectName("");
+    setProspectEmail("");
     load();
   };
 
@@ -27,12 +32,28 @@ export default function SalesDealsPage() {
     setInviteLink(data?.invite_link || "");
   };
 
+  const sendInviteEmail = async (id) => {
+    setStatus("");
+    try {
+      const { data } = await salesRepApi.post(`/deals/${id}/send-invite-email`, {
+        prospect_name: prospectName,
+        prospect_email: prospectEmail,
+      });
+      setInviteLink(data?.invite_link || "");
+      setStatus("Invite email sent.");
+    } catch (err) {
+      setStatus("Failed to send invite email.");
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h5" sx={{ mb: 2 }}>Deals</Typography>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" spacing={2}>
           <TextField label="Plan key" value={planKey} onChange={(e) => setPlanKey(e.target.value)} />
+          <TextField label="Prospect name" value={prospectName} onChange={(e) => setProspectName(e.target.value)} />
+          <TextField label="Prospect email" value={prospectEmail} onChange={(e) => setProspectEmail(e.target.value)} />
           <Button variant="contained" onClick={create}>Create Deal</Button>
         </Stack>
         {inviteLink && (
@@ -40,6 +61,7 @@ export default function SalesDealsPage() {
             Invite link: {inviteLink}
           </Typography>
         )}
+        {status && <Typography variant="body2" sx={{ mt: 1 }}>{status}</Typography>}
       </Paper>
       {deals.map((d) => (
         <Paper key={d.id} sx={{ p: 2, mb: 1 }}>
@@ -49,6 +71,9 @@ export default function SalesDealsPage() {
           </Typography>
           <Button size="small" variant="outlined" onClick={() => createInvite(d.id)} sx={{ mt: 1 }}>
             Generate invite link
+          </Button>
+          <Button size="small" variant="outlined" onClick={() => sendInviteEmail(d.id)} sx={{ mt: 1, ml: 1 }}>
+            Send invite email
           </Button>
         </Paper>
       ))}
