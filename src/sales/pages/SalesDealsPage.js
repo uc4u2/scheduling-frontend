@@ -1,5 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+} from "@mui/material";
 import salesRepApi from "../../api/salesRepApi";
 
 export default function SalesDealsPage() {
@@ -55,7 +66,19 @@ export default function SalesDealsPage() {
       <Typography variant="h5" sx={{ mb: 2 }}>Deals</Typography>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" spacing={2}>
-          <TextField label="Plan key" value={planKey} onChange={(e) => setPlanKey(e.target.value)} />
+          <FormControl sx={{ minWidth: 160 }}>
+            <InputLabel id="plan-key-label">Plan</InputLabel>
+            <Select
+              labelId="plan-key-label"
+              label="Plan"
+              value={planKey}
+              onChange={(e) => setPlanKey(e.target.value)}
+            >
+              <MenuItem value="starter">Starter</MenuItem>
+              <MenuItem value="pro">Pro</MenuItem>
+              <MenuItem value="business">Business</MenuItem>
+            </Select>
+          </FormControl>
           <TextField label="Prospect name" value={prospectName} onChange={(e) => setProspectName(e.target.value)} />
           <TextField label="Prospect email" value={prospectEmail} onChange={(e) => setProspectEmail(e.target.value)} />
           <Button variant="contained" onClick={create}>Create Deal</Button>
@@ -72,6 +95,12 @@ export default function SalesDealsPage() {
           <Typography variant="subtitle1">Deal #{d.id}</Typography>
           <Typography variant="body2">
             Status: {d.status} • Company: {d.company_id || "—"}
+          </Typography>
+          <Typography variant="body2">
+            Prospect: {d.prospect_name || "—"} • {d.prospect_email || "—"}
+          </Typography>
+          <Typography variant="body2">
+            Invite sent: {(d.meta?.invite_sent_count || 0)} • {(d.meta?.invite_sent_at || "—")}
           </Typography>
           <Button size="small" variant="outlined" onClick={() => createInvite(d.id)} sx={{ mt: 1 }}>
             Generate invite link

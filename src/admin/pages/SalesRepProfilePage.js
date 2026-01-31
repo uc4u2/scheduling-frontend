@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Box, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Paper, Stack, Typography } from "@mui/material";
 import { useParams } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
 
@@ -18,10 +18,17 @@ export default function SalesRepProfilePage() {
 
   if (!profile) return null;
 
+  const sendReset = async () => {
+    await platformAdminApi.post(`/sales/reps/${repId}/reset-password`);
+  };
+
   return (
     <Box>
       <Typography variant="h5" sx={{ mb: 2 }}>{profile.rep.full_name}</Typography>
       <Typography variant="body2">{profile.rep.email} • {profile.rep.phone || "—"}</Typography>
+      <Button variant="outlined" sx={{ mt: 1 }} onClick={sendReset}>
+        Send password reset
+      </Button>
       <Stack direction="row" spacing={2} sx={{ my: 2 }}>
         <Paper sx={{ p: 2 }}>
           <Typography variant="subtitle2">Invited</Typography>
