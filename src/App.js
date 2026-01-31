@@ -62,6 +62,14 @@ import MarketingClientsPage from "./landing/pages/marketing/MarketingClientsPage
 import ComparisonPage from "./landing/pages/compare/ComparisonPage";
 import CompareHubPage from "./landing/pages/compare/CompareHubPage";
 import AlternativesHubPage from "./landing/pages/compare/AlternativesHubPage";
+import PlatformAdminLogin from "./admin/PlatformAdminLogin";
+import PlatformAdminShell from "./admin/PlatformAdminShell";
+import SearchPage from "./admin/pages/SearchPage";
+import Tenant360Page from "./admin/pages/Tenant360Page";
+import SalesRepsPage from "./admin/pages/SalesRepsPage";
+import SalesDealsPage from "./admin/pages/SalesDealsPage";
+import SalesLedgerPage from "./admin/pages/SalesLedgerPage";
+import AuditLogsPage from "./admin/pages/AuditLogsPage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
 import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
@@ -458,6 +466,16 @@ const AppContent = ({ token, setToken }) => {
 
       <Box className="main-content">
         <Routes>
+          <Route path="/admin/login" element={<PlatformAdminLogin />} />
+          <Route path="/admin" element={<PlatformAdminShell />}>
+            <Route path="search" element={<SearchPage />} />
+            <Route path="tenants/:companyId" element={<Tenant360Page />} />
+            <Route path="sales/reps" element={<SalesRepsPage />} />
+            <Route path="sales/deals" element={<SalesDealsPage />} />
+            <Route path="sales/ledger" element={<SalesLedgerPage />} />
+            <Route path="audit-logs" element={<AuditLogsPage />} />
+            <Route path="*" element={<SearchPage />} />
+          </Route>
 
           {isCustomDomain && tenantSlug && (
             <>
