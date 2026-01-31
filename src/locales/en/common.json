@@ -703,6 +703,20 @@
       "candidateProfile": "Candidate Profile"
     },
     "employeeManagement": {
+      "title": "Employee Management",
+      "help": "Help",
+      "addMemberTitle": "Need to add a new team member?",
+      "addMemberDesc": "Use the dedicated Add Member workspace for the full onboarding form (address, department, payroll, compliance consent).",
+      "addMemberCta": "Launch Add Member",
+      "pendingTitle": "Pending Employee Conversions",
+      "pendingLoading": "Loading...",
+      "pendingEmpty": "No pending conversion requests.",
+      "table": {
+        "candidate": "Candidate",
+        "email": "Email",
+        "requested": "Requested",
+        "actions": "Actions"
+      },
       "approve": "Approve",
       "reject": "Reject",
       "activeEmployees": "Active Employees",
