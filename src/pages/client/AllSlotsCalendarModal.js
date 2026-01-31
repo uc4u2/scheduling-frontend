@@ -27,7 +27,7 @@ import { api, publicSite } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatSlot } from "../../utils/timezone-wrapper";
 import { useTheme, alpha } from "@mui/material/styles";
-import { slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
+import { resolveSeatsLeft, slotIsAvailable, slotSeatsLabel } from "../../utils/bookingSlots";
 
 const fmtDate = (isoDate) =>
   new Date(isoDate).toLocaleDateString(undefined, {
@@ -79,6 +79,7 @@ const AllSlotsCalendarModal = ({
   const [rawSlots, setRawSlots] = useState([]);
   const [backendTimezone, setBackendTimezone] = useState(null);
   const [primaryArtistId, setPrimaryArtistId] = useState(null);
+  const [employees, setEmployees] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [availableArtists, setAvailableArtists] = useState([]);
@@ -93,9 +94,11 @@ const AllSlotsCalendarModal = ({
       try {
         const emps = await publicSite.getServiceEmployees(slug, serviceId, departmentId);
         if (cancelled) return;
+        setEmployees(Array.isArray(emps) ? emps : []);
         setPrimaryArtistId(emps?.[0]?.id || null);
       } catch {
         if (cancelled) return;
+        setEmployees([]);
         setPrimaryArtistId(null);
       }
     })();
@@ -108,13 +111,13 @@ const AllSlotsCalendarModal = ({
   // AllSlotsCalendarModal.js
 const fetchSlotsForDate = useCallback(
   async (date) => {
-    if (!slug || !serviceId || !date || !primaryArtistId) return;
+    if (!slug || !serviceId || !date || !employees.length) return;
     setLoading(true);
     setError("");
     try {
       const userTz = getUserTimezone();
-      const cartJSON = buildCartPayload({ date, artistId: primaryArtistId });
-      const cacheKey = `${slug}|${serviceId}|${primaryArtistId}|${date}`;
+      const cartJSON = buildCartPayload({ date });
+      const cacheKey = `${slug}|${serviceId}|all|${date}`;
       const cached = availCacheRef.current.get(cacheKey);
       if (cached && cached.expiresAt > Date.now()) {
         setRawSlots(cached.data);
@@ -131,72 +134,107 @@ const fetchSlotsForDate = useCallback(
         return;
       }
 
-      const qs = new URLSearchParams({
-        artist_id: primaryArtistId,
-        service_id: serviceId,
-        date,
-        timezone: userTz,
-        explicit_only: 1,
-        respect_rows: 1,
-        ...(departmentId ? { department_id: departmentId } : {}),
-      });
-      if (cartJSON) qs.set("cart", cartJSON);
-
       const load = (async () => {
-        const { data } = await api.get(`/public/${slug}/availability?${qs.toString()}`, {
-          noCompanyHeader: true,
-          noAuth: true,
-        });
-        const slots = Array.isArray(data?.slots)
-          ? data.slots
-          : Array.isArray(data?.times)
-          ? data.times
-          : [];
-        const booked = Array.isArray(data?.booked) ? data.booked : [];
-        const svcMinutes = Number(data?.service_duration || 0);
-        const markBookedOverlaps = (items) => {
-          if (!booked.length) return items;
-          return items.map((s) => {
-            const mode = s.mode || "one_to_one";
-            if (mode === "group" && Number.isFinite(s.seats_left) && s.seats_left > 0) {
-              return s;
-            }
-            const stUtc = s.start_utc
-              ? new Date(s.start_utc)
-              : (s.date && s.start_time && s.timezone
-                ? new Date(`${s.date}T${s.start_time}:00${s.timezone ? "" : "Z"}`)
-                : null);
-            if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
-            const etUtc = s.end_utc
-              ? new Date(s.end_utc)
-              : new Date(stUtc.getTime() + Math.max(svcMinutes, 0) * 60000);
-            const overlaps = booked.some((b) => {
-              const bStart = b.start_utc ? new Date(b.start_utc) : null;
-              const bEnd = b.end_utc ? new Date(b.end_utc) : null;
-              if (!bStart || !bEnd || Number.isNaN(bStart.getTime()) || Number.isNaN(bEnd.getTime())) {
-                return false;
-              }
-              return stUtc < bEnd && etUtc > bStart;
+        const results = await Promise.all(
+          employees.map(async (emp) => {
+            const qs = new URLSearchParams({
+              artist_id: emp.id,
+              service_id: serviceId,
+              date,
+              timezone: userTz,
+              explicit_only: 1,
+              respect_rows: 1,
+              ...(departmentId ? { department_id: departmentId } : {}),
             });
-            return overlaps ? { ...s, type: "booked" } : s;
-          });
-        };
-        const slotsMarked = markBookedOverlaps(slots);
-        // Merge booked into slots only when the start time doesn't already exist
-        const byKey = new Map();
-        const withDate = slotsMarked.map((s) => ({ ...s, date }));
-        for (const s of withDate) {
-          const key = s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`;
-          byKey.set(key, s);
-        }
-        for (const b of booked) {
-          const entry = { ...b, date: b.date || date, type: "booked" };
-          const key = entry.start_utc || `${entry.date}-${entry.start_time}-${entry.timezone || ""}`;
-          if (!byKey.has(key)) {
-            byKey.set(key, entry);
+            if (cartJSON) qs.set("cart", cartJSON);
+            const { data } = await api.get(`/public/${slug}/availability?${qs.toString()}`, {
+              noCompanyHeader: true,
+              noAuth: true,
+            });
+            const slots = Array.isArray(data?.slots)
+              ? data.slots
+              : Array.isArray(data?.times)
+              ? data.times
+              : [];
+            const booked = Array.isArray(data?.booked) ? data.booked : [];
+            const svcMinutes = Number(data?.service_duration || 0);
+            const markBookedOverlaps = (items) => {
+              if (!booked.length) return items;
+              return items.map((s) => {
+                const mode = s.mode || "one_to_one";
+                if (mode === "group" && Number.isFinite(s.seats_left) && s.seats_left > 0) {
+                  return s;
+                }
+                const stUtc = s.start_utc
+                  ? new Date(s.start_utc)
+                  : (s.date && s.start_time && s.timezone
+                    ? new Date(`${s.date}T${s.start_time}:00${s.timezone ? "" : "Z"}`)
+                    : null);
+                if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
+                const etUtc = s.end_utc
+                  ? new Date(s.end_utc)
+                  : new Date(stUtc.getTime() + Math.max(svcMinutes, 0) * 60000);
+                const overlaps = booked.some((b) => {
+                  const bStart = b.start_utc ? new Date(b.start_utc) : null;
+                  const bEnd = b.end_utc ? new Date(b.end_utc) : null;
+                  if (!bStart || !bEnd || Number.isNaN(bStart.getTime()) || Number.isNaN(bEnd.getTime())) {
+                    return false;
+                  }
+                  return stUtc < bEnd && etUtc > bStart;
+                });
+                return overlaps ? { ...s, type: "booked" } : s;
+              });
+            };
+            const slotsMarked = markBookedOverlaps(slots).map((s) => ({ ...s, date }));
+            const withBooked = new Map();
+            for (const s of slotsMarked) {
+              const key = s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`;
+              withBooked.set(key, s);
+            }
+            for (const b of booked) {
+              const entry = { ...b, date: b.date || date, type: "booked" };
+              const key = entry.start_utc || `${entry.date}-${entry.start_time}-${entry.timezone || ""}`;
+              if (!withBooked.has(key)) {
+                withBooked.set(key, entry);
+              }
+            }
+            return Array.from(withBooked.values());
+          })
+        );
+
+        const map = new Map();
+        for (const providerSlots of results) {
+          for (const s of providerSlots) {
+            const key = s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`;
+            const mode = s.mode || "one_to_one";
+            const seatsLeft = resolveSeatsLeft(s);
+            const isGroup = mode === "group";
+            const isUnavailable = isGroup
+              ? (Number.isFinite(seatsLeft) ? seatsLeft <= 0 : s.type === "booked")
+              : s.type === "booked";
+            const isAvailable = !isUnavailable;
+            if (!map.has(key)) {
+              map.set(key, {
+                ...s,
+                type: isAvailable ? "available" : "booked",
+                has_available: isAvailable,
+                seats_left: Number.isFinite(seatsLeft) ? seatsLeft : s.seats_left,
+              });
+            } else {
+              const curr = map.get(key);
+              if (isAvailable) curr.has_available = true;
+              if (Number.isFinite(seatsLeft) && isAvailable) {
+                const prev = Number.isFinite(curr.seats_left) ? curr.seats_left : 0;
+                curr.seats_left = Math.max(prev, seatsLeft);
+              }
+            }
           }
         }
-        return Array.from(byKey.values());
+
+        return Array.from(map.values()).map((s) => ({
+          ...s,
+          type: s.has_available ? "available" : "booked",
+        }));
       })();
 
       availInflightRef.current.set(cacheKey, load);
@@ -215,12 +253,12 @@ const fetchSlotsForDate = useCallback(
       setError("Could not load available slots. Please try again later.");
       setRawSlots([]);
     } finally {
-      const cacheKey = `${slug}|${serviceId}|${primaryArtistId}|${date}`;
+      const cacheKey = `${slug}|${serviceId}|all|${date}`;
       availInflightRef.current.delete(cacheKey);
       setLoading(false);
     }
   },
-  [slug, serviceId, departmentId, backendTimezone, primaryArtistId]
+  [slug, serviceId, departmentId, backendTimezone, employees]
 );
 
 
@@ -272,9 +310,9 @@ const fetchSlotsForDate = useCallback(
   }, [open, initialDate, fetchSlotsForDate, isMobile]);
 
   useEffect(() => {
-    if (!open || !selectedDate || !primaryArtistId) return;
+    if (!open || !selectedDate || !employees.length) return;
     fetchSlotsForDate(selectedDate);
-  }, [open, selectedDate, primaryArtistId, fetchSlotsForDate]);
+  }, [open, selectedDate, employees, fetchSlotsForDate]);
 
   const handleDateClick = (arg) => {
     const clickedDate = arg.dateStr;
