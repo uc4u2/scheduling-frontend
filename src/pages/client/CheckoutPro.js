@@ -150,17 +150,6 @@ function CheckoutShell({
     "& .MuiAlert-icon": { color: accentColor },
   };
 
-  useEffect(() => {
-    const onPublicUnavailable = (event) => {
-      setPublicUpgradeMessage(event?.detail?.message || "");
-      setPublicUpgradeOpen(true);
-    };
-    window.addEventListener("billing:public-unavailable", onPublicUnavailable);
-    return () => {
-      window.removeEventListener("billing:public-unavailable", onPublicUnavailable);
-    };
-  }, []);
-
   const defaultActive = useMemo(() => {
     const mode = (policy?.mode || "pay").toLowerCase();
     if (mode === "off") return cardOnFileEnabled ? "capture" : "off";

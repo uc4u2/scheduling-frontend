@@ -558,17 +558,23 @@ export default function ServiceDetails({ slugOverride }) {
 
         const key = startUtc;
         const startLocal = s.start_time || timeHMInTZ(startUtc, tz);
-        const seatsLeft = resolveSeatsLeft(s);
-
         const profileImage = emp.profile_image_url || s.profile_image_url || "";
+        const mode = s.mode || "one_to_one";
+        const seatsLeft = resolveSeatsLeft(s);
+        const isGroup = mode === "group";
+        const isUnavailable = isGroup
+          ? (Number.isFinite(seatsLeft) ? seatsLeft <= 0 : s.type === "booked")
+          : s.type === "booked";
+        const isAvailable = !isUnavailable;
         if (!map.has(key)) {
           map.set(key, {
             key,
             date: selectedDateStr, // UI-selected day
             start_utc: startUtc,
-            type: s.type || "available",
-            mode: s.mode,
+            type: isUnavailable ? "booked" : "available",
+            mode,
             seats_left: Number.isFinite(seatsLeft) ? seatsLeft : null,
+            has_available: isAvailable,
             providers: [
               {
                 id: emp.id,
@@ -579,25 +585,25 @@ export default function ServiceDetails({ slugOverride }) {
                 date: s.date || selectedDateStr,
                 service_id: s.service_id || serviceId,
                 profile_image_url: profileImage,
-                mode: s.mode,
+                mode,
                 seats_left: seatsLeft,
-                type: s.type || "available",
+                type: isUnavailable ? "booked" : "available",
               },
             ],
           });
         } else {
           const curr = map.get(key);
-          if (s.mode === "group") {
+          if (isGroup) {
             curr.mode = "group";
           }
-          if (s.type === "booked") {
-            curr.type = "booked";
+          if (isAvailable) {
+            curr.has_available = true;
           }
-          if (Number.isFinite(seatsLeft)) {
+          if (Number.isFinite(seatsLeft) && isAvailable) {
             if (!Number.isFinite(curr.seats_left)) {
               curr.seats_left = seatsLeft;
             } else {
-              curr.seats_left = Math.min(curr.seats_left, seatsLeft);
+              curr.seats_left = Math.max(curr.seats_left, seatsLeft);
             }
           }
             if (!curr.providers.some((p) => p.id === emp.id)) {
@@ -610,15 +616,19 @@ export default function ServiceDetails({ slugOverride }) {
                 date: s.date || selectedDateStr,
                 service_id: s.service_id || serviceId,
                 profile_image_url: profileImage,
-                mode: s.mode,
+                mode,
                 seats_left: seatsLeft,
+                type: isUnavailable ? "booked" : "available",
               });
             }
         }
       }
     }
     return Array.from(map.values())
-      .map((x) => ({ ...x, count: x.providers.length }))
+      .map((x) => {
+        const anyAvailable = Boolean(x.has_available);
+        return { ...x, type: anyAvailable ? "available" : "booked", count: x.providers.length };
+      })
       .sort((a, b) => a.start_utc.localeCompare(b.start_utc));
   };
 
@@ -927,8 +937,8 @@ export default function ServiceDetails({ slugOverride }) {
                   variant="contained"
                   size="small"
                   disabled={
-                    selectedSlot?.type === "booked" ||
-                    p.type === "booked" ||
+                    (selectedSlot && !slotIsAvailable(selectedSlot)) ||
+                    !slotIsAvailable(p) ||
                     clientBookedSlot(
                       clientBookedSet,
                       p.service_id || serviceId,
@@ -999,7 +1009,8 @@ export default function ServiceDetails({ slugOverride }) {
                 )
               )
             : false;
-          const isBooked = s.type === "booked";
+          const isAvailable = slotIsAvailable(s);
+          const isBooked = !isAvailable;
           return (
             <Button
               key={s.key}
@@ -1010,7 +1021,7 @@ export default function ServiceDetails({ slugOverride }) {
               title={
                 isBooked
                   ? "This slot is already booked"
-                  : alreadyBooked
+                : alreadyBooked
                   ? "You already booked this slot"
                   : s.count > 1
                   ? `${s.count} providers available at this time`

@@ -294,7 +294,7 @@ const fetchSlotsForDate = useCallback(
   };
 
   const handleSlotClick = async (slot) => {
-    if (slot?.type === "booked") {
+    if (!slotIsAvailable(slot)) {
       return;
     }
     setSelectedSlot(slot);
@@ -318,6 +318,7 @@ const fetchSlotsForDate = useCallback(
 
   // Make events clearly include the DAY context visually
   const events = displayedSlots.map((s) => {
+    const isAvailable = slotIsAvailable(s);
     const slotDisplay = formatSlot(s);
     const endDisplay =
       s.end_time &&
@@ -336,12 +337,12 @@ const countTxt = s._count > 1 ? ` (${s._count})` : "";
 const seatsTxt = s.mode === "group" && slotSeatsLabel(s) ? slotSeatsLabel(s) : "";
     return {
       id: s.start_utc || `${s.date}-${s.start_time}-${s.timezone || ""}`,
-     title: s.type === "booked"
+     title: !isAvailable
        ? `🛑 ${labelDate} • ${slotDisplay.time}${countTxt}${seatsTxt}`
        : `✓ ${labelDate} • ${slotDisplay.time}${countTxt}${seatsTxt}`,
       start: slotDisplay.iso,
       end: endDisplay ? endDisplay.iso : null,
-      classNames: [s.type === "booked" ? "slot-booked" : "slot-available"],
+      classNames: [!isAvailable ? "slot-booked" : "slot-available"],
       extendedProps: s,
     };
   });

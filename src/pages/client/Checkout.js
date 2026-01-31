@@ -664,17 +664,6 @@ function CheckoutFormCore({
   }, []);
 
   useEffect(() => {
-    const onPublicUnavailable = (event) => {
-      setPublicUpgradeMessage(event?.detail?.message || "");
-      setPublicUpgradeOpen(true);
-    };
-    window.addEventListener("billing:public-unavailable", onPublicUnavailable);
-    return () => {
-      window.removeEventListener("billing:public-unavailable", onPublicUnavailable);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!client?.id) {
       setClientPackages([]);
       setPackagesLoading(false);
