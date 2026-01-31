@@ -31,11 +31,24 @@ export default function SalesDealsPage() {
   }, [load]);
 
   const create = async () => {
-    await salesRepApi.post("/deals", { plan_key: planKey, prospect_name: prospectName, prospect_email: prospectEmail });
-    setPlanKey("");
-    setProspectName("");
-    setProspectEmail("");
-    load();
+    setStatus("");
+    try {
+      await salesRepApi.post("/deals", { plan_key: planKey, prospect_name: prospectName, prospect_email: prospectEmail });
+      setPlanKey("");
+      setProspectName("");
+      setProspectEmail("");
+      load();
+    } catch (err) {
+      if (err?.response?.data?.error === "plan_key_invalid") {
+        setStatus("Please select a valid plan: Starter, Pro, or Business.");
+      } else if (err?.response?.data?.error === "already_acquired") {
+        setStatus("This company is already acquired by another rep.");
+      } else if (err?.response?.data?.error === "already_yours") {
+        setStatus("This company is already yours. You can create a reactivation follow-up.");
+      } else {
+        setStatus("Failed to create deal.");
+      }
+    }
   };
 
   const createInvite = async (id) => {
@@ -99,6 +112,11 @@ export default function SalesDealsPage() {
           <Typography variant="body2">
             Prospect: {d.prospect_name || "—"} • {d.prospect_email || "—"}
           </Typography>
+          {d.meta?.type === "reactivation" && (
+            <Typography variant="body2" sx={{ color: "warning.main" }}>
+              Reactivation
+            </Typography>
+          )}
           <Typography variant="body2">
             Invite sent: {(d.meta?.invite_sent_count || 0)} • {(d.meta?.invite_sent_at || "—")}
           </Typography>
