@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Box,
@@ -23,7 +23,7 @@ export default function Tenant360Page() {
   const [notes, setNotes] = useState([]);
   const [noteDraft, setNoteDraft] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const [tenantRes, usersRes, billingRes, eventsRes, notesRes] = await Promise.all([
       platformAdminApi.get(`/tenants/${companyId}`),
       platformAdminApi.get(`/tenants/${companyId}/users`),
@@ -36,11 +36,11 @@ export default function Tenant360Page() {
     setBilling(billingRes.data || null);
     setEvents(eventsRes.data?.events || []);
     setNotes(notesRes.data?.notes || []);
-  };
+  }, [companyId]);
 
   useEffect(() => {
     load();
-  }, [companyId]);
+  }, [load]);
 
   const disableUser = async (id) => {
     await platformAdminApi.post(`/tenants/${companyId}/users/${id}/disable`);

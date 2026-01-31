@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import platformAdminApi from "../../api/platformAdminApi";
 
@@ -8,14 +8,14 @@ export default function SalesRepsPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const { data } = await platformAdminApi.get("/sales/reps");
     setReps(data?.reps || []);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const create = async () => {
     await platformAdminApi.post("/sales/reps", { full_name: fullName, email, phone });

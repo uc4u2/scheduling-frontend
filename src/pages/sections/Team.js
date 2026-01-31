@@ -2353,7 +2353,6 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
               p: compactDensity ? 1 : 2,
               mb: 4,
               minHeight: isSmDown ? "360px" : "600px",
-              width: calendarWidth,
               maxWidth: "150vw",
               overflowX: calendarWidth !== "100%" ? "auto" : "hidden",
               border: { xs: "none", md: "none" },

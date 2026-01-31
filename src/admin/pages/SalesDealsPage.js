@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import platformAdminApi from "../../api/platformAdminApi";
 
@@ -8,14 +8,14 @@ export default function SalesDealsPage() {
   const [planKey, setPlanKey] = useState("");
   const [inviteLink, setInviteLink] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const { data } = await platformAdminApi.get("/sales/deals");
     setDeals(data?.deals || []);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const create = async () => {
     const { data } = await platformAdminApi.post("/sales/deals", { sales_rep_id: salesRepId, plan_key: planKey });

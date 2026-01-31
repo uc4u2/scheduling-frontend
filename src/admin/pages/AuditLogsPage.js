@@ -1,16 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Box, Paper, Typography } from "@mui/material";
 import platformAdminApi from "../../api/platformAdminApi";
 
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState([]);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await platformAdminApi.get("/audit-logs");
-      setLogs(data?.logs || []);
-    })();
+  const load = useCallback(async () => {
+    const { data } = await platformAdminApi.get("/audit-logs");
+    setLogs(data?.logs || []);
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <Box>

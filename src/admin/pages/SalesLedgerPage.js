@@ -1,16 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Box, Paper, Typography } from "@mui/material";
 import platformAdminApi from "../../api/platformAdminApi";
 
 export default function SalesLedgerPage() {
   const [entries, setEntries] = useState([]);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await platformAdminApi.get("/sales/ledger");
-      setEntries(data?.entries || []);
-    })();
+  const load = useCallback(async () => {
+    const { data } = await platformAdminApi.get("/sales/ledger");
+    setEntries(data?.entries || []);
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <Box>

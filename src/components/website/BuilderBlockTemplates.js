@@ -553,32 +553,6 @@ featureStories: () => ({
       ],
     },
   }),
-  heroCarousel: () => ({
-    type: "heroCarousel",
-    props: {
-      autoplay: true,
-      intervalMs: 6000,
-      align: "center",
-      contentMaxWidth: "lg",
-      heroHeight: 60,
-      safeTop: true,
-      overlay: 0.35,
-      overlayColor: "#000000",
-      brightness: 1.0,
-      slides: [
-        {
-          image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2000&auto=format&fit=crop",
-          backgroundPosition: "center",
-          eyebrow: "Welcome",
-          heading: "Tell your story with a carousel",
-          subheading: "Each slide can have its own headline, description, and CTAs.",
-          ctaText: "Get started",
-          ctaLink: "/register"
-        }
-      ]
-    },
-    sx: { py: 0 }
-  }),
   contact: () => ({
     type: "contact",
     props: {
