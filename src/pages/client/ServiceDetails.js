@@ -928,7 +928,7 @@ export default function ServiceDetails({ slugOverride }) {
                     </Typography>
                     {p.mode === "group" && Number.isFinite(p.seats_left) && (
                       <Typography variant="caption" color="text.secondary" noWrap>
-                        Seats left: {p.seats_left}
+                        {p.seats_left > 0 ? `Seats left: ${p.seats_left}` : "Full"}
                       </Typography>
                     )}
                   </Box>
@@ -1011,6 +1011,8 @@ export default function ServiceDetails({ slugOverride }) {
             : false;
           const isAvailable = slotIsAvailable(s);
           const isBooked = !isAvailable;
+          const groupSeats = s.mode === "group" ? resolveSeatsLeft(s) : null;
+          const isFullGroup = s.mode === "group" && Number.isFinite(groupSeats) && groupSeats <= 0;
           return (
             <Button
               key={s.key}
@@ -1020,8 +1022,8 @@ export default function ServiceDetails({ slugOverride }) {
               sx={buildTimeChipSx(selected, variant)}
               title={
                 isBooked
-                  ? "This slot is already booked"
-                : alreadyBooked
+                  ? (isFullGroup ? "This slot is full" : "This slot is already booked")
+                  : alreadyBooked
                   ? "You already booked this slot"
                   : s.count > 1
                   ? `${s.count} providers available at this time`
@@ -1030,7 +1032,9 @@ export default function ServiceDetails({ slugOverride }) {
             >
               {timeFromUTCForViewer(s.start_utc)}
               {s.count > 1 ? ` • ${s.count}` : ""}
-              {(alreadyBooked || isBooked) ? " • booked" : ""}
+              {(alreadyBooked || isBooked)
+                ? (isFullGroup ? " • Full" : " • booked")
+                : ""}
               {selected && s.mode === "group" && slotSeatsLabel(s) ? (
                 <>
                   {slotSeatsLabel(s)}
