@@ -73,8 +73,8 @@ import AuditLogsPage from "./admin/pages/AuditLogsPage";
 import SalesLogin from "./sales/SalesLogin";
 import SalesShell from "./sales/SalesShell";
 import SalesSummaryPage from "./sales/pages/SalesSummaryPage";
-import SalesDealsPage from "./sales/pages/SalesDealsPage";
-import SalesLedgerPage from "./sales/pages/SalesLedgerPage";
+import SalesRepDealsPage from "./sales/pages/SalesDealsPage";
+import SalesRepLedgerPage from "./sales/pages/SalesLedgerPage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
 import CookiePolicyPage from "./landing/pages/legal/CookiePolicyPage";
@@ -485,8 +485,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/sales/login" element={<SalesLogin />} />
           <Route path="/sales" element={<SalesShell />}>
             <Route path="summary" element={<SalesSummaryPage />} />
-            <Route path="deals" element={<SalesDealsPage />} />
-            <Route path="ledger" element={<SalesLedgerPage />} />
+            <Route path="deals" element={<SalesRepDealsPage />} />
+            <Route path="ledger" element={<SalesRepLedgerPage />} />
             <Route path="*" element={<SalesSummaryPage />} />
           </Route>
 
