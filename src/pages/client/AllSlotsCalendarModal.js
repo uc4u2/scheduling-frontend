@@ -108,14 +108,20 @@ const AllSlotsCalendarModal = ({
           noCompanyHeader: true,
           noAuth: true,
         });
-        const slots = Array.isArray(data?.slots) ? data.slots : [];
+        const slots = Array.isArray(data?.slots)
+          ? data.slots
+          : Array.isArray(data?.times)
+          ? data.times
+          : Array.isArray(data)
+          ? data
+          : [];
         const monthMap = {};
         const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
         const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
         const startKey = monthStart.toISOString().slice(0, 10);
         const endKey = monthEnd.toISOString().slice(0, 10);
         for (const s of slots) {
-          const dateKey = s.date;
+          const dateKey = s.date || (s.start_utc ? s.start_utc.slice(0, 10) : null);
           if (!dateKey || dateKey < startKey || dateKey > endKey) continue;
           const mode = (s.mode || "one_to_one").toString().toLowerCase();
           const seatsLeft = resolveSeatsLeft(s);
@@ -298,6 +304,12 @@ const fetchSlotsForDate = useCallback(
         expiresAt: Date.now() + 60_000,
       });
       setRawSlots(slots);
+      if (date) {
+        const hasAny = slots.some((s) => slotIsAvailable(s));
+        if (hasAny) {
+          setMonthAvailability((prev) => ({ ...prev, [date]: true }));
+        }
+      }
       if (!backendTimezone && slots.length > 0) {
         const tz = slots.find((s) => s.timezone)?.timezone;
         setBackendTimezone(tz || userTz);
@@ -372,8 +384,22 @@ const fetchSlotsForDate = useCallback(
     if (!open) return;
     if (selectedDate) {
       prefetchMonthAvailability(new Date(selectedDate));
+      return;
     }
+    const today = new Date().toISOString().slice(0, 10);
+    setSelectedDate(today);
+    prefetchMonthAvailability(new Date(today));
   }, [open, selectedDate, prefetchMonthAvailability]);
+
+  useEffect(() => {
+    if (!open) return;
+    const api = calRef.current?.getApi?.();
+    if (!api) return;
+    const start = api.view?.currentStart;
+    if (start) {
+      prefetchMonthAvailability(start);
+    }
+  }, [open, prefetchMonthAvailability]);
 
   const handleDateClick = (arg) => {
     const clickedDate = arg.dateStr;
@@ -469,9 +495,14 @@ const seatsTxt = s.mode === "group" && slotSeatsLabel(s) ? slotSeatsLabel(s) : "
       >
         <DialogTitle
           id="all-slots-calendar-title"
-          sx={{ fontWeight: 800, pr: 6, backgroundColor: surfaceBg }}
+          sx={{
+            fontWeight: 800,
+            pr: 6,
+            backgroundColor: surfaceBg,
+            textAlign: { xs: "center", md: "left" },
+          }}
         >
-          📅 Select an Available Slot
+          📅 Select a Time Slot
           <IconButton onClick={onClose} sx={{ position: "absolute", right: 8, top: 8 }}>
             <CloseIcon />
           </IconButton>
@@ -513,7 +544,16 @@ const seatsTxt = s.mode === "group" && slotSeatsLabel(s) ? slotSeatsLabel(s) : "
           }}
         >
           {/* Date context + slot count = no more confusion */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, flexWrap: "wrap" }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{
+              mb: 2,
+              flexWrap: "wrap",
+              justifyContent: { xs: "center", md: "flex-start" },
+            }}
+          >
             <Chip color="primary" variant="outlined" label={`Showing: ${fmtDate(selectedDate || "")}`} />
             <Chip label={`${events.length} slot${events.length === 1 ? "" : "s"} on this day`} />
           </Stack>

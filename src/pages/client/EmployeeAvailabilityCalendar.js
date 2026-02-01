@@ -623,7 +623,7 @@ export default function EmployeeAvailabilityCalendar({
           alignItems={{ xs: "center", sm: "center" }}
           justifyContent={{ xs: "center", sm: "space-between" }}
           spacing={1.5}
-          sx={{ mb: 2, textAlign: { xs: "center", sm: "left" } }}
+          sx={{ mb: 1.5, textAlign: { xs: "center", sm: "left" } }}
         >
           <Box>
             <Typography variant="h5" fontWeight={800} gutterBottom>
@@ -641,9 +641,10 @@ export default function EmployeeAvailabilityCalendar({
                 label={`TZ: ${userTz}`}
                 sx={{
                   borderRadius: 999,
-                  fontWeight: 600,
+                  fontWeight: 500,
                   backgroundColor: softBg,
                   color: bodyColor,
+                  px: 0.5,
                 }}
               />
               {priceInfo?.base_price != null && (
@@ -664,9 +665,9 @@ export default function EmployeeAvailabilityCalendar({
                   label={`${slots.length} slot(s) today`}
                   sx={{
                     borderRadius: 999,
-                    fontWeight: 600,
-                    backgroundColor: accentColor,
-                    color: accentContrast,
+                    fontWeight: 500,
+                    backgroundColor: softBg,
+                    color: bodyColor,
                   }}
                 />
               ) : (
@@ -675,7 +676,7 @@ export default function EmployeeAvailabilityCalendar({
                   label="No slots for selected day"
                   sx={{
                     borderRadius: 999,
-                    fontWeight: 600,
+                    fontWeight: 500,
                     backgroundColor: softBg,
                     color: bodyColor,
                   }}
@@ -691,10 +692,12 @@ export default function EmployeeAvailabilityCalendar({
       <Paper
         sx={{
           p: 2,
-          mb: 3,
+          mb: 2.5,
           borderRadius: 2,
           border: `1px solid ${borderColor}`,
           backgroundColor: surfaceColor,
+          backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0) 100%)",
+          boxShadow: "0 18px 45px rgba(15,23,42,0.10)",
         }}
       >
         <Box display="flex" justifyContent="space-between" alignItems="center">
