@@ -286,11 +286,6 @@ export default function EmployeeAvailabilityCalendar({
   }, [companySlug, artistId, serviceId, departmentId, debouncedDate, userTz]);
 
   useEffect(() => {
-    if (!monthView) return;
-    prefetchMonthAvailability(monthView);
-  }, [monthView, prefetchMonthAvailability]);
-
-  useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
       setClientBookedSet(new Set());
@@ -431,6 +426,11 @@ export default function EmployeeAvailabilityCalendar({
     },
     [companySlug, artistId, serviceId]
   );
+
+  useEffect(() => {
+    if (!monthView) return;
+    prefetchMonthAvailability(monthView);
+  }, [monthView, prefetchMonthAvailability]);
 
   const dayCell = (dNum) => {
     const d = new Date(monthView.getFullYear(), monthView.getMonth(), dNum);
