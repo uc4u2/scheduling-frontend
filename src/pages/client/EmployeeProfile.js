@@ -220,7 +220,7 @@ const EmployeeProfile = ({ slugOverride }) => {
           </Box>
         ) : (
           <Box>
-            <Typography variant="h6" gutterBottom>
+            <Typography variant="h6" gutterBottom sx={{ textAlign: { xs: "center", md: "left" } }}>
               Availability Calendar
             </Typography>
             <EmployeeAvailabilityCalendar
