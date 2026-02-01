@@ -548,7 +548,7 @@ const seatsTxt = s.mode === "group" && slotSeatsLabel(s) ? slotSeatsLabel(s) : "
               dateClick={handleDateClick}
               datesSet={handleDatesSet}
               dayCellContent={(arg) => {
-                const dateStr = arg.date.toISOString().slice(0, 10);
+                const dateStr = arg.dateStr || arg.date.toISOString().slice(0, 10);
                 const hasAvail = monthAvailability[dateStr] === true;
                 return (
                   <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
