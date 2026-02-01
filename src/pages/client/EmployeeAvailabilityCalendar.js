@@ -406,7 +406,8 @@ export default function EmployeeAvailabilityCalendar({
         const endKey = ymd(monthEnd);
 
         for (const s of slotsRaw) {
-          if (serviceId && String(s.service_id || "") !== String(serviceId)) continue;
+          const slotServiceId = s.service_id ?? s.serviceId ?? null;
+          if (serviceId && slotServiceId && String(slotServiceId) !== String(serviceId)) continue;
           const dateKey = s.date;
           if (!dateKey || dateKey < startKey || dateKey > endKey) continue;
           const mode = (s.mode || "one_to_one").toString().toLowerCase();
@@ -619,16 +620,22 @@ export default function EmployeeAvailabilityCalendar({
       >
         <Stack
           direction={{ xs: "column", sm: "row" }}
-          alignItems={{ xs: "flex-start", sm: "center" }}
-          justifyContent="space-between"
+          alignItems={{ xs: "center", sm: "center" }}
+          justifyContent={{ xs: "center", sm: "space-between" }}
           spacing={1.5}
-          sx={{ mb: 2 }}
+          sx={{ mb: 2, textAlign: { xs: "center", sm: "left" } }}
         >
           <Box>
             <Typography variant="h5" fontWeight={800} gutterBottom>
               Choose a time — {svcName}
             </Typography>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              justifyContent={{ xs: "center", sm: "flex-start" }}
+              flexWrap="wrap"
+            >
               <Chip
                 size="small"
                 label={`TZ: ${userTz}`}
@@ -677,18 +684,7 @@ export default function EmployeeAvailabilityCalendar({
             </Stack>
           </Box>
 
-          <Tooltip title="This component uses the same month-grid + time chips pattern as the reschedule UI">
-            <Chip
-              size="small"
-              variant="outlined"
-              label="Setmore-style"
-              sx={{
-                borderRadius: 999,
-                border: `1px solid ${borderColor}`,
-                color: bodyColor,
-              }}
-            />
-          </Tooltip>
+          <Box sx={{ display: { xs: "none", sm: "block" } }} />
         </Stack>
 
       {/* ── Month navigation & grid ─────────────────────────── */}
