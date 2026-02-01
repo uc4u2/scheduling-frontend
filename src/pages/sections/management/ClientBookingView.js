@@ -168,9 +168,12 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
   const events = useMemo(() => slots.map(s => {
     const zone = s.timezone || recruiterTz || userTz;
     const id   = `${s.date}-${s.start_time}`;
+    const seatInfo = (s.mode === "group" && Number.isFinite(s.capacity))
+      ? ` • ${Number.isFinite(s.seats_left) ? s.seats_left : 0}/${s.capacity} left`
+      : "";
     return {
       id,
-      title:`${s.start_time}‑${s.end_time}`,
+      title:`${s.start_time}‑${s.end_time}${seatInfo}`,
       start: isoFromParts(s.date, s.start_time, zone),
       end  : isoFromParts(s.date, s.end_time,   zone),
       classNames:["slot-available", id === evtId ? "slot-selected" : ""],

@@ -1076,7 +1076,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                   onClick={() => handleChipClick(s)}   // keeps Add Meeting flow
                   color={s.booked ? "error" : "success"}
                   variant={s.booked ? "filled" : "outlined"}
-                  label={`${s.startHH}–${s.endHH}${selectedRecruiter === "all" ? ` • ${s.recruiter_label || s.recruiter_id}` : ""}${s.service_name ? ` • ${s.service_name}` : ""}`}
+                  label={`${s.startHH}–${s.endHH}${selectedRecruiter === "all" ? ` • ${s.recruiter_label || s.recruiter_id}` : ""}${s.service_name ? ` • ${s.service_name}` : ""}${s.mode === "group" && Number.isFinite(s.capacity) ? ` • ${Number(s.booked_count || 0)}/${s.capacity} booked • ${Number.isFinite(s.seats_left) ? s.seats_left : 0} left` : ""}`}
                   sx={{ borderLeft: `4px solid ${colorForEmp(s.recruiter_id)}` }}
                   {...(!s.booked && canEditAvailability
                     ? { onDelete: async () => {
