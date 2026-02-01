@@ -373,7 +373,9 @@ export default function EmployeeAvailabilityCalendar({
     new Date(view.getFullYear(), view.getMonth(), 1).getDay(); // 0-Sun
 
   const buildMonthKey = (d) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    `${companySlug || "?"}|${artistId || "?"}|${serviceId || "all"}|${d.getFullYear()}-${String(
+      d.getMonth() + 1
+    ).padStart(2, "0")}`;
 
   const prefetchMonthAvailability = useCallback(
     async (monthDate) => {
@@ -431,6 +433,11 @@ export default function EmployeeAvailabilityCalendar({
     if (!monthView) return;
     prefetchMonthAvailability(monthView);
   }, [monthView, prefetchMonthAvailability]);
+
+  useEffect(() => {
+    monthCacheRef.current.clear();
+    setAvailableMap({});
+  }, [companySlug, artistId, serviceId]);
 
   const dayCell = (dNum) => {
     const d = new Date(monthView.getFullYear(), monthView.getMonth(), dNum);

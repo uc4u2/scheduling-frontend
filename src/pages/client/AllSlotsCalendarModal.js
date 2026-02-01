@@ -86,6 +86,55 @@ const AllSlotsCalendarModal = ({
   const [artistPickerOpen, setArtistPickerOpen] = useState(false);
   const availCacheRef = useRef(new Map());
   const availInflightRef = useRef(new Map());
+  const [monthAvailability, setMonthAvailability] = useState({});
+  const monthCacheRef = useRef(new Map());
+
+  const buildMonthKey = (d) =>
+    `${slug || "?"}|${serviceId || "?"}|${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+  const prefetchMonthAvailability = useCallback(
+    async (monthDate) => {
+      if (!slug || !serviceId) return;
+      const monthKey = buildMonthKey(monthDate);
+      if (monthCacheRef.current.has(monthKey)) {
+        const cached = monthCacheRef.current.get(monthKey);
+        if (cached && typeof cached === "object") {
+          setMonthAvailability((prev) => ({ ...prev, ...cached }));
+        }
+        return;
+      }
+      try {
+        const { data } = await api.get(`/public/${slug}/availability-by-service/${serviceId}`, {
+          noCompanyHeader: true,
+          noAuth: true,
+        });
+        const slots = Array.isArray(data?.slots) ? data.slots : [];
+        const monthMap = {};
+        const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+        const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+        const startKey = monthStart.toISOString().slice(0, 10);
+        const endKey = monthEnd.toISOString().slice(0, 10);
+        for (const s of slots) {
+          const dateKey = s.date;
+          if (!dateKey || dateKey < startKey || dateKey > endKey) continue;
+          const mode = (s.mode || "one_to_one").toString().toLowerCase();
+          const seatsLeft = resolveSeatsLeft(s);
+          const available =
+            mode === "group"
+              ? Number.isFinite(seatsLeft)
+                ? seatsLeft > 0
+                : s.type !== "booked"
+              : s.type !== "booked";
+          if (available) monthMap[dateKey] = true;
+        }
+        monthCacheRef.current.set(monthKey, monthMap);
+        setMonthAvailability((prev) => ({ ...prev, ...monthMap }));
+      } catch {
+        // ignore
+      }
+    },
+    [slug, serviceId]
+  );
 
   useEffect(() => {
     if (!open || !slug || !serviceId) return;
@@ -106,6 +155,11 @@ const AllSlotsCalendarModal = ({
       cancelled = true;
     };
   }, [open, slug, serviceId, departmentId]);
+
+  useEffect(() => {
+    monthCacheRef.current.clear();
+    setMonthAvailability({});
+  }, [slug, serviceId]);
 
   // Fetch slots strictly for a single date
   // AllSlotsCalendarModal.js
@@ -314,6 +368,13 @@ const fetchSlotsForDate = useCallback(
     fetchSlotsForDate(selectedDate);
   }, [open, selectedDate, employees, fetchSlotsForDate]);
 
+  useEffect(() => {
+    if (!open) return;
+    if (selectedDate) {
+      prefetchMonthAvailability(new Date(selectedDate));
+    }
+  }, [open, selectedDate, prefetchMonthAvailability]);
+
   const handleDateClick = (arg) => {
     const clickedDate = arg.dateStr;
     setSelectedDate(clickedDate);
@@ -328,6 +389,8 @@ const fetchSlotsForDate = useCallback(
         setSelectedDate(day);
         fetchSlotsForDate(day);
       }
+    } else {
+      prefetchMonthAvailability(info.start);
     }
   };
 
@@ -484,6 +547,29 @@ const seatsTxt = s.mode === "group" && slotSeatsLabel(s) ? slotSeatsLabel(s) : "
               navLinks={false}
               dateClick={handleDateClick}
               datesSet={handleDatesSet}
+              dayCellContent={(arg) => {
+                const dateStr = arg.date.toISOString().slice(0, 10);
+                const hasAvail = monthAvailability[dateStr] === true;
+                return (
+                  <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
+                    <span>{arg.dayNumberText}</span>
+                    {hasAvail && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          bottom: 2,
+                          transform: "translateX(-50%)",
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          background: theme.palette.primary.main,
+                        }}
+                      />
+                    )}
+                  </Box>
+                );
+              }}
               eventTimeFormat={{ hour: "2-digit", minute: "2-digit", meridiem: true }}
               slotEventOverlap={false}
               events={events}
