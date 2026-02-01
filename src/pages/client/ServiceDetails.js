@@ -256,6 +256,7 @@ export default function ServiceDetails({ slugOverride }) {
   /* month availability dots cache: { 'YYYY-MM-DD': true|false } */
   const [availableMap, setAvailableMap] = useState({});
   const [prefetchingMonth, setPrefetchingMonth] = useState(false);
+  const monthCacheRef = useRef(new Map());
 
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const money = (value, currencyCode) => formatCurrency(value, currencyCode || displayCurrency);
@@ -545,6 +546,52 @@ export default function ServiceDetails({ slugOverride }) {
     }
   };
 
+  const buildMonthKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+  const prefetchMonthAvailability = useCallback(async (monthDate) => {
+    if (!slug || !serviceId) return;
+    const monthKey = buildMonthKey(monthDate);
+    if (monthCacheRef.current.has(monthKey)) {
+      const cached = monthCacheRef.current.get(monthKey);
+      if (cached && typeof cached === "object") {
+        setAvailableMap((prev) => ({ ...prev, ...cached }));
+      }
+      return;
+    }
+
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    setPrefetchingMonth(true);
+    try {
+      const { data } = await api.get(
+        `/public/${slug}/availability-by-service/${serviceId}`,
+        { noCompanyHeader: true, noAuth: true, signal: controller?.signal }
+      );
+      const slots = Array.isArray(data?.slots) ? data.slots : [];
+      const monthMap = {};
+      const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+      const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+      const startKey = ymd(monthStart);
+      const endKey = ymd(monthEnd);
+      for (const s of slots) {
+        const dateKey = s.date || (s.start_time ? s.date : null);
+        if (!dateKey) continue;
+        if (dateKey < startKey || dateKey > endKey) continue;
+        const mode = s.mode || "one_to_one";
+        const seatsLeft = resolveSeatsLeft(s);
+        const available = mode === "group"
+          ? (Number.isFinite(seatsLeft) ? seatsLeft > 0 : s.type !== "booked")
+          : (s.type !== "booked");
+        if (available) monthMap[dateKey] = true;
+      }
+      monthCacheRef.current.set(monthKey, monthMap);
+      setAvailableMap((prev) => ({ ...prev, ...monthMap }));
+    } catch {
+      // ignore
+    } finally {
+      setPrefetchingMonth(false);
+    }
+  }, [slug, serviceId]);
+
   /* helper: aggregate by start_utc (so TZ display is always correct) */
   const aggregateByUTC = (selectedDateStr, results) => {
     const map = new Map(); // key = start_utc
@@ -661,6 +708,12 @@ export default function ServiceDetails({ slugOverride }) {
       if (controller) controller.abort();
     };
   }, [calendarOpen, debouncedDate, activeArtistId, employees]);
+
+  /* prefetch month dots for calendar view */
+  useEffect(() => {
+    if (!calendarOpen) return;
+    prefetchMonthAvailability(monthView);
+  }, [calendarOpen, monthView, prefetchMonthAvailability]);
 
   /* fetch per-day availability across ALL providers */
   useEffect(() => {

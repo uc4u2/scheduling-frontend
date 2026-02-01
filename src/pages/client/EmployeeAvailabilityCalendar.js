@@ -108,8 +108,10 @@ export default function EmployeeAvailabilityCalendar({
   const [slots, setSlots] = useState([]); // availability for selected day
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [availableMap, setAvailableMap] = useState({});
   const cacheRef = useRef(new Map());
   const inflightRef = useRef(new Map());
+  const monthCacheRef = useRef(new Map());
   const [selectedTime, setSelectedTime] = useState(""); // "HH:MM"
   const [saving, setSaving] = useState(false);
   const [priceInfo, setPriceInfo] = useState(null); // optional: fetched price
@@ -268,6 +270,10 @@ export default function EmployeeAvailabilityCalendar({
         setSelectedTime((prev) =>
           data.some((s) => s.start_time === prev) ? prev : ""
         );
+        setAvailableMap((prev) => ({
+          ...prev,
+          [debouncedDate]: data.length > 0,
+        }));
         cacheRef.current.set(cacheKey, {
           data,
           expiresAt: Date.now() + 60_000,
@@ -278,6 +284,11 @@ export default function EmployeeAvailabilityCalendar({
         setLoading(false);
       });
   }, [companySlug, artistId, serviceId, departmentId, debouncedDate, userTz]);
+
+  useEffect(() => {
+    if (!monthView) return;
+    prefetchMonthAvailability(monthView);
+  }, [monthView, prefetchMonthAvailability]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -366,12 +377,67 @@ export default function EmployeeAvailabilityCalendar({
   const firstWeekday = (view) =>
     new Date(view.getFullYear(), view.getMonth(), 1).getDay(); // 0-Sun
 
+  const buildMonthKey = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+  const prefetchMonthAvailability = useCallback(
+    async (monthDate) => {
+      if (!companySlug || !artistId) return;
+      const monthKey = buildMonthKey(monthDate);
+      if (monthCacheRef.current.has(monthKey)) {
+        const cached = monthCacheRef.current.get(monthKey);
+        if (cached && typeof cached === "object") {
+          setAvailableMap((prev) => ({ ...prev, ...cached }));
+        }
+        return;
+      }
+
+      try {
+        const { data } = await api.get(
+          `/public/${companySlug}/availability-by-artist/${artistId}`,
+          { noCompanyHeader: true, noAuth: true }
+        );
+        const slotsRaw = Array.isArray(data?.slots)
+          ? data.slots
+          : Array.isArray(data)
+          ? data
+          : [];
+        const monthMap = {};
+        const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+        const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+        const startKey = ymd(monthStart);
+        const endKey = ymd(monthEnd);
+
+        for (const s of slotsRaw) {
+          if (serviceId && String(s.service_id || "") !== String(serviceId)) continue;
+          const dateKey = s.date;
+          if (!dateKey || dateKey < startKey || dateKey > endKey) continue;
+          const mode = (s.mode || "one_to_one").toString().toLowerCase();
+          const seatsLeft = resolveSeatsLeft(s);
+          const available =
+            mode === "group"
+              ? Number.isFinite(seatsLeft)
+                ? seatsLeft > 0
+                : s.type !== "booked"
+              : s.type !== "booked";
+          if (available) monthMap[dateKey] = true;
+        }
+
+        monthCacheRef.current.set(monthKey, monthMap);
+        setAvailableMap((prev) => ({ ...prev, ...monthMap }));
+      } catch {
+        // ignore
+      }
+    },
+    [companySlug, artistId, serviceId]
+  );
+
   const dayCell = (dNum) => {
     const d = new Date(monthView.getFullYear(), monthView.getMonth(), dNum);
     const ymdStr = ymd(d);
     const isPast = d < new Date(new Date().setHours(0, 0, 0, 0));
     const isSelected = selectedDate === ymdStr;
-    const hasAvail = isSelected && slots.length > 0;
+    const hasAvail = availableMap[ymdStr] === true;
 
     return (
       <Box
@@ -397,7 +463,19 @@ export default function EmployeeAvailabilityCalendar({
           }
         }}
       >
-        {dNum}
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
+          <span>{dNum}</span>
+          {hasAvail && (
+            <Box
+              sx={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                backgroundColor: accentColor,
+              }}
+            />
+          )}
+        </Box>
       </Box>
     );
   };

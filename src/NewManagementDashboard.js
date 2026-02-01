@@ -720,7 +720,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [calendarView, setCalendarView] = useState("timeGridWeek");
+  const [calendarView, setCalendarView] = useState("dayGridMonth");
   const [selected, setSelected] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
@@ -744,10 +744,10 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
 
   const statusColor = (status) => {
     const key = String(status || "").toLowerCase();
-    if (key === "completed") return theme.palette.success.light;
-    if (key === "no-show" || key === "no_show") return theme.palette.error.light;
-    if (key === "cancelled") return theme.palette.grey[400];
-    return theme.palette.info.light;
+    if (key === "completed") return theme.palette.success.main;
+    if (key === "no-show" || key === "no_show") return theme.palette.error.main;
+    if (key === "cancelled") return theme.palette.grey[600];
+    return theme.palette.info.main;
   };
 
   const parseAmount = (val) => {
@@ -846,15 +846,40 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       const serviceName = b?.service?.name || "Service";
       return {
         id: String(b.id),
-        title: `${serviceName} • ${clientName}`,
+        title: serviceName,
         start,
         end: end || start,
         backgroundColor: statusColor(b.status),
         borderColor: statusColor(b.status),
-        textColor: theme.palette.text.primary,
+        textColor: "#ffffff",
+        extendedProps: {
+          clientName,
+          serviceName,
+          bookingMode: b?.service?.booking_mode || b?.booking_mode || "one_to_one",
+          startTime: b?.local_start_time,
+          endTime: b?.local_end_time,
+          localDate: b?.local_date,
+        },
       };
     })
     .filter(Boolean);
+
+  const renderBookingEvent = (eventInfo) => {
+    const { event, timeText, view } = eventInfo;
+    const props = event.extendedProps || {};
+    const showTime = timeText || (props.startTime && props.endTime ? `${props.startTime} - ${props.endTime}` : "");
+    const isMonth = view?.type === "dayGridMonth";
+    const label = isMonth
+      ? `${showTime ? `${showTime} • ` : ""}${props.serviceName || event.title}`
+      : `${showTime ? `${showTime} • ` : ""}${props.serviceName || event.title} • ${props.clientName || ""}`;
+    const modeBadge = props.bookingMode === "group" ? " • Group" : "";
+    return (
+      <Box sx={{ px: 0.5, py: 0.25, fontSize: isMonth ? "0.7rem" : "0.75rem", fontWeight: 600, lineHeight: 1.2 }}>
+        {label}
+        {modeBadge}
+      </Box>
+    );
+  };
 
   const handleEventClick = (info) => {
     const booking = filteredBookings.find((b) => String(b.id) === String(info.event.id));
@@ -1141,6 +1166,8 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
               right: "",
             }}
             eventClick={handleEventClick}
+            eventContent={renderBookingEvent}
+            eventDisplay="block"
             nowIndicator
           />
         </Paper>
