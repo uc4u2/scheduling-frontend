@@ -1354,7 +1354,10 @@ const CollectionShowcase = ({
   const strippedCopyBody = normalizedCopyBody.replace(/<[^>]*>/g, "").trim();
   const hasCopyBody = Boolean(strippedCopyBody);
   const hasCopy = Boolean(copyTitle) || hasCopyBody;
-  const hasCta = ctaTitle || ctaSubtitle || ctaButtonText;
+  const normalizedCtaSubtitle = ctaSubtitle ? safeHtml(String(ctaSubtitle)).trim() : "";
+  const strippedCtaSubtitle = normalizedCtaSubtitle.replace(/<[^>]*>/g, "").trim();
+  const hasCtaSubtitle = Boolean(strippedCtaSubtitle);
+  const hasCta = Boolean(ctaTitle) || hasCtaSubtitle || Boolean(ctaButtonText);
 
   const theme = useTheme();
   const mdUp = useMediaQuery(theme.breakpoints.up("md"));
@@ -1614,10 +1617,13 @@ const CollectionShowcase = ({
                     {ctaTitle}
                   </Typography>
                 )}
-                {ctaSubtitle && (
-                  <Typography variant="body1" sx={{ opacity: 0.85 }}>
-                    {ctaSubtitle}
-                  </Typography>
+                {hasCtaSubtitle && (
+                  <Typography
+                    component="div"
+                    variant="body1"
+                    sx={{ opacity: 0.85 }}
+                    dangerouslySetInnerHTML={{ __html: normalizedCtaSubtitle }}
+                  />
                 )}
               </Stack>
               {ctaButtonText && (
