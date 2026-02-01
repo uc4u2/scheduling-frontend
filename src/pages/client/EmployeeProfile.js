@@ -155,29 +155,35 @@ const EmployeeProfile = ({ slugOverride }) => {
           </Alert>
         )}
 
-        <Typography variant="h4" gutterBottom>
-          {profile.full_name || profile.name}
-        </Typography>
+        <Stack
+          spacing={2}
+          alignItems={{ xs: "center", md: "flex-start" }}
+          textAlign={{ xs: "center", md: "left" }}
+          sx={{ mb: 3 }}
+        >
+          <Typography variant="h4">
+            {profile.full_name || profile.name}
+          </Typography>
 
-        {profile.profile_image_url && (
-          <Box
-            component="img"
-            src={profile.profile_image_url}
-            alt={profile.full_name || profile.name}
-            sx={{
-              width: 140,
-              height: 140,
-              borderRadius: "50%",
-              mb: 3,
-              objectFit: "cover",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            }}
-          />
-        )}
+          {profile.profile_image_url && (
+            <Box
+              component="img"
+              src={profile.profile_image_url}
+              alt={profile.full_name || profile.name}
+              sx={{
+                width: 140,
+                height: 140,
+                borderRadius: "50%",
+                objectFit: "cover",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              }}
+            />
+          )}
 
-        <Typography sx={{ mb: 3 }}>
-          {profile.bio || "No bio available."}
-        </Typography>
+          <Typography sx={{ maxWidth: 520 }}>
+            {profile.bio || "No bio available."}
+          </Typography>
+        </Stack>
 
         {!serviceId ? (
           <Box>
