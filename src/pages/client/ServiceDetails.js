@@ -1717,7 +1717,7 @@ export default function ServiceDetails({ slugOverride }) {
                   height: 4,
                   width: 4,
                   borderRadius: "50%",
-                  backgroundColor: alpha(calendarAccent, 0.6),
+                  backgroundColor: alpha(theme.palette.primary.main, 0.6),
                 }}
               />
               <Typography variant="body2" fontWeight={700} color={calendarAccent}>
