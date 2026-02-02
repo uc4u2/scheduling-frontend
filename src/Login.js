@@ -442,6 +442,15 @@ const Login = ({ setToken }) => {
                   Sign In
                 </Button>
 
+                <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
+                  <Typography variant="body2" color="text.secondary">
+                    New to Schedulaa?
+                  </Typography>
+                  <Button size="small" onClick={() => navigate("/register")}>
+                    Create an account
+                  </Button>
+                </Stack>
+
               </Stack>
             </Box>
           ) : (
