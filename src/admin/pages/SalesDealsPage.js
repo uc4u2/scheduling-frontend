@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Paper, Stack, TextField, Typography, Alert } from "@mui/material";
 import platformAdminApi from "../../api/platformAdminApi";
 
 export default function SalesDealsPage() {
@@ -39,6 +39,9 @@ export default function SalesDealsPage() {
           <TextField label="Plan key" value={planKey} onChange={(e) => setPlanKey(e.target.value)} />
           <Button variant="contained" onClick={create}>Create</Button>
         </Stack>
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Plan selection is for tracking and reporting. Billing is handled in Stripe. Discounts and promotions may change the final amount paid and commission base.
+        </Alert>
         {inviteLink && (
           <Typography variant="body2" sx={{ mt: 2 }}>
             Invite link: {inviteLink}

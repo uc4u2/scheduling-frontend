@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Box, Button, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, MenuItem, Paper, Stack, TextField, Typography, Tooltip } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useNavigate, useParams } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
 
@@ -116,7 +117,12 @@ export default function SalesRepProfilePage() {
           <Typography variant="h6">{profile.kpis.paying}</Typography>
         </Paper>
         <Paper sx={{ p: 2 }}>
-          <Typography variant="subtitle2">MRR</Typography>
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <Typography variant="subtitle2">Estimated MRR</Typography>
+            <Tooltip title="Estimated based on selected plan. Actual revenue is determined by Stripe invoices and may differ due to discounts, coupons, or proration.">
+              <InfoOutlinedIcon fontSize="small" sx={{ color: "text.secondary" }} />
+            </Tooltip>
+          </Stack>
           <Typography variant="h6">${(profile.kpis.mrr_cents / 100).toFixed(2)}</Typography>
         </Paper>
       </Stack>

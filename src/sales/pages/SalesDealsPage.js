@@ -10,6 +10,7 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Alert,
 } from "@mui/material";
 import salesRepApi from "../../api/salesRepApi";
 
@@ -96,6 +97,9 @@ export default function SalesDealsPage() {
           <TextField label="Prospect email" value={prospectEmail} onChange={(e) => setProspectEmail(e.target.value)} />
           <Button variant="contained" onClick={create}>Create Deal</Button>
         </Stack>
+        <Alert severity="info" sx={{ mt: 2 }}>
+          Plan selection is for tracking and reporting. Billing is handled in Stripe. Discounts and promotions may change the final amount paid and commission base.
+        </Alert>
         {inviteLink && (
           <Typography variant="body2" sx={{ mt: 2 }}>
             Invite link: {inviteLink}
