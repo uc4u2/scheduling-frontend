@@ -1655,8 +1655,8 @@ export default function ServiceDetails({ slugOverride }) {
                 mb: 0.5,
               }}
             >
-              {["S", "M", "T", "W", "T", "F", "S"].map((d) => (
-                <Box key={d} sx={{ textAlign: "center" }}>
+              {["S", "M", "T", "W", "T", "F", "S"].map((d, idx) => (
+                <Box key={`${d}-${idx}`} sx={{ textAlign: "center" }}>
                   <Typography variant="caption" color="text.secondary">
                     {d}
                   </Typography>
