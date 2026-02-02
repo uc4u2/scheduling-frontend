@@ -137,9 +137,10 @@ const isoFromParts = (dateStr, timeStr, tz) => {
   }
 };
 
-export default function ServiceDetails({ slugOverride, companySlug }) {
-  const { slug: routeSlug, serviceId } = useParams();
+export default function ServiceDetails({ slugOverride, companySlug, serviceId: serviceIdProp }) {
+  const { slug: routeSlug, serviceId: routeServiceId } = useParams();
   const slug = slugOverride || companySlug || routeSlug;
+  const serviceId = serviceIdProp || routeServiceId;
   const isCustomDomain = getTenantHostMode() === "custom";
   const basePath = useMemo(() => (isCustomDomain ? "" : `/${slug}`), [isCustomDomain, slug]);
   const [searchParams] = useSearchParams();
