@@ -9,6 +9,7 @@ const links = [
   { label: "Deals", to: "/sales/deals" },
   { label: "Customers", to: "/sales/customers" },
   { label: "Ledger", to: "/sales/ledger" },
+  { label: "Payouts", to: "/sales/payouts" },
 ];
 
 export default function SalesShell() {

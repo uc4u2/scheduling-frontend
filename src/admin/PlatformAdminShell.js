@@ -21,6 +21,7 @@ const navItems = [
   { label: "Sales Reps", to: "/admin/sales/reps" },
   { label: "Sales Deals", to: "/admin/sales/deals" },
   { label: "Sales Ledger", to: "/admin/sales/ledger" },
+  { label: "Sales Payouts", to: "/admin/sales/payouts" },
 ];
 
 export default function PlatformAdminShell() {
