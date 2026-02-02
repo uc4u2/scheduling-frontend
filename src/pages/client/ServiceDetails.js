@@ -1546,7 +1546,11 @@ export default function ServiceDetails({ slugOverride }) {
               sx={{ mb: 2 }}
             >
               <Box>
-                <Typography variant="h5" fontWeight={800}>
+                <Typography
+                  variant={isMobile ? "h5" : "h4"}
+                  fontWeight={800}
+                  sx={{ lineHeight: 1.2 }}
+                >
                   Choose a time — {service?.name || "Selected service"}
                 </Typography>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mt: 0.5 }}>
@@ -1555,8 +1559,9 @@ export default function ServiceDetails({ slugOverride }) {
                     label={`TZ: ${Intl.DateTimeFormat().resolvedOptions().timeZone || "Local"}`}
                     sx={{
                       borderRadius: 999,
-                      fontWeight: 600,
-                      backgroundColor: "var(--page-btn-bg-soft, rgba(15,23,42,0.12))",
+                      fontWeight: 500,
+                      backgroundColor: "transparent",
+                      border: `1px solid ${calendarBorder}`,
                       color: calendarText,
                     }}
                   />
@@ -1572,25 +1577,17 @@ export default function ServiceDetails({ slugOverride }) {
                   />
                 </Stack>
               </Box>
-              <Chip
-                size="small"
-                variant="outlined"
-                label="Setmore-style"
-                sx={{
-                  borderRadius: 999,
-                  borderColor: calendarBorder,
-                  color: calendarText,
-                }}
-              />
             </Stack>
 
           <Paper
             sx={{
               p: 2,
               mb: 3,
-              borderRadius: 2,
+              borderRadius: 2.5,
               border: `1px solid ${calendarBorder}`,
               backgroundColor: calendarSurface,
+              backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 100%)",
+              boxShadow: "0 18px 45px rgba(15,23,42,0.10)",
               width: "100%",
               overflow: "hidden",
               boxSizing: "border-box",
@@ -1697,48 +1694,38 @@ export default function ServiceDetails({ slugOverride }) {
               scrollMarginBottom: scrollMarginValue,
             }}
           >
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
+            <Box
+              className="section-header"
               sx={{
                 mb: 2,
+                display: "flex",
+                alignItems: "center",
                 flexWrap: "wrap",
                 gap: 1,
                 backgroundColor: calendarSurface,
                 border: `1px solid ${calendarBorder}`,
-                borderRadius: 2,
-                px: 1.5,
+                borderRadius: 999,
+                px: 2,
                 py: 1,
               }}
-              className="section-header"
             >
-              <Chip
-                label={`Showing: ${prettyDate(selectedDate) || "—"}`}
+              <Typography variant="body2" fontWeight={600} color={calendarText}>
+                Showing: {prettyDate(selectedDate) || "—"}
+              </Typography>
+              <Box
                 sx={{
-                  borderRadius: 999,
-                  fontWeight: 600,
-                  border: `1px solid ${calendarBorder}`,
-                  backgroundColor: "transparent",
-                  color: calendarText,
+                  height: 4,
+                  width: 4,
+                  borderRadius: "50%",
+                  backgroundColor: alpha(calendarAccent, 0.6),
                 }}
               />
-              <Chip
-                label={
-                  isFetchingSlots
-                    ? "Loading…"
-                    : `${daySlots.length} time${
-                        daySlots.length === 1 ? "" : "s"
-                      } available`
-                }
-                sx={{
-                  borderRadius: 999,
-                  fontWeight: 600,
-                  backgroundColor: calendarAccent,
-                  color: calendarAccentContrast,
-                }}
-              />
-            </Stack>
+              <Typography variant="body2" fontWeight={700} color={calendarAccent}>
+                {isFetchingSlots
+                  ? "Loading…"
+                  : `${daySlots.length} time${daySlots.length === 1 ? "" : "s"} available`}
+              </Typography>
+            </Box>
 
             <TimeListContent />
 
