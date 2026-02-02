@@ -1621,21 +1621,23 @@ function CheckoutFormCore({
       sx={{
         px: { xs: 2, md: 0 },
         py: { xs: 3, md: 4 },
-        maxWidth: 720,
+        maxWidth: 760,
         mx: "auto",
       }}
     >
       <Paper
-        elevation={4}
         sx={{
           p: { xs: 2.5, md: 4 },
           borderRadius: 4,
+          border: `1px solid ${borderColor}`,
           backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+          backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%)",
           color: "var(--page-body-color, inherit)",
+          boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.12))",
         }}
       >
         <Stack spacing={3}>
-        <Typography variant="h4" gutterBottom fontWeight={800}>
+        <Typography variant={{ xs: "h5", md: "h4" }} gutterBottom fontWeight={800}>
           Checkout
         </Typography>
 
