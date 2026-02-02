@@ -20,6 +20,7 @@ export default function SettingsReviewsTips() {
   const [delayHours, setDelayHours] = useState(24);
   const [requireApproval, setRequireApproval] = useState(false);
   const [includeTipLink, setIncludeTipLink] = useState(true);
+  const [includeTipCheckout, setIncludeTipCheckout] = useState(true);
   const [autoPublish, setAutoPublish] = useState(false);      // NEW: review_auto_publish
   const [windowDays, setWindowDays] = useState(14);           // NEW: review_window_days
 
@@ -50,6 +51,7 @@ export default function SettingsReviewsTips() {
         setDelayHours(Number(data.review_delay_hours ?? 24));
         setRequireApproval(!!data.require_manager_approval);
         setIncludeTipLink(!!data.include_tip_link);
+        setIncludeTipCheckout(data.include_tip_checkout !== false);
 
         const presets = Array.isArray(data.tip_presets) ? data.tip_presets : (data.tip_presets || []);
         setTipPresetsCsv(presets.join(","));
@@ -92,6 +94,7 @@ export default function SettingsReviewsTips() {
         review_delay_hours: safeDelay,
         require_manager_approval: requireApproval,
         include_tip_link: includeTipLink,
+        include_tip_checkout: includeTipCheckout,
         tip_presets,
         review_redirect_url: reviewRedirectUrl || null,
         email_subject_template: emailSubject || null,
@@ -179,6 +182,19 @@ export default function SettingsReviewsTips() {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <span>{t("settings.reviews.fields.includeTip.label")}</span>
                   <Tooltip title={t("settings.reviews.fields.includeTip.tooltip")}>
+                    <InfoOutlinedIcon fontSize="small" color="action" />
+                  </Tooltip>
+                </Stack>
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <FormControlLabel
+              control={<Switch checked={includeTipCheckout} onChange={(e) => setIncludeTipCheckout(e.target.checked)} />}
+              label={(
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <span>{t("settings.reviews.fields.includeTipCheckout.label")}</span>
+                  <Tooltip title={t("settings.reviews.fields.includeTipCheckout.tooltip")}>
                     <InfoOutlinedIcon fontSize="small" color="action" />
                   </Tooltip>
                 </Stack>
@@ -279,4 +295,3 @@ export default function SettingsReviewsTips() {
     </Card>
   );
 }
-

@@ -1880,6 +1880,10 @@
           "label": "Include tip link in email",
           "tooltip": "Adds a secure 'Leave a tip' button in the email alongside 'Leave a review'."
         },
+        "includeTipCheckout": {
+          "label": "Show tips in checkout",
+          "tooltip": "If ON, tip options appear in client checkout when online payments are enabled. Turn OFF to hide tips at checkout."
+        },
         "autoPublish": {
           "label": "Auto-publish reviews",
           "tooltip": "If ON, client reviews appear on your public page immediately. If OFF, managers can publish later."

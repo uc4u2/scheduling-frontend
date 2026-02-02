@@ -509,6 +509,7 @@ function CheckoutFormCore({
   onSuccess,
   onBack,
   paymentsEnabled,
+  tipEnabled,
   cardOnFileEnabled,
   displayCurrency,
   policy,
@@ -579,6 +580,7 @@ function CheckoutFormCore({
     if (cardOnFileEnabled) return "capture";
     return "off";
   }, [paymentsEnabled, cardOnFileEnabled, policy?.mode]);
+  const tipAllowedNow = paymentsEnabled && tipEnabled;
 
   // Resolve a reliable slug for API calls, even if props/params are missing
   const slugLocal = useMemo(() => {
@@ -857,7 +859,6 @@ function CheckoutFormCore({
   const packageSubtotal = packageItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
   const totalDiscount = serviceItems.reduce((sum, item) => sum + lineDiscount(item), 0);
 
-  const tipAllowedNow = paymentsEnabled;
   const totalTip = tipAllowedNow
     ? serviceItems.reduce((sum, item) => sum + Number(item.tip_amount || 0), 0)
     : 0;
@@ -1134,7 +1135,7 @@ function CheckoutFormCore({
         ...(paymentIntentId ? { payment_intent_id: paymentIntentId } : {}),
         ...(setupIntentId ? { setup_intent_id: setupIntentId } : {}),
         ...(it.couponApplied && it.coupon ? { coupon_code: it.coupon.code } : {}),
-        tip_amount: paymentsEnabled ? Number((it.tip_amount || 0).toFixed(2)) : 0,
+        tip_amount: tipAllowedNow ? Number((it.tip_amount || 0).toFixed(2)) : 0,
         cart: compactCart,
       };
       try {
@@ -2364,6 +2365,7 @@ export default function Checkout(props) {
   const [siteLoading, setSiteLoading] = useState(false);
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
   const [cardOnFileEnabled, setCardOnFileEnabled] = useState(false);
+  const [tipEnabled, setTipEnabled] = useState(true);
   const [displayCurrency, setDisplayCurrency] = useState(() => getActiveCurrency());
   const [policy, setPolicy] = useState(null);
   const [holdMinutes, setHoldMinutes] = useState(null);
@@ -2380,14 +2382,16 @@ export default function Checkout(props) {
 
     (async () => {
       try {
-        const [infoRes, policyRes] = await Promise.all([
+        const [infoRes, policyRes, reviewsRes] = await Promise.all([
           apiClient.get(`/public/${companySlug}/company-info`),
           apiClient.get(`/public/${companySlug}/payments-policy`).catch(() => ({ data: null })),
+          apiClient.get(`/public/${companySlug}/reviews-settings`).catch(() => ({ data: null })),
         ]);
         if (!mounted) return;
 
         const info = infoRes?.data || {};
         const policyData = policyRes?.data || null;
+        const reviewsData = reviewsRes?.data || null;
 
         const payNow = !!info?.enable_stripe_payments;
         const hasPublishable = Boolean(info?.stripe_publishable_key);
@@ -2402,6 +2406,7 @@ export default function Checkout(props) {
         setHoldMinutes(Number.isFinite(hold) && hold > 0 ? hold : null);
         setCompanyContactEmail(String(info?.contact_email || info?.email || "").trim());
         setCompanyContactPhone(String(info?.phone || "").trim());
+        setTipEnabled(reviewsData?.include_tip_checkout !== false);
 
         const rawCurrency = normalizeCurrency(info?.display_currency);
         const inferredCurrency = resolveCurrencyForCountry(info?.country_code || info?.tax_country_code || '');
@@ -2414,6 +2419,7 @@ export default function Checkout(props) {
         setCardOnFileEnabled(false);
         setPolicy(null);
         setHoldMinutes(null);
+        setTipEnabled(true);
       } finally {
         if (mounted) setReady(true);
       }
@@ -2487,6 +2493,7 @@ export default function Checkout(props) {
       companySlug={companySlug}
       slugOverride={slugOverride}
       paymentsEnabled={paymentsEnabled}
+      tipEnabled={tipEnabled}
       cardOnFileEnabled={cardOnFileEnabled}
       displayCurrency={displayCurrency}
       policy={policy}
