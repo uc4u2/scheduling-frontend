@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -28,6 +28,17 @@ export default function SalesCommissionRulesPage() {
     is_active: true,
   });
 
+  const sortedRules = useMemo(() => {
+    const list = Array.isArray(rules) ? [...rules] : [];
+    list.sort((a, b) => {
+      if (Boolean(a.is_active) !== Boolean(b.is_active)) {
+        return a.is_active ? -1 : 1;
+      }
+      return Number(b.version || 0) - Number(a.version || 0);
+    });
+    return list;
+  }, [rules]);
+
   const load = useCallback(async () => {
     setError("");
     try {
@@ -51,8 +62,20 @@ export default function SalesCommissionRulesPage() {
       months_cap: Number(form.months_cap),
       is_active: Boolean(form.is_active),
     };
-    if (!payload.version || !payload.close_bonus_pct || !payload.recurring_pct || !payload.months_cap) {
-      setError("All fields are required.");
+    if (!Number.isFinite(payload.version)) {
+      setError("Version must be a number.");
+      return;
+    }
+    if (!Number.isFinite(payload.close_bonus_pct) || payload.close_bonus_pct < 0 || payload.close_bonus_pct > 100) {
+      setError("Close bonus percent must be between 0 and 100.");
+      return;
+    }
+    if (!Number.isFinite(payload.recurring_pct) || payload.recurring_pct < 0 || payload.recurring_pct > 100) {
+      setError("Recurring percent must be between 0 and 100.");
+      return;
+    }
+    if (!Number.isFinite(payload.months_cap) || payload.months_cap < 0) {
+      setError("Months cap must be 0 or greater.");
       return;
     }
     try {
@@ -69,15 +92,23 @@ export default function SalesCommissionRulesPage() {
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Commission Rules</Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="h5">Commission Rules</Typography>
+          <Button size="small" variant="text" onClick={() => window.dispatchEvent(new Event("admin:help"))}>
+            Help
+          </Button>
+        </Stack>
         <Button variant="contained" onClick={() => setOpen(true)}>New Rule</Button>
       </Stack>
       <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
         Rules affect future commissions only. Existing ledger entries are not recalculated.
       </Typography>
+      <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
+        Only one active rule should be used for future commissions.
+      </Typography>
       {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
 
-      {rules.map((r) => (
+      {sortedRules.map((r) => (
         <Paper key={r.id} sx={{ p: 2, mb: 1 }}>
           <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
             <Box>

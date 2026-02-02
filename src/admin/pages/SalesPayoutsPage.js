@@ -33,6 +33,8 @@ export default function SalesPayoutsPage() {
   const [activeOnly, setActiveOnly] = useState(true);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, rep: null });
 
   const [filters, setFilters] = useState({
     repId: "",
@@ -186,19 +188,24 @@ export default function SalesPayoutsPage() {
   };
 
   const bulkGenerate = async () => {
+    setBulkRunning(true);
+    setBulkProgress({ current: 0, total: 0, rep: null });
     setBulkResult(null);
     const activeReps = repOptions.filter((r) => r.is_active !== false);
     let created = 0;
     let batchExists = 0;
     let noPayable = 0;
     let errors = 0;
+    setBulkOpen(true);
+    setBulkProgress({ current: 0, total: activeReps.length, rep: null });
     for (const rep of activeReps) {
+      setBulkProgress((prev) => ({ ...prev, current: prev.current + 1, rep }));
       try {
         await platformAdminApi.post("/sales/payouts/generate", {
           sales_rep_id: Number(rep.id),
           year: Number(filters.year),
           month: Number(filters.month),
-          currency: "usd",
+          currency: (generateForm.currency || "usd").toLowerCase(),
         });
         created += 1;
       } catch (err) {
@@ -210,19 +217,31 @@ export default function SalesPayoutsPage() {
       await new Promise((r) => setTimeout(r, 150));
     }
     setBulkResult({ created, batchExists, noPayable, errors, total: activeReps.length });
-    setBulkOpen(true);
+    setBulkRunning(false);
     load();
+  };
+
+  const statusChipColor = (status) => {
+    if (status === "paid") return "success";
+    if (status === "approved") return "info";
+    if (status === "void") return "default";
+    return "warning";
   };
 
   return (
     <Box>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Typography variant="h5">Sales Payouts</Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="h5">Sales Payouts</Typography>
+          <Button size="small" variant="text" onClick={() => window.dispatchEvent(new Event("admin:help"))}>
+            Help
+          </Button>
+        </Stack>
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" onClick={exportBatchesCsv} disabled={!sortedRows.length}>
             Export CSV (filtered)
           </Button>
-          <Button variant="outlined" onClick={bulkGenerate} disabled={loading}>
+          <Button variant="outlined" onClick={bulkGenerate} disabled={loading || bulkRunning}>
             Generate for all active reps
           </Button>
           <Button
@@ -337,9 +356,12 @@ export default function SalesPayoutsPage() {
           sx={{ p: 2, mb: 1, cursor: "pointer" }}
           onClick={() => navigate(`/admin/sales/payouts/${row.id}`)}
         >
-          <Typography variant="subtitle1">
-            Batch #{row.id} • {repLabel}
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+            <Typography variant="subtitle1">
+              Batch #{row.id} • {repLabel}
+            </Typography>
+            <Chip size="small" label={row.status} color={statusChipColor(row.status)} />
+          </Stack>
           <Typography variant="body2">
             Period {row.period_start} → {row.period_end} • ${formatCents(row.total_payable_cents)} {row.currency?.toUpperCase()}
           </Typography>
@@ -427,11 +449,19 @@ export default function SalesPayoutsPage() {
               <Typography>Errors: {bulkResult.errors}</Typography>
             </Stack>
           ) : (
-            <Typography>Running...</Typography>
+            <Stack spacing={1} sx={{ mt: 1 }}>
+              <Typography>Running...</Typography>
+              {bulkProgress.total > 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  Processing rep {bulkProgress.current}/{bulkProgress.total}
+                  {bulkProgress.rep ? ` • ${bulkProgress.rep.full_name || bulkProgress.rep.email || bulkProgress.rep.id}` : ""}
+                </Typography>
+              )}
+            </Stack>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBulkOpen(false)}>Close</Button>
+          <Button onClick={() => setBulkOpen(false)} disabled={bulkRunning}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

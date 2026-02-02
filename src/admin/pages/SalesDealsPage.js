@@ -32,7 +32,12 @@ export default function SalesDealsPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 2 }}>Sales Deals</Typography>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="h5">Sales Deals</Typography>
+        <Button size="small" variant="text" onClick={() => window.dispatchEvent(new Event("admin:help"))}>
+          Help
+        </Button>
+      </Stack>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" spacing={2}>
           <TextField label="Sales Rep ID" value={salesRepId} onChange={(e) => setSalesRepId(e.target.value)} />

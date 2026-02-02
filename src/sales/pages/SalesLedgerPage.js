@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Box, Paper, Typography } from "@mui/material";
+import { Box, Button, Paper, Stack, Typography } from "@mui/material";
 import salesRepApi from "../../api/salesRepApi";
 
 export default function SalesLedgerPage() {
@@ -16,7 +16,12 @@ export default function SalesLedgerPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 2 }}>Ledger</Typography>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="h5">Ledger</Typography>
+        <Button size="small" variant="text" onClick={() => window.dispatchEvent(new Event("sales:help"))}>
+          Help
+        </Button>
+      </Stack>
       {entries.map((e) => (
         <Paper key={e.id} sx={{ p: 2, mb: 1 }}>
           <Typography variant="subtitle1">

@@ -46,6 +46,12 @@ export default function PlatformAdminShell() {
     load();
   }, [navigate]);
 
+  useEffect(() => {
+    const openHelp = () => setHelpOpen(true);
+    window.addEventListener("admin:help", openHelp);
+    return () => window.removeEventListener("admin:help", openHelp);
+  }, []);
+
   const logout = () => {
     localStorage.removeItem("platformAdminToken");
     navigate("/admin/login");

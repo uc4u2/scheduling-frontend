@@ -11,6 +11,8 @@ import {
   FormControl,
   InputLabel,
   Alert,
+  Snackbar,
+  Tooltip,
 } from "@mui/material";
 import salesRepApi from "../../api/salesRepApi";
 
@@ -24,6 +26,7 @@ export default function SalesDealsPage() {
   const [status, setStatus] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [copyNotice, setCopyNotice] = useState("");
 
   const load = useCallback(async () => {
     const { data } = await salesRepApi.get("/deals");
@@ -33,6 +36,22 @@ export default function SalesDealsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sales_deals_filters");
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      if (typeof parsed.query === "string") setQuery(parsed.query);
+      if (typeof parsed.statusFilter === "string") setStatusFilter(parsed.statusFilter);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("sales_deals_filters", JSON.stringify({ query, statusFilter }));
+  }, [query, statusFilter]);
 
   const create = async () => {
     setStatus("");
@@ -73,7 +92,11 @@ export default function SalesDealsPage() {
         prospect_name: deal.prospect_name,
         prospect_email: deal.prospect_email,
       });
-      setInviteLink(data?.invite_link || "");
+      const link = data?.invite_link || "";
+      setInviteLink(link);
+      if (link) {
+        setInviteLinks((prev) => ({ ...prev, [deal.id]: link }));
+      }
       setStatus("Invite email sent.");
     } catch (err) {
       setStatus("Failed to send invite email.");
@@ -94,7 +117,12 @@ export default function SalesDealsPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 2 }}>Deals</Typography>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="h5">Deals</Typography>
+        <Button size="small" variant="text" onClick={() => window.dispatchEvent(new Event("sales:help"))}>
+          Help
+        </Button>
+      </Stack>
       <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
         <TextField
           label="Search prospect name/email"
@@ -190,25 +218,34 @@ export default function SalesDealsPage() {
           <Button size="small" variant="outlined" onClick={() => sendInviteEmail(d)} sx={{ mt: 1, ml: 1 }}>
             Send invite email
           </Button>
-          {inviteLinks[d.id] && (
-            <Button
-              size="small"
-              variant="text"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(inviteLinks[d.id]);
-                  setStatus("Invite link copied.");
-                } catch {
-                  // noop
-                }
-              }}
-              sx={{ mt: 1, ml: 1 }}
-            >
-              Copy invite link
-            </Button>
-          )}
+          <Tooltip title={inviteLinks[d.id] ? "" : "Generate invite link first"}>
+            <span>
+              <Button
+                size="small"
+                variant="text"
+                disabled={!inviteLinks[d.id]}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(inviteLinks[d.id]);
+                    setCopyNotice("Invite link copied.");
+                  } catch {
+                    // noop
+                  }
+                }}
+                sx={{ mt: 1, ml: 1 }}
+              >
+                Copy invite link
+              </Button>
+            </span>
+          </Tooltip>
         </Paper>
       ))}
+      <Snackbar
+        open={Boolean(copyNotice)}
+        autoHideDuration={1500}
+        onClose={() => setCopyNotice("")}
+        message={copyNotice}
+      />
     </Box>
   );
 }

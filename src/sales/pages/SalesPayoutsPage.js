@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Box, Chip, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, Paper, Stack, TextField, Typography } from "@mui/material";
 import salesRepApi from "../../api/salesRepApi";
 
 const formatCents = (value) => (Number(value || 0) / 100).toFixed(2);
@@ -37,7 +37,12 @@ export default function SalesPayoutsPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 2 }}>Payouts</Typography>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        <Typography variant="h5">Payouts</Typography>
+        <Button size="small" variant="text" onClick={() => window.dispatchEvent(new Event("sales:help"))}>
+          Help
+        </Button>
+      </Stack>
       <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
         <TextField
           label="Year"
