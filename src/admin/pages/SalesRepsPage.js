@@ -8,6 +8,7 @@ import {
   DialogTitle,
   FormControlLabel,
   Paper,
+  Snackbar,
   Stack,
   Switch,
   TextField,
@@ -27,6 +28,7 @@ export default function SalesRepsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [createdEmail, setCreatedEmail] = useState("");
+  const [copyNotice, setCopyNotice] = useState(false);
 
   const load = useCallback(async () => {
     const { data } = await platformAdminApi.get("/sales/reps");
@@ -122,6 +124,7 @@ export default function SalesRepsPage() {
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(createdEmail);
+                  setCopyNotice(true);
                 } catch {
                   // noop
                 }
@@ -198,6 +201,12 @@ export default function SalesRepsPage() {
           <Button variant="contained" onClick={create}>Create</Button>
         </DialogActions>
       </Dialog>
+      <Snackbar
+        open={copyNotice}
+        autoHideDuration={1500}
+        onClose={() => setCopyNotice(false)}
+        message="Copied"
+      />
     </Box>
   );
 }
