@@ -188,7 +188,11 @@ export default function SalesDealsPage() {
             Invite link: {inviteLink}
           </Typography>
         )}
-      {status && <Typography variant="body2" sx={{ mt: 1 }}>{status}</Typography>}
+        {status && (
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            {status}
+          </Typography>
+        )}
       </Paper>
       {filteredDeals.map((d) => (
         <Paper key={d.id} sx={{ p: 2, mb: 1 }}>
