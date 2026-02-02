@@ -1,6 +1,8 @@
-import React from "react";
-import { Box, Drawer, List, ListItemButton, ListItemText, Toolbar, AppBar, Typography } from "@mui/material";
+import React, { useState } from "react";
+import { Box, Drawer, List, ListItemButton, ListItemText, Toolbar, AppBar, Typography, Button } from "@mui/material";
 import { Link, Outlet, useNavigate } from "react-router-dom";
+import HelpDialog from "../components/HelpDialog";
+import { SALES_REP_GUIDE_EN } from "../help/salesSystemGuide.en";
 
 const drawerWidth = 220;
 
@@ -14,6 +16,7 @@ const links = [
 
 export default function SalesShell() {
   const navigate = useNavigate();
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const logout = () => {
     localStorage.removeItem("salesRepToken");
@@ -25,9 +28,12 @@ export default function SalesShell() {
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
           <Typography variant="h6">Sales Rep Portal</Typography>
-          <Typography variant="body2" sx={{ cursor: "pointer" }} onClick={logout}>
-            Logout
-          </Typography>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            <Button color="inherit" onClick={() => setHelpOpen(true)}>Help</Button>
+            <Typography variant="body2" sx={{ cursor: "pointer" }} onClick={logout}>
+              Logout
+            </Typography>
+          </Box>
         </Toolbar>
       </AppBar>
       <Drawer
@@ -51,6 +57,12 @@ export default function SalesShell() {
         <Toolbar />
         <Outlet />
       </Box>
+      <HelpDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        title="Schedulaa Sales System — Sales Rep Guide"
+        content={SALES_REP_GUIDE_EN}
+      />
     </Box>
   );
 }

@@ -12,6 +12,8 @@ import {
 } from "@mui/material";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import platformAdminApi from "../api/platformAdminApi";
+import HelpDialog from "../components/HelpDialog";
+import { ADMIN_GUIDE_EN } from "../help/salesSystemGuide.en";
 
 const drawerWidth = 240;
 
@@ -28,6 +30,7 @@ export default function PlatformAdminShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [admin, setAdmin] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -57,6 +60,7 @@ export default function PlatformAdminShell() {
           <Typography variant="body2" sx={{ mr: 2 }}>
             {admin?.email || ""}
           </Typography>
+          <Button color="inherit" onClick={() => setHelpOpen(true)}>Help</Button>
           <Button color="inherit" onClick={logout}>Logout</Button>
         </Toolbar>
       </AppBar>
@@ -85,6 +89,12 @@ export default function PlatformAdminShell() {
         <Toolbar />
         <Outlet />
       </Box>
+      <HelpDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        title="Schedulaa Sales System — Admin Guide"
+        content={ADMIN_GUIDE_EN}
+      />
     </Box>
   );
 }
