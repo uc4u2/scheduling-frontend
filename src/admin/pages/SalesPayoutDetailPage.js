@@ -28,6 +28,7 @@ export default function SalesPayoutDetailPage() {
   const [paidOpen, setPaidOpen] = useState(false);
   const [paidForm, setPaidForm] = useState({ paid_method: "", reference: "", notes: "" });
   const [copyNotice, setCopyNotice] = useState(false);
+  const [summaryNotice, setSummaryNotice] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,6 +94,39 @@ export default function SalesPayoutDetailPage() {
     }
   };
 
+  const copySummary = async () => {
+    if (!batch) return;
+    const summary = `Rep: ${batch.sales_rep_id} | Period: ${batch.period_start} → ${batch.period_end} | Total: $${formatCents(batch.total_payable_cents)} | Ref: ${batch.reference || "—"}`;
+    try {
+      await navigator.clipboard.writeText(summary);
+      setSummaryNotice(true);
+    } catch {
+      // noop
+    }
+  };
+
+  const exportEntriesCsv = () => {
+    if (!entries.length) return;
+    const headers = ["entry_id", "deal_id", "company_id", "stripe_invoice_id", "type", "amount_cents", "currency", "created_at"];
+    const rows = entries.map((e) => [
+      e.id,
+      e.deal_id,
+      e.company_id,
+      e.stripe_invoice_id,
+      e.type,
+      e.amount_cents,
+      e.currency,
+      e.created_at,
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.map((v) => `"${String(v ?? "")}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `payout_batch_${batchId}_entries.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   return (
     <Box>
       <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
@@ -104,6 +138,12 @@ export default function SalesPayoutDetailPage() {
             View Rep profile
           </Button>
         )}
+        <Button variant="outlined" onClick={exportEntriesCsv} disabled={!entries.length}>
+          Export CSV (entries)
+        </Button>
+        <Button variant="outlined" onClick={copySummary} disabled={!batch}>
+          Copy payout summary
+        </Button>
       </Stack>
       <Typography variant="h5" sx={{ mb: 2 }}>Payout Batch #{batchId}</Typography>
       {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
@@ -187,6 +227,12 @@ export default function SalesPayoutDetailPage() {
         autoHideDuration={1500}
         onClose={() => setCopyNotice(false)}
         message="Copied"
+      />
+      <Snackbar
+        open={summaryNotice}
+        autoHideDuration={1500}
+        onClose={() => setSummaryNotice(false)}
+        message="Summary copied"
       />
     </Box>
   );

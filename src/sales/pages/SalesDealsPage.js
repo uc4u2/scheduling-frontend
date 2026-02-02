@@ -18,9 +18,12 @@ export default function SalesDealsPage() {
   const [deals, setDeals] = useState([]);
   const [planKey, setPlanKey] = useState("");
   const [inviteLink, setInviteLink] = useState("");
+  const [inviteLinks, setInviteLinks] = useState({});
   const [prospectName, setProspectName] = useState("");
   const [prospectEmail, setProspectEmail] = useState("");
   const [status, setStatus] = useState("");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const load = useCallback(async () => {
     const { data } = await salesRepApi.get("/deals");
@@ -54,7 +57,9 @@ export default function SalesDealsPage() {
 
   const createInvite = async (id) => {
     const { data } = await salesRepApi.post(`/deals/${id}/invite-link`);
-    setInviteLink(data?.invite_link || "");
+    const link = data?.invite_link || "";
+    setInviteLink(link);
+    setInviteLinks((prev) => ({ ...prev, [id]: link }));
   };
 
   const sendInviteEmail = async (deal) => {
@@ -75,9 +80,48 @@ export default function SalesDealsPage() {
     }
   };
 
+  const filteredDeals = deals.filter((d) => {
+    const q = query.trim().toLowerCase();
+    if (q) {
+      const hay = `${d.prospect_name || ""} ${d.prospect_email || ""}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (statusFilter && d.status !== statusFilter) return false;
+    return true;
+  });
+
+  const statusOptions = Array.from(new Set(deals.map((d) => d.status).filter(Boolean)));
+
   return (
     <Box>
       <Typography variant="h5" sx={{ mb: 2 }}>Deals</Typography>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
+        <TextField
+          label="Search prospect name/email"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          sx={{ minWidth: 260 }}
+        />
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
+          <Button
+            size="small"
+            variant={statusFilter ? "outlined" : "contained"}
+            onClick={() => setStatusFilter("")}
+          >
+            All
+          </Button>
+          {statusOptions.map((s) => (
+            <Button
+              key={s}
+              size="small"
+              variant={statusFilter === s ? "contained" : "outlined"}
+              onClick={() => setStatusFilter(s)}
+            >
+              {s}
+            </Button>
+          ))}
+        </Stack>
+      </Stack>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction="row" spacing={2}>
           <FormControl sx={{ minWidth: 160 }}>
@@ -116,9 +160,9 @@ export default function SalesDealsPage() {
             Invite link: {inviteLink}
           </Typography>
         )}
-        {status && <Typography variant="body2" sx={{ mt: 1 }}>{status}</Typography>}
+      {status && <Typography variant="body2" sx={{ mt: 1 }}>{status}</Typography>}
       </Paper>
-      {deals.map((d) => (
+      {filteredDeals.map((d) => (
         <Paper key={d.id} sx={{ p: 2, mb: 1 }}>
           <Typography variant="subtitle1">Deal #{d.id}</Typography>
           <Typography variant="body2">
@@ -127,6 +171,11 @@ export default function SalesDealsPage() {
           <Typography variant="body2">
             Prospect: {d.prospect_name || "—"} • {d.prospect_email || "—"}
           </Typography>
+          {!d.prospect_email && (
+            <Typography variant="body2" sx={{ color: "warning.main" }}>
+              Missing email
+            </Typography>
+          )}
           {d.deal_type === "reactivation" && (
             <Typography variant="body2" sx={{ color: "warning.main" }}>
               Reactivation
@@ -141,6 +190,23 @@ export default function SalesDealsPage() {
           <Button size="small" variant="outlined" onClick={() => sendInviteEmail(d)} sx={{ mt: 1, ml: 1 }}>
             Send invite email
           </Button>
+          {inviteLinks[d.id] && (
+            <Button
+              size="small"
+              variant="text"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(inviteLinks[d.id]);
+                  setStatus("Invite link copied.");
+                } catch {
+                  // noop
+                }
+              }}
+              sx={{ mt: 1, ml: 1 }}
+            >
+              Copy invite link
+            </Button>
+          )}
         </Paper>
       ))}
     </Box>

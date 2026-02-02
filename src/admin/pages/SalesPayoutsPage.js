@@ -31,6 +31,8 @@ export default function SalesPayoutsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeOnly, setActiveOnly] = useState(true);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
 
   const [filters, setFilters] = useState({
     repId: "",
@@ -91,6 +93,25 @@ export default function SalesPayoutsPage() {
   }, [load]);
 
   useEffect(() => {
+    const saved = localStorage.getItem("admin_payout_filters");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setFilters((prev) => ({ ...prev, ...parsed.filters }));
+        if (typeof parsed.activeOnly === "boolean") {
+          setActiveOnly(parsed.activeOnly);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("admin_payout_filters", JSON.stringify({ filters, activeOnly }));
+  }, [filters, activeOnly]);
+
+  useEffect(() => {
     const params = new URLSearchParams(location.search);
     const repId = params.get("rep_id");
     if (repId) {
@@ -141,23 +162,83 @@ export default function SalesPayoutsPage() {
     return list;
   }, [rows]);
 
+  const exportBatchesCsv = () => {
+    if (!sortedRows.length) return;
+    const headers = ["batch_id", "sales_rep_id", "period_start", "period_end", "total_payable_cents", "status", "paid_at", "paid_method", "reference"];
+    const csvRows = sortedRows.map((row) => [
+      row.id,
+      row.sales_rep_id,
+      row.period_start,
+      row.period_end,
+      row.total_payable_cents,
+      row.status,
+      row.paid_at,
+      row.paid_method,
+      row.reference,
+    ]);
+    const csv = [headers.join(","), ...csvRows.map((r) => r.map((v) => `"${String(v ?? "")}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "sales_payout_batches.csv";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const bulkGenerate = async () => {
+    setBulkResult(null);
+    const activeReps = repOptions.filter((r) => r.is_active !== false);
+    let created = 0;
+    let batchExists = 0;
+    let noPayable = 0;
+    let errors = 0;
+    for (const rep of activeReps) {
+      try {
+        await platformAdminApi.post("/sales/payouts/generate", {
+          sales_rep_id: Number(rep.id),
+          year: Number(filters.year),
+          month: Number(filters.month),
+          currency: "usd",
+        });
+        created += 1;
+      } catch (err) {
+        const code = err?.response?.data?.error;
+        if (code === "batch_exists") batchExists += 1;
+        else if (code === "no_payable_entries") noPayable += 1;
+        else errors += 1;
+      }
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    setBulkResult({ created, batchExists, noPayable, errors, total: activeReps.length });
+    setBulkOpen(true);
+    load();
+  };
+
   return (
     <Box>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Typography variant="h5">Sales Payouts</Typography>
-        <Button
-          variant="contained"
-          onClick={() => {
-            setGenerateForm((prev) => ({
-              ...prev,
-              year: filters.year || new Date().getFullYear(),
-              month: filters.month || new Date().getMonth() + 1,
-            }));
-            setGenerateOpen(true);
-          }}
-        >
-          Generate batch
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" onClick={exportBatchesCsv} disabled={!sortedRows.length}>
+            Export CSV (filtered)
+          </Button>
+          <Button variant="outlined" onClick={bulkGenerate} disabled={loading}>
+            Generate for all active reps
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setGenerateForm((prev) => ({
+                ...prev,
+                year: filters.year || new Date().getFullYear(),
+                month: filters.month || new Date().getMonth() + 1,
+              }));
+              setGenerateOpen(true);
+            }}
+          >
+            Generate batch
+          </Button>
+        </Stack>
       </Stack>
 
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -331,6 +412,26 @@ export default function SalesPayoutsPage() {
         <DialogActions>
           <Button onClick={() => setGenerateOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={generateBatch}>Generate</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={bulkOpen} onClose={() => setBulkOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Bulk generate results</DialogTitle>
+        <DialogContent>
+          {bulkResult ? (
+            <Stack spacing={1} sx={{ mt: 1 }}>
+              <Typography>Processed reps: {bulkResult.total}</Typography>
+              <Typography>Created: {bulkResult.created}</Typography>
+              <Typography>Batch exists: {bulkResult.batchExists}</Typography>
+              <Typography>No payable entries: {bulkResult.noPayable}</Typography>
+              <Typography>Errors: {bulkResult.errors}</Typography>
+            </Stack>
+          ) : (
+            <Typography>Running...</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBulkOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

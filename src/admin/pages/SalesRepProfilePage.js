@@ -66,6 +66,20 @@ export default function SalesRepProfilePage() {
         <Button variant="text" onClick={sendReset}>
           Send invite email
         </Button>
+        <Tooltip title="Backend endpoint not implemented yet">
+          <span>
+            <Button variant="outlined" disabled>
+              Deactivate
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip title="Backend endpoint not implemented yet">
+          <span>
+            <Button variant="outlined" disabled>
+              Activate
+            </Button>
+          </span>
+        </Tooltip>
         <Button variant="text" onClick={() => navigate(`/admin/sales/payouts?rep_id=${repId}`)}>
           Open payouts list
         </Button>

@@ -12,6 +12,8 @@ import {
   Switch,
   TextField,
   Typography,
+  Tooltip,
+  Chip,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
@@ -129,6 +131,14 @@ export default function SalesRepsPage() {
         <Paper key={r.id} sx={{ p: 2, mb: 1 }}>
           <Typography variant="subtitle1">{r.full_name}</Typography>
           <Typography variant="body2">{r.email} • {r.phone || "—"}</Typography>
+          <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
+            <Chip
+              size="small"
+              label={r.is_active === false ? "Inactive" : "Active"}
+              color={r.is_active === false ? "default" : "success"}
+              variant="outlined"
+            />
+          </Stack>
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             <Button size="small" component={Link} to={`/admin/sales/reps/${r.id}`}>
               View profile
@@ -136,6 +146,20 @@ export default function SalesRepsPage() {
             <Button size="small" variant="outlined" onClick={() => resendReset(r)}>
               Send password reset
             </Button>
+            <Tooltip title="Backend endpoint not implemented yet">
+              <span>
+                <Button size="small" variant="outlined" disabled>
+                  Deactivate
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title="Backend endpoint not implemented yet">
+              <span>
+                <Button size="small" variant="outlined" disabled>
+                  Activate
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
         </Paper>
       ))}
