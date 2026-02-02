@@ -1,5 +1,20 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Box, Button, MenuItem, Paper, Stack, TextField, Typography, Tooltip } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Paper,
+  Snackbar,
+  Stack,
+  TextField,
+  Typography,
+  Tooltip,
+} from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useNavigate, useParams } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
@@ -9,6 +24,8 @@ export default function SalesRepProfilePage() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [payoutError, setPayoutError] = useState("");
+  const [actionNotice, setActionNotice] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [payoutForm, setPayoutForm] = useState({
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
@@ -28,6 +45,16 @@ export default function SalesRepProfilePage() {
 
   const sendReset = async () => {
     await platformAdminApi.post(`/sales/reps/${repId}/reset-password`);
+  };
+
+  const setActive = async (isActive) => {
+    try {
+      await platformAdminApi.post(`/sales/reps/${repId}/set-active`, { is_active: isActive });
+      setActionNotice(isActive ? "Rep activated." : "Rep deactivated.");
+      load();
+    } catch {
+      setActionNotice("Failed to update rep status.");
+    }
   };
 
   const generateBatch = async () => {
@@ -66,20 +93,20 @@ export default function SalesRepProfilePage() {
         <Button variant="text" onClick={sendReset}>
           Send invite email
         </Button>
-        <Tooltip title="Backend endpoint not implemented yet">
-          <span>
-            <Button variant="outlined" disabled>
-              Deactivate
-            </Button>
-          </span>
-        </Tooltip>
-        <Tooltip title="Backend endpoint not implemented yet">
-          <span>
-            <Button variant="outlined" disabled>
-              Activate
-            </Button>
-          </span>
-        </Tooltip>
+        <Button
+          variant="outlined"
+          disabled={profile.rep.is_active === false}
+          onClick={() => setConfirmOpen(true)}
+        >
+          Deactivate
+        </Button>
+        <Button
+          variant="outlined"
+          disabled={profile.rep.is_active !== false}
+          onClick={() => setActive(true)}
+        >
+          Activate
+        </Button>
         <Button variant="text" onClick={() => navigate(`/admin/sales/payouts?rep_id=${repId}`)}>
           Open payouts list
         </Button>
@@ -156,6 +183,33 @@ export default function SalesRepProfilePage() {
           </Typography>
         ))}
       </Paper>
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>Deactivate sales rep?</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning">
+            {profile.rep.email} will not be able to log in.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              setActive(false);
+              setConfirmOpen(false);
+            }}
+          >
+            Deactivate
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Snackbar
+        open={Boolean(actionNotice)}
+        autoHideDuration={2000}
+        onClose={() => setActionNotice("")}
+        message={actionNotice}
+      />
     </Box>
   );
 }

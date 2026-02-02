@@ -15,6 +15,7 @@ import {
   Typography,
   Tooltip,
   Chip,
+  Alert,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
@@ -29,6 +30,9 @@ export default function SalesRepsPage() {
   const [success, setSuccess] = useState("");
   const [createdEmail, setCreatedEmail] = useState("");
   const [copyNotice, setCopyNotice] = useState(false);
+  const [actionNotice, setActionNotice] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmRep, setConfirmRep] = useState(null);
 
   const load = useCallback(async () => {
     const { data } = await platformAdminApi.get("/sales/reps");
@@ -84,6 +88,21 @@ export default function SalesRepsPage() {
     if (!ok) return;
     await platformAdminApi.post(`/sales/reps/${rep.id}/reset-password`);
     setSuccess("Password setup email sent.");
+  };
+
+  const setActive = async (rep, isActive) => {
+    try {
+      await platformAdminApi.post(`/sales/reps/${rep.id}/set-active`, { is_active: isActive });
+      setActionNotice(isActive ? "Rep activated." : "Rep deactivated.");
+      load();
+    } catch {
+      setActionNotice("Failed to update rep status.");
+    }
+  };
+
+  const confirmDeactivate = (rep) => {
+    setConfirmRep(rep);
+    setConfirmOpen(true);
   };
 
   return (
@@ -154,20 +173,22 @@ export default function SalesRepsPage() {
             <Button size="small" variant="outlined" onClick={() => resendReset(r)}>
               Send password reset
             </Button>
-            <Tooltip title="Backend endpoint not implemented yet">
-              <span>
-                <Button size="small" variant="outlined" disabled>
-                  Deactivate
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip title="Backend endpoint not implemented yet">
-              <span>
-                <Button size="small" variant="outlined" disabled>
-                  Activate
-                </Button>
-              </span>
-            </Tooltip>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={r.is_active === false}
+              onClick={() => confirmDeactivate(r)}
+            >
+              Deactivate
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={r.is_active !== false}
+              onClick={() => setActive(r, true)}
+            >
+              Activate
+            </Button>
           </Stack>
         </Paper>
       ))}
@@ -201,11 +222,38 @@ export default function SalesRepsPage() {
           <Button variant="contained" onClick={create}>Create</Button>
         </DialogActions>
       </Dialog>
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>Deactivate sales rep?</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning">
+            {confirmRep?.email || "This rep"} will not be able to log in.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              if (confirmRep) setActive(confirmRep, false);
+              setConfirmOpen(false);
+            }}
+          >
+            Deactivate
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Snackbar
         open={copyNotice}
         autoHideDuration={1500}
         onClose={() => setCopyNotice(false)}
         message="Copied"
+      />
+      <Snackbar
+        open={Boolean(actionNotice)}
+        autoHideDuration={2000}
+        onClose={() => setActionNotice("")}
+        message={actionNotice}
       />
     </Box>
   );
