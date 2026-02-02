@@ -14,4 +14,18 @@ salesRepApi.interceptors.request.use((config) => {
   return config;
 });
 
+salesRepApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    if (status === 401 && typeof window !== "undefined") {
+      const path = window.location?.pathname || "";
+      if (!path.startsWith("/sales/login")) {
+        window.location.assign("/sales/login");
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default salesRepApi;
