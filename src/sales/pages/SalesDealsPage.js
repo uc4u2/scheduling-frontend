@@ -92,6 +92,9 @@ export default function SalesDealsPage() {
               <MenuItem value="pro">Pro</MenuItem>
               <MenuItem value="business">Business</MenuItem>
             </Select>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+              ℹ️ Plan selection is for tracking only. Final billing and commission are based on Stripe payments and may differ due to discounts or promotions.
+            </Typography>
           </FormControl>
           <TextField label="Prospect name" value={prospectName} onChange={(e) => setProspectName(e.target.value)} />
           <TextField label="Prospect email" value={prospectEmail} onChange={(e) => setProspectEmail(e.target.value)} />
