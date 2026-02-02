@@ -719,8 +719,8 @@ export default function EmployeeAvailabilityCalendar({
         </Box>
 
         <Grid container spacing={0.75} sx={{ mt: 1 }}>
-          {["S", "M", "T", "W", "T", "F", "S"].map((d) => (
-            <Grid item xs={12 / 7} key={d} sx={{ textAlign: "center" }}>
+          {["S", "M", "T", "W", "T", "F", "S"].map((d, idx) => (
+            <Grid item xs={12 / 7} key={`${d}-${idx}`} sx={{ textAlign: "center" }}>
               <Typography variant="caption" color="text.secondary">
                 {d}
               </Typography>
