@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Drawer, List, ListItemButton, ListItemText, Toolbar, AppBar, Typography, Button } from "@mui/material";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import HelpDialog from "../components/HelpDialog";
@@ -17,6 +17,12 @@ const links = [
 export default function SalesShell() {
   const navigate = useNavigate();
   const [helpOpen, setHelpOpen] = useState(false);
+
+  useEffect(() => {
+    const openHelp = () => setHelpOpen(true);
+    window.addEventListener("sales:help", openHelp);
+    return () => window.removeEventListener("sales:help", openHelp);
+  }, []);
 
   const logout = () => {
     localStorage.removeItem("salesRepToken");

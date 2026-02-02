@@ -93,7 +93,15 @@ export default function SalesDealsPage() {
               <MenuItem value="business">Business</MenuItem>
             </Select>
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-              ℹ️ Plan selection is for tracking only. Final billing and commission are based on Stripe payments and may differ due to discounts or promotions.
+              ℹ️ Plan selection is for tracking only. Final billing and commission are based on Stripe payments and may differ due to discounts or promotions.{" "}
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => window.dispatchEvent(new Event("sales:help"))}
+                sx={{ p: 0, minWidth: "auto", fontSize: "inherit", textTransform: "none" }}
+              >
+                Learn more
+              </Button>
             </Typography>
           </FormControl>
           <TextField label="Prospect name" value={prospectName} onChange={(e) => setProspectName(e.target.value)} />
