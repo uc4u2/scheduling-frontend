@@ -16,7 +16,11 @@ export default function SalesLogin() {
       const { data } = await salesRepApi.post("/auth/login", { email, password });
       if (data?.token) {
         localStorage.setItem("salesRepToken", data.token);
-        navigate("/sales/summary");
+        if (data?.agreement_required) {
+          navigate("/sales/agreement");
+        } else {
+          navigate("/sales/summary");
+        }
       }
     } catch (err) {
       setError("Invalid login. Please try again.");

@@ -77,6 +77,7 @@ import SalesLogin from "./sales/SalesLogin";
 import SalesForgotPassword from "./sales/SalesForgotPassword";
 import SalesResetPassword from "./sales/SalesResetPassword";
 import SalesShell from "./sales/SalesShell";
+import SalesAgreementPage from "./sales/pages/SalesAgreementPage";
 import SalesSummaryPage from "./sales/pages/SalesSummaryPage";
 import SalesRepDealsPage from "./sales/pages/SalesDealsPage";
 import SalesCustomersPage from "./sales/pages/SalesCustomersPage";
@@ -497,6 +498,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/sales/login" element={<SalesLogin />} />
           <Route path="/sales/forgot" element={<SalesForgotPassword />} />
           <Route path="/sales/reset" element={<SalesResetPassword />} />
+          <Route path="/sales/agreement" element={<SalesAgreementPage />} />
           <Route path="/sales" element={<SalesShell />}>
             <Route path="summary" element={<SalesSummaryPage />} />
             <Route path="deals" element={<SalesRepDealsPage />} />

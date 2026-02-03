@@ -27,6 +27,7 @@ export default function SalesDealsPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [copyNotice, setCopyNotice] = useState("");
+  const [inviteNotice, setInviteNotice] = useState("");
 
   const load = useCallback(async () => {
     const { data } = await salesRepApi.get("/deals");
@@ -79,6 +80,14 @@ export default function SalesDealsPage() {
     const link = data?.invite_link || "";
     setInviteLink(link);
     setInviteLinks((prev) => ({ ...prev, [id]: link }));
+    if (link) {
+      try {
+        await navigator.clipboard.writeText(link);
+        setInviteNotice("Invite link created and copied.");
+      } catch {
+        setInviteNotice("Invite link created.");
+      }
+    }
   };
 
   const sendInviteEmail = async (deal) => {
@@ -97,7 +106,7 @@ export default function SalesDealsPage() {
       if (link) {
         setInviteLinks((prev) => ({ ...prev, [deal.id]: link }));
       }
-      setStatus("Invite email sent.");
+      setInviteNotice("Invite email sent.");
     } catch (err) {
       setStatus("Failed to send invite email.");
     }
@@ -242,6 +251,11 @@ export default function SalesDealsPage() {
               </Button>
             </span>
           </Tooltip>
+          {inviteLinks[d.id] && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+              Send this link to the customer by email.
+            </Typography>
+          )}
         </Paper>
       ))}
       <Snackbar
@@ -250,6 +264,15 @@ export default function SalesDealsPage() {
         onClose={() => setCopyNotice("")}
         message={copyNotice}
       />
+      <Snackbar
+        open={Boolean(inviteNotice)}
+        autoHideDuration={2000}
+        onClose={() => setInviteNotice("")}
+      >
+        <Alert severity="success" onClose={() => setInviteNotice("")} sx={{ width: "100%" }}>
+          {inviteNotice}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
