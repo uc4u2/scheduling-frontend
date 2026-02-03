@@ -15,6 +15,7 @@ This is the one‑pager for Sales Reps and Admins to understand the Sales system
 
 - **Sales Rep Portal:** `/sales/*`
   - Login: `/sales/login`
+  - Agreement: `/sales/agreement`
   - Deals: `/sales/deals`
   - Ledger: `/sales/ledger`
   - Payouts: `/sales/payouts`
@@ -46,7 +47,16 @@ If they didn’t receive the email:
 
 ---
 
-## 4) Sales Rep: Create a Deal
+## 4) Sales Rep: First‑time Agreement (Required)
+
+On first login, Sales Reps must accept the **Sales Representative Agreement** before using the portal.
+
+- If agreement is not accepted, the portal redirects to `/sales/agreement`
+- Accepting the agreement is recorded (version + timestamp)
+
+---
+
+## 5) Sales Rep: Create a Deal
 
 1. Go to **Sales → Deals**
 2. Select **Plan** (Starter / Pro / Business)
@@ -59,7 +69,7 @@ Notes:
 
 ---
 
-## 5) Deals → Invite → Registration
+## 6) Deals → Invite → Registration
 
 - Invite link is sent to the customer
 - Customer registers using the invite link
@@ -68,7 +78,7 @@ Notes:
 
 ---
 
-## 6) Ledger (Commission Records)
+## 7) Ledger (Commission Records)
 
 **Ledger = earned commissions** (created automatically after Stripe payment succeeds)
 
@@ -80,7 +90,7 @@ If payment fails → no commission entry.
 
 ---
 
-## 7) Payouts (Manual but Audited)
+## 8) Payouts (Manual but Audited)
 
 **Admin → Sales Payouts**
 
@@ -94,7 +104,7 @@ Every action writes an **Audit Log**.
 
 ---
 
-## 8) Customers (Sales Rep view)
+## 9) Customers (Sales Rep view)
 
 **Sales → Customers** shows:
 - Company name / slug / email
@@ -105,7 +115,7 @@ Every action writes an **Audit Log**.
 
 ---
 
-## 9) Plans & Pricing — How It Really Works (Important)
+## 10) Plans & Pricing — How It Really Works (Important)
 
 This section explains how plans, pricing, Stripe, and commissions work together in Schedulaa.
 
@@ -218,7 +228,7 @@ Stripe invoices determine the final charged amount and commission base.
 
 ---
 
-## 10) Troubleshooting
+## 11) Troubleshooting
 
 - **Invite email not received** → Admin: click “Send password reset”
 - **No commission showing** → Stripe payment hasn’t succeeded yet
@@ -227,12 +237,12 @@ Stripe invoices determine the final charged amount and commission base.
 
 ---
 
-## 11) Admin Audit Logs
+## 12) Admin Audit Logs
 
 Every critical action (rep activation, payouts, etc.) is written to PlatformAuditLog.
 
 ---
 
-## 12) Support
+## 13) Support
 
 If anything looks off, contact the platform admin team.

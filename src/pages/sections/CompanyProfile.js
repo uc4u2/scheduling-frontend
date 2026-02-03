@@ -138,6 +138,10 @@ export default function CompanyProfile({ token }) {
   const [viewerCheckBusy, setViewerCheckBusy] = useState(false);
   const [showProfilePrompt, setShowProfilePrompt] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [contactFormId, setContactFormId] = useState(null);
+  const [contactNotifyEmails, setContactNotifyEmails] = useState("");
+  const [contactFormLoading, setContactFormLoading] = useState(false);
+  const [contactFormSaving, setContactFormSaving] = useState(false);
   const PAY_FREQUENCY_OPTIONS = useMemo(
     () => [
       { value: "weekly", label: "Weekly" },
@@ -360,6 +364,56 @@ export default function CompanyProfile({ token }) {
       setShowProfilePrompt(true);
     }
   }, [profileLoaded, form.name, form.slug]);
+
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    (async () => {
+      try {
+        setContactFormLoading(true);
+        const { data } = await api.get("/api/website/forms", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!active) return;
+        const forms = Array.isArray(data) ? data : [];
+        let contactForm = forms.find((f) => (f.key || "").toLowerCase() === "contact");
+        if (!contactForm) {
+          const created = await api.post(
+            "/api/website/forms",
+            { name: "Contact", key: "contact" },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          contactForm = created.data;
+        }
+        if (!active || !contactForm) return;
+        setContactFormId(contactForm.id);
+        setContactNotifyEmails(contactForm.notify_emails || "");
+      } catch (err) {
+        console.error("Failed to load website forms", err);
+      } finally {
+        if (active) setContactFormLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [token]);
+
+  const handleSaveContactNotifyEmails = async () => {
+    if (!contactFormId) return;
+    try {
+      setContactFormSaving(true);
+      await api.put(
+        `/api/website/forms/${contactFormId}`,
+        { notify_emails: contactNotifyEmails },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showMessage("", "success", "Contact form recipients updated.");
+    } catch (err) {
+      console.error("Failed to save contact notify emails", err);
+      showMessage("", "error", "Failed to update contact form recipients.");
+    } finally {
+      setContactFormSaving(false);
+    }
+  };
 
 
   /* ---------- handle slug change ---------- */
@@ -1115,6 +1169,42 @@ export default function CompanyProfile({ token }) {
             </Alert>
           )}
         </Box>
+      </Paper>
+
+      {/* Website contact form recipients */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack spacing={1.5}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="subtitle1" fontWeight={600}>
+              Website Contact Form Recipients
+            </Typography>
+            <Tooltip title="If empty, submissions go to Company Profile Email, then all managers.">
+              <IconButton size="small">
+                <InfoOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Set the email addresses that should receive contact form submissions.
+          </Typography>
+          <TextField
+            fullWidth
+            label="Notify emails (comma-separated)"
+            value={contactNotifyEmails}
+            onChange={(e) => setContactNotifyEmails(e.target.value)}
+            helperText="Leave blank to use Company Profile Email, then manager emails."
+            disabled={contactFormLoading}
+          />
+          <Box>
+            <Button
+              variant="contained"
+              onClick={handleSaveContactNotifyEmails}
+              disabled={contactFormLoading || contactFormSaving || !contactFormId}
+            >
+              {contactFormSaving ? <CircularProgress size={20} /> : "Save contact recipients"}
+            </Button>
+          </Box>
+        </Stack>
       </Paper>
 
       {/* Departments */}
