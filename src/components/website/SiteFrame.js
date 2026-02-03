@@ -142,7 +142,7 @@ export default function SiteFrame({
         }
         return base;
       }
-      return { ...base, color: headerTextColor };
+      return { ...base, color: active ? base.color : headerTextColor };
     };
   }, [navButtonSx, headerTextColor, headerBg, navStyle?.variant, navStyle?.text, theme.palette.text.primary]);
 
