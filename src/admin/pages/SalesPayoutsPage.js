@@ -141,6 +141,8 @@ export default function SalesPayoutsPage() {
         setError("No payable entries for that period.");
       } else if (code === "batch_exists") {
         setError("A batch already exists for that rep and period.");
+      } else if (code === "net_total_non_positive") {
+        setError("You currently have more adjustments than earnings; payout will carry forward.");
       } else {
         setError("Failed to generate payout batch.");
       }
@@ -195,6 +197,7 @@ export default function SalesPayoutsPage() {
     let created = 0;
     let batchExists = 0;
     let noPayable = 0;
+    let netNonPositive = 0;
     let errors = 0;
     setBulkOpen(true);
     setBulkProgress({ current: 0, total: activeReps.length, rep: null });
@@ -212,11 +215,12 @@ export default function SalesPayoutsPage() {
         const code = err?.response?.data?.error;
         if (code === "batch_exists") batchExists += 1;
         else if (code === "no_payable_entries") noPayable += 1;
+        else if (code === "net_total_non_positive") netNonPositive += 1;
         else errors += 1;
       }
       await new Promise((r) => setTimeout(r, 150));
     }
-    setBulkResult({ created, batchExists, noPayable, errors, total: activeReps.length });
+    setBulkResult({ created, batchExists, noPayable, netNonPositive, errors, total: activeReps.length });
     setBulkRunning(false);
     load();
   };
@@ -446,6 +450,7 @@ export default function SalesPayoutsPage() {
               <Typography>Created: {bulkResult.created}</Typography>
               <Typography>Batch exists: {bulkResult.batchExists}</Typography>
               <Typography>No payable entries: {bulkResult.noPayable}</Typography>
+              <Typography>Net non‑positive: {bulkResult.netNonPositive}</Typography>
               <Typography>Errors: {bulkResult.errors}</Typography>
             </Stack>
           ) : (

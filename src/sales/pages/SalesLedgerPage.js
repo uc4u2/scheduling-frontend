@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Box, Button, Paper, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import salesRepApi from "../../api/salesRepApi";
 
 export default function SalesLedgerPage() {
@@ -24,9 +24,13 @@ export default function SalesLedgerPage() {
       </Stack>
       {entries.map((e) => (
         <Paper key={e.id} sx={{ p: 2, mb: 1 }}>
-          <Typography variant="subtitle1">
-            {e.type} • {(e.amount_cents / 100).toFixed(2)} {e.currency?.toUpperCase()}
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+            <Typography variant="subtitle1">
+              {e.type} • {(e.amount_cents / 100).toFixed(2)} {e.currency?.toUpperCase()}
+            </Typography>
+            {e.type === "adjustment" && <Chip size="small" label="Adjustment" color="warning" />}
+            {e.status === "held_dispute" && <Chip size="small" label="Held dispute" color="warning" variant="outlined" />}
+          </Stack>
           <Typography variant="body2">
             Deal {e.deal_id} • Invoice {e.stripe_invoice_id}
           </Typography>
