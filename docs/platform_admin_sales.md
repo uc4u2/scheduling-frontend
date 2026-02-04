@@ -156,10 +156,13 @@ Added in `backend/app/models.py`:
 
 - `SalesCommissionLedger`
   - Unique constraint: `(stripe_invoice_id, deal_id, type)` for idempotency
+  - Stripe linkage: `stripe_charge_id`, `stripe_payment_intent_id`
+  - Reversals: `reversal_of_ledger_id`, `reversal_reason`
   - Status lifecycle:
     - `pending_hold` (close bonus after invoice #1)
     - `payable` (eligible for payout batch)
     - `paid` (included in paid batch)
+    - `held_dispute` (blocked due to dispute)
     - `voided_expired` (churned before eligibility)
   - Payout fields:
     - `batch_id`, `paid_at`, `paid_method`, `paid_reference`
@@ -216,6 +219,19 @@ Commission ledger entries are written in `backend/app/routes.py` in the billing 
 3) **Payout batches**
    - Include **only** ledger rows with `status == "payable"` and `batch_id IS NULL`.
 
+### Refunds, disputes, chargebacks (v1)
+
+- **Refund / chargeback (dispute lost)**:
+  - If commission is **not paid** → status `voided_expired`
+  - If commission **was paid** → create **negative adjustment** (type `adjustment`, status `payable`)
+- **Dispute created**:
+  - `payable` → `held_dispute`
+- **Dispute won**:
+  - `held_dispute` → `payable`
+- **Dispute lost (chargeback)**:
+  - If not paid → `voided_expired`
+  - If paid → negative adjustment `payable`
+
 ### Idempotency
 
 - Unique constraint on `(stripe_invoice_id, deal_id, type)`
@@ -228,6 +244,7 @@ Commission ledger entries are written in `backend/app/routes.py` in the billing 
 - Generate batch for a rep/month
 - Approve (optional)
 - Mark Paid (manual method + reference)
+- Adjustments can reduce payouts; if net total is **<= 0**, batch is not generated and items carry forward.
 
 Every action writes an **Audit Log**.
 

@@ -94,6 +94,11 @@ Eligibility timing (v1):
 
 If payment fails → no commission entry.
 
+Refunds, disputes, chargebacks (v1):
+- If commission is **not paid** → it becomes **voided_expired**
+- If commission **was paid** → a **negative adjustment** is created and nets against future payouts
+- Dispute created → `payable` entries become `held_dispute` until resolved
+
 ---
 
 ## 8) Payouts (Manual but Audited)
@@ -103,6 +108,8 @@ If payment fails → no commission entry.
 - Generate batch for a rep/month (includes **payable** ledger entries only)
 - Approve (optional)
 - Mark Paid (manual method + reference)
+
+Adjustments (refunds/chargebacks) can reduce payouts. If the net total is <= 0, a batch may not be generated and items carry forward.
 
 Every action writes an **Audit Log**.
 
