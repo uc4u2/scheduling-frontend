@@ -41,6 +41,8 @@ import {
   AccordionSummary,
   AccordionDetails,
   ButtonBase,
+  Menu,
+  MenuItem,
   Slider,
   useMediaQuery,
 } from "@mui/material";
@@ -61,6 +63,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline"; // NEW
 import PaletteIcon from "@mui/icons-material/Palette";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 import { nanoid } from "nanoid";
 import { Link as RouterLink, useLocation } from "react-router-dom";
@@ -872,6 +875,9 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
 
   const [siteSettings, setSiteSettings] = useState(null);
   const [companyProfileSlug, setCompanyProfileSlug] = useState("");
+  const [pageSettingsDirty, setPageSettingsDirty] = useState(false);
+  const [pageMenuAnchor, setPageMenuAnchor] = useState(null);
+  const [pageMenuTarget, setPageMenuTarget] = useState(null);
   const rawNavOverrides = useMemo(
     () =>
       siteSettings?.nav_overrides ||
@@ -983,6 +989,10 @@ useEffect(() => {
     setInspectorDrawerOpen(false);
   }
 }, [isLgDown, inspectorDrawerOpen]);
+
+useEffect(() => {
+  setPageSettingsDirty(false);
+}, [editing?.id]);
 
  
 
@@ -1127,6 +1137,52 @@ const openBlockPreview = useCallback((type, label) => {
 const closeBlockPreview = useCallback(() => {
   setBlockPreview((prev) => ({ ...prev, open: false }));
 }, []);
+
+const handlePageMenuOpen = useCallback((event, page) => {
+  event.stopPropagation();
+  setPageMenuAnchor(event.currentTarget);
+  setPageMenuTarget(page);
+}, []);
+
+const handlePageMenuClose = useCallback(() => {
+  setPageMenuAnchor(null);
+  setPageMenuTarget(null);
+}, []);
+
+const applyPageActionPatch = useCallback(
+  (pageId, patch, { setHomepage = false } = {}) => {
+    if (!pageId) return;
+    setPageSettingsDirty(true);
+    setPages((prev) =>
+      prev.map((p) => {
+        if (setHomepage) {
+          const isHome = p.id === pageId;
+          return p.is_homepage === isHome ? p : { ...p, is_homepage: isHome };
+        }
+        if (p.id !== pageId) return p;
+        return { ...p, ...patch };
+      })
+    );
+
+    if (setHomepage) {
+      setEditing((cur) => {
+        if (!cur) return cur;
+        const isHome = cur.id === pageId;
+        if (cur.is_homepage === isHome) return cur;
+        return withLiftedLayout({ ...cur, is_homepage: isHome });
+      });
+    } else if (editing?.id === pageId) {
+      updatePageMeta(patch);
+    }
+
+    if (patch && Object.prototype.hasOwnProperty.call(patch, "autosave")) {
+      if (editing?.id === pageId) {
+        setAutosaveEnabled(Boolean(patch.autosave));
+      }
+    }
+  },
+  [editing?.id, updatePageMeta, setAutosaveEnabled, setPages]
+);
 
 const handleHeaderDraftChange = useCallback(
   (draft) => {
@@ -1953,6 +2009,12 @@ const autoProvisionIfEmpty = useCallback(
       t = setTimeout(() => fn(...args), ms);
     };
   };
+
+  const discardPageSettings = useCallback(async () => {
+    if (!companyId) return;
+    setPageSettingsDirty(false);
+    await loadAll(companyId);
+  }, [companyId, loadAll]);
   const autosave = React.useMemo(
     () =>
       debounce(async (snapshot) => {
@@ -2169,6 +2231,7 @@ const autoProvisionIfEmpty = useCallback(
 
   /* ----- Page meta helpers ----- */
   const updatePageMeta = (patch) => {
+    setPageSettingsDirty(true);
     setEditing((cur) => {
       let next = { ...cur, ...patch };
       if ("layout" in patch) {
@@ -2218,8 +2281,10 @@ const autoProvisionIfEmpty = useCallback(
         const match = updated.find((u) => u.id === editing.id);
         if (match) setEditing(match);
         setMsg(t("manager.visualBuilder.messages.pageSettingsSaved"));
+        setPageSettingsDirty(false);
       } else {
         await onSavePage();
+        setPageSettingsDirty(false);
       }
     } catch (e) {
       console.error(e);
@@ -2298,6 +2363,45 @@ const autoProvisionIfEmpty = useCallback(
         setSelectedPageIds([]);
         setMsg(t("manager.visualBuilder.messages.created"));
       }
+    } catch (e) {
+      console.error(e);
+      setErr(t("manager.visualBuilder.errors.savePage"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const duplicatePageById = async (id) => {
+    if (!companyId || !id) return;
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      const existingSlugs = new Set(
+        pages.map((p) => String(p.slug || "").toLowerCase())
+      );
+      const source =
+        id === editing?.id ? editing : pages.find((p) => p.id === id);
+      if (!source) return;
+      const next = JSON.parse(JSON.stringify(source));
+      delete next.id;
+      next.slug = buildDuplicateSlug(next.slug || next.title || "page", existingSlugs);
+      next.title = prefixDuplicate(next.title || next.slug, "Page");
+      next.menu_title = prefixDuplicate(next.menu_title || next.title, "Page");
+      if (next.seo_title) next.seo_title = prefixDuplicate(next.seo_title, "Page");
+      if (next.og_title) next.og_title = prefixDuplicate(next.og_title, "Page");
+      next.canonical_path = "";
+      const payload = serializePage(ensureSectionIds(withLiftedLayout(next)));
+      const r = await wb.createPage(companyId, payload);
+      const created = ensureSectionIds(
+        withLiftedLayout(normalizePage(r.data || payload))
+      );
+      setPages((prev) => [created, ...prev]);
+      setSelectedId(created.id);
+      setEditing(created);
+      setSelectedBlock(-1);
+      setSelectedPageIds([]);
+      setMsg(t("manager.visualBuilder.messages.created"));
     } catch (e) {
       console.error(e);
       setErr(t("manager.visualBuilder.errors.savePage"));
@@ -2659,9 +2763,74 @@ const autoProvisionIfEmpty = useCallback(
             >
               <ListItemText primary={p.title || p.slug} secondary={p.slug} />
             </ListItemButton>
+            <IconButton
+              size="small"
+              onClick={(e) => handlePageMenuOpen(e, p)}
+              sx={{ ml: 0.5 }}
+            >
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
           </ListItem>
         ))}
       </List>
+      <Menu
+        anchorEl={pageMenuAnchor}
+        open={Boolean(pageMenuAnchor)}
+        onClose={handlePageMenuClose}
+      >
+        <MenuItem
+          onClick={() => {
+            if (!pageMenuTarget) return;
+            const current = Boolean(pageMenuTarget.published ?? true);
+            applyPageActionPatch(pageMenuTarget.id, { published: !current });
+            handlePageMenuClose();
+          }}
+        >
+          {pageMenuTarget?.published ?? true ? "Unpublish" : "Publish"}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!pageMenuTarget) return;
+            const current = Boolean(pageMenuTarget.show_in_menu ?? true);
+            applyPageActionPatch(pageMenuTarget.id, { show_in_menu: !current });
+            handlePageMenuClose();
+          }}
+        >
+          {pageMenuTarget?.show_in_menu ?? true ? "Hide from menu" : "Show in menu"}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!pageMenuTarget) return;
+            if (pageMenuTarget.is_homepage) {
+              applyPageActionPatch(pageMenuTarget.id, { is_homepage: false });
+            } else {
+              applyPageActionPatch(pageMenuTarget.id, {}, { setHomepage: true });
+            }
+            handlePageMenuClose();
+          }}
+        >
+          {pageMenuTarget?.is_homepage ? "Unset homepage" : "Set as homepage"}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!pageMenuTarget) return;
+            const current = Boolean(pageMenuTarget.autosave ?? true);
+            applyPageActionPatch(pageMenuTarget.id, { autosave: !current });
+            handlePageMenuClose();
+          }}
+        >
+          {pageMenuTarget?.autosave ?? true ? "Disable autosave" : "Enable autosave"}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (!pageMenuTarget) return;
+            duplicatePageById(pageMenuTarget.id);
+            handlePageMenuClose();
+          }}
+        >
+          Duplicate
+        </MenuItem>
+      </Menu>
       <Alert severity="info" sx={{ mt: 1 }}>
         Need another page? Visit the {" "}
         <Link component={RouterLink} to="/manager/website" underline="hover">
@@ -2879,7 +3048,10 @@ const autoProvisionIfEmpty = useCallback(
             control={
               <Switch
                 checked={autosaveEnabled}
-                onChange={(_, v) => setAutosaveEnabled(v)}
+                onChange={(_, v) => {
+                  setAutosaveEnabled(v);
+                  updatePageMeta({ autosave: v });
+                }}
               />
             }
             label={t("manager.visualBuilder.pages.settings.toggles.autosave")}
@@ -3940,6 +4112,54 @@ if (authError) {
         tabs={tabs}
         defaultIndex={0}
       />
+
+      {pageSettingsDirty && (
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: { xs: 88, md: 110 },
+            right: { xs: 16, md: 40 },
+            zIndex: (theme) => theme.zIndex.tooltip + 2,
+          }}
+        >
+          <Paper
+            elevation={8}
+            sx={{
+              borderRadius: 999,
+              px: 2,
+              py: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              boxShadow: "0 10px 25px rgba(15, 23, 42, 0.2)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ display: { xs: "none", sm: "block" }, fontWeight: 600 }}
+            >
+              Unsaved page settings
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={busy || !companyId}
+              onClick={discardPageSettings}
+            >
+              Discard
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              disabled={busy || !companyId}
+              onClick={savePageMeta}
+            >
+              Save
+            </Button>
+          </Paper>
+        </Box>
+      )}
 
       {companyId && (
         <Box
