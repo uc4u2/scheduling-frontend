@@ -663,12 +663,27 @@ const HeroSplit = ({ heading, subheading, ctaText, ctaLink, image, titleAlign, m
     <Grid container spacing={4} alignItems="center">
       <Grid item xs={12} md={6}>
         {heading && (
-          <HtmlTypo variant="h3" sx={{ fontWeight: 800, mb: 1, textAlign: titleAlign || "left" }}>
+          <HtmlTypo
+            variant="h3"
+            sx={{
+              fontWeight: 800,
+              mb: 1,
+              textAlign: titleAlign || "left",
+              color: "var(--page-heading-color, currentColor)"
+            }}
+          >
             {heading}
           </HtmlTypo>
         )}
         {subheading && (
-          <HtmlTypo variant="body1" sx={{ mb: 2, color: "text.secondary", textAlign: titleAlign || "left" }}>
+          <HtmlTypo
+            variant="body1"
+            sx={{
+              mb: 2,
+              color: "var(--page-body-color, text.secondary)",
+              textAlign: titleAlign || "left"
+            }}
+          >
             {subheading}
           </HtmlTypo>
         )}
@@ -740,13 +755,22 @@ const cardRadius = 0;
         {item.eyebrow && (
           <HtmlTypo
             variant="overline"
-            sx={{ letterSpacing: ".2em", textTransform: "uppercase", mb: 1, fontWeight: 600 }}
+            sx={{
+              letterSpacing: ".2em",
+              textTransform: "uppercase",
+              mb: 1,
+              fontWeight: 600,
+              color: "var(--page-body-color, currentColor)"
+            }}
           >
             {item.eyebrow}
           </HtmlTypo>
         )}
         {item.title && (
-          <HtmlTypo variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+          <HtmlTypo
+            variant="h4"
+            sx={{ fontWeight: 800, mb: 1, color: "var(--page-heading-color, currentColor)" }}
+          >
             {item.title}
           </HtmlTypo>
         )}
@@ -843,7 +867,10 @@ const cardRadius = 0;
               </HtmlTypo>
             )}
             {title && (
-              <HtmlTypo variant="h3" sx={{ fontWeight: 800 }}>
+              <HtmlTypo
+                variant="h3"
+                sx={{ fontWeight: 800, color: "var(--page-heading-color, currentColor)" }}
+              >
                 {title}
               </HtmlTypo>
             )}
@@ -1028,6 +1055,7 @@ const ServiceGrid = ({
   imageHoverScale,
   lightboxEnabled = true
 }) => {
+  const align = titleAlign || "center";
   const list = toArray(items);
   const imageItems = [];
   const imageIndexMap = {};
@@ -1074,7 +1102,7 @@ const ServiceGrid = ({
           sx={{
             mb: 2,
             fontWeight: 800,
-            textAlign: titleAlign || "left",
+            textAlign: align,
             ...(titleColor ? { color: titleColor } : {}),
           }}
         >
@@ -1087,13 +1115,13 @@ const ServiceGrid = ({
           sx={{
             mb: 2,
             color: subtitleColor ? subtitleColor : "text.secondary",
-            textAlign: titleAlign || "left",
+            textAlign: align,
           }}
         >
           {subtitle}
         </HtmlTypo>
       )}
-      <Grid container spacing={2}>
+      <Grid container spacing={2} justifyContent="center">
         {list.map((s, i) => {
           const bullets = toArray(s.bullets);
           const chips = toArray(s.chips);
@@ -1417,12 +1445,18 @@ const CollectionShowcase = ({
           {(title || subtitle) && (
             <Stack spacing={1} alignItems="center">
               {title && (
-                <HtmlTypo variant="h4" sx={{ fontWeight: 800 }}>
+                <HtmlTypo
+                  variant="h4"
+                  sx={{ fontWeight: 800, color: "var(--page-heading-color, text.primary)" }}
+                >
                   {title}
                 </HtmlTypo>
               )}
               {subtitle && (
-                <HtmlTypo variant="body1" sx={{ color: "var(--page-body-color, text.secondary)" }}>
+                <HtmlTypo
+                  variant="body1"
+                  sx={{ color: "var(--page-body-color, text.secondary)" }}
+                >
                   {subtitle}
                 </HtmlTypo>
               )}
@@ -1489,14 +1523,22 @@ const CollectionShowcase = ({
                             />
                           )}
                           {item.title && (
-                            <Typography sx={{ fontWeight: 700 }}>{item.title}</Typography>
+                            <Typography
+                              sx={{ fontWeight: 700, color: "var(--page-heading-color, text.primary)" }}
+                            >
+                              {item.title}
+                            </Typography>
                           )}
                           {item.linkText && (
                             <Button
                               href={item.link || "#"}
                               variant="text"
                               size="small"
-                              sx={{ textTransform: "none", fontWeight: 600 }}
+                              sx={{
+                                textTransform: "none",
+                                fontWeight: 600,
+                                color: "var(--page-link-color, inherit)",
+                              }}
                             >
                               {item.linkText}
                             </Button>
@@ -1564,9 +1606,16 @@ const CollectionShowcase = ({
                     >
                       {perkIcon(perk.icon) || <LocalOfferIcon />}
                     </Box>
-                    {perk.title && <Typography sx={{ fontWeight: 600 }}>{perk.title}</Typography>}
+                    {perk.title && (
+                      <Typography sx={{ fontWeight: 600, color: "var(--page-heading-color, text.primary)" }}>
+                        {perk.title}
+                      </Typography>
+                    )}
                     {perk.subtitle && (
-                      <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "var(--page-body-color, text.secondary)" }}
+                      >
                         {perk.subtitle}
                       </Typography>
                     )}
@@ -1579,13 +1628,21 @@ const CollectionShowcase = ({
           {hasCopy && (
             <Box sx={{ maxWidth: 900, textAlign: "left", width: "100%" }}>
               {copyTitle && (
-                <HtmlTypo variant="h5" sx={{ fontWeight: 800, mb: 1, textAlign: "center" }}>
+                <HtmlTypo
+                  variant="h5"
+                  sx={{
+                    fontWeight: 800,
+                    mb: 1,
+                    textAlign: "center",
+                    color: "var(--page-heading-color, text.primary)",
+                  }}
+                >
                   {copyTitle}
                 </HtmlTypo>
               )}
               {hasCopyBody && (
                 <Typography
-                  color="text.secondary"
+                  sx={{ color: "var(--page-body-color, text.secondary)" }}
                   component="div"
                   dangerouslySetInnerHTML={{ __html: normalizedCopyBody }}
                 />
@@ -1855,14 +1912,24 @@ const PricingTable = ({
     title || intro || notes ? (
       <Stack spacing={1.5} sx={{ mb: 4, textAlign: align }}>
         {title && (
-          <HtmlTypo variant="h4" sx={{ fontWeight: 800, textAlign: align }}>
+          <HtmlTypo
+            variant="h4"
+            sx={{
+              fontWeight: 800,
+              textAlign: align,
+              color: "var(--page-heading-color, currentColor)",
+            }}
+          >
             {title}
           </HtmlTypo>
         )}
         {intro && (
           <HtmlTypo
             variant="body1"
-            sx={{ color: "text.secondary", textAlign: align }}
+            sx={{
+              color: "var(--page-body-color, text.secondary)",
+              textAlign: align,
+            }}
           >
             {intro}
           </HtmlTypo>
@@ -1870,7 +1937,10 @@ const PricingTable = ({
         {notes && (
           <HtmlTypo
             variant="body2"
-            sx={{ color: "text.secondary", textAlign: align }}
+            sx={{
+              color: "var(--page-body-color, text.secondary)",
+              textAlign: align,
+            }}
           >
             {notes}
           </HtmlTypo>
@@ -1926,15 +1996,23 @@ const PricingTable = ({
                     fontWeight: 700,
                     letterSpacing: ".12em",
                     textTransform: "uppercase",
+                    color: "var(--page-body-color, currentColor)",
                   }}
                 >
                   {toPlain(p.ribbon)}
                 </Typography>
               )}
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 800, color: "var(--page-heading-color, currentColor)" }}
+              >
                 {toPlain(p.name)}
               </Typography>
-              <Typography className="price" variant="h3">
+              <Typography
+                className="price"
+                variant="h3"
+                sx={{ color: "var(--page-heading-color, currentColor)" }}
+              >
                 {toPlain(p.price)}
               </Typography>
               {features.length > 0 && (
@@ -1946,8 +2024,11 @@ const PricingTable = ({
                       alignItems="flex-start"
                       key={idx}
                     >
-                      <CheckIcon fontSize="small" />
-                      <Typography variant="body2">
+                      <CheckIcon fontSize="small" sx={{ color: "var(--page-body-color, currentColor)" }} />
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "var(--page-body-color, text.secondary)" }}
+                      >
                         {toPlain(f)}
                       </Typography>
                     </Stack>
@@ -2007,6 +2088,7 @@ const PricingTable = ({
           spacing={3}
           className="pricing-logo-grid"
           alignItems="stretch"
+          justifyContent="center"
         >
           {list.map((p, i) => (
             <Grid item xs={12} sm={6} md={4} key={i}>
@@ -2024,7 +2106,7 @@ const PricingTable = ({
                   p: 3,
                   background: "rgba(6,10,22,0.78)",
                   border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#f5f7ff",
+                  color: "var(--page-heading-color, #f5f7ff)",
                   boxShadow: "0 30px 60px rgba(5,6,20,0.45)",
                 }}
               >
@@ -2035,7 +2117,7 @@ const PricingTable = ({
                     sx={{
                       letterSpacing: ".18em",
                       textTransform: "uppercase",
-                      color: "rgba(196,181,253,0.9)",
+                      color: "var(--page-body-color, rgba(196,181,253,0.9))",
                     }}
                   >
                     {toPlain(p.ribbon)}
@@ -2044,14 +2126,20 @@ const PricingTable = ({
                 <Typography
                   variant="h6"
                   className="pricing-logo-name"
-                  sx={{ fontWeight: 800 }}
+                  sx={{
+                    fontWeight: 800,
+                    color: "var(--page-heading-color, currentColor)",
+                  }}
                 >
                   {toPlain(p.name)}
                 </Typography>
                 <Typography
                   variant="h4"
                   className="pricing-logo-price"
-                  sx={{ fontWeight: 800 }}
+                  sx={{
+                    fontWeight: 800,
+                    color: "var(--page-heading-color, currentColor)",
+                  }}
                 >
                   {toPlain(p.price)}
                 </Typography>
@@ -2059,7 +2147,8 @@ const PricingTable = ({
                   spacing={0.75}
                   className="pricing-logo-features"
                   sx={{
-                    textAlign: "left",
+                    textAlign: align,
+                    alignItems: align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start",
                     mx: "auto",
                     width: "100%",
                   }}
@@ -2071,8 +2160,13 @@ const PricingTable = ({
                       alignItems="center"
                       key={idx}
                     >
-                      <CheckIcon fontSize="small" />
-                      <Typography variant="body2">{toPlain(f)}</Typography>
+                      <CheckIcon fontSize="small" sx={{ color: "var(--page-body-color, currentColor)" }} />
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "var(--page-body-color, text.secondary)" }}
+                      >
+                        {toPlain(f)}
+                      </Typography>
                     </Stack>
                   ))}
                 </Stack>
@@ -2121,14 +2215,22 @@ const PricingTable = ({
                 <Typography variant="h6" fontWeight={800}>
                   {toPlain(p.name)}
                 </Typography>
-                <Typography variant="h4" sx={{ my: 1 }}>
+                <Typography
+                  variant="h4"
+                  sx={{ my: 1, color: "var(--page-heading-color, currentColor)" }}
+                >
                   {toPlain(p.price)}
                 </Typography>
                 <Stack spacing={0.75} sx={{ mb: 2 }}>
                   {toArray(p.features).map((f, idx) => (
                     <Stack direction="row" spacing={1} alignItems="center" key={idx}>
-                      <CheckIcon fontSize="small" />{" "}
-                      <Typography variant="body2">{toPlain(f)}</Typography>
+                      <CheckIcon fontSize="small" sx={{ color: "var(--page-body-color, currentColor)" }} />{" "}
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "var(--page-body-color, text.secondary)" }}
+                      >
+                        {toPlain(f)}
+                      </Typography>
                     </Stack>
                   ))}
                 </Stack>
@@ -4353,7 +4455,9 @@ const Stats = ({
             mb: subtitle ? 1 : 2,
             fontWeight: 800,
             textAlign: titleAlign || "left",
-            ...(titleColor ? { color: titleColor } : {}),
+            ...(titleColor
+              ? { color: titleColor }
+              : { color: "var(--page-heading-color, currentColor)" }),
           }}
         >
           {title}
@@ -4364,7 +4468,9 @@ const Stats = ({
           variant="body1"
           sx={{
             mb: 3,
-            color: subtitleColor ? subtitleColor : "text.secondary",
+            color: subtitleColor
+              ? subtitleColor
+              : "var(--page-body-color, text.secondary)",
             textAlign: titleAlign || "left",
           }}
         >
@@ -4382,15 +4488,31 @@ const Stats = ({
       >
         {list.map((s, i) => (
           <Card key={i} sx={{ textAlign: "center", p: 2, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 120 }}>
-            <Typography variant="h4" fontWeight={900}>{toPlain(s.value)}</Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{ color: "var(--page-heading-color, currentColor)" }}
+            >
+              {toPlain(s.value)}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: "var(--page-body-color, text.secondary)" }}
+            >
               {toPlain(s.label)}
             </Typography>
           </Card>
         ))}
       </Box>
       {disclaimer && (
-        <HtmlTypo variant="caption" sx={{ display: "block", mt: 1, color: "text.secondary" }}>
+        <HtmlTypo
+          variant="caption"
+          sx={{
+            display: "block",
+            mt: 1,
+            color: "var(--page-body-color, text.secondary)",
+          }}
+        >
           {disclaimer}
         </HtmlTypo>
       )}

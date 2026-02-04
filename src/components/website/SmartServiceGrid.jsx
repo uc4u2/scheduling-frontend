@@ -20,11 +20,11 @@ export default function SmartServiceGrid({
   ctaText,
   ctaLink,
   dataSource,
-  titleAlign = "left",
+  titleAlign = "center",
 }) {
   const data = useDataSource(dataSource);
   const svcs = Array.isArray(data) && data?.length ? data : items;
-  const align = titleAlign;
+  const align = titleAlign || "center";
 
   return (
     <Box>
@@ -45,7 +45,7 @@ export default function SmartServiceGrid({
         )}
       </Stack>
 
-      <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: 4 }}>
+      <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: 4 }} justifyContent="center">
         {svcs.map((svc, i) => (
           <Grid item xs={12} sm={6} md={4} key={`${svc.name || svc.title || i}-${i}`}>
             <Card

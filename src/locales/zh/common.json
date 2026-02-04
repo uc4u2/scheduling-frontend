@@ -1160,8 +1160,10 @@
         "tooltip": "\u70b9\u51fb\u677f\u5757\u5373\u53ef\u7f16\u8f91\u5176\u5185\u5bb9",
         "add": {
           "hero": "Add hero",
+          "heroSplit": "Add hero split",
           "text": "Add text",
           "gallery": "Add gallery",
+          "photoGallery": "Add photo gallery",
           "collectionShowcase": "Add collection showcase",
           "textFree": "Add free text (drag)",
           "carousel": "Add carousel",
@@ -1173,7 +1175,9 @@
           "heroCarousel": "Add hero carousel",
           "richText": "Add rich text",
           "featureZigzagModern": "Add feature zigzag",
+          "discoverStory": "Add Discover our story",
           "logoCloud": "Add logo cloud",
+          "workshopsCommissions": "Add Workshops & Commissions",
           "teamGrid": "Add team grid",
           "cta": "Add CTA",
           "bookingCtaBar": "Add booking CTA bar"
@@ -1194,6 +1198,7 @@
           "bookingCtaBar": "\u9884\u7ea6 CTA \u680f",
           "testimonials": "\u7528\u6237\u8bc4\u4ef7",
           "heroCarousel": "Hero carousel",
+          "heroSplit": "Hero split",
           "featureZigzagModern": "Feature zigzag",
           "logoCloud": "Logo cloud",
           "richText": "Rich text",

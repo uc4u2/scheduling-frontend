@@ -50,6 +50,36 @@ export const NEW_BLOCKS = {
       ],
     },
   }),
+  photoGallery: () => ({
+    type: "gallery",
+    props: {
+      title: "Photo Gallery",
+      titleAlign: "center",
+      layout: "grid",
+      columns: { xs: 2, sm: 2, md: 3 },
+      gap: 18,
+      tile: {
+        aspectRatio: "4/5",
+        borderRadius: 0,
+        border: "1px solid rgba(255,255,255,0.35)",
+        hoverLift: true
+      },
+      lightbox: {
+        enabled: true,
+        loop: true,
+        showArrows: true,
+        closeOnBackdrop: true
+      },
+      images: [
+        { url: "/website/enterprise-automotive-autocare-nexus/gallery-01.jpg", alt: "Gallery item 1" },
+        { url: "/website/enterprise-automotive-autocare-nexus/gallery-02.jpg", alt: "Gallery item 2" },
+        { url: "/website/enterprise-automotive-autocare-nexus/gallery-03.jpg", alt: "Gallery item 3" },
+        { url: "/website/enterprise-automotive-autocare-nexus/gallery-04.jpg", alt: "Gallery item 4" },
+        { url: "/website/enterprise-automotive-autocare-nexus/gallery-05.jpg", alt: "Gallery item 5" },
+        { url: "/website/enterprise-automotive-autocare-nexus/gallery-06.jpg", alt: "Gallery item 6" },
+      ],
+    },
+  }),
   galleryCarousel: () => ({
     type: "galleryCarousel",
     props: {
@@ -85,6 +115,20 @@ export const NEW_BLOCKS = {
           secondaryCtaLink: "?page=products",
         },
       ],
+    },
+  }),
+  heroSplit: () => ({
+    type: "heroSplit",
+    props: {
+      heading: "Real-time availability, without the back-and-forth",
+      subheading:
+        "Showcase a focused message with a clear CTA and a supporting image.",
+      ctaText: "Get started",
+      ctaLink: "?page=services-classic",
+      image:
+        "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?q=80&w=1600&auto=format&fit=crop",
+      titleAlign: "left",
+      maxWidth: "lg",
     },
   }),
   collectionShowcase: () => ({
@@ -191,6 +235,55 @@ export const NEW_BLOCKS = {
       ],
     },
   }),
+  discoverStory: () => ({
+    type: "featureZigzagModern",
+    props: {
+      title: "Discover our story",
+      supportingText: "A closer look at the people and craft behind the brand.",
+      items: [
+        {
+          eyebrow: "Studio story",
+          title: "Built around craft",
+          body: "Share the origin of your studio and what makes your approach different.",
+          ctaText: "About the studio",
+          ctaLink: "?page=about",
+          imageUrl: "https://images.unsplash.com/photo-1489515217757-5fd1be406fef?q=80&w=1600&auto=format&fit=crop",
+          imageAlt: "Studio workspace",
+          align: "left",
+        },
+        {
+          eyebrow: "Signature process",
+          title: "Design-led experiences",
+          body: "Explain the process clients can expect from first consult to final delivery.",
+          ctaText: "See the process",
+          ctaLink: "?page=services-classic",
+          imageUrl: "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?q=80&w=1600&auto=format&fit=crop",
+          imageAlt: "Signature process",
+          align: "right",
+        },
+        {
+          eyebrow: "Crafted details",
+          title: "Material-first quality",
+          body: "Highlight the materials, methods, and care that set your work apart.",
+          ctaText: "View materials",
+          ctaLink: "?page=gallery",
+          imageUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1600&auto=format&fit=crop",
+          imageAlt: "Crafted details",
+          align: "left",
+        },
+        {
+          eyebrow: "Client journey",
+          title: "Trusted by long-term clients",
+          body: "Share why clients return and how you support them long after delivery.",
+          ctaText: "Read reviews",
+          ctaLink: "?page=reviews",
+          imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&auto=format&fit=crop",
+          imageAlt: "Client journey",
+          align: "right",
+        },
+      ],
+    },
+  }),
   logoCloud: () => ({
     type: "logoCloud",
     props: {
@@ -229,6 +322,56 @@ export const NEW_BLOCKS = {
           ctaLink: "?page=contact",
         },
       ],
+    },
+  }),
+  workshopsCommissions: () => ({
+    type: "pricingTable",
+    props: {
+      title: "Workshops and commissions",
+      intro: "Pick the format that fits your goals.",
+      notes: "Weekend workshops plus custom jewelry commissions.",
+      titleAlign: "center",
+      maxWidth: "lg",
+      layout: "logo-cards",
+      plans: [
+        {
+          name: "Intro Workshop",
+          price: "$1,500",
+          features: [
+            "Foundations of handmade jewelry",
+            "4-hour weekend session",
+            "Materials included",
+            "Take-home piece"
+          ],
+          ctaText: "Book intro",
+          ctaLink: "?page=programs",
+        },
+        {
+          name: "Advanced Workshop",
+          price: "$2,000",
+          features: [
+            "Stone setting + advanced build",
+            "Requires Intro",
+            "Small-group format",
+            "Personal coaching"
+          ],
+          ctaText: "Book advanced",
+          ctaLink: "?page=programs",
+          featured: true,
+        },
+        {
+          name: "Custom Commission",
+          price: "From $450",
+          features: [
+            "One-of-a-kind piece",
+            "Design consult",
+            "Handmade finish",
+            "Delivery planning"
+          ],
+          ctaText: "Start a commission",
+          ctaLink: "?page=contact",
+        }
+      ]
     },
   }),
   cta: () => ({
@@ -546,6 +689,7 @@ featureStories: () => ({
     type: "serviceGrid",
     props: {
       title: "Popular services",
+      titleAlign: "center",
       subtitle: "Transparent pricing, expert care.",
       services: [
         { name: "Haircut", price: "$45", duration: "45m", description: "Classic or modern styles." },

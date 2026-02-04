@@ -123,6 +123,7 @@
               ],
               "subtitle": "ASE-certified techs. OEM-grade diagnostics. Transparent, up-front pricing.",
               "title": "Popular services"
+              "titleAlign": "center",
             },
             "type": "serviceGrid"
           },

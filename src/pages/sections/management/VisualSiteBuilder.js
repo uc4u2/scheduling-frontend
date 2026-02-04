@@ -15,6 +15,9 @@ import {
   Checkbox,
   Divider,
   Drawer,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   Grid,
   IconButton,
   Link,
@@ -37,6 +40,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  ButtonBase,
   Slider,
   useMediaQuery,
 } from "@mui/material";
@@ -47,6 +51,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import PublishIcon from "@mui/icons-material/Publish";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import UndoIcon from "@mui/icons-material/Undo";
 import RedoIcon from "@mui/icons-material/Redo";
@@ -55,6 +60,7 @@ import ViewCarouselIcon from "@mui/icons-material/ViewCarousel";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline"; // NEW
 import PaletteIcon from "@mui/icons-material/Palette";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CloseIcon from "@mui/icons-material/Close";
 
 import { nanoid } from "nanoid";
 import { Link as RouterLink, useLocation } from "react-router-dom";
@@ -62,7 +68,7 @@ import { Link as RouterLink, useLocation } from "react-router-dom";
 import { useTranslation, Trans } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
 
-import { wb, navSettings, publicSite } from "../../../utils/api";
+import { api, wb, navSettings, publicSite } from "../../../utils/api";
 import { normalizeNavStyle } from "../../../utils/navStyle";
 import { RenderSections } from "../../../components/website/RenderSections";
 import SiteFrame from "../../../components/website/SiteFrame";
@@ -108,6 +114,31 @@ import TabShell from "../../../components/ui/TabShell";
  //import EnterpriseEditorExtras from "../../../components/website/EnterpriseEditorExtras";
 
 import WebsiteBuilderHelpDrawer from "./WebsiteBuilderHelpDrawer"; // NEW
+
+const BLOCK_PREVIEWS = {
+  hero: "/block-previews/hero.png",
+  heroCarousel: "/block-previews/heroCarousel.png",
+  heroSplit: "/block-previews/heroSplit.png",
+  text: "/block-previews/text.png",
+  richText: "/block-previews/richText.png",
+  gallery: "/block-previews/gallery.png",
+  photoGallery: "/block-previews/photoGallery.png",
+  collectionShowcase: "/block-previews/collectionShowcase.png",
+  featureZigzagModern: "/block-previews/featureZigzagModern.png",
+  discoverStory: "/block-previews/discoverStory.png",
+  logoCloud: "/block-previews/logoCloud.png",
+  workshopsCommissions: "/block-previews/workshopsCommissions.png",
+  textFree: "/block-previews/textFree.png",
+  galleryCarousel: "/block-previews/galleryCarousel.png",
+  faq: "/block-previews/faq.png",
+  serviceGrid: "/block-previews/serviceGrid.png",
+  teamGrid: "/block-previews/teamGrid.png",
+  contact: "/block-previews/contact.png",
+  contactForm: "/block-previews/contactForm.png",
+  cta: "/block-previews/cta.png",
+  bookingCtaBar: "/block-previews/bookingCtaBar.png",
+  footer: "/block-previews/footer.png",
+};
 /** Local shims so the app renders even if helpers aren’t exported yet */
 const CollapsibleSection = ({
   id,
@@ -840,6 +871,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   );
 
   const [siteSettings, setSiteSettings] = useState(null);
+  const [companyProfileSlug, setCompanyProfileSlug] = useState("");
   const rawNavOverrides = useMemo(
     () =>
       siteSettings?.nav_overrides ||
@@ -971,9 +1003,10 @@ useEffect(() => {
       setLoading(true);
       setAuthError(null);
       try {
-        const [settingsRes, pagesRes] = await Promise.all([
+        const [settingsRes, pagesRes, profileRes] = await Promise.all([
           wb.getSettings(companyId),
           wb.listPages(companyId),
+          api.get("/admin/company-profile").catch(() => null),
         ]);
 
         const pagesList =
@@ -982,6 +1015,11 @@ useEffect(() => {
 
         const settingsPayload = settingsRes?.data ?? settingsRes ?? null;
         setSiteSettings(settingsPayload);
+        const profileSlug =
+          profileRes?.data?.slug ||
+          profileRes?.data?.company?.slug ||
+          "";
+        if (profileSlug) setCompanyProfileSlug(String(profileSlug));
         applyBrandingFromServer(settingsPayload);
         setNavDraft(deriveNavDraft(settingsPayload));
         setNavMsg("");
@@ -1054,6 +1092,11 @@ useEffect(() => {
     canRedo,
   } = useHistory(emptyPage());
   const [selectedBlock, setSelectedBlock] = useState(-1);
+  const [blockPreview, setBlockPreview] = useState({
+    open: false,
+    src: "",
+    label: "",
+  });
 
 
 useEffect(() => {
@@ -1074,6 +1117,16 @@ const handleNavDraftChange = useCallback(
   },
   [setSiteSettings]
 );
+
+const openBlockPreview = useCallback((type, label) => {
+  const src = BLOCK_PREVIEWS[type];
+  if (!src) return;
+  setBlockPreview({ open: true, src, label });
+}, []);
+
+const closeBlockPreview = useCallback(() => {
+  setBlockPreview((prev) => ({ ...prev, open: false }));
+}, []);
 
 const handleHeaderDraftChange = useCallback(
   (draft) => {
@@ -1346,12 +1399,41 @@ const applyStyleToAllPagesNow = useCallback(async () => {
   const previewSlug = useMemo(() => {
     const slugFromSettings =
       siteSettings?.company?.slug ||
+      companyProfileSlug ||
+      siteSettings?.company_slug ||
       siteSettings?.slug ||
       siteSettings?.settings?.slug;
     if (slugFromSettings) return slugFromSettings;
     if (companyId) return `preview-${companyId}`;
     return "preview";
-  }, [siteSettings, companyId]);
+  }, [siteSettings, companyProfileSlug, companyId]);
+
+  const liveSlug = useMemo(() => {
+    const slugFromSettings =
+      siteSettings?.company?.slug ||
+      companyProfileSlug ||
+      siteSettings?.company_slug ||
+      siteSettings?.slug ||
+      siteSettings?.settings?.slug;
+    return (slugFromSettings || "").trim();
+  }, [siteSettings, companyProfileSlug]);
+
+  const liveSiteUrl = useMemo(() => {
+    const rawDomain =
+      siteSettings?.custom_domain ||
+      siteSettings?.settings?.custom_domain ||
+      "";
+    const domain = String(rawDomain || "").trim();
+    if (domain) {
+      if (domain.startsWith("http://") || domain.startsWith("https://")) {
+        return domain;
+      }
+      return `https://${domain}`;
+    }
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    if (liveSlug) return `${origin}/${liveSlug}`;
+    return previewSlug ? `${origin}/${previewSlug}` : origin;
+  }, [siteSettings, liveSlug, previewSlug]);
 
   const seoPreviewTitle = useMemo(() => {
     return (
@@ -2035,6 +2117,54 @@ const autoProvisionIfEmpty = useCallback(
       return withLiftedLayout({ ...cur, content: { sections: arr } });
     });
     setSelectedBlock(safeSections(editing).length);
+  };
+
+  const renderAddBlockButton = (type, labelKey) => {
+    const label = t(labelKey, { defaultValue: type });
+    const previewSrc = BLOCK_PREVIEWS[type];
+    return (
+      <Box
+        key={type}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 0.75,
+          minWidth: 140,
+        }}
+      >
+        {previewSrc ? (
+          <ButtonBase
+            onClick={() => openBlockPreview(type, label)}
+            sx={{
+              width: 104,
+              height: 68,
+              borderRadius: 1.5,
+              overflow: "hidden",
+              border: "1px solid",
+              borderColor: "divider",
+              boxShadow: 1,
+              bgcolor: "background.paper",
+            }}
+          >
+            <Box
+              component="img"
+              src={previewSrc}
+              alt={`${label} preview`}
+              sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+              loading="lazy"
+            />
+          </ButtonBase>
+        ) : null}
+        <Button
+          size="small"
+          startIcon={<AddIcon />}
+          onClick={() => addBlock(type)}
+        >
+          {label}
+        </Button>
+      </Box>
+    );
   };
 
   /* ----- Page meta helpers ----- */
@@ -2976,63 +3106,37 @@ const autoProvisionIfEmpty = useCallback(
 
         <Divider sx={{ my: 2 }} />
 
-        {/* Add new blocks */}
-        <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("hero")}>
-            {t("manager.visualBuilder.sections.add.hero")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("heroCarousel")}>
-            {t("manager.visualBuilder.sections.add.heroCarousel")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("text")}>
-            {t("manager.visualBuilder.sections.add.text")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("richText")}>
-            {t("manager.visualBuilder.sections.add.richText")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("gallery")}>
-            {t("manager.visualBuilder.sections.add.gallery")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("collectionShowcase")}>
-            {t("manager.visualBuilder.sections.add.collectionShowcase")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("featureZigzagModern")}>
-            {t("manager.visualBuilder.sections.add.featureZigzagModern")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("logoCloud")}>
-            {t("manager.visualBuilder.sections.add.logoCloud")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("textFree")}>
-            {t("manager.visualBuilder.sections.add.textFree")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("galleryCarousel")}>
-            {t("manager.visualBuilder.sections.add.carousel")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("faq")}>
-            {t("manager.visualBuilder.sections.add.faq")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("serviceGrid")}>
-            {t("manager.visualBuilder.sections.add.services")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("teamGrid")}>
-            {t("manager.visualBuilder.sections.add.teamGrid")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("contact")}>
-            {t("manager.visualBuilder.sections.add.contact")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("contactForm")}>
-            {t("manager.visualBuilder.sections.add.contactForm")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("cta")}>
-            {t("manager.visualBuilder.sections.add.cta")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("bookingCtaBar")}>
-            {t("manager.visualBuilder.sections.add.bookingCtaBar")}
-          </Button>
-          <Button size="small" startIcon={<AddIcon />} onClick={() => addBlock("footer")}>
-            {t("manager.visualBuilder.sections.add.footer")}
-          </Button>
-        </Stack>
+        <CollapsibleSection
+          id="builder-add-blocks"
+          title="Add new blocks"
+          description="Click a preview to see the block, then add it to the page."
+          defaultExpanded={false}
+        >
+          <Stack direction="row" spacing={1.5} flexWrap="wrap">
+            {renderAddBlockButton("hero", "manager.visualBuilder.sections.add.hero")}
+            {renderAddBlockButton("heroCarousel", "manager.visualBuilder.sections.add.heroCarousel")}
+            {renderAddBlockButton("heroSplit", "manager.visualBuilder.sections.add.heroSplit")}
+            {renderAddBlockButton("text", "manager.visualBuilder.sections.add.text")}
+            {renderAddBlockButton("richText", "manager.visualBuilder.sections.add.richText")}
+            {renderAddBlockButton("gallery", "manager.visualBuilder.sections.add.gallery")}
+            {renderAddBlockButton("photoGallery", "manager.visualBuilder.sections.add.photoGallery")}
+            {renderAddBlockButton("collectionShowcase", "manager.visualBuilder.sections.add.collectionShowcase")}
+            {renderAddBlockButton("featureZigzagModern", "manager.visualBuilder.sections.add.featureZigzagModern")}
+            {renderAddBlockButton("discoverStory", "manager.visualBuilder.sections.add.discoverStory")}
+            {renderAddBlockButton("logoCloud", "manager.visualBuilder.sections.add.logoCloud")}
+            {renderAddBlockButton("workshopsCommissions", "manager.visualBuilder.sections.add.workshopsCommissions")}
+            {renderAddBlockButton("textFree", "manager.visualBuilder.sections.add.textFree")}
+            {renderAddBlockButton("galleryCarousel", "manager.visualBuilder.sections.add.carousel")}
+            {renderAddBlockButton("faq", "manager.visualBuilder.sections.add.faq")}
+            {renderAddBlockButton("serviceGrid", "manager.visualBuilder.sections.add.services")}
+            {renderAddBlockButton("teamGrid", "manager.visualBuilder.sections.add.teamGrid")}
+            {renderAddBlockButton("contact", "manager.visualBuilder.sections.add.contact")}
+            {renderAddBlockButton("contactForm", "manager.visualBuilder.sections.add.contactForm")}
+            {renderAddBlockButton("cta", "manager.visualBuilder.sections.add.cta")}
+            {renderAddBlockButton("bookingCtaBar", "manager.visualBuilder.sections.add.bookingCtaBar")}
+            {renderAddBlockButton("footer", "manager.visualBuilder.sections.add.footer")}
+          </Stack>
+        </CollapsibleSection>
       </CollapsibleSection>
     </Stack>
   );
@@ -3878,6 +3982,22 @@ if (authError) {
                 </Button>
               </span>
             </Tooltip>
+            <Tooltip title={t("manager.visualBuilder.controls.tooltips.viewLive", "View live site")}>
+              <span>
+                <Button
+                  size="small"
+                  startIcon={<OpenInNewIcon />}
+                  variant="outlined"
+                  disabled={!liveSiteUrl}
+                  onClick={() => {
+                    if (!liveSiteUrl) return;
+                    window.open(liveSiteUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  {t("manager.visualBuilder.controls.buttons.viewLive", "View live")}
+                </Button>
+              </span>
+            </Tooltip>
           </Paper>
         </Box>
       )}
@@ -3946,6 +4066,39 @@ if (authError) {
         onJumpToNavSettings={handleJumpToNav}
         onJumpToAssets={handleJumpToAssets}
       />
+
+      <Dialog
+        open={blockPreview.open}
+        onClose={closeBlockPreview}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ pr: 6 }}>
+          {blockPreview.label || "Block preview"}
+          <IconButton
+            onClick={closeBlockPreview}
+            sx={{ position: "absolute", right: 8, top: 8 }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {blockPreview.src ? (
+            <Box
+              component="img"
+              src={blockPreview.src}
+              alt={`${blockPreview.label || "Block"} preview`}
+              sx={{
+                width: "100%",
+                height: "auto",
+                borderRadius: 2,
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
