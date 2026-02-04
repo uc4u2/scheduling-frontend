@@ -52,11 +52,15 @@ export default function ContactFormSection(props) {
   const [ok, setOk] = useState(false);
   const [err, setErr] = useState("");
 
-  // Resolve slug from route or ?slug=
+  // Resolve slug from route, query, or stored site (custom domains)
   const resolvedSlug = useMemo(() => {
     const qs = new URLSearchParams(location.search || "");
     const slugFromQuery = qs.get("slug");
-    return (slug || slugFromQuery || "").trim() || null;
+    let stored = "";
+    try {
+      stored = localStorage.getItem("site") || "";
+    } catch {}
+    return (slug || slugFromQuery || stored || "").trim() || null;
   }, [slug, location.search]);
 
   // --- helpers ---
