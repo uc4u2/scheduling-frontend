@@ -42,7 +42,6 @@ import {
   AccordionDetails,
   ButtonBase,
   Menu,
-  MenuItem,
   Slider,
   useMediaQuery,
 } from "@mui/material";
@@ -57,13 +56,14 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import UndoIcon from "@mui/icons-material/Undo";
 import RedoIcon from "@mui/icons-material/Redo";
-import BrushIcon from "@mui/icons-material/Brush";
 import ViewCarouselIcon from "@mui/icons-material/ViewCarousel";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline"; // NEW
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PaletteIcon from "@mui/icons-material/Palette";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 
 import { nanoid } from "nanoid";
 import { Link as RouterLink, useLocation } from "react-router-dom";
@@ -878,6 +878,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [pageSettingsDirty, setPageSettingsDirty] = useState(false);
   const [pageMenuAnchor, setPageMenuAnchor] = useState(null);
   const [pageMenuTarget, setPageMenuTarget] = useState(null);
+  const [toolsAnchorEl, setToolsAnchorEl] = useState(null);
   const rawNavOverrides = useMemo(
     () =>
       siteSettings?.nav_overrides ||
@@ -972,9 +973,10 @@ useEffect(() => {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
-  const [pagesListOpen, setPagesListOpen] = useState(false);
-  const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+const [pagesListOpen, setPagesListOpen] = useState(false);
+const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
+const [inspectorOpen, setInspectorOpen] = useState(false);
+const canvasScrollRef = useRef(null);
   const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
   const [brandingPanelOpen, setBrandingPanelOpen] = useState(false);
 
@@ -989,12 +991,6 @@ useEffect(() => {
     setInspectorDrawerOpen(false);
   }
 }, [isLgDown, inspectorDrawerOpen]);
-
-useEffect(() => {
-  setPageSettingsDirty(false);
-}, [editing?.id]);
-
- 
 
   const [loading, setLoading] = useState(true);        // ← used by Step 4
   const [authError, setAuthError] = useState(null);    // ← used by Step 5
@@ -1108,6 +1104,10 @@ useEffect(() => {
     label: "",
   });
 
+  useEffect(() => {
+    setPageSettingsDirty(false);
+  }, [editing?.id]);
+
 
 useEffect(() => {
   if (selectedBlock >= 0) {
@@ -1134,8 +1134,17 @@ const openBlockPreview = useCallback((type, label) => {
   setBlockPreview({ open: true, src, label });
 }, []);
 
-const closeBlockPreview = useCallback(() => {
-  setBlockPreview((prev) => ({ ...prev, open: false }));
+  const closeBlockPreview = useCallback(() => {
+    setBlockPreview((prev) => ({ ...prev, open: false }));
+  }, []);
+
+const openToolsMenu = useCallback((event) => {
+  event.stopPropagation();
+  setToolsAnchorEl(event.currentTarget);
+}, []);
+
+const closeToolsMenu = useCallback(() => {
+  setToolsAnchorEl(null);
 }, []);
 
 const handlePageMenuOpen = useCallback((event, page) => {
@@ -1148,41 +1157,6 @@ const handlePageMenuClose = useCallback(() => {
   setPageMenuAnchor(null);
   setPageMenuTarget(null);
 }, []);
-
-const applyPageActionPatch = useCallback(
-  (pageId, patch, { setHomepage = false } = {}) => {
-    if (!pageId) return;
-    setPageSettingsDirty(true);
-    setPages((prev) =>
-      prev.map((p) => {
-        if (setHomepage) {
-          const isHome = p.id === pageId;
-          return p.is_homepage === isHome ? p : { ...p, is_homepage: isHome };
-        }
-        if (p.id !== pageId) return p;
-        return { ...p, ...patch };
-      })
-    );
-
-    if (setHomepage) {
-      setEditing((cur) => {
-        if (!cur) return cur;
-        const isHome = cur.id === pageId;
-        if (cur.is_homepage === isHome) return cur;
-        return withLiftedLayout({ ...cur, is_homepage: isHome });
-      });
-    } else if (editing?.id === pageId) {
-      updatePageMeta(patch);
-    }
-
-    if (patch && Object.prototype.hasOwnProperty.call(patch, "autosave")) {
-      if (editing?.id === pageId) {
-        setAutosaveEnabled(Boolean(patch.autosave));
-      }
-    }
-  },
-  [editing?.id, updatePageMeta, setAutosaveEnabled, setPages]
-);
 
 const handleHeaderDraftChange = useCallback(
   (draft) => {
@@ -2249,6 +2223,41 @@ const autoProvisionIfEmpty = useCallback(
     });
   };
 
+  const applyPageActionPatch = useCallback(
+    (pageId, patch, { setHomepage = false } = {}) => {
+      if (!pageId) return;
+      setPageSettingsDirty(true);
+      setPages((prev) =>
+        prev.map((p) => {
+          if (setHomepage) {
+            const isHome = p.id === pageId;
+            return p.is_homepage === isHome ? p : { ...p, is_homepage: isHome };
+          }
+          if (p.id !== pageId) return p;
+          return { ...p, ...patch };
+        })
+      );
+
+      if (setHomepage) {
+        setEditing((cur) => {
+          if (!cur) return cur;
+          const isHome = cur.id === pageId;
+          if (cur.is_homepage === isHome) return cur;
+          return withLiftedLayout({ ...cur, is_homepage: isHome });
+        });
+      } else if (editing?.id === pageId) {
+        updatePageMeta(patch);
+      }
+
+      if (patch && Object.prototype.hasOwnProperty.call(patch, "autosave")) {
+        if (editing?.id === pageId) {
+          setAutosaveEnabled(Boolean(patch.autosave));
+        }
+      }
+    },
+    [editing?.id, updatePageMeta, setAutosaveEnabled, setPages]
+  );
+
   const savePageMeta = async () => {
     if (!companyId) return;
     try {
@@ -2548,8 +2557,8 @@ const autoProvisionIfEmpty = useCallback(
 
   const ControlsCard = (
     <SectionCard
-      title={t("manager.visualBuilder.controls.title")}
-      description={t("manager.visualBuilder.controls.description")}
+      title={null}
+      description={null}
       actions={
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
           {hasDraftChanges && (
@@ -2559,16 +2568,21 @@ const autoProvisionIfEmpty = useCallback(
               label={t("manager.visualBuilder.draftChip", "Draft changes pending")}
             />
           )}
-          {lastPublishedLabel && (
-            <Chip size="small" variant="outlined" label={lastPublishedLabel} />
-          )}
-          {/* NEW — Help button in the header actions */}
+          <Tooltip
+            title={
+              lastPublishedLabel ||
+              t("manager.visualBuilder.controls.publishFloatingReady", "Publish site")
+            }
+          >
+            <IconButton size="small" aria-label={lastPublishedLabel ? "Published" : "Draft"}>
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Tooltip title={t("manager.visualBuilder.controls.tooltips.guide")}>
             <IconButton onClick={() => setHelpOpen(true)} size="small">
               <HelpOutlineIcon />
             </IconButton>
           </Tooltip>
-
           <Button
             size="small"
             startIcon={<ViewCarouselIcon />}
@@ -2577,72 +2591,61 @@ const autoProvisionIfEmpty = useCallback(
           >
             {t("manager.visualBuilder.controls.buttons.chooseTemplate")}
           </Button>
-
-          {/* Optional helper */}
-          <Button size="small" component={RouterLink} to="/manage/website/layout-lab">
-            {t("manager.visualBuilder.controls.buttons.layoutLab")}
-          </Button>
-          <Button size="small" onClick={importLabSettingsFromServer}>
-            {t("manager.visualBuilder.controls.buttons.importServer")}
-          </Button>
-
-          {/* Import buttons */}
-          <Button size="small" onClick={importLabSettings}>
-            {t("manager.visualBuilder.controls.buttons.importSettings")}
-          </Button>
-          <Button size="small" onClick={importLabSettingsAll}>
-            {t("manager.visualBuilder.controls.buttons.importAll")}
-          </Button>
-
-          <Button
-            size="small"
-            startIcon={<RefreshIcon />}
-            disabled={busy || !companyId}
-            onClick={() => loadAll(companyId)}
+          <IconButton size="small" onClick={openToolsMenu}>
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+          <Menu
+            anchorEl={toolsAnchorEl}
+            open={Boolean(toolsAnchorEl)}
+            onClose={closeToolsMenu}
           >
-            {t("manager.visualBuilder.controls.buttons.refresh")}
-          </Button>
+            <MenuItem component={RouterLink} to="/manage/website/layout-lab" onClick={closeToolsMenu}>
+              {t("manager.visualBuilder.controls.buttons.layoutLab")}
+            </MenuItem>
+            <MenuItem onClick={() => { closeToolsMenu(); importLabSettingsFromServer(); }}>
+              {t("manager.visualBuilder.controls.buttons.importServer")}
+            </MenuItem>
+            <MenuItem onClick={() => { closeToolsMenu(); importLabSettings(); }}>
+              {t("manager.visualBuilder.controls.buttons.importSettings")}
+            </MenuItem>
+            <MenuItem onClick={() => { closeToolsMenu(); importLabSettingsAll(); }}>
+              {t("manager.visualBuilder.controls.buttons.importAll")}
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                closeToolsMenu();
+                if (!busy && companyId) loadAll(companyId);
+              }}
+            >
+              {t("manager.visualBuilder.controls.buttons.refresh")}
+            </MenuItem>
+          </Menu>
 
           <Tooltip title={t("manager.visualBuilder.controls.tooltips.save")}>
-   <span>
-     <Button size="small" startIcon={<SaveIcon />} variant="outlined" disabled={busy || !companyId} onClick={onSavePage}>
-       {t("manager.visualBuilder.controls.buttons.save")}
-     </Button>
-   </span>
- </Tooltip>
-            <Tooltip title={t("manager.visualBuilder.pageStyle.applyAll.tooltip")}>
-   <span>
-     <Button size="small" variant="outlined" onClick={applyStyleToAllPagesNow} startIcon={<PaletteIcon />}>
-       {t("manager.visualBuilder.pageStyle.applyAll.button")}
-     </Button>
-   </span>
- </Tooltip>
+            <span>
+              <Button size="small" startIcon={<SaveIcon />} variant="outlined" disabled={busy || !companyId} onClick={onSavePage}>
+                {t("manager.visualBuilder.controls.buttons.save")}
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={t("manager.visualBuilder.pageStyle.applyAll.tooltip")}>
+            <span>
+              <Button size="small" variant="outlined" onClick={applyStyleToAllPagesNow} startIcon={<PaletteIcon />}>
+                {t("manager.visualBuilder.pageStyle.applyAll.button")}
+              </Button>
+            </span>
+          </Tooltip>
           <Tooltip title={t("manager.visualBuilder.controls.tooltips.publish")}>
-   <span>
-     <Button size="small" startIcon={<PublishIcon />} variant="contained" disabled={busy || !companyId} onClick={onPublish}>
-       {t("manager.visualBuilder.controls.buttons.publish")}
-     </Button>
-   </span>
- </Tooltip>
+            <span>
+              <Button size="small" startIcon={<PublishIcon />} variant="contained" disabled={busy || !companyId} onClick={onPublish}>
+                {t("manager.visualBuilder.controls.buttons.publish")}
+              </Button>
+            </span>
+          </Tooltip>
         </Stack>
       }
     >
       <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
-        <Tooltip
-          title={!companyId ? t("manager.visualBuilder.controls.tooltips.themeSignIn") : t("manager.visualBuilder.controls.tooltips.themeOpen")}
-        >
-          <span>
-            <Button
-              size="small"
-              startIcon={<BrushIcon />}
-              onClick={() => setThemeOpen(true)}
-              disabled={!companyId}
-            >
-              {t("manager.visualBuilder.controls.buttons.theme")}
-            </Button>
-          </span>
-        </Tooltip>
-
         <Button size="small" startIcon={<UndoIcon />} disabled={!canUndo} onClick={undo}>
           {t("manager.visualBuilder.controls.buttons.undo")}
         </Button>
@@ -2661,33 +2664,27 @@ const autoProvisionIfEmpty = useCallback(
           }
         />
 
-        {/* Floating inspector controls */}
         <FloatingInspector.Controls fi={fi} />
 
-        {/* Dock/Float/Inline toggle (simple mode only) */}
         <ToggleButtonGroup
-  value={mode}
-  exclusive
-  onChange={(_, v) => {
-    if (!v) return;
-    fi.setInspectorMode(v);
-    fi.setEnabled?.(v !== "dock");   // turn floating/inline on
+          value={mode}
+          exclusive
+          onChange={(_, v) => {
+            if (!v) return;
+            fi.setInspectorMode(v);
+            fi.setEnabled?.(v !== "dock");
 
-    // If nothing is selected yet, pick the first block so the panel has context
-    if (v !== "dock" && selectedBlock < 0 && safeSections(editing).length) {
-      setSelectedBlock(0);
-    }
-  }}
-  size="small"
->
-  <ToggleButton value="dock">{t("manager.visualBuilder.controls.toggles.dock")}</ToggleButton>
-  <ToggleButton value="inline">{t("manager.visualBuilder.controls.toggles.inline")}</ToggleButton>
-  <ToggleButton value="float">{t("manager.visualBuilder.controls.toggles.float")}</ToggleButton>
-</ToggleButtonGroup>
+            if (v !== "dock" && selectedBlock < 0 && safeSections(editing).length) {
+              setSelectedBlock(0);
+            }
+          }}
+          size="small"
+        >
+          <ToggleButton value="dock">{t("manager.visualBuilder.controls.toggles.dock")}</ToggleButton>
+          <ToggleButton value="inline">{t("manager.visualBuilder.controls.toggles.inline")}</ToggleButton>
+          <ToggleButton value="float">{t("manager.visualBuilder.controls.toggles.float")}</ToggleButton>
+        </ToggleButtonGroup>
 
-
-
-        {/* {t("manager.visualBuilder.controls.toggles.fullPreview")} toggle */}
         <FormControlLabel
           sx={{ ml: 1 }}
           label={t("manager.visualBuilder.controls.toggles.fullPreview")}
@@ -2695,7 +2692,6 @@ const autoProvisionIfEmpty = useCallback(
             <Switch checked={fullPreview} onChange={(_, v) => setFullPreview(v)} />
           }
         />
-
       </Stack>
     </SectionCard>
   );
@@ -2712,15 +2708,16 @@ const autoProvisionIfEmpty = useCallback(
 
   const LeftColumn = (
     <Stack spacing={1.5}>
-    <CollapsibleSection
-      id="builder-pages-list"
-      title={t("manager.visualBuilder.pages.title")}
-      expanded={pagesListOpen}
-      onChange={(next) => {
-        setPagesListOpen(next);
-        setPageSettingsOpen(next);
-      }}
-    >
+      <InspectorColumn />
+      <CollapsibleSection
+        id="builder-pages-list"
+        title={t("manager.visualBuilder.pages.title")}
+        expanded={pagesListOpen}
+        onChange={(next) => {
+          setPagesListOpen(next);
+          setPageSettingsOpen(next);
+        }}
+      >
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {selectedPageIds.length
@@ -3193,6 +3190,16 @@ const autoProvisionIfEmpty = useCallback(
           "manager.visualBuilder.nav.description",
           "Control navigation details like site title and menu styling."
         )}
+        actions={
+          <Tooltip title={t("manager.visualBuilder.canvas.locate", "Locate on canvas")}>
+            <IconButton size="small" onClick={scrollCanvasToTop}>
+              <CenterFocusStrongIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        }
+        onChange={(open) => {
+          if (open) scrollCanvasToTop();
+        }}
       >
         <WebsiteNavSettingsCard
           companyId={companyId}
@@ -3213,7 +3220,24 @@ const autoProvisionIfEmpty = useCallback(
           "Upload logos, configure sticky header links, and add footer columns."
         )}
         expanded={brandingPanelOpen}
-        onChange={(open) => setBrandingPanelOpen(open)}
+        onChange={(open) => {
+          setBrandingPanelOpen(open);
+          if (open) scrollCanvasToTop();
+        }}
+        actions={
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <Tooltip title={t("manager.visualBuilder.canvas.locateHeader", "Locate header")}>
+              <IconButton size="small" onClick={scrollCanvasToTop}>
+                <CenterFocusStrongIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t("manager.visualBuilder.canvas.locateFooter", "Locate footer")}>
+              <IconButton size="small" onClick={scrollCanvasToBottom}>
+                <CenterFocusStrongIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        }
       >
         <WebsiteBrandingCard
           companyId={companyId}
@@ -3246,6 +3270,25 @@ const autoProvisionIfEmpty = useCallback(
         id="builder-sections-panel"
         title={t("manager.visualBuilder.sections.title")}
         description={t("manager.visualBuilder.sections.description")}
+        actions={
+          <Tooltip title={t("manager.visualBuilder.canvas.locate", "Locate on canvas")}>
+            <IconButton
+              size="small"
+              onClick={() => {
+                if (selectedBlock >= 0) {
+                  scrollCanvasToSection(selectedBlock);
+                }
+              }}
+            >
+              <CenterFocusStrongIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        }
+        onChange={(open) => {
+          if (open && selectedBlock >= 0) {
+            scrollCanvasToSection(selectedBlock);
+          }
+        }}
       >
         {/* Section list (pageStyle hidden) */}
         <Stack spacing={1}>
@@ -3264,7 +3307,10 @@ const autoProvisionIfEmpty = useCallback(
                   <Button
                     size="small"
                     variant={realIndex === selectedBlock ? "contained" : "outlined"}
-                    onClick={() => setSelectedBlock(realIndex)}
+                    onClick={() => {
+                      setSelectedBlock(realIndex);
+                      requestAnimationFrame(() => scrollCanvasToSection(realIndex));
+                    }}
                     sx={{ justifyContent: "flex-start" }}
                     fullWidth
                   >
@@ -3375,14 +3421,37 @@ function startSectionDrag(e, i, kind) {
     }
   };
 
-  const onUp = () => {
-    document.removeEventListener("mousemove", onMove);
-    document.removeEventListener("mouseup", onUp);
-    document.body.style.cursor = "";
-  };
+const onUp = () => {
+  document.removeEventListener("mousemove", onMove);
+  document.removeEventListener("mouseup", onUp);
+  document.body.style.cursor = "";
+};
 
-  document.addEventListener("mousemove", onMove);
-  document.addEventListener("mouseup", onUp);
+document.addEventListener("mousemove", onMove);
+document.addEventListener("mouseup", onUp);
+}
+
+function scrollCanvasToTop() {
+  const container = canvasScrollRef.current;
+  if (!container) return;
+  container.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function scrollCanvasToBottom() {
+  const container = canvasScrollRef.current;
+  if (!container) return;
+  container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+}
+
+function scrollCanvasToSection(idx) {
+  const container = canvasScrollRef.current;
+  if (!container && idx !== 0) return;
+  if (!container) return;
+  const target = container.querySelector(
+    `[data-canvas-section-idx="${idx}"]`
+  );
+  if (!target) return;
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 const renderableSections = safeSections(editing)
@@ -3450,6 +3519,7 @@ const CanvasColumn = (
           border: "1px solid",
           borderColor: "divider",
         }}
+        ref={canvasScrollRef}
       >
         <NavStyleHydrator website={siteSettings} scopeSelector=".page-scope .site-nav" />
 
@@ -3521,13 +3591,19 @@ const CanvasColumn = (
               sx={{
                 position: "relative",
                 px: { xs: 0, md: 1 },
-                py: 2,
+                pt: 2,
+                pb: 0,
+                backgroundColor: bgColor,
               }}
             >
-              <Stack spacing={2}>
+              <Box>
                 {renderableSections.map(({ section: blk, idx }) => {
                   const key = blk.id || `${blk.type}-${idx}`;
                   const isSelected = selectedBlock === idx;
+                  const isFooterBlock = blk?.type === "footer";
+                  const nextIsFooter =
+                    renderableSections[idx + 1]?.section?.type === "footer";
+                  const mb = nextIsFooter ? 0 : 2;
                   return (
                     <React.Fragment key={key}>
                       <Box
@@ -3536,13 +3612,18 @@ const CanvasColumn = (
                           borderRadius: 2,
                           border: "1px dashed",
                           borderColor: isSelected ? "primary.main" : "divider",
-                          backgroundColor: "rgba(0,0,0,0.02)",
+                          backgroundColor: "transparent",
                           overflow: "hidden",
                           transition: "border-color 0.2s, box-shadow 0.2s",
                           boxShadow: isSelected
                             ? "0 0 0 2px rgba(25,118,210,0.18)"
                             : "none",
+                          mt: isFooterBlock ? 0 : undefined,
+                          mb,
+                          display: "flex",
+                          flexDirection: "column",
                         }}
+                        data-canvas-section-idx={idx}
                         onClick={() => setSelectedBlock(idx)}
                       >
                         <Box
@@ -3590,13 +3671,15 @@ const CanvasColumn = (
                           sx={{
                             pointerEvents: "none",
                             "& *": { pointerEvents: "none" },
+                            flex: 1,
                           }}
                         >
                           <RenderSections
                             sections={[blk]}
                             layout={editingPreview.layout || "boxed"}
                             sectionSpacing={
-                              editingPreview?.content?.meta?.sectionSpacing ?? 6
+                              editingPreview?.content?.meta?.sectionSpacing ??
+                              6
                             }
                             defaultGutterX={
                               editingPreview?.content?.meta?.defaultGutterX
@@ -3693,7 +3776,7 @@ const CanvasColumn = (
                     </React.Fragment>
                   );
                 })}
-              </Stack>
+              </Box>
             </Box>
           )}
 
@@ -3723,12 +3806,14 @@ const CanvasColumn = (
 
 
 
-const InspectorColumn = (
-  <Stack spacing={1.5}>
+function InspectorColumn() {
+  return (
+    <Stack spacing={1.5}>
     <CollapsibleSection
       id="page-style-card-wrapper"
       title={t("manager.visualBuilder.pageStyle.title")}
       description={t("manager.visualBuilder.pageStyle.description")}
+      defaultExpanded={false}
     >
       <PageStyleCard
         value={
@@ -3786,6 +3871,7 @@ const InspectorColumn = (
       description={t("manager.visualBuilder.inspector.description")}
       expanded={inspectorOpen}
       onChange={(next) => setInspectorOpen(next)}
+      defaultExpanded={false}
       actions={
         <Tooltip title={t("manager.visualBuilder.sections.hint")}>
           <IconButton size="small" edge="end">
@@ -3995,56 +4081,33 @@ const InspectorColumn = (
         </>
       )}
     </CollapsibleSection>
-  </Stack>
-);
-
-
-  const mobileInspectorCard = (
-    <SectionCard
-      title={t("manager.visualBuilder.inspector.title")}
-      description={t("manager.visualBuilder.inspector.description")}
-    >
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        {t(
-          "manager.visualBuilder.controls.mobileHint",
-          "Open the inspector or theme designer to fine-tune styles on smaller screens."
-        )}
-      </Typography>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-        <Button
-          variant="contained"
-          onClick={() => setInspectorDrawerOpen(true)}
-          fullWidth={isSmDown}
-        >
-          {t("manager.visualBuilder.inspector.title")}
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => setThemeOpen(true)}
-          fullWidth={isSmDown}
-        >
-          {t("manager.visualBuilder.controls.buttons.theme")}
-        </Button>
-      </Stack>
-    </SectionCard>
+    </Stack>
   );
+}
+
 
   const builderColumns = isLgDown ? (
     <Stack spacing={2}>
       <Box>{LeftColumn}</Box>
       <Box>{CanvasColumn}</Box>
-      {mobileInspectorCard}
     </Stack>
   ) : (
     <Grid container spacing={2}>
-      <Grid item xs={12} lg={3}>
-        {LeftColumn}
+      <Grid item xs={12} lg={4}>
+        <Box
+          sx={{
+            position: "sticky",
+            top: 16,
+            maxHeight: "calc(100vh - 180px)",
+            overflowY: "auto",
+            pr: 1,
+          }}
+        >
+          {LeftColumn}
+        </Box>
       </Grid>
-      <Grid item xs={12} lg={6}>
+      <Grid item xs={12} lg={8}>
         {CanvasColumn}
-      </Grid>
-      <Grid item xs={12} lg={3}>
-        {InspectorColumn}
       </Grid>
     </Grid>
   );
@@ -4249,7 +4312,7 @@ if (authError) {
         sx={{ display: { lg: "none" } }}
       >
         <Box sx={{ width: { xs: "90vw", sm: 420 }, maxWidth: 480, p: 2 }}>
-          {InspectorColumn}
+          <InspectorColumn />
         </Box>
       </Drawer>
 
