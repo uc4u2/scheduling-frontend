@@ -1,6 +1,6 @@
 # Platform Admin + Sales System — Source of Truth
 
-Last updated: 2026-01-31
+Last updated: 2026-02-04
 
 This document is the canonical reference for the Platform Admin Command Center, Sales Rep portal, and related backend/DB/frontend changes.
 
@@ -81,6 +81,7 @@ Sales (Admin):
 - `GET  /platform-admin/sales/reps`
 - `POST /platform-admin/sales/reps`
 - `POST /platform-admin/sales/reps/<rep_id>/reset-password`
+- `POST /platform-admin/sales/reps/<rep_id>/set-active`
 - `GET  /platform-admin/sales/reps/<rep_id>/profile`
 - `GET  /platform-admin/sales/deals`
 - `GET  /platform-admin/sales/deals/<deal_id>`
@@ -89,6 +90,14 @@ Sales (Admin):
 - `GET  /platform-admin/sales/ledger`
 - `GET  /platform-admin/sales/rules`
 - `POST /platform-admin/sales/rules`
+
+Sales Payouts (Admin):
+- `POST /platform-admin/sales/payouts/generate`
+- `GET  /platform-admin/sales/payouts`
+- `GET  /platform-admin/sales/payouts/<batch_id>`
+- `POST /platform-admin/sales/payouts/<batch_id>/approve`
+- `POST /platform-admin/sales/payouts/<batch_id>/mark-paid`
+- `POST /platform-admin/sales/payouts/<batch_id>/void`
 
 Notes:
 - Platform endpoints **must not** require `X-Company-Id`.
@@ -103,22 +112,23 @@ Auth:
 - `POST /sales/auth/reset`
 
 Deals:
-- `POST /sales/deals`  
+- `POST /sales/deals`
   - Validates `plan_key` in `{starter, pro, business}`
   - Supports prospect email + name
   - Anti-cheat:
     - If prospect company already acquired by **same rep** → allow, mark `meta.type="reactivation"`
     - If acquired by **different rep** → block with `already_acquired`
-- `GET  /sales/deals`  
+- `GET  /sales/deals`
   Returns flattened invite fields:
   - `invite_sent_count`, `invite_sent_at`, `deal_type`
 - `POST /sales/deals/<id>/invite-link`
 - `POST /sales/deals/<id>/send-invite-email`
 
-Commission / Customers:
+Commission / Customers / Payouts:
 - `GET /sales/ledger`
 - `GET /sales/summary`
 - `GET /sales/customers`
+- `GET /sales/payouts`
 
 ---
 
@@ -143,8 +153,23 @@ Added in `backend/app/models.py`:
     - `type` (e.g. `"reactivation"`)
 
 - `SalesCommissionRule`
+
 - `SalesCommissionLedger`
   - Unique constraint: `(stripe_invoice_id, deal_id, type)` for idempotency
+  - Status lifecycle:
+    - `pending_hold` (close bonus after invoice #1)
+    - `payable` (eligible for payout batch)
+    - `paid` (included in paid batch)
+    - `voided_expired` (churned before eligibility)
+  - Payout fields:
+    - `batch_id`, `paid_at`, `paid_method`, `paid_reference`
+    - `earned_at`, `payable_at`
+
+- `SalesPayoutBatch`
+  - `sales_rep_id`, `period_start`, `period_end`, `currency`
+  - `total_payable_cents`
+  - `status` (`draft|approved|paid|void`)
+  - `approved_at`, `paid_at`, `paid_method`, `reference`, `notes`
 
 Company acquisition attribution (on CompanyProfile if missing):
 - `acquired_by_sales_rep_id`
@@ -153,23 +178,7 @@ Company acquisition attribution (on CompanyProfile if missing):
 
 ---
 
-## 5) Migrations (recent)
-
-- `20260201_platform_admin`  
-  Platform Admin tables + sales tables + attribution fields
-
-- `0f65be3594c6`  
-  Merge heads after platform admin migration
-
-- `20260201_sales_rep_auth`  
-  Sales rep auth fields (`password_hash`, `last_login_at`)
-
-- `20260201_sales_rep_reset`  
-  Reset token fields (`reset_token_hash`, `reset_expires_at`)
-
----
-
-## 6) Registration / Deal Token flow
+## 5) Registration / Deal Token flow
 
 1) Sales Rep or Platform Admin generates invite link:
    - Signed token (7 days)
@@ -186,129 +195,68 @@ Hashing is unified to **sha256(token)** everywhere.
 
 ---
 
-## 7) Billing commissions (Stripe webhook)
+## 6) Billing commissions (Stripe webhook)
 
-Commission ledger entries are written inside `backend/app/routes.py` in billing webhook handler:
+Commission ledger entries are written in `backend/app/routes.py` in the billing webhook handler.
 
-- Triggered on `invoice.payment_succeeded` and `invoice.paid`
-- If company has `acquired_by_sales_rep_id` and an activated deal:
-  - Creates **close bonus** once
-  - Creates **recurring** commission up to `months_cap`
-  - Uses rule from `SalesCommissionRule` (default: 50% close / 15% recurring, 12 months)
-- Idempotent:
-  - Unique constraint + check by `stripe_invoice_id`
+**Event source:** `invoice.paid` only (avoids double-create).  
+**Commission base:** `amount_paid` (fallback to `amount_due` or `total` if missing).
 
-NOTE: Commission base is derived from Stripe invoice totals currently; align with plan price if required by policy.
+### Eligibility timing (v1)
 
----
+1) **Close bonus**
+   - Created on **invoice #1** with status `pending_hold`.
+   - Becomes `payable` only after **invoice #2** is paid.
+   - If subscription cancels before invoice #2 → status `voided_expired`.
 
-## 8) Frontend (routes + files)
+2) **Recurring commission**
+   - Starts on **invoice #2** and onward.
+   - Created as `payable` immediately after invoice is paid.
 
-### 8.1 Platform Admin UI
+3) **Payout batches**
+   - Include **only** ledger rows with `status == "payable"` and `batch_id IS NULL`.
 
-Routes:
-- `/admin/login`
-- `/admin/*` (PlatformAdminShell)
+### Idempotency
 
-Files:
-- `frontend/src/admin/PlatformAdminLogin.js`
-- `frontend/src/admin/PlatformAdminShell.js`
-- `frontend/src/admin/pages/SearchPage.js`
-- `frontend/src/admin/pages/Tenant360Page.js`
-- `frontend/src/admin/pages/SalesRepsPage.js`
-- `frontend/src/admin/pages/SalesRepProfilePage.js`
-- `frontend/src/admin/pages/SalesDealsPage.js`
-- `frontend/src/admin/pages/SalesLedgerPage.js`
-- `frontend/src/admin/pages/AuditLogsPage.js`
-
-API client:
-- `frontend/src/api/platformAdminApi.js`
-  - Token: `localStorage.platformAdminToken`
-  - No `X-Company-Id`
-
-### 8.2 Sales Rep Portal UI
-
-Routes:
-- `/sales/login`
-- `/sales/forgot`
-- `/sales/reset`
-- `/sales/*` (SalesShell)
-
-Files:
-- `frontend/src/sales/SalesShell.js`
-- `frontend/src/sales/pages/SalesLoginPage.js`
-- `frontend/src/sales/pages/SalesForgotPasswordPage.js`
-- `frontend/src/sales/pages/SalesResetPasswordPage.js`
-- `frontend/src/sales/pages/SalesDealsPage.js`
-- `frontend/src/sales/pages/SalesCustomersPage.js`
-- `frontend/src/sales/pages/SalesLedgerPage.js`
-- `frontend/src/sales/pages/SalesSummaryPage.js`
-
-API client:
-- `frontend/src/api/salesRepApi.js`
-  - Token: `localStorage.salesRepToken`
+- Unique constraint on `(stripe_invoice_id, deal_id, type)`
+- Duplicate webhooks become no-ops
 
 ---
 
-## 9) Invite Email / Reset Email
+## 7) Payout batches (manual but auditable)
 
-### Invite email (Sales Rep):
-- Endpoint: `POST /sales/deals/<id>/send-invite-email`
-- Uses deal’s prospect email/name
-- Stores in deal meta:
-  - `invite_sent_at`
-  - `invite_sent_count`
+- Generate batch for a rep/month
+- Approve (optional)
+- Mark Paid (manual method + reference)
 
-### Sales rep reset:
-- Rep can request reset: `POST /sales/auth/forgot`
-- Admin can force reset:
-  - `POST /platform-admin/sales/reps/<id>/reset-password`
-- Tokens signed using `sales_rep_reset` service module
-
-Base URL for links:
-```
-FRONTEND_URL or FRONTEND_BASE_URL, fallback https://www.schedulaa.com
-```
+Every action writes an **Audit Log**.
 
 ---
 
-## 10) Quick smoke test
+## 8) Frontend routes (wiring)
 
-### Platform Admin
-1) Login `/admin/login`
-2) Search tenant → Tenant360
-3) Create Sales Rep
-4) Create Sales Deal (plan_key)
-5) Generate invite link
-6) Verify audit logs
+### Admin
+- `/admin/sales/payouts` → `src/admin/pages/SalesPayoutsPage.js`
+- `/admin/sales/payouts/:batchId` → `src/admin/pages/SalesPayoutDetailPage.js`
+- `/admin/sales/commission-rules` → `src/admin/pages/SalesCommissionRulesPage.js`
 
 ### Sales Rep
-1) Login `/sales/login`
-2) Create deal
-3) Send invite email
-4) Register with deal_token
-5) Sales summary shows activated + MRR
+- `/sales/payouts` → `src/sales/pages/SalesPayoutsPage.js`
 
 ---
 
-## 11) Files changed (core)
+## 9) Smoke tests (payout flow)
 
-Backend (selected):
-- `backend/app/blueprints/platform_admin.py`
-- `backend/app/blueprints/sales_rep.py`
-- `backend/app/middleware/platform_admin_auth.py`
-- `backend/app/middleware/sales_rep_auth.py`
-- `backend/app/services/sales_rep_reset.py`
-- `backend/app/models.py`
-- `backend/app/routes.py` (billing webhook commission ledger)
-
-Frontend (selected):
-- `frontend/src/App.js`
-- `frontend/src/api/platformAdminApi.js`
-- `frontend/src/api/salesRepApi.js`
-- `frontend/src/admin/*`
-- `frontend/src/sales/*`
+1) Generate batch for rep/month
+2) Approve batch
+3) Mark batch paid
+4) Verify ledger entries now `status=paid` with `paid_at/method/reference`
+5) Verify rep sees payout in `/sales/payouts`
 
 ---
 
-If you want a one-pager for Sales Reps (external documentation), I can add a separate `docs/sales_rep_quickstart.md` with screenshots and sample workflows.
+## 10) Commission wording cleanup
+
+- Commission base = **Stripe invoice paid amount** (`amount_paid`)
+- `amount_due` or `total` only used as fallback if `amount_paid` is missing
+- No commissions are based on plan list price

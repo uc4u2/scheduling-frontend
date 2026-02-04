@@ -86,6 +86,12 @@ Types:
 - **close_bonus**: one‑time
 - **recurring**: monthly for X months
 
+Eligibility timing (v1):
+- Invoice #1 → close_bonus created as **pending_hold**
+- Invoice #2 → close_bonus becomes **payable** + first recurring **payable**
+- Invoice #3+ → recurring **payable**
+- If subscription cancels before invoice #2 → close_bonus becomes **voided_expired**
+
 If payment fails → no commission entry.
 
 ---
@@ -94,7 +100,7 @@ If payment fails → no commission entry.
 
 **Admin → Sales Payouts**
 
-- Generate batch for a rep/month
+- Generate batch for a rep/month (includes **payable** ledger entries only)
 - Approve (optional)
 - Mark Paid (manual method + reference)
 
