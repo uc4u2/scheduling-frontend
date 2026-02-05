@@ -170,7 +170,7 @@ const CollapsibleSection = ({
       overflow: "hidden",
       "&:before": { display: "none" },
     }}
-    onChange={(event, next) => onChange?.(event, next)}
+    onChange={(event, next) => onChange?.(next, event)}
   >
     <AccordionSummary
       expandIcon={<ExpandMoreIcon />}
@@ -3815,7 +3815,7 @@ function InspectorColumn() {
       title={t("manager.visualBuilder.pageStyle.title")}
       description={t("manager.visualBuilder.pageStyle.description")}
       expanded={pageStyleOpen}
-      onChange={(_, next) => setPageStyleOpen(next)}
+      onChange={(next) => setPageStyleOpen(next)}
       defaultExpanded={false}
     >
       <PageStyleCard
