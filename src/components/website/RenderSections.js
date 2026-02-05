@@ -915,7 +915,7 @@ const FeatureZigzagModern = ({
           order: { xs: 2, md: align === "right" ? 2 : 1 },
           justifySelf: "center",
           width: "100%",
-          maxWidth: { xs: "100%", md: 420 },
+          maxWidth: { xs: "100%", md: 640 },
           backgroundColor: "transparent",
           border: "none",
           borderRadius: 0,
@@ -961,7 +961,7 @@ const FeatureZigzagModern = ({
           order: { xs: 1, md: align === "right" ? 1 : 2 },
           justifySelf: "center",
           width: "100%",
-          maxWidth: { xs: "100%", md: 460 },
+          maxWidth: { xs: "100%", md: 700 },
           borderRadius: 0,
           overflow: "hidden",
           aspectRatio: { xs: "4 / 3", md: "5 / 4" },
@@ -992,7 +992,7 @@ const FeatureZigzagModern = ({
             xs: "1fr",
             md: "repeat(2, minmax(0, 1fr))"
           },
-          gap: { xs: 2.5, md: 3.5 },
+          gap: { xs: 2.5, md: 8 },
           alignItems: "center"
         }}
       >
@@ -3950,7 +3950,7 @@ const FeatureStories = ({
   const rawGap = card?.gap ?? 32;
   const gap = typeof rawGap === "number" ? Number(rawGap) : rawGap;
   const gapXs = card?.gapXs ?? (typeof gap === "number" ? Math.min(gap, 28) : gap);
-  const rawMaxContainer = card?.maxWidth ?? 1160;
+  const rawMaxContainer = card?.maxWidth ?? 1440;
   const maxContainer = typeof rawMaxContainer === "number" ? `${rawMaxContainer}px` : rawMaxContainer;
   const sectionBackground = card?.sectionBackground || "linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)";
 
@@ -4028,11 +4028,11 @@ const FeatureStories = ({
       <Container
         maxWidth={false}
         sx={{
-        maxWidth: maxContainer,
-        mx: "auto",
-        px: { xs: 2, md: 4 },
-        py: { xs: 8, md: 12 },
-      }}
+          maxWidth: maxContainer,
+          mx: "auto",
+          px: { xs: 2, md: 6, lg: 8 },
+          py: { xs: 8, md: 12 },
+        }}
       >
         {title && (
           <HtmlTypo
