@@ -1,10 +1,34 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../../utils/api";
 
-const useBillingStatus = () => {
+const useBillingStatus = ({ forceSync = false } = {}) => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const run = useCallback(
+    async (opts = {}) => {
+      const shouldForceSync = Boolean(opts.forceSync ?? forceSync);
+      setLoading(true);
+      setError("");
+      try {
+        if (shouldForceSync) {
+          await api.post("/billing/sync-from-stripe");
+        }
+        const res = await api.get("/billing/status");
+        setStatus(res?.data || null);
+        return res?.data || null;
+      } catch (err) {
+        setError(
+          err?.response?.data?.error || err?.message || "Unable to load billing status."
+        );
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [forceSync]
+  );
 
   useEffect(() => {
     let active = true;
@@ -22,27 +46,13 @@ const useBillingStatus = () => {
         active = false;
       };
     }
-    const run = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await api.get("/billing/status");
-        if (!active) return;
-        setStatus(res?.data || null);
-      } catch (err) {
-        if (!active) return;
-        setError(err?.response?.data?.error || err?.message || "Unable to load billing status.");
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    run();
+    run({ forceSync }).catch(() => null);
     return () => {
       active = false;
     };
-  }, []);
+  }, [run, forceSync]);
 
-  return { status, loading, error };
+  return { status, loading, error, refetch: run };
 };
 
 export default useBillingStatus;

@@ -528,6 +528,11 @@ const PricingPage = () => {
       const res = await api.post("/billing/checkout", { plan_key: planKey });
       const url = res?.data?.url;
       if (url && typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem("billing_refresh_pending", "1");
+        } catch (e) {
+          // ignore sessionStorage failures
+        }
         window.location.href = url;
         return;
       }
