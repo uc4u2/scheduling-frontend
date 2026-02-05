@@ -185,6 +185,13 @@ const BillingSuccessPage = () => {
     };
   }, [billingAttempts, checkoutComplete, phase, pollBillingStatus]);
 
+  useEffect(() => {
+    return () => {
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
+  }, []);
+
   const handleDashboard = () => {
     if (redirectTimer.current) {
       clearTimeout(redirectTimer.current);

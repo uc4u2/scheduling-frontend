@@ -43,6 +43,12 @@ const useBillingStatus = ({ forceSync = false } = {}) => {
 
   useEffect(() => {
     isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
     const role = typeof localStorage !== "undefined" ? localStorage.getItem("role") : null;
     const path = typeof window !== "undefined" ? window.location.pathname : "";
@@ -54,12 +60,12 @@ const useBillingStatus = ({ forceSync = false } = {}) => {
     if (!token || role !== "manager" || !isAdminRoute) {
       setLoading(false);
       return () => {
-        isMountedRef.current = false;
+        // no-op
       };
     }
     run({ forceSync }).catch(() => null);
     return () => {
-      isMountedRef.current = false;
+      // no-op
     };
   }, [run, forceSync]);
 
