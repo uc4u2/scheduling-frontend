@@ -137,6 +137,7 @@ const SettingsBillingSubscription = () => {
                   : false;
               const showTrial =
                 String(status.status || "").toLowerCase() === "trialing" || trialEndFuture;
+              const trialEndForLabel = showTrial ? null : status.trial_end;
               return (
                 <Stack direction="row" spacing={3} flexWrap="wrap">
                   {showTrial && (
@@ -149,7 +150,7 @@ const SettingsBillingSubscription = () => {
                     <strong>
                       {formatBillingNextDateLabel({
                         nextBillingDate: status.next_billing_date,
-                        trialEnd: showTrial ? status.trial_end : null,
+                        trialEnd: trialEndForLabel,
                         t,
                       })}
                     </strong>
