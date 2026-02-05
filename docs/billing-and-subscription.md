@@ -27,6 +27,24 @@ This opens: Manager Portal → Settings → Billing & Subscription
 5) Use **Add Seats** to increase staff seats.
 6) If you changed billing in Stripe, click **Sync from Stripe** to refresh.
 
+## After checkout (automatic confirmation)
+
+When you complete Stripe checkout, Schedulaa confirms your subscription in three steps:
+
+1) **Confirm checkout** – We verify Stripe marked the checkout as complete.  
+2) **Sync billing** – We pull the latest subscription data from Stripe.  
+3) **Activate access** – Once the plan is **active** or **trialing**, you’re redirected to the dashboard.
+
+If Stripe says the payment needs attention (past due/unpaid/incomplete), you’ll see a **Manage Billing** button so you can fix it immediately.
+
+## Troubleshooting
+
+- **I paid but I still see inactive**  
+  Open Billing & Subscription and click **Sync from Stripe**. If it’s still inactive, click **Manage Billing** and check Stripe for payment issues.
+
+- **Why did the dashboard say “Confirming billing…”?**  
+  This is normal immediately after checkout. It disappears once your subscription is active or trialing.
+
 ## Common questions
 
 - **Why does it say inactive?**  
