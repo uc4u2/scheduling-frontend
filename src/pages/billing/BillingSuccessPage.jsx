@@ -64,14 +64,6 @@ const BillingSuccessPage = () => {
   }, [navigate, sid]);
 
   useEffect(() => {
-    const token =
-      typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
-    if (!token) {
-      redirectToLogin();
-    }
-  }, [redirectToLogin]);
-
-  useEffect(() => {
     if (!sid) {
       setError("Missing checkout session. Please return to pricing.");
       setPhase("timeout");
