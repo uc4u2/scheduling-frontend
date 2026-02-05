@@ -128,20 +128,35 @@ const SettingsBillingSubscription = () => {
                 <strong>{t("billing.labels.subscription")}:</strong> {status.subscription_state || t("billing.values.none")}
               </Typography>
             </Stack>
-            <Stack direction="row" spacing={3} flexWrap="wrap">
-              <Typography variant="body2">
-                <strong>{t("billing.labels.trialEnds")}:</strong> {formatDate(status.trial_end, t)}
-              </Typography>
-              <Typography variant="body2">
-                <strong>
-                  {formatBillingNextDateLabel({
-                    nextBillingDate: status.next_billing_date,
-                    trialEnd: status.trial_end,
-                    t,
-                  })}
-                </strong>
-              </Typography>
-            </Stack>
+            {(() => {
+              const trialEnd = status.trial_end;
+              const trialEndDate = trialEnd ? new Date(trialEnd) : null;
+              const trialEndFuture =
+                trialEndDate && !Number.isNaN(trialEndDate.getTime())
+                  ? trialEndDate.getTime() > Date.now()
+                  : false;
+              const showTrial =
+                String(status.status || "").toLowerCase() === "trialing" || trialEndFuture;
+              return (
+                <Stack direction="row" spacing={3} flexWrap="wrap">
+                  {showTrial && (
+                    <Typography variant="body2">
+                      <strong>{t("billing.labels.trialEnds")}:</strong>{" "}
+                      {formatDate(status.trial_end, t)}
+                    </Typography>
+                  )}
+                  <Typography variant="body2">
+                    <strong>
+                      {formatBillingNextDateLabel({
+                        nextBillingDate: status.next_billing_date,
+                        trialEnd: showTrial ? status.trial_end : null,
+                        t,
+                      })}
+                    </strong>
+                  </Typography>
+                </Stack>
+              );
+            })()}
             <Divider sx={{ my: 1 }} />
             <Stack direction="row" spacing={3} flexWrap="wrap">
               <Typography variant="body2">
