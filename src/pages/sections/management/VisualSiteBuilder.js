@@ -976,6 +976,7 @@ useEffect(() => {
 const [pagesListOpen, setPagesListOpen] = useState(false);
 const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
 const [inspectorOpen, setInspectorOpen] = useState(false);
+const [pageStyleOpen, setPageStyleOpen] = useState(false);
 const canvasScrollRef = useRef(null);
   const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
   const [brandingPanelOpen, setBrandingPanelOpen] = useState(false);
@@ -3813,6 +3814,8 @@ function InspectorColumn() {
       id="page-style-card-wrapper"
       title={t("manager.visualBuilder.pageStyle.title")}
       description={t("manager.visualBuilder.pageStyle.description")}
+      expanded={pageStyleOpen}
+      onChange={(next) => setPageStyleOpen(next)}
       defaultExpanded={false}
     >
       <PageStyleCard
