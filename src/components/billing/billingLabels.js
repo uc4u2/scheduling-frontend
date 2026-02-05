@@ -4,7 +4,7 @@ export const formatBillingNextDateLabel = ({ nextBillingDate, trialEnd, t }) => 
 
   const nextLabel = t ? t("billing.labels.nextBillingDate") : "Next billing date";
   const trialLabel = t ? t("billing.labels.trialEnds") : "Trial ends";
-  if (nextBillingDate) return `${nextLabel}: ${fmt(nextBillingDate)}`;
   if (trialEnd) return `${trialLabel}: ${fmt(trialEnd)}`;
+  if (nextBillingDate) return `${nextLabel}: ${fmt(nextBillingDate)}`;
   return t ? t("billing.labels.nextBillingDateEmpty") : "Next billing date: —";
 };
