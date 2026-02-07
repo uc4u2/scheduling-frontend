@@ -82,7 +82,12 @@ export default function PlatformAdminShell() {
       >
         <Toolbar />
         <List>
-          {navItems.map((item) => (
+          {navItems
+            .filter((item) => {
+              if (item.to !== "/admin/team") return true;
+              return admin?.role === "platform_owner" || admin?.role === "platform_admin";
+            })
+            .map((item) => (
             <ListItemButton
               key={item.to}
               selected={location.pathname === item.to}
