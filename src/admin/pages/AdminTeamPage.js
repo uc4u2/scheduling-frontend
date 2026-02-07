@@ -361,6 +361,11 @@ export default function AdminTeamPage() {
                   />
                 ))}
               </FormGroup>
+              {!coverageDialog.subjects.length && (
+                <Typography variant="body2" color="text.secondary">
+                  No coverage assigned
+                </Typography>
+              )}
             </Stack>
           )}
         </DialogContent>
