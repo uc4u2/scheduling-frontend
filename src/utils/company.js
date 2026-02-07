@@ -35,6 +35,19 @@ export function getCachedCompanyId() {
  * Safe to call anywhere in the app.
  */
 export async function ensureCompanyId() {
+  // 0) URL param (support sessions / deep links)
+  try {
+    if (typeof window !== "undefined" && window.location?.search) {
+      const q = new URLSearchParams(window.location.search);
+      const fromQ = q.get("company_id") || q.get("cid");
+      const n = Number(fromQ);
+      if (Number.isFinite(n) && n > 0) {
+        setCachedCompanyId(n);
+        return n;
+      }
+    }
+  } catch {}
+
   // 1) cached
   const cached = getCachedCompanyId();
   if (cached) return cached;

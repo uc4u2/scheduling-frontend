@@ -1492,7 +1492,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   );
 };
 
-const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => {
+const NewManagementDashboard = ({ token, initialView, sectionOnly = false, supportMode = false }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -1665,10 +1665,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   }, [token, isManager]);
 
   useEffect(() => {
+    if (supportMode) return;
     if (isManager && selectedView === "__landing__") {
       setSelectedView("employee-management");
     }
-  }, [isManager, selectedView]);
+  }, [isManager, selectedView, supportMode]);
 
   useEffect(() => {
     if (initialView && initialView !== selectedView) {
@@ -1678,12 +1679,13 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
   }, [initialView]);
 
   useEffect(() => {
+    if (supportMode) return;
     if (isManager) return;
     if (!allowedViewKeys.length) return;
     if (!allowedViewKeys.includes(selectedView)) {
       setSelectedView(allowedViewKeys[0]);
     }
-  }, [isManager, allowedViewKeys, selectedView]);
+  }, [isManager, allowedViewKeys, selectedView, supportMode]);
 
   // Landing activity feed
   useEffect(() => {

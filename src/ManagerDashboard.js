@@ -11,14 +11,19 @@ export default function ManagerDashboard({ token }) {
   const location = useLocation();
   const routeParams = useParams();
   const searchParams = new URLSearchParams(location.search);
+  const supportSessionId = searchParams.get("support_session");
   const pathView = location.pathname.startsWith("/manager/")
     ? location.pathname.split("/")[2]
     : null;
   const initialView =
+    supportSessionId
+      ? "website-pages"
+      : (
     routeParams.view ||
     (pathView && pathView !== "dashboard" ? pathView : null) ||
     searchParams.get("view") ||
-    "__landing__";
+    "__landing__"
+  );
 
   const [billingRefreshPending, setBillingRefreshPending] = useState(() => {
     try {
@@ -68,7 +73,11 @@ export default function ManagerDashboard({ token }) {
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: theme.palette.background.default }}>
-      <NewManagementDashboard token={token} initialView={initialView} />
+      <NewManagementDashboard
+        token={token}
+        initialView={initialView}
+        supportMode={Boolean(supportSessionId)}
+      />
     </Box>
   );
 }
