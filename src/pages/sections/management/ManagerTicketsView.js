@@ -25,6 +25,8 @@ import { useTheme } from "@mui/material/styles";
 import { useLocation } from "react-router-dom";
 import api from "../../../utils/api";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { formatDateTimeInTz } from "../../../utils/datetime";
+import { getUserTimezone } from "../../../utils/timezone";
 
 const SUBJECT_OPTIONS = [
   "website",
@@ -37,8 +39,7 @@ const SUBJECT_OPTIONS = [
 const statusLabel = (status) =>
   status ? status.replace(/_/g, " ") : "new";
 
-const formatDate = (value) =>
-  value ? new Date(value).toLocaleString() : "";
+const formatDate = (value, tz) => formatDateTimeInTz(value, tz);
 
 export default function ManagerTicketsView() {
   const [tickets, setTickets] = useState([]);
@@ -57,6 +58,7 @@ export default function ManagerTicketsView() {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const timezone = useMemo(() => getUserTimezone(), []);
   const lastMessageId = useMemo(() => {
     const msgs = detail?.messages || [];
     return msgs.length ? msgs[msgs.length - 1].id : null;
@@ -331,7 +333,7 @@ export default function ManagerTicketsView() {
                     >
                       <ListItemText
                         primary={`${ticket.subject}${ticket.sub_subject ? ` • ${ticket.sub_subject}` : ""}`}
-                        secondary={`Status: ${statusLabel(ticket.status)} • ${formatDate(ticket.last_activity_at)}`}
+                        secondary={`Status: ${statusLabel(ticket.status)} • ${formatDate(ticket.last_activity_at, timezone)}`}
                       />
                     </ListItemButton>
                   </ListItem>
@@ -410,7 +412,7 @@ export default function ManagerTicketsView() {
                     <Box key={msg.id} sx={{ p: 1.5, background: "#f6f7f9", borderRadius: 1 }}>
                       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
                         <Typography variant="caption" color="text.secondary">
-                          {msg.sender_type} • {formatDate(msg.created_at)}
+                          {msg.sender_type} • {formatDate(msg.created_at, timezone)}
                         </Typography>
                         {!msg.is_deleted && msg.sender_type === "tenant" && (
                           <IconButton

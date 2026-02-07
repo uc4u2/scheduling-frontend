@@ -19,6 +19,8 @@ import { useTheme } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { formatDateTimeInTz } from "../../utils/datetime";
+import { getUserTimezone } from "../../utils/timezone";
 
 const BASE_STATUSES = [
   "new",
@@ -39,7 +41,7 @@ const WEBSITE_DESIGN_STATUSES = [
   "closed",
 ];
 
-const formatDate = (value) => (value ? new Date(value).toLocaleString() : "");
+const formatDate = (value, tz) => formatDateTimeInTz(value, tz);
 
 export default function AdminTicketDetailPage() {
   const { id } = useParams();
@@ -55,6 +57,7 @@ export default function AdminTicketDetailPage() {
   const [status, setStatus] = useState("");
   const [assignedAdminId, setAssignedAdminId] = useState("");
   const theme = useTheme();
+  const timezone = useMemo(() => getUserTimezone(admin?.timezone), [admin?.timezone]);
   const lastMessageId = useMemo(() => {
     return messages.length ? messages[messages.length - 1].id : null;
   }, [messages]);
@@ -303,7 +306,7 @@ export default function AdminTicketDetailPage() {
                 {ticket.sub_subject ? ` • ${ticket.sub_subject}` : ""}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Company ID: {ticket.company_id} • Created: {formatDate(ticket.created_at)}
+                Company ID: {ticket.company_id} • Created: {formatDate(ticket.created_at, timezone)}
               </Typography>
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                 <Chip size="small" label={ticket.status?.replace(/_/g, " ")} />
@@ -400,7 +403,7 @@ export default function AdminTicketDetailPage() {
               </Stack>
               {supportApproved && supportSession?.expires_at && (
                 <Typography variant="caption" color="text.secondary">
-                  Approved until {formatDate(supportSession.expires_at)}
+                  Approved until {formatDate(supportSession.expires_at, timezone)}
                 </Typography>
               )}
             </Stack>
@@ -422,7 +425,7 @@ export default function AdminTicketDetailPage() {
               <Box key={msg.id} sx={{ p: 1.5, background: "#f6f7f9", borderRadius: 1 }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
                   <Typography variant="caption" color="text.secondary">
-                    {msg.sender_type} • {formatDate(msg.created_at)}
+                    {msg.sender_type} • {formatDate(msg.created_at, timezone)}
                   </Typography>
                   {!msg.is_deleted && msg.sender_type === "agent" && (
                     <IconButton

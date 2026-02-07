@@ -20,6 +20,8 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
+import { formatDateTimeInTz } from "../../utils/datetime";
+import { getUserTimezone } from "../../utils/timezone";
 
 const STATUSES = [
   "new",
@@ -31,7 +33,7 @@ const STATUSES = [
   "closed",
 ];
 
-const formatDate = (value) => (value ? new Date(value).toLocaleString() : "");
+const formatDate = (value, tz) => formatDateTimeInTz(value, tz);
 
 export default function AdminTicketsPage() {
   const navigate = useNavigate();
@@ -45,6 +47,7 @@ export default function AdminTicketsPage() {
     company_id: "",
     assigned: "all",
   });
+  const timezone = useMemo(() => getUserTimezone(admin?.timezone), [admin?.timezone]);
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -168,7 +171,7 @@ export default function AdminTicketsPage() {
                       <Chip size="small" label={ticket.status?.replace(/_/g, " ")} />
                     </TableCell>
                     <TableCell>{ticket.assigned_admin_id || "Unassigned"}</TableCell>
-                    <TableCell>{formatDate(ticket.last_activity_at)}</TableCell>
+                    <TableCell>{formatDate(ticket.last_activity_at, timezone)}</TableCell>
                     <TableCell>
                       <Button size="small" onClick={() => navigate(`/admin/tickets/${ticket.id}`)}>
                         View
