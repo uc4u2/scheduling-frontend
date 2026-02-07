@@ -31,14 +31,26 @@ export default function AdminTeamPage() {
   const [form, setForm] = useState({ email: "", role: "platform_support" });
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [forbidden, setForbidden] = useState(false);
 
   const load = useCallback(async () => {
-    const [meRes, usersRes] = await Promise.all([
-      platformAdminApi.get("/auth/me"),
-      platformAdminApi.get("/team/users"),
-    ]);
-    setAdmin(meRes.data || null);
-    setUsers(usersRes.data?.users || []);
+    try {
+      const [meRes, usersRes] = await Promise.all([
+        platformAdminApi.get("/auth/me"),
+        platformAdminApi.get("/team/users"),
+      ]);
+      setAdmin(meRes.data || null);
+      setUsers(usersRes.data?.users || []);
+      setForbidden(false);
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 403) {
+        setForbidden(true);
+        setUsers([]);
+      } else {
+        setError("Failed to load team users.");
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -96,6 +108,19 @@ export default function AdminTeamPage() {
       setError(msg);
     }
   };
+
+  if (forbidden) {
+    return (
+      <Box>
+        <Typography variant="h5" sx={{ mb: 2 }}>Team</Typography>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="body1">
+            You don’t have permission to view Team management.
+          </Typography>
+        </Paper>
+      </Box>
+    );
+  }
 
   return (
     <Box>
