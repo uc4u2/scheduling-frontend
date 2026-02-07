@@ -88,6 +88,7 @@ import AllEmployeeSlotsCalendar from "./pages/sections/AllEmployeeSlotsCalendar"
 import SecondNewManagementDashboard from "./pages/sections/management/SecondNewManagementDashboard";
 import ZapierIntegrationPage from "./pages/settings/ZapierIntegrationPage";
 import ManagerPaymentsView from "./pages/sections/management/ManagerPaymentsView";
+import ManagerTicketsView from "./pages/sections/management/ManagerTicketsView";
 
 // Sections imports
 import Overview from "./pages/sections/Overview";
@@ -217,6 +218,9 @@ const menuConfig = [
 
   // Website & pages
   { labelKey: "manager.menu.websitePages", key: "website-pages", icon: <Article />, tooltip: "Website & Pages: site builder, pages, SEO, and publish." },
+
+  // Support tickets
+  { label: "Support Tickets", key: "tickets", icon: <HelpOutlineIcon /> },
 
   // Services & Bookings
   { labelKey: "manager.menu.servicesBookings", key: "advanced-management", icon: <Dashboard /> },
@@ -3119,6 +3123,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false }) => 
 
       case "website-pages":
         return <WebsiteSuite />;
+
+      case "tickets":
+        return <ManagerTicketsView />;
 
       case "saved-payrolls":
         return <SavedPayrollsPortal token={token} currentUser={{ role: "manager" }} />;

@@ -75,6 +75,8 @@ import SalesPayoutsPage from "./admin/pages/SalesPayoutsPage";
 import SalesPayoutDetailPage from "./admin/pages/SalesPayoutDetailPage";
 import SalesCommissionRulesPage from "./admin/pages/SalesCommissionRulesPage";
 import AdminTeamPage from "./admin/pages/AdminTeamPage";
+import AdminTicketsPage from "./admin/pages/AdminTicketsPage";
+import AdminTicketDetailPage from "./admin/pages/AdminTicketDetailPage";
 import SalesLogin from "./sales/SalesLogin";
 import SalesForgotPassword from "./sales/SalesForgotPassword";
 import SalesResetPassword from "./sales/SalesResetPassword";
@@ -496,6 +498,8 @@ const AppContent = ({ token, setToken }) => {
             <Route path="sales/payouts" element={<SalesPayoutsPage />} />
             <Route path="sales/payouts/:batchId" element={<SalesPayoutDetailPage />} />
             <Route path="team" element={<AdminTeamPage />} />
+            <Route path="tickets" element={<AdminTicketsPage />} />
+            <Route path="tickets/:id" element={<AdminTicketDetailPage />} />
             <Route path="audit-logs" element={<AuditLogsPage />} />
             <Route path="*" element={<SearchPage />} />
           </Route>

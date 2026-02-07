@@ -171,7 +171,7 @@ export default function AdminTeamPage() {
             </Stack>
           )}
         </Paper>
-      ))
+      ))}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Create team user</DialogTitle>
