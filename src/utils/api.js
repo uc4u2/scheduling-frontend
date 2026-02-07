@@ -112,7 +112,9 @@ api.interceptors.request.use((config) => {
     if (
       url.startsWith("/api/website") ||
       url.startsWith("/admin/website") ||
-      url.startsWith("/api/domains")
+      url.startsWith("/api/domains") ||
+      url.startsWith("/api/chatbot/settings") ||
+      url.startsWith("/admin/company-profile")
     ) {
       config.headers = {
         ...(config.headers || {}),
