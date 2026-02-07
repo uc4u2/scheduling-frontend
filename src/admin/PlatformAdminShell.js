@@ -19,12 +19,13 @@ const drawerWidth = 240;
 
 const navItems = [
   { label: "Search", to: "/admin/search" },
-  { label: "Audit Logs", to: "/admin/audit-logs" },
   { label: "Sales Reps", to: "/admin/sales/reps" },
   { label: "Sales Deals", to: "/admin/sales/deals" },
   { label: "Commission Rules", to: "/admin/sales/commission-rules" },
   { label: "Sales Ledger", to: "/admin/sales/ledger" },
   { label: "Sales Payouts", to: "/admin/sales/payouts" },
+  { label: "Team", to: "/admin/team" },
+  { label: "Audit Logs", to: "/admin/audit-logs" },
 ];
 
 export default function PlatformAdminShell() {

@@ -63,6 +63,7 @@ import ComparisonPage from "./landing/pages/compare/ComparisonPage";
 import CompareHubPage from "./landing/pages/compare/CompareHubPage";
 import AlternativesHubPage from "./landing/pages/compare/AlternativesHubPage";
 import PlatformAdminLogin from "./admin/PlatformAdminLogin";
+import PlatformAdminResetPassword from "./admin/PlatformAdminResetPassword";
 import PlatformAdminShell from "./admin/PlatformAdminShell";
 import SearchPage from "./admin/pages/SearchPage";
 import Tenant360Page from "./admin/pages/Tenant360Page";
@@ -73,6 +74,7 @@ import AuditLogsPage from "./admin/pages/AuditLogsPage";
 import SalesPayoutsPage from "./admin/pages/SalesPayoutsPage";
 import SalesPayoutDetailPage from "./admin/pages/SalesPayoutDetailPage";
 import SalesCommissionRulesPage from "./admin/pages/SalesCommissionRulesPage";
+import AdminTeamPage from "./admin/pages/AdminTeamPage";
 import SalesLogin from "./sales/SalesLogin";
 import SalesForgotPassword from "./sales/SalesForgotPassword";
 import SalesResetPassword from "./sales/SalesResetPassword";
@@ -482,6 +484,7 @@ const AppContent = ({ token, setToken }) => {
       <Box className="main-content">
         <Routes>
           <Route path="/admin/login" element={<PlatformAdminLogin />} />
+          <Route path="/admin/reset-password" element={<PlatformAdminResetPassword />} />
           <Route path="/admin" element={<PlatformAdminShell />}>
             <Route path="search" element={<SearchPage />} />
             <Route path="tenants/:companyId" element={<Tenant360Page />} />
@@ -492,6 +495,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="sales/ledger" element={<SalesLedgerPage />} />
             <Route path="sales/payouts" element={<SalesPayoutsPage />} />
             <Route path="sales/payouts/:batchId" element={<SalesPayoutDetailPage />} />
+            <Route path="team" element={<AdminTeamPage />} />
             <Route path="audit-logs" element={<AuditLogsPage />} />
             <Route path="*" element={<SearchPage />} />
           </Route>
