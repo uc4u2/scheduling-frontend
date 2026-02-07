@@ -127,6 +127,11 @@ const faqs = [
       "Yes. You can design, preview, and publish your first site for free on a schedulaa.site domain. Upgrade only when you need advanced automation or multiple locations.",
   },
   {
+    question: "Can I keep my website if I haven’t subscribed yet?",
+    answer:
+      "Yes. Every account includes a free website at www.schedulaa.com/your-company-slug. You can publish and keep it before subscribing, then upgrade when you’re ready.",
+  },
+  {
     question: "Can clients book appointments on my site?",
     answer:
       "Absolutely. The booking widget is built into every template, so visitors can reserve appointments, select staff, and pay deposits in real time.",
@@ -145,6 +150,11 @@ const faqs = [
     question: "Is the builder suitable for salons, tutors, and coaches?",
     answer:
       "Schedulaa ships with industry-ready templates and copy blocks for salons, spas, tutors, coaches, clinics, and more. Customize anything in minutes.",
+  },
+  {
+    question: "Do you offer a done-for-you website design service?",
+    answer:
+      "Yes. Our Website Design Service is a one-time add-on where our team collects your requirements, designs your site, and publishes it for you.",
   },
 ];
 
@@ -276,12 +286,12 @@ const WebsiteBuilderPage = () => {
     <Box sx={{ backgroundColor: theme.palette.background.default, pb: { xs: 10, md: 14 } }}>
       <Meta
         title="Website Builder for Small Business - Free Domain & Hosting | Schedulaa"
-        description="Build your business website with Schedulaa's free website builder. Drag-and-drop design, secure hosting, Stripe integration, and booking system in one platform."
+        description="Build your business website with Schedulaa's free website builder. Get a free site on a Schedulaa URL, connect your domain, or use our Website Design Service for done-for-you design."
         canonical={PAGE_URL}
         og={{
           title: "Website Builder for Small Business - Schedulaa",
           description:
-            "Build and host your business website with booking, Stripe, and analytics. Launch in minutes with industry templates.",
+            "Build and host your business website with booking, Stripe, and analytics. Launch free or choose our Website Design Service for a done-for-you site.",
           image: "https://www.schedulaa.com/images/website-builder-preview.png",
           url: PAGE_URL,
         }}
@@ -319,7 +329,8 @@ const WebsiteBuilderPage = () => {
                 </Typography>
                 <Typography variant="h6" sx={{ opacity: 0.94, maxWidth: 600 }}>
                   Build a responsive website with booking, Stripe payments, and analytics in one platform.
-                  No code, no plugins - just launch and grow.
+                  Every account includes a free website at www.schedulaa.com/your-company-slug
+                  (even before you subscribe).
                 </Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "stretch", sm: "center" }}>
                   <Button
@@ -449,6 +460,68 @@ const WebsiteBuilderPage = () => {
               </Card>
             </Grid>
           ))}
+        </Grid>
+      </Container>
+
+      <Container maxWidth="lg" sx={{ mt: { xs: 8, md: 12 } }}>
+        <Grid container spacing={3} alignItems="stretch">
+          <Grid item xs={12} md={6}>
+            <Card
+              variant="outlined"
+              sx={{
+                height: "100%",
+                borderRadius: 3,
+                borderColor: alpha(theme.palette.primary.main, 0.2),
+                p: { xs: 2.5, md: 3 },
+              }}
+            >
+              <Stack spacing={1.5}>
+                <Typography variant="overline" sx={{ letterSpacing: 2, color: theme.palette.text.secondary }}>
+                  Free by default
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 800 }}>
+                  Your website is live right after signup
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Publish instantly on a free Schedulaa URL (www.schedulaa.com/your-company-slug). You can keep
+                  the site even before subscribing, then connect a custom domain anytime.
+                </Typography>
+                <Button component={Link} to={CTA_URL} variant="contained" sx={{ alignSelf: "flex-start" }}>
+                  Claim your free site
+                </Button>
+              </Stack>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Card
+              variant="outlined"
+              sx={{
+                height: "100%",
+                borderRadius: 3,
+                borderColor: alpha(theme.palette.secondary.main, 0.2),
+                p: { xs: 2.5, md: 3 },
+              }}
+            >
+              <Stack spacing={1.5}>
+                <Typography variant="overline" sx={{ letterSpacing: 2, color: theme.palette.text.secondary }}>
+                  Done-for-you option
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 800 }}>
+                  Website Design Service
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  Prefer a professional team to design it for you? Purchase the Website Design Service and we’ll
+                  open a design ticket, collect your requirements, build your site, and publish it.
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Includes: design + revisions + publish. Domain purchase not included (we can help you connect it).
+                </Typography>
+                <Button component={Link} to="/pricing" variant="outlined" sx={{ alignSelf: "flex-start" }}>
+                  View pricing
+                </Button>
+              </Stack>
+            </Card>
+          </Grid>
         </Grid>
       </Container>
 
