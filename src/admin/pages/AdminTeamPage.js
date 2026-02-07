@@ -2,10 +2,15 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
+  Checkbox,
+  Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
+  FormGroup,
   Paper,
   Snackbar,
   Stack,
@@ -24,11 +29,21 @@ const ROLE_OPTIONS = [
   { value: "platform_owner", label: "Platform Owner" },
 ];
 
+const SUBJECT_OPTIONS = ["website", "booking", "payroll", "billing", "general"];
+
 export default function AdminTeamPage() {
   const [users, setUsers] = useState([]);
   const [admin, setAdmin] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ email: "", role: "platform_support" });
+  const [coverageById, setCoverageById] = useState({});
+  const [coverageDialog, setCoverageDialog] = useState({
+    open: false,
+    user: null,
+    subjects: [],
+    loading: false,
+    saving: false,
+  });
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [forbidden, setForbidden] = useState(false);
@@ -67,6 +82,28 @@ export default function AdminTeamPage() {
     const list = Array.isArray(users) ? users : [];
     return [...list].sort((a, b) => (a.email || "").localeCompare(b.email || ""));
   }, [users]);
+
+  const loadCoverageForUsers = useCallback(async (teamUsers) => {
+    if (!canManage) return;
+    const supportUsers = (teamUsers || []).filter((u) => u.role === "platform_support");
+    if (!supportUsers.length) return;
+    const results = await Promise.allSettled(
+      supportUsers.map((u) => platformAdminApi.get(`/team/coverage/${u.id}`))
+    );
+    const next = {};
+    results.forEach((res, idx) => {
+      if (res.status === "fulfilled") {
+        next[supportUsers[idx].id] = res.value?.data?.subjects || [];
+      }
+    });
+    setCoverageById(next);
+  }, [canManage]);
+
+  useEffect(() => {
+    if (users.length) {
+      loadCoverageForUsers(users);
+    }
+  }, [users, loadCoverageForUsers]);
 
   const createUser = async () => {
     setError("");
@@ -113,6 +150,63 @@ export default function AdminTeamPage() {
     }
   };
 
+  const openCoverageDialog = async (user) => {
+    setError("");
+    setCoverageDialog({ open: true, user, subjects: [], loading: true, saving: false });
+    try {
+      const { data } = await platformAdminApi.get(`/team/coverage/${user.id}`);
+      const subjects = data?.subjects || [];
+      setCoverageById((prev) => ({ ...prev, [user.id]: subjects }));
+      setCoverageDialog({ open: true, user, subjects, loading: false, saving: false });
+    } catch (err) {
+      const status = err?.response?.status;
+      setCoverageDialog({ open: true, user, subjects: [], loading: false, saving: false });
+      if (status === 403) {
+        setError("You don’t have permission to edit coverage.");
+      } else {
+        setError("Failed to load coverage.");
+      }
+    }
+  };
+
+  const toggleCoverage = (subject) => {
+    setCoverageDialog((prev) => {
+      const exists = prev.subjects.includes(subject);
+      const nextSubjects = exists
+        ? prev.subjects.filter((s) => s !== subject)
+        : [...prev.subjects, subject];
+      return { ...prev, subjects: nextSubjects };
+    });
+  };
+
+  const selectAllCoverage = () => {
+    setCoverageDialog((prev) => ({ ...prev, subjects: [...SUBJECT_OPTIONS] }));
+  };
+
+  const clearCoverage = () => {
+    setCoverageDialog((prev) => ({ ...prev, subjects: [] }));
+  };
+
+  const saveCoverage = async () => {
+    if (!coverageDialog.user) return;
+    setCoverageDialog((prev) => ({ ...prev, saving: true }));
+    try {
+      const payload = { subjects: coverageDialog.subjects };
+      await platformAdminApi.put(`/team/coverage/${coverageDialog.user.id}`, payload);
+      setCoverageById((prev) => ({ ...prev, [coverageDialog.user.id]: coverageDialog.subjects }));
+      setCoverageDialog((prev) => ({ ...prev, saving: false, open: false }));
+      setNotice("Coverage updated");
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 403) {
+        setError("You don’t have permission to edit coverage.");
+      } else {
+        setError("Failed to update coverage.");
+      }
+      setCoverageDialog((prev) => ({ ...prev, saving: false }));
+    }
+  };
+
   if (forbidden) {
     return (
       <Box>
@@ -151,6 +245,20 @@ export default function AdminTeamPage() {
           <Typography variant="subtitle1">{u.email}</Typography>
           <Typography variant="body2">Role: {u.role}</Typography>
           <Typography variant="body2">Status: {u.is_active ? "Active" : "Inactive"}</Typography>
+          <Typography variant="body2" sx={{ mt: 0.5 }}>
+            Coverage:{" "}
+            {u.role !== "platform_support" ? (
+              "All (implicit)"
+            ) : coverageById[u.id]?.length ? (
+              <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: "wrap" }}>
+                {coverageById[u.id].map((subject) => (
+                  <Chip key={subject} size="small" label={subject} sx={{ mb: 0.5 }} />
+                ))}
+              </Stack>
+            ) : (
+              "No coverage assigned"
+            )}
+          </Typography>
           {canManage && (
             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
               <Button
@@ -172,6 +280,11 @@ export default function AdminTeamPage() {
               <Button size="small" variant="outlined" onClick={() => resetPassword(u)}>
                 Reset password
               </Button>
+              {u.role === "platform_support" && (
+                <Button size="small" variant="outlined" onClick={() => openCoverageDialog(u)}>
+                  Edit coverage
+                </Button>
+              )}
             </Stack>
           )}
         </Paper>
@@ -207,6 +320,63 @@ export default function AdminTeamPage() {
         <DialogActions>
           <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={createUser}>Create</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={coverageDialog.open}
+        onClose={() => setCoverageDialog({ open: false, user: null, subjects: [], loading: false, saving: false })}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Ticket coverage for {coverageDialog.user?.email || ""}
+        </DialogTitle>
+        <DialogContent>
+          {coverageDialog.loading ? (
+            <Stack alignItems="center" sx={{ py: 3 }}>
+              <CircularProgress size={24} />
+            </Stack>
+          ) : (
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Stack direction="row" spacing={1}>
+                <Button size="small" variant="outlined" onClick={selectAllCoverage}>
+                  Select all
+                </Button>
+                <Button size="small" variant="outlined" onClick={clearCoverage}>
+                  Clear
+                </Button>
+              </Stack>
+              <FormGroup>
+                {SUBJECT_OPTIONS.map((subject) => (
+                  <FormControlLabel
+                    key={subject}
+                    control={
+                      <Checkbox
+                        checked={coverageDialog.subjects.includes(subject)}
+                        onChange={() => toggleCoverage(subject)}
+                      />
+                    }
+                    label={subject}
+                  />
+                ))}
+              </FormGroup>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setCoverageDialog({ open: false, user: null, subjects: [], loading: false, saving: false })}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={saveCoverage}
+            disabled={coverageDialog.loading || coverageDialog.saving}
+          >
+            Save
+          </Button>
         </DialogActions>
       </Dialog>
 
