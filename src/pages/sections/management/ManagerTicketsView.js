@@ -56,6 +56,10 @@ export default function ManagerTicketsView() {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const lastMessageId = useMemo(() => {
+    const msgs = detail?.messages || [];
+    return msgs.length ? msgs[msgs.length - 1].id : null;
+  }, [detail?.messages]);
 
   const selectedTicket = useMemo(
     () => tickets.find((t) => t.id === selectedId) || detail,
@@ -96,6 +100,37 @@ export default function ManagerTicketsView() {
     }
   };
 
+  const mergeMessages = (prevMessages, incoming) => {
+    if (!incoming?.length) return prevMessages;
+    const seen = new Set((prevMessages || []).map((msg) => msg.id));
+    const merged = [...(prevMessages || [])];
+    incoming.forEach((msg) => {
+      if (!seen.has(msg.id)) {
+        merged.push(msg);
+        seen.add(msg.id);
+      }
+    });
+    return merged;
+  };
+
+  const fetchNewMessages = async () => {
+    if (!selectedId || !lastMessageId) return;
+    try {
+      const { data } = await api.get(
+        `/api/support/tickets/${selectedId}?after=${lastMessageId}&limit=200`
+      );
+      const incoming = data?.messages || [];
+      if (incoming.length) {
+        setDetail((prev) =>
+          prev ? { ...prev, messages: mergeMessages(prev.messages, incoming) } : prev
+        );
+        await loadTickets();
+      }
+    } catch {
+      // silent poll failure
+    }
+  };
+
   useEffect(() => {
     loadTickets();
     const timer = setInterval(loadTickets, 15000);
@@ -116,6 +151,16 @@ export default function ManagerTicketsView() {
       loadDetail(selectedId);
     }
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    if ((selectedTicket?.status || "").toLowerCase() === "closed") return;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      fetchNewMessages();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [selectedId, lastMessageId, selectedTicket?.status]);
 
   const createTicket = async () => {
     if (!subject || !description.trim()) return;

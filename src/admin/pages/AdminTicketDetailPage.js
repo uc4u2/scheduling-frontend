@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -46,6 +46,9 @@ export default function AdminTicketDetailPage() {
   const [status, setStatus] = useState("");
   const [assignedAdminId, setAssignedAdminId] = useState("");
   const theme = useTheme();
+  const lastMessageId = useMemo(() => {
+    return messages.length ? messages[messages.length - 1].id : null;
+  }, [messages]);
 
   const canAssign = admin?.role === "platform_owner" || admin?.role === "platform_admin";
 
@@ -82,6 +85,34 @@ export default function AdminTicketDetailPage() {
     }
   };
 
+  const mergeMessages = (prevMessages, incoming) => {
+    if (!incoming?.length) return prevMessages;
+    const seen = new Set((prevMessages || []).map((msg) => msg.id));
+    const merged = [...(prevMessages || [])];
+    incoming.forEach((msg) => {
+      if (!seen.has(msg.id)) {
+        merged.push(msg);
+        seen.add(msg.id);
+      }
+    });
+    return merged;
+  };
+
+  const fetchNewMessages = async () => {
+    if (!lastMessageId) return;
+    try {
+      const { data } = await platformAdminApi.get(
+        `/tickets/${id}?after=${lastMessageId}&limit=200`
+      );
+      const incoming = data?.messages || [];
+      if (incoming.length) {
+        setMessages((prev) => mergeMessages(prev, incoming));
+      }
+    } catch {
+      // silent poll failure
+    }
+  };
+
   const loadTeamUsers = async () => {
     if (!canAssign) return;
     try {
@@ -105,6 +136,16 @@ export default function AdminTicketDetailPage() {
   useEffect(() => {
     loadTicket();
   }, [id]);
+
+  useEffect(() => {
+    if ((ticket?.status || "").toLowerCase() === "closed") return;
+    if (!lastMessageId) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      fetchNewMessages();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [lastMessageId, ticket?.status]);
 
   const sendMessage = async () => {
     if (!messageBody.trim()) return;
