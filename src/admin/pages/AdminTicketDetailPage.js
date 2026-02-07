@@ -20,13 +20,22 @@ import { useNavigate, useParams } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
-const STATUSES = [
+const BASE_STATUSES = [
   "new",
   "triaged",
   "in_progress",
   "waiting_on_tenant",
   "needs_engineering",
   "solved",
+  "closed",
+];
+
+const WEBSITE_DESIGN_STATUSES = [
+  "new",
+  "in_design",
+  "revision_requested",
+  "ready_for_publish",
+  "published",
   "closed",
 ];
 
@@ -53,6 +62,7 @@ export default function AdminTicketDetailPage() {
   const canAssign = admin?.role === "platform_owner" || admin?.role === "platform_admin";
   const supportSession = ticket?.support_session || null;
   const isWebsiteDesign = ticket?.type === "website_design";
+  const statusOptions = isWebsiteDesign ? WEBSITE_DESIGN_STATUSES : BASE_STATUSES;
   const supportPending = supportSession?.status === "pending";
   const supportActive = supportSession?.status === "active";
   const supportApproved = Boolean(supportSession?.approved_at);
@@ -312,7 +322,7 @@ export default function AdminTicketDetailPage() {
                   value={status}
                   onChange={(e) => updateStatus(e.target.value)}
                 >
-                  {STATUSES.map((s) => (
+                  {statusOptions.map((s) => (
                     <MenuItem key={s} value={s}>
                       {s.replace(/_/g, " ")}
                     </MenuItem>
