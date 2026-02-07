@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -18,6 +19,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useLocation } from "react-router-dom";
 import api from "../../../utils/api";
 
 const SUBJECT_OPTIONS = [
@@ -45,6 +47,8 @@ export default function ManagerTicketsView() {
   const [subSubject, setSubSubject] = useState("");
   const [description, setDescription] = useState("");
   const [messageBody, setMessageBody] = useState("");
+  const [showWebsiteDesignSuccess, setShowWebsiteDesignSuccess] = useState(false);
+  const location = useLocation();
 
   const selectedTicket = useMemo(
     () => tickets.find((t) => t.id === selectedId) || detail,
@@ -82,6 +86,15 @@ export default function ManagerTicketsView() {
     const timer = setInterval(loadTickets, 15000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || "");
+    const isSuccess = params.get("wd") === "success";
+    setShowWebsiteDesignSuccess(isSuccess);
+    if (isSuccess) {
+      loadTickets();
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (selectedId) {
@@ -139,6 +152,11 @@ export default function ManagerTicketsView() {
           <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
             Create a ticket for website, booking, payroll, billing, or general help.
           </Typography>
+          {showWebsiteDesignSuccess && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              Payment received. Your Website Design ticket was created. Open it below.
+            </Alert>
+          )}
           <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mt: 2 }}>
             <FormControl fullWidth>
               <InputLabel>Subject</InputLabel>

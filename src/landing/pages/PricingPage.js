@@ -255,6 +255,8 @@ const PricingPage = () => {
   const [searchParams] = useSearchParams();
   const marketing = theme.marketing || {};
   const [ctaLoadingKey, setCtaLoadingKey] = useState("");
+  const [addonLoading, setAddonLoading] = useState(false);
+  const [addonError, setAddonError] = useState("");
   const [ctaError, setCtaError] = useState("");
   const [promoConfig, setPromoConfig] = useState(null);
 
@@ -554,6 +556,40 @@ const PricingPage = () => {
     }
   }, [navigate]);
 
+  const handleWebsiteDesignCheckout = useCallback(async () => {
+    setAddonError("");
+    const token =
+      typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+    if (!token) {
+      navigate("/login?redirect=/pricing");
+      return;
+    }
+    setAddonLoading(true);
+    try {
+      const res = await api.post("/api/manager/website-design/checkout");
+      const url = res?.data?.checkout_url;
+      if (url && typeof window !== "undefined") {
+        window.location.href = url;
+        return;
+      }
+      throw new Error("Checkout URL missing.");
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        navigate("/login?redirect=/pricing");
+        return;
+      }
+      setAddonError(
+        error?.displayMessage ||
+          error?.response?.data?.error ||
+          error?.message ||
+          "Unable to start checkout."
+      );
+    } finally {
+      setAddonLoading(false);
+    }
+  }, [navigate]);
+
   React.useEffect(() => {
     const planParam = (searchParams.get("plan") || "").toLowerCase();
     const token =
@@ -668,6 +704,44 @@ const PricingPage = () => {
           onCtaClick={handleCheckout}
           ctaLoadingKey={ctaLoadingKey}
         />
+        <Paper
+          elevation={0}
+          sx={{
+            mt: { xs: 3, md: 4 },
+            p: { xs: 2.5, md: 3 },
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
+          }}
+        >
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={2}
+            alignItems={{ xs: "flex-start", md: "center" }}
+            justifyContent="space-between"
+          >
+            <Box>
+              <Typography variant="h6" fontWeight={700}>
+                Website Design Service
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                One-time professional website design package. We’ll open a ticket and guide you
+                through requirements after payment.
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              onClick={handleWebsiteDesignCheckout}
+              disabled={addonLoading}
+            >
+              {addonLoading ? "Starting checkout..." : "Buy Website Design"}
+            </Button>
+          </Stack>
+          {addonError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {addonError}
+            </Alert>
+          )}
+        </Paper>
         <Paper
           elevation={0}
           sx={{
