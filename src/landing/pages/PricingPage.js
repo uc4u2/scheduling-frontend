@@ -724,8 +724,16 @@ const PricingPage = () => {
                 Website Design Service
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                One-time professional website design package. We’ll open a ticket and guide you
-                through requirements after payment.
+                One-time custom website design by our team. After purchase, we open a design
+                ticket, collect your requirements, design your site, and publish it for you.
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mt: 0.75 }}
+              >
+                Includes: design + revisions + publish. Domain purchase not included (we can help
+                you connect your domain).
               </Typography>
             </Box>
             <Button
