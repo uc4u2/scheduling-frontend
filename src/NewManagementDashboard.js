@@ -1568,6 +1568,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
   );
 
   const allowedViewKeys = useMemo(() => {
+    if (supportMode) {
+      return ["website-pages"];
+    }
     const keys = new Set();
     filteredMenuConfig.forEach((item) => {
       if (item.key === "employee-group") {
@@ -1591,7 +1594,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     keys.add("available-shifts");
     keys.add("available-shifts-fullscreen");
     return Array.from(keys);
-  }, [filteredMenuConfig]);
+  }, [filteredMenuConfig, supportMode]);
   // Sidebar state
   const [selectedView, setSelectedView] = useState(() => {
     return initialView || localStorage.getItem("manager_selected_view") || "__landing__";
