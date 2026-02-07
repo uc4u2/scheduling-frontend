@@ -2228,6 +2228,7 @@ const autoProvisionIfEmpty = useCallback(
     (pageId, patch, { setHomepage = false } = {}) => {
       if (!pageId) return;
       setPageSettingsDirty(true);
+      setSelectedPageIds((prev) => (prev.includes(pageId) ? prev : [pageId]));
       setPages((prev) =>
         prev.map((p) => {
           if (setHomepage) {
@@ -2256,7 +2257,7 @@ const autoProvisionIfEmpty = useCallback(
         }
       }
     },
-    [editing?.id, updatePageMeta, setAutosaveEnabled, setPages]
+    [editing?.id, updatePageMeta, setAutosaveEnabled, setPages, setSelectedPageIds]
   );
 
   const savePageMeta = async () => {
