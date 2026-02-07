@@ -50,6 +50,23 @@ const inferBase = () => {
 
 export const API_BASE_URL = envBase || inferBase();
 
+const getSupportSessionId = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    const fromUrl = params.get("support_session");
+    if (fromUrl) {
+      try {
+        window.sessionStorage.setItem("support_session", fromUrl);
+      } catch {}
+      return fromUrl;
+    }
+    return window.sessionStorage.getItem("support_session");
+  } catch {
+    return null;
+  }
+};
+
 const normalizeMediaAsset = (asset, companyId) => {
   if (!asset) return null;
   const stored =
@@ -94,6 +111,24 @@ const api = axios.create({
   withCredentials: false,
 });
 export { api };
+
+api.interceptors.request.use((config) => {
+  const supportSession = getSupportSessionId();
+  if (supportSession && config?.url) {
+    const url = String(config.url);
+    if (
+      url.startsWith("/api/website") ||
+      url.startsWith("/admin/website") ||
+      url.startsWith("/api/domains")
+    ) {
+      config.headers = {
+        ...(config.headers || {}),
+        "X-Support-Session": supportSession,
+      };
+    }
+  }
+  return config;
+});
 
 /* -------------------- Auth + Company header injector -------------------- */
 api.interceptors.response.use(

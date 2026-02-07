@@ -53,6 +53,7 @@ export default function ManagerTicketsView() {
   const [description, setDescription] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [showWebsiteDesignSuccess, setShowWebsiteDesignSuccess] = useState(false);
+  const [supportNotice, setSupportNotice] = useState("");
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -65,6 +66,8 @@ export default function ManagerTicketsView() {
     () => tickets.find((t) => t.id === selectedId) || detail,
     [tickets, selectedId, detail]
   );
+  const supportSession = detail?.support_session || null;
+  const isWebsiteDesign = (selectedTicket?.type || "").toLowerCase() === "website_design";
 
   const loadTickets = async () => {
     try {
@@ -220,6 +223,23 @@ export default function ManagerTicketsView() {
     }
   };
 
+  const approveSupportSession = async () => {
+    if (!selectedId) return;
+    try {
+      const { data } = await api.post(
+        `/api/support/tickets/${selectedId}/support-session/approve`,
+        { scope: "website_all" }
+      );
+      if (data?.support_session) {
+        setDetail((prev) => (prev ? { ...prev, support_session: data.support_session } : prev));
+      }
+      setSupportNotice("Support session approved for 30 minutes.");
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Unable to approve support session.";
+      setError(msg);
+    }
+  };
+
   const loadOlderMessages = async () => {
     if (!selectedId || !detailMeta.next_before) return;
     try {
@@ -361,6 +381,26 @@ export default function ManagerTicketsView() {
                   <Chip label={statusLabel(selectedTicket.status)} size="small" />
                 </Stack>
                 <Divider sx={{ my: 2 }} />
+                {isWebsiteDesign &&
+                  supportSession?.status === "pending" &&
+                  !supportSession?.approved_at && (
+                    <Alert
+                      severity="info"
+                      sx={{ mb: 2 }}
+                      action={
+                        <Button color="inherit" size="small" onClick={approveSupportSession}>
+                          Approve website access
+                        </Button>
+                      }
+                    >
+                      Support requested access to your website builder. Approve to allow editing for 30 minutes.
+                    </Alert>
+                  )}
+                {supportNotice && (
+                  <Alert severity="success" sx={{ mb: 2 }}>
+                    {supportNotice}
+                  </Alert>
+                )}
                 {detailMeta.has_more && (
                   <Button size="small" onClick={loadOlderMessages} sx={{ mb: 1 }}>
                     Load older messages

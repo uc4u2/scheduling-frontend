@@ -44,11 +44,16 @@ export default function PlatformAdminResetPassword() {
         {success ? (
           <Stack spacing={2}>
             <Alert severity="success">
-              Your password has been updated. You can now log in to the Platform Admin.
+              Password updated. Next step: log in to the Platform Admin using your new password.
             </Alert>
-            <Button variant="contained" onClick={() => navigate("/admin/login")}>
-              Go to admin login
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button variant="contained" onClick={() => navigate("/admin/login")}>
+                Go to admin login
+              </Button>
+              <Button variant="outlined" onClick={() => navigate("/admin")}>
+                Open admin home
+              </Button>
+            </Stack>
           </Stack>
         ) : (
           <Stack spacing={2}>

@@ -1,5 +1,5 @@
 // src/pages/sections/management/AutoSiteBuilder.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Box, CircularProgress, Alert } from "@mui/material";
 import { wb } from "../../../utils/api";
 import { ensureCompanyId } from "../../../utils/company";
@@ -9,6 +9,13 @@ export default function AutoSiteBuilder() {
   const [companyId, setCompanyId] = useState(null);
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState("");
+  const supportSessionId = useMemo(() => {
+    try {
+      return new URLSearchParams(window.location.search || "").get("support_session");
+    } catch {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,5 +90,14 @@ export default function AutoSiteBuilder() {
   }
 
   // Hand off to the real builder (which will now find pages)
-  return <VisualSiteBuilder companyId={companyId} />;
+  return (
+    <Box>
+      {supportSessionId && (
+        <Alert severity="info" sx={{ m: 2 }}>
+          Support session active. Changes will apply to the tenant’s website.
+        </Alert>
+      )}
+      <VisualSiteBuilder companyId={companyId} />
+    </Box>
+  );
 }

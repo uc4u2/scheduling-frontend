@@ -51,6 +51,11 @@ export default function AdminTicketDetailPage() {
   }, [messages]);
 
   const canAssign = admin?.role === "platform_owner" || admin?.role === "platform_admin";
+  const supportSession = ticket?.support_session || null;
+  const isWebsiteDesign = ticket?.type === "website_design";
+  const supportPending = supportSession?.status === "pending";
+  const supportActive = supportSession?.status === "active";
+  const supportApproved = Boolean(supportSession?.approved_at);
 
   const loadAdmin = async () => {
     try {
@@ -212,6 +217,48 @@ export default function AdminTicketDetailPage() {
     }
   };
 
+  const requestSupportSession = async () => {
+    try {
+      const { data } = await platformAdminApi.post(`/tickets/${id}/support-session/request`, {
+        scope: "website_all",
+      });
+      if (data?.support_session) {
+        setTicket((prev) => (prev ? { ...prev, support_session: data.support_session } : prev));
+      }
+    } catch (err) {
+      setError("Unable to request support session.");
+    }
+  };
+
+  const startSupportSession = async () => {
+    try {
+      const { data } = await platformAdminApi.post(`/tickets/${id}/support-session/start`);
+      if (data?.support_session) {
+        setTicket((prev) => (prev ? { ...prev, support_session: data.support_session } : prev));
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Unable to start support session.";
+      setError(msg);
+    }
+  };
+
+  const endSupportSession = async () => {
+    try {
+      const { data } = await platformAdminApi.post(`/tickets/${id}/support-session/end`);
+      if (data?.support_session) {
+        setTicket((prev) => (prev ? { ...prev, support_session: data.support_session } : prev));
+      }
+    } catch (err) {
+      setError("Unable to end support session.");
+    }
+  };
+
+  const openSupportLink = (path) => {
+    if (!supportSession?.id) return;
+    const url = `${path}?support_session=${supportSession.id}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   if (loading) {
     return (
       <Box sx={{ p: 3, display: "flex", justifyContent: "center" }}>
@@ -292,6 +339,63 @@ export default function AdminTicketDetailPage() {
             </Stack>
           </Stack>
         </Paper>
+
+        {isWebsiteDesign && (
+          <Paper sx={{ p: 2 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                Website support session
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Chip
+                  size="small"
+                  label={supportSession ? supportSession.status.replace(/_/g, " ") : "no session"}
+                />
+                {supportSession?.scope && (
+                  <Chip size="small" variant="outlined" label={supportSession.scope.replace(/_/g, " ")} />
+                )}
+              </Stack>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+                {!supportSession && (
+                  <Button variant="contained" onClick={requestSupportSession}>
+                    Request website access
+                  </Button>
+                )}
+                {supportPending && !supportApproved && (
+                  <Button variant="outlined" disabled>
+                    Awaiting manager approval
+                  </Button>
+                )}
+                {supportPending && supportApproved && (
+                  <Button variant="contained" onClick={startSupportSession}>
+                    Start support session
+                  </Button>
+                )}
+                {supportActive && (
+                  <>
+                    <Button variant="outlined" onClick={() => openSupportLink("/manager/website-pages")}>
+                      Open Website Manager
+                    </Button>
+                    <Button variant="outlined" onClick={() => openSupportLink("/manage/website/builder")}>
+                      Open Visual Builder
+                    </Button>
+                    <Button variant="outlined" onClick={() => openSupportLink("/manager/website-pages")}>
+                      Open Domain Connect
+                    </Button>
+                    <Button color="error" variant="contained" onClick={endSupportSession}>
+                      End session
+                    </Button>
+                  </>
+                )}
+              </Stack>
+              {supportApproved && supportSession?.expires_at && (
+                <Typography variant="caption" color="text.secondary">
+                  Approved until {formatDate(supportSession.expires_at)}
+                </Typography>
+              )}
+            </Stack>
+          </Paper>
+        )}
 
         <Paper sx={{ p: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>

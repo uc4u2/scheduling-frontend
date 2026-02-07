@@ -11,6 +11,7 @@ import {
   AppBar,
   Toolbar,
   IconButton,
+  Alert,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
@@ -28,6 +29,13 @@ export default function WebsiteSuite() {
   const [tab, setTab] = useState(0);
   const [open, setOpen] = useState(false);
   const [full, setFull] = useState(false);
+  const supportSessionId = useMemo(() => {
+    try {
+      return new URLSearchParams(window.location.search || "").get("support_session");
+    } catch {
+      return null;
+    }
+  }, []);
 
   const tabConfig = useMemo(
     () => [
@@ -62,6 +70,11 @@ export default function WebsiteSuite() {
       title={t("manager.websiteSuite.title")}
       subtitle={t("manager.websiteSuite.subtitle")}
     >
+      {supportSessionId && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Support session active. Changes will apply to the tenant’s website.
+        </Alert>
+      )}
       <Tabs
         value={tab}
         onChange={(_, value) => {
