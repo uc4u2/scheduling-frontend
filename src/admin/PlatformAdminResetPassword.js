@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import platformAdminApi from "../api/platformAdminApi";
 
@@ -9,7 +9,7 @@ export default function PlatformAdminResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [success, setSuccess] = useState(false);
 
   const submit = async () => {
     setError("");
@@ -28,8 +28,7 @@ export default function PlatformAdminResetPassword() {
     }
     try {
       await platformAdminApi.post("/auth/reset", { token, new_password: password });
-      setSuccess("Password updated. Redirecting to login...");
-      setTimeout(() => navigate("/admin/login"), 1200);
+      setSuccess(true);
     } catch (err) {
       const msg = err?.response?.data?.error || "Reset failed.";
       setError(msg);
@@ -42,23 +41,33 @@ export default function PlatformAdminResetPassword() {
         <Typography variant="h6" sx={{ mb: 2 }}>
           Reset platform admin password
         </Typography>
-        <Stack spacing={2}>
-          <TextField
-            label="New password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <TextField
-            label="Confirm password"
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-          />
-          {error && <Typography color="error">{error}</Typography>}
-          {success && <Typography color="primary">{success}</Typography>}
-          <Button variant="contained" onClick={submit}>Reset password</Button>
-        </Stack>
+        {success ? (
+          <Stack spacing={2}>
+            <Alert severity="success">
+              Your password has been updated. You can now log in to the Platform Admin.
+            </Alert>
+            <Button variant="contained" onClick={() => navigate("/admin/login")}>
+              Go to admin login
+            </Button>
+          </Stack>
+        ) : (
+          <Stack spacing={2}>
+            <TextField
+              label="New password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <TextField
+              label="Confirm password"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+            {error && <Typography color="error">{error}</Typography>}
+            <Button variant="contained" onClick={submit}>Reset password</Button>
+          </Stack>
+        )}
       </Paper>
     </Box>
   );
