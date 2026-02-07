@@ -14,6 +14,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import platformAdminApi from "../../api/platformAdminApi";
 
@@ -34,6 +35,7 @@ export default function AdminTicketDetailPage() {
   const navigate = useNavigate();
   const [ticket, setTicket] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [messageMeta, setMessageMeta] = useState({ has_more: false, next_before: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [admin, setAdmin] = useState(null);
@@ -41,6 +43,7 @@ export default function AdminTicketDetailPage() {
   const [messageBody, setMessageBody] = useState("");
   const [status, setStatus] = useState("");
   const [assignedAdminId, setAssignedAdminId] = useState("");
+  const theme = useTheme();
 
   const canAssign = admin?.role === "platform_owner" || admin?.role === "platform_admin";
 
@@ -53,12 +56,20 @@ export default function AdminTicketDetailPage() {
     }
   };
 
-  const loadTicket = async () => {
+  const loadTicket = async (before) => {
     try {
       setLoading(true);
-      const { data } = await platformAdminApi.get(`/tickets/${id}`);
+      const params = new URLSearchParams();
+      if (before) params.set("before", String(before));
+      params.set("limit", "50");
+      const query = params.toString();
+      const { data } = await platformAdminApi.get(`/tickets/${id}${query ? `?${query}` : ""}`);
       setTicket(data || null);
       setMessages(data?.messages || []);
+      setMessageMeta({
+        has_more: Boolean(data?.has_more),
+        next_before: data?.next_before || null,
+      });
       setStatus(data?.status || "");
       setAssignedAdminId(data?.assigned_admin_id || "");
       setError("");
@@ -104,6 +115,23 @@ export default function AdminTicketDetailPage() {
       await loadTicket();
     } catch {
       setError("Unable to send message.");
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!messageMeta.next_before) return;
+    try {
+      const { data } = await platformAdminApi.get(
+        `/tickets/${id}?before=${messageMeta.next_before}&limit=50`
+      );
+      const older = data?.messages || [];
+      setMessages((prev) => [...older, ...prev]);
+      setMessageMeta({
+        has_more: Boolean(data?.has_more),
+        next_before: data?.next_before || null,
+      });
+    } catch {
+      setError("Unable to load older messages.");
     }
   };
 
@@ -214,13 +242,23 @@ export default function AdminTicketDetailPage() {
             Messages
           </Typography>
           <Divider sx={{ my: 2 }} />
-          <Stack spacing={1} sx={{ maxHeight: 320, overflowY: "auto" }}>
+          {messageMeta.has_more && (
+            <Button size="small" onClick={loadOlderMessages} sx={{ mb: 1 }}>
+              Load older messages
+            </Button>
+          )}
+          <Stack spacing={1} sx={{ maxHeight: 360, overflowY: "auto" }}>
             {messages.map((msg) => (
               <Box key={msg.id} sx={{ p: 1.5, background: "#f6f7f9", borderRadius: 1 }}>
                 <Typography variant="caption" color="text.secondary">
                   {msg.sender_type} • {formatDate(msg.created_at)}
                 </Typography>
-                <Typography variant="body2">{msg.body}</Typography>
+                <Typography
+                  variant="body2"
+                  sx={msg.is_deleted ? { color: "text.secondary", fontStyle: "italic" } : null}
+                >
+                  {msg.is_deleted ? "[deleted]" : msg.body}
+                </Typography>
               </Box>
             ))}
             {!messages.length && (
@@ -230,23 +268,25 @@ export default function AdminTicketDetailPage() {
             )}
           </Stack>
           <Divider sx={{ my: 2 }} />
-          <TextField
-            fullWidth
-            multiline
-            minRows={2}
-            label="Reply"
-            value={messageBody}
-            onChange={(e) => setMessageBody(e.target.value)}
-            disabled={(ticket.status || "").toLowerCase() === "closed"}
-          />
-          <Button
-            variant="contained"
-            sx={{ mt: 1 }}
-            onClick={sendMessage}
-            disabled={(ticket.status || "").toLowerCase() === "closed"}
-          >
-            Send reply
-          </Button>
+          <Box sx={{ position: "sticky", bottom: 0, background: theme.palette.background.paper, pt: 1 }}>
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              label="Reply"
+              value={messageBody}
+              onChange={(e) => setMessageBody(e.target.value)}
+              disabled={(ticket.status || "").toLowerCase() === "closed"}
+            />
+            <Button
+              variant="contained"
+              sx={{ mt: 1 }}
+              onClick={sendMessage}
+              disabled={(ticket.status || "").toLowerCase() === "closed"}
+            >
+              Send reply
+            </Button>
+          </Box>
           {error && (
             <Typography variant="body2" color="error" sx={{ mt: 1 }}>
               {error}

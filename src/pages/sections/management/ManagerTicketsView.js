@@ -18,7 +18,9 @@ import {
   Stack,
   TextField,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useLocation } from "react-router-dom";
 import api from "../../../utils/api";
 
@@ -43,12 +45,15 @@ export default function ManagerTicketsView() {
   const [selectedId, setSelectedId] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailMeta, setDetailMeta] = useState({ has_more: false, next_before: null });
   const [subject, setSubject] = useState("website");
   const [subSubject, setSubSubject] = useState("");
   const [description, setDescription] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [showWebsiteDesignSuccess, setShowWebsiteDesignSuccess] = useState(false);
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const selectedTicket = useMemo(
     () => tickets.find((t) => t.id === selectedId) || detail,
@@ -68,12 +73,20 @@ export default function ManagerTicketsView() {
     }
   };
 
-  const loadDetail = async (ticketId) => {
+  const loadDetail = async (ticketId, before) => {
     if (!ticketId) return;
     try {
       setDetailLoading(true);
-      const { data } = await api.get(`/api/support/tickets/${ticketId}`);
+      const params = new URLSearchParams();
+      if (before) params.set("before", String(before));
+      params.set("limit", "50");
+      const query = params.toString();
+      const { data } = await api.get(`/api/support/tickets/${ticketId}${query ? `?${query}` : ""}`);
       setDetail(data || null);
+      setDetailMeta({
+        has_more: Boolean(data?.has_more),
+        next_before: data?.next_before || null,
+      });
     } catch {
       setDetail(null);
     } finally {
@@ -136,9 +149,30 @@ export default function ManagerTicketsView() {
           ? { ...prev, messages: [...(prev.messages || []), data] }
           : prev
       );
+      setDetailMeta((prev) => ({ ...prev, has_more: prev.has_more, next_before: prev.next_before }));
       await loadTickets();
     } catch {
       setError("Unable to send message.");
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!selectedId || !detailMeta.next_before) return;
+    try {
+      const { data } = await api.get(
+        `/api/support/tickets/${selectedId}?before=${detailMeta.next_before}&limit=50`
+      );
+      setDetail((prev) => {
+        if (!prev) return prev;
+        const older = data?.messages || [];
+        return { ...prev, messages: [...older, ...(prev.messages || [])] };
+      });
+      setDetailMeta({
+        has_more: Boolean(data?.has_more),
+        next_before: data?.next_before || null,
+      });
+    } catch {
+      setError("Unable to load older messages.");
     }
   };
 
@@ -195,7 +229,8 @@ export default function ManagerTicketsView() {
         </Paper>
 
         <Stack direction={{ xs: "column", lg: "row" }} spacing={2}>
-          <Paper sx={{ p: 2, width: { xs: "100%", lg: "35%" } }}>
+          {!isMobile || !selectedTicket ? (
+            <Paper sx={{ p: 2, width: { xs: "100%", lg: "35%" } }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
               Your Tickets
             </Typography>
@@ -226,11 +261,23 @@ export default function ManagerTicketsView() {
               </List>
             )}
           </Paper>
+          ) : null}
 
+          {(!isMobile || selectedTicket) && (
           <Paper sx={{ p: 2, width: { xs: "100%", lg: "65%" } }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
               Ticket Detail
             </Typography>
+            {isMobile && selectedTicket && (
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => setSelectedId(null)}
+                sx={{ mt: 1 }}
+              >
+                Back to tickets
+              </Button>
+            )}
             {!selectedTicket && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                 Select a ticket to view messages.
@@ -250,13 +297,23 @@ export default function ManagerTicketsView() {
                   <Chip label={statusLabel(selectedTicket.status)} size="small" />
                 </Stack>
                 <Divider sx={{ my: 2 }} />
-                <Stack spacing={1} sx={{ maxHeight: 320, overflowY: "auto" }}>
+                {detailMeta.has_more && (
+                  <Button size="small" onClick={loadOlderMessages} sx={{ mb: 1 }}>
+                    Load older messages
+                  </Button>
+                )}
+                <Stack spacing={1} sx={{ maxHeight: 360, overflowY: "auto" }}>
                   {(detail?.messages || []).map((msg) => (
                     <Box key={msg.id} sx={{ p: 1.5, background: "#f6f7f9", borderRadius: 1 }}>
                       <Typography variant="caption" color="text.secondary">
                         {msg.sender_type} • {formatDate(msg.created_at)}
                       </Typography>
-                      <Typography variant="body2">{msg.body}</Typography>
+                      <Typography
+                        variant="body2"
+                        sx={msg.is_deleted ? { color: "text.secondary", fontStyle: "italic" } : null}
+                      >
+                        {msg.is_deleted ? "[deleted]" : msg.body}
+                      </Typography>
                     </Box>
                   ))}
                   {!detail?.messages?.length && (
@@ -266,26 +323,29 @@ export default function ManagerTicketsView() {
                   )}
                 </Stack>
                 <Divider sx={{ my: 2 }} />
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  label="Reply"
-                  value={messageBody}
-                  onChange={(e) => setMessageBody(e.target.value)}
-                  disabled={(selectedTicket.status || "").toLowerCase() === "closed"}
-                />
-                <Button
-                  variant="contained"
-                  sx={{ mt: 1 }}
-                  onClick={sendMessage}
-                  disabled={(selectedTicket.status || "").toLowerCase() === "closed"}
-                >
-                  Send Message
-                </Button>
+                <Box sx={{ position: "sticky", bottom: 0, background: theme.palette.background.paper, pt: 1 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={2}
+                    label="Reply"
+                    value={messageBody}
+                    onChange={(e) => setMessageBody(e.target.value)}
+                    disabled={(selectedTicket.status || "").toLowerCase() === "closed"}
+                  />
+                  <Button
+                    variant="contained"
+                    sx={{ mt: 1 }}
+                    onClick={sendMessage}
+                    disabled={(selectedTicket.status || "").toLowerCase() === "closed"}
+                  >
+                    Send Message
+                  </Button>
+                </Box>
               </>
             )}
           </Paper>
+          )}
         </Stack>
       </Stack>
     </Box>
