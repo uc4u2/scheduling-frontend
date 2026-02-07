@@ -65,6 +65,8 @@ export default function AdminTicketDetailPage() {
   const canAssign = admin?.role === "platform_owner" || admin?.role === "platform_admin";
   const supportSession = ticket?.support_session || null;
   const isWebsiteDesign = ticket?.type === "website_design";
+  const isWebsiteSubject = (ticket?.subject || "").toLowerCase() === "website";
+  const allowWebsiteSupport = isWebsiteDesign || isWebsiteSubject;
   const statusOptions = isWebsiteDesign ? WEBSITE_DESIGN_STATUSES : BASE_STATUSES;
   const supportPending = supportSession?.status === "pending";
   const supportActive = supportSession?.status === "active";
@@ -353,7 +355,7 @@ export default function AdminTicketDetailPage() {
           </Stack>
         </Paper>
 
-        {isWebsiteDesign && (
+        {allowWebsiteSupport && (
           <Paper sx={{ p: 2 }}>
             <Stack spacing={1}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
