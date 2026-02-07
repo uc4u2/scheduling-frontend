@@ -269,8 +269,11 @@ export default function AdminTicketDetailPage() {
   };
 
   const openSupportLink = (path) => {
-    if (!supportSession?.id) return;
-    const url = `${path}?support_session=${supportSession.id}`;
+    if (!supportSession?.id || !ticket?.company_id) return;
+    const params = new URLSearchParams();
+    params.set("support_session", String(supportSession.id));
+    params.set("company_id", String(ticket.company_id));
+    const url = `${path}?${params.toString()}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
