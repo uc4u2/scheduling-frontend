@@ -36,6 +36,7 @@ Handled in `/billing/webhook` for `checkout.session.completed`.
 If:
 - `session.metadata.addon == "website_design"`
 - `session.payment_status == "paid"`
+- `session.mode == "payment"`
 
 Then:
 - Create a ticket (idempotent):
@@ -51,6 +52,7 @@ Then:
 
 Idempotency:
 - Unique index on `(external_source, external_id)`
+- Duplicate webhook retries are safely ignored (IntegrityError handled).
 
 ## Ticket Visibility
 - Manager sees the ticket in `/manager/tickets`
