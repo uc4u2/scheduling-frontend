@@ -72,13 +72,20 @@ const SupportConsentPage = () => {
           </Typography>
 
           <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              Agreement (Support Access Consent)
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              By approving support access, you authorize Schedulaa support staff to temporarily
+              access your website and/or domain settings for the purpose of resolving your request.
+            </Typography>
             {AGREEMENT_TEXT.map((line) => (
               <Typography key={line} variant="body2" sx={{ color: "text.secondary" }}>
                 • {line}
               </Typography>
             ))}
             <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              Read the full agreement{" "}
+              View the standalone agreement{" "}
               <RouterLink to="/legal/support-access-consent">here</RouterLink>.
             </Typography>
           </Stack>
