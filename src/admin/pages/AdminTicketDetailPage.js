@@ -391,13 +391,13 @@ export default function AdminTicketDetailPage() {
                 )}
                 {supportActive && (
                   <>
-                    <Button variant="outlined" onClick={() => openSupportLink("/manager/website-pages")}>
+                    <Button variant="outlined" onClick={() => openSupportLink("/manager/website")}>
                       Open Website Manager
                     </Button>
                     <Button variant="outlined" onClick={() => openSupportLink("/manage/website/builder")}>
                       Open Visual Builder
                     </Button>
-                    <Button variant="outlined" onClick={() => openSupportLink("/manager/website-pages")}>
+                    <Button variant="outlined" onClick={() => openSupportLink("/manager/website")}>
                       Open Domain Connect
                     </Button>
                     <Button color="error" variant="contained" onClick={endSupportSession}>
