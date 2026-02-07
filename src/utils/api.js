@@ -54,14 +54,7 @@ const getSupportSessionId = () => {
   if (typeof window === "undefined") return null;
   try {
     const params = new URLSearchParams(window.location.search || "");
-    const fromUrl = params.get("support_session");
-    if (fromUrl) {
-      try {
-        window.sessionStorage.setItem("support_session", fromUrl);
-      } catch {}
-      return fromUrl;
-    }
-    return window.sessionStorage.getItem("support_session");
+    return params.get("support_session");
   } catch {
     return null;
   }

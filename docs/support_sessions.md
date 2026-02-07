@@ -41,10 +41,11 @@ Website/domain endpoints allow access if:
   - scope permits the action
   - company_id matches
 
+Note: support session IDs are read from the current URL and are not persisted in storage.
+
 ## Audit
 All session actions write PlatformAuditLog:
 - `support_session.request`
 - `support_session.approve`
 - `support_session.start`
 - `support_session.end`
-
