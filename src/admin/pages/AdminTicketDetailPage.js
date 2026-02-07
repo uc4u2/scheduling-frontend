@@ -63,6 +63,8 @@ export default function AdminTicketDetailPage() {
   }, [messages]);
 
   const canAssign = admin?.role === "platform_owner" || admin?.role === "platform_admin";
+  const isSupport = admin?.role === "platform_support";
+  const isAssignedToMe = Boolean(admin?.id && assignedAdminId && Number(assignedAdminId) === Number(admin.id));
   const supportSession = ticket?.support_session || null;
   const isWebsiteDesign = ticket?.type === "website_design";
   const isWebsiteSubject = (ticket?.subject || "").toLowerCase() === "website";
@@ -385,9 +387,16 @@ export default function AdminTicketDetailPage() {
                   </Button>
                 )}
                 {supportPending && supportApproved && (
-                  <Button variant="contained" onClick={startSupportSession}>
-                    Start support session
-                  </Button>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <Button variant="contained" onClick={startSupportSession}>
+                      Start support session
+                    </Button>
+                    {isSupport && !isAssignedToMe && (
+                      <Typography variant="caption" color="text.secondary">
+                        Assign the ticket to yourself before starting the session.
+                      </Typography>
+                    )}
+                  </Stack>
                 )}
                 {supportActive && (
                   <>
