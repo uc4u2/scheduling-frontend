@@ -58,6 +58,10 @@ export default function AdminTeamPage() {
   }, [load]);
 
   const canManage = admin?.role === "platform_owner" || admin?.role === "platform_admin";
+  const allowedRoleOptions = useMemo(() => {
+    if (admin?.role === "platform_owner") return ROLE_OPTIONS;
+    return ROLE_OPTIONS.filter((opt) => opt.value !== "platform_owner");
+  }, [admin]);
 
   const sorted = useMemo(() => {
     const list = Array.isArray(users) ? users : [];
@@ -191,7 +195,7 @@ export default function AdminTeamPage() {
                 value={form.role}
                 onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
               >
-                {ROLE_OPTIONS.map((opt) => (
+                {allowedRoleOptions.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </MenuItem>
