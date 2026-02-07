@@ -30,6 +30,13 @@ const ROLE_OPTIONS = [
 ];
 
 const SUBJECT_OPTIONS = ["website", "booking", "payroll", "billing", "general"];
+const SUBJECT_LABELS = {
+  website: "Website",
+  booking: "Booking",
+  payroll: "Payroll",
+  billing: "Billing",
+  general: "General",
+};
 
 export default function AdminTeamPage() {
   const [users, setUsers] = useState([]);
@@ -82,28 +89,6 @@ export default function AdminTeamPage() {
     const list = Array.isArray(users) ? users : [];
     return [...list].sort((a, b) => (a.email || "").localeCompare(b.email || ""));
   }, [users]);
-
-  const loadCoverageForUsers = useCallback(async (teamUsers) => {
-    if (!canManage) return;
-    const supportUsers = (teamUsers || []).filter((u) => u.role === "platform_support");
-    if (!supportUsers.length) return;
-    const results = await Promise.allSettled(
-      supportUsers.map((u) => platformAdminApi.get(`/team/coverage/${u.id}`))
-    );
-    const next = {};
-    results.forEach((res, idx) => {
-      if (res.status === "fulfilled") {
-        next[supportUsers[idx].id] = res.value?.data?.subjects || [];
-      }
-    });
-    setCoverageById(next);
-  }, [canManage]);
-
-  useEffect(() => {
-    if (users.length) {
-      loadCoverageForUsers(users);
-    }
-  }, [users, loadCoverageForUsers]);
 
   const createUser = async () => {
     setError("");
@@ -249,10 +234,17 @@ export default function AdminTeamPage() {
             Coverage:{" "}
             {u.role !== "platform_support" ? (
               "All (implicit)"
+            ) : !Object.prototype.hasOwnProperty.call(coverageById, u.id) ? (
+              "Not loaded"
             ) : coverageById[u.id]?.length ? (
               <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: "wrap" }}>
                 {coverageById[u.id].map((subject) => (
-                  <Chip key={subject} size="small" label={subject} sx={{ mb: 0.5 }} />
+                  <Chip
+                    key={subject}
+                    size="small"
+                    label={SUBJECT_LABELS[subject] || subject}
+                    sx={{ mb: 0.5 }}
+                  />
                 ))}
               </Stack>
             ) : (
@@ -357,7 +349,7 @@ export default function AdminTeamPage() {
                         onChange={() => toggleCoverage(subject)}
                       />
                     }
-                    label={subject}
+                    label={SUBJECT_LABELS[subject] || subject}
                   />
                 ))}
               </FormGroup>
