@@ -1,7 +1,7 @@
 # Support Sessions (Website Design Tickets)
 
 This document is the source of truth for Support Sessions used to grant
-time-limited, manager-approved access to website tools.
+manager-approved access to website tools.
 
 ## Purpose
 - Allow platform support/admins to edit a tenant’s website without tenant passwords.
@@ -9,12 +9,13 @@ time-limited, manager-approved access to website tools.
 - Sessions are time-limited and auditable.
 
 ## Eligibility
-- Ticket must be `type = "website_design"`.
+- Website design tickets: `ticket.type = "website_design"` (paid mode).
+- Override sessions: allowed on non-paid tickets for admin/owner only.
 - Support agent must have website coverage or be assigned to the ticket.
 
 ## Lifecycle
 1) Admin requests access (pending)
-2) Manager approves (approved)
+2) Manager approves **with consent checkbox** (approved)
 3) Admin starts session (active)
 4) Admin ends session or it expires (ended/expired)
 
@@ -25,7 +26,9 @@ Platform Admin:
 - POST `/platform-admin/tickets/<id>/support-session/end`
 
 Manager:
-- POST `/api/support/tickets/<id>/support-session/approve`
+- GET `/api/support/sessions/<session_id>/approval-link`
+- POST `/api/support/sessions/approve-by-token`
+- POST `/api/support/tickets/<id>/support-session/approve` (legacy, requires consent)
 
 ## Scopes
 - `website_all`
@@ -43,9 +46,19 @@ Website/domain endpoints allow access if:
 
 Note: support session IDs are read from the current URL and are not persisted in storage.
 
+## Consent
+Consent is required before approval. Stored fields:
+- `consent_version`
+- `consented_at`
+- `consented_ip`
+- `consented_user_agent`
+
 ## Audit
 All session actions write PlatformAuditLog:
 - `support_session.request`
 - `support_session.approve`
 - `support_session.start`
 - `support_session.end`
+- `support_session.expired`
+
+Audit logs are visible only to platform_admin/platform_owner.

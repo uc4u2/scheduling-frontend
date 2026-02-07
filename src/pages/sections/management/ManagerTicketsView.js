@@ -224,16 +224,15 @@ export default function ManagerTicketsView() {
   };
 
   const approveSupportSession = async () => {
-    if (!selectedId) return;
+    const sessionId = detail?.support_session?.id;
+    if (!sessionId) return;
     try {
-      const { data } = await api.post(
-        `/api/support/tickets/${selectedId}/support-session/approve`,
-        { scope: "website_all" }
-      );
-      if (data?.support_session) {
-        setDetail((prev) => (prev ? { ...prev, support_session: data.support_session } : prev));
+      const { data } = await api.get(`/api/support/sessions/${sessionId}/approval-link`);
+      if (data?.approval_link) {
+        window.location.href = data.approval_link;
+        return;
       }
-      setSupportNotice("Support session approved for 30 minutes.");
+      setError("Unable to open approval link.");
     } catch (err) {
       const msg = err?.response?.data?.error || "Unable to approve support session.";
       setError(msg);

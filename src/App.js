@@ -95,6 +95,7 @@ import AcceptableUsePage from "./landing/pages/legal/AcceptableUsePage";
 import DataProcessingAddendumPage from "./landing/pages/legal/DataProcessingAddendumPage";
 import SecurityPage from "./landing/pages/legal/SecurityPage";
 import UserAgreementPage from "./landing/pages/legal/UserAgreementPage";
+import SupportAccessConsentPage from "./landing/pages/legal/SupportAccessConsentPage";
 import PayrollOverviewPage from "./landing/pages/payroll/PayrollOverviewPage";
 import CanadaPayrollPage from "./landing/pages/payroll/CanadaPayrollPage";
 import USPayrollPage from "./landing/pages/payroll/USPayrollPage";
@@ -195,6 +196,7 @@ import LayoutTuningLab from "./pages/sections/management/LayoutTuningLab";
 import DomainHelpPage from "./landing/pages/help/DomainHelpPage";
 import EnterpriseRetirementHelp from "./pages/help/EnterpriseRetirementHelp";
 import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
+import SupportConsentPage from "./pages/sections/management/SupportConsentPage";
 
 export const ThemeModeContext = createContext({
   themeName: "sunset",
@@ -258,6 +260,7 @@ const MARKETING_PATHS = [
   '/data-processing',
   '/security',
   '/user-agreement',
+  '/legal/support-access-consent',
   '/industries',
 ];
 
@@ -617,6 +620,7 @@ const AppContent = ({ token, setToken }) => {
             <Route path="/acceptable-use" element={<AcceptableUsePage />} />
             <Route path="/data-processing" element={<DataProcessingAddendumPage />} />
             <Route path="/security" element={<SecurityPage />} />
+            <Route path="/legal/support-access-consent" element={<SupportAccessConsentPage />} />
             </Route>
           )}
           {/* Auth */}
@@ -707,6 +711,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/recruiter-stats/:recruiterId" element={<RecruiterStats token={token} />} />
           <Route path="/manager/dashboard" element={<ManagerDashboard token={token} />} />
           <Route path="/manager/:view" element={<ManagerDashboard token={token} />} />
+          <Route path="/manager/support-consent" element={<SupportConsentPage />} />
           <Route path="/manager/onboarding" element={<OnboardingPage />} />
           <Route
             path="/manager/attendance-summaries"
