@@ -6,6 +6,7 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  IconButton,
   FormControl,
   InputLabel,
   List,
@@ -23,6 +24,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import { useLocation } from "react-router-dom";
 import api from "../../../utils/api";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 const SUBJECT_OPTIONS = [
   "website",
@@ -153,6 +155,23 @@ export default function ManagerTicketsView() {
       await loadTickets();
     } catch {
       setError("Unable to send message.");
+    }
+  };
+
+  const deleteMessage = async (messageId) => {
+    if (!selectedId || !messageId) return;
+    try {
+      const { data } = await api.delete(`/api/support/tickets/${selectedId}/messages/${messageId}`);
+      setDetail((prev) => {
+        if (!prev) return prev;
+        const updated = (prev.messages || []).map((msg) =>
+          msg.id === messageId ? { ...msg, ...data } : msg
+        );
+        return { ...prev, messages: updated };
+      });
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Unable to delete message.";
+      setError(msg);
     }
   };
 
@@ -305,9 +324,20 @@ export default function ManagerTicketsView() {
                 <Stack spacing={1} sx={{ maxHeight: 360, overflowY: "auto" }}>
                   {(detail?.messages || []).map((msg) => (
                     <Box key={msg.id} sx={{ p: 1.5, background: "#f6f7f9", borderRadius: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        {msg.sender_type} • {formatDate(msg.created_at)}
-                      </Typography>
+                      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                        <Typography variant="caption" color="text.secondary">
+                          {msg.sender_type} • {formatDate(msg.created_at)}
+                        </Typography>
+                        {!msg.is_deleted && msg.sender_type === "tenant" && (
+                          <IconButton
+                            size="small"
+                            onClick={() => deleteMessage(msg.id)}
+                            aria-label="Delete message"
+                          >
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                      </Stack>
                       <Typography
                         variant="body2"
                         sx={msg.is_deleted ? { color: "text.secondary", fontStyle: "italic" } : null}
