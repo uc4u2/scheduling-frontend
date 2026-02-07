@@ -2291,6 +2291,7 @@ const autoProvisionIfEmpty = useCallback(
         );
         const match = updated.find((u) => u.id === editing.id);
         if (match) setEditing(match);
+        setSelectedPageIds([]);
         setMsg(t("manager.visualBuilder.messages.pageSettingsSaved"));
         setPageSettingsDirty(false);
       } else {
