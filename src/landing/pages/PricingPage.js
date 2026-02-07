@@ -721,19 +721,19 @@ const PricingPage = () => {
           >
             <Box>
               <Typography variant="h6" fontWeight={700}>
-                Website Design Service
+                {content?.websiteDesignService?.title || "Website Design Service"}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                One-time custom website design by our team. After purchase, we open a design
-                ticket, collect your requirements, design your site, and publish it for you.
+                {content?.websiteDesignService?.description ||
+                  "One-time custom website design by our team. After purchase, we open a design ticket, collect your requirements, design your site, and publish it for you."}
               </Typography>
               <Typography
                 variant="caption"
                 color="text.secondary"
                 sx={{ display: "block", mt: 0.75 }}
               >
-                Includes: design + revisions + publish. Domain purchase not included (we can help
-                you connect your domain).
+                {content?.websiteDesignService?.includes ||
+                  "Includes: design + revisions + publish. Domain purchase not included (we can help you connect your domain)."}
               </Typography>
             </Box>
             <Button
@@ -741,7 +741,9 @@ const PricingPage = () => {
               onClick={handleWebsiteDesignCheckout}
               disabled={addonLoading}
             >
-              {addonLoading ? "Starting checkout..." : "Buy Website Design"}
+              {addonLoading
+                ? content?.websiteDesignService?.loadingCta || "Starting checkout..."
+                : content?.websiteDesignService?.cta || "Buy Website Design"}
             </Button>
           </Stack>
           {addonError && (

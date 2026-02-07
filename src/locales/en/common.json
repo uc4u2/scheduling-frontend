@@ -4273,6 +4273,13 @@
           "No syncing errors between shifts, hours, and pay.",
           "Fewer compliance gaps from disconnected tools."
         ]
+      },
+      "websiteDesignService": {
+        "title": "Website Design Service",
+        "description": "One-time custom website design by our team. After purchase, we open a design ticket, collect your requirements, design your site, and publish it for you.",
+        "includes": "Includes: design + revisions + publish. Domain purchase not included (we can help you connect your domain).",
+        "cta": "Buy Website Design",
+        "loadingCta": "Starting checkout..."
       }
     },
     "aboutPage": {
