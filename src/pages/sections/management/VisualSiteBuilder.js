@@ -2227,6 +2227,31 @@ const autoProvisionIfEmpty = useCallback(
   const applyPageActionPatch = useCallback(
     (pageId, patch, { setHomepage = false } = {}) => {
       if (!pageId) return;
+      const persistPatch = async () => {
+        try {
+          if (!companyId) return;
+          const source =
+            (editing?.id === pageId ? editing : null) ||
+            pages.find((p) => p.id === pageId);
+          if (!source) return;
+          const base = setHomepage
+            ? { ...source, is_homepage: true }
+            : { ...source, ...patch };
+          const payload = serializePage(ensureSectionIds(withLiftedLayout(base)));
+          const r = await wb.updatePage(companyId, payload.id, payload);
+          const updated = ensureSectionIds(
+            withLiftedLayout(normalizePage(r.data || payload))
+          );
+          setPages((prev) =>
+            prev.map((p) => (p.id === updated.id ? updated : p))
+          );
+          if (editing?.id === updated.id) {
+            setEditing(updated);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
       setPageSettingsDirty(true);
       setSelectedPageIds((prev) => (prev.includes(pageId) ? prev : [pageId]));
       setPages((prev) =>
@@ -2256,8 +2281,25 @@ const autoProvisionIfEmpty = useCallback(
           setAutosaveEnabled(Boolean(patch.autosave));
         }
       }
+      if (
+        (patch &&
+          (Object.prototype.hasOwnProperty.call(patch, "published") ||
+            Object.prototype.hasOwnProperty.call(patch, "show_in_menu") ||
+            Object.prototype.hasOwnProperty.call(patch, "autosave"))) ||
+        setHomepage
+      ) {
+        persistPatch();
+      }
     },
-    [editing?.id, updatePageMeta, setAutosaveEnabled, setPages, setSelectedPageIds]
+    [
+      companyId,
+      editing,
+      pages,
+      updatePageMeta,
+      setAutosaveEnabled,
+      setPages,
+      setSelectedPageIds,
+    ]
   );
 
   const savePageMeta = async () => {
