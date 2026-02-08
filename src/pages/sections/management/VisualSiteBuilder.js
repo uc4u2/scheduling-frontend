@@ -2230,10 +2230,17 @@ const autoProvisionIfEmpty = useCallback(
       const persistPatch = async () => {
         try {
           if (!companyId) return;
-          const source =
+          let source =
             (editing?.id === pageId ? editing : null) ||
             pages.find((p) => p.id === pageId);
           if (!source) return;
+          if (
+            source?.id !== editing?.id &&
+            (!source?.content || !Array.isArray(source?.content?.sections))
+          ) {
+            const full = await wb.getPage(companyId, pageId);
+            source = full?.data || full || source;
+          }
           const base = setHomepage
             ? { ...source, is_homepage: true }
             : { ...source, ...patch };
