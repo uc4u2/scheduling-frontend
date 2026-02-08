@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Box,
+  Alert,
   Button,
   Chip,
   Divider,
@@ -11,6 +12,8 @@ import {
   ListItemText,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -29,6 +32,7 @@ export default function Tenant360Page() {
   const [domainDiag, setDomainDiag] = useState(null);
   const [domainDiagLoading, setDomainDiagLoading] = useState(false);
   const [domainDiagError, setDomainDiagError] = useState("");
+  const [activeTab, setActiveTab] = useState("overview");
 
   const load = useCallback(async () => {
     const [tenantRes, usersRes, billingRes, eventsRes, notesRes] = await Promise.all([
@@ -115,6 +119,24 @@ export default function Tenant360Page() {
   const ent = tenant.entitlements || {};
   const stats = tenant.stats || {};
   const website = tenant.website || {};
+  const paymentsDiag = tenant.payments_diag || {};
+  const paymentsCurrency =
+    paymentsDiag.display_currency ||
+    tenant.display_currency ||
+    tenant.currency ||
+    "USD";
+  const fmtCurrency = (value) => {
+    const numeric = Number(value ?? 0);
+    try {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: paymentsCurrency,
+        maximumFractionDigits: 2,
+      }).format(numeric);
+    } catch (err) {
+      return `${numeric.toFixed(2)} ${paymentsCurrency}`;
+    }
+  };
   const domain =
     website.custom_domain &&
     (website.domain_status === "verified" || website.domain_verified_at)
@@ -143,6 +165,16 @@ export default function Tenant360Page() {
   return (
     <Box>
       <Typography variant="h5" sx={{ mb: 2 }}>Tenant 360</Typography>
+      <Tabs
+        value={activeTab}
+        onChange={(_, next) => setActiveTab(next)}
+        sx={{ mb: 2 }}
+      >
+        <Tab label="Overview" value="overview" />
+        <Tab label="Stripe & Payments" value="payments" />
+      </Tabs>
+      {activeTab === "overview" ? (
+        <>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack spacing={0.5}>
           <Typography variant="subtitle1">{tenant.name}</Typography>
@@ -446,6 +478,149 @@ export default function Tenant360Page() {
           ))}
         </List>
       </Paper>
+        </>
+      ) : null}
+
+      {activeTab === "payments" ? (
+        <>
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1">Stripe connect</Typography>
+            {paymentsDiag.address_complete === false ? (
+              <Alert severity="warning" sx={{ mt: 1 }}>
+                Company address is incomplete. Missing: {paymentsDiag.address_missing?.join(", ") || "—"}
+              </Alert>
+            ) : null}
+            <List dense>
+              <ListItem>
+                <ListItemText
+                  primary="Account ID"
+                  secondary={paymentsDiag.stripe_connect_account_id || "—"}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Charges enabled"
+                  secondary={paymentsDiag.stripe_connect_charges_enabled ? "Yes" : "No"}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Payouts enabled"
+                  secondary={paymentsDiag.stripe_connect_payouts_enabled ? "Yes" : "No"}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Details submitted"
+                  secondary={paymentsDiag.stripe_connect_details_submitted ? "Yes" : "No"}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Requirements"
+                  secondary={
+                    paymentsDiag.stripe_connect_requirements
+                      ? JSON.stringify(paymentsDiag.stripe_connect_requirements)
+                      : "—"
+                  }
+                />
+              </ListItem>
+            </List>
+          </Paper>
+
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1">Checkout configuration</Typography>
+            <List dense>
+              <ListItem>
+                <ListItemText
+                  primary="Stripe payments"
+                  secondary={paymentsDiag.enable_stripe_payments ? "Enabled" : "Disabled"}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Card on file"
+                  secondary={paymentsDiag.allow_card_on_file ? "Enabled" : "Disabled"}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Currency mode"
+                  secondary={paymentsDiag.charge_currency_mode || "—"}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Display currency"
+                  secondary={paymentsDiag.display_currency || "—"}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Prices include tax"
+                  secondary={paymentsDiag.prices_include_tax ? "Yes" : "No"}
+                />
+              </ListItem>
+            </List>
+          </Paper>
+
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1">Payments health</Typography>
+            <Grid container spacing={2} sx={{ mt: 0.5 }}>
+              <Grid item xs={12} md={6}>
+                <List dense>
+                  <ListItem>
+                    <ListItemText
+                      primary="Payments (30d)"
+                      secondary={fmtCurrency(paymentsDiag.payments_30d_total)}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Payments (90d)"
+                      secondary={fmtCurrency(paymentsDiag.payments_90d_total)}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Refunds (30d)"
+                      secondary={fmtCurrency(paymentsDiag.refunds_30d_total)}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Refunds (90d)"
+                      secondary={fmtCurrency(paymentsDiag.refunds_90d_total)}
+                    />
+                  </ListItem>
+                </List>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <List dense>
+                  <ListItem>
+                    <ListItemText
+                      primary="Failed payments (30d)"
+                      secondary={paymentsDiag.failed_30d_count ?? 0}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Last failure"
+                      secondary={paymentsDiag.last_failure_at || "—"}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Failure provider"
+                      secondary={paymentsDiag.last_failure_provider || "—"}
+                    />
+                  </ListItem>
+                </List>
+              </Grid>
+            </Grid>
+          </Paper>
+        </>
+      ) : null}
     </Box>
   );
 }

@@ -859,6 +859,21 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [companyId, setCompanyId] = useState(     // ✅ local state
     companyIdProp ?? detectedCompanyId ?? ""
   );
+  const supportQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search || "");
+    const supportSession = params.get("support_session");
+    if (!supportSession) return "";
+    const cid =
+      params.get("company_id") ||
+      params.get("cid") ||
+      companyId ||
+      companyIdProp ||
+      detectedCompanyId;
+    const out = new URLSearchParams();
+    out.set("support_session", supportSession);
+    if (cid) out.set("company_id", String(cid));
+    return `?${out.toString()}`;
+  }, [location.search, companyId, companyIdProp, detectedCompanyId]);
 
   // local state the component already uses elsewhere
   const defaultThemeOverrides = useMemo(
@@ -2639,7 +2654,7 @@ const autoProvisionIfEmpty = useCallback(
             size="small"
             startIcon={<ViewCarouselIcon />}
             component={RouterLink}
-            to="/manager/website/templates"
+            to={`/manager/website/templates${supportQuery}`}
           >
             {t("manager.visualBuilder.controls.buttons.chooseTemplate")}
           </Button>

@@ -31,7 +31,7 @@ import TemplatePreviewPane from "../../../components/website/TemplatePreviewPane
 import { RenderSections } from "../../../components/website/RenderSections";
 import { ensureCompanyId } from "../../../utils/company";
 import { wb as website } from "../../../utils/api";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import SectionCard from "../../../components/ui/SectionCard";
 import TabShell from "../../../components/ui/TabShell";
@@ -40,6 +40,7 @@ const DEFAULT_VERSION = "1.0.0";
 
 export default function WebsiteTemplates({ companyId: companyIdProp }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [companyId, setCompanyId] = useState(companyIdProp || null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -79,6 +80,17 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
       mounted = false;
     };
   }, [companyIdProp]);
+
+  const supportQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search || "");
+    const supportSession = params.get("support_session");
+    if (!supportSession) return "";
+    const cid = params.get("company_id") || params.get("cid") || companyId || companyIdProp;
+    const out = new URLSearchParams();
+    out.set("support_session", supportSession);
+    if (cid) out.set("company_id", String(cid));
+    return `?${out.toString()}`;
+  }, [location.search, companyId, companyIdProp]);
 
   // ---------- Load manifest ----------
   useEffect(() => {
@@ -164,7 +176,10 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
   };
 
   // ---------- Import (then redirect to builder) ----------
-  const goToBuilder = () => navigate("/manage/website/builder");
+  const goToBuilder = () =>
+    navigate(`/manage/website/builder${supportQuery}`, {
+      state: { postImportReload: true },
+    });
 
   const runImport = async (keyOverride, versionOverride) => {
     const key = keyOverride || selectedKey;
