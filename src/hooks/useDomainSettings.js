@@ -17,6 +17,8 @@ const INITIAL_STATE = {
   cnameTarget: null,
   cnameMatches: null,
   cnameWarning: null,
+  dnsTxtOk: null,
+  dnsCnameOk: null,
   instructions: null,
   verificationToken: null,
   nextRetrySeconds: null,
@@ -87,8 +89,14 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
         next.verifiedAt = toDate(payload.verified_at ?? payload.domain_verified_at);
       }
 
-      if (hasOwn(payload, "last_checked") || hasOwn(payload, "domain_last_checked_at")) {
-        next.lastChecked = toDate(payload.last_checked ?? payload.domain_last_checked_at);
+      if (
+        hasOwn(payload, "last_checked") ||
+        hasOwn(payload, "domain_last_checked_at") ||
+        hasOwn(payload, "checked_at")
+      ) {
+        next.lastChecked = toDate(
+          payload.last_checked ?? payload.domain_last_checked_at ?? payload.checked_at
+        );
       }
 
       if (!next.lastChecked && (next.status && next.status !== "none")) {
@@ -138,6 +146,12 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "cname_warning")) {
         next.cnameWarning = payload.cname_warning || null;
+      }
+
+      if (hasOwn(payload, "dns")) {
+        const dns = payload.dns || {};
+        next.dnsTxtOk = typeof dns.txt === "boolean" ? dns.txt : null;
+        next.dnsCnameOk = typeof dns.cname === "boolean" ? dns.cname : null;
       }
 
       if (hasOwn(payload, "next_retry_seconds")) {
@@ -281,6 +295,58 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
       }
     },
     [companyId, refresh]
+  );
+
+  const diagnoseDomain = useCallback(
+    async () => {
+      if (!companyId) {
+        const message = "Missing company context";
+        setError(message);
+        throw new Error(message);
+      }
+      setActiveAction("diagnose");
+      try {
+        const result = await websiteDomains.diagnose(companyId);
+        if (mounted.current && result) {
+          applyStatusPayload(result);
+          setError(null);
+        }
+        return result;
+      } catch (err) {
+        const message = extractMessage(err);
+        if (mounted.current) setError(message);
+        throw err;
+      } finally {
+        if (mounted.current) setActiveAction(null);
+      }
+    },
+    [companyId, applyStatusPayload]
+  );
+
+  const retrySsl = useCallback(
+    async () => {
+      if (!companyId) {
+        const message = "Missing company context";
+        setError(message);
+        throw new Error(message);
+      }
+      setActiveAction("ssl_retry");
+      try {
+        const result = await websiteDomains.sslRetry(companyId);
+        if (mounted.current && result) {
+          applyStatusPayload(result);
+          setError(null);
+        }
+        return result;
+      } catch (err) {
+        const message = extractMessage(err);
+        if (mounted.current) setError(message);
+        throw err;
+      } finally {
+        if (mounted.current) setActiveAction(null);
+      }
+    },
+    [companyId, applyStatusPayload]
   );
 
   const removeDomain = useCallback(
@@ -434,5 +500,7 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
     updateNotifyPreference,
     startDomainConnect,
     fetchDomainConnectSession,
+    diagnoseDomain,
+    retrySsl,
   };
 }

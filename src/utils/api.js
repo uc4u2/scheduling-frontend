@@ -699,6 +699,24 @@ export const websiteDomains = {
         withCompany(companyId)
       )
       .then((r) => r.data),
+
+  diagnose: (companyId) =>
+    api
+      .post(
+        '/api/domains/diagnose',
+        { company_id: companyId },
+        withCompany(companyId)
+      )
+      .then((r) => r.data),
+
+  sslRetry: (companyId) =>
+    api
+      .post(
+        '/api/domains/ssl/retry',
+        { company_id: companyId },
+        withCompany(companyId)
+      )
+      .then((r) => r.data),
 };
 
 // Public JSON (no company header)

@@ -221,6 +221,8 @@ const DomainSettingsCard = ({
     cdnProvider,
     sslStatus,
     sslError,
+    dnsTxtOk,
+    dnsCnameOk,
     notifyEmailEnabled,
     cnameWarning,
     cnameTarget,
@@ -230,6 +232,8 @@ const DomainSettingsCard = ({
     connectAuthorizationUrl,
     startDomainConnect,
     fetchDomainConnectSession,
+    diagnoseDomain,
+    retrySsl,
   } = useDomainSettings(companyId);
 
   const statusMetaMap = useMemo(() => buildStatusMeta(t), [t]);
@@ -317,6 +321,11 @@ const DomainSettingsCard = ({
   const verifyHint = durationLabel
     ? t("management.domainSettings.messages.verifyHint", { time: durationLabel })
     : null;
+  const canRetrySsl =
+    cdnProvider === "cloudflare" &&
+    Boolean(domain) &&
+    Boolean(verifiedAt) &&
+    (sslStatus === "error" || status === "ssl_failed" || Boolean(sslError));
 
   const refreshStatus = async () => {
     try {
@@ -329,6 +338,50 @@ const DomainSettingsCard = ({
         err?.displayMessage ||
           err?.message ||
           t("management.domainSettings.notifications.refreshFailed"),
+        { variant: "error" }
+      );
+    }
+  };
+
+  const handleDiagnose = async () => {
+    setError(null);
+    try {
+      await diagnoseDomain();
+      enqueueSnackbar(
+        t("management.domainSettings.notifications.diagnosticsUpdated", {
+          defaultValue: "Diagnostics updated.",
+        }),
+        { variant: "info" }
+      );
+    } catch (err) {
+      enqueueSnackbar(
+        err?.displayMessage ||
+          err?.message ||
+          t("management.domainSettings.notifications.diagnosticsFailed", {
+            defaultValue: "Diagnostics failed.",
+          }),
+        { variant: "error" }
+      );
+    }
+  };
+
+  const handleRetrySsl = async () => {
+    setError(null);
+    try {
+      await retrySsl();
+      enqueueSnackbar(
+        t("management.domainSettings.notifications.sslRetryQueued", {
+          defaultValue: "SSL retry queued.",
+        }),
+        { variant: "info" }
+      );
+    } catch (err) {
+      enqueueSnackbar(
+        err?.displayMessage ||
+          err?.message ||
+          t("management.domainSettings.notifications.sslRetryFailed", {
+            defaultValue: "SSL retry failed.",
+          }),
         { variant: "error" }
       );
     }
@@ -695,6 +748,86 @@ const DomainSettingsCard = ({
               {error}
             </Alert>
           )}
+
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+              {t("management.domainSettings.sections.diagnostics", {
+                defaultValue: "Domain diagnostics",
+              })}
+            </Typography>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "flex-start", md: "center" }}
+              justifyContent="space-between"
+            >
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  color={dnsTxtOk ? "success" : dnsTxtOk === false ? "warning" : "default"}
+                  label={t("management.domainSettings.labels.dnsTxt", {
+                    defaultValue: "TXT",
+                  })}
+                />
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  color={dnsCnameOk ? "success" : dnsCnameOk === false ? "warning" : "default"}
+                  label={t("management.domainSettings.labels.dnsCname", {
+                    defaultValue: "CNAME",
+                  })}
+                />
+                {sslStatus && (
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    color={sslMeta?.color || "default"}
+                    label={t("management.domainSettings.labels.sslStatus", {
+                      defaultValue: "SSL",
+                    })}
+                  />
+                )}
+                {sslError && (
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    label={t("management.domainSettings.labels.sslError", {
+                      defaultValue: "SSL error",
+                    })}
+                  />
+                )}
+              </Stack>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={handleDiagnose}
+                  disabled={processing || !companyId}
+                  startIcon={processing && action === "diagnose" ? <CircularProgress size={16} /> : <RefreshIcon fontSize="small" />}
+                >
+                  {t("management.domainSettings.buttons.testNow", {
+                    defaultValue: "Test now",
+                  })}
+                </Button>
+                {canRetrySsl && (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="secondary"
+                    onClick={handleRetrySsl}
+                    disabled={processing || !companyId}
+                    startIcon={processing && action === "ssl_retry" ? <CircularProgress size={16} /> : <BoltIcon fontSize="small" />}
+                  >
+                    {t("management.domainSettings.buttons.retrySsl", {
+                      defaultValue: "Retry SSL",
+                    })}
+                  </Button>
+                )}
+              </Stack>
+            </Stack>
+          </Box>
 
           <Box>
             <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
