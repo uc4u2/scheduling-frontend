@@ -15,6 +15,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TablePagination,
   TextField,
   Typography,
 } from "@mui/material";
@@ -41,6 +42,8 @@ export default function AdminTicketsPage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [filters, setFilters] = useState({
     status: "",
     subject: "",
@@ -73,6 +76,7 @@ export default function AdminTicketsPage() {
       setLoading(true);
       const { data } = await platformAdminApi.get(`/tickets${queryParams}`);
       setTickets(data?.tickets || []);
+      setPage(0);
       setError("");
     } catch {
       setError("Unable to load tickets.");
@@ -88,6 +92,12 @@ export default function AdminTicketsPage() {
   useEffect(() => {
     loadTickets();
   }, [queryParams]);
+
+  const pagedTickets = useMemo(() => {
+    if (!tickets.length) return [];
+    const start = page * rowsPerPage;
+    return tickets.slice(start, start + rowsPerPage);
+  }, [page, rowsPerPage, tickets]);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -159,7 +169,7 @@ export default function AdminTicketsPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {tickets.map((ticket) => (
+                {pagedTickets.map((ticket) => (
                   <TableRow key={ticket.id}>
                     <TableCell>{ticket.id}</TableCell>
                     <TableCell>{ticket.company_id}</TableCell>
@@ -197,6 +207,20 @@ export default function AdminTicketsPage() {
             <Typography variant="body2" color="error" sx={{ mt: 1 }}>
               {error}
             </Typography>
+          )}
+          {!!tickets.length && (
+            <TablePagination
+              component="div"
+              count={tickets.length}
+              page={page}
+              onPageChange={(_, newPage) => setPage(newPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(event) => {
+                setRowsPerPage(parseInt(event.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[10, 25, 50, 100]}
+            />
           )}
         </Paper>
       </Stack>

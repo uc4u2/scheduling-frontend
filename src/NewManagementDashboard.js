@@ -1496,6 +1496,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
   const theme = useTheme();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const tManager = (key, fallback) => t(key, { defaultValue: fallback });
   const [currentUserInfo, setCurrentUserInfo] = useState(null);
   const isManager = useMemo(() => {
     if (currentUserInfo?.is_manager) return true;
@@ -2226,7 +2227,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
               sx={{ mb: 2 }}
             >
               <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                {t("manager.employeeManagement.title")}
+                {tManager("manager.employeeManagement.title", "Employee Management")}
               </Typography>
               <Button
                 variant="outlined"
@@ -2234,7 +2235,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                 startIcon={<HelpOutlineIcon />}
                 onClick={() => setEmployeeHelpOpen(true)}
               >
-                {t("manager.employeeManagement.help")}
+                {tManager("manager.employeeManagement.help", "Help")}
               </Button>
             </Stack>
             {isManager && (
@@ -2249,10 +2250,16 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                 }}
               >
                 <Typography fontWeight={600} gutterBottom>
-                  {t("manager.employeeManagement.addMemberTitle")}
+                  {tManager(
+                    "manager.employeeManagement.addMemberTitle",
+                    "Need to add a new team member?"
+                  )}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {t("manager.employeeManagement.addMemberDesc")}
+                  {tManager(
+                    "manager.employeeManagement.addMemberDesc",
+                    "Use the dedicated Add Member workspace for the full onboarding form (address, department, payroll, compliance consent)."
+                  )}
                 </Typography>
                 <Button
                   sx={{ mt: 2 }}
@@ -2260,7 +2267,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                   onClick={() => navigate("/manager/add-member")}
                   startIcon={<PersonAddAltIcon />}
                 >
-                  {t("manager.employeeManagement.addMemberCta")}
+                  {tManager(
+                    "manager.employeeManagement.addMemberCta",
+                    "Launch Add Member"
+                  )}
                 </Button>
               </Paper>
             )}
@@ -2269,26 +2279,55 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
               <Accordion defaultExpanded sx={{ mb: 2 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="h6" sx={headerStyle}>
-                    {t("manager.employeeManagement.pendingTitle")}
+                    {tManager(
+                      "manager.employeeManagement.pendingTitle",
+                      "Pending Employee Conversions"
+                    )}
                   </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   {conversionLoading ? (
                     <Typography color="text.secondary">
-                      {t("manager.employeeManagement.pendingLoading")}
+                      {tManager(
+                        "manager.employeeManagement.pendingLoading",
+                        "Loading..."
+                      )}
                     </Typography>
                   ) : conversionRequests.length === 0 ? (
                     <Typography color="text.secondary">
-                      {t("manager.employeeManagement.pendingEmpty")}
+                      {tManager(
+                        "manager.employeeManagement.pendingEmpty",
+                        "No pending conversion requests."
+                      )}
                     </Typography>
                   ) : (
                     <Table size="small">
                       <TableHead>
                         <TableRow>
-                          <TableCell>{t("manager.employeeManagement.table.candidate")}</TableCell>
-                          <TableCell>{t("manager.employeeManagement.table.email")}</TableCell>
-                          <TableCell>{t("manager.employeeManagement.table.requested")}</TableCell>
-                          <TableCell>{t("manager.employeeManagement.table.actions")}</TableCell>
+                          <TableCell>
+                            {tManager(
+                              "manager.employeeManagement.table.candidate",
+                              "Candidate"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {tManager(
+                              "manager.employeeManagement.table.email",
+                              "Email"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {tManager(
+                              "manager.employeeManagement.table.requested",
+                              "Requested"
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {tManager(
+                              "manager.employeeManagement.table.actions",
+                              "Actions"
+                            )}
+                          </TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -2317,10 +2356,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                             <TableCell>
                               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                                 <Button size="small" variant="contained" onClick={() => handleApproveConversion(req.id)}>
-                                  {t("manager.employeeManagement.approve")}
+                                  {tManager("manager.employeeManagement.approve", "Approve")}
                                 </Button>
                                 <Button size="small" variant="outlined" color="warning" onClick={() => handleRejectConversion(req.id)}>
-                                  {t("manager.employeeManagement.reject")}
+                                  {tManager("manager.employeeManagement.reject", "Reject")}
                                 </Button>
                               </Stack>
                             </TableCell>
@@ -2337,7 +2376,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="h6" sx={headerStyle}>
-                  {t("manager.employeeManagement.activeEmployees")}
+                  {tManager("manager.employeeManagement.activeEmployees", "Active Employees")}
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -2349,16 +2388,20 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                   sx={{ mb: 2 }}
                 >
                   <FormControl size="small" fullWidth>
-                    <InputLabel>{t("manager.employeeManagement.department")}</InputLabel>
+                    <InputLabel>
+                      {tManager("manager.employeeManagement.department", "Department")}
+                    </InputLabel>
                     <Select
-                      label={t("manager.employeeManagement.department")}
+                      label={tManager("manager.employeeManagement.department", "Department")}
                       value={departmentFilter}
                       onChange={(e) => {
                         setDepartmentFilter(e.target.value);
                         setSelectedForComparison([]);
                       }}
                     >
-                      <MenuItem value="">{t("manager.employeeManagement.allDepartments")}</MenuItem>
+                      <MenuItem value="">
+                        {tManager("manager.employeeManagement.allDepartments", "All Departments")}
+                      </MenuItem>
                       {getDepartmentArray(departments).map((d) => (
                         <MenuItem key={d.id} value={d.id}>
                           {d.name}
@@ -2374,7 +2417,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                     }}
                     sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
                   >
-                    {t("manager.employeeManagement.clearFilter")}
+                    {tManager("manager.employeeManagement.clearFilter", "Clear filter")}
                   </Button>
                   <FormControlLabel
                     control={
@@ -2383,7 +2426,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                         onChange={(e) => setIncludeArchivedEmployees(e.target.checked)}
                       />
                     }
-                    label={t("manager.employeeManagement.showArchived")}
+                    label={tManager("manager.employeeManagement.showArchived", "Show archived employees")}
                   />
                 </Stack>
 

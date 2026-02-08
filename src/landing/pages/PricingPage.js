@@ -280,6 +280,7 @@ const PricingPage = () => {
   }, []);
 
   const content = useMemo(() => t("landing.pricingPage", { returnObjects: true }), [t]);
+  const websiteDesignService = content?.websiteDesignService || {};
   const metaContent = content?.meta || DEFAULT_META;
   const heroContent = content?.hero || DEFAULT_HERO;
   const plansContent = content?.plans?.table || {};
@@ -721,19 +722,17 @@ const PricingPage = () => {
           >
             <Box>
               <Typography variant="h6" fontWeight={700}>
-                {content?.websiteDesignService?.title || "Website Design Service"}
+                {websiteDesignService.title}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {content?.websiteDesignService?.description ||
-                  "One-time custom website design by our team. After purchase, we open a design ticket, collect your requirements, design your site, and publish it for you."}
+                {websiteDesignService.description}
               </Typography>
               <Typography
                 variant="caption"
                 color="text.secondary"
                 sx={{ display: "block", mt: 0.75 }}
               >
-                {content?.websiteDesignService?.includes ||
-                  "Includes: design + revisions + publish. Domain purchase not included (we can help you connect your domain)."}
+                {websiteDesignService.includes}
               </Typography>
             </Box>
             <Button
@@ -741,9 +740,7 @@ const PricingPage = () => {
               onClick={handleWebsiteDesignCheckout}
               disabled={addonLoading}
             >
-              {addonLoading
-                ? content?.websiteDesignService?.loadingCta || "Starting checkout..."
-                : content?.websiteDesignService?.cta || "Buy Website Design"}
+              {addonLoading ? websiteDesignService.loadingCta : websiteDesignService.cta}
             </Button>
           </Stack>
           {addonError && (
