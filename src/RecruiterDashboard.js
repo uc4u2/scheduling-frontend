@@ -254,15 +254,7 @@ const RecruiterDashboard = ({ token }) => {
                       <Typography variant="h6" sx={{ color: theme.palette.primary.main, flexGrow: 1 }}>
                         Interactive Calendar
                       </Typography>
-                      <Tooltip title="Open full screen">
-                        <IconButton
-                          size="small"
-                          onClick={() => setInteractiveFullScreenOpen(true)}
-                          aria-label="Open full screen interactive calendar"
-                        >
-                          <OpenInFullIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      {/* Full Screen handled inside InteractiveCalendar header */}
                     </Stack>
                   </AccordionSummary>
                   <AccordionDetails>
@@ -271,6 +263,8 @@ const RecruiterDashboard = ({ token }) => {
                       recruiterId={recruiter?.id}
                       onSlotDrop={handleSlotDrop}
                       refreshTrigger={calendarRefreshTrigger}
+                      onOpenFullScreen={() => setInteractiveFullScreenOpen(true)}
+                      embedded
                       readOnly={false}
                     />
                     {pendingSlotUpdate && (
@@ -312,15 +306,7 @@ const RecruiterDashboard = ({ token }) => {
                           <Typography variant="h6" sx={{ color: theme.palette.primary.main, flexGrow: 1 }}>
                             Interactive Calendar
                           </Typography>
-                          <Tooltip title="Open full screen">
-                            <IconButton
-                              size="small"
-                              onClick={() => setInteractiveFullScreenOpen(true)}
-                              aria-label="Open full screen interactive calendar"
-                            >
-                              <OpenInFullIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          {/* Full Screen handled inside InteractiveCalendar header */}
                         </Stack>
                       </AccordionSummary>
                       <AccordionDetails>
@@ -329,6 +315,8 @@ const RecruiterDashboard = ({ token }) => {
                           recruiterId={recruiter?.id}
                           onSlotDrop={handleSlotDrop}
                           refreshTrigger={calendarRefreshTrigger}
+                          onOpenFullScreen={() => setInteractiveFullScreenOpen(true)}
+                          embedded
                           readOnly={true}
                         />
                       </AccordionDetails>

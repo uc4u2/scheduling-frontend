@@ -278,10 +278,13 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     eventContent: renderEventContent,
     eventDidMount,
     headerToolbar: {
-      left: "prev,next today",
+      left: "prev,next",
       center: "title",
-      right: "dayGridMonth,timeGridWeek,timeGridDay",
+      right: isSmDown ? "" : "dayGridMonth,timeGridWeek,timeGridDay",
     },
+    titleFormat: isSmDown
+      ? { month: "short", year: "numeric" }
+      : { month: "long", year: "numeric" },
   };
 
   // ====== helpers: API fallbacks (employee -> manager) ======
@@ -533,13 +536,26 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           spacing={1}
         >
           <Typography variant="h6" fontWeight={700}>
-            My Availability{" "}
-            <Typography component="span" variant="caption" color="text.secondary" fontWeight={400}>
-              &nbsp;(Enterprise)
-            </Typography>
+            My Availability
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
-            <Chip size="small" label={`TZ: ${viewerTz}`} />
+            <FormControl size="small" sx={{ minWidth: 160, flex: isSmDown ? 1 : "initial" }}>
+              <InputLabel>Slot Status</InputLabel>
+              <Select
+                multiple
+                value={statusFilter}
+                label="Slot Status"
+                onChange={(e) => setStatusFilter(e.target.value)}
+                renderValue={(vals) => (vals.length ? vals.join(", ") : "All")}
+              >
+                <MenuItem value="available">
+                  <Chip size="small" color="success" label="Available" />
+                </MenuItem>
+                <MenuItem value="booked">
+                  <Chip size="small" color="error" label="Booked" />
+                </MenuItem>
+              </Select>
+            </FormControl>
             <Button variant="outlined" onClick={fetchEvents} fullWidth={isSmDown}>
               Refresh
             </Button>
@@ -556,60 +572,6 @@ export default function MySetmoreCalendar({ token, initialDate }) {
 
         {/* Options row */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
-          <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)}>
-            <ToggleButton value="dayGridMonth">Month</ToggleButton>
-            <ToggleButton value="timeGridWeek">Week</ToggleButton>
-            <ToggleButton value="timeGridDay">Day</ToggleButton>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup
-            size="small"
-            value={[granularity]}
-            onChange={(_, val) => {
-              const v = Array.isArray(val) ? val[0] : val;
-              if (v) setGranularity(v);
-            }}
-          >
-            <ToggleButton value="00:15:00">15m</ToggleButton>
-            <ToggleButton value="00:30:00">30m</ToggleButton>
-            <ToggleButton value="01:00:00">60m</ToggleButton>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup size="small" value={timeFmt12h ? ["12h"] : ["24h"]} onChange={() => setTimeFmt12h((s) => !s)}>
-            <ToggleButton value="12h">12-hour</ToggleButton>
-            <ToggleButton value="24h">24-hour</ToggleButton>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup size="small" value={showWeekends ? ["weekends"] : []} onChange={() => setShowWeekends((s) => !s)}>
-            <ToggleButton value="weekends">{showWeekends ? "Hide" : "Show"} Weekends</ToggleButton>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup size="small" value={workHoursOnly ? ["hours"] : []} onChange={() => setWorkHoursOnly((s) => !s)}>
-            <ToggleButton value="hours">{workHoursOnly ? "All Hours" : "Work Hours"}</ToggleButton>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup size="small" value={compactDensity ? ["compact"] : []} onChange={() => setCompactDensity((s) => !s)}>
-            <ToggleButton value="compact">{compactDensity ? "Comfortable" : "Compact"}</ToggleButton>
-          </ToggleButtonGroup>
-
-          {/* Status filter */}
-          <FormControl size="small" sx={{ minWidth: 160, flex: isSmDown ? 1 : "initial" }}>
-            <InputLabel>Slot Status</InputLabel>
-            <Select
-              multiple
-              value={statusFilter}
-              label="Slot Status"
-              onChange={(e) => setStatusFilter(e.target.value)}
-              renderValue={(vals) => (vals.length ? vals.join(", ") : "All")}
-            >
-              <MenuItem value="available">
-                <Chip size="small" color="success" label="Available" />
-              </MenuItem>
-              <MenuItem value="booked">
-                <Chip size="small" color="error" label="Booked" />
-              </MenuItem>
-            </Select>
-          </FormControl>
         </Stack>
 
         {loading ? (
@@ -770,19 +732,10 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           </IconButton>
           <Typography variant="h6" sx={{ flex: 1 }}>My Availability — Full Screen</Typography>
 
-          <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)} sx={{ mr: 1 }}>
+          <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)} sx={{ mr: 1, display: { xs: "none", sm: "inline-flex" } }}>
             <ToggleButton value="dayGridMonth">Month</ToggleButton>
             <ToggleButton value="timeGridWeek">Week</ToggleButton>
             <ToggleButton value="timeGridDay">Day</ToggleButton>
-          </ToggleButtonGroup>
-          <ToggleButtonGroup size="small" value={[granularity]} onChange={(_, val) => { const v = Array.isArray(val) ? val[0] : val; if (v) setGranularity(v); }} sx={{ mr: 1 }}>
-            <ToggleButton value="00:15:00">15m</ToggleButton>
-            <ToggleButton value="00:30:00">30m</ToggleButton>
-            <ToggleButton value="01:00:00">60m</ToggleButton>
-          </ToggleButtonGroup>
-          <ToggleButtonGroup size="small" value={timeFmt12h ? ["12h"] : ["24h"]} onChange={() => setTimeFmt12h((s) => !s)} sx={{ mr: 1 }}>
-            <ToggleButton value="12h">12-hour</ToggleButton>
-            <ToggleButton value="24h">24-hour</ToggleButton>
           </ToggleButtonGroup>
           <Button variant="outlined" onClick={fetchEvents}>Refresh</Button>
         </Box>

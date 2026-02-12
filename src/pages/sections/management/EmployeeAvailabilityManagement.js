@@ -59,6 +59,17 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const [makeSlots, setMakeSlots] = useState(false);
   const [wDuration, setWDuration] = useState(60);
   const [wCooling, setWCooling] = useState(0);
+  const [wRecurring, setWRecurring] = useState(false);
+  const [wRecurringDays, setWRecurringDays] = useState([
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+  ]);
+  const [wRepeatMode, setWRepeatMode] = useState("weeks"); // "weeks" | "until"
+  const [wRepeatWeeks, setWRepeatWeeks] = useState(2);
+  const [wRepeatUntil, setWRepeatUntil] = useState("");
 
   /* ─────────────────────────────── Recurring form state ───────────────────────── */
   const [startDate, setStartDate] = useState("");
@@ -102,6 +113,46 @@ const EmployeeAvailabilityManagement = ({ token }) => {
     if (/^\d{2}:\d{2}$/.test(val)) return val;
     const [h = 0, m = 0] = String(val).split(":").map(Number);
     return `${pad(h)}:${pad(m)}`;
+  };
+
+  const generateRecurringDatesFlexible = (
+    baseDate,
+    days,
+    opts = { mode: "weeks", repeatWeeks: 2, endDate: "" }
+  ) => {
+    if (!baseDate) return [];
+    const result = [];
+    const base = DateTime.fromISO(baseDate).startOf("day");
+    const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const baseLabel = dayNames[(base.weekday || 1) - 1];
+    const selectedDays =
+      Array.isArray(days) && days.length > 0
+        ? new Set(days)
+        : new Set([baseLabel]);
+
+    const maybePush = (d) => {
+      const label = dayNames[(d.weekday || 1) - 1];
+      if (selectedDays.has(label)) {
+        result.push(d.toISODate());
+      }
+    };
+
+    if (opts.mode === "until" && opts.endDate) {
+      const until = DateTime.fromISO(opts.endDate).startOf("day");
+      for (let d = base; d <= until; d = d.plus({ days: 1 })) {
+        maybePush(d);
+      }
+    } else {
+      const weeks = Math.max(1, Math.min(52, parseInt(opts.repeatWeeks || 2, 10)));
+      const spanDays = weeks * 7;
+      let d = base;
+      for (let i = 0; i < spanDays; i++) {
+        maybePush(d);
+        d = d.plus({ days: 1 });
+      }
+    }
+
+    return Array.from(new Set(result));
   };
 
   /* ─────────────────────────────── Load reference data ─────────────────────────── */
@@ -294,8 +345,16 @@ useEffect(() => {
   /* ─────────────────────────────── Save helpers ────────────────────────────────── */
   const saveDailyWindow = async () => {
     resetAlerts();
-    if (!selectedEmployeeId || !wDayFrom || !wDayTo || !wStart || !wEnd) {
-      setError("Fill start/end dates and times.");
+    if (!selectedEmployeeId || !wDayFrom || !wStart || !wEnd) {
+      setError("Fill start date and times.");
+      return;
+    }
+    if (!wRecurring && !wDayTo) {
+      setError("End date required when recurring is off.");
+      return;
+    }
+    if (wRecurring && wRepeatMode === "until" && !wRepeatUntil) {
+      setError("End date required for “repeat until date”.");
       return;
     }
     if (makeSlots && !wDuration) {
@@ -304,10 +363,25 @@ useEffect(() => {
     }
     setLoading(true);
     try {
-      const from = DateTime.fromISO(wDayFrom);
-      const to = DateTime.fromISO(wDayTo);
-      const dates = [];
-      for (let d = from; d <= to; d = d.plus({ days: 1 })) dates.push(d.toISODate());
+      let dates = [];
+      if (wRecurring) {
+        dates = generateRecurringDatesFlexible(wDayFrom, wRecurringDays, {
+          mode: wRepeatMode,
+          repeatWeeks: wRepeatWeeks,
+          endDate: wRepeatUntil,
+        });
+      } else {
+        const from = DateTime.fromISO(wDayFrom);
+        const to = DateTime.fromISO(wDayTo);
+        for (let d = from; d <= to; d = d.plus({ days: 1 })) {
+          dates.push(d.toISODate());
+        }
+      }
+
+      if (!dates.length) {
+        setError("No dates selected.");
+        return;
+      }
 
       for (const date of dates) {
         const lenMin = Math.round(
@@ -557,15 +631,29 @@ useEffect(() => {
             />
           </Grid>
           <Grid item xs={6}>
-            <TextField
-              label="End date"
-              type="date"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              value={wDayTo}
-              onChange={(e) => setWDayTo(e.target.value)}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={wRecurring}
+                  onChange={(e) => setWRecurring(e.target.checked)}
+                />
+              }
+              label="Recurring"
             />
           </Grid>
+
+          {!wRecurring && (
+            <Grid item xs={6}>
+              <TextField
+                label="End date"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={wDayTo}
+                onChange={(e) => setWDayTo(e.target.value)}
+              />
+            </Grid>
+          )}
 
           <Grid item xs={12}>
             <TextField
@@ -615,6 +703,78 @@ useEffect(() => {
               onChange={(e) => setWEnd(e.target.value)}
             />
           </Grid>
+
+          {wRecurring && (
+            <Grid item xs={12}>
+              <Typography variant="subtitle2">Select Days</Typography>
+              <Grid container>
+                {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((day) => (
+                  <Grid item key={day} sx={{ pr: 1 }}>
+                    <Checkbox
+                      name="wRecurringDays"
+                      value={day}
+                      checked={wRecurringDays.includes(day)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const value = e.target.value;
+                        setWRecurringDays((p) =>
+                          checked ? [...p, value] : p.filter((d) => d !== value)
+                        );
+                      }}
+                      size="small"
+                    />
+                    <Typography variant="caption">{day}</Typography>
+                  </Grid>
+                ))}
+              </Grid>
+
+              <Box mt={2}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Repeat Options
+                </Typography>
+                <Tabs
+                  value={wRepeatMode}
+                  onChange={(_, v) => v && setWRepeatMode(v)}
+                  sx={{ minHeight: 32 }}
+                >
+                  <Tab value="weeks" label="Repeat for N weeks" sx={{ minHeight: 32 }} />
+                  <Tab value="until" label="Repeat until date" sx={{ minHeight: 32 }} />
+                </Tabs>
+
+                {wRepeatMode === "weeks" && (
+                  <TextField
+                    label="Number of weeks"
+                    type="number"
+                    fullWidth
+                    margin="dense"
+                    inputProps={{ min: 1, max: 52 }}
+                    value={wRepeatWeeks}
+                    onChange={(e) =>
+                      setWRepeatWeeks(
+                        Math.max(1, Math.min(52, parseInt(e.target.value || "1", 10)))
+                      )
+                    }
+                  />
+                )}
+
+                {wRepeatMode === "until" && (
+                  <TextField
+                    label="End date"
+                    type="date"
+                    fullWidth
+                    margin="dense"
+                    InputLabelProps={{ shrink: true }}
+                    value={wRepeatUntil}
+                    onChange={(e) => setWRepeatUntil(e.target.value)}
+                  />
+                )}
+
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                  Tip: If you don’t pick any days, we’ll default to the same weekday as your start date.
+                </Typography>
+              </Box>
+            </Grid>
+          )}
 
           {makeSlots && (
             <>

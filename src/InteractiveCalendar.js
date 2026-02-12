@@ -34,18 +34,29 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  useMediaQuery,
 } from "@mui/material";
 import UndoIcon from "@mui/icons-material/Undo";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import api from "./utils/api";
 import { alpha, darken, lighten, useTheme } from "@mui/material/styles";
 import { isoFromParts } from "./utils/datetime";
 import { DateTime } from "luxon";
 
-const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilters, readOnly = false }) => {
+const InteractiveCalendar = ({
+  token,
+  refreshTrigger,
+  permissions,
+  calendarFilters,
+  readOnly = false,
+  onOpenFullScreen,
+  embedded = false,
+}) => {
   const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
 
   const calendarThemeVars = useMemo(() => {
     const primary = theme.palette.primary.main;
@@ -533,7 +544,7 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
   return (
     <Paper
       elevation={4}
-      sx={{ p: 3, mt: 3, backgroundColor: "#fff", borderRadius: 3 }}
+      sx={{ p: 3, mt: embedded ? -2 : 3, backgroundColor: "#fff", borderRadius: 3 }}
     >
       {/* top-bar */}
       <Box
@@ -546,17 +557,21 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
           gap: 2,
         }}
       >
-        <Typography variant="h5" fontWeight="bold">
+        <Typography variant="h6" fontWeight={700}>
           Interactive Calendar
         </Typography>
-        <Stack direction="row" spacing={1}>
-          <FormControl size="small">
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems="center"
+          sx={{ width: { xs: "100%", sm: "auto" } }}
+        >
+          <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>Type</InputLabel>
             <Select
               value={typeFilter}
               label="Type"
               onChange={(e) => setTypeFilter(e.target.value)}
-              sx={{ minWidth: 120 }}
             >
               <MenuItem value="all">All</MenuItem>
               <MenuItem value="availability">Availability</MenuItem>
@@ -564,12 +579,19 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
               <MenuItem value="appointment">Appointments</MenuItem>
             </Select>
           </FormControl>
-          <TextField
-            size="small"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <Button variant="outlined" onClick={fetchEvents} fullWidth={isSmDown}>
+            Refresh
+          </Button>
+          {onOpenFullScreen && (
+            <Button
+              variant="contained"
+              startIcon={<OpenInFullIcon />}
+              onClick={onOpenFullScreen}
+              fullWidth={isSmDown}
+            >
+              Full Screen
+            </Button>
+          )}
         </Stack>
       </Box>
 
@@ -602,12 +624,17 @@ const InteractiveCalendar = ({ token, refreshTrigger, permissions, calendarFilte
           <FullCalendar
             height="auto"
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="timeGridWeek"
+            initialView="dayGridMonth"
             headerToolbar={{
-              left: "prev,next today",
+              left: "prev,next",
               center: "title",
-              right: "dayGridMonth,timeGridWeek,timeGridDay",
+              right: isSmDown ? "" : "dayGridMonth,timeGridWeek,timeGridDay",
             }}
+            titleFormat={
+              isSmDown
+                ? { month: "short", year: "numeric" }
+                : { month: "long", year: "numeric" }
+            }
             events={filteredEvents}
             editable={!readOnly}
             droppable={!readOnly}
