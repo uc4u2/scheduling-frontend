@@ -2329,11 +2329,6 @@ const autoProvisionIfEmpty = useCallback(
     try {
       setBusy(true);
       if (editing?.id) {
-        const bulkPatch = {
-          show_in_menu: Boolean(editing.show_in_menu ?? true),
-          published: Boolean(editing.published ?? true),
-          autosave: Boolean(editing.autosave ?? true),
-        };
         const targets = selectedPageIds.length
           ? selectedPageIds
           : [editing.id];
@@ -2341,9 +2336,16 @@ const autoProvisionIfEmpty = useCallback(
           targets.map(async (id) => {
             const isEditing = id === editing.id;
             const base = isEditing
-              ? { ...editing, ...bulkPatch }
-              : { ...(pages.find((p) => p.id === id) || {}), ...bulkPatch };
-            const payload = serializePage(ensureSectionIds(withLiftedLayout(base)));
+              ? { ...editing }
+              : { ...(pages.find((p) => p.id === id) || {}) };
+            const bulkPatch = {
+              show_in_menu: Boolean(base.show_in_menu ?? true),
+              published: Boolean(base.published ?? true),
+              autosave: Boolean(base.autosave ?? true),
+              is_homepage: Boolean(base.is_homepage ?? false),
+            };
+            const merged = { ...base, ...bulkPatch };
+            const payload = serializePage(ensureSectionIds(withLiftedLayout(merged)));
             const r = await wb.updatePage(companyId, payload.id, payload);
             return ensureSectionIds(
               withLiftedLayout(normalizePage(r.data || payload))
