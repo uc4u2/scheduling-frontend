@@ -519,6 +519,31 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ".fc .fc-timegrid-event .fc-event-time": { fontWeight: 700, fontSize: 11, paddingLeft: 4 },
           ".fc .fc-timegrid-event .fc-event-title": { fontSize: 11 },
           ".fc .fc-toolbar-title": { fontWeight: 700 },
+          ".fc .fc-scrollgrid, .fc .fc-scrollgrid-section > *": {
+            borderColor: "rgba(15,23,42,0.12)",
+          },
+          ".fc-theme-standard td, .fc-theme-standard th": {
+            borderColor: "rgba(15,23,42,0.12)",
+          },
+          ".fc .fc-daygrid-day-frame": {
+            background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
+          },
+          ".fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-frame": {
+            background: "linear-gradient(180deg, rgba(255,245,200,0.7) 0%, rgba(255,236,170,0.7) 100%)",
+            boxShadow: "inset 0 0 0 1px rgba(251,191,36,0.35)",
+          },
+          ".fc .fc-daygrid-day-number": {
+            fontSize: 12,
+          },
+          ".fc-view-harness, .fc-view, .fc-scrollgrid": {
+            borderRadius: 12,
+            background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
+            boxShadow: "0 6px 22px rgba(15, 23, 42, 0.08)",
+            transition: "box-shadow 220ms ease",
+          },
+          ".fc-view-harness:hover, .fc-view:hover, .fc-scrollgrid:hover": {
+            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
+          },
         }}
       />
 
@@ -527,7 +552,20 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         <Snackbar open onClose={() => setMsg("")} autoHideDuration={3000} message={msg} />
       )}
 
-      <Paper sx={{ p: 2, mb: 2 }} elevation={1}>
+      <Paper
+        sx={{
+          p: 3,
+          mb: 2,
+          borderRadius: 3,
+          boxShadow: "0 8px 24px rgba(15, 23, 42, 0.12)",
+          transition: "box-shadow 220ms ease, transform 220ms ease",
+          "&:hover": {
+            boxShadow: "0 14px 32px rgba(15, 23, 42, 0.18)",
+            transform: "translateY(-2px)",
+          },
+        }}
+        elevation={0}
+      >
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"

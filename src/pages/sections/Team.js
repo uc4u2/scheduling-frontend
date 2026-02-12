@@ -1964,7 +1964,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     eventDrop: handleEventDrop,
     eventResize: handleEventResize,
     headerToolbar: {
-      left: "prev,next today",
+      left: "prev,next",
       center: "title",
       right: "timeGridWeek,timeGridDay,dayGridMonth",
     },
@@ -1997,6 +1997,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           },
           ".fc .fc-timegrid-col.fc-day-today": {
             background: "linear-gradient(180deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.01) 100%)",
+          },
+          ".fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-frame": {
+            background: "linear-gradient(180deg, rgba(255,245,200,0.7) 0%, rgba(255,236,170,0.7) 100%)",
+            boxShadow: "inset 0 0 0 1px rgba(251,191,36,0.35)",
           },
           ".fc .fc-timegrid-now-indicator-line": {
             borderColor: "#e53935",

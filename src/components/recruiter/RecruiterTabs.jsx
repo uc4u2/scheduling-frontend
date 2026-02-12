@@ -114,10 +114,25 @@ const RecruiterTabs = ({
       onChange={handleChange}
       variant="scrollable"
       scrollButtons="auto"
-      sx={{ mb: 3 }}
+      allowScrollButtonsMobile
+      sx={{
+        mb: 3,
+        overflowX: "auto",
+        "& .MuiTabs-flexContainer": {
+          flexWrap: "nowrap",
+        },
+        "& .MuiTabs-scrollButtons": {
+          display: { xs: "flex", md: "flex" },
+        },
+      }}
     >
       {tabs.map((tab) => (
-        <Tab key={tab.value} value={tab.value} label={tab.labelKey ? t(tab.labelKey) : tab.label} />
+        <Tab
+          key={tab.value}
+          value={tab.value}
+          label={tab.labelKey ? t(tab.labelKey) : tab.label}
+          sx={{ minWidth: "auto", px: 2 }}
+        />
       ))}
     </Tabs>
   );

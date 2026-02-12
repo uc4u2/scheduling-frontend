@@ -35,6 +35,7 @@ import {
   DialogContentText,
   DialogActions,
   useMediaQuery,
+  GlobalStyles,
 } from "@mui/material";
 import UndoIcon from "@mui/icons-material/Undo";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
@@ -65,7 +66,7 @@ const InteractiveCalendar = ({
     return {
       "--fc-page-bg-color": theme.palette.background.paper,
       "--fc-neutral-bg-color": alpha(theme.palette.background.paper, 0.65),
-      "--fc-border-color": alpha(theme.palette.divider, 0.4),
+      "--fc-border-color": alpha(theme.palette.divider, 0.12),
       "--fc-button-bg-color": primary,
       "--fc-button-border-color": primary,
       "--fc-button-text-color": buttonText,
@@ -128,6 +129,12 @@ const InteractiveCalendar = ({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const typeChipProps = (value) => {
+    if (value === "availability") return { color: "success", label: "Availability" };
+    if (value === "leave") return { color: "warning", label: "Leave" };
+    if (value === "appointment") return { color: "error", label: "Appointments" };
+    return { color: "default", label: "All" };
+  };
 
   /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ fetchers wrapped in useCallback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const fetchRecruiters = useCallback(async () => {
@@ -543,8 +550,19 @@ const InteractiveCalendar = ({
   /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   return (
     <Paper
-      elevation={4}
-      sx={{ p: 3, mt: embedded ? -2 : 3, backgroundColor: "#fff", borderRadius: 3 }}
+      elevation={0}
+      sx={{
+        p: 3,
+        mt: embedded ? -1.3 : 3,
+        backgroundColor: "#fff",
+        borderRadius: 3,
+        boxShadow: "0 8px 24px rgba(15, 23, 42, 0.12)",
+        transition: "box-shadow 220ms ease, transform 220ms ease",
+        "&:hover": {
+          boxShadow: "0 14px 32px rgba(15, 23, 42, 0.18)",
+          transform: "translateY(-2px)",
+        },
+      }}
     >
       {/* top-bar */}
       <Box
@@ -567,16 +585,37 @@ const InteractiveCalendar = ({
           sx={{ width: { xs: "100%", sm: "auto" } }}
         >
           <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>Type</InputLabel>
             <Select
               value={typeFilter}
-              label="Type"
+              displayEmpty
               onChange={(e) => setTypeFilter(e.target.value)}
+              renderValue={(val) => {
+                if (!val || val === "all") {
+                  return (
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 600, color: "rgba(15,23,42,0.8)" }}
+                    >
+                      Type
+                    </Typography>
+                  );
+                }
+                const chip = typeChipProps(val);
+                return <Chip size="small" color={chip.color} label={chip.label} />;
+              }}
             >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="availability">Availability</MenuItem>
-              <MenuItem value="leave">Leave</MenuItem>
-              <MenuItem value="appointment">Appointments</MenuItem>
+              <MenuItem value="all">
+                <Chip size="small" color="default" label="All" />
+              </MenuItem>
+              <MenuItem value="availability">
+                <Chip size="small" color="success" label="Availability" />
+              </MenuItem>
+              <MenuItem value="leave">
+                <Chip size="small" color="warning" label="Leave" />
+              </MenuItem>
+              <MenuItem value="appointment">
+                <Chip size="small" color="error" label="Appointments" />
+              </MenuItem>
             </Select>
           </FormControl>
           <Button variant="outlined" onClick={fetchEvents} fullWidth={isSmDown}>
@@ -621,6 +660,44 @@ const InteractiveCalendar = ({
 
       {!loading && (
         <Box sx={{ overflowX: "auto", ...calendarThemeVars }}>
+          <GlobalStyles
+            styles={{
+              ".fc .fc-scrollgrid, .fc .fc-scrollgrid-section > *": {
+                borderColor: "var(--fc-border-color)",
+              },
+              ".fc-theme-standard td, .fc-theme-standard th": {
+                borderColor: "var(--fc-border-color)",
+              },
+              ".fc .fc-col-header-cell-cushion": {
+                fontWeight: 600,
+                color: theme.palette.text.primary,
+                textTransform: "capitalize",
+              },
+              ".fc .fc-daygrid-day-number": {
+                fontSize: 12,
+                color: theme.palette.text.primary,
+              },
+              ".fc .fc-daygrid-day-frame": {
+                background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
+              },
+              ".fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-frame": {
+                background: "linear-gradient(180deg, rgba(255,245,200,0.7) 0%, rgba(255,236,170,0.7) 100%)",
+                boxShadow: "inset 0 0 0 1px rgba(251,191,36,0.35)",
+              },
+              ".fc .fc-toolbar-title": {
+                fontWeight: 700,
+              },
+              ".fc-view-harness, .fc-view, .fc-scrollgrid": {
+                borderRadius: 12,
+                background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
+                boxShadow: "0 6px 22px rgba(15, 23, 42, 0.08)",
+                transition: "box-shadow 220ms ease",
+              },
+              ".fc-view-harness:hover, .fc-view:hover, .fc-scrollgrid:hover": {
+                boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
+              },
+            }}
+          />
           <FullCalendar
             height="auto"
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
