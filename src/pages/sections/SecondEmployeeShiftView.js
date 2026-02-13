@@ -208,7 +208,6 @@ const loadShifts = async () => {
         };
       });
 
-    const shiftDates = new Set(shiftEvents.map((s) => s.date).filter(Boolean));
     const leaveEntries = [];
     leaveBlocks.forEach((leave) => {
       if (!leave?.start) return;
@@ -216,7 +215,6 @@ const loadShifts = async () => {
       const end = startOfDay(parseISO(leave.end || leave.start));
       for (let d = start; d.getTime() <= end.getTime(); d = addDays(d, 1)) {
         const dateStr = format(d, "yyyy-MM-dd");
-        if (shiftDates.has(dateStr)) continue;
         leaveEntries.push({
           id: `leave-${leave.id}-${dateStr}`,
           clock_in: null,
