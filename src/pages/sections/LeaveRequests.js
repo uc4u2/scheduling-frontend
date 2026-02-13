@@ -107,6 +107,8 @@ const LeaveRequests = () => {
                 <TableCell>Override Hours</TableCell>
                 {/* NEW */}
                 <TableCell>Top-up</TableCell>
+                <TableCell>Reviewed By</TableCell>
+                <TableCell>Reviewed At</TableCell>
                 <TableCell>Comment</TableCell>
                 <TableCell>Action</TableCell>
               </TableRow>
@@ -162,6 +164,10 @@ const LeaveRequests = () => {
                     ) : (
                       "—"
                     )}
+                  </TableCell>
+                  <TableCell>{r.reviewer_name || "—"}</TableCell>
+                  <TableCell>
+                    {r.reviewed_at ? format(new Date(r.reviewed_at), "yyyy-MM-dd HH:mm") : "—"}
                   </TableCell>
 
                   <TableCell>
