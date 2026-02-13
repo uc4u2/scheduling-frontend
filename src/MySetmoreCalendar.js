@@ -618,6 +618,33 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             color: "#111",
             fontWeight: 700,
           },
+          ".fc .overlay-leave .fc-event-main, .fc .overlay-leave .fc-event-title-container, .fc .overlay-leave .fc-event-main-frame": {
+            color: "#111",
+          },
+          ".fc .overlay-candidate": {
+            background: "#ede7f6",
+            borderColor: "#9575cd",
+            color: "#111",
+          },
+          ".fc .overlay-candidate .fc-event-title, .fc .overlay-candidate .fc-event-time": {
+            color: "#111",
+            fontWeight: 700,
+          },
+          ".fc .overlay-candidate .fc-event-main, .fc .overlay-candidate .fc-event-title-container, .fc .overlay-candidate .fc-event-main-frame": {
+            color: "#111",
+          },
+          ".fc .overlay-appointment": {
+            background: "#e3f2fd",
+            borderColor: "#64b5f6",
+            color: "#111",
+          },
+          ".fc .overlay-appointment .fc-event-title, .fc .overlay-appointment .fc-event-time": {
+            color: "#111",
+            fontWeight: 700,
+          },
+          ".fc .overlay-appointment .fc-event-main, .fc .overlay-appointment .fc-event-title-container, .fc .overlay-appointment .fc-event-main-frame": {
+            color: "#111",
+          },
           ".fc .overlay-leave:hover": {
             background: "#dde3ee",
             boxShadow: "0 3px 10px rgba(15,23,42,0.12)",
