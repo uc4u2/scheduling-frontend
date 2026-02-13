@@ -1,5 +1,5 @@
 // src/RecurringAvailabilityForm.js
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   TextField,
   Button,
@@ -13,7 +13,9 @@ import {
   Checkbox,
   Grid,
   Tabs,
-  Tab
+  Tab,
+  CircularProgress,
+  Snackbar,
 } from "@mui/material";
 import api from "./utils/api";
 
@@ -32,8 +34,16 @@ const RecurringAvailabilityForm = ({ token, onSuccess }) => {
   const [repeatMode, setRepeatMode] = useState("weeks"); // "weeks" | "until"
   const [repeatWeeks, setRepeatWeeks] = useState(2);
   const [repeatUntil, setRepeatUntil] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (!startDate) setStartDate(today);
+    if (!endDate) setEndDate(today);
+    if (!repeatUntil) setRepeatUntil(today);
+  }, [startDate, endDate, repeatUntil]);
 
   const repeatUntilDate = repeatMode === "until" ? repeatUntil : endDate;
 
@@ -98,6 +108,7 @@ const RecurringAvailabilityForm = ({ token, onSuccess }) => {
     const datesToCreate = selectedDates.length ? selectedDates : [startDate];
 
     try {
+      setSubmitting(true);
       for (const date of datesToCreate) {
         const payload = {
           start_date: date,
@@ -125,6 +136,8 @@ const RecurringAvailabilityForm = ({ token, onSuccess }) => {
     } catch (err) {
       setError(err.response?.data?.error || "Failed to set recurring availability.");
       setMessage("");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -261,9 +274,31 @@ const RecurringAvailabilityForm = ({ token, onSuccess }) => {
 </TextField>
 
 
-      <Button variant="contained" fullWidth sx={{ mt: 2 }} onClick={handleSubmit}>
-        Set Recurring Availability
+      <Button
+        variant="contained"
+        fullWidth
+        sx={{ mt: 2 }}
+        onClick={handleSubmit}
+        disabled={submitting}
+        startIcon={submitting ? <CircularProgress size={16} /> : null}
+      >
+        {submitting ? "Saving..." : "Set Recurring Availability"}
       </Button>
+
+      <Snackbar
+        open={Boolean(message)}
+        autoHideDuration={4000}
+        onClose={() => setMessage("")}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setMessage("")}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          {message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

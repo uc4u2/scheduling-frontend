@@ -18,6 +18,7 @@ import {
   Stack,
   useMediaQuery,
   Divider,
+  Snackbar,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import api from "../../../utils/api";
@@ -107,6 +108,14 @@ const EmployeeAvailabilityManagement = ({ token }) => {
     setError("");
     setSuccessMessage("");
   };
+
+  useEffect(() => {
+    const today = DateTime.now().toISODate();
+    if (!wDayFrom) setWDayFrom(today);
+    if (!wDayTo) setWDayTo(today);
+    if (!startDate) setStartDate(today);
+    if (!endDate) setEndDate(today);
+  }, [wDayFrom, wDayTo, startDate, endDate]);
 
   const t = (val) => {
     // normalise “H:MM” → “HH:MM”
@@ -998,10 +1007,26 @@ useEffect(() => {
           variant="contained"
           onClick={handleSubmit}
           disabled={!selectedEmployeeId || loading}
+          startIcon={loading ? <CircularProgress size={16} /> : null}
         >
           {loading ? "Saving..." : "Save Availability"}
         </Button>
       </Box>
+
+      <Snackbar
+        open={Boolean(successMessage)}
+        autoHideDuration={4000}
+        onClose={() => setSuccessMessage("")}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSuccessMessage("")}
+          severity="success"
+          sx={{ width: "100%" }}
+        >
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
