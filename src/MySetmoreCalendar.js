@@ -410,6 +410,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
 
   const mergedCalendarEvents = [...calendarEvents, ...overlayEvents];
 
+  const activeView = isSmDown ? "timeGridDay" : calendarView;
   const baseCalProps = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
     events: mergedCalendarEvents,
@@ -936,9 +937,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           <FullCalendar
             ref={calRef}
             {...baseCalProps}
-            initialView={isSmDown ? "timeGridDay" : calendarView}
+            initialView={activeView}
             height="auto"
-            key={`${calendarView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
+            key={`${activeView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
           />
         )}
       </Paper>
