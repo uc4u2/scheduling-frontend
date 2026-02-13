@@ -171,9 +171,13 @@ const loadShifts = async () => {
         params: { start_date: today, end_date: in30 },
         headers: authHeader,
       }),
-      userId
-        ? api.get(`/leaves/${userId}`, { headers: authHeader })
-        : api.get("/my-availability", { headers: authHeader }),
+      (async () => {
+        try {
+          return await api.get("/leave/all", { headers: authHeader });
+        } catch {
+          return await api.get("/my-availability", { headers: authHeader });
+        }
+      })(),
     ]);
 
     const { events = [] } = res.data || {};
