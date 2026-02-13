@@ -197,9 +197,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           title: l.type ? `Leave: ${l.type}` : "Leave",
           start: l.start,
           end: l.end,
-          backgroundColor: "#eeeeee",
-          borderColor: "#9e9e9e",
-          textColor: "#424242",
+          backgroundColor: "#f7f8fb",
+          borderColor: "#cfd6e4",
+          textColor: "#1f2937",
           editable: false,
           classNames: ["overlay-leave"],
           extendedProps: {
@@ -335,11 +335,11 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     return list;
   }, [events, statusFilter]);
 
-  const calendarEvents = filteredForCalendar.map((e) => ({
-    id: e.id,
-    title: e.booked ? "Booked" : "Available",
-    start: e.startISO,
-    end: e.endISO,
+    const calendarEvents = filteredForCalendar.map((e) => ({
+      id: e.id,
+      title: e.booked ? "Booked" : "Available",
+      start: e.startISO,
+      end: e.endISO,
     backgroundColor: e.booked ? "#ffe5e9" : "#e7f7ec",
     borderColor: e.booked ? "#ff4d4f" : "#34a853",
     textColor: "#111",
@@ -609,6 +609,15 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ".fc .fc-timegrid-slot": { height: compactDensity ? 26 : 32 },
           ".fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion": { fontSize: 12 },
           ".fc .fc-timegrid-event": { borderRadius: 8, boxShadow: "0 1px 0 rgba(0,0,0,0.08)" },
+          ".fc .overlay-leave": {
+            background: "#f7f8fb",
+            borderColor: "#cfd6e4",
+            color: "#1f2937",
+          },
+          ".fc .overlay-leave:hover": {
+            background: "#eceff5",
+            boxShadow: "0 3px 10px rgba(15,23,42,0.12)",
+          },
           ".fc .fc-timegrid-event .fc-event-time": { fontWeight: 700, fontSize: 11, paddingLeft: 4 },
           ".fc .fc-timegrid-event .fc-event-title": { fontSize: 11 },
           ".fc .fc-toolbar-title": { fontWeight: 700 },
