@@ -343,6 +343,16 @@ useEffect(() => {
     () => shifts.filter((s) => s.on_leave || s.is_leave_entry),
     [shifts]
   );
+  const leavesByDate = useMemo(() => {
+    const map = {};
+    leaveRows.forEach((leave) => {
+      const dateKey = leave.date;
+      if (!dateKey) return;
+      if (!map[dateKey]) map[dateKey] = [];
+      map[dateKey].push(leave);
+    });
+    return map;
+  }, [leaveRows]);
   const shiftPageCount = Math.max(1, Math.ceil(shiftRows.length / pageSize));
   const leavePageCount = Math.max(1, Math.ceil(leaveRows.length / pageSize));
   const pagedShifts = shiftRows.slice((shiftPage - 1) * pageSize, shiftPage * pageSize);
@@ -1738,6 +1748,8 @@ return (
             const end = hasTimes ? parseISO(shift.clock_out) : null;
             const disabledSwap =
               shift.is_locked || shift.swap_status === "pending";
+            const shiftDateKey = shift.date || (hasTimes ? format(start, "yyyy-MM-dd") : null);
+            const dateLeaves = shiftDateKey ? leavesByDate[shiftDateKey] || [] : [];
             const breakMeta = (() => {
               if (!hasTimes) return null;
               const paidTag = shift.break_paid === true ? "paid" : "unpaid";
@@ -1822,6 +1834,17 @@ return (
                         sx={{ mt: 1, mr: 1 }}
                       />
                     )}
+                    {dateLeaves.map((leave) => (
+                      <Chip
+                        key={leave.id}
+                        label={`Leave: ${leave.leave_type || "Leave"}${
+                          leave.leave_subtype ? ` – ${leave.leave_subtype}` : ""
+                        } (${leave.leave_status || "approved"})`}
+                        color="success"
+                        size="small"
+                        sx={{ mt: 1, mr: 1 }}
+                      />
+                    ))}
                     {swapStatusChip(shift)}
                     {shift.break_missing_minutes > 0 && (
                       <Chip
