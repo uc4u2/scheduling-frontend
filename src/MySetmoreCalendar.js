@@ -652,18 +652,31 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       value ? (
         <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
           <Typography variant="body2" color="text.secondary">{label}</Typography>
-          <Typography variant="body2" fontWeight={600}>{value}</Typography>
+          <Typography variant="body2" fontWeight={700}>{value}</Typography>
         </Box>
       ) : null;
 
     return (
       <Stack spacing={1.5}>
-        <Typography variant="subtitle1" fontWeight={700}>
-          {detail.title || kindLabel}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {timeLabel}
-        </Typography>
+        <Stack spacing={0.5}>
+          <Typography variant="subtitle1" fontWeight={800} sx={{ letterSpacing: 0.2 }}>
+            {detail.title || kindLabel}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {timeLabel}
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <Chip size="small" label={kindLabel} color="primary" />
+            {detail.payment_status && (
+              <Chip
+                size="small"
+                label={String(detail.payment_status).toUpperCase()}
+                color={String(detail.payment_status).toLowerCase() === "paid" ? "success" : "warning"}
+                variant="outlined"
+              />
+            )}
+          </Box>
+        </Stack>
         {row("Client", detail.candidate_name)}
         {row("Email", detail.candidate_email)}
         {row("Phone", detail.candidate_phone)}
@@ -1024,22 +1037,37 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           anchor="bottom"
           open={detailOpen}
           onClose={() => setDetailOpen(false)}
-          PaperProps={{ sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16, p: 2 } }}
+          PaperProps={{
+            sx: {
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              p: 2.5,
+              background: "linear-gradient(180deg, #ffffff 0%, #f6f7fb 100%)",
+              boxShadow: "0 -12px 32px rgba(15,23,42,0.18)",
+            },
+          }}
         >
           <Box sx={{ width: "100%", mb: 1 }}>
-            <Box sx={{ width: 40, height: 4, bgcolor: "divider", borderRadius: 2, mx: "auto", mb: 1 }} />
+            <Box sx={{ width: 44, height: 4, bgcolor: "rgba(15,23,42,0.2)", borderRadius: 2, mx: "auto", mb: 1 }} />
             {renderDetailBody()}
-            <Button sx={{ mt: 2 }} fullWidth variant="outlined" onClick={() => setDetailOpen(false)}>
+            <Button sx={{ mt: 2 }} fullWidth variant="contained" onClick={() => setDetailOpen(false)}>
               Close
             </Button>
           </Box>
         </Drawer>
       ) : (
         <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Booking Details</DialogTitle>
-          <DialogContent dividers>{renderDetailBody()}</DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDetailOpen(false)}>Close</Button>
+          <DialogTitle sx={{ fontWeight: 800, letterSpacing: 0.2 }}>Booking Details</DialogTitle>
+          <DialogContent
+            dividers
+            sx={{
+              background: "linear-gradient(180deg, #ffffff 0%, #f6f7fb 100%)",
+            }}
+          >
+            {renderDetailBody()}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button variant="contained" onClick={() => setDetailOpen(false)}>Close</Button>
           </DialogActions>
         </Dialog>
       )}
