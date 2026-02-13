@@ -164,7 +164,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       const overlays = [
         ...appointments.map((a) => ({
           id: `appt-${a.id}`,
-          title: a.candidate_name ? `Client: ${a.candidate_name}` : "Client Booking",
+          title: a.service_name || a.candidate_name || "Client Booking",
           start: a.start,
           end: a.end,
           backgroundColor: "#e3f2fd",
@@ -187,7 +187,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         })),
         ...candidates.map((c) => ({
           id: `cand-${c.id}`,
-          title: c.candidate_name ? `Candidate: ${c.candidate_name}` : "Candidate Booking",
+          title: c.candidate_name || "Candidate Booking",
           start: c.start,
           end: c.end,
           backgroundColor: "#ede7f6",
@@ -329,37 +329,43 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ? "Candidate Booking"
           : "Leave";
       return (
-        <div style={{ padding: "4px 6px 6px", lineHeight: 1.2, color: "#111" }}>
-          <div style={{ fontWeight: 700, fontSize: 12, color: "#111" }}>
+        <div style={{ padding: "4px 6px 6px", lineHeight: 1.2, color: "#111", width: "100%" }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: "#111", textAlign: "left" }}>
             {arg.event.title || label}
           </div>
-          <div style={{ fontSize: 11, opacity: 0.9, color: "#111" }}>{label}</div>
+          <div style={{ fontSize: 11, opacity: 0.9, color: "#111", textAlign: "left" }}>{label}</div>
         </div>
       );
     }
-    const status = xp.__status === "booked" ? "Booked" : "Available";
     const svc = xp.service_name ? String(xp.service_name) : "";
+    const bookedTitle = svc || "";
     return (
-      <div style={{ padding: "4px 6px 6px", lineHeight: 1.2, borderLeft: "4px solid #1976d2" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-          <span
-            style={{
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: 0.3,
-              padding: "2px 6px",
-              borderRadius: 8,
-              background: xp.__status === "booked" ? "#ffd6d9" : "#e6f4ea",
-              border: `1px solid ${xp.__status === "booked" ? "#ff4d4f" : "#34a853"}`,
-              color: "#111",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {status}
-          </span>
-          <span style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} />
-        </div>
-        {svc ? (
+      <div style={{ padding: "4px 6px 6px", lineHeight: 1.2, width: "100%" }}>
+        {xp.__status === "booked" ? (
+          <div style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {bookedTitle}
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                letterSpacing: 0.3,
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: "#e6f4ea",
+                border: "1px solid #34a853",
+                color: "#111",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Available
+            </span>
+            <span style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} />
+          </div>
+        )}
+        {svc && xp.__status !== "booked" ? (
           <div style={{ fontSize: 11, opacity: 0.9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {svc}
           </div>
@@ -381,12 +387,25 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           : "Leave";
       const name = xp.candidate_name ? `\n${xp.candidate_name}` : "";
       info.el.setAttribute("title", `${label}\n${start}–${end}${name}`);
+      info.el.style.left = "0px";
+      info.el.style.right = "0px";
+      info.el.style.width = "100%";
+      info.el.style.maxWidth = "100%";
+      const harness = info.el.closest(".fc-timegrid-event-harness, .fc-daygrid-event-harness");
+      if (harness) {
+        harness.style.left = "0px";
+        harness.style.right = "0px";
+        harness.style.width = "100%";
+        harness.style.maxWidth = "100%";
+      }
       return;
     }
     const start = info.event.start ? moment(info.event.start).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
     const end = info.event.end ? moment(info.event.end).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
-    const svc = xp.service_name ? `\nService: ${xp.service_name}` : "";
-    info.el.setAttribute("title", `${xp.__status === "booked" ? "BOOKED" : "AVAILABLE"}\n${start}–${end}${svc}`);
+    const svc = xp.service_name ? xp.service_name : "";
+    const label = xp.__status === "booked" ? (svc || "") : "Available";
+    const svcLine = svc ? `\nService: ${svc}` : "";
+    info.el.setAttribute("title", `${label}\n${start}–${end}${svcLine}`.trim());
   };
 
   // ---------------------------- calendar events ----------------------------
@@ -398,7 +417,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
 
     const calendarEvents = filteredForCalendar.map((e) => ({
       id: e.id,
-      title: e.booked ? "Booked" : "Available",
+      title: e.booked ? (e.service_name || "") : "Available",
       start: e.startISO,
       end: e.endISO,
     backgroundColor: e.booked ? "#ffe5e9" : "#e7f7ec",
@@ -731,6 +750,14 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ".fc .fc-timegrid-slot": { height: compactDensity ? 26 : 32 },
           ".fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion": { fontSize: 12 },
           ".fc .fc-timegrid-event": { borderRadius: 8, boxShadow: "0 1px 0 rgba(0,0,0,0.08)" },
+          ".fc .fc-timegrid-event .fc-event-main, .fc .fc-timegrid-event .fc-event-main-frame, .fc .fc-timegrid-event .fc-event-title-container": {
+            width: "100%",
+            textAlign: "left",
+          },
+          ".fc .fc-timegrid-event .fc-event-title": {
+            display: "block",
+            width: "100%",
+          },
           ".fc .overlay-leave": {
             background: "#e9edf5",
             borderColor: "#c1cada",
@@ -751,9 +778,17 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ".fc .overlay-candidate .fc-event-title, .fc .overlay-candidate .fc-event-time": {
             color: "#111 !important",
             fontWeight: 700,
+            textAlign: "left !important",
           },
           ".fc .overlay-candidate .fc-event-main, .fc .overlay-candidate .fc-event-title-container, .fc .overlay-candidate .fc-event-main-frame": {
             color: "#111 !important",
+            textAlign: "left !important",
+            justifyContent: "flex-start !important",
+            alignItems: "flex-start !important",
+            display: "flex !important",
+            flexDirection: "column !important",
+            width: "100% !important",
+            paddingLeft: "6px !important",
           },
           ".fc .overlay-appointment": {
             background: "#e3f2fd",
@@ -763,9 +798,17 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ".fc .overlay-appointment .fc-event-title, .fc .overlay-appointment .fc-event-time": {
             color: "#111 !important",
             fontWeight: 700,
+            textAlign: "left !important",
           },
           ".fc .overlay-appointment .fc-event-main, .fc .overlay-appointment .fc-event-title-container, .fc .overlay-appointment .fc-event-main-frame": {
             color: "#111 !important",
+            textAlign: "left !important",
+            justifyContent: "flex-start !important",
+            alignItems: "flex-start !important",
+            display: "flex !important",
+            flexDirection: "column !important",
+            width: "100% !important",
+            paddingLeft: "6px !important",
           },
           ".fc .overlay-leave:hover": {
             background: "#dde3ee",
@@ -857,13 +900,17 @@ export default function MySetmoreCalendar({ token, initialDate }) {
                   value={statusFilter}
                   label="Slot Status"
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  renderValue={(vals) => (vals.length ? vals.join(", ") : "All")}
+                  renderValue={(vals) =>
+                    vals.length
+                      ? vals.map((v) => (v === "booked" ? "Reserved" : "Available")).join(", ")
+                      : "All"
+                  }
                 >
                   <MenuItem value="available">
                     <Chip size="small" color="success" label="Available" />
                   </MenuItem>
                   <MenuItem value="booked">
-                    <Chip size="small" color="error" label="Booked" />
+                    <Chip size="small" color="error" label="Reserved" />
                   </MenuItem>
                 </Select>
               </FormControl>
@@ -885,7 +932,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         {!isSmDown && (
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
             <Chip size="small" color="success" label="Available" />
-            <Chip size="small" color="error" label="Booked" />
+            <Chip size="small" color="error" label="Reserved" />
             <Chip size="small" sx={{ bgcolor: "#e3f2fd", color: "#0f172a" }} label="Client Booking" />
             <Chip size="small" sx={{ bgcolor: "#ede7f6", color: "#1f1235" }} label="Candidate Booking" />
             <Chip size="small" sx={{ bgcolor: "#eeeeee", color: "#424242" }} label="Leave" />
@@ -944,8 +991,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         )}
       </Paper>
 
-      {!isSmDown && (
-      <Paper sx={{ p: 2 }} elevation={1}>
+      <Paper sx={{ p: 2, mt: { xs: 1, sm: 0 } }} elevation={1}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           alignItems={{ xs: "flex-start", md: "center" }}
@@ -955,8 +1001,10 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           <Typography variant="subtitle1" fontWeight={700}>
             {moment(selectedDate).format("ddd, MMM D")} — {daySlots.length} slot(s)
           </Typography>
-          <Chip size="small" color="success" label="Available" />
-          <Chip size="small" color="error" label="Booked" />
+          <Stack direction="row" spacing={1}>
+            <Chip size="small" color="success" label="Available" />
+            <Chip size="small" color="error" label="Reserved" />
+          </Stack>
           <Box sx={{ flex: 1, display: { xs: "none", md: "block" } }} />
           {(canCloseSlots || canEditAvailability) && (
             <>
@@ -998,7 +1046,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             {daySlots.map((s) => (
               <Tooltip
                 key={`${s.startISO}-${s.availability_id || s.id}`}
-                title={`${s.__status.toUpperCase()} • ${s.startLabel}–${s.endLabel}${s.service_name ? `\nService: ${s.service_name}` : ""}`}
+                title={`${s.startLabel}–${s.endLabel}${s.service_name ? `\nService: ${s.service_name}` : ""}`}
                 arrow
               >
                 <Chip
@@ -1016,7 +1064,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
                   }
                   deleteIcon={(canCloseSlots || canEditAvailability) && s.__status === "available" ? undefined : <MoreVertIcon />}
                   onClick={() => {
-                    if (s.__status === "booked") setMsg("This time is booked.");
+                    if (s.__status === "booked") setMsg("This time is reserved.");
                   }}
                 />
               </Tooltip>
@@ -1024,7 +1072,6 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           </Stack>
         )}
       </Paper>
-      )}
 
       {/* Day Actions dialog */}
       <Dialog open={dayDialogOpen} onClose={() => setDayDialogOpen(false)} maxWidth="xs" fullWidth>
@@ -1071,7 +1118,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           )}
           {dayMode === "keep-range" && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Booked time is never touched. We will remove only free slots outside this window.
+              Reserved time is never touched. We will remove only free slots outside this window.
             </Typography>
           )}
         </DialogContent>
