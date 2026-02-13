@@ -54,6 +54,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const fsCalRef = useRef(null);
 
   const [events, setEvents] = useState([]);
+  const [overlayEvents, setOverlayEvents] = useState([]);
   const [selectedDate, setSelectedDate] = useState(
     initialDate || moment().format("YYYY-MM-DD")
   );
@@ -137,19 +138,82 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     if (!token) return;
     setLoading(true);
     try {
-      const { data } = await api.get("/recruiter/calendar", {
-        params: { view: "fragments" },
-      });
+      const [dataRes, overlayRes] = await Promise.all([
+        api.get("/recruiter/calendar", {
+          params: { view: "fragments" },
+        }),
+        api.get("/my-availability"),
+      ]);
+
+      const data = dataRes?.data || {};
+      const overlayData = overlayRes?.data || {};
 
       const normalized = (data.events || [])
         .filter((e) => e.type === "availability")
         .map(toUiSlot);
 
       setEvents(normalized);
+      const appointments = overlayData.appointment_blocks || [];
+      const candidates = overlayData.candidate_blocks || [];
+      const leaves = overlayData.leave_blocks || [];
+
+      const overlays = [
+        ...appointments.map((a) => ({
+          id: `appt-${a.id}`,
+          title: a.candidate_name ? `Client: ${a.candidate_name}` : "Client Booking",
+          start: a.start,
+          end: a.end,
+          backgroundColor: "#e3f2fd",
+          borderColor: "#64b5f6",
+          textColor: "#0f172a",
+          editable: false,
+          classNames: ["overlay-appointment"],
+          extendedProps: {
+            __kind: "appointment",
+            candidate_name: a.candidate_name,
+            candidate_email: a.candidate_email,
+            meeting_link: a.meeting_link,
+          },
+        })),
+        ...candidates.map((c) => ({
+          id: `cand-${c.id}`,
+          title: c.candidate_name ? `Candidate: ${c.candidate_name}` : "Candidate Booking",
+          start: c.start,
+          end: c.end,
+          backgroundColor: "#ede7f6",
+          borderColor: "#9575cd",
+          textColor: "#1f1235",
+          editable: false,
+          classNames: ["overlay-candidate"],
+          extendedProps: {
+            __kind: "candidate",
+            candidate_name: c.candidate_name,
+            candidate_email: c.candidate_email,
+            meeting_link: c.meeting_link,
+          },
+        })),
+        ...leaves.map((l) => ({
+          id: `leave-${l.id}`,
+          title: l.type ? `Leave: ${l.type}` : "Leave",
+          start: l.start,
+          end: l.end,
+          backgroundColor: "#eeeeee",
+          borderColor: "#9e9e9e",
+          textColor: "#424242",
+          editable: false,
+          classNames: ["overlay-leave"],
+          extendedProps: {
+            __kind: "leave",
+          },
+        })),
+      ];
+
+      setOverlayEvents(overlays);
       setErr("");
     } catch (e) {
       setErr("Failed to load your availability.");
       setEvents([]);
+      setOverlayEvents([]);
     } finally {
       setLoading(false);
     }
@@ -198,6 +262,20 @@ export default function MySetmoreCalendar({ token, initialDate }) {
 
   const renderEventContent = (arg) => {
     const xp = arg.event.extendedProps || {};
+    if (xp.__kind && xp.__kind !== "availability") {
+      const label =
+        xp.__kind === "appointment"
+          ? "Client Booking"
+          : xp.__kind === "candidate"
+          ? "Candidate Booking"
+          : "Leave";
+      return (
+        <div style={{ padding: "4px 6px 6px", lineHeight: 1.2 }}>
+          <div style={{ fontWeight: 700, fontSize: 12 }}>{arg.event.title || label}</div>
+          <div style={{ fontSize: 11, opacity: 0.8 }}>{label}</div>
+        </div>
+      );
+    }
     const status = xp.__status === "booked" ? "Booked" : "Available";
     const svc = xp.service_name ? String(xp.service_name) : "";
     return (
@@ -231,6 +309,19 @@ export default function MySetmoreCalendar({ token, initialDate }) {
 
   const eventDidMount = (info) => {
     const xp = info.event.extendedProps || {};
+    if (xp.__kind && xp.__kind !== "availability") {
+      const start = info.event.start ? moment(info.event.start).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
+      const end = info.event.end ? moment(info.event.end).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
+      const label =
+        xp.__kind === "appointment"
+          ? "Client Booking"
+          : xp.__kind === "candidate"
+          ? "Candidate Booking"
+          : "Leave";
+      const name = xp.candidate_name ? `\n${xp.candidate_name}` : "";
+      info.el.setAttribute("title", `${label}\n${start}–${end}${name}`);
+      return;
+    }
     const start = info.event.start ? moment(info.event.start).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
     const end = info.event.end ? moment(info.event.end).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
     const svc = xp.service_name ? `\nService: ${xp.service_name}` : "";
@@ -253,12 +344,14 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     borderColor: e.booked ? "#ff4d4f" : "#34a853",
     textColor: "#111",
     classNames: [e.booked ? "slot-booked" : "slot-available"],
-    extendedProps: e,
+    extendedProps: { ...e, __kind: "availability" },
   }));
+
+  const mergedCalendarEvents = [...calendarEvents, ...overlayEvents];
 
   const baseCalProps = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
-    events: calendarEvents,
+    events: mergedCalendarEvents,
     weekends: showWeekends,
     nowIndicator: true,
     expandRows: true,
@@ -610,6 +703,11 @@ export default function MySetmoreCalendar({ token, initialDate }) {
 
         {/* Options row */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
+          <Chip size="small" color="success" label="Available" />
+          <Chip size="small" color="error" label="Booked" />
+          <Chip size="small" sx={{ bgcolor: "#e3f2fd", color: "#0f172a" }} label="Client Booking" />
+          <Chip size="small" sx={{ bgcolor: "#ede7f6", color: "#1f1235" }} label="Candidate Booking" />
+          <Chip size="small" sx={{ bgcolor: "#eeeeee", color: "#424242" }} label="Leave" />
         </Stack>
 
         {loading ? (

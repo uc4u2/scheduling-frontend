@@ -7,28 +7,19 @@ import {
   Button,
   Alert,
   Grid,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   MenuItem,
   Stack,
   Accordion,
   AccordionSummary,
   AccordionDetails,
   CircularProgress,
-  IconButton,
-  Tooltip,
   useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "./utils/api";
 import RecurringAvailabilityForm from "./RecurringAvailabilityForm";
-import InteractiveCalendar from "./InteractiveCalendar";
 import { useSnackbar } from "notistack";
 import SecondEmployeeShiftView from "./pages/sections/SecondEmployeeShiftView";
 import MySetmoreCalendar from "./MySetmoreCalendar";
@@ -120,7 +111,6 @@ const RecruiterDashboard = ({ token }) => {
   /* dialogs, calendars, misc (unchanged vars) */
   const [pendingSlotUpdate, setPendingSlotUpdate] = useState(null);
   const [calendarRefreshTrigger, setCalendarRefreshTrigger] = useState(Date.now());
-  const [interactiveFullScreenOpen, setInteractiveFullScreenOpen] = useState(false);
   const [coolingTime, setCoolingTime] = useState("0");
   const [dailyMessage, setDailyMessage] = useState("");
   const [dailyError, setDailyError] = useState("");
@@ -247,39 +237,18 @@ const RecruiterDashboard = ({ token }) => {
                   </Accordion>
                 </Box>
               </Grid>
-              <Grid item xs={12} md={6}>
-                <Accordion defaultExpanded={true}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
-                      <Typography variant="h6" sx={{ color: theme.palette.primary.main, flexGrow: 1 }}>
-                        Interactive Calendar
-                      </Typography>
-                      {/* Full Screen handled inside InteractiveCalendar header */}
-                    </Stack>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <InteractiveCalendar
-                      token={token}
-                      recruiterId={recruiter?.id}
-                      onSlotDrop={handleSlotDrop}
-                      refreshTrigger={calendarRefreshTrigger}
-                      onOpenFullScreen={() => setInteractiveFullScreenOpen(true)}
-                      embedded
-                      readOnly={false}
-                    />
-                    {pendingSlotUpdate && (
-                      <Box sx={{ mt: 2 }}>
-                        <Alert severity="info">
-                          You have unsaved changes for slot ID {pendingSlotUpdate.slotId}.{" "}
-                          <Button variant="contained" onClick={handleSaveSlotUpdate} sx={{ ml: 2 }}>
-                            Save Changes
-                          </Button>
-                        </Alert>
-                      </Box>
-                    )}
-                  </AccordionDetails>
-                </Accordion>
-              </Grid>
+              {pendingSlotUpdate && (
+                <Grid item xs={12}>
+                  <Box sx={{ mt: 2 }}>
+                    <Alert severity="info">
+                      You have unsaved changes for slot ID {pendingSlotUpdate.slotId}.{" "}
+                      <Button variant="contained" onClick={handleSaveSlotUpdate} sx={{ ml: 2 }}>
+                        Save Changes
+                      </Button>
+                    </Alert>
+                  </Box>
+                </Grid>
+              )}
             </>
           ) : (
               <Grid item xs={12}>
@@ -298,29 +267,6 @@ const RecruiterDashboard = ({ token }) => {
                         </AccordionDetails>
                       </Accordion>
                     </Box>
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Accordion defaultExpanded={true}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
-                          <Typography variant="h6" sx={{ color: theme.palette.primary.main, flexGrow: 1 }}>
-                            Interactive Calendar
-                          </Typography>
-                          {/* Full Screen handled inside InteractiveCalendar header */}
-                        </Stack>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <InteractiveCalendar
-                          token={token}
-                          recruiterId={recruiter?.id}
-                          onSlotDrop={handleSlotDrop}
-                          refreshTrigger={calendarRefreshTrigger}
-                          onOpenFullScreen={() => setInteractiveFullScreenOpen(true)}
-                          embedded
-                          readOnly={true}
-                        />
-                      </AccordionDetails>
-                    </Accordion>
                   </Grid>
                 </Grid>
               ) : (
@@ -474,35 +420,6 @@ const RecruiterDashboard = ({ token }) => {
           </Grid>
         </Grid>
       )}
-      <Dialog
-        open={interactiveFullScreenOpen}
-        onClose={() => setInteractiveFullScreenOpen(false)}
-        fullScreen
-      >
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Typography variant="h6">Interactive Calendar</Typography>
-        <Tooltip title="Close full screen">
-          <IconButton
-            size="small"
-            onClick={() => setInteractiveFullScreenOpen(false)}
-            aria-label="Close full screen interactive calendar"
-          >
-            <CloseFullscreenIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </DialogTitle>
-        <DialogContent dividers>
-          <InteractiveCalendar
-            token={token}
-            recruiterId={recruiter?.id}
-            onSlotDrop={handleSlotDrop}
-            refreshTrigger={calendarRefreshTrigger}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setInteractiveFullScreenOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
     </ManagementFrame>
   );
 };
