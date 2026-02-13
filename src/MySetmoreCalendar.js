@@ -242,6 +242,10 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     if (isSmDown) {
       setCalendarView("timeGridDay");
       setWeekAnchor(moment(selectedDate).startOf("week"));
+      const api = calRef.current?.getApi?.();
+      if (api) {
+        api.changeView("timeGridDay", selectedDate);
+      }
     }
   }, [isSmDown, selectedDate]);
 
@@ -801,10 +805,14 @@ export default function MySetmoreCalendar({ token, initialDate }) {
                   borderLeft: "none",
                   borderRight: "none",
                 },
+                ".fc .fc-timegrid-cols, .fc .fc-timegrid-col-frame": {
+                  background: "transparent",
+                },
                 ".fc .fc-scrollgrid-section > *": {
                   borderLeft: "none",
                   borderRight: "none",
                 },
+                ".fc .fc-timegrid-axis": { borderRight: "none" },
               }
             : {}),
         }}
