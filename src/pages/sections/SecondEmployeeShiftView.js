@@ -37,6 +37,7 @@ import {
   TableRow,
   useMediaQuery,
   LinearProgress,
+  Pagination,
 } from "@mui/material";
 import { format, parseISO, differenceInMinutes, addDays, startOfDay } from "date-fns";
 import { useTheme } from "@mui/material/styles";
@@ -76,6 +77,8 @@ const SecondEmployeeShiftView = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [todayCardCollapsed, setTodayCardCollapsed] = useState(false);
   const [countdownTick, setCountdownTick] = useState(Date.now());
+  const [shiftPage, setShiftPage] = useState(1);
+  const [leavePage, setLeavePage] = useState(1);
 
   // Leave-request dialog
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
@@ -260,7 +263,7 @@ const loadPendingSwaps = async (showHistory = false) => {
   }
 };
 
-const loadOptOut = async () => {
+  const loadOptOut = async () => {
   try {
     const res = await api.get("/employee/swap-opt-out", {
       headers: authHeader,
@@ -330,6 +333,25 @@ useEffect(() => {
     });
     setLeaveModalOpen(true);
   };
+
+  const pageSize = 14;
+  const shiftRows = useMemo(
+    () => shifts.filter((s) => !(s.on_leave || s.is_leave_entry)),
+    [shifts]
+  );
+  const leaveRows = useMemo(
+    () => shifts.filter((s) => s.on_leave || s.is_leave_entry),
+    [shifts]
+  );
+  const shiftPageCount = Math.max(1, Math.ceil(shiftRows.length / pageSize));
+  const leavePageCount = Math.max(1, Math.ceil(leaveRows.length / pageSize));
+  const pagedShifts = shiftRows.slice((shiftPage - 1) * pageSize, shiftPage * pageSize);
+  const pagedLeaves = leaveRows.slice((leavePage - 1) * pageSize, leavePage * pageSize);
+
+  useEffect(() => {
+    setShiftPage(1);
+    setLeavePage(1);
+  }, [shiftRows.length, leaveRows.length]);
 
   const submitLeaveRequest = async () => {
     setSubmittingLeave(true);
@@ -1710,7 +1732,7 @@ return (
       ) : (
         <>
         <Grid container spacing={2}>
-          {shifts.filter((s) => !(s.on_leave || s.is_leave_entry)).map((shift) => {
+          {pagedShifts.map((shift) => {
             const hasTimes = Boolean(shift.clock_in && shift.clock_out);
             const start = hasTimes ? parseISO(shift.clock_in) : null;
             const end = hasTimes ? parseISO(shift.clock_out) : null;
@@ -1856,6 +1878,17 @@ return (
             );
           })}
         </Grid>
+        {shiftRows.length > pageSize && (
+          <Stack alignItems="center" sx={{ mt: 2 }}>
+            <Pagination
+              color="primary"
+              size="small"
+              page={shiftPage}
+              count={shiftPageCount}
+              onChange={(_, page) => setShiftPage(page)}
+            />
+          </Stack>
+        )}
         {shifts.some((s) => s.on_leave || s.is_leave_entry) && (
           <>
             <Divider sx={{ my: 2 }} />
@@ -1863,7 +1896,7 @@ return (
               Leave
             </Typography>
             <Grid container spacing={2}>
-              {shifts.filter((s) => s.on_leave || s.is_leave_entry).map((shift) => (
+              {pagedLeaves.map((shift) => (
                 <Grid item xs={12} key={shift.id}>
                   <Card
                     elevation={2}
@@ -1891,10 +1924,21 @@ return (
                         sx={{ mt: 1 }}
                       />
                     </CardContent>
-                  </Card>
+                    </Card>
                 </Grid>
               ))}
             </Grid>
+            {leaveRows.length > pageSize && (
+              <Stack alignItems="center" sx={{ mt: 2 }}>
+                <Pagination
+                  color="primary"
+                  size="small"
+                  page={leavePage}
+                  count={leavePageCount}
+                  onChange={(_, page) => setLeavePage(page)}
+                />
+              </Stack>
+            )}
           </>
         )}
         </>
