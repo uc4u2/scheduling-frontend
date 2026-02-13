@@ -1710,8 +1710,9 @@ return (
       ) : shifts.length === 0 ? (
         <Typography>No shifts assigned yet.</Typography>
       ) : (
+        <>
         <Grid container spacing={2}>
-          {shifts.map((shift) => {
+          {shifts.filter((s) => !(s.on_leave || s.is_leave_entry)).map((shift) => {
             const hasTimes = Boolean(shift.clock_in && shift.clock_out);
             const start = hasTimes ? parseISO(shift.clock_in) : null;
             const end = hasTimes ? parseISO(shift.clock_out) : null;
@@ -1857,6 +1858,48 @@ return (
             );
           })}
         </Grid>
+        {shifts.some((s) => s.on_leave || s.is_leave_entry) && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+              Leave
+            </Typography>
+            <Grid container spacing={2}>
+              {shifts.filter((s) => s.on_leave || s.is_leave_entry).map((shift) => (
+                <Grid item xs={12} key={shift.id}>
+                  <Card
+                    elevation={2}
+                    sx={{
+                      borderRadius: 2,
+                      borderLeft: "4px solid",
+                      borderColor: (theme) => theme.palette.success.main,
+                    }}
+                  >
+                    <CardContent>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {shift.date
+                          ? format(parseISO(shift.date), "EEE, MMM d")
+                          : "—"}
+                      </Typography>
+                      <Typography variant="body1" fontWeight="bold">
+                        ⛔ On Leave
+                      </Typography>
+                      <Chip
+                        label={`Leave: ${shift.leave_type || "Leave"}${
+                          shift.leave_subtype ? ` – ${shift.leave_subtype}` : ""
+                        } (${shift.leave_status || "approved"})`}
+                        color="success"
+                        size="small"
+                        sx={{ mt: 1 }}
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </>
+        )}
+        </>
       )}
 
       {/* Incoming requests (non-manager) */}
