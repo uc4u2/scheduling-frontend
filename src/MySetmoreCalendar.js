@@ -30,6 +30,7 @@ import {
   TextField,
   Menu,
   useMediaQuery,
+  Drawer,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
@@ -71,6 +72,8 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const [compactDensity, setCompactDensity] = useState(false);
   const [statusFilter, setStatusFilter] = useState([]); // [] = both; or ["available"], ["booked"]
   const [fullScreenOpen, setFullScreenOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detail, setDetail] = useState(null);
 
   const viewerTz =
     localStorage.getItem("timezone") ||
@@ -173,6 +176,12 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             candidate_name: a.candidate_name,
             candidate_email: a.candidate_email,
             meeting_link: a.meeting_link,
+            service_name: a.service_name,
+            service_duration_minutes: a.service_duration_minutes,
+            service_price: a.service_price,
+            payment_status: a.payment_status,
+            paid_amount: a.paid_amount,
+            notes: a.notes,
           },
         })),
         ...candidates.map((c) => ({
@@ -190,6 +199,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             candidate_name: c.candidate_name,
             candidate_email: c.candidate_email,
             meeting_link: c.meeting_link,
+            candidate_position: c.candidate_position,
+            candidate_phone: c.candidate_phone,
+            notes: c.notes,
           },
         })),
         ...leaves.map((l) => ({
@@ -239,6 +251,28 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   };
 
   const onEventClick = (info) => {
+    const xp = info.event.extendedProps || {};
+    if (xp.__kind && xp.__kind !== "availability") {
+      setDetail({
+        kind: xp.__kind,
+        title: info.event.title,
+        start: info.event.start,
+        end: info.event.end,
+        candidate_name: xp.candidate_name,
+        candidate_email: xp.candidate_email,
+        candidate_position: xp.candidate_position,
+        candidate_phone: xp.candidate_phone,
+        service_name: xp.service_name,
+        service_duration_minutes: xp.service_duration_minutes,
+        service_price: xp.service_price,
+        payment_status: xp.payment_status,
+        paid_amount: xp.paid_amount,
+        meeting_link: xp.meeting_link,
+        notes: xp.notes,
+      });
+      setDetailOpen(true);
+      return;
+    }
     const d = moment(info.event.start).format("YYYY-MM-DD");
     setSelectedDate(d);
   };
@@ -603,6 +637,53 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     closeChipMenu();
   };
 
+  const renderDetailBody = () => {
+    if (!detail) return null;
+    const start = detail.start ? moment(detail.start).format("ddd, MMM D • HH:mm") : "";
+    const end = detail.end ? moment(detail.end).format("HH:mm") : "";
+    const timeLabel = start && end ? `${start} – ${end}` : start;
+    const kindLabel =
+      detail.kind === "appointment"
+        ? "Client Booking"
+        : detail.kind === "candidate"
+        ? "Candidate Booking"
+        : "Leave";
+    const row = (label, value) =>
+      value ? (
+        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+          <Typography variant="body2" color="text.secondary">{label}</Typography>
+          <Typography variant="body2" fontWeight={600}>{value}</Typography>
+        </Box>
+      ) : null;
+
+    return (
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1" fontWeight={700}>
+          {detail.title || kindLabel}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {timeLabel}
+        </Typography>
+        {row("Client", detail.candidate_name)}
+        {row("Email", detail.candidate_email)}
+        {row("Phone", detail.candidate_phone)}
+        {row("Position", detail.candidate_position)}
+        {row("Service", detail.service_name)}
+        {row("Duration", detail.service_duration_minutes ? `${detail.service_duration_minutes} min` : null)}
+        {row("Price", detail.service_price != null ? `$${Number(detail.service_price).toFixed(2)}` : null)}
+        {row("Payment", detail.payment_status)}
+        {row("Paid", detail.paid_amount != null ? `$${Number(detail.paid_amount).toFixed(2)}` : null)}
+        {row("Meeting link", detail.meeting_link)}
+        {detail.notes ? (
+          <Box>
+            <Typography variant="body2" color="text.secondary">Notes</Typography>
+            <Typography variant="body2">{detail.notes}</Typography>
+          </Box>
+        ) : null}
+      </Stack>
+    );
+  };
+
   return (
     <Box>
       {/* Global tweaks for Week/Day readability */}
@@ -936,6 +1017,32 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           </Button>
         </Box>
       </Dialog>
+
+      {/* Booking detail (read-only) */}
+      {isSmDown ? (
+        <Drawer
+          anchor="bottom"
+          open={detailOpen}
+          onClose={() => setDetailOpen(false)}
+          PaperProps={{ sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16, p: 2 } }}
+        >
+          <Box sx={{ width: "100%", mb: 1 }}>
+            <Box sx={{ width: 40, height: 4, bgcolor: "divider", borderRadius: 2, mx: "auto", mb: 1 }} />
+            {renderDetailBody()}
+            <Button sx={{ mt: 2 }} fullWidth variant="outlined" onClick={() => setDetailOpen(false)}>
+              Close
+            </Button>
+          </Box>
+        </Drawer>
+      ) : (
+        <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Booking Details</DialogTitle>
+          <DialogContent dividers>{renderDetailBody()}</DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDetailOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Box>
   );
 }
