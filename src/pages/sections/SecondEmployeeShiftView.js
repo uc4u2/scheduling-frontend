@@ -38,7 +38,7 @@ import {
   useMediaQuery,
   LinearProgress,
 } from "@mui/material";
-import { format, parseISO, differenceInMinutes, addDays } from "date-fns";
+import { format, parseISO, differenceInMinutes, addDays, startOfDay } from "date-fns";
 import { useTheme } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -163,12 +163,16 @@ const loadShifts = async () => {
   try {
     const today = format(new Date(), "yyyy-MM-dd");
     const in30 = format(addDays(new Date(), 30), "yyyy-MM-dd");
-    const res = await api.get("/recruiter/calendar", {
-      params: { start_date: today, end_date: in30 },
-      headers: authHeader,
-    });
+    const [res, leaveRes] = await Promise.all([
+      api.get("/recruiter/calendar", {
+        params: { start_date: today, end_date: in30 },
+        headers: authHeader,
+      }),
+      api.get("/my-availability", { headers: authHeader }),
+    ]);
 
     const { events = [] } = res.data || {};
+    const leaveBlocks = leaveRes.data?.leave_blocks || [];
 
     const shiftEvents = events
       .filter((e) => e.type === "shift")
@@ -204,7 +208,40 @@ const loadShifts = async () => {
         };
       });
 
-    setShifts(shiftEvents);
+    const shiftDates = new Set(shiftEvents.map((s) => s.date).filter(Boolean));
+    const leaveEntries = [];
+    leaveBlocks.forEach((leave) => {
+      if (!leave?.start) return;
+      const start = startOfDay(parseISO(leave.start));
+      const end = startOfDay(parseISO(leave.end || leave.start));
+      for (let d = start; d.getTime() <= end.getTime(); d = addDays(d, 1)) {
+        const dateStr = format(d, "yyyy-MM-dd");
+        if (shiftDates.has(dateStr)) continue;
+        leaveEntries.push({
+          id: `leave-${leave.id}-${dateStr}`,
+          clock_in: null,
+          clock_out: null,
+          status: "leave",
+          on_leave: true,
+          leave_type: leave.type || "Leave",
+          leave_subtype: leave.subtype || null,
+          leave_status: "approved",
+          date: dateStr,
+          is_leave_entry: true,
+        });
+      }
+    });
+
+    const combined = [...shiftEvents, ...leaveEntries].sort((a, b) => {
+      const ad = a.date || "";
+      const bd = b.date || "";
+      if (ad === bd) {
+        return (a.clock_in || "").localeCompare(b.clock_in || "");
+      }
+      return ad.localeCompare(bd);
+    });
+
+    setShifts(combined);
   } catch (err) {
     setErrorMsg("Failed to fetch your shifts.");
   } finally {
@@ -410,6 +447,7 @@ useEffect(() => {
   //  Render helpers
   // ───────────────────────────────────────────────────────
   const durationChip = (shift) => {
+    if (!shift.clock_in || !shift.clock_out) return null;
     const start = parseISO(shift.clock_in);
     const end = parseISO(shift.clock_out);
     const mins = differenceInMinutes(end, start);
@@ -429,7 +467,8 @@ useEffect(() => {
     const mapped = shifts
       .map((shift) => {
         try {
-          const start = shift.clock_in ? DateTime.fromISO(shift.clock_in, { setZone: true }) : null;
+          if (!shift.clock_in || !shift.clock_out) return null;
+          const start = DateTime.fromISO(shift.clock_in, { setZone: true });
           const end = shift.clock_out ? DateTime.fromISO(shift.clock_out, { setZone: true }) : null;
           return {
             ...shift,
@@ -1673,11 +1712,13 @@ return (
       ) : (
         <Grid container spacing={2}>
           {shifts.map((shift) => {
-            const start = parseISO(shift.clock_in);
-            const end   = parseISO(shift.clock_out);
+            const hasTimes = Boolean(shift.clock_in && shift.clock_out);
+            const start = hasTimes ? parseISO(shift.clock_in) : null;
+            const end = hasTimes ? parseISO(shift.clock_out) : null;
             const disabledSwap =
               shift.is_locked || shift.swap_status === "pending";
             const breakMeta = (() => {
+              if (!hasTimes) return null;
               const paidTag = shift.break_paid === true ? "paid" : "unpaid";
               const autoTag = shift.break_auto_enforced ? "Auto-enforced" : null;
               if (shift.break_start && shift.break_end) {
@@ -1712,15 +1753,16 @@ return (
               <Grid item xs={12} key={shift.id}>
                 <Card elevation={2} sx={{ borderRadius: 2 }}>
                   <CardContent>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                    >
-                      {format(start, "EEE, MMM d")}
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {shift.date
+                        ? format(parseISO(shift.date), "EEE, MMM d")
+                        : hasTimes
+                        ? format(start, "EEE, MMM d")
+                        : "—"}
                     </Typography>
 
                     <Typography variant="body1" fontWeight="bold">
-                      {shift.on_leave
+                      {shift.on_leave || !hasTimes
                         ? "⛔ On Leave"
                         : `🕒 ${format(start, "HH:mm")} – ${format(
                             end,
@@ -1768,12 +1810,14 @@ return (
                         sx={{ mt: 1, mr: 1 }}
                       />
                     )}
-                    <Chip
-                      label={durationChip(shift)}
-                      color="primary"
-                      size="small"
-                      sx={{ mt: 1 }}
-                    />
+                    {durationChip(shift) && (
+                      <Chip
+                        label={durationChip(shift)}
+                        color="primary"
+                        size="small"
+                        sx={{ mt: 1 }}
+                      />
+                    )}
 
                     {/* Action buttons */}
                     {!shift.on_leave && (
