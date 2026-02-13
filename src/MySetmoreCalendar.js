@@ -197,9 +197,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           title: l.type ? `Leave: ${l.type}` : "Leave",
           start: l.start,
           end: l.end,
-          backgroundColor: "#f7f8fb",
-          borderColor: "#cfd6e4",
-          textColor: "#1f2937",
+          backgroundColor: "#e9edf5",
+          borderColor: "#c1cada",
+          textColor: "#0f172a",
           editable: false,
           classNames: ["overlay-leave"],
           extendedProps: {
@@ -610,12 +610,16 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ".fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion": { fontSize: 12 },
           ".fc .fc-timegrid-event": { borderRadius: 8, boxShadow: "0 1px 0 rgba(0,0,0,0.08)" },
           ".fc .overlay-leave": {
-            background: "#f7f8fb",
-            borderColor: "#cfd6e4",
-            color: "#1f2937",
+            background: "#e9edf5",
+            borderColor: "#c1cada",
+            color: "#0f172a",
+          },
+          ".fc .overlay-leave .fc-event-title, .fc .overlay-leave .fc-event-time": {
+            color: "#0f172a",
+            fontWeight: 600,
           },
           ".fc .overlay-leave:hover": {
-            background: "#eceff5",
+            background: "#dde3ee",
             boxShadow: "0 3px 10px rgba(15,23,42,0.12)",
           },
           ".fc .fc-timegrid-event .fc-event-time": { fontWeight: 700, fontSize: 11, paddingLeft: 4 },
