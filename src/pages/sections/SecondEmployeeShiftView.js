@@ -171,11 +171,29 @@ const loadShifts = async () => {
         params: { start_date: today, end_date: in30 },
         headers: authHeader,
       }),
-      api.get("/my-availability", { headers: authHeader }),
+      userId
+        ? api.get(`/leaves/${userId}`, { headers: authHeader })
+        : api.get("/my-availability", { headers: authHeader }),
     ]);
 
     const { events = [] } = res.data || {};
-    const leaveBlocks = leaveRes.data?.leave_blocks || [];
+    const leaveBlocks = Array.isArray(leaveRes.data)
+      ? leaveRes.data.map((l) => ({
+          id: l.id,
+          leave_type: l.leave_type || "Leave",
+          leave_subtype: l.leave_subtype || null,
+          status: (l.status || "").toLowerCase(),
+          start_date: l.start_date,
+          end_date: l.end_date || l.start_date,
+        }))
+      : (leaveRes.data?.leave_blocks || []).map((l) => ({
+          id: l.id,
+          leave_type: l.type || "Leave",
+          leave_subtype: l.subtype || null,
+          status: "approved",
+          start_date: l.start ? l.start.slice(0, 10) : null,
+          end_date: l.end ? l.end.slice(0, 10) : (l.start ? l.start.slice(0, 10) : null),
+        }));
 
     const shiftEvents = events
       .filter((e) => e.type === "shift")
@@ -213,9 +231,9 @@ const loadShifts = async () => {
 
     const leaveEntries = [];
     leaveBlocks.forEach((leave) => {
-      if (!leave?.start) return;
-      const start = startOfDay(parseISO(leave.start));
-      const end = startOfDay(parseISO(leave.end || leave.start));
+      if (!leave?.start_date) return;
+      const start = startOfDay(parseISO(leave.start_date));
+      const end = startOfDay(parseISO(leave.end_date || leave.start_date));
       for (let d = start; d.getTime() <= end.getTime(); d = addDays(d, 1)) {
         const dateStr = format(d, "yyyy-MM-dd");
         leaveEntries.push({
@@ -224,9 +242,9 @@ const loadShifts = async () => {
           clock_out: null,
           status: "leave",
           on_leave: true,
-          leave_type: leave.type || "Leave",
-          leave_subtype: leave.subtype || null,
-          leave_status: "approved",
+          leave_type: leave.leave_type || "Leave",
+          leave_subtype: leave.leave_subtype || null,
+          leave_status: leave.status || "approved",
           date: dateStr,
           is_leave_entry: true,
         });
@@ -1834,17 +1852,26 @@ return (
                         sx={{ mt: 1, mr: 1 }}
                       />
                     )}
-                    {dateLeaves.map((leave) => (
-                      <Chip
-                        key={leave.id}
-                        label={`Leave: ${leave.leave_type || "Leave"}${
-                          leave.leave_subtype ? ` – ${leave.leave_subtype}` : ""
-                        } (${leave.leave_status || "approved"})`}
-                        color="success"
-                        size="small"
-                        sx={{ mt: 1, mr: 1 }}
-                      />
-                    ))}
+                    {dateLeaves.map((leave) => {
+                      const status = (leave.leave_status || "approved").toLowerCase();
+                      const color =
+                        status === "approved"
+                          ? "success"
+                          : status === "pending"
+                          ? "warning"
+                          : "error";
+                      return (
+                        <Chip
+                          key={leave.id}
+                          label={`Leave: ${leave.leave_type || "Leave"}${
+                            leave.leave_subtype ? ` – ${leave.leave_subtype}` : ""
+                          } (${status})`}
+                          color={color}
+                          size="small"
+                          sx={{ mt: 1, mr: 1 }}
+                        />
+                      );
+                    })}
                     {swapStatusChip(shift)}
                     {shift.break_missing_minutes > 0 && (
                       <Chip
@@ -1938,14 +1965,25 @@ return (
                       <Typography variant="body1" fontWeight="bold">
                         ⛔ On Leave
                       </Typography>
-                      <Chip
-                        label={`Leave: ${shift.leave_type || "Leave"}${
-                          shift.leave_subtype ? ` – ${shift.leave_subtype}` : ""
-                        } (${shift.leave_status || "approved"})`}
-                        color="success"
-                        size="small"
-                        sx={{ mt: 1 }}
-                      />
+                      {(() => {
+                        const status = (shift.leave_status || "approved").toLowerCase();
+                        const color =
+                          status === "approved"
+                            ? "success"
+                            : status === "pending"
+                            ? "warning"
+                            : "error";
+                        return (
+                          <Chip
+                            label={`Leave: ${shift.leave_type || "Leave"}${
+                              shift.leave_subtype ? ` – ${shift.leave_subtype}` : ""
+                            } (${status})`}
+                            color={color}
+                            size="small"
+                            sx={{ mt: 1 }}
+                          />
+                        );
+                      })()}
                     </CardContent>
                     </Card>
                 </Grid>
