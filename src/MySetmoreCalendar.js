@@ -74,6 +74,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const [fullScreenOpen, setFullScreenOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [weekAnchor, setWeekAnchor] = useState(moment().startOf("week"));
 
   const viewerTz =
     localStorage.getItem("timezone") ||
@@ -237,6 +238,13 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  useEffect(() => {
+    if (isSmDown) {
+      setCalendarView("timeGridDay");
+      setWeekAnchor(moment(selectedDate).startOf("week"));
+    }
+  }, [isSmDown, selectedDate]);
+
   // ---------- day rail ----------
   const daySlots = useMemo(() => {
     let list = events.filter((e) => e.dateLocal === selectedDate);
@@ -275,6 +283,19 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     }
     const d = moment(info.event.start).format("YYYY-MM-DD");
     setSelectedDate(d);
+  };
+
+  const weekDays = useMemo(() => {
+    const start = weekAnchor.clone();
+    return Array.from({ length: 7 }, (_, i) => start.clone().add(i, "day"));
+  }, [weekAnchor]);
+
+  const jumpWeek = (dir) => {
+    const next = weekAnchor.clone().add(dir, "week");
+    setWeekAnchor(next);
+    const nextDate = next.clone().add(selectedDate ? moment(selectedDate).day() - next.day() : 0, "day");
+    const day = nextDate.isValid() ? nextDate : next;
+    setSelectedDate(day.format("YYYY-MM-DD"));
   };
 
   // --------------------- formatting & event rendering ---------------------
@@ -406,14 +427,14 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     eventClick: onEventClick,
     eventContent: renderEventContent,
     eventDidMount,
-    headerToolbar: {
-      left: "prev,next",
-      center: "title",
-      right: isSmDown ? "" : "dayGridMonth,timeGridWeek,timeGridDay",
-    },
-    titleFormat: isSmDown
-      ? { month: "short", year: "numeric" }
-      : { month: "long", year: "numeric" },
+    headerToolbar: isSmDown
+      ? false
+      : {
+          left: "prev,next",
+          center: "title",
+          right: "dayGridMonth,timeGridWeek,timeGridDay",
+        },
+    titleFormat: { month: "long", year: "numeric" },
   };
 
   // ====== helpers: API fallbacks (employee -> manager) ======
@@ -805,46 +826,86 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           <Typography variant="h6" fontWeight={700}>
             My Availability
           </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
-            <FormControl size="small" sx={{ minWidth: 160, flex: isSmDown ? 1 : "initial" }}>
-              <InputLabel>Slot Status</InputLabel>
-              <Select
-                multiple
-                value={statusFilter}
-                label="Slot Status"
-                onChange={(e) => setStatusFilter(e.target.value)}
-                renderValue={(vals) => (vals.length ? vals.join(", ") : "All")}
+          {!isSmDown && (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <FormControl size="small" sx={{ minWidth: 160 }}>
+                <InputLabel>Slot Status</InputLabel>
+                <Select
+                  multiple
+                  value={statusFilter}
+                  label="Slot Status"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  renderValue={(vals) => (vals.length ? vals.join(", ") : "All")}
+                >
+                  <MenuItem value="available">
+                    <Chip size="small" color="success" label="Available" />
+                  </MenuItem>
+                  <MenuItem value="booked">
+                    <Chip size="small" color="error" label="Booked" />
+                  </MenuItem>
+                </Select>
+              </FormControl>
+              <Button variant="outlined" onClick={fetchEvents}>
+                Refresh
+              </Button>
+              <Button
+                startIcon={<OpenInFullIcon />}
+                variant="contained"
+                onClick={() => setFullScreenOpen(true)}
               >
-                <MenuItem value="available">
-                  <Chip size="small" color="success" label="Available" />
-                </MenuItem>
-                <MenuItem value="booked">
-                  <Chip size="small" color="error" label="Booked" />
-                </MenuItem>
-              </Select>
-            </FormControl>
-            <Button variant="outlined" onClick={fetchEvents} fullWidth={isSmDown}>
-              Refresh
-            </Button>
-            <Button
-              startIcon={<OpenInFullIcon />}
-              variant="contained"
-              onClick={() => setFullScreenOpen(true)}
-              fullWidth={isSmDown}
-            >
-              Full Screen
-            </Button>
-          </Stack>
+                Full Screen
+              </Button>
+            </Stack>
+          )}
         </Stack>
 
         {/* Options row */}
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
-          <Chip size="small" color="success" label="Available" />
-          <Chip size="small" color="error" label="Booked" />
-          <Chip size="small" sx={{ bgcolor: "#e3f2fd", color: "#0f172a" }} label="Client Booking" />
-          <Chip size="small" sx={{ bgcolor: "#ede7f6", color: "#1f1235" }} label="Candidate Booking" />
-          <Chip size="small" sx={{ bgcolor: "#eeeeee", color: "#424242" }} label="Leave" />
-        </Stack>
+        {!isSmDown && (
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
+            <Chip size="small" color="success" label="Available" />
+            <Chip size="small" color="error" label="Booked" />
+            <Chip size="small" sx={{ bgcolor: "#e3f2fd", color: "#0f172a" }} label="Client Booking" />
+            <Chip size="small" sx={{ bgcolor: "#ede7f6", color: "#1f1235" }} label="Candidate Booking" />
+            <Chip size="small" sx={{ bgcolor: "#eeeeee", color: "#424242" }} label="Leave" />
+          </Stack>
+        )}
+        {isSmDown && (
+          <Box sx={{ mb: 1.5 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+              <Button size="small" variant="outlined" onClick={() => jumpWeek(-1)}>‹</Button>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1, textAlign: "center" }}>
+                {moment(weekAnchor).format("MMM YYYY")}
+              </Typography>
+              <Button size="small" variant="outlined" onClick={() => jumpWeek(1)}>›</Button>
+            </Stack>
+            <Stack direction="row" spacing={1} justifyContent="space-between">
+              {weekDays.map((d) => {
+                const isActive = d.format("YYYY-MM-DD") === selectedDate;
+                return (
+                  <Box
+                    key={d.format("YYYY-MM-DD")}
+                    onClick={() => setSelectedDate(d.format("YYYY-MM-DD"))}
+                    sx={{
+                      flex: 1,
+                      textAlign: "center",
+                      py: 0.5,
+                      borderRadius: 2,
+                      cursor: "pointer",
+                      background: isActive ? "#2563eb" : "transparent",
+                      color: isActive ? "#fff" : "text.primary",
+                      fontWeight: isActive ? 700 : 500,
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ display: "block" }}>
+                      {d.format("dd")}
+                    </Typography>
+                    <Typography variant="body2">{d.format("D")}</Typography>
+                  </Box>
+                );
+              })}
+            </Stack>
+          </Box>
+        )}
 
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
@@ -854,13 +915,14 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           <FullCalendar
             ref={calRef}
             {...baseCalProps}
-            initialView={calendarView}
+            initialView={isSmDown ? "timeGridDay" : calendarView}
             height="auto"
             key={`${calendarView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
           />
         )}
       </Paper>
 
+      {!isSmDown && (
       <Paper sx={{ p: 2 }} elevation={1}>
         <Stack
           direction={{ xs: "column", md: "row" }}
@@ -940,6 +1002,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           </Stack>
         )}
       </Paper>
+      )}
 
       {/* Day Actions dialog */}
       <Dialog open={dayDialogOpen} onClose={() => setDayDialogOpen(false)} maxWidth="xs" fullWidth>
