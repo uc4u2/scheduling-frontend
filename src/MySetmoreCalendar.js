@@ -615,8 +615,8 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             color: "#0f172a",
           },
           ".fc .overlay-leave .fc-event-title, .fc .overlay-leave .fc-event-time": {
-            color: "#0f172a",
-            fontWeight: 600,
+            color: "#111",
+            fontWeight: 700,
           },
           ".fc .overlay-leave:hover": {
             background: "#dde3ee",
