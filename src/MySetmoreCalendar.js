@@ -270,9 +270,11 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ? "Candidate Booking"
           : "Leave";
       return (
-        <div style={{ padding: "4px 6px 6px", lineHeight: 1.2 }}>
-          <div style={{ fontWeight: 700, fontSize: 12 }}>{arg.event.title || label}</div>
-          <div style={{ fontSize: 11, opacity: 0.8 }}>{label}</div>
+        <div style={{ padding: "4px 6px 6px", lineHeight: 1.2, color: "#111" }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: "#111" }}>
+            {arg.event.title || label}
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.9, color: "#111" }}>{label}</div>
         </div>
       );
     }
