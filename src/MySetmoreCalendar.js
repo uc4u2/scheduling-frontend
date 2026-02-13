@@ -794,6 +794,19 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ".fc-view-harness:hover, .fc-view:hover, .fc-scrollgrid:hover": {
             boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
           },
+          ...(isSmDown
+            ? {
+                ".fc .fc-timegrid-divider": { display: "none" },
+                ".fc .fc-timegrid-col, .fc .fc-timegrid-cols table td, .fc .fc-timegrid-cols table th": {
+                  borderLeft: "none",
+                  borderRight: "none",
+                },
+                ".fc .fc-scrollgrid-section > *": {
+                  borderLeft: "none",
+                  borderRight: "none",
+                },
+              }
+            : {}),
         }}
       />
 
