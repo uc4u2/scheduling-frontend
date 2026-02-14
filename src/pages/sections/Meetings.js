@@ -102,13 +102,14 @@ const Meetings = ({ token }) => {
 
   const fetchMeetings = async (recruiterId) => {
     try {
-      const res = await api.get(`/meetings/${recruiterId}`, {
+      const res = await api.get(`/manager/recruiters/${recruiterId}/availability`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const rows = Array.isArray(res.data) ? res.data : (res.data.meetings || []);
-      const data = rows.map((m) => ({
+      const rows = res.data?.availability || [];
+      const meetingsOnly = rows.filter((m) => m.booked && m.created_by_manager);
+      const data = meetingsOnly.map((m) => ({
         id: m.id,
-        title: m.title,
+        title: m.description || "Meeting",
         start: `${m.date}T${m.start_time}`,
         end: `${m.date}T${m.end_time}`,
         extendedProps: { ...m },
