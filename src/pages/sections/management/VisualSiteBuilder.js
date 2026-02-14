@@ -18,8 +18,11 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  FormControl,
   Grid,
   IconButton,
+  InputAdornment,
+  InputLabel,
   Link,
   List,
   ListItem,
@@ -36,6 +39,7 @@ import {
   Tooltip,
   Select,
   MenuItem,
+  FormHelperText,
   Paper,
   Accordion,
   AccordionSummary,
@@ -43,6 +47,8 @@ import {
   ButtonBase,
   Menu,
   Slider,
+  Tab,
+  Tabs,
   useMediaQuery,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -91,7 +97,7 @@ import { SCHEMA_REGISTRY } from "../../../components/website/schemas";
 import SchemaInspector from "../../../components/website/SchemaInspector";
 
 /** Moved out pieces */
-import SectionInspector from "../../../components/website/BuilderInspectorParts";
+import SectionInspector, { ImageField } from "../../../components/website/BuilderInspectorParts";
 import { NEW_BLOCKS } from "../../../components/website/BuilderBlockTemplates";
 import {
   emptyPage,
@@ -538,277 +544,810 @@ function PageStyleCard({
       cardBg: normalized ? hexToRgba(normalized, finalOpacity) : "",
     });
   };
-  const handleCardColor = (event) =>
-    applyCardValues(event.target.value || cardColorInput, cardOpacityInput);
-  const handleCardOpacity = (event) => {
-    const raw = event.target.value;
-    const num = Number(raw);
-    const nextOpacity = Number.isFinite(num) ? num : cardOpacityInput;
-    applyCardValues(v.cardColor || cardColorInput, nextOpacity);
+
+  const shadowPresets = [
+    { key: "none", label: "None", value: "" },
+    { key: "soft", label: "Soft", value: "0 8px 24px rgba(0,0,0,0.12)" },
+    { key: "medium", label: "Medium", value: "0 12px 32px rgba(0,0,0,0.18)" },
+    { key: "strong", label: "Strong", value: "0 18px 48px rgba(0,0,0,0.24)" },
+    { key: "glass", label: "Glass", value: "0 12px 32px rgba(15,23,42,0.28)" },
+  ];
+  const matchShadowPreset = (val) =>
+    shadowPresets.find((preset) => (val || "").trim() === preset.value) || null;
+  const cardShadowPreset = matchShadowPreset(v.cardShadow)?.key || "custom";
+  const heroShadowPreset = matchShadowPreset(v.heroHeadingShadow)?.key || "custom";
+  const isShadowValid = (val) =>
+    !val ||
+    /-?\d+px\s+-?\d+px/.test(val) ||
+    /rgba?\(/i.test(val) ||
+    /#/.test(val);
+
+  const overlayOpacityValue = clamp01(v.overlayOpacity ?? 0);
+  const cardOpacityValue = clamp01(cardOpacityInput);
+  const cardRadiusValue = Number.isFinite(Number(v.cardRadius)) ? Number(v.cardRadius) : 12;
+  const cardBlurValue = Number.isFinite(Number(v.cardBlur)) ? Number(v.cardBlur) : 0;
+
+  const gradientDefaults = {
+    angle: 135,
+    start: "#1d4ed8",
+    end: "#14b8a6",
+  };
+  const [gradientAngle, setGradientAngle] = useState(gradientDefaults.angle);
+  const [gradientStart, setGradientStart] = useState(gradientDefaults.start);
+  const [gradientEnd, setGradientEnd] = useState(gradientDefaults.end);
+
+  const colorField = ({
+    label,
+    value,
+    onChange: onColorChange,
+    helperText,
+    disabled,
+  }) => {
+    const normalized = normalizeHexColor(value) || "#000000";
+    return (
+      <TextField
+        size="small"
+        label={label}
+        value={value || ""}
+        onChange={(e) => onColorChange(e.target.value)}
+        helperText={helperText}
+        disabled={disabled}
+        fullWidth
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <ButtonBase
+                component="label"
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 1,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: normalized,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                }}
+              >
+                <Box
+                  component="input"
+                  type="color"
+                  value={normalized}
+                  onChange={(e) => onColorChange(e.target.value)}
+                  disabled={disabled}
+                  sx={{
+                    opacity: 0,
+                    position: "absolute",
+                    width: "100%",
+                    height: "100%",
+                    cursor: disabled ? "not-allowed" : "pointer",
+                  }}
+                />
+              </ButtonBase>
+            </InputAdornment>
+          ),
+        }}
+      />
+    );
+  };
+
+  const [pageStyleTab, setPageStyleTab] = useState("style");
+  const [cardShadowBuilderOpen, setCardShadowBuilderOpen] = useState(false);
+  const [heroShadowBuilderOpen, setHeroShadowBuilderOpen] = useState(false);
+  const initialStyleRef = useRef(value || {});
+  const isDirty = useMemo(
+    () => JSON.stringify(value || {}) !== JSON.stringify(initialStyleRef.current || {}),
+    [value]
+  );
+
+  const parseBoxShadow = (val) => {
+    const fallback = { x: 0, y: 12, blur: 32, spread: 0, color: "#000000", opacity: 0.18 };
+    if (!val || typeof val !== "string") return fallback;
+    const match =
+      /(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px(?:\s+(-?\d+(?:\.\d+)?)px)?\s+(.+)/.exec(
+        val.trim()
+      );
+    if (!match) return fallback;
+    const parsedColor = parseCssColor(match[5], fallback.opacity);
+    return {
+      x: Number(match[1]),
+      y: Number(match[2]),
+      blur: Number(match[3]),
+      spread: Number(match[4] || 0),
+      color: parsedColor.hex || fallback.color,
+      opacity: parsedColor.opacity,
+    };
+  };
+
+  const parseTextShadow = (val) => {
+    const fallback = { x: 0, y: 6, blur: 18, color: "#000000", opacity: 0.25 };
+    if (!val || typeof val !== "string") return fallback;
+    const match =
+      /(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(.+)/.exec(
+        val.trim()
+      );
+    if (!match) return fallback;
+    const parsedColor = parseCssColor(match[4], fallback.opacity);
+    return {
+      x: Number(match[1]),
+      y: Number(match[2]),
+      blur: Number(match[3]),
+      color: parsedColor.hex || fallback.color,
+      opacity: parsedColor.opacity,
+    };
+  };
+
+  const buildBoxShadow = ({ x, y, blur, spread, color, opacity }) =>
+    `${x}px ${y}px ${blur}px ${spread}px ${hexToRgba(color, opacity)}`;
+  const buildTextShadow = ({ x, y, blur, color, opacity }) =>
+    `${x}px ${y}px ${blur}px ${hexToRgba(color, opacity)}`;
+
+  const cardShadowValues = parseBoxShadow(v.cardShadow || "");
+  const heroShadowValues = parseTextShadow(v.heroHeadingShadow || "");
+  const updateCardShadow = (patch) => {
+    const next = { ...cardShadowValues, ...patch };
+    set({ cardShadow: buildBoxShadow(next) });
+  };
+  const updateHeroShadow = (patch) => {
+    const next = { ...heroShadowValues, ...patch };
+    set({ heroHeadingShadow: buildTextShadow(next) });
   };
 
   return (
-    <Stack id="page-style-card" spacing={1.25}>
-      {/* Background */}
-      <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.background.heading")}</Typography>
-      <TextField
-        size="small"
-        type="color"
-        label={t("manager.visualBuilder.pageStyle.background.color")}
-        value={v.backgroundColor || "#ffffff"}
-        onChange={(e) => set({ backgroundColor: e.target.value })}
-        fullWidth
-      />
-      <Stack direction="row" spacing={1}>
-        <TextField
-          size="small"
-          type="color"
-          label={t("manager.visualBuilder.pageStyle.background.secondaryColor", {
-            defaultValue: "Secondary background",
+    <Stack id="page-style-card" spacing={1.5}>
+      <Tabs
+        value={pageStyleTab}
+        onChange={(_, v) => setPageStyleTab(v)}
+        variant="fullWidth"
+        sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+      >
+        <Tab value="content" label="Content" />
+        <Tab value="style" label="Style" />
+        <Tab value="advanced" label="Advanced" />
+      </Tabs>
+
+      {pageStyleTab === "content" && (
+        <Stack spacing={1.25}>
+          <Typography variant="subtitle2">Background image</Typography>
+          <ImageField
+            label="Background image"
+            value={v.backgroundImage || ""}
+            onChange={(url) => set({ backgroundImage: url })}
+            companyId={companyId}
+          />
+          <Grid container spacing={1}>
+            <Grid item xs={12} sm={6}>
+              <Select
+                size="small"
+                value={v.backgroundRepeat || "no-repeat"}
+                onChange={(e) => set({ backgroundRepeat: e.target.value })}
+                fullWidth
+              >
+                <MenuItem value="no-repeat">{t("manager.visualBuilder.pageStyle.background.repeat.noRepeat")}</MenuItem>
+                <MenuItem value="repeat">{t("manager.visualBuilder.pageStyle.background.repeat.repeat")}</MenuItem>
+                <MenuItem value="repeat-x">{t("manager.visualBuilder.pageStyle.background.repeat.repeatX")}</MenuItem>
+                <MenuItem value="repeat-y">{t("manager.visualBuilder.pageStyle.background.repeat.repeatY")}</MenuItem>
+              </Select>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Select
+                size="small"
+                value={v.backgroundSize || "cover"}
+                onChange={(e) => set({ backgroundSize: e.target.value })}
+                fullWidth
+              >
+                <MenuItem value="cover">{t("manager.visualBuilder.pageStyle.background.size.cover")}</MenuItem>
+                <MenuItem value="contain">{t("manager.visualBuilder.pageStyle.background.size.contain")}</MenuItem>
+                <MenuItem value="auto">{t("manager.visualBuilder.pageStyle.background.size.auto")}</MenuItem>
+              </Select>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Select
+                size="small"
+                value={v.backgroundPosition || "center"}
+                onChange={(e) => set({ backgroundPosition: e.target.value })}
+                fullWidth
+              >
+                <MenuItem value="center">{t("manager.visualBuilder.pageStyle.background.position.center")}</MenuItem>
+                <MenuItem value="top">{t("manager.visualBuilder.pageStyle.background.position.top")}</MenuItem>
+                <MenuItem value="bottom">{t("manager.visualBuilder.pageStyle.background.position.bottom")}</MenuItem>
+                <MenuItem value="left">{t("manager.visualBuilder.pageStyle.background.position.left")}</MenuItem>
+                <MenuItem value="right">{t("manager.visualBuilder.pageStyle.background.position.right")}</MenuItem>
+              </Select>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Tooltip title="Controls whether the background scrolls with the page." arrow>
+                <Select
+                  size="small"
+                  value={v.backgroundAttachment || "scroll"}
+                  onChange={(e) => set({ backgroundAttachment: e.target.value })}
+                  fullWidth
+                >
+                  <MenuItem value="scroll">{t("manager.visualBuilder.pageStyle.background.attachment.scroll")}</MenuItem>
+                  <MenuItem value="fixed">{t("manager.visualBuilder.pageStyle.background.attachment.fixed")}</MenuItem>
+                </Select>
+              </Tooltip>
+            </Grid>
+          </Grid>
+        </Stack>
+      )}
+
+      {pageStyleTab === "style" && (
+        <Stack spacing={1.25}>
+          <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.background.heading")}</Typography>
+          {colorField({
+            label: t("manager.visualBuilder.pageStyle.background.color"),
+            value: v.backgroundColor || "#ffffff",
+            onChange: (val) => set({ backgroundColor: val }),
           })}
-          value={secondaryAdvanced ? fallbackSecondaryHex : secondaryColorHex}
-          onChange={(e) => {
-            const nextColor = normalizeHexColor(e.target.value || fallbackSecondaryHex);
-            set({ secondaryBackground: nextColor });
-            if (secondaryAdvanced) setSecondaryAdvanced(false);
-          }}
-          disabled={secondaryAdvanced}
-          fullWidth
-        />
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={() => {
-            setSecondaryAdvanced((prev) => {
-              const next = !prev;
-              if (!next) {
-                const hex =
-                  normalizeHexColor(secondaryColorHex || fallbackSecondaryHex) ||
-                  fallbackSecondaryHex;
-                set({ secondaryBackground: hex });
-              }
-              return next;
-            });
-          }}
-        >
-          {secondaryAdvanced
-            ? t("manager.visualBuilder.pageStyle.background.useColorPicker", {
-                defaultValue: "Use color picker",
-              })
-            : t("manager.visualBuilder.pageStyle.background.customCss", {
+          <Stack direction="row" spacing={1}>
+            {colorField({
+              label: t("manager.visualBuilder.pageStyle.background.secondaryColor", {
+                defaultValue: "Secondary background",
+              }),
+              value: secondaryAdvanced ? fallbackSecondaryHex : secondaryColorHex,
+              onChange: (val) => {
+                const nextColor = normalizeHexColor(val || fallbackSecondaryHex);
+                set({ secondaryBackground: nextColor });
+                if (secondaryAdvanced) setSecondaryAdvanced(false);
+              },
+              disabled: secondaryAdvanced,
+            })}
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setSecondaryAdvanced(true);
+                setPageStyleTab("advanced");
+              }}
+            >
+              {t("manager.visualBuilder.pageStyle.background.customCss", {
                 defaultValue: "Custom CSS",
               })}
-        </Button>
-      </Stack>
-      {secondaryAdvanced && (
-        <TextField
-          size="small"
-          label={t("manager.visualBuilder.pageStyle.background.secondaryAdvanced", {
-            defaultValue: "Secondary background (CSS or gradient)",
+            </Button>
+          </Stack>
+
+          {colorField({
+            label: t("manager.visualBuilder.pageStyle.background.overlayColor"),
+            value: v.overlayColor || "#000000",
+            onChange: (val) => set({ overlayColor: val }),
+            helperText: "Use with overlay opacity for readability.",
           })}
-          value={v.secondaryBackground || ""}
-          onChange={(e) => set({ secondaryBackground: e.target.value })}
-          placeholder="linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)"
-          fullWidth
-          sx={{ mt: 1 }}
-        />
+          <Stack spacing={1}>
+            <Tooltip title="Controls how dark the background overlay appears." arrow>
+              <Typography variant="caption" color="text.secondary">
+                {t("manager.visualBuilder.pageStyle.background.overlayOpacity")}
+              </Typography>
+            </Tooltip>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Slider
+                size="small"
+                min={0}
+                max={1}
+                step={0.05}
+                value={overlayOpacityValue}
+                valueLabelDisplay="auto"
+                onChange={(_, val) =>
+                  typeof val === "number" && set({ overlayOpacity: clamp01(val) })
+                }
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                size="small"
+                value={overlayOpacityValue}
+                onChange={(e) =>
+                  set({ overlayOpacity: clamp01(Number(e.target.value || 0)) })
+                }
+                inputProps={{ step: 0.05, min: 0, max: 1 }}
+                sx={{ width: 90 }}
+              />
+            </Stack>
+          </Stack>
+
+          <Divider />
+          <Typography variant="subtitle2">Typography</Typography>
+          <Stack direction="row" spacing={1}>
+            {colorField({
+              label: "Heading color",
+              value: v.headingColor || "#111827",
+              onChange: (val) => set({ headingColor: val }),
+            })}
+            {colorField({
+              label: "Body color",
+              value: v.bodyColor || "#374151",
+              onChange: (val) => set({ bodyColor: val }),
+            })}
+          </Stack>
+          {colorField({
+            label: "Link color",
+            value: v.linkColor || "#2563eb",
+            onChange: (val) => set({ linkColor: val }),
+          })}
+          <Stack direction="row" spacing={1}>
+            <TextField
+              size="small"
+              label="Heading font"
+              value={v.headingFont || ""}
+              onChange={(e) => set({ headingFont: e.target.value })}
+              placeholder="e.g. Inter, serif"
+              fullWidth
+            />
+            <TextField
+              size="small"
+              label="Body font"
+              value={v.bodyFont || ""}
+              onChange={(e) => set({ bodyFont: e.target.value })}
+              placeholder="e.g. Inter, sans-serif"
+              fullWidth
+            />
+          </Stack>
+
+          <Divider />
+          <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.card.heading")}</Typography>
+          {colorField({
+            label: t("manager.visualBuilder.pageStyle.card.backgroundColor"),
+            value: cardColorInput,
+            onChange: (val) => applyCardValues(val || cardColorInput, cardOpacityValue),
+          })}
+          <Stack spacing={1}>
+            <Typography variant="caption" color="text.secondary">
+              {t("manager.visualBuilder.pageStyle.card.opacity")}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Slider
+                size="small"
+                min={0}
+                max={1}
+                step={0.05}
+                value={cardOpacityValue}
+                valueLabelDisplay="auto"
+                onChange={(_, val) =>
+                  typeof val === "number" && applyCardValues(cardColorInput, clamp01(val))
+                }
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                size="small"
+                value={cardOpacityValue}
+                onChange={(e) => {
+                  const num = Number(e.target.value);
+                  if (Number.isFinite(num)) applyCardValues(cardColorInput, clamp01(num));
+                }}
+                inputProps={{ step: 0.05, min: 0, max: 1 }}
+                sx={{ width: 90 }}
+              />
+            </Stack>
+            <FormHelperText>Higher opacity makes cards more solid.</FormHelperText>
+          </Stack>
+          <Stack spacing={1}>
+            <Typography variant="caption" color="text.secondary">
+              {t("manager.visualBuilder.pageStyle.card.radius")}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Slider
+                size="small"
+                min={0}
+                max={32}
+                step={1}
+                value={cardRadiusValue}
+                valueLabelDisplay="auto"
+                onChange={(_, val) =>
+                  typeof val === "number" && set({ cardRadius: val })
+                }
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                size="small"
+                value={cardRadiusValue}
+                onChange={(e) => {
+                  const num = Number(e.target.value);
+                  if (Number.isFinite(num)) set({ cardRadius: Math.max(0, Math.min(32, num)) });
+                }}
+                inputProps={{ step: 1, min: 0, max: 32 }}
+                sx={{ width: 90 }}
+              />
+            </Stack>
+          </Stack>
+          <Stack spacing={1}>
+            <Typography variant="caption" color="text.secondary">
+              {t("manager.visualBuilder.pageStyle.card.blur")}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Slider
+                size="small"
+                min={0}
+                max={30}
+                step={1}
+                value={cardBlurValue}
+                valueLabelDisplay="auto"
+                onChange={(_, val) =>
+                  typeof val === "number" && set({ cardBlur: val })
+                }
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                size="small"
+                value={cardBlurValue}
+                onChange={(e) => {
+                  const num = Number(e.target.value);
+                  if (Number.isFinite(num)) set({ cardBlur: Math.max(0, Math.min(30, num)) });
+                }}
+                inputProps={{ step: 1, min: 0, max: 30 }}
+                sx={{ width: 90 }}
+              />
+            </Stack>
+          </Stack>
+
+          <Divider />
+          <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.buttons.heading")}</Typography>
+          <Stack direction="row" spacing={1}>
+            {colorField({
+              label: t("manager.visualBuilder.pageStyle.buttons.background"),
+              value: v.btnBg || "#1976d2",
+              onChange: (val) => set({ btnBg: val }),
+            })}
+            {colorField({
+              label: t("manager.visualBuilder.pageStyle.buttons.textColor"),
+              value: v.btnColor || "#ffffff",
+              onChange: (val) => set({ btnColor: val }),
+            })}
+          </Stack>
+          <TextField
+            sx={{ mt: 1 }}
+            size="small"
+            label={t("manager.visualBuilder.pageStyle.buttons.radius")}
+            type="number"
+            value={v.btnRadius ?? 10}
+            onChange={(e) =>
+              set({ btnRadius: e.target.value === "" ? "" : Number(e.target.value) })
+            }
+            placeholder={t("manager.visualBuilder.pageStyle.buttons.radiusPlaceholder")}
+            fullWidth
+          />
+
+          <Divider />
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">
+              {t("manager.visualBuilder.pageStyle.layout.bottomSpacing", {
+                defaultValue: "Page bottom spacing",
+              })}
+            </Typography>
+            <Slider
+              size="small"
+              min={0}
+              max={200}
+              value={v.pageBottomSpacing ?? 0}
+              valueLabelDisplay="auto"
+              onChange={(_, val) =>
+                typeof val === "number" && set({ pageBottomSpacing: val })
+              }
+            />
+          </Stack>
+        </Stack>
       )}
-      <TextField
-        size="small"
-        label={t("manager.visualBuilder.pageStyle.background.secondaryColor", {
-          defaultValue: "Secondary background (CSS or gradient)",
-        })}
-        value={v.secondaryBackground || ""}
-        onChange={(e) => set({ secondaryBackground: e.target.value })}
-        placeholder="linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)"
-        fullWidth
-      />
 
-      {/* NOTE: Background image picker removed */}
+      {pageStyleTab === "advanced" && (
+        <Stack spacing={1.25}>
+          <Typography variant="subtitle2">Secondary background (CSS / gradient)</Typography>
+          <TextField
+            size="small"
+            label={t("manager.visualBuilder.pageStyle.background.secondaryAdvanced", {
+              defaultValue: "Secondary background (CSS or gradient)",
+            })}
+            value={v.secondaryBackground || ""}
+            onChange={(e) => set({ secondaryBackground: e.target.value })}
+            placeholder="linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)"
+            fullWidth
+          />
+          <FormControl size="small" fullWidth>
+            <InputLabel>Examples</InputLabel>
+            <Select
+              label="Examples"
+              value=""
+              onChange={(e) => {
+                const next = e.target.value;
+                if (!next) return;
+                setSecondaryAdvanced(true);
+                set({ secondaryBackground: next });
+              }}
+            >
+              <MenuItem value="">
+                <em>Choose preset…</em>
+              </MenuItem>
+              <MenuItem value="linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)">
+                Sapphire → Teal
+              </MenuItem>
+              <MenuItem value="linear-gradient(120deg, #0f172a 0%, #1f2937 100%)">
+                Midnight Slate
+              </MenuItem>
+              <MenuItem value="linear-gradient(135deg, #f97316 0%, #fde68a 100%)">
+                Amber Sunrise
+              </MenuItem>
+              <MenuItem value="linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)">
+                Violet Glass
+              </MenuItem>
+            </Select>
+            <FormHelperText>Fill with a ready-made CSS gradient.</FormHelperText>
+          </FormControl>
+          <Stack spacing={1}>
+            <Typography variant="caption" color="text.secondary">
+              Quick gradient builder
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Slider
+                size="small"
+                min={0}
+                max={360}
+                value={gradientAngle}
+                valueLabelDisplay="auto"
+                onChange={(_, val) => typeof val === "number" && setGradientAngle(val)}
+                sx={{ flex: 1 }}
+              />
+              <TextField
+                size="small"
+                label="Angle"
+                value={gradientAngle}
+                onChange={(e) => {
+                  const num = Number(e.target.value);
+                  if (Number.isFinite(num)) setGradientAngle(Math.max(0, Math.min(360, num)));
+                }}
+                sx={{ width: 100 }}
+              />
+            </Stack>
+            <Stack direction="row" spacing={1}>
+              {colorField({
+                label: "Start color",
+                value: gradientStart,
+                onChange: (val) => setGradientStart(normalizeHexColor(val) || gradientStart),
+              })}
+              {colorField({
+                label: "End color",
+                value: gradientEnd,
+                onChange: (val) => setGradientEnd(normalizeHexColor(val) || gradientEnd),
+              })}
+            </Stack>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setSecondaryAdvanced(true);
+                set({
+                  secondaryBackground: `linear-gradient(${gradientAngle}deg, ${gradientStart} 0%, ${gradientEnd} 100%)`,
+                });
+              }}
+            >
+              Apply gradient
+            </Button>
+          </Stack>
 
-      <Stack direction="row" spacing={1}>
-        <Select
-          size="small"
-          value={v.backgroundRepeat || "no-repeat"}
-          onChange={(e) => set({ backgroundRepeat: e.target.value })}
-          fullWidth
-        >
-          <MenuItem value="no-repeat">{t("manager.visualBuilder.pageStyle.background.repeat.noRepeat")}</MenuItem>
-          <MenuItem value="repeat">{t("manager.visualBuilder.pageStyle.background.repeat.repeat")}</MenuItem>
-          <MenuItem value="repeat-x">{t("manager.visualBuilder.pageStyle.background.repeat.repeatX")}</MenuItem>
-          <MenuItem value="repeat-y">{t("manager.visualBuilder.pageStyle.background.repeat.repeatY")}</MenuItem>
-        </Select>
-        <Select
-          size="small"
-          value={v.backgroundSize || "cover"}
-          onChange={(e) => set({ backgroundSize: e.target.value })}
-          fullWidth
-        >
-          <MenuItem value="cover">{t("manager.visualBuilder.pageStyle.background.size.cover")}</MenuItem>
-          <MenuItem value="contain">{t("manager.visualBuilder.pageStyle.background.size.contain")}</MenuItem>
-          <MenuItem value="auto">{t("manager.visualBuilder.pageStyle.background.size.auto")}</MenuItem>
-        </Select>
-      </Stack>
-      <Stack direction="row" spacing={1}>
-        <Select
-          size="small"
-          value={v.backgroundPosition || "center"}
-          onChange={(e) => set({ backgroundPosition: e.target.value })}
-          fullWidth
-        >
-          <MenuItem value="center">{t("manager.visualBuilder.pageStyle.background.position.center")}</MenuItem>
-          <MenuItem value="top">{t("manager.visualBuilder.pageStyle.background.position.top")}</MenuItem>
-          <MenuItem value="bottom">{t("manager.visualBuilder.pageStyle.background.position.bottom")}</MenuItem>
-          <MenuItem value="left">{t("manager.visualBuilder.pageStyle.background.position.left")}</MenuItem>
-          <MenuItem value="right">{t("manager.visualBuilder.pageStyle.background.position.right")}</MenuItem>
-        </Select>
-        <Select
-          size="small"
-          value={v.backgroundAttachment || "scroll"}
-          onChange={(e) => set({ backgroundAttachment: e.target.value })}
-          fullWidth
-        >
-          <MenuItem value="scroll">{t("manager.visualBuilder.pageStyle.background.attachment.scroll")}</MenuItem>
-          <MenuItem value="fixed">{t("manager.visualBuilder.pageStyle.background.attachment.fixed")}</MenuItem>
-        </Select>
-      </Stack>
+          <Divider />
+          <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.card.shadow")}</Typography>
+          <FormControl size="small" fullWidth>
+            <InputLabel>Card shadow preset</InputLabel>
+            <Select
+              label="Card shadow preset"
+              value={cardShadowPreset}
+              onChange={(e) => {
+                const key = e.target.value;
+                if (key === "custom") return;
+                const preset = shadowPresets.find((p) => p.key === key);
+                set({ cardShadow: preset ? preset.value : "" });
+              }}
+            >
+              {shadowPresets.map((preset) => (
+                <MenuItem key={preset.key} value={preset.key}>
+                  {preset.label}
+                </MenuItem>
+              ))}
+              <MenuItem value="custom">Custom</MenuItem>
+            </Select>
+            <FormHelperText>Pick a preset or customize with the builder.</FormHelperText>
+          </FormControl>
+          <Stack direction="row" spacing={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setCardShadowBuilderOpen((prev) => !prev)}
+            >
+              {cardShadowBuilderOpen ? "Hide builder" : "Shadow builder"}
+            </Button>
+            {cardShadowPreset !== "custom" && (
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => {
+                  const preset = shadowPresets.find((p) => p.key === cardShadowPreset);
+                  set({ cardShadow: preset ? preset.value : "" });
+                }}
+              >
+                Reset to preset
+              </Button>
+            )}
+          </Stack>
+          {cardShadowBuilderOpen && (
+            <Stack spacing={1}>
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  size="small"
+                  label="X"
+                  type="number"
+                  value={cardShadowValues.x}
+                  onChange={(e) => updateCardShadow({ x: Number(e.target.value || 0) })}
+                />
+                <TextField
+                  size="small"
+                  label="Y"
+                  type="number"
+                  value={cardShadowValues.y}
+                  onChange={(e) => updateCardShadow({ y: Number(e.target.value || 0) })}
+                />
+                <TextField
+                  size="small"
+                  label="Blur"
+                  type="number"
+                  value={cardShadowValues.blur}
+                  onChange={(e) => updateCardShadow({ blur: Number(e.target.value || 0) })}
+                />
+                <TextField
+                  size="small"
+                  label="Spread"
+                  type="number"
+                  value={cardShadowValues.spread}
+                  onChange={(e) => updateCardShadow({ spread: Number(e.target.value || 0) })}
+                />
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center">
+                {colorField({
+                  label: "Shadow color",
+                  value: cardShadowValues.color,
+                  onChange: (val) => updateCardShadow({ color: val }),
+                })}
+                <Stack spacing={0.5} sx={{ minWidth: 140 }}>
+                  <Typography variant="caption">Opacity</Typography>
+                  <Slider
+                    size="small"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={cardShadowValues.opacity}
+                    valueLabelDisplay="auto"
+                    onChange={(_, val) =>
+                      typeof val === "number" && updateCardShadow({ opacity: val })
+                    }
+                  />
+                </Stack>
+              </Stack>
+            </Stack>
+          )}
+          {cardShadowPreset === "custom" && (
+            <TextField
+              size="small"
+              label={t("manager.visualBuilder.pageStyle.card.shadow")}
+              value={v.cardShadow || ""}
+              onChange={(e) => set({ cardShadow: e.target.value })}
+              placeholder={t("manager.visualBuilder.pageStyle.card.shadowExample")}
+              error={!isShadowValid(v.cardShadow || "")}
+              helperText={
+                isShadowValid(v.cardShadow || "")
+                  ? "Example: 0 8px 24px rgba(0,0,0,0.12)"
+                  : "Enter a valid CSS shadow (e.g. 0 8px 24px rgba(0,0,0,0.12))"
+              }
+              fullWidth
+            />
+          )}
 
-      <Stack direction="row" spacing={1} alignItems="center">
-        <TextField
-          size="small"
-          type="color"
-          label={t("manager.visualBuilder.pageStyle.background.overlayColor")}
-          value={v.overlayColor || "#000000"}
-          onChange={(e) => set({ overlayColor: e.target.value })}
-          fullWidth
-        />
-        <TextField
-          size="small"
-          label={t("manager.visualBuilder.pageStyle.background.overlayOpacity")}
-          type="number"
-          value={v.overlayOpacity ?? 0}
-          onChange={(e) =>
-            set({
-              overlayOpacity: Math.max(0, Math.min(1, Number(e.target.value || 0))),
-            })
-          }
-          fullWidth
-        />
-      </Stack>
+          <Divider />
+          <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.hero.heading")}</Typography>
+          <FormControl size="small" fullWidth>
+            <InputLabel>Hero shadow preset</InputLabel>
+            <Select
+              label="Hero shadow preset"
+              value={heroShadowPreset}
+              onChange={(e) => {
+                const key = e.target.value;
+                if (key === "custom") return;
+                const preset = shadowPresets.find((p) => p.key === key);
+                set({ heroHeadingShadow: preset ? preset.value : "" });
+              }}
+            >
+              {shadowPresets.map((preset) => (
+                <MenuItem key={preset.key} value={preset.key}>
+                  {preset.label}
+                </MenuItem>
+              ))}
+              <MenuItem value="custom">Custom</MenuItem>
+            </Select>
+            <FormHelperText>Pick a preset or customize with the builder.</FormHelperText>
+          </FormControl>
+          <Stack direction="row" spacing={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setHeroShadowBuilderOpen((prev) => !prev)}
+            >
+              {heroShadowBuilderOpen ? "Hide builder" : "Shadow builder"}
+            </Button>
+            {heroShadowPreset !== "custom" && (
+              <Button
+                size="small"
+                variant="text"
+                onClick={() => {
+                  const preset = shadowPresets.find((p) => p.key === heroShadowPreset);
+                  set({ heroHeadingShadow: preset ? preset.value : "" });
+                }}
+              >
+                Reset to preset
+              </Button>
+            )}
+          </Stack>
+          {heroShadowBuilderOpen && (
+            <Stack spacing={1}>
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  size="small"
+                  label="X"
+                  type="number"
+                  value={heroShadowValues.x}
+                  onChange={(e) => updateHeroShadow({ x: Number(e.target.value || 0) })}
+                />
+                <TextField
+                  size="small"
+                  label="Y"
+                  type="number"
+                  value={heroShadowValues.y}
+                  onChange={(e) => updateHeroShadow({ y: Number(e.target.value || 0) })}
+                />
+                <TextField
+                  size="small"
+                  label="Blur"
+                  type="number"
+                  value={heroShadowValues.blur}
+                  onChange={(e) => updateHeroShadow({ blur: Number(e.target.value || 0) })}
+                />
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center">
+                {colorField({
+                  label: "Shadow color",
+                  value: heroShadowValues.color,
+                  onChange: (val) => updateHeroShadow({ color: val }),
+                })}
+                <Stack spacing={0.5} sx={{ minWidth: 140 }}>
+                  <Typography variant="caption">Opacity</Typography>
+                  <Slider
+                    size="small"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={heroShadowValues.opacity}
+                    valueLabelDisplay="auto"
+                    onChange={(_, val) =>
+                      typeof val === "number" && updateHeroShadow({ opacity: val })
+                    }
+                  />
+                </Stack>
+              </Stack>
+            </Stack>
+          )}
+          {heroShadowPreset === "custom" && (
+            <TextField
+              size="small"
+              label={t("manager.visualBuilder.pageStyle.hero.shadow")}
+              value={v.heroHeadingShadow || "0 2px 24px rgba(0,0,0,.25)"}
+              onChange={(e) => set({ heroHeadingShadow: e.target.value })}
+              error={!isShadowValid(v.heroHeadingShadow || "")}
+              helperText={
+                isShadowValid(v.heroHeadingShadow || "")
+                  ? "Example: 0 2px 24px rgba(0,0,0,0.25)"
+                  : "Enter a valid CSS shadow."
+              }
+              fullWidth
+            />
+          )}
+        </Stack>
+      )}
 
-      {/* NOTE: Typography group removed */}
-
-      {/* Card / Box styling */}
-      <Typography variant="subtitle2" sx={{ mt: 1 }}>{t("manager.visualBuilder.pageStyle.card.heading")}</Typography>
-      <Stack direction="row" spacing={1}>
-        <TextField
-          size="small"
-          type="color"
-          label={t("manager.visualBuilder.pageStyle.card.backgroundColor")}
-          value={cardColorInput}
-          onChange={handleCardColor}
-          fullWidth
-        />
-        <TextField
-          size="small"
-          label={t("manager.visualBuilder.pageStyle.card.opacity")}
-          type="number"
-          value={cardOpacityInput}
-          onChange={handleCardOpacity}
-          inputProps={{ step: 0.05, min: 0, max: 1 }}
-          fullWidth
-        />
-      </Stack>
-      <Stack direction="row" spacing={1}>
-        <TextField
-          size="small"
-          label={t("manager.visualBuilder.pageStyle.card.radius")}
-          type="number"
-          value={v.cardRadius ?? 12}
-          onChange={(e) => set({ cardRadius: Number(e.target.value || 0) })}
-          fullWidth
-        />
-        <TextField
-          size="small"
-          label={t("manager.visualBuilder.pageStyle.card.blur")}
-          type="number"
-          value={v.cardBlur ?? 0}
-          onChange={(e) => set({ cardBlur: Number(e.target.value || 0) })}
-          fullWidth
-        />
-      </Stack>
-      <TextField
-        size="small"
-        label={t("manager.visualBuilder.pageStyle.card.shadow")}
-        value={v.cardShadow || ""}
-        onChange={(e) => set({ cardShadow: e.target.value })}
-        placeholder={t("manager.visualBuilder.pageStyle.card.shadowExample")}
-        fullWidth
-      />
-
-      {/* Hero heading effects */}
-      <Typography variant="subtitle2" sx={{ mt: 1 }}>{t("manager.visualBuilder.pageStyle.hero.heading")}</Typography>
-      <TextField
-        size="small"
-        label={t("manager.visualBuilder.pageStyle.hero.shadow")}
-        value={v.heroHeadingShadow || "0 2px 24px rgba(0,0,0,.25)"}
-        onChange={(e) => set({ heroHeadingShadow: e.target.value })}
-        fullWidth
-      />
-
-      {/* Buttons */}
-      <Divider sx={{ my: 1 }} />
-      <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.buttons.heading")}</Typography>
-      <Stack direction="row" spacing={1}>
-        <TextField
-          size="small"
-          type="color"
-          label={t("manager.visualBuilder.pageStyle.buttons.background")}
-          value={v.btnBg || "#1976d2"}
-          onChange={(e) => set({ btnBg: e.target.value })}
-          fullWidth
-        />
-        <TextField
-          size="small"
-          type="color"
-          label={t("manager.visualBuilder.pageStyle.buttons.textColor")}
-          value={v.btnColor || "#ffffff"}
-          onChange={(e) => set({ btnColor: e.target.value })}
-          fullWidth
-        />
-      </Stack>
-      <TextField
-        sx={{ mt: 1 }}
-        size="small"
-        label={t("manager.visualBuilder.pageStyle.buttons.radius")}
-        type="number"
-        value={v.btnRadius ?? 10}
-        onChange={(e) =>
-          set({ btnRadius: e.target.value === "" ? "" : Number(e.target.value) })
-        }
-        placeholder={t("manager.visualBuilder.pageStyle.buttons.radiusPlaceholder")}
-        fullWidth
-      />
-      <Divider sx={{ my: 1 }} />
-      <Stack spacing={1}>
-        <Typography variant="subtitle2">
-          {t("manager.visualBuilder.pageStyle.layout.bottomSpacing", {
-            defaultValue: "Page bottom spacing",
-          })}
-        </Typography>
-        <Slider
-          size="small"
-          min={0}
-          max={200}
-          value={v.pageBottomSpacing ?? 0}
-          valueLabelDisplay="auto"
-          onChange={(_, val) =>
-            typeof val === "number" && set({ pageBottomSpacing: val })
-          }
-        />
-      </Stack>
-
-      {/* Apply-to-all */}
       <Divider sx={{ my: 1 }} />
       <Stack direction="row" spacing={1} alignItems="center">
         <FormControlLabel
@@ -820,17 +1359,47 @@ function PageStyleCard({
           }
           label={t("manager.visualBuilder.pageStyle.applyAllLabel")}
         />
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={onApplyNow}
-          disabled={!onApplyNow}
-        >
-          {t("manager.visualBuilder.pageStyle.applyNow")}
-        </Button>
-
       </Stack>
-      {/* NEW — open the full, section-based editor */}
+
+      <Box
+        sx={{
+          position: "sticky",
+          bottom: 0,
+          pt: 1,
+          pb: 1,
+          px: 1,
+          borderTop: "1px solid",
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+        }}
+      >
+        <Typography variant="caption" color={isDirty ? "warning.main" : "text.secondary"}>
+          {isDirty ? "Unsaved changes" : "All changes saved"}
+        </Typography>
+        <Stack direction="row" spacing={1}>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => onChange?.(initialStyleRef.current || {})}
+            disabled={!isDirty}
+          >
+            Reset
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={onApplyNow}
+            disabled={!onApplyNow}
+          >
+            {t("manager.visualBuilder.pageStyle.applyNow")}
+          </Button>
+        </Stack>
+      </Box>
+
       <Button
         size="small"
         variant="contained"
@@ -991,6 +1560,7 @@ useEffect(() => {
 const [pagesListOpen, setPagesListOpen] = useState(false);
 const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
 const [inspectorOpen, setInspectorOpen] = useState(false);
+const [inspectorTab, setInspectorTab] = useState("content");
 const [pageStyleOpen, setPageStyleOpen] = useState(false);
 const canvasScrollRef = useRef(null);
   const [inspectorDrawerOpen, setInspectorDrawerOpen] = useState(false);
@@ -3876,6 +4446,194 @@ const CanvasColumn = (
 
 
 function InspectorColumn() {
+  const clamp01 = (n) => {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return 0;
+    return Math.max(0, Math.min(1, num));
+  };
+  const toHexByte = (n) =>
+    Math.max(0, Math.min(255, Math.round(Number(n) || 0)))
+      .toString(16)
+      .padStart(2, "0");
+  const normalizeHexColor = (hex) => {
+    if (typeof hex !== "string") return "";
+    let s = hex.trim();
+    if (!s) return "";
+    if (!s.startsWith("#")) return s;
+    let h = s.slice(1);
+    if (h.length === 3) {
+      h = h
+        .split("")
+        .map((c) => c + c)
+        .join("");
+    } else if (h.length === 4) {
+      h = h
+        .slice(0, 3)
+        .split("")
+        .map((c) => c + c)
+        .join("");
+    } else if (h.length === 8) {
+      h = h.slice(0, 6);
+    }
+    if (h.length < 6) h = h.padEnd(6, "0");
+    return `#${h.toLowerCase()}`;
+  };
+  const hexToRgba = (hex, opacity = 1) => {
+    const norm = normalizeHexColor(hex);
+    if (!norm || !norm.startsWith("#")) return norm || "";
+    const h = norm.slice(1);
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${clamp01(opacity)})`;
+  };
+  const parseCssColor = (css, fallbackOpacity = 1) => {
+    const base = { hex: "#ffffff", opacity: clamp01(fallbackOpacity) };
+    if (!css || typeof css !== "string") return base;
+    const str = css.trim();
+    if (!str) return base;
+    if (str.toLowerCase() === "transparent") {
+      return { hex: "#000000", opacity: 0 };
+    }
+    const rgba = /^rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([0-9.]+))?\)$/i.exec(str);
+    if (rgba) {
+      const r = Number(rgba[1]);
+      const g = Number(rgba[2]);
+      const b = Number(rgba[3]);
+      const a = rgba[4] != null ? parseFloat(rgba[4]) : base.opacity;
+      return {
+        hex: `#${toHexByte(r)}${toHexByte(g)}${toHexByte(b)}`,
+        opacity: clamp01(a),
+      };
+    }
+    if (str.startsWith("#")) {
+      const raw = str.slice(1);
+      let alpha = base.opacity;
+      if (raw.length === 4) {
+        alpha = parseInt(raw[3] + raw[3], 16) / 255;
+      } else if (raw.length === 8) {
+        alpha = parseInt(raw.slice(6, 8), 16) / 255;
+      }
+      return { hex: normalizeHexColor(str), opacity: clamp01(alpha) };
+    }
+    return base;
+  };
+  const shadowPresets = [
+    { key: "none", label: "None", value: "" },
+    { key: "soft", label: "Soft", value: "0 8px 24px rgba(0,0,0,0.12)" },
+    { key: "medium", label: "Medium", value: "0 12px 32px rgba(0,0,0,0.18)" },
+    { key: "strong", label: "Strong", value: "0 18px 48px rgba(0,0,0,0.24)" },
+    { key: "glass", label: "Glass", value: "0 12px 32px rgba(15,23,42,0.28)" },
+  ];
+  const matchShadowPreset = (val) =>
+    shadowPresets.find((preset) => (val || "").trim() === preset.value) || null;
+  const isShadowValid = (val) =>
+    !val ||
+    /-?\d+px\s+-?\d+px/.test(val) ||
+    /rgba?\(/i.test(val) ||
+    /#/.test(val);
+  const parseBoxShadow = (val) => {
+    const fallback = { x: 0, y: 12, blur: 32, spread: 0, color: "#000000", opacity: 0.18 };
+    if (!val || typeof val !== "string") return fallback;
+    const match =
+      /(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px(?:\s+(-?\d+(?:\.\d+)?)px)?\s+(.+)/.exec(
+        val.trim()
+      );
+    if (!match) return fallback;
+    const parsedColor = parseCssColor(match[5], fallback.opacity);
+    return {
+      x: Number(match[1]),
+      y: Number(match[2]),
+      blur: Number(match[3]),
+      spread: Number(match[4] || 0),
+      color: parsedColor.hex || fallback.color,
+      opacity: parsedColor.opacity,
+    };
+  };
+  const parseTextShadow = (val) => {
+    const fallback = { x: 0, y: 6, blur: 18, color: "#000000", opacity: 0.25 };
+    if (!val || typeof val !== "string") return fallback;
+    const match =
+      /(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(.+)/.exec(
+        val.trim()
+      );
+    if (!match) return fallback;
+    const parsedColor = parseCssColor(match[4], fallback.opacity);
+    return {
+      x: Number(match[1]),
+      y: Number(match[2]),
+      blur: Number(match[3]),
+      color: parsedColor.hex || fallback.color,
+      opacity: parsedColor.opacity,
+    };
+  };
+  const buildBoxShadow = ({ x, y, blur, spread, color, opacity }) =>
+    `${x}px ${y}px ${blur}px ${spread}px ${hexToRgba(color, opacity)}`;
+  const buildTextShadow = ({ x, y, blur, color, opacity }) =>
+    `${x}px ${y}px ${blur}px ${hexToRgba(color, opacity)}`;
+  const colorField = ({ label, value, onChange: onColorChange, helperText }) => {
+    const normalized = normalizeHexColor(value) || "#000000";
+    return (
+      <TextField
+        size="small"
+        label={label}
+        value={value || ""}
+        onChange={(e) => onColorChange(e.target.value)}
+        helperText={helperText}
+        fullWidth
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <ButtonBase
+                component="label"
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 1,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: normalized,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <Box
+                  component="input"
+                  type="color"
+                  value={normalized}
+                  onChange={(e) => onColorChange(e.target.value)}
+                  sx={{ opacity: 0, position: "absolute", width: "100%", height: "100%" }}
+                />
+              </ButtonBase>
+            </InputAdornment>
+          ),
+        }}
+      />
+    );
+  };
+
+  const selectedBlockObj = safeSections(editing)[selectedBlock] || {};
+  const selectedProps = selectedBlockObj?.props || {};
+  const hasBackgroundImage =
+    selectedProps.backgroundUrl || selectedProps.image || selectedProps.backgroundImage;
+  const cardShadowPreset = matchShadowPreset(selectedProps.cardShadow)?.key || "custom";
+  const heroShadowPreset =
+    matchShadowPreset(selectedProps.heroHeadingShadow)?.key || "custom";
+  const cardShadowValues = parseBoxShadow(selectedProps.cardShadow || "");
+  const heroShadowValues = parseTextShadow(selectedProps.heroHeadingShadow || "");
+  const updateCardShadow = (patch) => {
+    const next = { ...cardShadowValues, ...patch };
+    setBlockProp(selectedBlock, "cardShadow", buildBoxShadow(next));
+  };
+  const updateHeroShadow = (patch) => {
+    const next = { ...heroShadowValues, ...patch };
+    setBlockProp(selectedBlock, "heroHeadingShadow", buildTextShadow(next));
+  };
+  const [cardShadowBuilderOpen, setCardShadowBuilderOpen] = useState(false);
+  const [heroShadowBuilderOpen, setHeroShadowBuilderOpen] = useState(false);
+
   return (
     <Stack spacing={1.5}>
     <CollapsibleSection
@@ -3964,168 +4722,553 @@ function InspectorColumn() {
         </Alert>
       ) : (
         <>
-          {schemaForBlock ? (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, opacity: 0.7 }}>
-                Content
-              </Typography>
-              <SchemaInspector
-                schema={schemaForBlock}
-                value={safeSections(editing)[selectedBlock]?.props || {}}
-                onChange={(props) => setBlockPropsAll(selectedBlock, props)}
-                companyId={companyId}
-              />
-            </Box>
-          ) : (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              This section type isn’t mapped to a visual inspector yet.
-              {blockType ? (
-                <>
-                  {" "}
-                  Current type: <strong>{blockType}</strong>
-                </>
-              ) : null}{" "}
-              You can still edit its props below.
-            </Alert>
+          <Tabs
+            value={inspectorTab}
+            onChange={(_, v) => setInspectorTab(v)}
+            variant="fullWidth"
+            sx={{ mb: 1 }}
+          >
+            <Tab value="content" label="Content" />
+            <Tab value="style" label="Style" />
+            <Tab value="advanced" label="Advanced" />
+          </Tabs>
+
+          {inspectorTab === "content" && (
+            <>
+              {schemaForBlock ? (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1, opacity: 0.7 }}>
+                    Content
+                  </Typography>
+                  <SchemaInspector
+                    schema={schemaForBlock}
+                    value={safeSections(editing)[selectedBlock]?.props || {}}
+                    onChange={(props) => setBlockPropsAll(selectedBlock, props)}
+                    companyId={companyId}
+                  />
+                </Box>
+              ) : (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  This section type isn’t mapped to a visual inspector yet.
+                  {blockType ? (
+                    <>
+                      {" "}
+                      Current type: <strong>{blockType}</strong>
+                    </>
+                  ) : null}{" "}
+                  You can still edit its props below.
+                </Alert>
+              )}
+            </>
           )}
 
-          <Box sx={{ mt: 2 }}>
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <Typography variant="subtitle2" sx={{ opacity: 0.7 }}>
-                {t("manager.visualBuilder.inspector.sizeSpacing")}
-              </Typography>
-              <Tooltip title={t("manager.visualBuilder.inspector.resetTooltip")}>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    const all = safeSections(editing);
-                    const blk = all[selectedBlock];
-                    if (!blk) return;
-                    const defaultPy = blk.type === "hero" ? 0 : 32;
-                    setEditing((cur) => {
-                      const sections = [...safeSections(cur)];
-                      const b = { ...sections[selectedBlock] };
-                      b.sx = { ...(b.sx || {}), py: defaultPy };
-                      b.props = { ...(b.props || {}) };
-                      delete b.props.spaceAbove;
-                      delete b.props.spaceBelow;
-                      sections[selectedBlock] = b;
-                      return withLiftedLayout({
-                        ...cur,
-                        content: { ...(cur.content || {}), sections },
-                      });
-                    });
-                  }}
-                >
-                  {t("manager.visualBuilder.inspector.reset")}
-                </Button>
-              </Tooltip>
-            </Stack>
-
-            {(() => {
-              const blk = safeSections(editing)[selectedBlock] || {};
-              const currentPy =
-                Number(blk?.sx?.py ?? (blk?.type === "hero" ? 0 : 32));
-              const spaceAboveUnits =
-                Number.isFinite(blk?.props?.spaceAbove) ? Number(blk.props.spaceAbove) : 0;
-              const spaceBelowUnits =
-                Number.isFinite(blk?.props?.spaceBelow) ? Number(blk.props.spaceBelow) : 0;
-
-              return (
-                <Stack spacing={2} sx={{ mt: 1.5 }}>
-                  <Box>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="body2">{t("manager.visualBuilder.inspector.sectionPadding")}</Typography>
-                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                        {currentPy}px
-                      </Typography>
-                    </Stack>
-                    <Slider
-                      size="small"
-                      min={0}
-                      max={200}
-                      step={4}
-                      value={currentPy}
-                      valueLabelDisplay="auto"
-                      marks={[
-                        { value: 0, label: "0" },
-                        { value: 16, label: "16" },
-                        { value: 32, label: "32" },
-                        { value: 64, label: "64" },
-                        { value: 96, label: "96" },
-                        { value: 128, label: "128" },
-                      ]}
-                      onChange={(_, v) => {
-                        const py = Number(v || 0);
-                        setEditing((cur) => {
-                          const sections = [...safeSections(cur)];
-                          const b = { ...sections[selectedBlock] };
-                          b.sx = { ...(b.sx || {}), py };
-                          sections[selectedBlock] = b;
-                          return withLiftedLayout({
-                            ...cur,
-                            content: { ...(cur.content || {}), sections },
-                          });
+          {inspectorTab === "style" && (
+            <Box sx={{ mt: 1 }}>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Typography variant="subtitle2" sx={{ opacity: 0.7 }}>
+                  {t("manager.visualBuilder.inspector.sizeSpacing")}
+                </Typography>
+                <Tooltip title={t("manager.visualBuilder.inspector.resetTooltip")}>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      const all = safeSections(editing);
+                      const blk = all[selectedBlock];
+                      if (!blk) return;
+                      const defaultPy = blk.type === "hero" ? 0 : 32;
+                      setEditing((cur) => {
+                        const sections = [...safeSections(cur)];
+                        const b = { ...sections[selectedBlock] };
+                        b.sx = { ...(b.sx || {}), py: defaultPy };
+                        b.props = { ...(b.props || {}) };
+                        delete b.props.spaceAbove;
+                        delete b.props.spaceBelow;
+                        sections[selectedBlock] = b;
+                        return withLiftedLayout({
+                          ...cur,
+                          content: { ...(cur.content || {}), sections },
                         });
-                      }}
-                    />
-                  </Box>
+                      });
+                    }}
+                  >
+                    {t("manager.visualBuilder.inspector.reset")}
+                  </Button>
+                </Tooltip>
+              </Stack>
 
-                  <Box>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="body2">
-                        {t("manager.visualBuilder.inspector.spaceAbove")}
-                      </Typography>
+              {(() => {
+                const blk = safeSections(editing)[selectedBlock] || {};
+                const currentPy =
+                  Number(blk?.sx?.py ?? (blk?.type === "hero" ? 0 : 32));
+                const spaceAboveUnits =
+                  Number.isFinite(blk?.props?.spaceAbove) ? Number(blk.props.spaceAbove) : 0;
+                const spaceBelowUnits =
+                  Number.isFinite(blk?.props?.spaceBelow) ? Number(blk.props.spaceBelow) : 0;
+
+                return (
+                  <Stack spacing={2} sx={{ mt: 1.5 }}>
+                    {(hasBackgroundImage || selectedProps.backgroundColor) && (
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                          Background
+                        </Typography>
+                        {hasBackgroundImage && (
+                          <ImageField
+                            label="Background image"
+                            value={
+                              selectedProps.backgroundUrl ||
+                              selectedProps.image ||
+                              selectedProps.backgroundImage ||
+                              ""
+                            }
+                            onChange={(url) =>
+                              setBlockProp(
+                                selectedBlock,
+                                selectedProps.backgroundUrl ? "backgroundUrl" : "backgroundImage",
+                                url
+                              )
+                            }
+                            companyId={companyId}
+                          />
+                        )}
+                        {selectedProps.backgroundColor && (
+                          <Box sx={{ mt: 1 }}>
+                            {colorField({
+                              label: "Background color",
+                              value: selectedProps.backgroundColor,
+                              onChange: (val) =>
+                                setBlockProp(selectedBlock, "backgroundColor", val),
+                            })}
+                          </Box>
+                        )}
+                      </Box>
+                    )}
+
+                    {(selectedProps.headingColor || selectedProps.bodyColor || selectedProps.linkColor) && (
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                          Typography
+                        </Typography>
+                        <Stack spacing={1}>
+                          {selectedProps.headingColor &&
+                            colorField({
+                              label: "Heading color",
+                              value: selectedProps.headingColor,
+                              onChange: (val) =>
+                                setBlockProp(selectedBlock, "headingColor", val),
+                            })}
+                          {selectedProps.bodyColor &&
+                            colorField({
+                              label: "Body color",
+                              value: selectedProps.bodyColor,
+                              onChange: (val) =>
+                                setBlockProp(selectedBlock, "bodyColor", val),
+                            })}
+                          {selectedProps.linkColor &&
+                            colorField({
+                              label: "Link color",
+                              value: selectedProps.linkColor,
+                              onChange: (val) =>
+                                setBlockProp(selectedBlock, "linkColor", val),
+                            })}
+                        </Stack>
+                      </Box>
+                    )}
+
+                    {(selectedProps.cardShadow || selectedProps.cardRadius || selectedProps.cardBlur) && (
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                          Card / Container
+                        </Typography>
+                        {selectedProps.cardRadius != null && (
+                          <Stack spacing={1}>
+                            <Typography variant="caption" color="text.secondary">
+                              Card radius (px)
+                            </Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Slider
+                                size="small"
+                                min={0}
+                                max={32}
+                                step={1}
+                                value={Number(selectedProps.cardRadius) || 0}
+                                valueLabelDisplay="auto"
+                                onChange={(_, val) =>
+                                  typeof val === "number" &&
+                                  setBlockProp(selectedBlock, "cardRadius", val)
+                                }
+                                sx={{ flex: 1 }}
+                              />
+                              <TextField
+                                size="small"
+                                value={Number(selectedProps.cardRadius) || 0}
+                                onChange={(e) =>
+                                  setBlockProp(
+                                    selectedBlock,
+                                    "cardRadius",
+                                    Number(e.target.value || 0)
+                                  )
+                                }
+                                inputProps={{ step: 1, min: 0, max: 32 }}
+                                sx={{ width: 90 }}
+                              />
+                            </Stack>
+                          </Stack>
+                        )}
+                        {selectedProps.cardBlur != null && (
+                          <Stack spacing={1} sx={{ mt: 1 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              Card blur (px)
+                            </Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Slider
+                                size="small"
+                                min={0}
+                                max={30}
+                                step={1}
+                                value={Number(selectedProps.cardBlur) || 0}
+                                valueLabelDisplay="auto"
+                                onChange={(_, val) =>
+                                  typeof val === "number" &&
+                                  setBlockProp(selectedBlock, "cardBlur", val)
+                                }
+                                sx={{ flex: 1 }}
+                              />
+                              <TextField
+                                size="small"
+                                value={Number(selectedProps.cardBlur) || 0}
+                                onChange={(e) =>
+                                  setBlockProp(
+                                    selectedBlock,
+                                    "cardBlur",
+                                    Number(e.target.value || 0)
+                                  )
+                                }
+                                inputProps={{ step: 1, min: 0, max: 30 }}
+                                sx={{ width: 90 }}
+                              />
+                            </Stack>
+                          </Stack>
+                        )}
+                        {selectedProps.cardShadow != null && (
+                          <Stack spacing={1} sx={{ mt: 1 }}>
+                            <FormControl size="small" fullWidth>
+                              <InputLabel>Card shadow preset</InputLabel>
+                              <Select
+                                label="Card shadow preset"
+                                value={cardShadowPreset}
+                                onChange={(e) => {
+                                  const key = e.target.value;
+                                  if (key === "custom") return;
+                                  const preset = shadowPresets.find((p) => p.key === key);
+                                  setBlockProp(selectedBlock, "cardShadow", preset ? preset.value : "");
+                                }}
+                              >
+                                {shadowPresets.map((preset) => (
+                                  <MenuItem key={preset.key} value={preset.key}>
+                                    {preset.label}
+                                  </MenuItem>
+                                ))}
+                                <MenuItem value="custom">Custom</MenuItem>
+                              </Select>
+                              <FormHelperText>Pick a preset or customize with the builder.</FormHelperText>
+                            </FormControl>
+                            <Stack direction="row" spacing={1}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => setCardShadowBuilderOpen((prev) => !prev)}
+                              >
+                                {cardShadowBuilderOpen ? "Hide builder" : "Shadow builder"}
+                              </Button>
+                            </Stack>
+                            {cardShadowBuilderOpen && (
+                              <Stack spacing={1}>
+                                <Stack direction="row" spacing={1}>
+                                  <TextField
+                                    size="small"
+                                    label="X"
+                                    type="number"
+                                    value={cardShadowValues.x}
+                                    onChange={(e) => updateCardShadow({ x: Number(e.target.value || 0) })}
+                                  />
+                                  <TextField
+                                    size="small"
+                                    label="Y"
+                                    type="number"
+                                    value={cardShadowValues.y}
+                                    onChange={(e) => updateCardShadow({ y: Number(e.target.value || 0) })}
+                                  />
+                                  <TextField
+                                    size="small"
+                                    label="Blur"
+                                    type="number"
+                                    value={cardShadowValues.blur}
+                                    onChange={(e) => updateCardShadow({ blur: Number(e.target.value || 0) })}
+                                  />
+                                  <TextField
+                                    size="small"
+                                    label="Spread"
+                                    type="number"
+                                    value={cardShadowValues.spread}
+                                    onChange={(e) => updateCardShadow({ spread: Number(e.target.value || 0) })}
+                                  />
+                                </Stack>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  {colorField({
+                                    label: "Shadow color",
+                                    value: cardShadowValues.color,
+                                    onChange: (val) => updateCardShadow({ color: val }),
+                                  })}
+                                  <Stack spacing={0.5} sx={{ minWidth: 140 }}>
+                                    <Typography variant="caption">Opacity</Typography>
+                                    <Slider
+                                      size="small"
+                                      min={0}
+                                      max={1}
+                                      step={0.05}
+                                      value={cardShadowValues.opacity}
+                                      valueLabelDisplay="auto"
+                                      onChange={(_, val) =>
+                                        typeof val === "number" && updateCardShadow({ opacity: val })
+                                      }
+                                    />
+                                  </Stack>
+                                </Stack>
+                              </Stack>
+                            )}
+                            {cardShadowPreset === "custom" && (
+                              <TextField
+                                size="small"
+                                label="Card shadow (CSS)"
+                                value={selectedProps.cardShadow || ""}
+                                onChange={(e) =>
+                                  setBlockProp(selectedBlock, "cardShadow", e.target.value)
+                                }
+                                placeholder="0 8px 24px rgba(0,0,0,0.12)"
+                                error={!isShadowValid(selectedProps.cardShadow || "")}
+                                helperText={
+                                  isShadowValid(selectedProps.cardShadow || "")
+                                    ? "Example: 0 8px 24px rgba(0,0,0,0.12)"
+                                    : "Enter a valid CSS shadow."
+                                }
+                                fullWidth
+                              />
+                            )}
+                          </Stack>
+                        )}
+                      </Box>
+                    )}
+
+                    {selectedProps.heroHeadingShadow != null && (
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                          Hero heading shadow
+                        </Typography>
+                        <FormControl size="small" fullWidth>
+                          <InputLabel>Hero shadow preset</InputLabel>
+                          <Select
+                            label="Hero shadow preset"
+                            value={heroShadowPreset}
+                            onChange={(e) => {
+                              const key = e.target.value;
+                              if (key === "custom") return;
+                              const preset = shadowPresets.find((p) => p.key === key);
+                              setBlockProp(
+                                selectedBlock,
+                                "heroHeadingShadow",
+                                preset ? preset.value : ""
+                              );
+                            }}
+                          >
+                            {shadowPresets.map((preset) => (
+                              <MenuItem key={preset.key} value={preset.key}>
+                                {preset.label}
+                              </MenuItem>
+                            ))}
+                            <MenuItem value="custom">Custom</MenuItem>
+                          </Select>
+                          <FormHelperText>Pick a preset or customize with the builder.</FormHelperText>
+                        </FormControl>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => setHeroShadowBuilderOpen((prev) => !prev)}
+                          >
+                            {heroShadowBuilderOpen ? "Hide builder" : "Shadow builder"}
+                          </Button>
+                        </Stack>
+                        {heroShadowBuilderOpen && (
+                          <Stack spacing={1}>
+                            <Stack direction="row" spacing={1}>
+                              <TextField
+                                size="small"
+                                label="X"
+                                type="number"
+                                value={heroShadowValues.x}
+                                onChange={(e) => updateHeroShadow({ x: Number(e.target.value || 0) })}
+                              />
+                              <TextField
+                                size="small"
+                                label="Y"
+                                type="number"
+                                value={heroShadowValues.y}
+                                onChange={(e) => updateHeroShadow({ y: Number(e.target.value || 0) })}
+                              />
+                              <TextField
+                                size="small"
+                                label="Blur"
+                                type="number"
+                                value={heroShadowValues.blur}
+                                onChange={(e) => updateHeroShadow({ blur: Number(e.target.value || 0) })}
+                              />
+                            </Stack>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              {colorField({
+                                label: "Shadow color",
+                                value: heroShadowValues.color,
+                                onChange: (val) => updateHeroShadow({ color: val }),
+                              })}
+                              <Stack spacing={0.5} sx={{ minWidth: 140 }}>
+                                <Typography variant="caption">Opacity</Typography>
+                                <Slider
+                                  size="small"
+                                  min={0}
+                                  max={1}
+                                  step={0.05}
+                                  value={heroShadowValues.opacity}
+                                  valueLabelDisplay="auto"
+                                  onChange={(_, val) =>
+                                    typeof val === "number" && updateHeroShadow({ opacity: val })
+                                  }
+                                />
+                              </Stack>
+                            </Stack>
+                            <Paper variant="outlined" sx={{ p: 1 }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ textShadow: selectedProps.heroHeadingShadow || "none" }}
+                              >
+                                Shadow preview text
+                              </Typography>
+                            </Paper>
+                          </Stack>
+                        )}
+                        {heroShadowPreset === "custom" && (
+                          <TextField
+                            size="small"
+                            label="Hero heading shadow (CSS)"
+                            value={selectedProps.heroHeadingShadow || ""}
+                            onChange={(e) =>
+                              setBlockProp(selectedBlock, "heroHeadingShadow", e.target.value)
+                            }
+                            error={!isShadowValid(selectedProps.heroHeadingShadow || "")}
+                            helperText={
+                              isShadowValid(selectedProps.heroHeadingShadow || "")
+                                ? "Example: 0 2px 24px rgba(0,0,0,0.25)"
+                                : "Enter a valid CSS shadow."
+                            }
+                            fullWidth
+                          />
+                        )}
+                      </Box>
+                    )}
+
+                    <Box>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="body2">{t("manager.visualBuilder.inspector.sectionPadding")}</Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                          {currentPy}px
+                        </Typography>
+                      </Stack>
+                      <Slider
+                        size="small"
+                        min={0}
+                        max={200}
+                        step={4}
+                        value={currentPy}
+                        valueLabelDisplay="auto"
+                        marks={[
+                          { value: 0, label: "0" },
+                          { value: 16, label: "16" },
+                          { value: 32, label: "32" },
+                          { value: 64, label: "64" },
+                          { value: 96, label: "96" },
+                          { value: 128, label: "128" },
+                        ]}
+                        onChange={(_, v) => {
+                          const py = Number(v || 0);
+                          setEditing((cur) => {
+                            const sections = [...safeSections(cur)];
+                            const b = { ...sections[selectedBlock] };
+                            b.sx = { ...(b.sx || {}), py };
+                            sections[selectedBlock] = b;
+                            return withLiftedLayout({
+                              ...cur,
+                              content: { ...(cur.content || {}), sections },
+                            });
+                          });
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="body2">
+                          {t("manager.visualBuilder.inspector.spaceAbove")}
+                        </Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                          {spaceAboveUnits}u
+                        </Typography>
+                      </Stack>
+                      <Slider
+                        size="small"
+                        min={0}
+                        max={12}
+                        step={1}
+                        value={spaceAboveUnits}
+                        valueLabelDisplay="auto"
+                        marks={[0, 2, 4, 6, 8, 10, 12].map((v) => ({ value: v, label: String(v) }))}
+                        onChange={(_, v) =>
+                          setBlockProp(selectedBlock, "spaceAbove", Number(v))
+                        }
+                      />
                       <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                        {spaceAboveUnits}u
+                        Tip: {t("manager.visualBuilder.pages.settings.sectionSpacing.hint")}
                       </Typography>
-                    </Stack>
-                    <Slider
-                      size="small"
-                      min={0}
-                      max={12}
-                      step={1}
-                      value={spaceAboveUnits}
-                      valueLabelDisplay="auto"
-                      marks={[0, 2, 4, 6, 8, 10, 12].map((v) => ({ value: v, label: String(v) }))}
-                      onChange={(_, v) =>
-                        setBlockProp(selectedBlock, "spaceAbove", Number(v))
-                      }
-                    />
-                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                      Tip: {t("manager.visualBuilder.pages.settings.sectionSpacing.hint")}
-                    </Typography>
-                  </Box>
+                    </Box>
 
-                  <Box>
-                    <Stack direction="row" justifyContent="space-between">
-                      <Typography variant="body2">
-                        {t("manager.visualBuilder.inspector.spaceBelow")}
-                      </Typography>
-                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                        {spaceBelowUnits}u
-                      </Typography>
-                    </Stack>
-                    <Slider
-                      size="small"
-                      min={0}
-                      max={12}
-                      step={1}
-                      value={spaceBelowUnits}
-                      valueLabelDisplay="auto"
-                      marks={[0, 2, 4, 6, 8, 10, 12].map((v) => ({ value: v, label: String(v) }))}
-                      onChange={(_, v) =>
-                        setBlockProp(selectedBlock, "spaceBelow", Number(v))
-                      }
-                    />
-                  </Box>
-                </Stack>
-              );
-            })()}
-          </Box>
+                    <Box>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="body2">
+                          {t("manager.visualBuilder.inspector.spaceBelow")}
+                        </Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                          {spaceBelowUnits}u
+                        </Typography>
+                      </Stack>
+                      <Slider
+                        size="small"
+                        min={0}
+                        max={12}
+                        step={1}
+                        value={spaceBelowUnits}
+                        valueLabelDisplay="auto"
+                        marks={[0, 2, 4, 6, 8, 10, 12].map((v) => ({ value: v, label: String(v) }))}
+                        onChange={(_, v) =>
+                          setBlockProp(selectedBlock, "spaceBelow", Number(v))
+                        }
+                      />
+                    </Box>
+                  </Stack>
+                );
+              })()}
+            </Box>
+          )}
 
-          {mode === "advanced" ? (
-            <Box sx={{ mt: 2 }}>
+          {inspectorTab === "advanced" && (
+            <Box sx={{ mt: 1 }}>
               <Typography variant="subtitle2" sx={{ mb: 1, opacity: 0.7 }}>
                 {t("manager.visualBuilder.inspector.advanced")}
               </Typography>
@@ -4136,18 +5279,6 @@ function InspectorColumn() {
                 companyId={companyId}
               />
             </Box>
-          ) : (
-            <Accordion sx={{ mt: 2 }}>
-              <AccordionSummary>{t("manager.visualBuilder.inspector.advanced")}</AccordionSummary>
-              <AccordionDetails>
-                <SectionInspector
-                  block={safeSections(editing)[selectedBlock]}
-                  onChangeProp={(k, v) => setBlockProp(selectedBlock, k, v)}
-                  onChangeProps={(np) => setBlockPropsAll(selectedBlock, np)}
-                  companyId={companyId}
-                />
-              </AccordionDetails>
-            </Accordion>
           )}
         </>
       )}
