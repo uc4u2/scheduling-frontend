@@ -1763,6 +1763,34 @@ const handleHeaderDraftChange = useCallback(
   [setSiteSettings]
 );
 
+const handleHeaderItemRemove = useCallback(
+  (payload) => {
+    if (!payload) return;
+    const next = normalizeHeaderConfig(headerDraft || defaultHeaderConfig());
+    switch (payload.type) {
+      case "logo":
+        next.logo_asset_id = null;
+        next.logo_asset = null;
+        next.logo_url = "";
+        next.logo_asset_url = "";
+        break;
+      case "brand-text":
+        next.show_brand_text = false;
+        break;
+      case "social":
+        next.social_links = (next.social_links || []).filter(
+          (_, idx) => idx !== payload.index
+        );
+        break;
+      default:
+        break;
+    }
+    setBrandingPanelOpen(true);
+    handleHeaderDraftChange(next);
+  },
+  [headerDraft, handleHeaderDraftChange, setBrandingPanelOpen]
+);
+
 const handleFooterDraftChange = useCallback(
   (draft) => {
     if (!draft) return;
@@ -1780,6 +1808,53 @@ const handleFooterDraftChange = useCallback(
     }));
   },
   [setSiteSettings]
+);
+
+const handleFooterItemRemove = useCallback(
+  (payload) => {
+    if (!payload) return;
+    const next = normalizeFooterConfig(footerDraft || defaultFooterConfig());
+    switch (payload.type) {
+      case "logo":
+        next.logo_asset_id = null;
+        next.logo_asset = null;
+        next.logo_url = "";
+        next.logo_asset_url = "";
+        break;
+      case "text":
+        next.text = "";
+        break;
+      case "social":
+        next.social_links = (next.social_links || []).filter(
+          (_, idx) => idx !== payload.index
+        );
+        break;
+      case "legal":
+        next.legal_links = (next.legal_links || []).filter(
+          (_, idx) => idx !== payload.index
+        );
+        break;
+      case "column":
+        next.columns = (next.columns || []).filter(
+          (_, idx) => idx !== payload.columnIndex
+        );
+        break;
+      case "column-link":
+        next.columns = (next.columns || []).map((col, colIdx) => {
+          if (colIdx !== payload.columnIndex) return col;
+          const links = (col.links || []).filter(
+            (_, linkIdx) => linkIdx !== payload.linkIndex
+          );
+          return { ...col, links };
+        });
+        break;
+      default:
+        break;
+    }
+    setBrandingPanelOpen(true);
+    handleFooterDraftChange(next);
+  },
+  [footerDraft, handleFooterDraftChange, setBrandingPanelOpen]
 );
 
 const handleNavOverridesChange = useCallback(
@@ -4150,6 +4225,8 @@ const CanvasColumn = (
       onTogglePageMenu={(pageId) => {
         applyPageActionPatch(pageId, { show_in_menu: false });
       }}
+      onRemoveFooterItem={handleFooterItemRemove}
+      onRemoveHeaderItem={handleHeaderItemRemove}
     >
       <Box
         sx={{

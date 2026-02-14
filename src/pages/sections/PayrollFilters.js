@@ -42,6 +42,12 @@ const REGION_CHOICES = [
   { value: "other", label: "Other" },
 ];
 
+const NO_STATE_INCOME_TAX_STATES = new Set(["AK", "FL", "NV", "SD", "TX", "WA", "WY", "TN", "NH"]);
+const US_SUPPORT_HELPER_TEXT =
+  "Payroll finalize is supported only in AK, FL, NV, SD, TX, WA, WY, TN, NH. You can still preview raw payroll data.";
+const WA_PROGRAMS_NOTE =
+  "WA has no state income tax. WA-specific programs (PFML / WA Cares) are not automated and must be handled externally.";
+
 /* Helper – build preset pay-period labels */
 const buildPeriods = (freq = "weekly") => {
   const year   = dayjs().year();
@@ -110,6 +116,8 @@ export default function PayrollFilters({
   /* ⇢ NEW – departments */
   const [departments, setDepartments] = useState([]);
   const [departmentFilterLocal, setDepartmentFilterLocal] = useState("");
+  const isUnsupportedUsState =
+    region === "us" && Boolean(province) && !NO_STATE_INCOME_TAX_STATES.has(String(province).toUpperCase());
 
   const departmentFilter =
     departmentFilterProp !== undefined ? departmentFilterProp : departmentFilterLocal;
@@ -417,12 +425,21 @@ export default function PayrollFilters({
                 handleFieldChange("province", e.target.value);
               }}
             >
-              {(OPTIONS[region || "ca"] || []).map((code) => (
-                <MenuItem key={code} value={code}>
-                  {code}
-                </MenuItem>
-              ))}
+              {(OPTIONS[region || "ca"] || []).map((code) => {
+                const unsupported = region === "us" && !NO_STATE_INCOME_TAX_STATES.has(code);
+                return (
+                  <MenuItem key={code} value={code}>
+                    {unsupported ? `${code} (Raw mode — finalize blocked)` : code}
+                  </MenuItem>
+                );
+              })}
             </Select>
+            {isUnsupportedUsState && (
+              <FormHelperText error>{US_SUPPORT_HELPER_TEXT}</FormHelperText>
+            )}
+            {region === "us" && String(province).toUpperCase() === "WA" && (
+              <FormHelperText>{WA_PROGRAMS_NOTE}</FormHelperText>
+            )}
           </FormControl>
         </Grid>
 

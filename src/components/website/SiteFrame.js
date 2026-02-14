@@ -9,6 +9,7 @@ import {
   Stack,
   CircularProgress,
   IconButton,
+  Tooltip,
   Divider,
   Grid,
   Link as MuiLink,
@@ -84,6 +85,8 @@ export default function SiteFrame({
   disableFetch = false,
   wrapChildrenInContainer = true,
   onTogglePageMenu,
+  onRemoveFooterItem,
+  onRemoveHeaderItem,
 }) {
   const theme = useTheme(); // will be overridden by ThemeRuntimeProvider below
   const isPreview = disableFetch && Boolean(initialSite);
@@ -273,13 +276,18 @@ export default function SiteFrame({
       .trim();
 
   const headerLogo =
-    headerConfig?.logo_asset?.url || site?.company?.logo_url || null;
+    headerConfig?.logo_url === ""
+      ? null
+      : headerConfig?.logo_asset?.url ||
+        headerConfig?.logo_url ||
+        site?.company?.logo_url ||
+        null;
   const headerSocial =
-    (Array.isArray(headerConfig?.social_links) && headerConfig.social_links.length
+    Array.isArray(headerConfig?.social_links)
       ? headerConfig.social_links
-      : Array.isArray(site?.header?.social_links) && site.header.social_links.length
+      : Array.isArray(site?.header?.social_links)
         ? site.header.social_links
-        : DEFAULT_SOCIAL_LINKS) || [];
+        : [];
   const showBrandText = headerConfig?.show_brand_text !== false;
   const headerTextRaw = headerConfig?.text && headerConfig.text.trim();
   const headerText =
@@ -359,20 +367,94 @@ export default function SiteFrame({
     <>
       {headerLogo && (
         <Box
-          component="img"
-          src={headerLogo}
-          alt={brandName}
           sx={{
-            width: `${logoWidth}px`,
-            height: logoHeight ? `${logoHeight}px` : "auto",
-            objectFit: "contain",
+            position: "relative",
+            display: "inline-flex",
+            alignItems: "center",
+            "&:hover .header-remove": {
+              opacity: 1,
+              pointerEvents: "auto",
+            },
           }}
-        />
+        >
+          <Box
+            component="img"
+            src={headerLogo}
+            alt={brandName}
+            sx={{
+              width: `${logoWidth}px`,
+              height: logoHeight ? `${logoHeight}px` : "auto",
+              objectFit: "contain",
+            }}
+          />
+          {isPreview && onRemoveHeaderItem ? (
+            <IconButton
+              size="small"
+              className="header-remove"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRemoveHeaderItem({ type: "logo" });
+              }}
+              sx={{
+                position: "absolute",
+                top: -6,
+                right: -6,
+                bgcolor: "background.paper",
+                border: "1px solid",
+                borderColor: "divider",
+                boxShadow: 1,
+                opacity: 0,
+                pointerEvents: "none",
+                "&:hover": { bgcolor: "background.default" },
+              }}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          ) : null}
+        </Box>
       )}
       {showBrandText && !hideText && (
-        <Typography variant="h6" sx={{ fontWeight: 800 }}>
-          {brandName}
-        </Typography>
+        <Box
+          sx={{
+            position: "relative",
+            display: "inline-flex",
+            alignItems: "center",
+            "&:hover .header-remove": {
+              opacity: 1,
+              pointerEvents: "auto",
+            },
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            {brandName}
+          </Typography>
+          {isPreview && onRemoveHeaderItem ? (
+            <IconButton
+              size="small"
+              className="header-remove"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRemoveHeaderItem({ type: "brand-text" });
+              }}
+              sx={{
+                position: "absolute",
+                top: -6,
+                right: -6,
+                bgcolor: "background.paper",
+                border: "1px solid",
+                borderColor: "divider",
+                boxShadow: 1,
+                opacity: 0,
+                pointerEvents: "none",
+                "&:hover": { bgcolor: "background.default" },
+              }}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          ) : null}
+        </Box>
       )}
       {showEmptyHint && !headerHasContent && isPreview && (
         <Typography
@@ -516,9 +598,8 @@ export default function SiteFrame({
         {headerSocial.map((item, idx) => {
           const Icon =
             SOCIAL_ICON_MAP[item?.icon?.toLowerCase()] || DEFAULT_SOCIAL_ICON;
-          return (
+          const iconButton = (
             <IconButton
-              key={`social-${idx}`}
               component="a"
               href={item?.href}
               target="_blank"
@@ -527,6 +608,19 @@ export default function SiteFrame({
             >
               <Icon fontSize="small" />
             </IconButton>
+          );
+          return isPreview ? (
+            <Tooltip
+              key={`social-${idx}`}
+              title="Edit or remove social links in Header & Footer settings"
+              placement="top"
+            >
+              <Box sx={{ display: "inline-flex" }}>{iconButton}</Box>
+            </Tooltip>
+          ) : (
+            <Box key={`social-${idx}`} sx={{ display: "inline-flex" }}>
+              {iconButton}
+            </Box>
           );
         })}
       </Stack>
@@ -744,11 +838,11 @@ export default function SiteFrame({
       ? footerConfig.columns
       : cloneFooterColumns()) || [];
   const footerSocial =
-    (Array.isArray(footerConfig?.social_links) && footerConfig.social_links.length
+    Array.isArray(footerConfig?.social_links)
       ? footerConfig.social_links
-      : Array.isArray(site?.footer?.social_links) && site.footer.social_links.length
+      : Array.isArray(site?.footer?.social_links)
         ? site.footer.social_links
-        : DEFAULT_SOCIAL_LINKS) || [];
+        : [];
   const footerLegal =
     (Array.isArray(footerConfig?.legal_links) && footerConfig.legal_links.length
       ? footerConfig.legal_links
@@ -792,48 +886,200 @@ export default function SiteFrame({
       <Container sx={{ py: 6 }}>
         {footerLogo && (
           <Box
-            component="img"
-            src={footerLogo}
-            alt={site?.company?.name || slug}
-            sx={{ height: 48, width: "auto", maxWidth: 200, objectFit: "contain", mb: 2 }}
-          />
+            sx={{
+              position: "relative",
+              display: "inline-flex",
+              alignItems: "center",
+              mb: 2,
+              "&:hover .footer-remove": {
+                opacity: 1,
+                pointerEvents: "auto",
+              },
+            }}
+          >
+            <Box
+              component="img"
+              src={footerLogo}
+              alt={site?.company?.name || slug}
+              sx={{ height: 48, width: "auto", maxWidth: 200, objectFit: "contain" }}
+            />
+            {isPreview && onRemoveFooterItem ? (
+              <IconButton
+                size="small"
+                className="footer-remove"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRemoveFooterItem({ type: "logo" });
+                }}
+                sx={{
+                  position: "absolute",
+                  top: -8,
+                  right: -8,
+                  bgcolor: "background.paper",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  boxShadow: 1,
+                  opacity: 0,
+                  pointerEvents: "none",
+                  "&:hover": { bgcolor: "background.default" },
+                }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            ) : null}
+          </Box>
         )}
         {(footerText || (isPreview && !footerHasContent)) && (
-          <Typography
-            variant="body1"
-            sx={{ mb: 3, maxWidth: 640, color: footerHeadingColor }}
+          <Box
+            sx={{
+              position: "relative",
+              display: "inline-block",
+              maxWidth: 640,
+              mb: 3,
+              "&:hover .footer-remove": {
+                opacity: 1,
+                pointerEvents: "auto",
+              },
+            }}
           >
-            {footerText || "Add footer copy in Branding → Footer"}
-          </Typography>
+            <Typography
+              variant="body1"
+              sx={{ color: footerHeadingColor }}
+            >
+              {footerText || "Add footer copy in Branding → Footer"}
+            </Typography>
+            {isPreview && onRemoveFooterItem && footerText ? (
+              <IconButton
+                size="small"
+                className="footer-remove"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRemoveFooterItem({ type: "text" });
+                }}
+                sx={{
+                  position: "absolute",
+                  top: -6,
+                  right: -6,
+                  bgcolor: "background.paper",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  boxShadow: 1,
+                  opacity: 0,
+                  pointerEvents: "none",
+                  "&:hover": { bgcolor: "background.default" },
+                }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            ) : null}
+          </Box>
         )}
         {footerColumns.length > 0 && (
           <Grid container spacing={4} sx={{ mb: 3 }}>
             {footerColumns.map((col, idx) => (
               <Grid item xs={12} md={Math.max(3, Math.floor(12 / footerColumns.length))} key={`footer-col-${idx}`}>
-                {col.title && (
-                  <Typography
-                    variant="subtitle2"
-                    fontWeight={700}
-                    sx={{ mb: 1, color: footerHeadingColor }}
-                  >
-                    {col.title}
-                  </Typography>
-                )}
+                <Box
+                  sx={{
+                    position: "relative",
+                    "&:hover .footer-remove": {
+                      opacity: 1,
+                      pointerEvents: "auto",
+                    },
+                  }}
+                >
+                  {col.title && (
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight={700}
+                      sx={{ mb: 1, color: footerHeadingColor }}
+                    >
+                      {col.title}
+                    </Typography>
+                  )}
+                  {isPreview && onRemoveFooterItem ? (
+                    <IconButton
+                      size="small"
+                      className="footer-remove"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRemoveFooterItem({ type: "column", columnIndex: idx });
+                      }}
+                      sx={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        bgcolor: "background.paper",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        boxShadow: 1,
+                        opacity: 0,
+                        pointerEvents: "none",
+                        "&:hover": { bgcolor: "background.default" },
+                      }}
+                    >
+                      <DeleteOutlineIcon fontSize="small" />
+                    </IconButton>
+                  ) : null}
+                </Box>
                 <Stack spacing={0.75}>
                   {(col.links || []).map((link, linkIdx) => {
                     const props = resolveLinkProps(link.href || "");
                     const { component, ...rest } = props;
                     return (
-                      <MuiLink
+                      <Box
                         key={`footer-col-${idx}-link-${linkIdx}`}
-                        component={component || RouterLink}
-                        {...rest}
-                        color="var(--page-link-color)"
-                        underline="hover"
-                        sx={{ fontSize: "0.95rem" }}
+                        sx={{
+                          position: "relative",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          "&:hover .footer-remove": {
+                            opacity: 1,
+                            pointerEvents: "auto",
+                          },
+                        }}
                       >
-                        {link.label || link.href}
-                      </MuiLink>
+                        <MuiLink
+                          component={component || RouterLink}
+                          {...rest}
+                          color="var(--page-link-color)"
+                          underline="hover"
+                          sx={{ fontSize: "0.95rem" }}
+                        >
+                          {link.label || link.href}
+                        </MuiLink>
+                        {isPreview && onRemoveFooterItem ? (
+                          <IconButton
+                            size="small"
+                            className="footer-remove"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onRemoveFooterItem({
+                                type: "column-link",
+                                columnIndex: idx,
+                                linkIndex: linkIdx,
+                              });
+                            }}
+                            sx={{
+                              position: "absolute",
+                              top: -6,
+                              right: -20,
+                              bgcolor: "background.paper",
+                              border: "1px solid",
+                              borderColor: "divider",
+                              boxShadow: 1,
+                              opacity: 0,
+                              pointerEvents: "none",
+                              "&:hover": { bgcolor: "background.default" },
+                            }}
+                          >
+                            <DeleteOutlineIcon fontSize="small" />
+                          </IconButton>
+                        ) : null}
+                      </Box>
                     );
                   })}
                 </Stack>
@@ -846,9 +1092,8 @@ export default function SiteFrame({
             {footerSocial.map((item, idx) => {
               const Icon =
                 SOCIAL_ICON_MAP[item?.icon?.toLowerCase()] || DEFAULT_SOCIAL_ICON;
-              return (
+              const iconButton = (
                 <IconButton
-                  key={`footer-social-${idx}`}
                   component="a"
                   href={item?.href}
                   target="_blank"
@@ -861,6 +1106,19 @@ export default function SiteFrame({
                 >
                   <Icon fontSize="small" />
                 </IconButton>
+              );
+              return isPreview ? (
+                <Tooltip
+                  key={`footer-social-${idx}`}
+                  title="Edit or remove social links in Header & Footer settings"
+                  placement="top"
+                >
+                  <Box sx={{ display: "inline-flex" }}>{iconButton}</Box>
+                </Tooltip>
+              ) : (
+                <Box key={`footer-social-${idx}`} sx={{ display: "inline-flex" }}>
+                  {iconButton}
+                </Box>
               );
             })}
           </Stack>
@@ -878,16 +1136,53 @@ export default function SiteFrame({
                 const props = resolveLinkProps(link.href || "");
                 const { component, ...rest } = props;
                 return (
-                  <MuiLink
+                  <Box
                     key={`footer-legal-${idx}`}
-                    component={component || RouterLink}
-                    {...rest}
-                    color="var(--page-link-color)"
-                    underline="hover"
-                    sx={{ fontSize: "0.875rem" }}
+                    sx={{
+                      position: "relative",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      "&:hover .footer-remove": {
+                        opacity: 1,
+                        pointerEvents: "auto",
+                      },
+                    }}
                   >
-                    {link.label || link.href}
-                  </MuiLink>
+                    <MuiLink
+                      component={component || RouterLink}
+                      {...rest}
+                      color="var(--page-link-color)"
+                      underline="hover"
+                      sx={{ fontSize: "0.875rem" }}
+                    >
+                      {link.label || link.href}
+                    </MuiLink>
+                    {isPreview && onRemoveFooterItem ? (
+                      <IconButton
+                        size="small"
+                        className="footer-remove"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onRemoveFooterItem({ type: "legal", index: idx });
+                        }}
+                        sx={{
+                          position: "absolute",
+                          top: -6,
+                          right: -20,
+                          bgcolor: "background.paper",
+                          border: "1px solid",
+                          borderColor: "divider",
+                          boxShadow: 1,
+                          opacity: 0,
+                          pointerEvents: "none",
+                          "&:hover": { bgcolor: "background.default" },
+                        }}
+                      >
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    ) : null}
+                  </Box>
                 );
               })}
             </Stack>

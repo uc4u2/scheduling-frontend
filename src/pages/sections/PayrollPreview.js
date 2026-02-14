@@ -261,6 +261,12 @@ export default function PayrollPreview({
   const hasFinalized = Boolean(
     finalizedId || payroll?.finalized === true || payroll?.finalized_at
   );
+  const isRawPayrollMode =
+    payroll?.payroll_mode === "raw" || payroll?.state_withholding_supported === false;
+  const payrollWarnings = Array.isArray(payroll?.warnings) ? payroll.warnings : [];
+  const rawModeWarning =
+    payrollWarnings[0] ||
+    "U.S. payroll finalize is supported only in AK, FL, NV, SD, TX, WA, WY, TN, NH.";
 
   const computePayDate = () => {
     const endDate = payroll?.end_date;
@@ -406,6 +412,14 @@ export default function PayrollPreview({
 const saveFinalizedPayroll = async () => {
   try {
     setSavingFinalized(true);
+    if (isRawPayrollMode) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: rawModeWarning,
+      });
+      return;
+    }
 
     // 1️⃣ quick validation
     if (!payroll?.recruiter_id || !payroll?.start_date || !payroll?.end_date) {
@@ -1379,6 +1393,11 @@ const handleRecalculate = () => {
          Action buttons
 -------------------------------------------------- */}
       <Divider sx={{ my: 2 }} />
+      {isRawPayrollMode && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {rawModeWarning}
+        </Alert>
+      )}
 
       <Stack spacing={1} sx={{ mb: 2 }}>
         <Stack
@@ -1496,6 +1515,8 @@ const handleRecalculate = () => {
           "federal_tax_amount",
           "provincial_tax_amount",
         ]}
+        disableFinalize={isRawPayrollMode}
+        finalizeBlockReason={rawModeWarning}
       />
 
       {/* Actions */}
@@ -1503,7 +1524,7 @@ const handleRecalculate = () => {
         variant="contained"
         color="primary"
         sx={{ ml: 2, mt: 2 }}
-        disabled={savingFinalized}
+        disabled={savingFinalized || isRawPayrollMode}
         onClick={saveFinalizedPayroll}
       >
         {savingFinalized ? <CircularProgress size={18} /> : "Finalize & Save"}

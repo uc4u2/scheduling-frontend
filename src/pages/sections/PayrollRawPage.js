@@ -29,7 +29,10 @@ import {
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
+import { formatCurrency } from "../../utils/formatters";
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
+
+const NO_STATE_INCOME_TAX_STATES = new Set(["AK", "FL", "NV", "SD", "TX", "WA", "WY", "TN", "NH"]);
 
 export default function PayrollRawPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
@@ -40,6 +43,11 @@ export default function PayrollRawPage() {
   const coerceUtcIso = (iso) => {
     if (!iso) return iso;
     return /[zZ]|[+-]\d{2}:?\d{2}/.test(iso) ? iso : `${iso}Z`;
+  };
+  const moneyOrNA = (value, region) => {
+    if (value === null || value === undefined) return "N/A";
+    const currency = region === "us" ? "USD" : "CAD";
+    return formatCurrency(Number(value), currency);
   };
 
   // Filters
@@ -57,6 +65,7 @@ export default function PayrollRawPage() {
   const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(false);
   const [detailRow, setDetailRow] = useState(null);
+  const [showFinalizedOnly, setShowFinalizedOnly] = useState(true);
 
   const fetchRows = async (pageOverride) => {
     const currentPage = pageOverride || page;
@@ -67,17 +76,18 @@ export default function PayrollRawPage() {
       const params = {
         page: currentPage,
         page_size: pageSize,
-        finalized_only: true,
         latest_only: true,
         start_date: startDate,
         end_date: endDate,
       };
+      if (showFinalizedOnly) params.finalized_only = true;
       if (recruiterId) params.recruiter_id = recruiterId;
       if (region) params.region = region;
       if (month) params.month = month;
       if (selectedDept) params.department_id = selectedDept;
 
-      const res = await api.get(`/automation/payroll/raw`, {
+      const endpoint = showFinalizedOnly ? `/automation/payroll/raw` : `/automation/payroll/raw-preview`;
+      const res = await api.get(endpoint, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -103,7 +113,8 @@ export default function PayrollRawPage() {
       if (month) params.append("month", month);
       if (selectedDept) params.append("department_id", selectedDept);
       params.append("summary", "true");
-      const url = `/automation/payroll/export-finalized?${params.toString()}`;
+      const base = showFinalizedOnly ? `/automation/payroll/export-finalized` : `/automation/payroll/export-preview`;
+      const url = `${base}?${params.toString()}`;
       const resp = await api.get(url, {
         responseType: "blob",
         headers: { Authorization: `Bearer ${token}` },
@@ -137,6 +148,17 @@ export default function PayrollRawPage() {
     // Wait for user to click “Load data” to avoid auto-loading on page mount.
   }, []);
 
+  useEffect(() => {
+    if (region !== "us" || !recruiterId) return;
+    const allEmployees = [...(employees[selectedDept] || []), ...(employees.all || [])];
+    const selected = allEmployees.find((e) => String(e.id) === String(recruiterId));
+    if (!selected) return;
+    const stateCode = String(selected.state || selected.province || "").toUpperCase();
+    if (stateCode && !NO_STATE_INCOME_TAX_STATES.has(stateCode)) {
+      setShowFinalizedOnly(false);
+    }
+  }, [region, recruiterId, selectedDept, employees]);
+
   return (
     <Box p={3}>
       <Typography variant="h5" gutterBottom>
@@ -149,6 +171,11 @@ export default function PayrollRawPage() {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Accountant view: one row per finalized payroll period. Use filters, then export via existing CSV/XLSX endpoints.
       </Typography>
+      {!showFinalizedOnly && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Raw preview ledger (not finalized paystubs). State withholding may be N/A for unsupported states.
+        </Alert>
+      )}
       <Box display="flex" gap={1} mb={2} flexWrap="wrap">
         <Button variant="outlined" size="small" onClick={() => handleExport("csv")} disabled={!startDate || !endDate}>
           Export CSV
@@ -191,6 +218,17 @@ export default function PayrollRawPage() {
               />
             }
             label="Show archived employees"
+          />
+        </Grid>
+        <Grid item xs={12} sm={3}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showFinalizedOnly}
+                onChange={(e) => setShowFinalizedOnly(e.target.checked)}
+              />
+            }
+            label="Show finalized only"
           />
         </Grid>
         <Grid item xs={12} sm={3}>
@@ -338,8 +376,8 @@ export default function PayrollRawPage() {
                   <TableCell align="right">{row.hours_worked}</TableCell>
                   <TableCell align="right">{row.regular_hours}</TableCell>
                   <TableCell align="right">{row.overtime_hours}</TableCell>
-                  <TableCell align="right">{row.regular_pay}</TableCell>
-                  <TableCell align="right">{row.overtime_pay}</TableCell>
+                  <TableCell align="right">{moneyOrNA(row.regular_pay, row.region)}</TableCell>
+                  <TableCell align="right">{moneyOrNA(row.overtime_pay, row.region)}</TableCell>
                   <TableCell align="right">{row.holiday_pay}</TableCell>
                   <TableCell align="right">{row.bonus}</TableCell>
                   <TableCell align="right">{row.commission}</TableCell>
@@ -361,17 +399,21 @@ export default function PayrollRawPage() {
                   <TableCell align="right">{row.garnishment}</TableCell>
                   <TableCell align="right">{row.non_taxable_reimbursement}</TableCell>
                   <TableCell align="right">{row.deduction}</TableCell>
-                  <TableCell align="right">{row.gross_pay}</TableCell>
-                  <TableCell align="right">{row.vacation_pay}</TableCell>
-                  <TableCell align="right">{row.federal_tax_amount}</TableCell>
-                  <TableCell align="right">{row.provincial_tax_amount || row.state_tax_amount}</TableCell>
+                  <TableCell align="right">{moneyOrNA(row.gross_pay, row.region)}</TableCell>
+                  <TableCell align="right">{moneyOrNA(row.vacation_pay, row.region)}</TableCell>
+                  <TableCell align="right">{moneyOrNA(row.federal_tax_amount, row.region)}</TableCell>
+                  <TableCell align="right">
+                    {row.provincial_tax_amount != null
+                      ? moneyOrNA(row.provincial_tax_amount, row.region)
+                      : moneyOrNA(row.state_tax_amount, row.region)}
+                  </TableCell>
                   <TableCell align="right">{row.cpp_amount || row.qpp_amount || row.cpp || row.qpp}</TableCell>
                   <TableCell align="right">{row.ei_amount || row.rqap_amount || row.ei || row.rqap}</TableCell>
                   <TableCell align="right">{row.fica_amount || row.fica}</TableCell>
                   <TableCell align="right">{row.medicare_amount || row.medicare}</TableCell>
-                  <TableCell align="right">{row.total_deductions}</TableCell>
+                  <TableCell align="right">{moneyOrNA(row.total_deductions, row.region)}</TableCell>
                   <TableCell align="right">
-                    <strong>{row.net_pay}</strong>
+                    <strong>{moneyOrNA(row.net_pay, row.region)}</strong>
                   </TableCell>
                   <TableCell align="right">
                     {(row.payment_status || "not_requested").toString().replace("_", " ")}

@@ -40,6 +40,8 @@ export default function DownloadPayrollButton({
   selectedColumns = [],
   token           = "",
   payroll         = {},  // full payroll object incl. manager overrides + preview
+  disableFinalize = false,
+  finalizeBlockReason = "",
 }) {
   const [busy  , setBusy  ] = useState(false);
   const [snack , setSnack ] = useState({ open: false, msg: "", sev: "info" });
@@ -47,6 +49,14 @@ export default function DownloadPayrollButton({
   /* ───────── main handler ───────── */
   const handleDownload = async (fmt, emailToEmployee = false) => {
     if (busy) return;
+    if (disableFinalize) {
+      setSnack({
+        open: true,
+        sev: "warning",
+        msg: finalizeBlockReason || "Finalize is not supported for this payroll state.",
+      });
+      return;
+    }
     setBusy(true);
 
     /* -- derive dates & month (ISO-8601 safe) -- */
@@ -218,7 +228,7 @@ export default function DownloadPayrollButton({
               color="primary"
               startIcon={busy ? <CircularProgress size={18} /> : <PictureAsPdfIcon />}
               onClick={() => handleDownload("pdf")}
-              disabled={busy}
+              disabled={busy || disableFinalize}
               sx={{ minWidth: 240, textTransform: "none" }}
             >
               Download Employee Payslip (PDF)
@@ -233,7 +243,7 @@ export default function DownloadPayrollButton({
               color="success"
               startIcon={busy ? <CircularProgress size={18} /> : <EmailIcon />}
               onClick={() => handleDownload("pdf", true)}
-              disabled={busy}
+              disabled={busy || disableFinalize}
               sx={{ minWidth: 260, textTransform: "none" }}
             >
               Finalize Payroll + Send to Employee
@@ -241,6 +251,11 @@ export default function DownloadPayrollButton({
           </span>
         </Tooltip>
       </Stack>
+      {disableFinalize && (
+        <Typography variant="caption" color="warning.main">
+          {finalizeBlockReason || "Finalize is blocked for this payroll."}
+        </Typography>
+      )}
       <Typography variant="caption" color="text.secondary">
         Employee Payslip = whitelisted PDF for employees. Finalize Payroll = locks the run, syncs data, and sends the payslip with an audit trail.
       </Typography>

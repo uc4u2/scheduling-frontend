@@ -974,6 +974,13 @@ useEffect(() => {
     }
   };
 
+  const isRawPayrollMode =
+    payroll?.payroll_mode === "raw" || payroll?.state_withholding_supported === false;
+  const payrollWarnings = Array.isArray(payroll?.warnings) ? payroll.warnings : [];
+  const rawModeWarning =
+    payrollWarnings[0] ||
+    "U.S. payroll finalize is supported only in AK, FL, NV, SD, TX, WA, WY, TN, NH.";
+
   // ─────────────────────────────────────────────────────────
 // Render
 // ─────────────────────────────────────────────────────────
@@ -1080,6 +1087,9 @@ return (
         </Typography>
         <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 1.5 }}>
           Note: Schedulaa calculates federal and state taxes in supported states. Local/city/municipal taxes are not automatically calculated and must be handled externally where applicable.
+        </Typography>
+        <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 1 }}>
+          WA has no state income tax. WA-specific programs (PFML / WA Cares) are not automated and must be handled externally.
         </Typography>
 
         <Divider sx={{ my: 3 }} />
@@ -1249,6 +1259,12 @@ return (
       />
 
     {viewMode === "preview" && payroll && (
+      <>
+      {isRawPayrollMode && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {rawModeWarning}
+        </Alert>
+      )}
       <PayrollPreview
         payroll={payroll}
         region={region}
@@ -1268,6 +1284,7 @@ return (
         snackbar={snackbar}
         setSnackbar={setSnackbar}
       />
+      </>
     )}
 
     {viewMode === "preview" && (
@@ -1358,22 +1375,27 @@ return (
             )}
 
             <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-              <Button variant="contained" onClick={downloadSummaryCsv} disabled={exporting}>
+              <Button variant="contained" onClick={downloadSummaryCsv} disabled={exporting || isRawPayrollMode}>
                 {exporting ? <CircularProgress size={18} /> : "Download payroll summary CSV"}
               </Button>
-              <Button variant="outlined" onClick={downloadFinalizedCsv} disabled={exporting}>
+              <Button variant="outlined" onClick={downloadFinalizedCsv} disabled={exporting || isRawPayrollMode}>
                 Accountant CSV (full raw export)
               </Button>
-              <Button variant="outlined" onClick={downloadPayslipsZip} disabled={exporting}>
+              <Button variant="outlined" onClick={downloadPayslipsZip} disabled={exporting || isRawPayrollMode}>
                 Download payslips ZIP (PDF)
               </Button>
               <Tooltip title="Exports paid earnings + pay period info for payroll provider import. Gross pay in this file equals the sum of earnings columns. Vacation accrual is excluded unless paid out. Taxes and net pay are calculated by your payroll provider.">
                 <span>
-                  <Button variant="outlined" onClick={downloadProviderImportCsv} disabled={exporting}>
+                  <Button variant="outlined" onClick={downloadProviderImportCsv} disabled={exporting || isRawPayrollMode}>
                     Download provider import CSV
                   </Button>
                 </span>
               </Tooltip>
+              {isRawPayrollMode && (
+                <Button variant="outlined" onClick={() => handleExport("csv")} disabled={saving || !payroll}>
+                  Raw export (not a finalized paystub)
+                </Button>
+              )}
             </Stack>
           </Stack>
         </AccordionDetails>
