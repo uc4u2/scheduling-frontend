@@ -431,13 +431,22 @@ export default function MySetmoreCalendar({ token, initialDate }) {
 
     const calendarEvents = filteredForCalendar.map((e) => ({
       id: e.id,
-      title: e.booked ? (e.service_name || "") : "Available",
+      title: e.booked
+        ? (e.created_by_manager ? (e.meeting_title || "Meeting") : (e.service_name || ""))
+        : "Available",
       start: e.startISO,
       end: e.endISO,
-    backgroundColor: e.booked ? "#ffe5e9" : "#e7f7ec",
-    borderColor: e.booked ? "#ff4d4f" : "#34a853",
+    backgroundColor: e.booked
+      ? (e.created_by_manager ? "#e0f2fe" : "#ffe5e9")
+      : "#e7f7ec",
+    borderColor: e.booked
+      ? (e.created_by_manager ? "#38bdf8" : "#ff4d4f")
+      : "#34a853",
     textColor: "#111",
-    classNames: [e.booked ? "slot-booked" : "slot-available"],
+    classNames: [
+      e.booked ? "slot-booked" : "slot-available",
+      e.booked && e.created_by_manager ? "slot-meeting" : "",
+    ],
     extendedProps: { ...e, __kind: "availability" },
   }));
 
@@ -828,6 +837,13 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             background: "#dde3ee",
             boxShadow: "0 3px 10px rgba(15,23,42,0.12)",
           },
+          ".fc .slot-meeting": {
+            color: "#0f172a !important",
+          },
+          ".fc .slot-meeting .fc-event-title, .fc .slot-meeting .fc-event-time": {
+            color: "#0f172a !important",
+            fontWeight: 700,
+          },
           ".fc .fc-timegrid-event .fc-event-time": { fontWeight: 700, fontSize: 11, paddingLeft: 4 },
           ".fc .fc-timegrid-event .fc-event-title": { fontSize: 11 },
           ".fc .fc-toolbar-title": { fontWeight: 700 },
@@ -1061,13 +1077,14 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             {daySlots.map((s) => (
               <Tooltip
                 key={`${s.startISO}-${s.availability_id || s.id}`}
-                title={`${s.startLabel}–${s.endLabel}${s.service_name ? `\nService: ${s.service_name}` : ""}${s.created_by_manager ? `\nMeeting` : ""}`}
+                title={`${s.startLabel}–${s.endLabel}${s.service_name ? `\nService: ${s.service_name}` : ""}${s.created_by_manager && s.__status === "booked" ? `\nMeeting` : ""}`}
                 arrow
               >
                 <Chip
                   color={s.__status === "booked" ? "error" : "success"}
                   variant={s.__status === "booked" ? "filled" : "outlined"}
-                  label={`${s.startLabel}–${s.endLabel}${s.service_name ? ` • ${s.service_name}` : ""}${s.created_by_manager ? " • Meeting" : ""}`}
+                  label={`${s.startLabel}–${s.endLabel}${s.service_name ? ` • ${s.service_name}` : ""}${s.created_by_manager && s.__status === "booked" ? " • Meeting" : ""}`}
+                  sx={s.created_by_manager && s.__status === "booked" ? { bgcolor: "#e0f2fe", color: "#0c4a6e", borderColor: "#38bdf8" } : undefined}
                   onDelete={
                     (canCloseSlots || canEditAvailability) && s.__status === "available"
                       ? async () => {

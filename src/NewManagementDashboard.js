@@ -71,6 +71,7 @@ import {
   Paid,
   Summarize,
   FolderShared,
+  EventAvailable,
   OpenInFull,
   CloseFullscreen,
   PersonAddAlt as PersonAddAltIcon,
@@ -171,6 +172,7 @@ const menuConfig = [
       { labelKey: "manager.menu.companyProfile", key: "CompanyProfile", icon: <Business /> },
       { labelKey: "manager.menu.employeeProfiles", key: "employee-profiles", icon: <FolderShared /> },
       { labelKey: "manager.menu.addMember", key: "add-member", icon: <PersonAddAltIcon /> },
+      { labelKey: "manager.menu.teamMeetings", key: "meetings", icon: <EventAvailable /> },
     ],
   },
 

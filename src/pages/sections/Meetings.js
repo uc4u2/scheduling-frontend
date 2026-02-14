@@ -28,6 +28,8 @@ import api from "../../utils/api";
 const Meetings = ({ token }) => {
   const [meetings, setMeetings] = useState([]);
   const [recruiters, setRecruiters] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [openModal, setOpenModal] = useState(false);
@@ -40,12 +42,18 @@ const Meetings = ({ token }) => {
     location: "",
     invite_link: "",
     attendees: [{ name: "", email: "" }],
+    recruiter_ids: [],
   });
   const [error, setError] = useState("");
 
   useEffect(() => {
+    fetchDepartments();
     fetchRecruiters();
   }, [includeArchived, token]);
+
+  useEffect(() => {
+    fetchRecruiters();
+  }, [selectedDepartment]);
 
   useEffect(() => {
     if (selectedRecruiter) {
@@ -53,15 +61,39 @@ const Meetings = ({ token }) => {
     }
   }, [selectedRecruiter]);
 
+  const fetchDepartments = async () => {
+    try {
+      const res = await api.get(`/api/departments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDepartments(res.data.departments || res.data || []);
+    } catch (err) {
+      setError("Failed to fetch departments");
+    }
+  };
+
   const fetchRecruiters = async () => {
     try {
       const res = await api.get(`/manager/recruiters`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: includeArchived ? { include_archived: 1 } : {},
+        params: {
+          ...(includeArchived ? { include_archived: 1 } : {}),
+          ...(selectedDepartment && selectedDepartment !== "all"
+            ? { department_id: selectedDepartment }
+            : {}),
+        },
       });
-      setRecruiters(res.data.recruiters);
-      if (res.data.recruiters.length > 0) {
-        setSelectedRecruiter(res.data.recruiters[0].id);
+      const list = res.data.recruiters || [];
+      setRecruiters(list);
+      if (list.length > 0) {
+        const firstId = list[0].id;
+        setSelectedRecruiter(firstId);
+        setForm((prev) => ({
+          ...prev,
+          recruiter_ids: prev.recruiter_ids?.length ? prev.recruiter_ids : [firstId],
+        }));
+      } else {
+        setSelectedRecruiter("");
       }
     } catch (err) {
       setError("Failed to fetch recruiters");
@@ -70,10 +102,11 @@ const Meetings = ({ token }) => {
 
   const fetchMeetings = async (recruiterId) => {
     try {
-      const res = await api.get(`/api/meetings/${recruiterId}`, {
+      const res = await api.get(`/meetings/${recruiterId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = res.data.meetings.map((m) => ({
+      const rows = Array.isArray(res.data) ? res.data : (res.data.meetings || []);
+      const data = rows.map((m) => ({
         id: m.id,
         title: m.title,
         start: `${m.date}T${m.start_time}`,
@@ -120,14 +153,21 @@ const Meetings = ({ token }) => {
       location: "",
       invite_link: "",
       attendees: [{ name: "", email: "" }],
+      recruiter_ids: [],
     });
   };
 
   const handleCreateMeeting = async () => {
     try {
+      if (!form.recruiter_ids || form.recruiter_ids.length === 0) {
+        setError("Please select at least one employee");
+        return;
+      }
       const payload = {
         ...form,
-        recruiter_id: selectedRecruiter,
+        recruiter_ids: form.recruiter_ids,
+        start: form.start_time,
+        end: form.end_time,
         attendees: form.attendees.filter((a) => a.email), // Only valid entries
       };
       await api.post(`/manager/add-meeting`, payload, {
@@ -165,6 +205,20 @@ const Meetings = ({ token }) => {
       {error && <Alert severity="error">{error}</Alert>}
 
       <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel>Department</InputLabel>
+        <Select
+          value={selectedDepartment}
+          onChange={(e) => setSelectedDepartment(e.target.value)}
+          label="Department"
+        >
+          <MenuItem value="all">All departments</MenuItem>
+          {departments.map((d) => (
+            <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <FormControl fullWidth sx={{ mb: 2 }}>
         <InputLabel>Select Employee</InputLabel>
         <Select
           value={selectedRecruiter}
@@ -172,7 +226,7 @@ const Meetings = ({ token }) => {
           label="Select Employee"
         >
           {recruiters.map((r) => (
-            <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+            <MenuItem key={r.id} value={r.id}>{r.name || `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.email}</MenuItem>
           ))}
         </Select>
       </FormControl>
@@ -228,6 +282,34 @@ const Meetings = ({ token }) => {
             </Grid>
             <Grid item xs={3}>
               <TextField type="time" label="End Time" name="end_time" fullWidth InputLabelProps={{ shrink: true }} value={form.end_time} onChange={handleInputChange} />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Employees</InputLabel>
+                <Select
+                  multiple
+                  label="Employees"
+                  value={form.recruiter_ids}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      recruiter_ids: e.target.value,
+                    }))
+                  }
+                  renderValue={(selected) =>
+                    recruiters
+                      .filter((r) => selected.includes(r.id))
+                      .map((r) => r.name || `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.email)
+                      .join(", ")
+                  }
+                >
+                  {recruiters.map((r) => (
+                    <MenuItem key={r.id} value={r.id}>
+                      {r.name || `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.email}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12}>
               <TextField label="Location" name="location" fullWidth value={form.location} onChange={handleInputChange} />
