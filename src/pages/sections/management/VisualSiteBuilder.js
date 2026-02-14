@@ -4616,6 +4616,13 @@ function InspectorColumn() {
 
   const selectedBlockObj = safeSections(editing)[selectedBlock] || {};
   const selectedProps = selectedBlockObj?.props || {};
+  const filteredSchemaForBlock = useMemo(() => {
+    if (!schemaForBlock || !schemaForBlock.fields) return schemaForBlock;
+    const filteredFields = schemaForBlock.fields.filter(
+      (field) => !["overlayGradient", "brightness"].includes(field.name)
+    );
+    return { ...schemaForBlock, fields: filteredFields };
+  }, [schemaForBlock]);
   const hasBackgroundImage =
     selectedProps.backgroundUrl || selectedProps.image || selectedProps.backgroundImage;
   const cardShadowPreset = matchShadowPreset(selectedProps.cardShadow)?.key || "custom";
@@ -4633,6 +4640,95 @@ function InspectorColumn() {
   };
   const [cardShadowBuilderOpen, setCardShadowBuilderOpen] = useState(false);
   const [heroShadowBuilderOpen, setHeroShadowBuilderOpen] = useState(false);
+  const overlayGradientPresets = [
+    { key: "none", label: "None", value: "" },
+    {
+      key: "subtle-dark",
+      label: "Subtle Dark",
+      value: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 100%)",
+    },
+    {
+      key: "strong-dark",
+      label: "Strong Dark",
+      value: "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.75) 100%)",
+    },
+    {
+      key: "soft-light",
+      label: "Soft Light",
+      value: "linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 100%)",
+    },
+    {
+      key: "brand-tint",
+      label: "Brand Tint",
+      value: "linear-gradient(180deg, rgba(59,130,246,0.25) 0%, rgba(37,99,235,0.05) 100%)",
+    },
+  ];
+  const overlayGradientValue = selectedProps.overlayGradient || "";
+  const overlayGradientPreset =
+    overlayGradientPresets.find((p) => p.value === overlayGradientValue)?.key || "custom";
+  const isGradientValid = (val) =>
+    !val || /^linear-gradient\(/i.test(val.trim());
+  const parseGradient = (val) => {
+    const fallback = {
+      angle: 180,
+      stops: [
+        { color: "#000000", stop: 15, opacity: 0.35 },
+        { color: "#000000", stop: 100, opacity: 0.6 },
+      ],
+    };
+    if (!val || typeof val !== "string") return fallback;
+    const match = /linear-gradient\(([^,]+),(.+)\)/i.exec(val);
+    if (!match) return fallback;
+    const angle = Number(String(match[1]).replace("deg", "").trim());
+    const parts = match[2]
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const stops = parts.slice(0, 3).map((p, idx) => {
+      const seg = p.split(/\s+/);
+      const colorStr = seg[0];
+      const stop = seg[1] ? Number(seg[1].replace("%", "")) : idx === 0 ? 0 : 100;
+      const parsed = parseCssColor(colorStr, 0.35);
+      return {
+        color: parsed.hex || "#000000",
+        opacity: parsed.opacity,
+        stop: Number.isFinite(stop) ? stop : idx === 0 ? 0 : 100,
+      };
+    });
+    return {
+      angle: Number.isFinite(angle) ? angle : fallback.angle,
+      stops: stops.length >= 2 ? stops : fallback.stops,
+    };
+  };
+  const [overlayAngle, setOverlayAngle] = useState(180);
+  const [overlayStops, setOverlayStops] = useState([
+    { color: "#000000", stop: 0, opacity: 0.35 },
+    { color: "#000000", stop: 100, opacity: 0.6 },
+  ]);
+  useEffect(() => {
+    const parsed = parseGradient(overlayGradientValue);
+    setOverlayAngle(parsed.angle);
+    setOverlayStops(parsed.stops);
+  }, [overlayGradientValue]);
+  const buildOverlayGradient = (angle, stops) => {
+    const parts = stops
+      .filter((s) => s.color)
+      .map((s) => `${hexToRgba(s.color, s.opacity)} ${s.stop}%`);
+    return `linear-gradient(${angle}deg, ${parts.join(", ")})`;
+  };
+  const updateOverlayStop = (index, patch) => {
+    const next = overlayStops.map((s, i) => (i === index ? { ...s, ...patch } : s));
+    setOverlayStops(next);
+    setBlockProp(selectedBlock, "overlayGradient", buildOverlayGradient(overlayAngle, next));
+  };
+  const updateOverlayAngle = (nextAngle) => {
+    setOverlayAngle(nextAngle);
+    setBlockProp(selectedBlock, "overlayGradient", buildOverlayGradient(nextAngle, overlayStops));
+  };
+  const hasOverlayGradient = overlayGradientValue !== "";
+  const brightnessValue = Number.isFinite(Number(selectedProps.brightness))
+    ? Number(selectedProps.brightness)
+    : 1;
 
   return (
     <Stack spacing={1.5}>
@@ -4741,7 +4837,7 @@ function InspectorColumn() {
                     Content
                   </Typography>
                   <SchemaInspector
-                    schema={schemaForBlock}
+                    schema={filteredSchemaForBlock}
                     value={safeSections(editing)[selectedBlock]?.props || {}}
                     onChange={(props) => setBlockPropsAll(selectedBlock, props)}
                     companyId={companyId}
@@ -5172,6 +5268,186 @@ function InspectorColumn() {
                             fullWidth
                           />
                         )}
+                      </Box>
+                    )}
+
+                    {(selectedProps.overlayGradient != null ||
+                      selectedProps.brightness != null) && (
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                          Background overlay
+                        </Typography>
+                        <FormControl size="small" fullWidth sx={{ mb: 1 }}>
+                          <InputLabel>Overlay preset</InputLabel>
+                          <Select
+                            label="Overlay preset"
+                            value={overlayGradientPreset}
+                            onChange={(e) => {
+                              const key = e.target.value;
+                              if (key === "custom") return;
+                              const preset = overlayGradientPresets.find((p) => p.key === key);
+                              setBlockProp(
+                                selectedBlock,
+                                "overlayGradient",
+                                preset ? preset.value : ""
+                              );
+                            }}
+                          >
+                            {overlayGradientPresets.map((preset) => (
+                              <MenuItem key={preset.key} value={preset.key}>
+                                {preset.label}
+                              </MenuItem>
+                            ))}
+                            <MenuItem value="custom">Custom</MenuItem>
+                          </Select>
+                          <FormHelperText>Choose a preset or build your own gradient.</FormHelperText>
+                        </FormControl>
+
+                        <Stack spacing={1}>
+                          <Typography variant="caption" color="text.secondary">
+                            Angle
+                          </Typography>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Slider
+                              size="small"
+                              min={0}
+                              max={360}
+                              value={overlayAngle}
+                              valueLabelDisplay="auto"
+                              onChange={(_, val) =>
+                                typeof val === "number" && updateOverlayAngle(val)
+                              }
+                              sx={{ flex: 1 }}
+                            />
+                            <TextField
+                              size="small"
+                              value={overlayAngle}
+                              onChange={(e) => {
+                                const num = Number(e.target.value);
+                                if (Number.isFinite(num)) updateOverlayAngle(Math.max(0, Math.min(360, num)));
+                              }}
+                              sx={{ width: 90 }}
+                            />
+                          </Stack>
+                        </Stack>
+                        <Stack spacing={1} sx={{ mt: 1 }}>
+                          {overlayStops.map((stop, idx) => (
+                            <Stack key={idx} direction="row" spacing={1} alignItems="center">
+                              {colorField({
+                                label: `Stop ${idx + 1}`,
+                                value: stop.color,
+                                onChange: (val) => updateOverlayStop(idx, { color: val }),
+                              })}
+                              <TextField
+                                size="small"
+                                label="%"
+                                value={stop.stop}
+                                onChange={(e) =>
+                                  updateOverlayStop(idx, {
+                                    stop: Math.max(0, Math.min(100, Number(e.target.value || 0))),
+                                  })
+                                }
+                                sx={{ width: 80 }}
+                              />
+                              <Stack spacing={0.5} sx={{ minWidth: 120 }}>
+                                <Typography variant="caption">Opacity</Typography>
+                                <Slider
+                                  size="small"
+                                  min={0}
+                                  max={1}
+                                  step={0.05}
+                                  value={stop.opacity}
+                                  valueLabelDisplay="auto"
+                                  onChange={(_, val) =>
+                                    typeof val === "number" && updateOverlayStop(idx, { opacity: val })
+                                  }
+                                />
+                              </Stack>
+                            </Stack>
+                          ))}
+                        </Stack>
+
+                        {overlayGradientPreset === "custom" && (
+                          <TextField
+                            size="small"
+                            label="Overlay gradient CSS"
+                            value={overlayGradientValue}
+                            onChange={(e) =>
+                              setBlockProp(selectedBlock, "overlayGradient", e.target.value)
+                            }
+                            placeholder="linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.6))"
+                            error={!isGradientValid(overlayGradientValue)}
+                            helperText={
+                              isGradientValid(overlayGradientValue)
+                                ? "Example: linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.6))"
+                                : "Enter a valid linear-gradient(...) string."
+                            }
+                            fullWidth
+                          />
+                        )}
+
+                        {selectedProps.brightness != null && (
+                          <Stack spacing={1} sx={{ mt: 2 }}>
+                            <Stack direction="row" justifyContent="space-between">
+                              <Typography variant="caption" color="text.secondary">
+                                Background brightness
+                              </Typography>
+                              <Button
+                                size="small"
+                                variant="text"
+                                onClick={() => setBlockProp(selectedBlock, "brightness", 1)}
+                              >
+                                Reset
+                              </Button>
+                            </Stack>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Slider
+                                size="small"
+                                min={0.5}
+                                max={1.5}
+                                step={0.05}
+                                value={brightnessValue}
+                                valueLabelDisplay="auto"
+                                onChange={(_, val) =>
+                                  typeof val === "number" &&
+                                  setBlockProp(selectedBlock, "brightness", Math.max(0.5, Math.min(1.5, val)))
+                                }
+                                sx={{ flex: 1 }}
+                              />
+                              <TextField
+                                size="small"
+                                value={brightnessValue}
+                                onChange={(e) =>
+                                  setBlockProp(
+                                    selectedBlock,
+                                    "brightness",
+                                    Math.max(0.5, Math.min(1.5, Number(e.target.value || 1)))
+                                  )
+                                }
+                                sx={{ width: 90 }}
+                              />
+                            </Stack>
+                            <FormHelperText>1.0 = original brightness</FormHelperText>
+                          </Stack>
+                        )}
+
+                        <Paper
+                          variant="outlined"
+                          sx={{
+                            mt: 2,
+                            p: 1,
+                            height: 80,
+                            borderRadius: 1.5,
+                            background:
+                              overlayGradientValue ||
+                              "linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.6))",
+                            filter: `brightness(${brightnessValue})`,
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ color: "#fff" }}>
+                            Overlay preview
+                          </Typography>
+                        </Paper>
                       </Box>
                     )}
 
