@@ -400,23 +400,46 @@ const FieldBoolean = ({ label, value, onCommit }) => (
   />
 );
 
-const FieldColor = ({ label, value, onCommit }) => (
-  <Stack spacing={0.5}>
-    <Typography variant="caption">{label}</Typography>
-    <input
-      type="color"
-      value={value || "#000000"}
+const FieldColor = ({ label, value, onCommit }) => {
+  const normalized = normalizeHexColor(value) || "#000000";
+  return (
+    <TextField
+      size="small"
+      label={label}
+      value={value || ""}
       onChange={(e) => onCommit(e.target.value)}
-      onKeyDown={stopBubble}
-      style={{
-        width: 48,
-        height: 32,
-        border: "1px solid #ddd",
-        borderRadius: 6,
+      fullWidth
+      InputProps={{
+        startAdornment: (
+          <InputAdornment position="start">
+            <ButtonBase
+              component="label"
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: 1,
+                border: "1px solid",
+                borderColor: "divider",
+                bgcolor: normalized,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Box
+                component="input"
+                type="color"
+                value={normalized}
+                onChange={(e) => onCommit(e.target.value)}
+                sx={{ opacity: 0, position: "absolute", width: "100%", height: "100%" }}
+              />
+            </ButtonBase>
+          </InputAdornment>
+        ),
       }}
     />
-  </Stack>
-);
+  );
+};
 
 const FieldShadow = ({ label, value, onCommit, shadowType = "box" }) => {
   const [builderOpen, setBuilderOpen] = React.useState(false);
@@ -719,6 +742,101 @@ const FieldGradient = ({ label, value, onCommit }) => {
           fullWidth
         />
       )}
+    </Stack>
+  );
+};
+
+const FieldBorder = ({ label, value, onCommit }) => {
+  const parsed = React.useMemo(() => {
+    if (!value || typeof value !== "string") {
+      return { width: 1, style: "solid", color: "#ffffff" };
+    }
+    const parts = value.trim().split(/\s+/);
+    const width = Number(String(parts[0] || "").replace("px", "")) || 1;
+    const style = parts[1] || "solid";
+    const color = parts.slice(2).join(" ") || "#ffffff";
+    return {
+      width,
+      style,
+      color: normalizeHexColor(color) || color || "#ffffff",
+    };
+  }, [value]);
+
+  const updateBorder = (patch) => {
+    const next = { ...parsed, ...patch };
+    const css = `${next.width}px ${next.style} ${next.color}`;
+    onCommit(css);
+  };
+
+  return (
+    <Stack spacing={1}>
+      <Typography variant="caption">{label}</Typography>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <TextField
+          size="small"
+          label="Width"
+          type="number"
+          value={parsed.width}
+          onChange={(e) => updateBorder({ width: Number(e.target.value || 1) })}
+          sx={{ width: 90 }}
+        />
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel>Style</InputLabel>
+          <Select
+            label="Style"
+            value={parsed.style}
+            onChange={(e) => updateBorder({ style: e.target.value })}
+          >
+            {["solid", "dashed", "dotted", "double"].map((opt) => (
+              <MenuItem key={opt} value={opt}>
+                {opt}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          size="small"
+          label="Color"
+          value={parsed.color}
+          onChange={(e) => updateBorder({ color: e.target.value })}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <ButtonBase
+                  component="label"
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 1,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    bgcolor: normalizeHexColor(parsed.color) || "#000000",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Box
+                    component="input"
+                    type="color"
+                    value={normalizeHexColor(parsed.color) || "#000000"}
+                    onChange={(e) => updateBorder({ color: e.target.value })}
+                    sx={{ opacity: 0, position: "absolute", width: "100%", height: "100%" }}
+                  />
+                </ButtonBase>
+              </InputAdornment>
+            ),
+          }}
+        />
+      </Stack>
+      <TextField
+        size="small"
+        label={`${label} (CSS)`}
+        value={value || ""}
+        onChange={(e) => onCommit(e.target.value)}
+        helperText="Example: 1px solid rgba(255,255,255,0.35)"
+        fullWidth
+      />
     </Stack>
   );
 };
@@ -1320,6 +1438,26 @@ export default function SchemaInspector({ schema, value = {}, onChange, companyI
 
           // STRING (default) — strips HTML globally, but auto-detect colors
           if (f.type === "string") {
+            if (f.ui === "border") {
+              return (
+                <FieldBorder
+                  key={key}
+                  label={label}
+                  value={val}
+                  onCommit={(nv) => setWhole(key, nv)}
+                />
+              );
+            }
+            if (f.ui === "color") {
+              return (
+                <FieldColor
+                  key={key}
+                  label={label}
+                  value={val}
+                  onCommit={(nv) => setWhole(key, nv)}
+                />
+              );
+            }
             if (f.ui === "shadow") {
               return (
                 <FieldShadow

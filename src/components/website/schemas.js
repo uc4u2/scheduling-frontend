@@ -428,7 +428,7 @@ export const SCHEMA_REGISTRY = {
     { name: "maxWidth",     type: "number", label: "Max width (px)", min: 720, max: 1440, step: 10 },
     { name: "sectionBackground", type: "string", label: "Section background (CSS gradient/color)", ui: "gradient" },
     { name: "surface",      type: "string", label: "Card surface (CSS color)" },
-    { name: "borderColor",  type: "string", label: "Border color" },
+    { name: "borderColor",  type: "string", label: "Border color", ui: "color" },
     { name: "shadow",       type: "string", label: "Shadow", ui: "shadow", shadowType: "box" },
     { name: "headingColor", type: "color",  label: "Heading color" },
     { name: "bodyColor",    type: "color",  label: "Body text color" },
@@ -695,7 +695,7 @@ export const SCHEMA_REGISTRY = {
       { name: "gap",         type: "number",     label: "Tile gap (px)", min: 0, max: 64, step: 1, default: 18 },
       { name: "tileAspectRatio", type: "string", label: "Tile aspect ratio", placeholder: "4/5" },
       { name: "tileBorderRadius", type: "number", label: "Tile border radius (px)", min: 0, max: 64, step: 1, default: 0 },
-      { name: "tileBorder", type: "string", label: "Tile border (CSS)", placeholder: "1px solid rgba(255,255,255,0.35)" },
+      { name: "tileBorder", type: "string", label: "Tile border (CSS)", placeholder: "1px solid rgba(255,255,255,0.35)", ui: "border" },
       { name: "tileHoverLift", type: "boolean", label: "Hover lift", default: true },
       { name: "lightboxEnabled", type: "boolean", label: "Lightbox enabled", default: true },
       { name: "lightboxLoop", type: "boolean", label: "Lightbox loop", default: true },
@@ -730,7 +730,7 @@ export const SCHEMA_REGISTRY = {
       { name: "gap",         type: "number",     label: "Tile gap (px)", min: 0, max: 64, step: 1, default: 18 },
       { name: "tileAspectRatio", type: "string", label: "Tile aspect ratio", placeholder: "16/9" },
       { name: "tileBorderRadius", type: "number", label: "Tile border radius (px)", min: 0, max: 64, step: 1, default: 0 },
-      { name: "tileBorder", type: "string", label: "Tile border (CSS)", placeholder: "1px solid rgba(255,255,255,0.35)" },
+      { name: "tileBorder", type: "string", label: "Tile border (CSS)", placeholder: "1px solid rgba(255,255,255,0.35)", ui: "border" },
       { name: "tileHoverLift", type: "boolean", label: "Hover lift", default: true },
       { name: "lightboxEnabled", type: "boolean", label: "Lightbox enabled", default: true },
       { name: "lightboxLoop", type: "boolean", label: "Lightbox loop", default: true },
@@ -934,7 +934,7 @@ export const SCHEMA_REGISTRY = {
       { name: "align",       type: "select",  label: "Text alignment", options: ["left","center","right"], default: "left" },
       { name: "fontSize",    type: "number",  label: "Font size (px)", min: 8, max: 200, step: 1, default: 24 },
       { name: "fontWeight",  type: "number",  label: "Font weight", min: 100, max: 1000, step: 50, default: 700 },
-      { name: "color",       type: "string",  label: "Text color (CSS)" },
+      { name: "color",       type: "string",  label: "Text color (CSS)", ui: "color" },
       { name: "background",  type: "string",  label: "Background (CSS)", ui: "gradient" },
       { name: "padding",     type: "number",  label: "Padding (px)", min: 0, max: 120, step: 1, default: 8 },
       { name: "borderRadius",type: "number",  label: "Border radius (px)", min: 0, max: 64, step: 1, default: 8 },
@@ -1031,8 +1031,8 @@ export const SCHEMA_REGISTRY = {
       { name: "cardShadow", type: "string", label: "Card shadow (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardShadow", placeholder: "0 8px 30px rgba(0,0,0,.08)", ui: "shadow", shadowType: "box" },
 
       // --- Buttons ---
-      { name: "btnBg",     type: "string", label: "Button background (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.btnBg" },
-      { name: "btnColor",  type: "string", label: "Button text color (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.btnColor" },
+      { name: "btnBg",     type: "string", label: "Button background (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.btnBg", ui: "color" },
+      { name: "btnColor",  type: "string", label: "Button text color (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.btnColor", ui: "color" },
       { name: "btnRadius", type: "number", label: "Button radius (px)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.btnRadius", min: 0, max: 40, step: 1, default: 10 }
     ]
   },
