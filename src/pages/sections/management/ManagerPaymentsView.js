@@ -20,6 +20,7 @@ import {
   Button,
   CircularProgress,
   Backdrop,
+  Paper,
   Stack,
   Divider,
   Chip,
@@ -31,10 +32,8 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
-  List,
-  ListItem,
-  ListItemText,
   Snackbar,
+  Skeleton,
   Tooltip,
   IconButton,
   FormLabel,
@@ -45,7 +44,13 @@ import {
   TablePagination,
   Toolbar, // spacer matching AppBar height
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import SearchIcon from "@mui/icons-material/Search";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
+import ReplayIcon from "@mui/icons-material/Replay";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 // Timezone helpers
 const resolveTZ = () => getUserTimezone();
@@ -1210,13 +1215,37 @@ export default function ManagerPaymentsView({ connect }) {
     return bookingsFiltered.slice(start, start + rowsPerPage);
   }, [bookingsFiltered, page, rowsPerPage]);
 
-  if (loading) {
-    return (
-      <Box p={3}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  const statusCounts = useMemo(
+    () => ({
+      all: bookings.length,
+      paid: bookings.filter((b) => b.payment_status === "paid").length,
+      pending: bookings.filter((b) => b.payment_status === "pending").length,
+      card_on_file: bookings.filter((b) => b.payment_status === "card_on_file")
+        .length,
+      unpaid: bookings.filter((b) => b.payment_status === "unpaid").length,
+      refunded: bookings.filter((b) =>
+        ["partially_refunded", "refunded"].includes(b.payment_status),
+      ).length,
+      partially_refunded: bookings.filter(
+        (b) => b.payment_status === "partially_refunded",
+      ).length,
+      no_show: bookings.filter((b) => b.payment_status === "no_show").length,
+    }),
+    [bookings],
+  );
+
+  const statusChips = useMemo(
+    () => [
+      { value: "all", label: "All", color: "default" },
+      { value: "paid", label: "Paid", color: "success" },
+      { value: "pending", label: "Pending", color: "warning" },
+      { value: "card_on_file", label: "Card on file", color: "primary" },
+      { value: "unpaid", label: "Unpaid", color: "default" },
+      { value: "refunded", label: "Refunded", color: "info" },
+      { value: "no_show", label: "No-show", color: "error" },
+    ],
+    [],
+  );
 
   return (
     <>
@@ -1284,24 +1313,43 @@ export default function ManagerPaymentsView({ connect }) {
           )
         ) : null}
 
-        {/* Toolbar */}
         <Stack
           direction={{ xs: "column", md: "row" }}
-          spacing={1.5}
-          alignItems={{ xs: "stretch", md: "center" }}
+          spacing={2}
+          alignItems={{ xs: "flex-start", md: "center" }}
           justifyContent="space-between"
           sx={{ mb: 2 }}
         >
-          <Typography variant="h5">Payments & Refunds</Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+          <Box>
+            <Typography variant="h4" fontWeight={700}>
+              Payments & Refunds
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Track booking payments, card-on-file charges, and refund activity
+              in one place.
+            </Typography>
+          </Box>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "stretch", sm: "center" }}
+          >
             <TextField
               size="small"
-              label="Search (name, email, service, #id)"
+              placeholder="Search name, email, service, or #ID"
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
                 setPage(0);
               }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ minWidth: { xs: "100%", sm: 280 } }}
             />
             <Select
               size="small"
@@ -1311,6 +1359,7 @@ export default function ManagerPaymentsView({ connect }) {
                 setPage(0);
               }}
               displayEmpty
+              sx={{ minWidth: { xs: "100%", sm: 200 } }}
             >
               <MenuItem value="all">All statuses</MenuItem>
               <MenuItem value="paid">Paid</MenuItem>
@@ -1321,36 +1370,65 @@ export default function ManagerPaymentsView({ connect }) {
               <MenuItem value="refunded">Refunded</MenuItem>
               <MenuItem value="no_show">No-show</MenuItem>
             </Select>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={loadBookings}
+              sx={{ whiteSpace: "nowrap" }}
+            >
+              Refresh
+            </Button>
           </Stack>
         </Stack>
 
-        {/* Quick counters */}
-        <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
-          <Chip
-            label={`Paid: ${bookings.filter((b) => b.payment_status === "paid").length}`}
-            color="success"
-            variant="outlined"
-          />
-          <Chip
-            label={`Pending: ${bookings.filter((b) => b.payment_status === "pending").length}`}
-            color="warning"
-            variant="outlined"
-          />
-          <Chip
-            label={`Card on file: ${bookings.filter((b) => b.payment_status === "card_on_file").length}`}
-            color="primary"
-            variant="outlined"
-          />
-          <Chip
-            label={`Unpaid: ${bookings.filter((b) => b.payment_status === "unpaid").length}`}
-            variant="outlined"
-          />
-          <Chip
-            label={`Refunded: ${bookings.filter((b) => ["partially_refunded", "refunded"].includes(b.payment_status)).length}`}
-            color="info"
-            variant="outlined"
-          />
-        </Stack>
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 1.5,
+            borderRadius: 3,
+            mb: 2,
+            backgroundColor: (t) => t.palette.background.paper,
+          }}
+        >
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+            {statusChips.map((chip) => {
+              const count = statusCounts[chip.value] ?? 0;
+              const active = statusFilter === chip.value;
+              return (
+                <Chip
+                  key={chip.value}
+                  label={`${chip.label}: ${count}`}
+                  color={chip.color}
+                  variant={active ? "filled" : "outlined"}
+                  onClick={() => {
+                    setStatusFilter(chip.value);
+                    setPage(0);
+                  }}
+                  sx={(t) => ({
+                    borderRadius: 999,
+                    fontWeight: 600,
+                    borderColor: active
+                      ? alpha(
+                          (chip.color === "default"
+                            ? t.palette.primary.main
+                            : t.palette[chip.color].main),
+                          0.4,
+                        )
+                      : undefined,
+                    boxShadow: active
+                      ? `0 6px 16px ${alpha(
+                          chip.color === "default"
+                            ? t.palette.primary.main
+                            : t.palette[chip.color].main,
+                          0.2,
+                        )}`
+                      : "none",
+                  })}
+                />
+              );
+            })}
+          </Stack>
+        </Paper>
 
         {msg && (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -1358,161 +1436,215 @@ export default function ManagerPaymentsView({ connect }) {
           </Alert>
         )}
 
-        {/* Bookings (paged) */}
-        <List sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}>
-          {bookingsPage.map((b) => (
-            <React.Fragment key={b.id}>
-              <ListItem
-                secondaryAction={
-                  <Stack direction="row" spacing={1}>
-                    {["paid", "partially_refunded"].includes(
-                      b.payment_status,
-                    ) && (
-                      <Button
-                        size="small"
-                        color="error"
-                        variant="outlined"
-                        onClick={() => openRefund(b)}
-                      >
-                        Refund{" "}
-                      </Button>
-                    )}
-
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => onViewPayments(b)}
-                    >
-                      View
-                    </Button>
-                    {b.payment_status === "card_on_file" && (
-                      <Button
-                        size="small"
-                        color="primary"
-                        variant="contained"
-                        onClick={() => openCharge(b)}
-                      >
-                        Charge saved card
-                      </Button>
-                    )}
-                  </Stack>
-                }
+        {loading ? (
+          <Stack spacing={1.5}>
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <Paper
+                key={`skeleton-${idx}`}
+                variant="outlined"
+                sx={{ p: 2, borderRadius: 3 }}
               >
-                <ListItemText
-                  primary={
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography fontWeight={600}>#{b.id}</Typography>
-                      <Chip
-                        size="small"
-                        label={formatPaymentStatusLabel(b.payment_status)}
-                        color={paymentStatusChipColor(b.payment_status)}
-                        variant={
-                          b.payment_status === "paid" ? "filled" : "outlined"
-                        }
-                      />
-                    </Stack>
-                  }
-                  secondary={
-                    <>
-                      <Typography variant="body2">
-                        Client:{" "}
-                        {b?.client?.full_name ||
-                          b?.client_name ||
-                          "                                                                                  "}{" "}
-                        {b?.client?.email
-                          ? `                                                                       ${b.client.email}`
-                          : ""}
+                <Stack spacing={1}>
+                  <Skeleton variant="text" width="40%" />
+                  <Skeleton variant="text" width="70%" />
+                  <Skeleton variant="text" width="60%" />
+                  <Skeleton variant="rectangular" height={32} />
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        ) : bookingsPage.length === 0 ? (
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              textAlign: "center",
+              color: "text.secondary",
+            }}
+          >
+            <InfoOutlinedIcon sx={{ mb: 1 }} color="disabled" />
+            <Typography variant="subtitle1" fontWeight={600}>
+              No payments found
+            </Typography>
+            <Typography variant="body2">
+              Try adjusting your search or status filters.
+            </Typography>
+          </Paper>
+        ) : (
+          <Stack spacing={1.5}>
+            {bookingsPage.map((b) => {
+              const totalCaptured =
+                (b._capturedBalanceTotal || 0) + (b._capturedTipTotal || 0);
+              const segments = [];
+              if (totalCaptured > 0) {
+                const capturedLabel = `Captured ${money(
+                  totalCaptured,
+                  b.currency || displayCurrency,
+                )}${
+                  b._capturedTipTotal > 0
+                    ? ` (Tip ${money(
+                        b._capturedTipTotal,
+                        b.currency || displayCurrency,
+                      )})`
+                    : ""
+                }`;
+                segments.push(capturedLabel);
+              } else {
+                segments.push("No captures");
+              }
+              if (b._refundedTotal > 0) {
+                segments.push(
+                  `Refunded ${money(
+                    b._refundedTotal,
+                    b.currency || displayCurrency,
+                  )}`,
+                );
+              }
+              let whenLabel = b._whenLabel || "";
+              if (!whenLabel && b._startIso) {
+                whenLabel = DateTime.fromISO(b._startIso)
+                  .setZone(b._tz || b._srcTZ || b.timezone || resolveTZ())
+                  .toFormat("yyyy-LL-dd hh:mm a (z)");
+              }
+              if (!whenLabel && b?.date && b?.start_time) {
+                whenLabel = fmtApptLocal(
+                  b.date,
+                  b.start_time,
+                  b._srcTZ || b.timezone || b.recruiterTimezone,
+                  "yyyy-LL-dd hh:mm a (z)",
+                );
+              }
+              if (whenLabel) {
+                segments.push(`When ${whenLabel}`);
+              }
+              const summary = segments.filter(Boolean).join(" | ");
+
+              return (
+                <Paper
+                  key={b.id}
+                  variant="outlined"
+                  sx={(t) => ({
+                    p: 2,
+                    borderRadius: 3,
+                    transition: "transform 120ms ease, box-shadow 120ms ease",
+                    "&:hover": {
+                      transform: "translateY(-1px)",
+                      boxShadow: `0 10px 24px ${alpha(
+                        t.palette.common.black,
+                        0.08,
+                      )}`,
+                    },
+                  })}
+                >
+                  <Stack
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={2}
+                    alignItems={{ md: "center" }}
+                    justifyContent="space-between"
+                  >
+                    <Stack spacing={0.5}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="subtitle1" fontWeight={700}>
+                          Booking #{b.id}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={formatPaymentStatusLabel(b.payment_status)}
+                          color={paymentStatusChipColor(b.payment_status)}
+                          variant={
+                            b.payment_status === "paid" ? "filled" : "outlined"
+                          }
+                        />
+                      </Stack>
+                      <Typography variant="body2" color="text.secondary">
+                        {b?.client?.full_name || b?.client_name || "Client"}{" "}
+                        {b?.client?.email ? `• ${b.client.email}` : ""}
                       </Typography>
-                      <Typography variant="body2">
-                        Service:{" "}
-                        {b?.service?.name ||
-                          b?.service_name ||
-                          "                                                                                  "}{" "}
-                        When: {b._whenLabel}
+                      <Typography variant="body2" color="text.secondary">
+                        Service: {b?.service?.name || b?.service_name || "—"}{" "}
+                        {b._whenLabel ? `• ${b._whenLabel}` : ""}
                       </Typography>
-                      {(() => {
-                        const segments = [];
-                        const totalCaptured =
-                          (b._capturedBalanceTotal || 0) +
-                          (b._capturedTipTotal || 0);
-                        if (totalCaptured > 0) {
-                          const capturedLabel = `Captured ${money(
-                            totalCaptured,
-                            b.currency || displayCurrency,
-                          )}${
-                            b._capturedTipTotal > 0
-                              ? ` (Tip ${money(
-                                  b._capturedTipTotal,
-                                  b.currency || displayCurrency,
-                                )})`
-                              : ""
-                          }`;
-                          segments.push(capturedLabel);
-                        } else {
-                          segments.push("No captures");
-                        }
-                        if (b._refundedTotal > 0) {
-                          segments.push(
-                            `Refunded ${money(
-                              b._refundedTotal,
-                              b.currency || displayCurrency,
-                            )}`,
-                          );
-                        }
-                        let whenLabel = b._whenLabel || "";
-                        if (!whenLabel && b._startIso) {
-                          whenLabel = DateTime.fromISO(b._startIso)
-                            .setZone(
-                              b._tz || b._srcTZ || b.timezone || resolveTZ(),
-                            )
-                            .toFormat("yyyy-LL-dd hh:mm a (z)");
-                        }
-                        if (!whenLabel && b?.date && b?.start_time) {
-                          whenLabel = fmtApptLocal(
-                            b.date,
-                            b.start_time,
-                            b._srcTZ || b.timezone || b.recruiterTimezone,
-                            "yyyy-LL-dd hh:mm a (z)",
-                          );
-                        }
-                        if (whenLabel) {
-                          segments.push(`When ${whenLabel}`);
-                        }
-                        const summary = segments.filter(Boolean).join(" | ");
-                        return summary ? (
-                          <Typography variant="body2">
-                            Payments: {summary}
-                          </Typography>
-                        ) : null;
-                      })()}
+                      {summary ? (
+                        <Typography variant="body2" color="text.secondary">
+                          Payments: {summary}
+                        </Typography>
+                      ) : null}
                       {typeof b.amount !== "undefined" && (
-                        <Typography variant="body2">
+                        <Typography variant="body2" color="text.secondary">
                           Amount:{" "}
                           {money(b.amount, b.currency || displayCurrency)}
                         </Typography>
                       )}
-                    </>
-                  }
-                />
-              </ListItem>
-              <Divider component="li" />
-            </React.Fragment>
-          ))}
-        </List>
+                    </Stack>
+                    <Stack
+                      direction={{ xs: "column", sm: "row" }}
+                      spacing={1}
+                      alignItems="center"
+                      justifyContent="flex-end"
+                      sx={{ width: { xs: "100%", md: "auto" } }}
+                    >
+                      {["paid", "partially_refunded"].includes(
+                        b.payment_status,
+                      ) && (
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          onClick={() => openRefund(b)}
+                        >
+                          Refund
+                        </Button>
+                      )}
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => onViewPayments(b)}
+                      >
+                        View
+                      </Button>
+                      {b.payment_status === "card_on_file" && (
+                        <Button
+                          size="small"
+                          color="primary"
+                          variant="contained"
+                          onClick={() => openCharge(b)}
+                        >
+                          Charge saved card
+                        </Button>
+                      )}
+                    </Stack>
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </Stack>
+        )}
 
-        {/* Pagination */}
-        <TablePagination
-          component="div"
-          count={bookingsFiltered.length}
-          page={page}
-          onPageChange={(_, p) => setPage(p)}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={(e) => {
-            setRowsPerPage(parseInt(e.target.value, 10));
-            setPage(0);
+        <Paper
+          variant="outlined"
+          sx={{
+            mt: 2,
+            borderRadius: 3,
+            position: "sticky",
+            bottom: 16,
+            zIndex: 1,
+            bgcolor: "background.paper",
           }}
-          rowsPerPageOptions={[10, 25, 50, 100]}
-        />
+        >
+          <TablePagination
+            component="div"
+            count={bookingsFiltered.length}
+            page={page}
+            onPageChange={(_, p) => setPage(p)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 25, 50, 100]}
+          />
+        </Paper>
 
         {/* Payment History Modal (popup) */}
         <Dialog
@@ -1524,120 +1656,116 @@ export default function ManagerPaymentsView({ connect }) {
           fullWidth
           maxWidth="sm"
         >
-          <DialogTitle>
-            Payment History {viewAppt ? `(Booking #${viewAppt.id})` : ""}
-            {viewAppt && (
-              <Typography variant="body2" color="text.secondary">
-                {viewAppt._whenLabel ||
-                  fmtApptLocal(
-                    viewAppt?.date,
-                    viewAppt?.start_time,
-                    viewAppt?._srcTZ ||
-                      viewAppt?.timezone ||
-                      viewAppt?.recruiterTimezone,
-                  )}
-              </Typography>
-            )}
+          <DialogTitle sx={{ pb: 1 }}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <ReceiptLongIcon color="primary" />
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Payment History
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {viewAppt ? `Booking #${viewAppt.id}` : "Booking details"}
+                </Typography>
+                {viewAppt && (
+                  <Typography variant="caption" color="text.secondary">
+                    {viewAppt._whenLabel ||
+                      fmtApptLocal(
+                        viewAppt?.date,
+                        viewAppt?.start_time,
+                        viewAppt?._srcTZ ||
+                          viewAppt?.timezone ||
+                          viewAppt?.recruiterTimezone,
+                      )}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
           </DialogTitle>
           <DialogContent dividers>
             {loadingPayments ? (
-              <CircularProgress size={24} />
+              <Stack alignItems="center" py={2}>
+                <CircularProgress size={28} />
+              </Stack>
             ) : payments.length === 0 ? (
               <Alert severity="info">No transactions yet.</Alert>
             ) : (
-              <List sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}>
+              <Stack spacing={1.5}>
                 {payments.map((p) => (
-                  <React.Fragment
+                  <Paper
                     key={p.id || `${p.type}-${p.provider_ref || p.timestamp}`}
+                    variant="outlined"
+                    sx={{ p: 1.5, borderRadius: 2 }}
                   >
-                    <ListItem>
-                      <ListItemText
-                        primary={
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <Typography fontWeight={600}>
-                              {String(p.type || "").toUpperCase()}
-                            </Typography>
-                            <Chip
-                              size="small"
-                              label={p.status || "Unknown"}
-                              color={
-                                p.status === "captured"
-                                  ? "success"
-                                  : p.status === "refunded"
-                                    ? "default"
-                                    : "warning"
-                              }
-                              variant="outlined"
-                            />
-                          </Stack>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography fontWeight={600}>
+                        {String(p.type || "").toUpperCase()}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={p.status || "Unknown"}
+                        color={
+                          p.status === "captured"
+                            ? "success"
+                            : p.status === "refunded"
+                              ? "default"
+                              : "warning"
                         }
-                        secondary={
-                          <>
-                            <Typography variant="body2">
-                              Amount: {money(p.amount, p.currency)} | Provider:{" "}
-                              {p.provider || "N/A"}
-                            </Typography>
-                            {p.qb_export_status && (
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ display: "block" }}
-                              >
-                                {(() => {
-                                  const docLabel = p.qb_doc_type
-                                    ? `${p.qb_doc_type.charAt(0).toUpperCase()}${p.qb_doc_type.slice(1)}`
-                                    : "Document";
-                                  if (p.qb_export_status === "success") {
-                                    return `QuickBooks: Synced ${docLabel}${
-                                      p.qb_doc_id ? ` #${p.qb_doc_id}` : ""
-                                    }`;
-                                  }
-                                  let statusLabel = `QuickBooks: ${p.qb_export_status}`;
-                                  if (p.qb_doc_id) {
-                                    statusLabel += ` (${docLabel} #${p.qb_doc_id})`;
-                                  }
-                                  if (p.qb_export_error) {
-                                    statusLabel += ` – ${p.qb_export_error}`;
-                                  }
-                                  return statusLabel;
-                                })()}
-                              </Typography>
-                            )}
-                            {(p.created_at || p.timestamp) && (
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ display: "block" }}
-                              >
-                                On{" "}
-                                {p._tsLabel ||
-                                  fmtISO(
-                                    p.timestamp || p.created_at,
-                                    undefined,
-                                    p._tz || resolveTZ(),
-                                  )}
-                              </Typography>
-                            )}
-                            {p.provider_ref && (
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                Ref: {p.provider_ref}
-                              </Typography>
-                            )}
-                          </>
-                        }
+                        variant="outlined"
                       />
-                    </ListItem>
-                    <Divider component="li" />
-                  </React.Fragment>
+                    </Stack>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      Amount: {money(p.amount, p.currency)} | Provider:{" "}
+                      {p.provider || "N/A"}
+                    </Typography>
+                    {p.qb_export_status && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block" }}
+                      >
+                        {(() => {
+                          const docLabel = p.qb_doc_type
+                            ? `${p.qb_doc_type.charAt(0).toUpperCase()}${p.qb_doc_type.slice(1)}`
+                            : "Document";
+                          if (p.qb_export_status === "success") {
+                            return `QuickBooks: Synced ${docLabel}${
+                              p.qb_doc_id ? ` #${p.qb_doc_id}` : ""
+                            }`;
+                          }
+                          let statusLabel = `QuickBooks: ${p.qb_export_status}`;
+                          if (p.qb_doc_id) {
+                            statusLabel += ` (${docLabel} #${p.qb_doc_id})`;
+                          }
+                          if (p.qb_export_error) {
+                            statusLabel += ` – ${p.qb_export_error}`;
+                          }
+                          return statusLabel;
+                        })()}
+                      </Typography>
+                    )}
+                    {(p.created_at || p.timestamp) && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: "block" }}
+                      >
+                        On{" "}
+                        {p._tsLabel ||
+                          fmtISO(
+                            p.timestamp || p.created_at,
+                            undefined,
+                            p._tz || resolveTZ(),
+                          )}
+                      </Typography>
+                    )}
+                    {p.provider_ref && (
+                      <Typography variant="caption" color="text.secondary">
+                        Ref: {p.provider_ref}
+                      </Typography>
+                    )}
+                  </Paper>
                 ))}
-              </List>
+              </Stack>
             )}
           </DialogContent>
           <DialogActions>
@@ -1659,22 +1787,32 @@ export default function ManagerPaymentsView({ connect }) {
           fullWidth
           maxWidth="sm"
         >
-          <DialogTitle>
-            Charge saved card{" "}
-            {chargeBooking ? `(Booking #${chargeBooking.id})` : ""}
-            {chargeBooking && (
-              <Typography variant="body2" color="text.secondary">
-                When:{" "}
-                {chargeBooking._whenLabel ||
-                  fmtApptLocal(
-                    chargeBooking?.date,
-                    chargeBooking?.start_time,
-                    chargeBooking?._srcTZ ||
-                      chargeBooking?.timezone ||
-                      chargeBooking?.recruiterTimezone,
-                  )}
-              </Typography>
-            )}
+          <DialogTitle sx={{ pb: 1 }}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <CreditCardIcon color="primary" />
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Charge saved card
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {chargeBooking
+                    ? `Booking #${chargeBooking.id}`
+                    : "Select a booking"}
+                </Typography>
+                {chargeBooking && (
+                  <Typography variant="caption" color="text.secondary">
+                    {chargeBooking._whenLabel ||
+                      fmtApptLocal(
+                        chargeBooking?.date,
+                        chargeBooking?.start_time,
+                        chargeBooking?._srcTZ ||
+                          chargeBooking?.timezone ||
+                          chargeBooking?.recruiterTimezone,
+                      )}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
           </DialogTitle>
           <DialogContent dividers>
             {pmLoading ? (
@@ -1854,21 +1992,32 @@ export default function ManagerPaymentsView({ connect }) {
           fullWidth
           maxWidth="sm"
         >
-          <DialogTitle>
-            Issue refund {refundBooking ? `(Booking #${refundBooking.id})` : ""}
-            {refundBooking && (
-              <Typography variant="body2" color="text.secondary">
-                When:{" "}
-                {refundBooking._whenLabel ||
-                  fmtApptLocal(
-                    refundBooking?.date,
-                    refundBooking?.start_time,
-                    refundBooking?._srcTZ ||
-                      refundBooking?.timezone ||
-                      refundBooking?.recruiterTimezone,
-                  )}
-              </Typography>
-            )}
+          <DialogTitle sx={{ pb: 1 }}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <ReplayIcon color="primary" />
+              <Box>
+                <Typography variant="h6" fontWeight={700}>
+                  Issue refund
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {refundBooking
+                    ? `Booking #${refundBooking.id}`
+                    : "Select a booking"}
+                </Typography>
+                {refundBooking && (
+                  <Typography variant="caption" color="text.secondary">
+                    {refundBooking._whenLabel ||
+                      fmtApptLocal(
+                        refundBooking?.date,
+                        refundBooking?.start_time,
+                        refundBooking?._srcTZ ||
+                          refundBooking?.timezone ||
+                          refundBooking?.recruiterTimezone,
+                      )}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
           </DialogTitle>
           <DialogContent dividers>
             {refundLoading ? (
