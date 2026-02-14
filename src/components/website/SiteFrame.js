@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { alpha, useTheme } from "@mui/material/styles";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import ThemeRuntimeProvider from "./ThemeRuntimeProvider";
@@ -82,6 +83,7 @@ export default function SiteFrame({
   initialSite = null,
   disableFetch = false,
   wrapChildrenInContainer = true,
+  onTogglePageMenu,
 }) {
   const theme = useTheme(); // will be overridden by ThemeRuntimeProvider below
   const isPreview = disableFetch && Boolean(initialSite);
@@ -237,6 +239,7 @@ export default function SiteFrame({
         .filter((p) => !(p.slug === "login" && clientLoggedIn))
         .filter((p) => !(p.slug === "my-bookings" && !clientLoggedIn))
         .map((p) => ({
+          id: p.id,
           label: p.menu_title || p.title || p.slug,
           href: `?page=${encodeURIComponent(p.slug)}`,
         })),
@@ -536,15 +539,49 @@ export default function SiteFrame({
         const props = resolveLinkProps(item.href);
         const active = Boolean(props?.to && pathname.includes(String(props.to).split("?")[0]));
         return (
-          <Button
+          <Box
             key={`${item.label}-${idx}`}
-            {...props}
-            color="inherit"
-            size="small"
-            sx={navButtonStyling(active)}
+            sx={{
+              position: "relative",
+              display: "inline-flex",
+              alignItems: "center",
+              "&:hover .nav-remove": { opacity: 1, pointerEvents: "auto" },
+            }}
           >
-            {item.label || "Link"}
-          </Button>
+            <Button
+              {...props}
+              color="inherit"
+              size="small"
+              sx={navButtonStyling(active)}
+            >
+              {item.label || "Link"}
+            </Button>
+            {isPreview && onTogglePageMenu && item.id ? (
+              <IconButton
+                size="small"
+                className="nav-remove"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onTogglePageMenu(item.id);
+                }}
+                sx={{
+                  position: "absolute",
+                  top: -6,
+                  right: -6,
+                  bgcolor: "background.paper",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  boxShadow: 1,
+                  opacity: 0,
+                  pointerEvents: "none",
+                  "&:hover": { bgcolor: "background.default" },
+                }}
+              >
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            ) : null}
+          </Box>
         );
       })}
       {!hasReviewsLink && nav.show_reviews_tab !== false && (

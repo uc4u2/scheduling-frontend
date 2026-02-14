@@ -2092,6 +2092,7 @@ const applyStyleToAllPagesNow = useCallback(async () => {
       return [];
     }
     return pages.map((p) => ({
+      id: p.id,
       slug: p.slug,
       menu_title: p.menu_title || p.title || p.slug,
       title: p.title || p.slug,
@@ -4146,6 +4147,9 @@ const CanvasColumn = (
       initialSite={previewSite}
       disableFetch
       wrapChildrenInContainer={fullPreview}
+      onTogglePageMenu={(pageId) => {
+        applyPageActionPatch(pageId, { show_in_menu: false });
+      }}
     >
       <Box
         sx={{
