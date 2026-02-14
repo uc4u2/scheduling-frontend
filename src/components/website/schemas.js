@@ -427,7 +427,7 @@ export const SCHEMA_REGISTRY = {
     { name: "gap",          type: "number", label: "Grid gap (px)", min: 16, max: 64, step: 2 },
     { name: "maxWidth",     type: "number", label: "Max width (px)", min: 720, max: 1440, step: 10 },
     { name: "sectionBackground", type: "string", label: "Section background (CSS gradient/color)", ui: "gradient" },
-    { name: "surface",      type: "string", label: "Card surface (CSS color)" },
+    { name: "surface",      type: "string", label: "Card surface (CSS color)", ui: "color" },
     { name: "borderColor",  type: "string", label: "Border color", ui: "color" },
     { name: "shadow",       type: "string", label: "Shadow", ui: "shadow", shadowType: "box" },
     { name: "headingColor", type: "color",  label: "Heading color" },

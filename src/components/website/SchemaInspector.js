@@ -596,11 +596,14 @@ const FieldGradient = ({ label, value, onCommit }) => {
   const parsed = parseGradient(value);
   const [angle, setAngle] = React.useState(parsed.angle);
   const [stops, setStops] = React.useState(parsed.stops);
+  const isSolid = /^#|^rgba?\(/i.test(String(value || "").trim());
+  const [solidMode, setSolidMode] = React.useState(isSolid);
 
   React.useEffect(() => {
     const next = parseGradient(value);
     setAngle(next.angle);
     setStops(next.stops);
+    setSolidMode(/^#|^rgba?\(/i.test(String(value || "").trim()));
   }, [value]);
 
   const updateStop = (idx, patch) => {
@@ -615,6 +618,31 @@ const FieldGradient = ({ label, value, onCommit }) => {
 
   return (
     <Stack spacing={1}>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={solidMode}
+            onChange={(_, checked) => {
+              setSolidMode(checked);
+              if (checked) {
+                onCommit(normalizeHexColor(value) || "#000000");
+              } else {
+                onCommit(buildGradient(angle, stops));
+              }
+            }}
+          />
+        }
+        label="Solid color"
+      />
+      {solidMode && (
+        <FieldColor
+          label={`${label} color`}
+          value={normalizeHexColor(value) || "#000000"}
+          onCommit={(nv) => onCommit(nv)}
+        />
+      )}
+      {!solidMode && (
+        <>
       <FormControl size="small" fullWidth>
         <InputLabel>{label} preset</InputLabel>
         <Select
@@ -741,6 +769,8 @@ const FieldGradient = ({ label, value, onCommit }) => {
           }
           fullWidth
         />
+      )}
+        </>
       )}
     </Stack>
   );
