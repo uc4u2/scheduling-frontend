@@ -21,6 +21,7 @@ import {
   InputLabel,
   Alert,
   Checkbox,
+  Switch,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import api from "../../utils/api";
@@ -33,6 +34,8 @@ const Meetings = ({ token }) => {
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -43,6 +46,7 @@ const Meetings = ({ token }) => {
     invite_link: "",
     attendees: [{ name: "", email: "" }],
     recruiter_ids: [],
+    is_online: false,
   });
   const [error, setError] = useState("");
 
@@ -155,6 +159,7 @@ const Meetings = ({ token }) => {
       invite_link: "",
       attendees: [{ name: "", email: "" }],
       recruiter_ids: [],
+      is_online: false,
     });
   };
 
@@ -164,11 +169,19 @@ const Meetings = ({ token }) => {
         setError("Please select at least one employee");
         return;
       }
+      let inviteLink = form.invite_link;
+      if (form.is_online && !inviteLink) {
+        const { data } = await api.get(`/utils/generate-jitsi`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        inviteLink = data?.link || "";
+      }
       const payload = {
         ...form,
         recruiter_ids: form.recruiter_ids,
         start: form.start_time,
         end: form.end_time,
+        invite_link: inviteLink || "",
         attendees: form.attendees.filter((a) => a.email), // Only valid entries
       };
       await api.post(`/manager/add-meeting`, payload, {
@@ -252,11 +265,15 @@ const Meetings = ({ token }) => {
           center: "title",
           end: "dayGridMonth,timeGridWeek,timeGridDay",
         }}
+        eventClick={(info) => {
+          setSelectedMeeting(info.event.extendedProps || {});
+          setDetailsOpen(true);
+        }}
         eventContent={(arg) => {
           const { title, id } = arg.event;
           return (
             <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Typography variant="body2">{title}</Typography>
+              <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 600 }}>{title}</Typography>
               <IconButton size="small" onClick={() => handleDeleteMeeting(id)}>
                 <DeleteIcon fontSize="small" />
               </IconButton>
@@ -316,6 +333,17 @@ const Meetings = ({ token }) => {
               <TextField label="Location" name="location" fullWidth value={form.location} onChange={handleInputChange} />
             </Grid>
             <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={!!form.is_online}
+                    onChange={(e) => setForm((prev) => ({ ...prev, is_online: e.target.checked }))}
+                  />
+                }
+                label="Online meeting (include link)"
+              />
+            </Grid>
+            <Grid item xs={12}>
               <TextField label="Invite Link" name="invite_link" fullWidth value={form.invite_link} onChange={handleInputChange} />
             </Grid>
             <Grid item xs={12}>
@@ -352,6 +380,62 @@ const Meetings = ({ token }) => {
         <DialogActions>
           <Button onClick={() => setOpenModal(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleCreateMeeting}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={detailsOpen} onClose={() => setDetailsOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Meeting Details</DialogTitle>
+        <DialogContent>
+          {!selectedMeeting ? (
+            <Typography color="text.secondary">No meeting selected.</Typography>
+          ) : (
+            <Grid container spacing={2} mt={0.5}>
+              <Grid item xs={12}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {selectedMeeting.description || "Meeting"}
+                </Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary">Date</Typography>
+                <Typography variant="body2">{selectedMeeting.date}</Typography>
+              </Grid>
+              <Grid item xs={6}>
+                <Typography variant="body2" color="text.secondary">Time</Typography>
+                <Typography variant="body2">{selectedMeeting.start_time} - {selectedMeeting.end_time}</Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="body2" color="text.secondary">Location</Typography>
+                <Typography variant="body2">{selectedMeeting.location || "Online"}</Typography>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="body2" color="text.secondary">Meeting Link</Typography>
+                {selectedMeeting.meeting_link ? (
+                  <Button variant="outlined" size="small" href={selectedMeeting.meeting_link} target="_blank" rel="noopener noreferrer">
+                    Open Meeting Link
+                  </Button>
+                ) : (
+                  <Typography variant="body2">—</Typography>
+                )}
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="body2" color="text.secondary">Attendees</Typography>
+                {(selectedMeeting.attendees || []).length ? (
+                  <Box>
+                    {selectedMeeting.attendees.map((a, idx) => (
+                      <Typography variant="body2" key={`${a.email || a.name}-${idx}`}>
+                        {a.name || "—"}{a.email ? ` • ${a.email}` : ""}
+                      </Typography>
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2">—</Typography>
+                )}
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailsOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>
