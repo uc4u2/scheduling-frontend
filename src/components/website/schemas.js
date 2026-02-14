@@ -74,7 +74,7 @@ export const SCHEMA_REGISTRY = {
   step: 0.01,
   help: "1 = original; >1 brighter, <1 darker"
 },
-      { name: "overlayGradient",  type: "string", label: "Overlay gradient (CSS)", placeholder: "linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.6))" }
+      { name: "overlayGradient",  type: "string", label: "Overlay gradient (CSS)", placeholder: "linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.6))", ui: "gradient" }
     ]
   },
 
@@ -429,7 +429,7 @@ export const SCHEMA_REGISTRY = {
     { name: "sectionBackground", type: "string", label: "Section background (CSS gradient/color)" },
     { name: "surface",      type: "string", label: "Card surface (CSS color)" },
     { name: "borderColor",  type: "string", label: "Border color" },
-    { name: "shadow",       type: "string", label: "Shadow" },
+    { name: "shadow",       type: "string", label: "Shadow", ui: "shadow", shadowType: "box" },
     { name: "headingColor", type: "color",  label: "Heading color" },
     { name: "bodyColor",    type: "color",  label: "Body text color" },
     { name: "badgeColor",   type: "color",  label: "Badge color" },
@@ -647,7 +647,7 @@ export const SCHEMA_REGISTRY = {
       { name: "safeTop",        type: "boolean",    label: "Respect safe area top" },
       { name: "overlay",        type: "number",     label: "Overlay opacity (0–1)", min: 0, max: 1, step: 0.05 },
       { name: "overlayColor",   type: "color",      label: "Overlay color" },
-      { name: "overlayGradient",type: "text",       label: "Overlay gradient CSS" },
+      { name: "overlayGradient",type: "text",       label: "Overlay gradient CSS", ui: "gradient" },
       { name: "brightness",     type: "number",     label: "Background brightness", min: 0.2, max: 1.8, step: 0.05 },
       { name: "slides",         type: "objectArray", label: "Slides",
         fields: [
@@ -1022,13 +1022,13 @@ export const SCHEMA_REGISTRY = {
       { name: "bodyFont",     type: "string", label: "Body font family (optional)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.bodyFont" },
 
       // --- Hero heading effect ---
-      { name: "heroHeadingShadow", type: "string", label: "Hero heading text-shadow (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.heroHeadingShadow", placeholder: "0 2px 24px rgba(0,0,0,.25)" },
+      { name: "heroHeadingShadow", type: "string", label: "Hero heading text-shadow (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.heroHeadingShadow", placeholder: "0 2px 24px rgba(0,0,0,.25)", ui: "shadow", shadowType: "text" },
 
       // --- Card / “box” look (affects MUI Paper / Section cards etc.) ---
       { name: "cardBg",     type: "string", label: "Card background (CSS color or rgba())", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardBg" },
       { name: "cardRadius", type: "number", label: "Card radius (px)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardRadius", min: 0, max: 32, step: 1, default: 12 },
       { name: "cardBlur",   type: "number", label: "Card blur (px)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardBlur", min: 0, max: 20, step: 1, default: 0 },
-      { name: "cardShadow", type: "string", label: "Card shadow (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardShadow", placeholder: "0 8px 30px rgba(0,0,0,.08)" },
+      { name: "cardShadow", type: "string", label: "Card shadow (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardShadow", placeholder: "0 8px 30px rgba(0,0,0,.08)", ui: "shadow", shadowType: "box" },
 
       // --- Buttons ---
       { name: "btnBg",     type: "string", label: "Button background (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.btnBg" },

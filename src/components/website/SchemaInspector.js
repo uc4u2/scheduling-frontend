@@ -19,6 +19,8 @@ import {
   FormControl,
   ToggleButton,
   ToggleButtonGroup,
+  FormHelperText,
+  ButtonBase,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -88,6 +90,194 @@ const looksLikeColor = (f, v) => {
     /^rgba?\(/i.test(val) ||
     /^hsla?\(/i.test(val)
   );
+};
+
+const clamp01 = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return 0;
+  return Math.max(0, Math.min(1, num));
+};
+const toHexByte = (n) =>
+  Math.max(0, Math.min(255, Math.round(Number(n) || 0)))
+    .toString(16)
+    .padStart(2, "0");
+const normalizeHexColor = (hex) => {
+  if (typeof hex !== "string") return "";
+  let s = hex.trim();
+  if (!s) return "";
+  if (!s.startsWith("#")) return s;
+  let h = s.slice(1);
+  if (h.length === 3) {
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  } else if (h.length === 4) {
+    h = h
+      .slice(0, 3)
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  } else if (h.length === 8) {
+    h = h.slice(0, 6);
+  }
+  if (h.length < 6) h = h.padEnd(6, "0");
+  return `#${h.toLowerCase()}`;
+};
+const hexToRgba = (hex, opacity = 1) => {
+  const norm = normalizeHexColor(hex);
+  if (!norm || !norm.startsWith("#")) return norm || "";
+  const h = norm.slice(1);
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${clamp01(opacity)})`;
+};
+const parseCssColor = (css, fallbackOpacity = 1) => {
+  const base = { hex: "#ffffff", opacity: clamp01(fallbackOpacity) };
+  if (!css || typeof css !== "string") return base;
+  const str = css.trim();
+  if (!str) return base;
+  if (str.toLowerCase() === "transparent") {
+    return { hex: "#000000", opacity: 0 };
+  }
+  const rgba = /^rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([0-9.]+))?\)$/i.exec(str);
+  if (rgba) {
+    const r = Number(rgba[1]);
+    const g = Number(rgba[2]);
+    const b = Number(rgba[3]);
+    const a = rgba[4] != null ? parseFloat(rgba[4]) : base.opacity;
+    return {
+      hex: `#${toHexByte(r)}${toHexByte(g)}${toHexByte(b)}`,
+      opacity: clamp01(a),
+    };
+  }
+  if (str.startsWith("#")) {
+    const raw = str.slice(1);
+    let alpha = base.opacity;
+    if (raw.length === 4) {
+      alpha = parseInt(raw[3] + raw[3], 16) / 255;
+    } else if (raw.length === 8) {
+      alpha = parseInt(raw.slice(6, 8), 16) / 255;
+    }
+    return { hex: normalizeHexColor(str), opacity: clamp01(alpha) };
+  }
+  return base;
+};
+const parseBoxShadow = (val) => {
+  const fallback = { x: 0, y: 12, blur: 32, spread: 0, color: "#000000", opacity: 0.18 };
+  if (!val || typeof val !== "string") return fallback;
+  const match =
+    /(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px(?:\s+(-?\d+(?:\.\d+)?)px)?\s+(.+)/.exec(
+      val.trim()
+    );
+  if (!match) return fallback;
+  const parsedColor = parseCssColor(match[5], fallback.opacity);
+  return {
+    x: Number(match[1]),
+    y: Number(match[2]),
+    blur: Number(match[3]),
+    spread: Number(match[4] || 0),
+    color: parsedColor.hex || fallback.color,
+    opacity: parsedColor.opacity,
+  };
+};
+const parseTextShadow = (val) => {
+  const fallback = { x: 0, y: 6, blur: 18, color: "#000000", opacity: 0.25 };
+  if (!val || typeof val !== "string") return fallback;
+  const match =
+    /(-?\d+(?:\.\d+)?)px\s+(-?\d+(?:\.\d+)?)px\s+(\d+(?:\.\d+)?)px\s+(.+)/.exec(
+      val.trim()
+    );
+  if (!match) return fallback;
+  const parsedColor = parseCssColor(match[4], fallback.opacity);
+  return {
+    x: Number(match[1]),
+    y: Number(match[2]),
+    blur: Number(match[3]),
+    color: parsedColor.hex || fallback.color,
+    opacity: parsedColor.opacity,
+  };
+};
+const buildBoxShadow = ({ x, y, blur, spread, color, opacity }) =>
+  `${x}px ${y}px ${blur}px ${spread}px ${hexToRgba(color, opacity)}`;
+const buildTextShadow = ({ x, y, blur, color, opacity }) =>
+  `${x}px ${y}px ${blur}px ${hexToRgba(color, opacity)}`;
+const isShadowValid = (val) =>
+  !val ||
+  /-?\d+px\s+-?\d+px/.test(val) ||
+  /rgba?\(/i.test(val) ||
+  /#/.test(val);
+const shadowPresets = [
+  { key: "none", label: "None", value: "" },
+  { key: "soft", label: "Soft", value: "0 8px 24px rgba(0,0,0,0.12)" },
+  { key: "medium", label: "Medium", value: "0 12px 32px rgba(0,0,0,0.18)" },
+  { key: "strong", label: "Strong", value: "0 18px 48px rgba(0,0,0,0.24)" },
+  { key: "glass", label: "Glass", value: "0 12px 32px rgba(15,23,42,0.28)" },
+];
+const matchShadowPreset = (val) =>
+  shadowPresets.find((preset) => (val || "").trim() === preset.value) || null;
+const overlayGradientPresets = [
+  { key: "none", label: "None", value: "" },
+  {
+    key: "subtle-dark",
+    label: "Subtle Dark",
+    value: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.45) 100%)",
+  },
+  {
+    key: "strong-dark",
+    label: "Strong Dark",
+    value: "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.75) 100%)",
+  },
+  {
+    key: "soft-light",
+    label: "Soft Light",
+    value: "linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 100%)",
+  },
+  {
+    key: "brand-tint",
+    label: "Brand Tint",
+    value: "linear-gradient(180deg, rgba(59,130,246,0.25) 0%, rgba(37,99,235,0.05) 100%)",
+  },
+];
+const isGradientValid = (val) => !val || /^linear-gradient\(/i.test(val.trim());
+const parseGradient = (val) => {
+  const fallback = {
+    angle: 180,
+    stops: [
+      { color: "#000000", stop: 15, opacity: 0.35 },
+      { color: "#000000", stop: 100, opacity: 0.6 },
+    ],
+  };
+  if (!val || typeof val !== "string") return fallback;
+  const match = /linear-gradient\(([^,]+),(.+)\)/i.exec(val);
+  if (!match) return fallback;
+  const angle = Number(String(match[1]).replace("deg", "").trim());
+  const parts = match[2]
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const stops = parts.slice(0, 3).map((p, idx) => {
+    const seg = p.split(/\s+/);
+    const colorStr = seg[0];
+    const stop = seg[1] ? Number(seg[1].replace("%", "")) : idx === 0 ? 0 : 100;
+    const parsed = parseCssColor(colorStr, 0.35);
+    return {
+      color: parsed.hex || "#000000",
+      opacity: parsed.opacity,
+      stop: Number.isFinite(stop) ? stop : idx === 0 ? 0 : 100,
+    };
+  });
+  return {
+    angle: Number.isFinite(angle) ? angle : fallback.angle,
+    stops: stops.length >= 2 ? stops : fallback.stops,
+  };
+};
+const buildGradient = (angle, stops) => {
+  const parts = stops
+    .filter((s) => s.color)
+    .map((s) => `${hexToRgba(s.color, s.opacity)} ${s.stop}%`);
+  return `linear-gradient(${angle}deg, ${parts.join(", ")})`;
 };
 
 /** Debounced local state for a single field (keeps typing snappy). */
@@ -226,6 +416,311 @@ const FieldColor = ({ label, value, onCommit }) => (
     />
   </Stack>
 );
+
+const FieldShadow = ({ label, value, onCommit, shadowType = "box" }) => {
+  const [builderOpen, setBuilderOpen] = React.useState(false);
+  const preset = matchShadowPreset(value)?.key || "custom";
+  const parsed =
+    shadowType === "text" ? parseTextShadow(value) : parseBoxShadow(value);
+  const updateShadow = (patch) => {
+    const next = { ...parsed, ...patch };
+    const built =
+      shadowType === "text" ? buildTextShadow(next) : buildBoxShadow(next);
+    onCommit(built);
+  };
+  return (
+    <Stack spacing={1}>
+      <FormControl size="small" fullWidth>
+        <InputLabel>{label} preset</InputLabel>
+        <Select
+          label={`${label} preset`}
+          value={preset}
+          onChange={(e) => {
+            const key = e.target.value;
+            if (key === "custom") return;
+            const presetItem = shadowPresets.find((p) => p.key === key);
+            onCommit(presetItem ? presetItem.value : "");
+          }}
+        >
+          {shadowPresets.map((presetItem) => (
+            <MenuItem key={presetItem.key} value={presetItem.key}>
+              {presetItem.label}
+            </MenuItem>
+          ))}
+          <MenuItem value="custom">Custom</MenuItem>
+        </Select>
+        <FormHelperText>Pick a preset or customize with the builder.</FormHelperText>
+      </FormControl>
+
+      <Button
+        size="small"
+        variant="outlined"
+        onClick={() => setBuilderOpen((prev) => !prev)}
+      >
+        {builderOpen ? "Hide builder" : "Shadow builder"}
+      </Button>
+
+      {builderOpen && (
+        <Stack spacing={1}>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              size="small"
+              label="X"
+              type="number"
+              value={parsed.x}
+              onChange={(e) => updateShadow({ x: Number(e.target.value || 0) })}
+            />
+            <TextField
+              size="small"
+              label="Y"
+              type="number"
+              value={parsed.y}
+              onChange={(e) => updateShadow({ y: Number(e.target.value || 0) })}
+            />
+            <TextField
+              size="small"
+              label="Blur"
+              type="number"
+              value={parsed.blur}
+              onChange={(e) => updateShadow({ blur: Number(e.target.value || 0) })}
+            />
+            {shadowType === "box" && (
+              <TextField
+                size="small"
+                label="Spread"
+                type="number"
+                value={parsed.spread}
+                onChange={(e) => updateShadow({ spread: Number(e.target.value || 0) })}
+              />
+            )}
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <TextField
+              size="small"
+              label="Shadow color"
+              value={parsed.color}
+              onChange={(e) => updateShadow({ color: e.target.value })}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <ButtonBase
+                      component="label"
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 1,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        bgcolor: normalizeHexColor(parsed.color) || "#000000",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Box
+                        component="input"
+                        type="color"
+                        value={normalizeHexColor(parsed.color) || "#000000"}
+                        onChange={(e) => updateShadow({ color: e.target.value })}
+                        sx={{ opacity: 0, position: "absolute", width: "100%", height: "100%" }}
+                      />
+                    </ButtonBase>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Stack spacing={0.5} sx={{ minWidth: 140 }}>
+              <Typography variant="caption">Opacity</Typography>
+              <Slider
+                size="small"
+                min={0}
+                max={1}
+                step={0.05}
+                value={parsed.opacity}
+                valueLabelDisplay="auto"
+                onChange={(_, val) =>
+                  typeof val === "number" && updateShadow({ opacity: val })
+                }
+              />
+            </Stack>
+          </Stack>
+        </Stack>
+      )}
+
+      {preset === "custom" && (
+        <TextField
+          size="small"
+          label={`${label} (CSS)`}
+          value={value || ""}
+          onChange={(e) => onCommit(e.target.value)}
+          error={!isShadowValid(value)}
+          helperText={
+            isShadowValid(value)
+              ? "Example: 0 8px 24px rgba(0,0,0,0.12)"
+              : "Enter a valid CSS shadow."
+          }
+          fullWidth
+        />
+      )}
+    </Stack>
+  );
+};
+
+const FieldGradient = ({ label, value, onCommit }) => {
+  const preset =
+    overlayGradientPresets.find((p) => p.value === value)?.key || "custom";
+  const parsed = parseGradient(value);
+  const [angle, setAngle] = React.useState(parsed.angle);
+  const [stops, setStops] = React.useState(parsed.stops);
+
+  React.useEffect(() => {
+    const next = parseGradient(value);
+    setAngle(next.angle);
+    setStops(next.stops);
+  }, [value]);
+
+  const updateStop = (idx, patch) => {
+    const next = stops.map((s, i) => (i === idx ? { ...s, ...patch } : s));
+    setStops(next);
+    onCommit(buildGradient(angle, next));
+  };
+  const updateAngle = (nextAngle) => {
+    setAngle(nextAngle);
+    onCommit(buildGradient(nextAngle, stops));
+  };
+
+  return (
+    <Stack spacing={1}>
+      <FormControl size="small" fullWidth>
+        <InputLabel>{label} preset</InputLabel>
+        <Select
+          label={`${label} preset`}
+          value={preset}
+          onChange={(e) => {
+            const key = e.target.value;
+            if (key === "custom") return;
+            const presetItem = overlayGradientPresets.find((p) => p.key === key);
+            onCommit(presetItem ? presetItem.value : "");
+          }}
+        >
+          {overlayGradientPresets.map((presetItem) => (
+            <MenuItem key={presetItem.key} value={presetItem.key}>
+              {presetItem.label}
+            </MenuItem>
+          ))}
+          <MenuItem value="custom">Custom</MenuItem>
+        </Select>
+        <FormHelperText>Choose a preset or build your own gradient.</FormHelperText>
+      </FormControl>
+
+      <Stack spacing={1}>
+        <Typography variant="caption">Angle</Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Slider
+            size="small"
+            min={0}
+            max={360}
+            value={angle}
+            valueLabelDisplay="auto"
+            onChange={(_, val) =>
+              typeof val === "number" && updateAngle(val)
+            }
+            sx={{ flex: 1 }}
+          />
+          <TextField
+            size="small"
+            value={angle}
+            onChange={(e) => {
+              const num = Number(e.target.value);
+              if (Number.isFinite(num)) updateAngle(Math.max(0, Math.min(360, num)));
+            }}
+            sx={{ width: 90 }}
+          />
+        </Stack>
+      </Stack>
+
+      {stops.map((stop, idx) => (
+        <Stack key={idx} direction="row" spacing={1} alignItems="center">
+          <TextField
+            size="small"
+            label={`Stop ${idx + 1}`}
+            value={stop.color}
+            onChange={(e) => updateStop(idx, { color: e.target.value })}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <ButtonBase
+                    component="label"
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 1,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      bgcolor: normalizeHexColor(stop.color) || "#000000",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Box
+                      component="input"
+                      type="color"
+                      value={normalizeHexColor(stop.color) || "#000000"}
+                      onChange={(e) => updateStop(idx, { color: e.target.value })}
+                      sx={{ opacity: 0, position: "absolute", width: "100%", height: "100%" }}
+                    />
+                  </ButtonBase>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            size="small"
+            label="%"
+            value={stop.stop}
+            onChange={(e) =>
+              updateStop(idx, {
+                stop: Math.max(0, Math.min(100, Number(e.target.value || 0))),
+              })
+            }
+            sx={{ width: 80 }}
+          />
+          <Stack spacing={0.5} sx={{ minWidth: 120 }}>
+            <Typography variant="caption">Opacity</Typography>
+            <Slider
+              size="small"
+              min={0}
+              max={1}
+              step={0.05}
+              value={stop.opacity}
+              valueLabelDisplay="auto"
+              onChange={(_, val) =>
+                typeof val === "number" && updateStop(idx, { opacity: val })
+              }
+            />
+          </Stack>
+        </Stack>
+      ))}
+
+      {preset === "custom" && (
+        <TextField
+          size="small"
+          label={`${label} (CSS)`}
+          value={value || ""}
+          onChange={(e) => onCommit(e.target.value)}
+          error={!isGradientValid(value)}
+          helperText={
+            isGradientValid(value)
+              ? "Example: linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.6))"
+              : "Enter a valid linear-gradient(...) string."
+          }
+          fullWidth
+        />
+      )}
+    </Stack>
+  );
+};
 
 const FieldImage = ({ label, value, onCommit, companyId }) => (
   <ImageField
@@ -800,6 +1295,16 @@ export default function SchemaInspector({ schema, value = {}, onChange, companyI
 
           // MULTILINE
           if (f.type === "text") {
+            if (f.ui === "gradient") {
+              return (
+                <FieldGradient
+                  key={key}
+                  label={label}
+                  value={val}
+                  onCommit={(nv) => setWhole(key, nv)}
+                />
+              );
+            }
             return (
               <FieldMultiline
                 key={key}
@@ -814,6 +1319,27 @@ export default function SchemaInspector({ schema, value = {}, onChange, companyI
 
           // STRING (default) — strips HTML globally, but auto-detect colors
           if (f.type === "string") {
+            if (f.ui === "shadow") {
+              return (
+                <FieldShadow
+                  key={key}
+                  label={label}
+                  value={val}
+                  onCommit={(nv) => setWhole(key, nv)}
+                  shadowType={f.shadowType || "box"}
+                />
+              );
+            }
+            if (f.ui === "gradient") {
+              return (
+                <FieldGradient
+                  key={key}
+                  label={label}
+                  value={val}
+                  onCommit={(nv) => setWhole(key, nv)}
+                />
+              );
+            }
             if (looksLikeColor(f, val)) {
               return (
                 <FieldColor
