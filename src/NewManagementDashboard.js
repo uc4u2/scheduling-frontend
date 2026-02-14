@@ -47,10 +47,11 @@ import {
   Collapse,
   Snackbar,
   Alert,
+  GlobalStyles,
 } from "@mui/material";
 import ShiftSwapPanel from "./components/ShiftSwapPanel";
 
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ArchiveIcon from "@mui/icons-material/Archive";
@@ -747,6 +748,25 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const canManageShifts = Boolean(currentUserInfo?.can_manage_shifts);
   const canCollectPaymentsSelf = Boolean(currentUserInfo?.can_collect_payments_self);
   const isSelfOnly = canCollectPaymentsSelf && !isManager && !canManageShifts;
+  const pillButtonSx = (active) => ({
+    textTransform: "none",
+    fontWeight: active ? 700 : 600,
+    borderRadius: 999,
+    px: 2,
+    border: "1px solid",
+    borderColor: active
+      ? alpha(theme.palette.primary.main, 0.45)
+      : alpha(theme.palette.text.primary, 0.2),
+    backgroundColor: active
+      ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.32 : 0.14)
+      : "transparent",
+    color: active ? theme.palette.primary.main : theme.palette.text.primary,
+    transition: "all 0.2s ease",
+    "&:hover": {
+      borderColor: alpha(theme.palette.primary.main, 0.4),
+      backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.12),
+    },
+  });
 
   const statusColor = (status) => {
     const key = String(status || "").toLowerCase();
@@ -850,14 +870,16 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       if (!start) return null;
       const clientName = b?.client?.full_name || b?.client?.email || "Client";
       const serviceName = b?.service?.name || "Service";
+      const baseColor = statusColor(b.status);
+      const textColor = theme.palette.getContrastText(baseColor);
       return {
         id: String(b.id),
         title: serviceName,
         start,
         end: end || start,
-        backgroundColor: statusColor(b.status),
-        borderColor: statusColor(b.status),
-        textColor: "#ffffff",
+        backgroundColor: baseColor,
+        borderColor: baseColor,
+        textColor,
         extendedProps: {
           clientName,
           serviceName,
@@ -879,11 +901,26 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       ? `${showTime ? `${showTime} • ` : ""}${props.serviceName || event.title}`
       : `${showTime ? `${showTime} • ` : ""}${props.serviceName || event.title} • ${props.clientName || ""}`;
     const modeBadge = props.bookingMode === "group" ? " • Group" : "";
+    const textColor = event.textColor || theme.palette.text.primary;
     return (
-      <Box sx={{ px: 0.5, py: 0.25, fontSize: isMonth ? "0.7rem" : "0.75rem", fontWeight: 600, lineHeight: 1.2 }}>
-        {label}
-        {modeBadge}
-      </Box>
+      <Tooltip title={`${label}${modeBadge}`} arrow placement="top">
+        <Box
+          sx={{
+            px: 0.5,
+            py: 0.25,
+            fontSize: isMonth ? "0.7rem" : "0.75rem",
+            fontWeight: 600,
+            lineHeight: 1.2,
+            color: textColor,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {label}
+          {modeBadge}
+        </Box>
+      </Tooltip>
     );
   };
 
@@ -1079,8 +1116,51 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
       : Math.round((baseCents + extraCents) * (Number(tipMode) / 100));
   const totalCents = Math.max(0, baseCents + extraCents + tipCents);
 
+  const calendarVars = {
+    "--fc-button-text-color": theme.palette.text.primary,
+    "--fc-button-bg-color": theme.palette.background.paper,
+    "--fc-button-border-color": theme.palette.divider,
+    "--fc-button-hover-bg-color": alpha(theme.palette.primary.main, 0.08),
+    "--fc-button-active-bg-color": alpha(theme.palette.primary.main, 0.16),
+    "--fc-event-text-color": theme.palette.text.primary,
+    "--fc-more-link-text-color": theme.palette.text.primary,
+    "--fc-today-bg-color": alpha(theme.palette.warning.main, 0.15),
+    "--fc-border-color": theme.palette.divider,
+  };
+
   return (
     <ManagementFrame>
+      <GlobalStyles
+        styles={{
+          ".booking-checkout-calendar": {
+            ...calendarVars,
+          },
+          ".booking-checkout-calendar .fc .fc-toolbar-title": {
+            color: theme.palette.text.primary,
+            fontWeight: 700,
+          },
+          ".booking-checkout-calendar .fc .fc-button": {
+            borderRadius: theme.shape.borderRadius,
+            textTransform: "none",
+          },
+          ".booking-checkout-calendar .fc .fc-button-primary:not(:disabled)": {
+            color: theme.palette.text.primary,
+          },
+          ".booking-checkout-calendar .fc .fc-event": {
+            boxShadow: `0 6px 16px ${alpha(theme.palette.common.black, 0.12)}`,
+          },
+          ".booking-checkout-calendar .fc .fc-daygrid-day-number": {
+            color: theme.palette.text.primary,
+          },
+          ".booking-checkout-calendar .fc .fc-daygrid-day.fc-day-today": {
+            backgroundColor: alpha(theme.palette.warning.main, 0.12),
+          },
+          ".booking-checkout-calendar .fc .fc-more-link": {
+            color: theme.palette.text.primary,
+            fontWeight: 600,
+          },
+        }}
+      />
       <Stack spacing={2}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
           <Box>
@@ -1092,62 +1172,16 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
-            <ToggleButtonGroup
-              value={calendarView}
-              exclusive
-              onChange={(_, v) => v && setCalendarView(v)}
+            <Button
+              variant="outlined"
               size="small"
+              onClick={loadBookings}
+              disabled={loading}
+              sx={pillButtonSx(false)}
             >
-              <ToggleButton value="timeGridDay">Day</ToggleButton>
-              <ToggleButton value="timeGridWeek">Week</ToggleButton>
-              <ToggleButton value="dayGridMonth">Month</ToggleButton>
-            </ToggleButtonGroup>
-            <Button variant="outlined" size="small" onClick={loadBookings} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </Stack>
-        </Stack>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
-          {isSelfOnly ? (
-            <Alert severity="info" sx={{ py: 1, width: "100%" }}>
-              Showing only your bookings.
-            </Alert>
-          ) : (
-            <>
-              <FormControl sx={{ minWidth: 220 }}>
-                <InputLabel id="booking-checkout-department">Department</InputLabel>
-                <Select
-                  labelId="booking-checkout-department"
-                  value={selectedDepartment}
-                  label="Department"
-                  onChange={(e) => setSelectedDepartment(e.target.value)}
-                >
-                  <MenuItem value="">All Departments</MenuItem>
-                  {departments.map((dept) => (
-                    <MenuItem key={dept.id} value={String(dept.id)}>
-                      {dept.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl sx={{ minWidth: 220 }}>
-                <InputLabel id="booking-checkout-employee">Employee</InputLabel>
-                <Select
-                  labelId="booking-checkout-employee"
-                  value={selectedRecruiter}
-                  label="Employee"
-                  onChange={(e) => setSelectedRecruiter(e.target.value)}
-                >
-                  <MenuItem value="">All Employees</MenuItem>
-                  {recruiters.map((rec) => (
-                    <MenuItem key={rec.id} value={String(rec.id)}>
-                      {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </>
-          )}
         </Stack>
 
         {error && <Alert severity="error">{error}</Alert>}
@@ -1158,6 +1192,76 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             borderRadius: 3,
             border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
+          }}
+        >
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
+            {isSelfOnly ? (
+              <Alert severity="info" sx={{ py: 1, width: "100%" }}>
+                Showing only your bookings.
+              </Alert>
+            ) : (
+              <>
+                <FormControl sx={{ minWidth: 220 }}>
+                  <InputLabel id="booking-checkout-department">Department</InputLabel>
+                  <Select
+                    labelId="booking-checkout-department"
+                    value={selectedDepartment}
+                    label="Department"
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                  >
+                    <MenuItem value="">All Departments</MenuItem>
+                    {departments.map((dept) => (
+                      <MenuItem key={dept.id} value={String(dept.id)}>
+                        {dept.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl sx={{ minWidth: 220 }}>
+                  <InputLabel id="booking-checkout-employee">Employee</InputLabel>
+                  <Select
+                    labelId="booking-checkout-employee"
+                    value={selectedRecruiter}
+                    label="Employee"
+                    onChange={(e) => setSelectedRecruiter(e.target.value)}
+                  >
+                    <MenuItem value="">All Employees</MenuItem>
+                    {recruiters.map((rec) => (
+                      <MenuItem key={rec.id} value={String(rec.id)}>
+                        {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </>
+            )}
+            <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
+              <ToggleButtonGroup
+                value={calendarView}
+                exclusive
+                onChange={(_, v) => v && setCalendarView(v)}
+                size="small"
+                sx={{
+                  "& .MuiToggleButton-root": pillButtonSx(false),
+                  "& .MuiToggleButton-root.Mui-selected": pillButtonSx(true),
+                }}
+              >
+                <ToggleButton value="timeGridDay">Day</ToggleButton>
+                <ToggleButton value="timeGridWeek">Week</ToggleButton>
+                <ToggleButton value="dayGridMonth">Month</ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+          </Stack>
+        </Paper>
+
+        <Paper
+          className="booking-checkout-calendar"
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
+            overflow: "hidden",
           }}
         >
           <FullCalendar

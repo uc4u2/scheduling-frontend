@@ -36,8 +36,6 @@ import GlobalStyles from "@mui/material/GlobalStyles";
 import AddIcon from "@mui/icons-material/Add";
 import DownloadIcon from "@mui/icons-material/Download";
 import DeleteIcon from "@mui/icons-material/Delete";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -54,20 +52,45 @@ import "./manager-calendar.css";
 import { isoFromParts } from "../../utils/datetime";
 import { formatSlotWithTZ } from "../../utils/timezone-wrapper";
 
-// consistent employee color (used for accents)
-const COLORS = [
-  "#E57373", "#81C784", "#64B5F6", "#FFD54F",
-  "#4DB6AC", "#BA68C8", "#FF8A65", "#A1887F",
-  "#90A4AE", "#F06292"
-];
-const colorForEmp = (id) => COLORS[Math.abs(parseInt(id, 10) || 0) % COLORS.length];
-
 const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const calRef = useRef(null);
-  const fsCalRef = useRef(null);
   const isRecruiter = window.location.pathname.includes("recruiter");
+
+  const accentPalette = useMemo(
+    () => [
+      theme.palette.primary.main,
+      theme.palette.success.main,
+      theme.palette.info.main,
+      theme.palette.warning.main,
+      theme.palette.error.main,
+      theme.palette.secondary.main,
+    ],
+    [theme]
+  );
+  const getEmpAccent = useMemo(
+    () => (id) => accentPalette[Math.abs(parseInt(id, 10) || 0) % accentPalette.length],
+    [accentPalette]
+  );
+  const ui = useMemo(
+    () => ({
+      available: {
+        bg: alpha(theme.palette.success.light, 0.25),
+        border: alpha(theme.palette.success.main, 0.55),
+        text: theme.palette.text.primary,
+      },
+      booked: {
+        bg: alpha(theme.palette.error.light, 0.25),
+        border: alpha(theme.palette.error.main, 0.55),
+        text: theme.palette.text.primary,
+      },
+      chips: {
+        mutedBg: alpha(theme.palette.background.paper, 0.9),
+      },
+    }),
+    [theme]
+  );
 
   // theme CSS vars used by manager-calendar.css
   const vars = {
@@ -75,6 +98,16 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     "--grid-axis-bg": alpha(theme.palette.background.paper, 0.9),
     "--grid-axis-color": theme.palette.text.primary,
     "--grid-border": alpha(theme.palette.text.primary, 0.12),
+    "--fc-border-color": theme.palette.divider,
+    "--fc-page-bg-color": theme.palette.background.paper,
+    "--fc-today-bg-color": alpha(theme.palette.warning.light, 0.2),
+    "--fc-button-text-color": theme.palette.text.primary,
+    "--fc-button-bg-color": alpha(theme.palette.background.paper, 0.9),
+    "--fc-button-border-color": theme.palette.divider,
+    "--fc-button-hover-bg-color": alpha(theme.palette.primary.main, 0.08),
+    "--fc-button-active-bg-color": alpha(theme.palette.primary.main, 0.18),
+    "--fc-event-text-color": theme.palette.text.primary,
+    "--fc-more-link-text-color": theme.palette.text.primary,
   };
 
   /* ------------------------------ state ------------------------------ */
@@ -126,9 +159,6 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const [timeFmt12h, setTimeFmt12h] = useState(false);
   // statusFilter: "available" and/or "booked" (empty = both)
   const [statusFilter, setStatusFilter] = useState([]);
-
-  // full-screen popup
-  const [fullScreenOpen, setFullScreenOpen] = useState(false);
 
   // permissions (manager OR company policy)
   const [isManagerUser, setIsManagerUser] = useState(false);
@@ -623,7 +653,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     const status = xp.status === "booked" ? "Booked" : "Available";
     const emp = xp.recruiter_name || xp.recruiter || `Emp ${xp.recruiter_id || ""}`;
     const svc = xp.service_name || "";
-    const accent = colorForEmp(xp.recruiter_id || 0);
+    const accent = getEmpAccent(xp.recruiter_id || 0);
 
     return (
       <div
@@ -642,9 +672,9 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               letterSpacing: 0.3,
               padding: "2px 6px",
               borderRadius: 8,
-              background: xp.status === "booked" ? "#ffd6d9" : "#e6f4ea",
-              border: `1px solid ${xp.status === "booked" ? "#ff4d4f" : "#34a853"}`,
-              color: "#111",
+              background: xp.status === "booked" ? ui.booked.bg : ui.available.bg,
+              border: `1px solid ${xp.status === "booked" ? ui.booked.border : ui.available.border}`,
+              color: theme.palette.text.primary,
             }}
           >
             {status}
@@ -674,9 +704,9 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
   // Calendar events with improved status & employee color accents
   const calendarEvents = filteredEvents.map((e) => {
-    const empColor = colorForEmp(e.recruiter_id);
-    const bg = e.booked ? "#ffe5e9" : "#e7f7ec";
-    const border = e.booked ? "#ff4d4f" : "#34a853";
+    const empColor = getEmpAccent(e.recruiter_id);
+    const bg = e.booked ? ui.booked.bg : ui.available.bg;
+    const border = e.booked ? ui.booked.border : ui.available.border;
     return {
       id: e.id,
       title: e.booked ? "Booked" : "Available",
@@ -684,7 +714,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       end: e.end,
       backgroundColor: bg,
       borderColor: border,
-      textColor: "#111",
+      textColor: theme.palette.text.primary,
       classNames: [e.booked ? "slot-booked" : "slot-available"],
       extendedProps: { ...e, status: e.__status, _empColor: empColor },
     };
@@ -747,7 +777,16 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
   /* ------------------------------- UI --------------------------------- */
   return (
-    <Box sx={{ my: 4, ...vars }}>
+    <Box
+      sx={{
+        my: 4,
+        ...vars,
+        display: "flex",
+        flexDirection: "column",
+        minHeight: { xs: "auto", md: "calc(100vh - 220px)" },
+        gap: 2,
+      }}
+    >
       {/* subtle global style tweaks for timegrid readability */}
       <GlobalStyles
         styles={{
@@ -759,7 +798,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           },
           ".fc .fc-timegrid-event": {
             borderRadius: 8,
-            boxShadow: "0 1px 0 rgba(0,0,0,0.08)",
+            boxShadow: theme.shadows[1],
           },
           ".fc .fc-timegrid-event .fc-event-time": {
             fontWeight: 700,
@@ -769,141 +808,55 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           ".fc .fc-timegrid-event .fc-event-title": {
             fontSize: 11,
           },
+          ".fc .fc-button": {
+            color: theme.palette.text.primary,
+            backgroundColor: alpha(theme.palette.background.paper, 0.9),
+            borderColor: theme.palette.divider,
+            boxShadow: "none",
+          },
+          ".fc .fc-button:hover": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.08),
+            borderColor: alpha(theme.palette.primary.main, 0.3),
+          },
+          ".fc .fc-button-primary:not(:disabled).fc-button-active": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.18),
+            borderColor: alpha(theme.palette.primary.main, 0.45),
+            color: theme.palette.primary.main,
+          },
+          ".fc .fc-button:focus-visible": {
+            outline: `2px solid ${theme.palette.primary.main}`,
+            outlineOffset: 2,
+          },
           ".fc .fc-toolbar-title": {
             fontWeight: 700,
+            color: theme.palette.text.primary,
+          },
+          ".fc .fc-col-header-cell-cushion": {
+            color: theme.palette.text.primary,
+            fontWeight: 600,
+          },
+          ".fc .fc-more-link": {
+            color: theme.palette.text.primary,
           },
         }}
       />
 
-      <Typography
-        variant="h5"
-        gutterBottom
-        fontWeight={700}
-        sx={{ textAlign: { xs: "center", sm: "left" } }}
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        alignItems={{ xs: "flex-start", md: "center" }}
+        justifyContent="space-between"
+        spacing={2}
+        sx={{ mb: 2 }}
       >
-        Team Availability{" "}
-        <Typography component="span" variant="caption" color="text.secondary" fontWeight={400}>
-          &nbsp;(Enterprise views)
-        </Typography>
-      </Typography>
-
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage("")}>
-          {successMessage}
-        </Alert>
-      )}
-
-      {/* Filter & options bar */}
-      <Paper
-        sx={{
-          p: compactDensity ? 1 : 2,
-          mb: 2,
-          display: "grid",
-          gridTemplateColumns: "repeat(12, 1fr)",
-          gap: 2,
-          alignItems: "center",
-        }}
-        elevation={1}
-      >
-        <FormControl sx={{ gridColumn: { xs: "span 12", sm: "span 6", md: "span 3" } }}>
-          <InputLabel>Department</InputLabel>
-          <Select
-            size="small"
-            value={departmentFilter}
-            label="Department"
-            onChange={(e) => {
-              setDepartmentFilter(e.target.value);
-              setSelectedRecruiter("all");
-            }}
-          >
-            <MenuItem value="all">All Departments</MenuItem>
-            {departments.map((d) => (
-              <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl sx={{ gridColumn: { xs: "span 12", sm: "span 6", md: "span 3" } }}>
-          <InputLabel>Employee</InputLabel>
-          <Select
-            size="small"
-            value={selectedRecruiter}
-            label="Employee"
-            onChange={(e) => setSelectedRecruiter(e.target.value)}
-            disabled={recruiters.length === 0}
-          >
-            <MenuItem value="all">All Employees</MenuItem>
-            {recruiters.map((r) => {
-              const label = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.name || r.email;
-              return <MenuItem key={r.id} value={r.id}>{label}</MenuItem>;
-            })}
-          </Select>
-        </FormControl>
-
-        <FormControlLabel
-          sx={{ gridColumn: { xs: "span 12", sm: "span 6", md: "span 3" } }}
-          control={
-            <Checkbox
-              checked={includeArchived}
-              onChange={(e) => setIncludeArchived(e.target.checked)}
-            />
-          }
-          label="Show archived employees"
-        />
-
-        {/* Status filter */}
-        <FormControl sx={{ gridColumn: { xs: "span 12", sm: "span 6", md: "span 3" } }}>
-          <InputLabel>Slot Status</InputLabel>
-          <Select
-            multiple
-            size="small"
-            value={statusFilter}
-            label="Slot Status"
-            onChange={(e) => setStatusFilter(e.target.value)}
-            renderValue={(vals) => (vals.length ? vals.join(", ") : "All")}
-          >
-            <MenuItem value="available">
-              <Chip size="small" color="success" label="Available" />
-            </MenuItem>
-            <MenuItem value="booked">
-              <Chip size="small" color="error" label="Booked" />
-            </MenuItem>
-          </Select>
-        </FormControl>
-
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={1}
-          sx={{ gridColumn: { xs: "span 12", md: "span 3" }, justifyContent: "flex-end" }}
-          alignItems="center"
-        >
-          {/* Timezone chip removed for cleaner toolbar */}
-          <Tooltip title="Export CSV/XLSX">
-            <IconButton onClick={exportToExcel}><DownloadIcon /></IconButton>
-          </Tooltip>
-
-          {/* Day bulk actions */}
-          {canCloseSlots && (
-            <>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={(e) => setDayMenuAnchor(e.currentTarget)}
-                fullWidth={isSmDown}
-                sx={{ minWidth: 120 }}
-              >
-                Day
-              </Button>
-              <Menu anchorEl={dayMenuAnchor} open={Boolean(dayMenuAnchor)} onClose={() => setDayMenuAnchor(null)}>
-                <MenuItem onClick={() => { setDayMode("close-day"); setDayDialogOpen(true); setDayMenuAnchor(null); }}>Close entire day</MenuItem>
-                <MenuItem onClick={() => { setDayMode("close-after"); setDayDialogOpen(true); setDayMenuAnchor(null); }}>Close rest of day…</MenuItem>
-                <MenuItem onClick={() => { setDayMode("close-before"); setDayDialogOpen(true); setDayMenuAnchor(null); }}>Close before time…</MenuItem>
-                <MenuItem onClick={() => { setDayMode("keep-range"); setDayDialogOpen(true); setDayMenuAnchor(null); }}>Keep only time range…</MenuItem>
-              </Menu>
-            </>
-          )}
-
+        <Box>
+          <Typography variant="h5" fontWeight={700}>
+            Team Availability
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage bookable slots for employees.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
           <Button
             startIcon={<AddIcon />}
             variant="contained"
@@ -924,50 +877,157 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               });
               setOpenModal(true);
             }}
-            fullWidth={isSmDown}
-            sx={{ minWidth: 120 }}
           >
             Add
           </Button>
-
-          <Button variant="outlined" onClick={() => fetchEvents()} fullWidth={isSmDown} sx={{ minWidth: 120 }}>
+          <Button variant="outlined" onClick={() => fetchEvents()}>
             Refresh
           </Button>
+          <Tooltip title="Export CSV/XLSX">
+            <IconButton onClick={exportToExcel}><DownloadIcon /></IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
 
-          <Button
-            startIcon={<OpenInFullIcon />}
-            variant="contained"
-            onClick={() => setFullScreenOpen(true)}
-            fullWidth={isSmDown}
-            sx={{ minWidth: 140 }}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {successMessage && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccessMessage("")}>
+          {successMessage}
+        </Alert>
+      )}
+
+      <Paper
+        sx={{
+          p: 2,
+          mb: 2,
+          borderRadius: 3,
+          border: `1px solid ${theme.palette.divider}`,
+        }}
+        elevation={0}
+      >
+        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }} useFlexGap flexWrap="wrap">
+          <FormControl sx={{ minWidth: 200, flex: 1 }}>
+          <InputLabel>Department</InputLabel>
+          <Select
+            size="small"
+            value={departmentFilter}
+            label="Department"
+            onChange={(e) => {
+              setDepartmentFilter(e.target.value);
+              setSelectedRecruiter("all");
+            }}
           >
-            Full Screen
-          </Button>
-        </Stack>
+            <MenuItem value="all">All Departments</MenuItem>
+            {departments.map((d) => (
+              <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-        {/* View toggles (row 2) */}
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ gridColumn: "1 / -1" }} useFlexGap flexWrap="wrap">
-          <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)}>
-            <ToggleButton value="dayGridMonth">Month</ToggleButton>
-            <ToggleButton value="timeGridWeek">Week</ToggleButton>
-            <ToggleButton value="timeGridDay">Day</ToggleButton>
-          </ToggleButtonGroup>
-        </Stack>
-      </Paper>
+        <FormControl sx={{ minWidth: 200, flex: 1 }}>
+          <InputLabel>Employee</InputLabel>
+          <Select
+            size="small"
+            value={selectedRecruiter}
+            label="Employee"
+            onChange={(e) => setSelectedRecruiter(e.target.value)}
+            disabled={recruiters.length === 0}
+          >
+            <MenuItem value="all">All Employees</MenuItem>
+            {recruiters.map((r) => {
+              const label = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.name || r.email;
+              return <MenuItem key={r.id} value={r.id}>{label}</MenuItem>;
+            })}
+          </Select>
+        </FormControl>
 
-      {/* Calendar (Month/Week/Day) */}
-      <Paper sx={{ p: compactDensity ? 1 : 2, mb: 2 }} elevation={1}>
-        <FullCalendar
-          ref={calRef}
-          {...baseCalProps}
-          initialView={calendarView}
-          height="auto"
-          key={`${calendarView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
+        <FormControl sx={{ minWidth: 200, flex: 1 }}>
+          <InputLabel>Slot Status</InputLabel>
+          <Select
+            multiple
+            size="small"
+            value={statusFilter}
+            label="Slot Status"
+            onChange={(e) => setStatusFilter(e.target.value)}
+            renderValue={(vals) => (vals.length ? vals.join(", ") : "All")}
+          >
+            <MenuItem value="available">
+              <Chip size="small" label="Available" sx={{ bgcolor: ui.available.bg, color: ui.available.text }} />
+            </MenuItem>
+            <MenuItem value="booked">
+              <Chip size="small" label="Booked" sx={{ bgcolor: ui.booked.bg, color: ui.booked.text }} />
+            </MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+          }
+          label="Show archived employees"
         />
+
+          <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap" sx={{ ml: "auto" }}>
+            {canCloseSlots && (
+              <>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={(e) => setDayMenuAnchor(e.currentTarget)}
+                >
+                  Day
+                </Button>
+                <Menu anchorEl={dayMenuAnchor} open={Boolean(dayMenuAnchor)} onClose={() => setDayMenuAnchor(null)}>
+                  <MenuItem onClick={() => { setDayMode("close-day"); setDayDialogOpen(true); setDayMenuAnchor(null); }}>Close entire day</MenuItem>
+                  <MenuItem onClick={() => { setDayMode("close-after"); setDayDialogOpen(true); setDayMenuAnchor(null); }}>Close rest of day…</MenuItem>
+                  <MenuItem onClick={() => { setDayMode("close-before"); setDayDialogOpen(true); setDayMenuAnchor(null); }}>Close before time…</MenuItem>
+                  <MenuItem onClick={() => { setDayMode("keep-range"); setDayDialogOpen(true); setDayMenuAnchor(null); }}>Keep only time range…</MenuItem>
+                </Menu>
+              </>
+            )}
+            <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)}>
+              <ToggleButton value="dayGridMonth">Month</ToggleButton>
+              <ToggleButton value="timeGridWeek">Week</ToggleButton>
+              <ToggleButton value="timeGridDay">Day</ToggleButton>
+            </ToggleButtonGroup>
+            {!isSmDown && (
+              <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                <Chip size="small" label="Available" sx={{ bgcolor: ui.available.bg, color: ui.available.text }} />
+                <Chip size="small" label="Booked" sx={{ bgcolor: ui.booked.bg, color: ui.booked.text }} />
+              </Stack>
+            )}
+          </Stack>
+        </Stack>
       </Paper>
 
-      {/* Day slot rail (chips) */}
-      <Paper sx={{ p: 2 }} elevation={1}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minHeight: { xs: "auto", md: "calc(100vh - 260px)" } }}>
+        <Paper
+          sx={{
+            p: compactDensity ? 1 : 2,
+            flex: "1 1 auto",
+            minHeight: 520,
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
+            overflow: "hidden",
+            width: "100%",
+            maxWidth: "100%",
+          }}
+          elevation={0}
+        >
+          <FullCalendar
+            ref={calRef}
+            {...baseCalProps}
+            initialView={calendarView}
+            height="100%"
+            contentHeight="auto"
+            key={`${calendarView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
+          />
+        </Paper>
+
+        <Paper sx={{ p: 2 }} elevation={0} variant="outlined">
         <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ mb: 1 }}>
           <Typography variant="subtitle1" fontWeight={700} sx={{ whiteSpace: "nowrap" }}>
             {moment(selectedDate).format(timeFmt12h ? "ddd, MMM D" : "ddd, MMM D")} — {daySlots.length} slot(s)
@@ -1055,7 +1115,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                   color={s.booked ? "error" : "success"}
                   variant={s.booked ? "filled" : "outlined"}
                   label={`${s.startHH}–${s.endHH}${selectedRecruiter === "all" ? ` • ${s.recruiter_label || s.recruiter_id}` : ""}${s.service_name ? ` • ${s.service_name}` : ""}${s.mode === "group" && Number.isFinite(s.capacity) ? ` • ${Number(s.booked_count || 0)}/${s.capacity} booked • ${Number.isFinite(s.seats_left) ? s.seats_left : 0} left` : ""}`}
-                  sx={{ borderLeft: `4px solid ${colorForEmp(s.recruiter_id)}` }}
+                  sx={{ borderLeft: `4px solid ${getEmpAccent(s.recruiter_id)}` }}
                   {...(!s.booked && canEditAvailability
                     ? { onDelete: async () => {
                         try {
@@ -1079,6 +1139,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           </Stack>
         )}
       </Paper>
+      </Box>
 
       {/* Create/Edit modal (unchanged core) */}
       <Modal open={openModal} onClose={() => setOpenModal(false)}>
@@ -1419,53 +1480,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       </Dialog>
 
       {/* Full Screen Dialog with calendar */}
-      <Dialog
-        fullScreen
-        open={fullScreenOpen}
-        onClose={() => setFullScreenOpen(false)}
-      >
-        <Box sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1 }}>
-          <IconButton onClick={() => setFullScreenOpen(false)}>
-            <CloseFullscreenIcon />
-          </IconButton>
-          <Typography variant="h6" sx={{ flex: 1 }}>Team Availability — Full Screen</Typography>
-
-          {/* mirroring key controls in FS */}
-          <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)} sx={{ mr: 1 }}>
-            <ToggleButton value="dayGridMonth">Month</ToggleButton>
-            <ToggleButton value="timeGridWeek">Week</ToggleButton>
-            <ToggleButton value="timeGridDay">Day</ToggleButton>
-          </ToggleButtonGroup>
-          <ToggleButtonGroup size="small" value={[granularity]} onChange={(_, val) => { const v = Array.isArray(val) ? val[0] : val; if (v) setGranularity(v); }} sx={{ mr: 1 }}>
-            <ToggleButton value="00:15:00">15m</ToggleButton>
-            <ToggleButton value="00:30:00">30m</ToggleButton>
-            <ToggleButton value="01:00:00">60m</ToggleButton>
-          </ToggleButtonGroup>
-          <ToggleButtonGroup size="small" value={timeFmt12h ? ["12h"] : ["24h"]} onChange={() => setTimeFmt12h((s) => !s)} sx={{ mr: 1 }}>
-            <ToggleButton value="12h">12-hour</ToggleButton>
-            <ToggleButton value="24h">24-hour</ToggleButton>
-          </ToggleButtonGroup>
-          <Button variant="outlined" onClick={() => fetchEvents()}>Refresh</Button>
-        </Box>
-
-        <Box sx={{ p: compactDensity ? 1 : 2 }}>
-          <Paper sx={{ p: compactDensity ? 0 : 1 }}>
-            <FullCalendar
-              ref={fsCalRef}
-              {...baseCalProps}
-              initialView={calendarView}
-              key={`fs-${calendarView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
-              height="calc(100vh - 96px)"
-            />
-          </Paper>
-        </Box>
-
-        <Box sx={{ px: 2, pb: 2, display: "flex", justifyContent: "flex-end" }}>
-          <Button startIcon={<CloseFullscreenIcon />} variant="contained" onClick={() => setFullScreenOpen(false)}>
-            Close
-          </Button>
-        </Box>
-      </Dialog>
+      {/* Full Screen dialog removed per enterprise layout */}
     </Box>
   );
 };

@@ -18,7 +18,6 @@ import {
   Button,
   CircularProgress,
   Tooltip,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -37,8 +36,6 @@ import {
   Drawer,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import moment from "moment-timezone";
 import api from "./utils/api";
@@ -56,7 +53,6 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const calRef = useRef(null);
-  const fsCalRef = useRef(null);
 
   const [events, setEvents] = useState([]);
   const [overlayEvents, setOverlayEvents] = useState([]);
@@ -75,7 +71,6 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const [workHoursOnly, setWorkHoursOnly] = useState(false);
   const [compactDensity, setCompactDensity] = useState(false);
   const [statusFilter, setStatusFilter] = useState([]); // [] = both; or ["available"], ["booked"]
-  const [fullScreenOpen, setFullScreenOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [weekAnchor, setWeekAnchor] = useState(moment().startOf("week"));
@@ -849,7 +844,16 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   };
 
   return (
-    <Box>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+        flex: 1,
+        pt: { xs: 1, md: 1.5 },
+        pb: { xs: 2, md: 3 },
+      }}
+    >
       {/* Global tweaks for Week/Day readability */}
       <GlobalStyles
         styles={{
@@ -858,6 +862,15 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             "--fc-page-bg-color": theme.palette.background.paper,
             "--fc-today-bg-color": alpha(theme.palette.warning.light, 0.2),
             "--fc-event-border-color": "transparent",
+            "--fc-button-text-color": theme.palette.text.primary,
+            "--fc-button-bg-color": alpha(theme.palette.background.paper, 0.9),
+            "--fc-button-border-color": theme.palette.divider,
+            "--fc-button-hover-bg-color": alpha(theme.palette.primary.main, 0.08),
+            "--fc-button-hover-border-color": alpha(theme.palette.primary.main, 0.3),
+            "--fc-button-active-bg-color": alpha(theme.palette.primary.main, 0.18),
+            "--fc-button-active-border-color": alpha(theme.palette.primary.main, 0.45),
+            "--fc-event-text-color": theme.palette.text.primary,
+            "--fc-more-link-text-color": theme.palette.text.primary,
             fontFamily: theme.typography.fontFamily,
           },
           ".fc .fc-timegrid-slot": { height: compactDensity ? 26 : 32 },
@@ -1005,13 +1018,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             fontSize: 12,
           },
           ".fc-view-harness, .fc-view, .fc-scrollgrid": {
-            borderRadius: theme.shape.borderRadius * 1.5,
+            borderRadius: theme.shape.borderRadius,
             background: `linear-gradient(180deg, ${theme.palette.background.paper} 0%, ${alpha(theme.palette.background.default, 0.6)} 100%)`,
-            boxShadow: theme.shadows[2],
-            transition: "box-shadow 220ms ease",
-          },
-          ".fc-view-harness:hover, .fc-view:hover, .fc-scrollgrid:hover": {
-            boxShadow: theme.shadows[4],
+            boxShadow: "none",
           },
           ...(isSmDown
             ? {
@@ -1057,135 +1066,138 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           <Button variant="outlined" onClick={fetchEvents} aria-label="Refresh calendar">
             Refresh
           </Button>
-          <Button
-            startIcon={<OpenInFullIcon />}
-            variant="contained"
-            onClick={() => setFullScreenOpen(true)}
-            aria-label="Open full screen calendar"
-          >
-            Full Screen
-          </Button>
         </Stack>
       </Stack>
 
-      <Paper
-        sx={{
-          p: { xs: 2, md: 3 },
-          mb: 2,
-          borderRadius: theme.shape.borderRadius * 1.5,
-          boxShadow: theme.shadows[2],
-        }}
-        elevation={0}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "stretch", md: "center" }}
-          spacing={2}
-          sx={{ mb: 2 }}
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <Paper
+          sx={{
+            p: { xs: 2, md: 3 },
+            borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`,
+            display: "flex",
+            flexDirection: "column",
+            flex: "1 1 auto",
+            minHeight: 520,
+            overflow: "hidden",
+            width: "100%",
+            maxWidth: "100%",
+            boxShadow: "none",
+          }}
+          elevation={0}
         >
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel>Slot Status</InputLabel>
-              <Select
-                multiple
-                value={statusFilter}
-                label="Slot Status"
-                onChange={(e) => setStatusFilter(e.target.value)}
-                renderValue={(vals) =>
-                  vals.length
-                    ? vals.map((v) => (v === "booked" ? "Reserved" : "Available")).join(", ")
-                    : "All"
-                }
-              >
-                <MenuItem value="available">
-                  <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
-                </MenuItem>
-                <MenuItem value="booked">
-                  <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
-                </MenuItem>
-              </Select>
-            </FormControl>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "stretch", md: "center" }}
+            spacing={2}
+            sx={{ mb: 2 }}
+          >
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Slot Status</InputLabel>
+                <Select
+                  multiple
+                  value={statusFilter}
+                  label="Slot Status"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  renderValue={(vals) =>
+                    vals.length
+                      ? vals.map((v) => (v === "booked" ? "Reserved" : "Available")).join(", ")
+                      : "All"
+                  }
+                >
+                  <MenuItem value="available">
+                    <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
+                  </MenuItem>
+                  <MenuItem value="booked">
+                    <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
+                  </MenuItem>
+                </Select>
+              </FormControl>
+              {!isSmDown && (
+                <ToggleButtonGroup
+                  size="small"
+                  value={calendarView}
+                  exclusive
+                  onChange={(_, v) => v && setCalendarView(v)}
+                >
+                  <ToggleButton value="dayGridMonth">Month</ToggleButton>
+                  <ToggleButton value="timeGridWeek">Week</ToggleButton>
+                  <ToggleButton value="timeGridDay">Day</ToggleButton>
+                </ToggleButtonGroup>
+              )}
+            </Stack>
+
             {!isSmDown && (
-              <ToggleButtonGroup
-                size="small"
-                value={calendarView}
-                exclusive
-                onChange={(_, v) => v && setCalendarView(v)}
-              >
-                <ToggleButton value="dayGridMonth">Month</ToggleButton>
-                <ToggleButton value="timeGridWeek">Week</ToggleButton>
-                <ToggleButton value="timeGridDay">Day</ToggleButton>
-              </ToggleButtonGroup>
+              <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
+                <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
+                <Chip size="small" label="Client Booking" sx={{ bgcolor: ui.appointment.bg, color: ui.appointment.text }} />
+                <Chip size="small" label="Candidate Booking" sx={{ bgcolor: ui.candidate.bg, color: ui.candidate.text }} />
+                <Chip size="small" label="Meeting" sx={{ bgcolor: ui.meeting.bg, color: ui.meeting.text }} />
+                <Chip size="small" label="Leave" sx={{ bgcolor: ui.leave.bg, color: ui.leave.text }} />
+              </Stack>
             )}
           </Stack>
 
-          {!isSmDown && (
-            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-              <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
-              <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
-              <Chip size="small" label="Client Booking" sx={{ bgcolor: ui.appointment.bg, color: ui.appointment.text }} />
-              <Chip size="small" label="Candidate Booking" sx={{ bgcolor: ui.candidate.bg, color: ui.candidate.text }} />
-              <Chip size="small" label="Meeting" sx={{ bgcolor: ui.meeting.bg, color: ui.meeting.text }} />
-              <Chip size="small" label="Leave" sx={{ bgcolor: ui.leave.bg, color: ui.leave.text }} />
-            </Stack>
+          {isSmDown && (
+            <Box sx={{ mb: 2 }}>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                <Button size="small" variant="outlined" onClick={() => jumpWeek(-1)} aria-label="Previous week">‹</Button>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1, textAlign: "center" }}>
+                  {moment(weekAnchor).format("MMM YYYY")}
+                </Typography>
+                <Button size="small" variant="outlined" onClick={() => jumpWeek(1)} aria-label="Next week">›</Button>
+              </Stack>
+              <Stack direction="row" spacing={1} justifyContent="space-between">
+                {weekDays.map((d) => {
+                  const isActive = d.format("YYYY-MM-DD") === selectedDate;
+                  return (
+                    <Box
+                      key={d.format("YYYY-MM-DD")}
+                      onClick={() => setSelectedDate(d.format("YYYY-MM-DD"))}
+                      sx={{
+                        flex: 1,
+                        textAlign: "center",
+                        py: 0.5,
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        background: isActive ? alpha(theme.palette.primary.main, 0.12) : "transparent",
+                        color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
+                        fontWeight: isActive ? 700 : 500,
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ display: "block" }}>
+                        {d.format("dd")}
+                      </Typography>
+                      <Typography variant="body2">{d.format("D")}</Typography>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Box>
           )}
-        </Stack>
 
-        {isSmDown && (
-          <Box sx={{ mb: 2 }}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-              <Button size="small" variant="outlined" onClick={() => jumpWeek(-1)} aria-label="Previous week">‹</Button>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1, textAlign: "center" }}>
-                {moment(weekAnchor).format("MMM YYYY")}
-              </Typography>
-              <Button size="small" variant="outlined" onClick={() => jumpWeek(1)} aria-label="Next week">›</Button>
-            </Stack>
-            <Stack direction="row" spacing={1} justifyContent="space-between">
-              {weekDays.map((d) => {
-                const isActive = d.format("YYYY-MM-DD") === selectedDate;
-                return (
-                  <Box
-                    key={d.format("YYYY-MM-DD")}
-                    onClick={() => setSelectedDate(d.format("YYYY-MM-DD"))}
-                    sx={{
-                      flex: 1,
-                      textAlign: "center",
-                      py: 0.5,
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      background: isActive ? alpha(theme.palette.primary.main, 0.12) : "transparent",
-                      color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
-                      fontWeight: isActive ? 700 : 500,
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ display: "block" }}>
-                      {d.format("dd")}
-                    </Typography>
-                    <Typography variant="body2">{d.format("D")}</Typography>
-                  </Box>
-                );
-              })}
-            </Stack>
+          <Box sx={{ flex: 1, minHeight: 0, width: "100%", maxWidth: "100%" }}>
+            {loading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <FullCalendar
+                ref={calRef}
+                {...baseCalProps}
+                initialView={activeView}
+                height="100%"
+                contentHeight="auto"
+                key={`${activeView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
+              />
+            )}
           </Box>
-        )}
+        </Paper>
 
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <FullCalendar
-            ref={calRef}
-            {...baseCalProps}
-            initialView={activeView}
-            height="auto"
-            key={`${activeView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
-          />
-        )}
-      </Paper>
-
-      <Paper sx={{ p: 2, mt: { xs: 1, sm: 0 } }} elevation={1}>
+        <Paper sx={{ p: 2, flex: "0 0 auto" }} elevation={1}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           alignItems={{ xs: "flex-start", md: "center" }}
@@ -1270,7 +1282,8 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             ))}
           </Stack>
         )}
-      </Paper>
+        </Paper>
+      </Box>
 
       {/* Day Actions dialog */}
       <Dialog open={dayDialogOpen} onClose={() => setDayDialogOpen(false)} maxWidth="xs" fullWidth>
@@ -1325,41 +1338,6 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           <Button onClick={() => setDayDialogOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={applyDayAction}>Apply</Button>
         </DialogActions>
-      </Dialog>
-
-      {/* Full Screen calendar */}
-      <Dialog fullScreen open={fullScreenOpen} onClose={() => setFullScreenOpen(false)}>
-        <Box sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1 }}>
-          <IconButton onClick={() => setFullScreenOpen(false)} aria-label="Exit full screen">
-            <CloseFullscreenIcon />
-          </IconButton>
-          <Typography variant="h6" sx={{ flex: 1 }}>My Availability — Full Screen</Typography>
-
-          <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)} sx={{ mr: 1, display: { xs: "none", sm: "inline-flex" } }}>
-            <ToggleButton value="dayGridMonth">Month</ToggleButton>
-            <ToggleButton value="timeGridWeek">Week</ToggleButton>
-            <ToggleButton value="timeGridDay">Day</ToggleButton>
-          </ToggleButtonGroup>
-          <Button variant="outlined" onClick={fetchEvents}>Refresh</Button>
-        </Box>
-
-        <Box sx={{ p: compactDensity ? 1 : 2 }}>
-          <Paper sx={{ p: compactDensity ? 0 : 1 }}>
-            <FullCalendar
-              ref={fsCalRef}
-              {...baseCalProps}
-              initialView={calendarView}
-              key={`fs-${calendarView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}-${statusFilter.join(",")}`}
-              height="calc(100vh - 96px)"
-            />
-          </Paper>
-        </Box>
-
-        <Box sx={{ px: 2, pb: 2, display: "flex", justifyContent: "flex-end" }}>
-          <Button startIcon={<CloseFullscreenIcon />} variant="contained" onClick={() => setFullScreenOpen(false)}>
-            Close
-          </Button>
-        </Box>
       </Dialog>
 
       {/* Booking detail (read-only) */}

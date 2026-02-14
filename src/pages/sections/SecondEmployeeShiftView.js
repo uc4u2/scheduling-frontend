@@ -35,9 +35,12 @@ import {
   TableBody,
   TableCell,
   TableRow,
+  TableContainer,
   useMediaQuery,
   LinearProgress,
   Pagination,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
 import { format, parseISO, differenceInMinutes, addDays, startOfDay } from "date-fns";
 import { useTheme } from "@mui/material/styles";
@@ -52,12 +55,20 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import api from "../../utils/api";
 import { STATUS } from "../../utils/shiftSwap";
 import { POLL_MS } from "../../utils/shiftSwap";
-
-/* eslint-disable react-hooks/exhaustive-deps */
 import ShiftSwapPanel from "../../components/ShiftSwapPanel";
 import IncomingSwapRequests from "../../components/IncomingSwapRequests";
 import { getUserTimezone } from "../../utils/timezone";
 import { timeTracking } from "../../utils/api";
+
+const statusColor = {
+  assigned: "default",
+  in_progress: "warning",
+  completed: "info",
+  approved: "success",
+  rejected: "error",
+};
+
+/* eslint-disable react-hooks/exhaustive-deps */
 
 const SecondEmployeeShiftView = () => {
   const theme = useTheme();
@@ -1056,7 +1067,7 @@ const breakTimelineMeta = useMemo(() => {
   };
 
 // ───────────────────────────────────────────────────────
-return (
+  return (
   <>
     <Paper
       elevation={0}
@@ -1075,11 +1086,11 @@ return (
         justifyContent="space-between"
       >
         <Box>
-          <Typography variant="h6" fontWeight={700}>
-            My Time & Clock
+          <Typography variant="h5" fontWeight={700}>
+            My Time
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Track your current shift, live clock, and break status.
+            Track your shifts, breaks, and approvals in one view.
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -1123,22 +1134,23 @@ return (
                   p: 2,
                   borderRadius: 2,
                   border: `1px solid ${theme.palette.divider}`,
-                  background: theme.palette.mode === "light" ? theme.palette.grey[50] : theme.palette.background.default,
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+                  background: theme.palette.background.default,
+                  boxShadow: theme.shadows[1],
+                  height: "100%",
                 })}
               >
                 <Stack direction="row" spacing={1.25} alignItems="center">
                   <Box
-                    sx={{
+                    sx={(theme) => ({
                       width: 36,
                       height: 36,
                       borderRadius: 2,
-                      bgcolor: "rgba(255,122,60,0.12)",
-                      color: "#FF7A3C",
+                      bgcolor: `${theme.palette.primary.main}1f`,
+                      color: theme.palette.primary.main,
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                    }}
+                    })}
                   >
                     {metric.icon || <AccessTimeFilledIcon fontSize="small" />}
                   </Box>
@@ -1247,6 +1259,28 @@ return (
             <MenuItem value="rejected">Rejected</MenuItem>
             <MenuItem value="in_progress">In progress</MenuItem>
           </TextField>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button size="small" variant="outlined" onClick={() => {
+              const today = format(new Date(), "yyyy-MM-dd");
+              setHistoryFilters((prev) => ({ ...prev, startDate: today, endDate: today }));
+            }}>
+              Today
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => {
+              const start = format(startOfDay(new Date()), "yyyy-MM-dd");
+              const end = format(addDays(startOfDay(new Date()), 6), "yyyy-MM-dd");
+              setHistoryFilters((prev) => ({ ...prev, startDate: start, endDate: end }));
+            }}>
+              This week
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => {
+              const start = format(addDays(startOfDay(new Date()), -7), "yyyy-MM-dd");
+              const end = format(addDays(startOfDay(new Date()), -1), "yyyy-MM-dd");
+              setHistoryFilters((prev) => ({ ...prev, startDate: start, endDate: end }));
+            }}>
+              Last week
+            </Button>
+          </Stack>
           <Button
             variant="outlined"
             onClick={downloadHistoryCsv}
@@ -1296,72 +1330,74 @@ return (
             No shifts found for this range.
           </Typography>
         ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Clocked</TableCell>
-                <TableCell>Hours</TableCell>
-                <TableCell>Breaks</TableCell>
-                <TableCell>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {historyEntries.map((entry) => (
-                <TableRow
-                  key={entry.id}
-                  hover
-                  sx={{ cursor: entry.status === "in_progress" || entry.status === "assigned" ? "pointer" : "default" }}
-                  onClick={() => {
-                    if (entry.id && (entry.status === "in_progress" || entry.status === "assigned" || entry.status === "pending")) {
-                      setOverrideShiftId(entry.id);
-                      setTodayCardCollapsed(false);
-                    }
-                  }}
-                >
-                  <TableCell>
-                    <Typography fontWeight={600}>{entry.date}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {entry.period_label || ""}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      In: {formatClockLocal(entry.clock_in, entry.timezone)}
-                    </Typography>
-                    <Typography variant="body2">
-                      Out: {formatClockLocal(entry.clock_out, entry.timezone)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {entry.clock_in_ip ? `IP: ${entry.clock_in_ip}` : ""}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>{entry.hours_worked_rounded ?? entry.hours_worked}h</TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={`${entry.break_minutes || 0}m`}
-                      color={entry.break_non_compliant ? "error" : "default"}
-                      variant={entry.break_non_compliant ? "filled" : "outlined"}
-                    />
-                    {entry.break_missing_minutes > 0 && (
-                      <Typography variant="caption" color="error.main" sx={{ display: "block" }}>
-                        Missing {entry.break_missing_minutes}m
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Chip size="small" label={entry.status || "—"} />
-                    {entry.approved_by_name && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                        By {entry.approved_by_name}
-                      </Typography>
-                    )}
-                  </TableCell>
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Clocked</TableCell>
+                  <TableCell>Hours</TableCell>
+                  <TableCell>Breaks</TableCell>
+                  <TableCell>Status</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {historyEntries.map((entry) => (
+                  <TableRow
+                    key={entry.id}
+                    hover
+                    sx={{ cursor: entry.status === "in_progress" || entry.status === "assigned" ? "pointer" : "default" }}
+                    onClick={() => {
+                      if (entry.id && (entry.status === "in_progress" || entry.status === "assigned" || entry.status === "pending")) {
+                        setOverrideShiftId(entry.id);
+                        setTodayCardCollapsed(false);
+                      }
+                    }}
+                  >
+                    <TableCell>
+                      <Typography fontWeight={600}>{entry.date}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {entry.period_label || ""}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        In: {formatClockLocal(entry.clock_in, entry.timezone)}
+                      </Typography>
+                      <Typography variant="body2">
+                        Out: {formatClockLocal(entry.clock_out, entry.timezone)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {entry.clock_in_ip ? `IP: ${entry.clock_in_ip}` : ""}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{entry.hours_worked_rounded ?? entry.hours_worked}h</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={`${entry.break_minutes || 0}m`}
+                        color={entry.break_non_compliant ? "error" : "default"}
+                        variant={entry.break_non_compliant ? "filled" : "outlined"}
+                      />
+                      {entry.break_missing_minutes > 0 && (
+                        <Typography variant="caption" color="error.main" sx={{ display: "block" }}>
+                          Missing {entry.break_missing_minutes}m
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Chip size="small" label={entry.status || "—"} color={statusColor[entry.status] || "default"} variant="outlined" />
+                      {entry.approved_by_name && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                          By {entry.approved_by_name}
+                        </Typography>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Box>
     </Paper>
@@ -1697,12 +1733,24 @@ return (
       anchor="right"
       open={drawerOpen}
       onClose={() => setDrawerOpen(false)}
-      PaperProps={{ sx: { width: { xs: "100%", sm: 420 }, p: 3 } }}
+      PaperProps={{ sx: { width: { xs: "100%", sm: 420 }, p: 0 } }}
     >
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography variant="h6" fontWeight="bold">
-          👤 My Shifts
+      <Box
+        sx={{
+          position: "sticky",
+          top: 0,
+          zIndex: 1,
+          bgcolor: "background.paper",
+          borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+          p: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Typography variant="h6" fontWeight={700}>
+          My Shifts
         </Typography>
         <IconButton onClick={() => setDrawerOpen(false)}>
           <CloseIcon />
@@ -1711,7 +1759,7 @@ return (
 
       {/*  ➤ Opt-out toggle */}
       <FormControlLabel
-        sx={{ mt: 2 }}
+        sx={{ mt: 2, px: 2 }}
         control={
           <Switch
             checked={optOut}
@@ -1739,30 +1787,63 @@ return (
       />
 
       {/* “My Swaps” toggle (non-managers) */}
-      {!isManager && (
-        <Button
+      <Box sx={{ px: 2, mt: 2 }}>
+        <ToggleButtonGroup
           size="small"
-          variant="outlined"
-          sx={{ ml: 1, mt: 2, mb: 2 }}
-          onClick={() => setShowMySwapRequests(!showMySwapRequests)}
+          value={showMySwapRequests ? "swaps" : "shifts"}
+          exclusive
+          onChange={(_, v) => {
+            if (!v) return;
+            setShowMySwapRequests(v === "swaps");
+          }}
+          fullWidth
         >
-          {showMySwapRequests ? "Hide" : "Show"} My Swaps
-        </Button>
-      )}
+          <ToggleButton value="shifts">Shifts</ToggleButton>
+          <ToggleButton value="swaps">My swap requests</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
 
       <Divider sx={{ my: 2 }} />
 
       {/* Shifts list, loading & error blocks */}
-      {loading ? (
+      {showMySwapRequests ? (
+        <Box sx={{ px: 2 }}>
+          {pendingSwaps.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No swap requests yet.
+            </Typography>
+          ) : (
+            <Stack spacing={1}>
+              {pendingSwaps.map((sw) => (
+                <Paper
+                  key={sw.id}
+                  variant="outlined"
+                  sx={{ p: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <Typography variant="body2">
+                    #{sw.id} → Shift {sw.target_shift_id} ({sw.status})
+                  </Typography>
+                  {sw.status === "pending" && sw.is_requester && (
+                    <Button size="small" color="error" onClick={() => cancelSwap(sw.id)}>
+                      Cancel
+                    </Button>
+                  )}
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Box>
+      ) : loading ? (
         <Box display="flex" justifyContent="center" mt={5}>
           <CircularProgress />
         </Box>
       ) : errorMsg ? (
-        <Typography color="error">{errorMsg}</Typography>
+        <Typography color="error" sx={{ px: 2 }}>{errorMsg}</Typography>
       ) : shifts.length === 0 ? (
-        <Typography>No shifts assigned yet.</Typography>
+        <Typography sx={{ px: 2 }}>No shifts assigned yet.</Typography>
       ) : (
         <>
+        <Box sx={{ px: 2 }}>
         <Grid container spacing={2}>
           {pagedShifts.map((shift) => {
             const hasTimes = Boolean(shift.clock_in && shift.clock_out);
@@ -1818,11 +1899,8 @@ return (
 
                     <Typography variant="body1" fontWeight="bold">
                       {shift.on_leave || !hasTimes
-                        ? "⛔ On Leave"
-                        : `🕒 ${format(start, "HH:mm")} – ${format(
-                            end,
-                            "HH:mm"
-                          )}`}
+                        ? "On Leave"
+                        : `${format(start, "HH:mm")} – ${format(end, "HH:mm")}`}
                     </Typography>
                     {breakMeta && !shift.on_leave && (
                       <Tooltip title={breakMeta.tooltip || ""}>
@@ -1932,8 +2010,9 @@ return (
             );
           })}
         </Grid>
+        </Box>
         {shiftRows.length > pageSize && (
-          <Stack alignItems="center" sx={{ mt: 2 }}>
+          <Stack alignItems="center" sx={{ mt: 2, px: 2 }}>
             <Pagination
               color="primary"
               size="small"
@@ -1949,6 +2028,7 @@ return (
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
               Leave
             </Typography>
+            <Box sx={{ px: 2 }}>
             <Grid container spacing={2}>
               {pagedLeaves.map((shift) => (
                 <Grid item xs={12} key={shift.id}>
@@ -1967,7 +2047,7 @@ return (
                           : "—"}
                       </Typography>
                       <Typography variant="body1" fontWeight="bold">
-                        ⛔ On Leave
+                        On Leave
                       </Typography>
                       {(() => {
                         const status = (shift.leave_status || "approved").toLowerCase();
@@ -1993,8 +2073,9 @@ return (
                 </Grid>
               ))}
             </Grid>
+            </Box>
             {leaveRows.length > pageSize && (
-              <Stack alignItems="center" sx={{ mt: 2 }}>
+              <Stack alignItems="center" sx={{ mt: 2, px: 2 }}>
                 <Pagination
                   color="primary"
                   size="small"

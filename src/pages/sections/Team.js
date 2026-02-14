@@ -40,7 +40,7 @@ import {
   FormControlLabel,
   Switch,
   Pagination,
-  Dialog,
+  Menu,
   GlobalStyles,
   useTheme,
   useMediaQuery,
@@ -51,47 +51,15 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { format, endOfMonth, addDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon } from "@mui/icons-material";
+import { Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, MoreVert as MoreVertIcon } from "@mui/icons-material";
 import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
+import { alpha } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import { formatDate, formatTime } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
-
-// ------------------------------------------------------------------------------------
-// Color helpers
-// ------------------------------------------------------------------------------------
-const COLORS = [
-  "#E57373", "#81C784", "#64B5F6", "#FFD54F",
-  "#4DB6AC", "#BA68C8", "#FF8A65", "#A1887F",
-  "#90A4AE", "#F06292"
-];
-const getColorForRecruiter = (recruiterId) => COLORS[Math.abs(parseInt(recruiterId, 10) || 0) % COLORS.length];
-const getReadableTextColor = (hex) => {
-  if (!hex || typeof hex !== "string") return "#111";
-  const h = hex.replace("#", "");
-  const bigint = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
-  if (Number.isNaN(bigint)) return "#111";
-  const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
-  // Perceived luminance
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#111" : "#fff";
-};
-const hexToRgba = (hex, alpha = 0.15) => {
-  if (!hex || typeof hex !== "string") return `rgba(0,0,0,${alpha})`;
-  const h = hex.replace("#", "");
-  const bigint = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
-  const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
-  return `rgba(${r},${g},${b},${alpha})`;
-};
 
 // ------------------------------------------------------------------------------------
 // Constants & utils
@@ -288,8 +256,7 @@ const SecondTeam = () => {
 
   /* --------------------------- view & layout state --------------------------- */
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [calendarHeight, setCalendarHeight] = useState("auto");
-  const [calendarWidth, setCalendarWidth] = useState("100%");
+  const calendarHeight = "auto";
   // put this near your other utils in Team.js
 const asLocalDate = (ymd) => {
   if (!ymd) return new Date();
@@ -304,7 +271,60 @@ const asLocalDate = (ymd) => {
   const [showWeekends, setShowWeekends] = useState(true);
   const [workHoursOnly, setWorkHoursOnly] = useState(false);
   const [compactDensity, setCompactDensity] = useState(false);
-  const [fullScreenOpen, setFullScreenOpen] = useState(false);
+
+  const accentPalette = useMemo(
+    () => [
+      theme.palette.primary.main,
+      theme.palette.success.main,
+      theme.palette.info.main,
+      theme.palette.warning.main,
+      theme.palette.error.main,
+      theme.palette.secondary.main,
+    ],
+    [theme]
+  );
+  const getRecruiterAccent = useCallback(
+    (recruiterId) =>
+      accentPalette[Math.abs(parseInt(recruiterId, 10) || 0) % accentPalette.length],
+    [accentPalette]
+  );
+  const ui = useMemo(
+    () => ({
+      leave: {
+        bg: alpha(theme.palette.grey[200], 0.9),
+        border: theme.palette.divider,
+        text: theme.palette.text.secondary,
+      },
+      status: {
+        accepted: {
+          bg: alpha(theme.palette.success.light, 0.3),
+          border: theme.palette.success.main,
+          text: theme.palette.text.primary,
+        },
+        pending: {
+          bg: alpha(theme.palette.info.light, 0.25),
+          border: theme.palette.info.main,
+          text: theme.palette.text.primary,
+        },
+        assigned: {
+          bg: alpha(theme.palette.warning.light, 0.25),
+          border: theme.palette.warning.main,
+          text: theme.palette.text.primary,
+        },
+        rejected: {
+          bg: alpha(theme.palette.error.light, 0.22),
+          border: theme.palette.error.main,
+          text: theme.palette.text.primary,
+        },
+      },
+      chips: {
+        subtleBg: alpha(theme.palette.grey[300], 0.6),
+        subtleText: theme.palette.text.secondary,
+      },
+      nowIndicator: theme.palette.error.main,
+    }),
+    [theme]
+  );
 
   /* -------------------------------- filters --------------------------------- */
   const [departments, setDepartments] = useState([]);
@@ -328,6 +348,8 @@ const asLocalDate = (ymd) => {
   // ✅ NEW: employee pagination (avoids tall lists)
   const [empPage, setEmpPage] = useState(1);           // 1-based
   const [employeesPerPage, setEmployeesPerPage] = useState(8);
+  const [rowMenuAnchor, setRowMenuAnchor] = useState(null);
+  const [rowMenuId, setRowMenuId] = useState(null);
 
   // flatten shifts into table rows (stable keys for selection/edit)
   const resolveRecruiterTimezone = useCallback(
@@ -557,7 +579,6 @@ const [formData, setFormData] = useState({
 
   /* ------------------------------- calendar refs ----------------------------- */
   const calendarRef = useRef(null);
-  const fsCalendarRef = useRef(null);
   const pendingRevertCallbackRef = useRef(null);
   const [pendingEventUpdate, setPendingEventUpdate] = useState(null);
   const [availabilityOverlay, setAvailabilityOverlay] = useState([]);
@@ -940,10 +961,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   const calendarEvents = useMemo(
     () =>
       filteredShifts.map((s) => {
-        const color = getColorForRecruiter(s.recruiter_id);
+        const color = getRecruiterAccent(s.recruiter_id);
         const isOnLeave = s.on_leave === true;
         const rec = recruiters.find((r) => r.id === s.recruiter_id);
-        const bgTint = hexToRgba(color, 0.14);
+        const bgTint = alpha(color, 0.14);
         const entry = timeEntriesMap[String(s.id)];
         const roster = rosterMap[String(s.id)];
         const scheduledStart = getScheduledStartIso(s);
@@ -972,9 +993,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           title: `${s.status || "assigned"}`,
           start: getLocalStartIso(s),
           end: getLocalEndIso(s),
-          backgroundColor: isOnLeave ? "#f0f0f0" : bgTint,
-          borderColor: isOnLeave ? "#ccc" : color,
-          textColor: isOnLeave ? "#666" : "#111",
+          backgroundColor: isOnLeave ? ui.leave.bg : bgTint,
+          borderColor: isOnLeave ? ui.leave.border : color,
+          textColor: isOnLeave ? ui.leave.text : theme.palette.text.primary,
           editable: !isOnLeave,
           classNames: [isOnLeave ? "shift-leave" : "shift-event"],
           extendedProps: {
@@ -1008,6 +1029,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       rosterMap,
       timeEntriesMap,
       timePolicy,
+      getRecruiterAccent,
+      ui,
+      theme,
     ]
   );
 
@@ -1724,9 +1748,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
   const renderEventContent = (arg) => {
     const xp = arg.event.extendedProps || {};
-    const accent = xp._empColor || "#1976d2";
+    const accent = xp._empColor || theme.palette.primary.main;
     const emp = xp.recruiter_name || `Emp ${xp.recruiter_id || ""}`;
     const status = (xp.status || "assigned").toUpperCase();
+    const statusKey = ["accepted", "pending", "rejected", "assigned"].includes(xp.status)
+      ? xp.status
+      : "assigned";
+    const statusUi = ui.status[statusKey] || ui.status.assigned;
     const viewType = arg.view && arg.view.type ? arg.view.type : "";
     const showAvatar =
       viewType.startsWith("timeGridDay") ||
@@ -1743,7 +1771,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           padding: "4px 6px 6px",
           borderLeft: `4px solid ${accent}`,
           lineHeight: 1.2,
-          background: hexToRgba(accent, 0.12),
+          background: alpha(accent, 0.12),
           borderRadius: 10,
         }}
       >
@@ -1755,9 +1783,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               letterSpacing: 0.3,
               padding: "2px 6px",
               borderRadius: 8,
-              background: xp.status === "accepted" ? "#e6f4ea" : "#e8f0fe",
-              border: `1px solid ${xp.status === "accepted" ? "#34a853" : "#1a73e8"}`,
-              color: "#111",
+              background: statusUi.bg,
+              border: `1px solid ${statusUi.border}`,
+              color: statusUi.text,
             }}
           >
             {status}
@@ -1769,9 +1797,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 textTransform: "uppercase",
                 padding: "2px 6px",
                 borderRadius: 8,
-                background: "#e6f4ea",
-                border: "1px solid #34a853",
-                color: "#111",
+                background: alpha(theme.palette.success.light, 0.3),
+                border: `1px solid ${theme.palette.success.main}`,
+                color: theme.palette.text.primary,
               }}
             >
               Clocked in
@@ -1784,9 +1812,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 textTransform: "uppercase",
                 padding: "2px 6px",
                 borderRadius: 8,
-                background: "#fff8e1",
-                border: "1px solid #ffb300",
-                color: "#111",
+                background: alpha(theme.palette.warning.light, 0.35),
+                border: `1px solid ${theme.palette.warning.main}`,
+                color: theme.palette.text.primary,
               }}
             >
               On break
@@ -1799,16 +1827,16 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 textTransform: "uppercase",
                 padding: "2px 6px",
                 borderRadius: 8,
-                background: "#ffebee",
-                border: "1px solid #e53935",
-                color: "#111",
+                background: alpha(theme.palette.error.light, 0.3),
+                border: `1px solid ${theme.palette.error.main}`,
+                color: theme.palette.text.primary,
               }}
             >
               Missed clock‑in
             </span>
           ) : null}
           {showAvatar && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#111" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: theme.palette.text.primary }}>
               <span
                 style={{
                   width: 22,
@@ -1817,13 +1845,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   backgroundImage: xp.profile_image_url ? `url(${xp.profile_image_url})` : "none",
-                  backgroundColor: "#e0e0e0",
+                  backgroundColor: ui.chips.subtleBg,
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#444",
+                  color: ui.chips.subtleText,
                 }}
               >
                 {!xp.profile_image_url ? (emp || "E").charAt(0) : ""}
@@ -1835,7 +1863,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
-                  color: "#111",
+                  color: theme.palette.text.primary,
                 }}
               >
                 {emp}
@@ -1850,14 +1878,14 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                color: "#111",
+                color: theme.palette.text.primary,
               }}
             >
               {emp}
             </span>
           )}
         </div>
-        <div style={{ fontSize: 11, fontWeight: 600, color: "#111", marginBottom: 2 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: theme.palette.text.primary, marginBottom: 2 }}>
           {startTime}
           {endTime ? ` – ${endTime}` : ""}
         </div>
@@ -1869,9 +1897,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 textTransform: "uppercase",
                 padding: "2px 6px",
                 borderRadius: 8,
-                background: "#fff3e0",
-                border: "1px solid #fb8c00",
-                color: "#111",
+                background: alpha(theme.palette.warning.light, 0.35),
+                border: `1px solid ${theme.palette.warning.main}`,
+                color: theme.palette.text.primary,
               }}
             >
               Late +{xp.late_minutes}m
@@ -1884,9 +1912,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 textTransform: "uppercase",
                 padding: "2px 6px",
                 borderRadius: 8,
-                background: "#ffebee",
-                border: "1px solid #e53935",
-                color: "#111",
+                background: alpha(theme.palette.error.light, 0.3),
+                border: `1px solid ${theme.palette.error.main}`,
+                color: theme.palette.text.primary,
               }}
             >
               Break missing {xp.break_missing_minutes}m
@@ -1899,9 +1927,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 textTransform: "uppercase",
                 padding: "2px 6px",
                 borderRadius: 8,
-                background: "#fce4ec",
-                border: "1px solid #d81b60",
-                color: "#111",
+                background: alpha(theme.palette.error.light, 0.18),
+                border: `1px solid ${theme.palette.error.main}`,
+                color: theme.palette.text.primary,
               }}
             >
               Break non‑compliant
@@ -1925,11 +1953,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const loc = xp.location ? `\nLocation: ${xp.location}` : "";
     const note = xp.note ? `\nNote: ${xp.note}` : "";
     info.el.setAttribute("title", `${emp}\n${start}–${end}${loc}${note}`);
-    const accent = xp._empColor || "#1976d2";
+    const accent = xp._empColor || theme.palette.primary.main;
     info.el.style.borderRadius = "12px";
-    info.el.style.boxShadow = "0 4px 10px rgba(15,23,42,0.12)";
+    info.el.style.boxShadow = theme.shadows[2];
     info.el.style.borderLeft = `4px solid ${accent}`;
-    info.el.style.background = hexToRgba(accent, 0.16);
+    info.el.style.background = alpha(accent, 0.16);
   };
 
   // shared props for Week/Day calendars
@@ -1985,33 +2013,49 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       {/* Global tweaks for readability in timeGrid */}
       <GlobalStyles
         styles={{
+          ".fc": {
+            "--fc-border-color": theme.palette.divider,
+            "--fc-page-bg-color": theme.palette.background.paper,
+            "--fc-today-bg-color": alpha(theme.palette.warning.light, 0.2),
+            "--fc-button-text-color": theme.palette.text.primary,
+            "--fc-button-bg-color": alpha(theme.palette.background.paper, 0.9),
+            "--fc-button-border-color": theme.palette.divider,
+            "--fc-button-hover-bg-color": alpha(theme.palette.primary.main, 0.08),
+            "--fc-button-hover-border-color": alpha(theme.palette.primary.main, 0.3),
+            "--fc-button-active-bg-color": alpha(theme.palette.primary.main, 0.18),
+            "--fc-button-active-border-color": alpha(theme.palette.primary.main, 0.45),
+            "--fc-event-text-color": theme.palette.text.primary,
+            "--fc-more-link-text-color": theme.palette.text.primary,
+            fontFamily: theme.typography.fontFamily,
+          },
           ".fc .fc-timegrid-slot": {
             height: compactDensity ? 26 : 32,
           },
           ".fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion": {
             fontSize: 12,
+            color: theme.palette.text.secondary,
           },
           ".fc .fc-timegrid-event": {
             borderRadius: 8,
-            boxShadow: "0 1px 0 rgba(0,0,0,0.08)",
+            boxShadow: theme.shadows[1],
           },
           ".fc .fc-timegrid-col.fc-day-today": {
-            background: "linear-gradient(180deg, rgba(37,99,235,0.05) 0%, rgba(37,99,235,0.01) 100%)",
+            background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.02)} 100%)`,
           },
           ".fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-frame": {
-            background: "linear-gradient(180deg, rgba(255,245,200,0.7) 0%, rgba(255,236,170,0.7) 100%)",
-            boxShadow: "inset 0 0 0 1px rgba(251,191,36,0.35)",
+            background: `linear-gradient(180deg, ${alpha(theme.palette.warning.light, 0.35)} 0%, ${alpha(theme.palette.warning.light, 0.45)} 100%)`,
+            boxShadow: `inset 0 0 0 1px ${alpha(theme.palette.warning.main, 0.35)}`,
           },
           ".fc .fc-timegrid-now-indicator-line": {
-            borderColor: "#e53935",
+            borderColor: ui.nowIndicator,
             borderWidth: "2px",
           },
           ".fc .fc-timegrid-now-indicator-arrow": {
-            borderColor: "transparent transparent #e53935 transparent",
+            borderColor: `transparent transparent ${ui.nowIndicator} transparent`,
             borderWidth: "0 6px 8px 6px",
           },
           ".fc .fc-timegrid-slot-lane:nth-of-type(odd)": {
-            backgroundColor: "rgba(0,0,0,0.015)",
+            backgroundColor: alpha(theme.palette.action.hover, 0.4),
           },
           ".fc .fc-timegrid-event .fc-event-time": {
             fontWeight: 700,
@@ -2023,17 +2067,57 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           },
           ".fc .fc-toolbar-title": {
             fontWeight: 700,
+            color: theme.palette.text.primary,
+          },
+          ".fc .fc-col-header-cell-cushion": {
+            color: theme.palette.text.primary,
+            fontWeight: 600,
+          },
+          ".fc .fc-more-link": {
+            color: theme.palette.text.primary,
           },
         }}
       />
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        alignItems={{ xs: "flex-start", md: "center" }}
+        justifyContent="space-between"
+        spacing={2}
+        sx={{ mb: 2 }}
+      >
+        <Box>
+          <Typography variant="h5" fontWeight={700}>
+            Shift Management
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Plan, assign, and manage team schedules in one place.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Button variant="outlined" onClick={openTemplateModal}>
+            Edit Templates
+          </Button>
+          <Button variant="outlined" onClick={handleExportToExcel}>
+            Export
+          </Button>
+          <Button variant="outlined" onClick={fetchShifts}>
+            Refresh
+          </Button>
+          <Tooltip title={selectedRecruiters.length === 0 ? "Select at least one employee above" : ""}>
+            <span>
+              <Button
+                variant="contained"
+                onClick={handleOpenAssignShift}
+                disabled={selectedRecruiters.length === 0}
+              >
+                Assign Shift
+              </Button>
+            </span>
+          </Tooltip>
+        </Stack>
+      </Stack>
 
-
-
-      <Typography variant="h6" fontWeight={700} sx={{ mb: 1 }}>
-        Shift Management
-      </Typography>
-
-      {/* Filters row */}
+      <Paper sx={{ p: 2, mb: 2, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }} elevation={0}>
       {isMdDown ? (
         <Accordion disableGutters sx={{ mb: 2 }} defaultExpanded={false}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -2282,73 +2366,7 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
           <Grid item xs={12} md={2} />
         </Grid>
       )}
-
-      {/* Action row */}
-      <Box
-        mb={2}
-        display="flex"
-        gap={1}
-        alignItems={{ xs: "stretch", md: "center" }}
-        flexWrap="wrap"
-        sx={{
-          flexDirection: { xs: "column", md: "row" },
-          position: { xs: "sticky", md: "static" },
-          top: { xs: 8, md: "auto" },
-          zIndex: 10,
-          bgcolor: { xs: "background.paper", md: "transparent" },
-          py: { xs: 1, md: 0 },
-        }}
-      >
-        <Button variant="outlined" onClick={openTemplateModal} fullWidth={isMdDown}>
-          Edit Templates
-        </Button>
-
-        <Tooltip title={selectedRecruiters.length === 0 ? "Select at least one employee above" : ""}>
-          <span>
-            <Button
-              variant="contained"
-              onClick={handleOpenAssignShift}
-              disabled={selectedRecruiters.length === 0}
-              fullWidth={isMdDown}
-            >
-              Assign Shift
-            </Button>
-          </span>
-        </Tooltip>
-
-        <Button variant="outlined" onClick={handleExportToExcel} fullWidth={isMdDown}>
-          Export to Excel
-        </Button>
-
-        <Button variant="outlined" onClick={fetchShifts} fullWidth={isMdDown}>
-          Refresh
-        </Button>
-
-        <Button
-          variant="outlined"
-          onClick={() => setCalendarHeight(calendarHeight === "auto" ? "90vh" : "auto")}
-          fullWidth={isMdDown}
-        >
-          {calendarHeight === "auto" ? "Fixed Height" : "Auto Height"}
-        </Button>
-
-        <Button
-          variant="outlined"
-          onClick={() => setCalendarWidth(calendarWidth === "100%" ? "300%" : "100%")}
-          fullWidth={isMdDown}
-        >
-          {calendarWidth === "100%" ? "Expand Width" : "Collapse Width"}
-        </Button>
-
-        <Button
-          startIcon={<OpenInFullIcon />}
-          variant="contained"
-          onClick={() => setFullScreenOpen(true)}
-          fullWidth={isMdDown}
-        >
-          Full Screen
-        </Button>
-      </Box>
+      </Paper>
 
       {/* =============================== WEEK/DAY MODE ============================== */}
       <>
@@ -2357,16 +2375,15 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
               p: compactDensity ? 1 : 2,
               mb: 4,
               minHeight: isSmDown ? "360px" : "600px",
-              maxWidth: "150vw",
-              overflowX: calendarWidth !== "100%" ? "auto" : "hidden",
-              border: { xs: "none", md: "none" },
-              borderColor: { xs: "transparent", md: "transparent" },
-              boxShadow: { xs: "none", md: 1 },
-              bgcolor: { xs: "transparent", md: "background.paper" },
-              mx: { xs: -4, md: 0 },
-              width: { xs: "calc(100% + 64px)", md: calendarWidth },
+              width: "100%",
+              maxWidth: "100%",
+              overflow: "hidden",
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: 3,
+              boxShadow: "none",
+              bgcolor: "background.paper",
             }}
-            elevation={isSmDown ? 0 : 1}
+            elevation={0}
           >
             <FullCalendar
               ref={calendarRef}
@@ -2390,9 +2407,9 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                   key={`legend-week-${r.id}`}
                   label={r.name}
                   sx={{
-                    bgcolor: getColorForRecruiter(r.id),
-                    border: "1px solid rgba(0,0,0,0.2)",
-                    color: "#111",
+                    bgcolor: getRecruiterAccent(r.id),
+                    border: `1px solid ${theme.palette.divider}`,
+                    color: theme.palette.getContrastText(getRecruiterAccent(r.id)),
                   }}
                 />
               ))}
@@ -2406,10 +2423,10 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                 bottom: 16,
                 right: 16,
                 zIndex: 1300,
-                background: "white",
+                background: theme.palette.background.paper,
                 p: 2,
                 borderRadius: 2,
-                boxShadow: 3,
+                boxShadow: theme.shadows[4],
               }}
             >
               <Typography variant="body1" gutterBottom>
@@ -2492,65 +2509,7 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
             </Box>
           )}
 
-          {/* Full Screen dialog with calendar */}
-          <Dialog fullScreen open={fullScreenOpen} onClose={() => setFullScreenOpen(false)}>
-            <Box sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1 }}>
-              <IconButton onClick={() => setFullScreenOpen(false)}>
-                <CloseFullscreenIcon />
-              </IconButton>
-              <Typography variant="h6" sx={{ flex: 1 }}>Shifts — Full Screen</Typography>
-
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={innerCalView}
-                onChange={(_, v) => v && setInnerCalView(v)}
-                sx={{ mr: 1 }}
-              >
-                <ToggleButton value="timeGridWeek">Week</ToggleButton>
-                <ToggleButton value="timeGridDay">Day</ToggleButton>
-              </ToggleButtonGroup>
-              <ToggleButtonGroup
-                size="small"
-                value={[granularity]}
-                onChange={(_, val) => { const v = Array.isArray(val) ? val[0] : val; if (v) setGranularity(v); }}
-                sx={{ mr: 1 }}
-              >
-                <ToggleButton value="00:15:00">15m</ToggleButton>
-                <ToggleButton value="00:30:00">30m</ToggleButton>
-                <ToggleButton value="01:00:00">60m</ToggleButton>
-              </ToggleButtonGroup>
-              <ToggleButtonGroup
-                size="small"
-                value={timeFmt12h ? ["12h"] : ["24h"]}
-                onChange={() => setTimeFmt12h((s) => !s)}
-                sx={{ mr: 1 }}
-              >
-                <ToggleButton value="12h">12-hour</ToggleButton>
-                <ToggleButton value="24h">24-hour</ToggleButton>
-              </ToggleButtonGroup>
-
-              <Button variant="outlined" onClick={fetchShifts}>Refresh</Button>
-            </Box>
-
-            <Box sx={{ p: compactDensity ? 1 : 2 }}>
-              <Paper sx={{ p: compactDensity ? 0 : 1 }}>
-                <FullCalendar
-                  ref={fsCalendarRef}
-                  {...baseCalProps}
-                  key={`fs-${innerCalView}-${granularity}-${timeFmt12h}-${showWeekends}-${workHoursOnly}-${compactDensity}`}
-                  height="calc(100vh - 96px)"
-                  initialView={innerCalView}
-                />
-              </Paper>
-            </Box>
-
-            <Box sx={{ px: 2, pb: 2, display: "flex", justifyContent: "flex-end" }}>
-              <Button startIcon={<CloseFullscreenIcon />} variant="contained" onClick={() => setFullScreenOpen(false)}>
-                Close
-              </Button>
-            </Box>
-          </Dialog>
+          {/* Full Screen dialog removed per enterprise layout */}
         </>
 
       {/* ============================ Add/Edit Shift Modal ============================ */}
@@ -3244,7 +3203,7 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                 justifyContent="space-between"
                 mt={1}
                 p={1}
-                sx={{ border: "1px solid #ccc", borderRadius: 1 }}
+                sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 1 }}
               >
                 <Typography>
                   {temp.label} ({temp.start} - {temp.end} on {temp.days.join(", ")})
@@ -3293,96 +3252,101 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
 
       {/* ======================= Employee Shift Summary — Accordion per Employee ====================== */}
       <Box mt={4}>
-        <Paper elevation={1} sx={{ mb: 2 }}>
+        <Paper elevation={0} sx={{ mb: 2, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
           <Toolbar sx={{ gap: 2, flexWrap: "wrap" }}>
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>
-              Employee Shift Summary
-            </Typography>
-
-            <TextField
-              size="small"
-              placeholder="Search employee / date / status / note…"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setEmpPage(1); // reset to page 1 on new search
-              }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ minWidth: 280 }}
-            />
-
-            <FormControl sx={{ minWidth: 120 }}>
-              <InputLabel id="per-page-label">Per page</InputLabel>
-              <Select
-                labelId="per-page-label"
-                label="Per page"
-                size="small"
-                value={employeesPerPage}
-                onChange={(e) => {
-                  setEmployeesPerPage(Number(e.target.value));
-                  setEmpPage(1);
-                }}
-              >
-                <MenuItem value={5}>5</MenuItem>
-                <MenuItem value={8}>8</MenuItem>
-                <MenuItem value={12}>12</MenuItem>
-                <MenuItem value={20}>20</MenuItem>
-              </Select>
-            </FormControl>
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={compact}
-                  onChange={(e) => setCompact(e.target.checked)}
-                />
-              }
-              label="Compact"
-            />
-
-            <Tooltip title={selectedShiftIds.length === 0 ? "Select rows first" : ""}>
-              <span>
+            {selectedShiftIds.length > 0 ? (
+              <>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
+                  {selectedShiftIds.length} selected
+                </Typography>
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   color="error"
-                  disabled={selectedShiftIds.length === 0}
                   onClick={handleBulkDeleteShifts}
                 >
-                  Delete Selected ({selectedShiftIds.length})
+                  Delete Selected
                 </Button>
-              </span>
-            </Tooltip>
+                <Button
+                  variant="outlined"
+                  onClick={() => setSelectedShiftIds([])}
+                >
+                  Clear selection
+                </Button>
+              </>
+            ) : (
+              <>
+                <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                  Employee Shift Summary
+                </Typography>
+                <TextField
+                  size="small"
+                  placeholder="Search employee / date / status / note…"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setEmpPage(1);
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ minWidth: 280 }}
+                />
+                <FormControl sx={{ minWidth: 120 }}>
+                  <InputLabel id="per-page-label">Per page</InputLabel>
+                  <Select
+                    labelId="per-page-label"
+                    label="Per page"
+                    size="small"
+                    value={employeesPerPage}
+                    onChange={(e) => {
+                      setEmployeesPerPage(Number(e.target.value));
+                      setEmpPage(1);
+                    }}
+                  >
+                    <MenuItem value={5}>5</MenuItem>
+                    <MenuItem value={8}>8</MenuItem>
+                    <MenuItem value={12}>12</MenuItem>
+                    <MenuItem value={20}>20</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={compact}
+                      onChange={(e) => setCompact(e.target.checked)}
+                    />
+                  }
+                  label="Compact"
+                />
+              </>
+            )}
           </Toolbar>
           <Divider />
-        </Paper>
-
-        {/* top-level select-all (this page only) */}
-        <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
-          <Checkbox
-            indeterminate={someSelectedOnPage}
-            checked={allSelectedOnPage}
-            onChange={(e) => toggleSelectAllVisible(e.target.checked)}
-            inputProps={{ "aria-label": "select all visible shifts" }}
-          />
-          <Typography variant="body2">
-            Select all shifts on this page
-          </Typography>
-          <Box sx={{ ml: "auto" }}>
-            <Pagination
-              color="primary"
-              shape="rounded"
-              page={empPage}
-              count={totalEmployeePages}
-              onChange={(_, p) => setEmpPage(p)}
+          <Box display="flex" alignItems="center" gap={1} sx={{ px: 2, py: 1 }}>
+            <Checkbox
+              indeterminate={someSelectedOnPage}
+              checked={allSelectedOnPage}
+              onChange={(e) => toggleSelectAllVisible(e.target.checked)}
+              inputProps={{ "aria-label": "select all visible shifts" }}
             />
+            <Typography variant="body2">
+              Select all shifts on this page
+            </Typography>
+            <Box sx={{ ml: "auto" }}>
+              <Pagination
+                color="primary"
+                shape="rounded"
+                page={empPage}
+                count={totalEmployeePages}
+                onChange={(_, p) => setEmpPage(p)}
+              />
+            </Box>
           </Box>
-        </Box>
+        </Paper>
 
         {/* one accordion per employee, collapsed by default */}
         {pagedEmployees.length === 0 ? (
@@ -3406,31 +3370,42 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => toggleSelectEmployee(gid, e.target.checked)}
                       />
+                      <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main, width: 32, height: 32 }}>
+                        {group.employee?.charAt(0) || "E"}
+                      </Avatar>
                       <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>
                         {group.employee}
                       </Typography>
-                      <Chip size="small" label={`${group.rows.length} shift(s)`} />
+                      <Chip size="small" label={`${group.rows.length} shifts`} />
                     </Box>
                   </AccordionSummary>
 
                   <AccordionDetails>
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table size={compact ? "small" : "medium"}>
+                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                      <Table size={compact ? "small" : "medium"} stickyHeader>
                         <TableHead>
                           <TableRow>
                             <TableCell padding="checkbox" />
-                            <TableCell>Date</TableCell>
-                            <TableCell>Time</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell sx={{ minWidth: 160 }}>Note</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Time</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                            <TableCell sx={{ minWidth: 160, fontWeight: 600 }}>Note</TableCell>
                             <TableCell align="right">Actions</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {group.rows.map((row) => {
                             const checked = selectedShiftIds.includes(row.id);
+                            const statusColor =
+                              row.status === "accepted"
+                                ? "success"
+                                : row.status === "pending"
+                                ? "warning"
+                                : row.status === "rejected"
+                                ? "error"
+                                : "info";
                             return (
-                              <TableRow key={row.id} hover>
+                              <TableRow key={row.id} hover selected={checked}>
                                 <TableCell padding="checkbox">
                                   <Checkbox
                                     checked={checked}
@@ -3444,30 +3419,28 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                                   />
                                 </TableCell>
 
-                                <TableCell sx={{ whiteSpace: "nowrap" }}>{row.date}</TableCell>
+                                <TableCell sx={{ whiteSpace: "nowrap" }}><Typography variant="body2">{row.date}</Typography></TableCell>
                                 <TableCell sx={{ whiteSpace: "nowrap" }}>
                                   {row.start}–{row.end}
                                 </TableCell>
-                                <TableCell sx={{ whiteSpace: "nowrap" }}>{row.status}</TableCell>
+                                <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                  <Chip size="small" label={row.status} color={statusColor} variant="outlined" />
+                                </TableCell>
                                 <TableCell sx={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis" }}>
                                   {row.note}
                                 </TableCell>
 
                                 <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
-                                  <Tooltip title="Edit">
-                                    <IconButton size="small" onClick={() => openEditShiftById(row.id)}>
-                                      <EditIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                  <Tooltip title="Delete">
-                                    <IconButton
-                                      size="small"
-                                      color="error"
-                                      onClick={() => handleDeleteSingle(row.id)}
-                                    >
-                                      <DeleteIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Row actions"
+                                    onClick={(e) => {
+                                      setRowMenuAnchor(e.currentTarget);
+                                      setRowMenuId(row.id);
+                                    }}
+                                  >
+                                    <MoreVertIcon fontSize="small" />
+                                  </IconButton>
                                 </TableCell>
                               </TableRow>
                             );
@@ -3482,23 +3455,34 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
           </Stack>
         )}
 
-        {/* bottom bar with pagination + bulk actions (optional) */}
-        <Box mt={2} display="flex" alignItems="center">
-          <Pagination
-            color="primary"
-            shape="rounded"
-            page={empPage}
-            count={totalEmployeePages}
-            onChange={(_, p) => setEmpPage(p)}
-          />
-          {selectedShiftIds.length > 0 && (
-            <Box ml="auto">
-              <Button variant="outlined" color="error" onClick={handleBulkDeleteShifts}>
-                🗑 Delete Selected ({selectedShiftIds.length})
-              </Button>
-            </Box>
-          )}
-        </Box>
+        <Menu
+          anchorEl={rowMenuAnchor}
+          open={Boolean(rowMenuAnchor)}
+          onClose={() => {
+            setRowMenuAnchor(null);
+            setRowMenuId(null);
+          }}
+        >
+          <MenuItem
+            onClick={() => {
+              if (rowMenuId) openEditShiftById(rowMenuId);
+              setRowMenuAnchor(null);
+              setRowMenuId(null);
+            }}
+          >
+            <EditIcon fontSize="small" sx={{ mr: 1 }} /> Edit
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              if (rowMenuId) handleDeleteSingle(rowMenuId);
+              setRowMenuAnchor(null);
+              setRowMenuId(null);
+            }}
+            sx={{ color: "error.main" }}
+          >
+            <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Delete
+          </MenuItem>
+        </Menu>
       </Box>
     </Box>
   );

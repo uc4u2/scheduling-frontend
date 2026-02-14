@@ -25,12 +25,16 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TableContainer,
   TextField,
   Tooltip,
   Typography,
   Switch,
   Avatar,
+  Menu,
+  ListItemIcon,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import { timeTracking } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
@@ -39,6 +43,10 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import LogoutIcon from "@mui/icons-material/Logout";
 import DeleteIcon from "@mui/icons-material/Delete";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import EditIcon from "@mui/icons-material/Edit";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import BlockIcon from "@mui/icons-material/Block";
 
 const statusColor = {
   assigned: "default",
@@ -48,57 +56,51 @@ const statusColor = {
   rejected: "error",
 };
 
-const palette = {
-  accent: "#FF7A3C",
-  success: "#21A179",
-  warning: "#FFB020",
-  error: "#E53935",
-  info: "#4C6FFF",
-  neutralText: "#64748B",
-  neutralBg: "#EEF2F7",
+const SummaryCard = ({ label, value, icon }) => {
+  const theme = useTheme();
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        border: `1px solid ${theme.palette.divider}`,
+        background: `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.95)}, ${alpha(theme.palette.background.default, 0.9)})`,
+        flex: 1,
+        minWidth: 180,
+      }}
+    >
+      <Stack direction="row" spacing={1.5} alignItems="center">
+        <Box
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: "14px",
+            bgcolor: alpha(theme.palette.primary.main, 0.12),
+            color: theme.palette.primary.main,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 700,
+          }}
+        >
+          {icon || "•"}
+        </Box>
+        <Box>
+          <Typography variant="body2" color="text.secondary">
+            {label}
+          </Typography>
+          <Typography variant="h6" fontWeight={800}>
+            {value}
+          </Typography>
+        </Box>
+      </Stack>
+    </Paper>
+  );
 };
 
-const SummaryCard = ({ label, value, icon }) => (
-  <Paper
-    elevation={0}
-    sx={{
-      p: 2,
-      borderRadius: 3,
-      border: (theme) => `1px solid ${theme.palette.divider}`,
-      background: "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,247,250,0.9))",
-      flex: 1,
-      minWidth: 180,
-    }}
-  >
-    <Stack direction="row" spacing={1.5} alignItems="center">
-      <Box
-        sx={{
-          width: 40,
-          height: 40,
-          borderRadius: "14px",
-          bgcolor: `${palette.accent}1A`,
-          color: palette.accent,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: 700,
-        }}
-      >
-        {icon || "•"}
-      </Box>
-      <Box>
-        <Typography variant="body2" color="text.secondary">
-          {label}
-        </Typography>
-        <Typography variant="h6" fontWeight={800}>
-          {value}
-        </Typography>
-      </Box>
-    </Stack>
-  </Paper>
-);
-
 const TimeEntriesPanel = ({ recruiters = [] }) => {
+  const theme = useTheme();
   const viewerTimezone = getUserTimezone();
   const today = useMemo(() => new Date(), []);
   const [departments, setDepartments] = useState([]);
@@ -129,6 +131,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   const [templates, setTemplates] = useState([]);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [rowMenuAnchor, setRowMenuAnchor] = useState(null);
+  const [rowMenuEntry, setRowMenuEntry] = useState(null);
   const [bulkForm, setBulkForm] = useState({
     templateId: "",
     breakMinutes: "",
@@ -269,6 +273,26 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       }
       return { ...prev, departmentId: value, recruiterId };
     });
+  };
+  const applyDatePreset = (preset) => {
+    const now = DateTime.local();
+    let start = now;
+    let end = now;
+    if (preset === "today") {
+      start = now;
+      end = now;
+    } else if (preset === "this_week") {
+      start = now.startOf("week");
+      end = now.endOf("week");
+    } else if (preset === "last_week") {
+      start = now.startOf("week").minus({ weeks: 1 });
+      end = start.endOf("week");
+    }
+    setFilters((prev) => ({
+      ...prev,
+      startDate: start.toISODate(),
+      endDate: end.toISODate(),
+    }));
   };
   const selectedCount = selectedIds.length;
   const handleSelectAll = (event) => {
@@ -458,7 +482,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           key="device_new"
           size="small"
           label="New device"
-          sx={{ bgcolor: "rgba(76,111,255,0.12)", color: palette.info, fontWeight: 600 }}
+          sx={{ bgcolor: alpha(theme.palette.info.light, 0.2), color: theme.palette.text.primary, fontWeight: 600 }}
         />
       );
     }
@@ -468,7 +492,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           key="location_new"
           size="small"
           label="New location"
-          sx={{ bgcolor: "rgba(255,176,32,0.14)", color: "#B9780C", fontWeight: 600 }}
+          sx={{ bgcolor: alpha(theme.palette.warning.light, 0.24), color: theme.palette.text.primary, fontWeight: 600 }}
         />
       );
     }
@@ -478,7 +502,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           key="multi_ip"
           size="small"
           label="Multiple IPs"
-          sx={{ bgcolor: "rgba(255,122,60,0.12)", color: palette.accent, fontWeight: 600 }}
+          sx={{ bgcolor: alpha(theme.palette.primary.light, 0.2), color: theme.palette.text.primary, fontWeight: 600 }}
         />
       );
     }
@@ -488,7 +512,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           key="outside_trusted"
           size="small"
           label="Outside trusted IPs"
-          sx={{ bgcolor: "rgba(229,57,53,0.12)", color: palette.error, fontWeight: 600 }}
+          sx={{ bgcolor: alpha(theme.palette.error.light, 0.2), color: theme.palette.text.primary, fontWeight: 600 }}
         />
       );
     }
@@ -858,6 +882,36 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     }
   };
 
+  const bulkApproveSelected = async () => {
+    if (!selectedCount) return;
+    setBulkSubmitting(true);
+    try {
+      await Promise.all(selectedIds.map((id) => timeTracking.approveEntry(id)));
+      setSnackbar({ open: true, severity: "success", message: "Selected entries approved." });
+      setSelectedIds([]);
+      fetchEntries();
+    } catch (err) {
+      setSnackbar({ open: true, severity: "error", message: err?.response?.data?.error || "Bulk approve failed." });
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
+  const bulkRejectSelected = async () => {
+    if (!selectedCount) return;
+    setBulkSubmitting(true);
+    try {
+      await Promise.all(selectedIds.map((id) => timeTracking.rejectEntry(id, {})));
+      setSnackbar({ open: true, severity: "success", message: "Selected entries rejected." });
+      setSelectedIds([]);
+      fetchEntries();
+    } catch (err) {
+      setSnackbar({ open: true, severity: "error", message: err?.response?.data?.error || "Bulk reject failed." });
+    } finally {
+      setBulkSubmitting(false);
+    }
+  };
+
   return (
     <>
       <Grid container spacing={3} sx={{ mt: 2 }}>
@@ -985,12 +1039,28 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                   onChange={handleChange("endDate")}
                 />
               </Grid>
+              <Grid item xs={12} md={3}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ height: "100%" }}>
+                  <Button size="small" variant="outlined" onClick={() => applyDatePreset("today")}>
+                    Today
+                  </Button>
+                  <Button size="small" variant="outlined" onClick={() => applyDatePreset("this_week")}>
+                    This week
+                  </Button>
+                  <Button size="small" variant="outlined" onClick={() => applyDatePreset("last_week")}>
+                    Last week
+                  </Button>
+                </Stack>
+              </Grid>
             </Grid>
 
             {selectedCount > 0 && (
-              <Box
+              <Paper
+                variant="outlined"
                 sx={{
                   mt: 2,
+                  p: 1.5,
+                  borderRadius: 2,
                   display: "flex",
                   flexWrap: "wrap",
                   gap: 1,
@@ -998,22 +1068,24 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                   alignItems: "center",
                 }}
               >
-                <Typography variant="body2" color="text.secondary">
-                  {selectedCount} entr{selectedCount === 1 ? "y" : "ies"} selected.
+                <Typography variant="body2" fontWeight={600}>
+                  {selectedCount} selected
                 </Typography>
-                <Stack direction="row" spacing={1}>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Button size="small" variant="outlined" onClick={bulkApproveSelected}>
+                    Approve selected
+                  </Button>
+                  <Button size="small" variant="outlined" color="error" onClick={bulkRejectSelected}>
+                    Reject selected
+                  </Button>
+                  <Button size="small" variant="contained" onClick={() => setBulkDialogOpen(true)}>
+                    Apply template
+                  </Button>
                   <Button size="small" onClick={() => setSelectedIds([])}>
                     Clear
                   </Button>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    onClick={() => setBulkDialogOpen(true)}
-                  >
-                    Apply template
-                  </Button>
                 </Stack>
-              </Box>
+              </Paper>
             )}
 
             {error && (
@@ -1030,26 +1102,27 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
               ) : entries.length === 0 ? (
                 <Typography color="text.secondary">No time entries found for this filter.</Typography>
               ) : (
-                <Table size="small" sx={{ mt: 1 }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          indeterminate={selectedCount > 0 && selectedCount < entries.length}
-                          checked={entries.length > 0 && selectedCount === entries.length}
-                          onChange={handleSelectAll}
-                        />
-                      </TableCell>
-                      <TableCell>Employee</TableCell>
-                      <TableCell>Date</TableCell>
-                      <TableCell>Clocked</TableCell>
-                      <TableCell>Hours</TableCell>
-                      <TableCell>Anomalies</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
+                <TableContainer component={Paper} variant="outlined" sx={{ mt: 1, borderRadius: 2 }}>
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            indeterminate={selectedCount > 0 && selectedCount < entries.length}
+                            checked={entries.length > 0 && selectedCount === entries.length}
+                            onChange={handleSelectAll}
+                          />
+                        </TableCell>
+                        <TableCell>Employee</TableCell>
+                        <TableCell>Date</TableCell>
+                        <TableCell>Clocked</TableCell>
+                        <TableCell>Hours</TableCell>
+                        <TableCell>Anomalies</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
                     {entries.map((entry) => {
                       const r =
                         entry.recruiter ||
@@ -1087,8 +1160,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                             <Chip
                               size="small"
                               sx={{
-                                bgcolor: "rgba(229,57,53,0.10)",
-                                color: palette.error,
+                                bgcolor: alpha(theme.palette.error.light, 0.16),
+                                color: theme.palette.text.primary,
                                 fontWeight: 600,
                               }}
                               label={`Break missing ${entry.break_missing_minutes}m`}
@@ -1097,8 +1170,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                             <Chip
                               size="small"
                               sx={{
-                                bgcolor: "rgba(33,161,121,0.12)",
-                                color: palette.success,
+                                bgcolor: alpha(theme.palette.success.light, 0.18),
+                                color: theme.palette.text.primary,
                                 fontWeight: 600,
                               }}
                               label={`Break ${entry.break_taken_minutes}m`}
@@ -1109,8 +1182,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                               <Chip
                                 size="small"
                                 sx={{
-                                  bgcolor: "rgba(255,176,32,0.14)",
-                                  color: "#B9780C",
+                                  bgcolor: alpha(theme.palette.warning.light, 0.2),
+                                  color: theme.palette.text.primary,
                                   fontWeight: 600,
                                 }}
                                 label={
@@ -1124,7 +1197,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                         </Stack>
                       );
                       return (
-                        <TableRow key={entry.id} hover>
+                        <TableRow key={entry.id} hover selected={selectedIds.includes(entry.id)}>
                           <TableCell padding="checkbox">
                             <Checkbox
                               checked={selectedIds.includes(entry.id)}
@@ -1208,105 +1281,108 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                             </Stack>
                           </TableCell>
                           <TableCell>
-                            <Stack spacing={0.5}>
-                              <Chip
-                                label={entry.status}
-                                size="small"
-                                sx={{
-                                  bgcolor:
-                                    entry.status === "in_progress"
-                                      ? "rgba(255,122,60,0.12)"
-                                      : entry.status === "approved"
-                                      ? "rgba(33,161,121,0.12)"
-                                      : entry.status === "rejected"
-                                      ? "rgba(229,57,53,0.12)"
-                                      : palette.neutralBg,
-                                  color:
-                                    entry.status === "in_progress"
-                                      ? palette.accent
-                                      : entry.status === "approved"
-                                      ? palette.success
-                                      : entry.status === "rejected"
-                                      ? palette.error
-                                      : palette.neutralText,
-                                  fontWeight: 600,
-                                }}
-                              />
-                            </Stack>
+                            <Chip label={entry.status} size="small" color={statusColor[entry.status] || "default"} variant="outlined" />
                           </TableCell>
                           <TableCell align="right">
-                            <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                disabled={
-                                  entry.status !== "completed" ||
-                                  actionId === entry.id ||
-                                  entry.is_locked
-                                }
-                                onClick={() => handleApprove(entry.id)}
-                                sx={{
-                                  borderColor: palette.accent,
-                                  color: palette.accent,
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Approve
-                              </Button>
-                              {entry.status === "in_progress" && (
-                                <Tooltip title="Force clock-out when the employee forgot to punch out. Logs your name.">
-                                  <span>
-                                    <Button
-                                      size="small"
-                                      sx={{
-                                        borderColor: palette.warning,
-                                        color: palette.warning,
-                                        fontWeight: 600,
-                                      }}
-                                      variant="outlined"
-                                      startIcon={<LogoutIcon fontSize="small" />}
-                                      disabled={actionId === entry.id || entry.is_locked}
-                                      onClick={() => handleForceClockOut(entry.id)}
-                                    >
-                                      Force out
-                                    </Button>
-                                  </span>
-                                </Tooltip>
-                              )}
-                              <Button
-                                size="small"
-                                color="error"
-                                disabled={actionId === entry.id || entry.is_locked}
-                                onClick={() => openRejectDialog(entry.id)}
-                              >
-                                Reject
-                              </Button>
-                              <Tooltip title="Delete this entry">
-                                <span>
-                                  <Button
-                                    size="small"
-                                    color="error"
-                                    variant="text"
-                                    startIcon={<DeleteIcon fontSize="small" />}
-                                    disabled={actionId === entry.id}
-                                    onClick={() => handleDelete(entry.id)}
-                                  >
-                                    Delete
-                                  </Button>
-                                </span>
-                              </Tooltip>
-                            </Stack>
+                            <IconButton
+                              size="small"
+                              aria-label="Row actions"
+                              onClick={(e) => {
+                                setRowMenuAnchor(e.currentTarget);
+                                setRowMenuEntry(entry);
+                              }}
+                            >
+                              <MoreVertIcon fontSize="small" />
+                            </IconButton>
                           </TableCell>
                         </TableRow>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               )}
             </Box>
           </Paper>
         </Grid>
       </Grid>
+
+      <Menu
+        anchorEl={rowMenuAnchor}
+        open={Boolean(rowMenuAnchor)}
+        onClose={() => {
+          setRowMenuAnchor(null);
+          setRowMenuEntry(null);
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (rowMenuEntry?.id) openHistoryDetail({ ...rowMenuEntry.recruiter, id: rowMenuEntry.recruiter_id });
+            setRowMenuAnchor(null);
+            setRowMenuEntry(null);
+          }}
+        >
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          Edit
+        </MenuItem>
+        <MenuItem
+          disabled={!rowMenuEntry || rowMenuEntry.status !== "completed" || rowMenuEntry.is_locked}
+          onClick={() => {
+            if (rowMenuEntry?.id) handleApprove(rowMenuEntry.id);
+            setRowMenuAnchor(null);
+            setRowMenuEntry(null);
+          }}
+        >
+          <ListItemIcon>
+            <CheckCircleOutlineIcon fontSize="small" />
+          </ListItemIcon>
+          Approve
+        </MenuItem>
+        <MenuItem
+          disabled={!rowMenuEntry || rowMenuEntry.is_locked}
+          onClick={() => {
+            if (rowMenuEntry?.id) openRejectDialog(rowMenuEntry.id);
+            setRowMenuAnchor(null);
+            setRowMenuEntry(null);
+          }}
+        >
+          <ListItemIcon>
+            <BlockIcon fontSize="small" />
+          </ListItemIcon>
+          Reject
+        </MenuItem>
+        {rowMenuEntry?.status === "in_progress" && (
+          <MenuItem
+            disabled={rowMenuEntry.is_locked}
+            onClick={() => {
+              if (rowMenuEntry?.id) handleForceClockOut(rowMenuEntry.id);
+              setRowMenuAnchor(null);
+              setRowMenuEntry(null);
+            }}
+          >
+            <ListItemIcon>
+              <LogoutIcon fontSize="small" />
+            </ListItemIcon>
+            Force clock-out
+          </MenuItem>
+        )}
+        <MenuItem
+          disabled={!rowMenuEntry || rowMenuEntry.is_locked}
+          onClick={() => {
+            if (rowMenuEntry?.id) handleDelete(rowMenuEntry.id);
+            setRowMenuAnchor(null);
+            setRowMenuEntry(null);
+          }}
+          sx={{ color: "error.main" }}
+        >
+          <ListItemIcon sx={{ color: "error.main" }}>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          Delete
+        </MenuItem>
+      </Menu>
 
       <Dialog
         open={rejectState.open}
