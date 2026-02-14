@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { Box, Tabs, Tab } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -59,6 +60,7 @@ const RecruiterTabs = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const hrAccess =
@@ -109,32 +111,70 @@ const RecruiterTabs = ({
   }
 
   return (
-    <Tabs
-      value={resolvedValue}
-      onChange={handleChange}
-      variant="scrollable"
-      scrollButtons="auto"
-      allowScrollButtonsMobile
+    <Box
       sx={{
         mb: 3,
-        overflowX: "auto",
-        "& .MuiTabs-flexContainer": {
-          flexWrap: "nowrap",
-        },
-        "& .MuiTabs-scrollButtons": {
-          display: { xs: "flex", md: "flex" },
-        },
+        p: 0.75,
+        borderRadius: 999,
+        border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
+        backgroundColor: alpha(theme.palette.background.paper, 0.8),
       }}
     >
+      <Tabs
+        value={resolvedValue}
+        onChange={handleChange}
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
+        aria-label="Employee dashboard tabs"
+        sx={{
+          minHeight: 40,
+          "& .MuiTabs-flexContainer": {
+            flexWrap: "nowrap",
+            gap: 0.5,
+          },
+          "& .MuiTabs-indicator": {
+            display: "none",
+          },
+          "& .MuiTabs-scrollButtons": {
+            display: { xs: "flex", md: "flex" },
+          },
+        }}
+      >
       {tabs.map((tab) => (
         <Tab
           key={tab.value}
           value={tab.value}
           label={tab.labelKey ? t(tab.labelKey) : tab.label}
-          sx={{ minWidth: "auto", px: 2 }}
+          aria-label={tab.labelKey ? t(tab.labelKey) : tab.label}
+          sx={{
+            minHeight: 36,
+            minWidth: "auto",
+            px: 2.5,
+            borderRadius: 999,
+            textTransform: "none",
+            fontWeight: 600,
+            color: theme.palette.text.primary,
+            border: `1px solid ${alpha(theme.palette.text.primary, 0.2)}`,
+            "&.Mui-selected": {
+              color: theme.palette.primary.main,
+              borderColor: alpha(theme.palette.primary.main, 0.45),
+              backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.32 : 0.14),
+              fontWeight: 700,
+            },
+            "&:hover": {
+              borderColor: alpha(theme.palette.primary.main, 0.4),
+              backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.12),
+            },
+            "&:focus-visible": {
+              outline: `2px solid ${theme.palette.primary.main}`,
+              outlineOffset: 2,
+            },
+          }}
         />
       ))}
-    </Tabs>
+      </Tabs>
+    </Box>
   );
 };
 

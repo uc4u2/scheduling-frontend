@@ -14,6 +14,7 @@ import {
   AccordionDetails,
   CircularProgress,
   useMediaQuery,
+  Paper,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -221,54 +222,30 @@ const RecruiterDashboard = ({ token }) => {
 
       {activeTab === "calendar" ? (
         <Grid container spacing={2}>
-          {allowHrAccess ? (
-            <>
-              <Grid item xs={12} md={6}>
-                <Box id="tab-calendar" sx={{ scrollMarginTop: theme.spacing(10) }}>
-                  <Accordion defaultExpanded={true}>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
-                        My Calendar
-                      </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <MySetmoreCalendar token={token} />
-                    </AccordionDetails>
-                  </Accordion>
-                </Box>
-              </Grid>
-              {pendingSlotUpdate && (
-                <Grid item xs={12}>
-                  <Box sx={{ mt: 2 }}>
-                    <Alert severity="info">
-                      You have unsaved changes for slot ID {pendingSlotUpdate.slotId}.{" "}
-                      <Button variant="contained" onClick={handleSaveSlotUpdate} sx={{ ml: 2 }}>
-                        Save Changes
-                      </Button>
-                    </Alert>
-                  </Box>
-                </Grid>
-              )}
-            </>
-          ) : (
-              <Grid item xs={12}>
+          <Grid item xs={12} md={12}>
+            <Box
+              id="tab-calendar"
+              sx={{
+                scrollMarginTop: theme.spacing(10),
+                minHeight: { xs: "calc(100vh - 220px)", md: "calc(100vh - 260px)" },
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
               {authLoaded ? (
-                <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
-                    <Box id="tab-calendar" sx={{ scrollMarginTop: theme.spacing(10) }}>
-                      <Accordion defaultExpanded={true}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Typography variant="h6" sx={{ color: theme.palette.primary.main }}>
-                            My Calendar
-                          </Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <MySetmoreCalendar token={token} />
-                        </AccordionDetails>
-                      </Accordion>
-                    </Box>
-                  </Grid>
-                </Grid>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: { xs: 1.5, md: 2.5 },
+                    borderRadius: theme.shape.borderRadius * 1.5,
+                    border: `1px solid ${theme.palette.divider}`,
+                    background: theme.palette.background.paper,
+                    flex: 1,
+                    overflow: "visible",
+                  }}
+                >
+                  <MySetmoreCalendar token={token} />
+                </Paper>
               ) : (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <CircularProgress size={20} />
@@ -277,6 +254,18 @@ const RecruiterDashboard = ({ token }) => {
                   </Typography>
                 </Box>
               )}
+            </Box>
+          </Grid>
+          {allowHrAccess && pendingSlotUpdate && (
+            <Grid item xs={12}>
+              <Box sx={{ mt: 2 }}>
+                <Alert severity="info">
+                  You have unsaved changes for slot ID {pendingSlotUpdate.slotId}.{" "}
+                  <Button variant="contained" onClick={handleSaveSlotUpdate} sx={{ ml: 2 }}>
+                    Save Changes
+                  </Button>
+                </Alert>
+              </Box>
             </Grid>
           )}
         </Grid>

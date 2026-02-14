@@ -1,4 +1,8 @@
 // src/pages/sections/MySetmoreCalendar.js
+// UI decisions:
+// - Use theme tokens for all calendar colors and surfaces (no hard-coded hex in renderers).
+// - Provide a clear header + unified toolbar for enterprise layout with responsive stacking.
+// - Keep all data logic untouched; only UI composition and styling were adjusted.
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -32,7 +36,7 @@ import {
   useMediaQuery,
   Drawer,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -80,6 +84,47 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     localStorage.getItem("timezone") ||
     Intl.DateTimeFormat().resolvedOptions().timeZone ||
     "UTC";
+
+  const ui = useMemo(() => {
+    const { palette, shape } = theme;
+    return {
+      radius: shape.borderRadius,
+      availability: {
+        bg: alpha(palette.success.light, 0.22),
+        border: palette.success.main,
+        text: palette.success.dark,
+      },
+      reserved: {
+        bg: alpha(palette.error.light, 0.22),
+        border: palette.error.main,
+        text: palette.error.dark,
+      },
+      meeting: {
+        bg: alpha(palette.info.light, 0.28),
+        border: palette.info.main,
+        text: palette.info.dark,
+      },
+      appointment: {
+        bg: alpha(palette.primary.light, 0.2),
+        border: palette.primary.main,
+        text: palette.primary.dark,
+      },
+      candidate: {
+        bg: alpha(palette.secondary.light, 0.22),
+        border: palette.secondary.main,
+        text: palette.secondary.dark,
+      },
+      leave: {
+        bg: alpha(palette.grey[300], 0.7),
+        border: palette.grey[400],
+        text: palette.text.primary,
+      },
+      surface: {
+        card: palette.background.paper,
+        muted: palette.action.hover,
+      },
+    };
+  }, [theme]);
 
   // ---------- permissions ----------
   const [canCloseSlots, setCanCloseSlots] = useState(false);
@@ -170,9 +215,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           title: a.service_name || a.candidate_name || "Client Booking",
           start: a.start,
           end: a.end,
-          backgroundColor: "#e3f2fd",
-          borderColor: "#64b5f6",
-          textColor: "#0f172a",
+          backgroundColor: ui.appointment.bg,
+          borderColor: ui.appointment.border,
+          textColor: ui.appointment.text,
           editable: false,
           classNames: ["overlay-appointment"],
           extendedProps: {
@@ -193,9 +238,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           title: c.candidate_name || "Candidate Booking",
           start: c.start,
           end: c.end,
-          backgroundColor: "#ede7f6",
-          borderColor: "#9575cd",
-          textColor: "#1f1235",
+          backgroundColor: ui.candidate.bg,
+          borderColor: ui.candidate.border,
+          textColor: ui.candidate.text,
           editable: false,
           classNames: ["overlay-candidate"],
           extendedProps: {
@@ -213,9 +258,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           title: l.type ? `Leave: ${l.type}` : "Leave",
           start: l.start,
           end: l.end,
-          backgroundColor: "#e9edf5",
-          borderColor: "#c1cada",
-          textColor: "#0f172a",
+          backgroundColor: ui.leave.bg,
+          borderColor: ui.leave.border,
+          textColor: ui.leave.text,
           editable: false,
           classNames: ["overlay-leave"],
           extendedProps: {
@@ -332,12 +377,14 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           ? "Candidate Booking"
           : "Leave";
       return (
-        <div style={{ padding: "4px 6px 6px", lineHeight: 1.2, color: "#111", width: "100%" }}>
-          <div style={{ fontWeight: 700, fontSize: 12, color: "#111", textAlign: "left" }}>
+        <Box sx={{ px: 1, pb: 0.75, pt: 0.5, lineHeight: 1.2, width: "100%" }}>
+          <Typography variant="caption" sx={{ fontWeight: 700 }} align="left">
             {arg.event.title || label}
-          </div>
-          <div style={{ fontSize: 11, opacity: 0.9, color: "#111", textAlign: "left" }}>{label}</div>
-        </div>
+          </Typography>
+          <Typography variant="caption" sx={{ opacity: 0.8 }} align="left">
+            {label}
+          </Typography>
+        </Box>
       );
     }
     const svc = xp.service_name ? String(xp.service_name) : "";
@@ -345,42 +392,38 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     const meetingTitle = xp.meeting_title ? String(xp.meeting_title) : "Meeting";
     const bookedTitle = isMeeting ? meetingTitle : (svc || "");
     return (
-      <div style={{ padding: "4px 6px 6px", lineHeight: 1.2, width: "100%" }}>
+      <Box sx={{ px: 1, pb: 0.75, pt: 0.5, lineHeight: 1.2, width: "100%" }}>
         {xp.__status === "booked" ? (
-          <div style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <Typography variant="caption" sx={{ fontWeight: 700 }} noWrap>
             {bookedTitle}
-          </div>
+          </Typography>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-            <span
-              style={{
+          <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.25 }}>
+            <Chip
+              size="small"
+              label="Available"
+              sx={{
+                height: 20,
                 fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: 0.3,
-                padding: "2px 6px",
-                borderRadius: 8,
-                background: "#e6f4ea",
-                border: "1px solid #34a853",
-                color: "#111",
-                whiteSpace: "nowrap",
+                borderRadius: 10,
+                bgcolor: ui.availability.bg,
+                color: ui.availability.text,
+                border: `1px solid ${ui.availability.border}`,
               }}
-            >
-              Available
-            </span>
-            <span style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} />
-          </div>
+            />
+          </Stack>
         )}
         {svc && xp.__status !== "booked" ? (
-          <div style={{ fontSize: 11, opacity: 0.9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <Typography variant="caption" sx={{ opacity: 0.85 }} noWrap>
             {svc}
-          </div>
+          </Typography>
         ) : null}
         {isMeeting ? (
-          <div style={{ fontSize: 11, opacity: 0.9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <Typography variant="caption" sx={{ opacity: 0.85 }} noWrap>
             Meeting
-          </div>
+          </Typography>
         ) : null}
-      </div>
+      </Box>
     );
   };
 
@@ -437,12 +480,12 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       start: e.startISO,
       end: e.endISO,
     backgroundColor: e.booked
-      ? (e.created_by_manager ? "#e0f2fe" : "#ffe5e9")
-      : "#e7f7ec",
+      ? (e.created_by_manager ? ui.meeting.bg : ui.reserved.bg)
+      : ui.availability.bg,
     borderColor: e.booked
-      ? (e.created_by_manager ? "#38bdf8" : "#ff4d4f")
-      : "#34a853",
-    textColor: "#111",
+      ? (e.created_by_manager ? ui.meeting.border : ui.reserved.border)
+      : ui.availability.border,
+    textColor: theme.palette.text.primary,
     classNames: [
       e.booked ? "slot-booked" : "slot-available",
       e.booked && e.created_by_manager ? "slot-meeting" : "",
@@ -705,6 +748,16 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     closeChipMenu();
   };
 
+  const handleCopy = async (value, label) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setMsg(`${label} copied`);
+    } catch {
+      setMsg("Copy failed");
+    }
+  };
+
   const renderDetailBody = () => {
     if (!detail) return null;
     const start = detail.start ? moment(detail.start).format("ddd, MMM D • HH:mm") : "";
@@ -725,8 +778,8 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       ) : null;
 
     return (
-      <Stack spacing={1.5}>
-        <Stack spacing={0.5}>
+      <Stack spacing={2}>
+        <Stack spacing={0.75}>
           <Typography variant="subtitle1" fontWeight={800} sx={{ letterSpacing: 0.2 }}>
             {detail.title || kindLabel}
           </Typography>
@@ -745,16 +798,46 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             )}
           </Box>
         </Stack>
-        {row("Client", detail.candidate_name)}
-        {row("Email", detail.candidate_email)}
-        {row("Phone", detail.candidate_phone)}
-        {row("Position", detail.candidate_position)}
-        {row("Service", detail.service_name)}
-        {row("Duration", detail.service_duration_minutes ? `${detail.service_duration_minutes} min` : null)}
-        {row("Price", detail.service_price != null ? `$${Number(detail.service_price).toFixed(2)}` : null)}
-        {row("Payment", detail.payment_status)}
-        {row("Paid", detail.paid_amount != null ? `$${Number(detail.paid_amount).toFixed(2)}` : null)}
-        {row("Meeting link", detail.meeting_link)}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+            gap: 1.5,
+          }}
+        >
+          {row("Client", detail.candidate_name)}
+          {row("Email", detail.candidate_email)}
+          {row("Phone", detail.candidate_phone)}
+          {row("Position", detail.candidate_position)}
+          {row("Service", detail.service_name)}
+          {row("Duration", detail.service_duration_minutes ? `${detail.service_duration_minutes} min` : null)}
+          {row("Price", detail.service_price != null ? `$${Number(detail.service_price).toFixed(2)}` : null)}
+          {row("Payment", detail.payment_status)}
+          {row("Paid", detail.paid_amount != null ? `$${Number(detail.paid_amount).toFixed(2)}` : null)}
+          {row("Meeting link", detail.meeting_link)}
+        </Box>
+        {(detail.candidate_email || detail.meeting_link) && (
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            {detail.candidate_email && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleCopy(detail.candidate_email, "Email")}
+              >
+                Copy Email
+              </Button>
+            )}
+            {detail.meeting_link && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => handleCopy(detail.meeting_link, "Meeting link")}
+              >
+                Copy Meeting Link
+              </Button>
+            )}
+          </Stack>
+        )}
         {detail.notes ? (
           <Box>
             <Typography variant="body2" color="text.secondary">Notes</Typography>
@@ -770,9 +853,22 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       {/* Global tweaks for Week/Day readability */}
       <GlobalStyles
         styles={{
+          ".fc": {
+            "--fc-border-color": theme.palette.divider,
+            "--fc-page-bg-color": theme.palette.background.paper,
+            "--fc-today-bg-color": alpha(theme.palette.warning.light, 0.2),
+            "--fc-event-border-color": "transparent",
+            fontFamily: theme.typography.fontFamily,
+          },
           ".fc .fc-timegrid-slot": { height: compactDensity ? 26 : 32 },
-          ".fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion": { fontSize: 12 },
-          ".fc .fc-timegrid-event": { borderRadius: 8, boxShadow: "0 1px 0 rgba(0,0,0,0.08)" },
+          ".fc .fc-timegrid-axis-cushion, .fc .fc-timegrid-slot-label-cushion": {
+            fontSize: 12,
+            color: theme.palette.text.secondary,
+          },
+          ".fc .fc-timegrid-event": {
+            borderRadius: theme.shape.borderRadius,
+            boxShadow: theme.shadows[1],
+          },
           ".fc .fc-timegrid-event .fc-event-main, .fc .fc-timegrid-event .fc-event-main-frame, .fc .fc-timegrid-event .fc-event-title-container": {
             width: "100%",
             textAlign: "left",
@@ -782,29 +878,29 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             width: "100%",
           },
           ".fc .overlay-leave": {
-            background: "#e9edf5",
-            borderColor: "#c1cada",
-            color: "#0f172a",
+            background: ui.leave.bg,
+            borderColor: ui.leave.border,
+            color: ui.leave.text,
           },
           ".fc .overlay-leave .fc-event-title, .fc .overlay-leave .fc-event-time": {
-            color: "#111 !important",
+            color: `${ui.leave.text} !important`,
             fontWeight: 700,
           },
           ".fc .overlay-leave .fc-event-main, .fc .overlay-leave .fc-event-title-container, .fc .overlay-leave .fc-event-main-frame": {
-            color: "#111 !important",
+            color: `${ui.leave.text} !important`,
           },
           ".fc .overlay-candidate": {
-            background: "#ede7f6",
-            borderColor: "#9575cd",
-            color: "#111",
+            background: ui.candidate.bg,
+            borderColor: ui.candidate.border,
+            color: ui.candidate.text,
           },
           ".fc .overlay-candidate .fc-event-title, .fc .overlay-candidate .fc-event-time": {
-            color: "#111 !important",
+            color: `${ui.candidate.text} !important`,
             fontWeight: 700,
             textAlign: "left !important",
           },
           ".fc .overlay-candidate .fc-event-main, .fc .overlay-candidate .fc-event-title-container, .fc .overlay-candidate .fc-event-main-frame": {
-            color: "#111 !important",
+            color: `${ui.candidate.text} !important`,
             textAlign: "left !important",
             justifyContent: "flex-start !important",
             alignItems: "flex-start !important",
@@ -814,17 +910,23 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             paddingLeft: "6px !important",
           },
           ".fc .overlay-appointment": {
-            background: "#e3f2fd",
-            borderColor: "#64b5f6",
-            color: "#111",
+            background: ui.appointment.bg,
+            borderColor: ui.appointment.border,
+            color: ui.appointment.text,
           },
           ".fc .overlay-appointment .fc-event-title, .fc .overlay-appointment .fc-event-time": {
-            color: "#111 !important",
+            color: `${ui.appointment.text} !important`,
             fontWeight: 700,
             textAlign: "left !important",
           },
+          ".fc .overlay-leave .fc-daygrid-event-dot, .fc .overlay-candidate .fc-daygrid-event-dot, .fc .overlay-appointment .fc-daygrid-event-dot": {
+            borderColor: theme.palette.text.primary,
+          },
+          ".fc .overlay-leave, .fc .overlay-candidate, .fc .overlay-appointment": {
+            color: `${theme.palette.text.primary} !important`,
+          },
           ".fc .overlay-appointment .fc-event-main, .fc .overlay-appointment .fc-event-title-container, .fc .overlay-appointment .fc-event-main-frame": {
-            color: "#111 !important",
+            color: `${ui.appointment.text} !important`,
             textAlign: "left !important",
             justifyContent: "flex-start !important",
             alignItems: "flex-start !important",
@@ -834,43 +936,82 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             paddingLeft: "6px !important",
           },
           ".fc .overlay-leave:hover": {
-            background: "#dde3ee",
-            boxShadow: "0 3px 10px rgba(15,23,42,0.12)",
+            background: alpha(ui.leave.bg, 0.9),
+            boxShadow: theme.shadows[3],
           },
           ".fc .slot-meeting": {
-            color: "#0f172a !important",
+            color: `${ui.meeting.text} !important`,
           },
           ".fc .slot-meeting .fc-event-title, .fc .slot-meeting .fc-event-time": {
-            color: "#0f172a !important",
+            color: `${ui.meeting.text} !important`,
             fontWeight: 700,
           },
           ".fc .fc-timegrid-event .fc-event-time": { fontWeight: 700, fontSize: 11, paddingLeft: 4 },
           ".fc .fc-timegrid-event .fc-event-title": { fontSize: 11 },
           ".fc .fc-toolbar-title": { fontWeight: 700 },
+          ".fc .fc-button": {
+            color: theme.palette.text.primary,
+            backgroundColor: alpha(theme.palette.background.paper, 0.9),
+            borderColor: theme.palette.divider,
+            boxShadow: "none",
+          },
+          ".fc .fc-button:hover": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.08),
+            borderColor: alpha(theme.palette.primary.main, 0.3),
+          },
+          ".fc .fc-button-primary:not(:disabled).fc-button-active": {
+            backgroundColor: alpha(theme.palette.primary.main, 0.18),
+            borderColor: alpha(theme.palette.primary.main, 0.45),
+            color: theme.palette.primary.main,
+          },
+          ".fc .fc-button:focus-visible": {
+            outline: `2px solid ${theme.palette.primary.main}`,
+            outlineOffset: 2,
+          },
+          ".fc .fc-col-header-cell-cushion": {
+            color: theme.palette.text.primary,
+            fontWeight: 600,
+          },
+          ".fc .fc-more-link": {
+            color: theme.palette.text.primary,
+          },
+          ".fc .fc-daygrid-event .fc-event-title": {
+            color: `${theme.palette.text.primary} !important`,
+          },
+          ".fc .fc-daygrid-event .fc-event-time": {
+            color: `${theme.palette.text.primary} !important`,
+          },
+          ".fc .fc-daygrid-event .fc-event-main, .fc .fc-daygrid-event .fc-event-main-frame, .fc .fc-daygrid-event .fc-event-title-container": {
+            color: `${theme.palette.text.primary} !important`,
+          },
+          ".fc .fc-button:focus-visible": {
+            outline: `2px solid ${theme.palette.primary.main}`,
+            outlineOffset: 2,
+          },
           ".fc .fc-scrollgrid, .fc .fc-scrollgrid-section > *": {
-            borderColor: "rgba(15,23,42,0.12)",
+            borderColor: theme.palette.divider,
           },
           ".fc-theme-standard td, .fc-theme-standard th": {
-            borderColor: "rgba(15,23,42,0.12)",
+            borderColor: theme.palette.divider,
           },
           ".fc .fc-daygrid-day-frame": {
-            background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
+            background: `linear-gradient(180deg, ${theme.palette.background.paper} 0%, ${alpha(theme.palette.background.default, 0.6)} 100%)`,
           },
           ".fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-frame": {
-            background: "linear-gradient(180deg, rgba(255,245,200,0.7) 0%, rgba(255,236,170,0.7) 100%)",
-            boxShadow: "inset 0 0 0 1px rgba(251,191,36,0.35)",
+            background: `linear-gradient(180deg, ${alpha(theme.palette.warning.light, 0.25)} 0%, ${alpha(theme.palette.warning.light, 0.35)} 100%)`,
+            boxShadow: `inset 0 0 0 1px ${alpha(theme.palette.warning.main, 0.35)}`,
           },
           ".fc .fc-daygrid-day-number": {
             fontSize: 12,
           },
           ".fc-view-harness, .fc-view, .fc-scrollgrid": {
-            borderRadius: 12,
-            background: "linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%)",
-            boxShadow: "0 6px 22px rgba(15, 23, 42, 0.08)",
+            borderRadius: theme.shape.borderRadius * 1.5,
+            background: `linear-gradient(180deg, ${theme.palette.background.paper} 0%, ${alpha(theme.palette.background.default, 0.6)} 100%)`,
+            boxShadow: theme.shadows[2],
             transition: "box-shadow 220ms ease",
           },
           ".fc-view-harness:hover, .fc-view:hover, .fc-scrollgrid:hover": {
-            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
+            boxShadow: theme.shadows[4],
           },
           ...(isSmDown
             ? {
@@ -897,86 +1038,108 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         <Snackbar open onClose={() => setMsg("")} autoHideDuration={3000} message={msg} />
       )}
 
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        alignItems={{ xs: "flex-start", md: "center" }}
+        justifyContent="space-between"
+        spacing={2}
+        sx={{ mb: 2 }}
+      >
+        <Box>
+          <Typography variant="h5" fontWeight={700}>
+            Employee Calendar
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Availability, bookings, meetings, and leave — all in one view.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button variant="outlined" onClick={fetchEvents} aria-label="Refresh calendar">
+            Refresh
+          </Button>
+          <Button
+            startIcon={<OpenInFullIcon />}
+            variant="contained"
+            onClick={() => setFullScreenOpen(true)}
+            aria-label="Open full screen calendar"
+          >
+            Full Screen
+          </Button>
+        </Stack>
+      </Stack>
+
       <Paper
         sx={{
-          p: 3,
+          p: { xs: 2, md: 3 },
           mb: 2,
-          borderRadius: 3,
-          boxShadow: "0 8px 24px rgba(15, 23, 42, 0.12)",
-          transition: "box-shadow 220ms ease, transform 220ms ease",
-          "&:hover": {
-            boxShadow: "0 14px 32px rgba(15, 23, 42, 0.18)",
-            transform: "translateY(-2px)",
-          },
+          borderRadius: theme.shape.borderRadius * 1.5,
+          boxShadow: theme.shadows[2],
         }}
         elevation={0}
       >
         <Stack
-          direction={{ xs: "column", sm: "row" }}
+          direction={{ xs: "column", md: "row" }}
           justifyContent="space-between"
-          alignItems={{ xs: "flex-start", sm: "center" }}
-          sx={{ mb: 1 }}
-          spacing={1}
+          alignItems={{ xs: "stretch", md: "center" }}
+          spacing={2}
+          sx={{ mb: 2 }}
         >
-          <Typography variant="h6" fontWeight={700}>
-            My Availability
-          </Typography>
-          {!isSmDown && (
-            <Stack direction="row" spacing={1} alignItems="center">
-              <FormControl size="small" sx={{ minWidth: 160 }}>
-                <InputLabel>Slot Status</InputLabel>
-                <Select
-                  multiple
-                  value={statusFilter}
-                  label="Slot Status"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  renderValue={(vals) =>
-                    vals.length
-                      ? vals.map((v) => (v === "booked" ? "Reserved" : "Available")).join(", ")
-                      : "All"
-                  }
-                >
-                  <MenuItem value="available">
-                    <Chip size="small" color="success" label="Available" />
-                  </MenuItem>
-                  <MenuItem value="booked">
-                    <Chip size="small" color="error" label="Reserved" />
-                  </MenuItem>
-                </Select>
-              </FormControl>
-              <Button variant="outlined" onClick={fetchEvents}>
-                Refresh
-              </Button>
-              <Button
-                startIcon={<OpenInFullIcon />}
-                variant="contained"
-                onClick={() => setFullScreenOpen(true)}
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel>Slot Status</InputLabel>
+              <Select
+                multiple
+                value={statusFilter}
+                label="Slot Status"
+                onChange={(e) => setStatusFilter(e.target.value)}
+                renderValue={(vals) =>
+                  vals.length
+                    ? vals.map((v) => (v === "booked" ? "Reserved" : "Available")).join(", ")
+                    : "All"
+                }
               >
-                Full Screen
-              </Button>
+                <MenuItem value="available">
+                  <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
+                </MenuItem>
+                <MenuItem value="booked">
+                  <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
+                </MenuItem>
+              </Select>
+            </FormControl>
+            {!isSmDown && (
+              <ToggleButtonGroup
+                size="small"
+                value={calendarView}
+                exclusive
+                onChange={(_, v) => v && setCalendarView(v)}
+              >
+                <ToggleButton value="dayGridMonth">Month</ToggleButton>
+                <ToggleButton value="timeGridWeek">Week</ToggleButton>
+                <ToggleButton value="timeGridDay">Day</ToggleButton>
+              </ToggleButtonGroup>
+            )}
+          </Stack>
+
+          {!isSmDown && (
+            <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+              <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
+              <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
+              <Chip size="small" label="Client Booking" sx={{ bgcolor: ui.appointment.bg, color: ui.appointment.text }} />
+              <Chip size="small" label="Candidate Booking" sx={{ bgcolor: ui.candidate.bg, color: ui.candidate.text }} />
+              <Chip size="small" label="Meeting" sx={{ bgcolor: ui.meeting.bg, color: ui.meeting.text }} />
+              <Chip size="small" label="Leave" sx={{ bgcolor: ui.leave.bg, color: ui.leave.text }} />
             </Stack>
           )}
         </Stack>
 
-        {/* Options row */}
-        {!isSmDown && (
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }} useFlexGap flexWrap="wrap">
-            <Chip size="small" color="success" label="Available" />
-            <Chip size="small" color="error" label="Reserved" />
-            <Chip size="small" sx={{ bgcolor: "#e3f2fd", color: "#0f172a" }} label="Client Booking" />
-            <Chip size="small" sx={{ bgcolor: "#ede7f6", color: "#1f1235" }} label="Candidate Booking" />
-            <Chip size="small" sx={{ bgcolor: "#e0f2fe", color: "#0c4a6e" }} label="Meeting" />
-            <Chip size="small" sx={{ bgcolor: "#eeeeee", color: "#424242" }} label="Leave" />
-          </Stack>
-        )}
         {isSmDown && (
-          <Box sx={{ mb: 1.5 }}>
+          <Box sx={{ mb: 2 }}>
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-              <Button size="small" variant="outlined" onClick={() => jumpWeek(-1)}>‹</Button>
+              <Button size="small" variant="outlined" onClick={() => jumpWeek(-1)} aria-label="Previous week">‹</Button>
               <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1, textAlign: "center" }}>
                 {moment(weekAnchor).format("MMM YYYY")}
               </Typography>
-              <Button size="small" variant="outlined" onClick={() => jumpWeek(1)}>›</Button>
+              <Button size="small" variant="outlined" onClick={() => jumpWeek(1)} aria-label="Next week">›</Button>
             </Stack>
             <Stack direction="row" spacing={1} justifyContent="space-between">
               {weekDays.map((d) => {
@@ -991,8 +1154,8 @@ export default function MySetmoreCalendar({ token, initialDate }) {
                       py: 0.5,
                       borderRadius: 2,
                       cursor: "pointer",
-                      background: isActive ? "#2563eb" : "transparent",
-                      color: isActive ? "#fff" : "text.primary",
+                      background: isActive ? alpha(theme.palette.primary.main, 0.12) : "transparent",
+                      color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
                       fontWeight: isActive ? 700 : 500,
                     }}
                   >
@@ -1033,8 +1196,8 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             {moment(selectedDate).format("ddd, MMM D")} — {daySlots.length} slot(s)
           </Typography>
           <Stack direction="row" spacing={1}>
-            <Chip size="small" color="success" label="Available" />
-            <Chip size="small" color="error" label="Reserved" />
+            <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
+            <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
           </Stack>
           <Box sx={{ flex: 1, display: { xs: "none", md: "block" } }} />
           {(canCloseSlots || canEditAvailability) && (
@@ -1084,7 +1247,11 @@ export default function MySetmoreCalendar({ token, initialDate }) {
                   color={s.__status === "booked" ? "error" : "success"}
                   variant={s.__status === "booked" ? "filled" : "outlined"}
                   label={`${s.startLabel}–${s.endLabel}${s.service_name ? ` • ${s.service_name}` : ""}${s.created_by_manager && s.__status === "booked" ? " • Meeting" : ""}`}
-                  sx={s.created_by_manager && s.__status === "booked" ? { bgcolor: "#e0f2fe", color: "#0c4a6e", borderColor: "#38bdf8" } : undefined}
+                  sx={
+                    s.created_by_manager && s.__status === "booked"
+                      ? { bgcolor: ui.meeting.bg, color: ui.meeting.text, borderColor: ui.meeting.border }
+                      : undefined
+                  }
                   onDelete={
                     (canCloseSlots || canEditAvailability) && s.__status === "available"
                       ? async () => {
@@ -1163,7 +1330,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       {/* Full Screen calendar */}
       <Dialog fullScreen open={fullScreenOpen} onClose={() => setFullScreenOpen(false)}>
         <Box sx={{ px: 2, py: 1, display: "flex", alignItems: "center", gap: 1 }}>
-          <IconButton onClick={() => setFullScreenOpen(false)}>
+          <IconButton onClick={() => setFullScreenOpen(false)} aria-label="Exit full screen">
             <CloseFullscreenIcon />
           </IconButton>
           <Typography variant="h6" sx={{ flex: 1 }}>My Availability — Full Screen</Typography>
@@ -1203,16 +1370,16 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           onClose={() => setDetailOpen(false)}
           PaperProps={{
             sx: {
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
+              borderTopLeftRadius: theme.shape.borderRadius * 2,
+              borderTopRightRadius: theme.shape.borderRadius * 2,
               p: 2.5,
-              background: "linear-gradient(180deg, #ffffff 0%, #f6f7fb 100%)",
-              boxShadow: "0 -12px 32px rgba(15,23,42,0.18)",
+              background: theme.palette.background.paper,
+              boxShadow: theme.shadows[6],
             },
           }}
         >
           <Box sx={{ width: "100%", mb: 1 }}>
-            <Box sx={{ width: 44, height: 4, bgcolor: "rgba(15,23,42,0.2)", borderRadius: 2, mx: "auto", mb: 1 }} />
+            <Box sx={{ width: 44, height: 4, bgcolor: theme.palette.divider, borderRadius: 2, mx: "auto", mb: 1 }} />
             {renderDetailBody()}
             <Button sx={{ mt: 2 }} fullWidth variant="contained" onClick={() => setDetailOpen(false)}>
               Close
@@ -1225,7 +1392,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           <DialogContent
             dividers
             sx={{
-              background: "linear-gradient(180deg, #ffffff 0%, #f6f7fb 100%)",
+              background: theme.palette.background.paper,
             }}
           >
             {renderDetailBody()}
