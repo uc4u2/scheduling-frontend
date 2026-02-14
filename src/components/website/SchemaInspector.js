@@ -16,6 +16,7 @@ import {
   Select,
   Slider,
   InputLabel,
+  InputAdornment,
   FormControl,
   ToggleButton,
   ToggleButtonGroup,

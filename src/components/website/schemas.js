@@ -409,7 +409,7 @@ export const SCHEMA_REGISTRY = {
           { name: "bullets",     type: "arrayOfStrings", label: "Bullets" },
           { name: "ctaText",    type: "richinline", label: "CTA text" },
           { name: "ctaLink",    type: "string",     label: "CTA link (URL)" },
-          { name: "background", type: "string",     label: "Card background (CSS gradient/color)" },
+          { name: "background", type: "string",     label: "Card background (CSS gradient/color)", ui: "gradient" },
         ]
       },
       {
@@ -426,7 +426,7 @@ export const SCHEMA_REGISTRY = {
     { name: "radius",       type: "number", label: "Corner radius (px)", min: 0, max: 48, step: 2 },
     { name: "gap",          type: "number", label: "Grid gap (px)", min: 16, max: 64, step: 2 },
     { name: "maxWidth",     type: "number", label: "Max width (px)", min: 720, max: 1440, step: 10 },
-    { name: "sectionBackground", type: "string", label: "Section background (CSS gradient/color)" },
+    { name: "sectionBackground", type: "string", label: "Section background (CSS gradient/color)", ui: "gradient" },
     { name: "surface",      type: "string", label: "Card surface (CSS color)" },
     { name: "borderColor",  type: "string", label: "Border color" },
     { name: "shadow",       type: "string", label: "Shadow", ui: "shadow", shadowType: "box" },
@@ -935,7 +935,7 @@ export const SCHEMA_REGISTRY = {
       { name: "fontSize",    type: "number",  label: "Font size (px)", min: 8, max: 200, step: 1, default: 24 },
       { name: "fontWeight",  type: "number",  label: "Font weight", min: 100, max: 1000, step: 50, default: 700 },
       { name: "color",       type: "string",  label: "Text color (CSS)" },
-      { name: "background",  type: "string",  label: "Background (CSS)" },
+      { name: "background",  type: "string",  label: "Background (CSS)", ui: "gradient" },
       { name: "padding",     type: "number",  label: "Padding (px)", min: 0, max: 120, step: 1, default: 8 },
       { name: "borderRadius",type: "number",  label: "Border radius (px)", min: 0, max: 64, step: 1, default: 8 },
       { name: "editable",    type: "boolean", label: "Editable", default: true }
@@ -1025,7 +1025,7 @@ export const SCHEMA_REGISTRY = {
       { name: "heroHeadingShadow", type: "string", label: "Hero heading text-shadow (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.heroHeadingShadow", placeholder: "0 2px 24px rgba(0,0,0,.25)", ui: "shadow", shadowType: "text" },
 
       // --- Card / “box” look (affects MUI Paper / Section cards etc.) ---
-      { name: "cardBg",     type: "string", label: "Card background (CSS color or rgba())", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardBg" },
+      { name: "cardBg",     type: "string", label: "Card background (CSS color or rgba())", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardBg", ui: "gradient" },
       { name: "cardRadius", type: "number", label: "Card radius (px)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardRadius", min: 0, max: 32, step: 1, default: 12 },
       { name: "cardBlur",   type: "number", label: "Card blur (px)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardBlur", min: 0, max: 20, step: 1, default: 0 },
       { name: "cardShadow", type: "string", label: "Card shadow (CSS)", labelKey: "manager.visualBuilder.schemas.pageStyle.fields.cardShadow", placeholder: "0 8px 30px rgba(0,0,0,.08)", ui: "shadow", shadowType: "box" },
