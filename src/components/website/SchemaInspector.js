@@ -400,7 +400,7 @@ const FieldBoolean = ({ label, value, onCommit }) => (
   />
 );
 
-const FieldColor = ({ label, value, onCommit }) => {
+const FieldColor = ({ label, value, onCommit, helperText }) => {
   const normalized = normalizeHexColor(value) || "#000000";
   return (
     <TextField
@@ -409,6 +409,7 @@ const FieldColor = ({ label, value, onCommit }) => {
       value={value || ""}
       onChange={(e) => onCommit(e.target.value)}
       fullWidth
+      helperText={helperText}
       InputProps={{
         startAdornment: (
           <InputAdornment position="start">
@@ -454,6 +455,29 @@ const FieldShadow = ({ label, value, onCommit, shadowType = "box" }) => {
   };
   return (
     <Stack spacing={1}>
+      <Box
+        sx={{
+          p: 1,
+          borderRadius: 1,
+          border: "1px solid",
+          borderColor: "divider",
+          backgroundColor: "background.paper",
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            display: "inline-block",
+            px: 1,
+            py: 0.5,
+            borderRadius: 999,
+            boxShadow: shadowType === "box" ? value || "none" : "none",
+            textShadow: shadowType === "text" ? value || "none" : "none",
+          }}
+        >
+          Shadow preview
+        </Typography>
+      </Box>
       <FormControl size="small" fullWidth>
         <InputLabel>{label} preset</InputLabel>
         <Select
@@ -777,6 +801,10 @@ const FieldGradient = ({ label, value, onCommit }) => {
 };
 
 const FieldBorder = ({ label, value, onCommit }) => {
+  const presets = [
+    "1px solid rgba(255,255,255,0.2)",
+    "1px solid rgba(0,0,0,0.08)",
+  ];
   const parsed = React.useMemo(() => {
     if (!value || typeof value !== "string") {
       return { width: 1, style: "solid", color: "#ffffff" };
@@ -801,6 +829,28 @@ const FieldBorder = ({ label, value, onCommit }) => {
   return (
     <Stack spacing={1}>
       <Typography variant="caption">{label}</Typography>
+      <FormControl size="small" fullWidth>
+        <InputLabel>Border preset</InputLabel>
+        <Select
+          label="Border preset"
+          value=""
+          onChange={(e) => {
+            const next = e.target.value;
+            if (!next) return;
+            onCommit(next);
+          }}
+        >
+          <MenuItem value="">
+            <em>Choose preset…</em>
+          </MenuItem>
+          {presets.map((preset) => (
+            <MenuItem key={preset} value={preset}>
+              {preset}
+            </MenuItem>
+          ))}
+        </Select>
+        <FormHelperText>Presets write the same CSS string.</FormHelperText>
+      </FormControl>
       <Stack direction="row" spacing={1} alignItems="center">
         <TextField
           size="small"
@@ -1485,6 +1535,7 @@ export default function SchemaInspector({ schema, value = {}, onChange, companyI
                   label={label}
                   value={val}
                   onCommit={(nv) => setWhole(key, nv)}
+                  helperText="Check contrast for accessibility."
                 />
               );
             }
