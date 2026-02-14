@@ -108,6 +108,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     start: "",
     end: "",
     recruiter_id: "",
+    recruiter_ids: [],
     location: "",
     invite_link: "",
     description: "",
@@ -345,6 +346,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       start: "",
       end: "",
       recruiter_id: "",
+      recruiter_ids: [],
       location: "",
       invite_link: "",
       description: "",
@@ -453,7 +455,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
     } else {
-      // CREATE NEW MEETING — unchanged, but ensure we have a link
+    // CREATE NEW MEETING — unchanged, but ensure we have a link
       let link = (form.invite_link || "").trim();
       if (!link) {
         const { data } = await api.get(`/utils/generate-jitsi`, {
@@ -461,7 +463,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         });
         link = data?.link || "";
       }
-      const payload = { ...form, invite_link: link };
+      const recruiter_ids = Array.isArray(form.recruiter_ids)
+        ? form.recruiter_ids
+        : form.recruiter_id
+          ? [form.recruiter_id]
+          : [];
+      const payload = { ...form, recruiter_ids, invite_link: link };
 
       await api.post(`/manager/add-meeting`, payload, {
         headers: { Authorization: `Bearer ${token}` }
@@ -485,6 +492,9 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const handleSaveMeeting = () => {
     if (!form.date || !form.start || !form.end) return setError("Please fill date, start & end");
     if (!form.title) return setError("Please enter a title");
+    if ((!form.recruiter_id || form.recruiter_id === "") && (!form.recruiter_ids || form.recruiter_ids.length === 0)) {
+      return setError("Please select at least one employee");
+    }
 
     if (isRecruiter) {
       const selected = recruiters.find((r) => String(r.id) === String(form.recruiter_id));
@@ -702,11 +712,14 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     eventClick: onEventClick,
     eventContent: renderEventContent,
     eventDidMount,
-    headerToolbar: {
-      left: "prev,next today",
-      center: "title",
-      right: "dayGridMonth,timeGridWeek,timeGridDay",
-    },
+    headerToolbar: isSmDown
+      ? { left: "prev", center: "title", right: "next" }
+      : {
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,timeGridWeek,timeGridDay",
+        },
+    titleFormat: isSmDown ? { month: "short", day: "numeric" } : { month: "long", day: "numeric", year: "numeric" },
   };
 
   /* ---------------- Recompute suggested window from FREE slots --------------- */
@@ -865,7 +878,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           sx={{ gridColumn: { xs: "span 12", md: "span 3" }, justifyContent: "flex-end" }}
           alignItems="center"
         >
-          <Chip size="small" label={`TZ: ${tzLabel}`} />
+          {/* Timezone chip removed for cleaner toolbar */}
           <Tooltip title="Export CSV/XLSX">
             <IconButton onClick={exportToExcel}><DownloadIcon /></IconButton>
           </Tooltip>
@@ -878,6 +891,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                 variant="outlined"
                 onClick={(e) => setDayMenuAnchor(e.currentTarget)}
                 fullWidth={isSmDown}
+                sx={{ minWidth: 120 }}
               >
                 Day
               </Button>
@@ -911,11 +925,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               setOpenModal(true);
             }}
             fullWidth={isSmDown}
+            sx={{ minWidth: 120 }}
           >
             Add
           </Button>
 
-          <Button variant="outlined" onClick={() => fetchEvents()} fullWidth={isSmDown}>
+          <Button variant="outlined" onClick={() => fetchEvents()} fullWidth={isSmDown} sx={{ minWidth: 120 }}>
             Refresh
           </Button>
 
@@ -924,65 +939,18 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             variant="contained"
             onClick={() => setFullScreenOpen(true)}
             fullWidth={isSmDown}
+            sx={{ minWidth: 140 }}
           >
-            Open Full Screen
+            Full Screen
           </Button>
         </Stack>
 
-        {/* View toggles & enterprise options (row 2) */}
+        {/* View toggles (row 2) */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ gridColumn: "1 / -1" }} useFlexGap flexWrap="wrap">
           <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)}>
             <ToggleButton value="dayGridMonth">Month</ToggleButton>
             <ToggleButton value="timeGridWeek">Week</ToggleButton>
             <ToggleButton value="timeGridDay">Day</ToggleButton>
-          </ToggleButtonGroup>
-
-          {/* Granularity */}
-          <ToggleButtonGroup
-            size="small"
-            value={[granularity]}
-            onChange={(_, val) => {
-              const v = Array.isArray(val) ? val[0] : val;
-              if (v) setGranularity(v);
-            }}
-          >
-            <ToggleButton value="00:15:00">15m</ToggleButton>
-            <ToggleButton value="00:30:00">30m</ToggleButton>
-            <ToggleButton value="01:00:00">60m</ToggleButton>
-          </ToggleButtonGroup>
-
-          {/* Time format */}
-          <ToggleButtonGroup
-            size="small"
-            value={timeFmt12h ? ["12h"] : ["24h"]}
-            onChange={() => setTimeFmt12h((s) => !s)}
-          >
-            <ToggleButton value="12h">12-hour</ToggleButton>
-            <ToggleButton value="24h">24-hour</ToggleButton>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup
-            size="small"
-            value={showWeekends ? ["weekends"] : []}
-            onChange={() => setShowWeekends((s) => !s)}
-          >
-            <ToggleButton value="weekends">{showWeekends ? "Hide" : "Show"} Weekends</ToggleButton>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup
-            size="small"
-            value={workHoursOnly ? ["hours"] : []}
-            onChange={() => setWorkHoursOnly((s) => !s)}
-          >
-            <ToggleButton value="hours">{workHoursOnly ? "All Hours" : "Work Hours"}</ToggleButton>
-          </ToggleButtonGroup>
-
-          <ToggleButtonGroup
-            size="small"
-            value={compactDensity ? ["compact"] : []}
-            onChange={() => setCompactDensity((s) => !s)}
-          >
-            <ToggleButton value="compact">{compactDensity ? "Comfortable" : "Compact"}</ToggleButton>
           </ToggleButtonGroup>
         </Stack>
       </Paper>
@@ -1000,31 +968,40 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
       {/* Day slot rail (chips) */}
       <Paper sx={{ p: 2 }} elevation={1}>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-          <Typography variant="subtitle1" fontWeight={700}>
+        <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ mb: 1 }}>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ whiteSpace: "nowrap" }}>
             {moment(selectedDate).format(timeFmt12h ? "ddd, MMM D" : "ddd, MMM D")} — {daySlots.length} slot(s)
           </Typography>
 
-          <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ flexGrow: 1, display: { xs: "none", sm: "block" } }} />
 
-          {/* Edit available window (single or many employees) */}
-          {canCloseSlots && (
-            <Button size="small" variant="contained" onClick={() => setDayWindowOpen(true)}>
-              Edit Available Window…
-            </Button>
-          )}
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", sm: "auto" } }}>
+            {/* Edit available window (single or many employees) */}
+            {canCloseSlots && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setDayWindowOpen(true)}
+                sx={{ minWidth: 180 }}
+                fullWidth
+              >
+                Edit Available Window…
+              </Button>
+            )}
 
-          {/* Quick close entire day — per-employee local date */}
-          {canCloseSlots && (
-            <Button
-              size="small"
-              variant="outlined"
-              color="error"
-              onClick={async () => {
-                // Group free slots by employee so we know each employee's local date
-                const groups = daySlots.reduce((m, s) => {
-                  const k = String(s.recruiter_id);
-                  (m[k] ||= []).push(s);
+            {/* Quick close entire day — per-employee local date */}
+            {canCloseSlots && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="error"
+                sx={{ minWidth: 140 }}
+                fullWidth
+                onClick={async () => {
+                  // Group free slots by employee so we know each employee's local date
+                  const groups = daySlots.reduce((m, s) => {
+                    const k = String(s.recruiter_id);
+                    (m[k] ||= []).push(s);
                   return m;
                 }, {});
                 const targetIds =
@@ -1055,14 +1032,15 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                 setSuccessMessage(`Day closed for ${targetIds.length} employee(s) ✔`);
                 fetchEvents();
               }}
-            >
-              Close day
-            </Button>
-          )}
+              >
+                Close day
+              </Button>
+            )}
 
-          <Chip size="small" color="success" label="Available" />
-          <Chip size="small" color="error" label="Booked" />
-          <Button size="small" onClick={() => fetchEvents()}>Refresh</Button>
+            <Button size="small" onClick={() => fetchEvents()} sx={{ minWidth: 120 }} fullWidth>
+              Refresh
+            </Button>
+          </Stack>
         </Stack>
 
         {daySlots.length === 0 ? (
@@ -1127,8 +1105,26 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               <TextField label="End" name="end" type="time" value={form.end} onChange={handleFormChange} fullWidth />
             </Stack>
             <FormControl fullWidth>
-              <InputLabel>Employee</InputLabel>
-              <Select label="Employee" name="recruiter_id" value={form.recruiter_id} onChange={handleFormChange}>
+              <InputLabel>Employees</InputLabel>
+              <Select
+                multiple
+                label="Employees"
+                name="recruiter_ids"
+                value={form.recruiter_ids || (form.recruiter_id ? [form.recruiter_id] : [])}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    recruiter_ids: e.target.value,
+                    recruiter_id: Array.isArray(e.target.value) && e.target.value.length ? e.target.value[0] : "",
+                  }))
+                }
+                renderValue={(selected) =>
+                  recruiters
+                    .filter((r) => selected.includes(r.id))
+                    .map((r) => `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.name || r.email)
+                    .join(", ")
+                }
+              >
                 {recruiters.map((r) => {
                   const label = `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() || r.name || r.email;
                   return <MenuItem key={r.id} value={r.id}>{label}</MenuItem>;

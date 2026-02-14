@@ -134,6 +134,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       endLabel,
       __status: raw.booked ? "booked" : "available",
       service_name: raw.service_name || "",
+      created_by_manager: !!raw.created_by_manager,
+      meeting_title: raw.meeting_title || raw.description || "",
+      meeting_link: raw.meeting_link || "",
     };
   };
 
@@ -338,7 +341,9 @@ export default function MySetmoreCalendar({ token, initialDate }) {
       );
     }
     const svc = xp.service_name ? String(xp.service_name) : "";
-    const bookedTitle = svc || "";
+    const isMeeting = xp.__status === "booked" && xp.created_by_manager;
+    const meetingTitle = xp.meeting_title ? String(xp.meeting_title) : "Meeting";
+    const bookedTitle = isMeeting ? meetingTitle : (svc || "");
     return (
       <div style={{ padding: "4px 6px 6px", lineHeight: 1.2, width: "100%" }}>
         {xp.__status === "booked" ? (
@@ -368,6 +373,11 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         {svc && xp.__status !== "booked" ? (
           <div style={{ fontSize: 11, opacity: 0.9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {svc}
+          </div>
+        ) : null}
+        {isMeeting ? (
+          <div style={{ fontSize: 11, opacity: 0.9, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            Meeting
           </div>
         ) : null}
       </div>
@@ -403,7 +413,11 @@ export default function MySetmoreCalendar({ token, initialDate }) {
     const start = info.event.start ? moment(info.event.start).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
     const end = info.event.end ? moment(info.event.end).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
     const svc = xp.service_name ? xp.service_name : "";
-    const label = xp.__status === "booked" ? (svc || "") : "Available";
+    const isMeeting = xp.__status === "booked" && xp.created_by_manager;
+    const meetingTitle = xp.meeting_title ? xp.meeting_title : "Meeting";
+    const label = xp.__status === "booked"
+      ? (isMeeting ? meetingTitle : (svc || ""))
+      : "Available";
     const svcLine = svc ? `\nService: ${svc}` : "";
     info.el.setAttribute("title", `${label}\n${start}–${end}${svcLine}`.trim());
   };
@@ -935,6 +949,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             <Chip size="small" color="error" label="Reserved" />
             <Chip size="small" sx={{ bgcolor: "#e3f2fd", color: "#0f172a" }} label="Client Booking" />
             <Chip size="small" sx={{ bgcolor: "#ede7f6", color: "#1f1235" }} label="Candidate Booking" />
+            <Chip size="small" sx={{ bgcolor: "#e0f2fe", color: "#0c4a6e" }} label="Meeting" />
             <Chip size="small" sx={{ bgcolor: "#eeeeee", color: "#424242" }} label="Leave" />
           </Stack>
         )}
@@ -1046,13 +1061,13 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             {daySlots.map((s) => (
               <Tooltip
                 key={`${s.startISO}-${s.availability_id || s.id}`}
-                title={`${s.startLabel}–${s.endLabel}${s.service_name ? `\nService: ${s.service_name}` : ""}`}
+                title={`${s.startLabel}–${s.endLabel}${s.service_name ? `\nService: ${s.service_name}` : ""}${s.created_by_manager ? `\nMeeting` : ""}`}
                 arrow
               >
                 <Chip
                   color={s.__status === "booked" ? "error" : "success"}
                   variant={s.__status === "booked" ? "filled" : "outlined"}
-                  label={`${s.startLabel}–${s.endLabel}${s.service_name ? ` • ${s.service_name}` : ""}`}
+                  label={`${s.startLabel}–${s.endLabel}${s.service_name ? ` • ${s.service_name}` : ""}${s.created_by_manager ? " • Meeting" : ""}`}
                   onDelete={
                     (canCloseSlots || canEditAvailability) && s.__status === "available"
                       ? async () => {
