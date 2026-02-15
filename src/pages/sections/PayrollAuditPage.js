@@ -62,9 +62,14 @@ export default function PayrollAuditPage() {
   const [loading, setLoading] = useState(false);
   const [snapshot, setSnapshot] = useState(null);
   const [diff, setDiff] = useState(null);
-  const [pdfId, setPdfId] = useState(null);
+  const [pdfAuditId, setPdfAuditId] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const userTz = getUserTimezone();
+  const latestEntryByPeriod = rows.reduce((acc, row) => {
+    const key = `${row.employee_id || "na"}|${row.region || "na"}|${row.start_date || "na"}|${row.end_date || "na"}`;
+    if (!acc[key]) acc[key] = row.id;
+    return acc;
+  }, {});
 
   const fetchRows = async (pageOverride) => {
     const currentPage = pageOverride || page;
@@ -246,6 +251,7 @@ export default function PayrollAuditPage() {
                 <TableCell>Region</TableCell>
                 <TableCell>Employee</TableCell>
                 <TableCell>Action</TableCell>
+                <TableCell>Snapshot</TableCell>
                 <TableCell>Finalized By</TableCell>
                 <TableCell>Finalized At</TableCell>
                 <TableCell>Details</TableCell>
@@ -254,7 +260,7 @@ export default function PayrollAuditPage() {
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={8} align="center">
                     <Typography variant="body2" color="text.secondary">
                       No audit entries yet.
                     </Typography>
@@ -269,6 +275,11 @@ export default function PayrollAuditPage() {
                   <TableCell>{row.region?.toUpperCase() || "—"}</TableCell>
                   <TableCell>{row.employee_id}</TableCell>
                   <TableCell>{row.action}</TableCell>
+                  <TableCell>
+                    {latestEntryByPeriod[`${row.employee_id || "na"}|${row.region || "na"}|${row.start_date || "na"}|${row.end_date || "na"}`] === row.id
+                      ? "Latest"
+                      : "Historical"}
+                  </TableCell>
                   <TableCell>{row.finalized_by_email || row.finalized_by_id || "—"}</TableCell>
                   <TableCell>
                     {row.created_at ? formatDateTimeInTz(coerceUtcIso(row.created_at), userTz) : "—"}
@@ -281,7 +292,7 @@ export default function PayrollAuditPage() {
                         onClick={() => {
                           setSnapshot(row.snapshot_json || null);
                           setDiff(row.diff_json || null);
-                          setPdfId(row.finalized_payroll_id || null);
+                          setPdfAuditId(row.id || null);
                         }}
                       >
                         View snapshot
@@ -342,7 +353,7 @@ export default function PayrollAuditPage() {
         onClose={() => {
           setSnapshot(null);
           setDiff(null);
-          setPdfId(null);
+          setPdfAuditId(null);
         }}
         maxWidth="md"
         fullWidth
@@ -361,14 +372,13 @@ export default function PayrollAuditPage() {
           <Box component="pre" sx={{ maxHeight: 300, overflow: "auto", p: 1, bgcolor: "grey.100" }}>
             {diff ? JSON.stringify(diff, null, 2) : "No diff"}
           </Box>
-          {pdfId ? (
+          {pdfAuditId ? (
             <Button
               sx={{ mt: 2 }}
-              href={`/main/payroll_portal_download/${pdfId}`}
-              target="_blank"
-              rel="noopener noreferrer"
+              disabled={downloading}
+              onClick={() => handleDownloadPdf(pdfAuditId)}
             >
-              Open PDF
+              {downloading ? "Downloading…" : "Open PDF"}
             </Button>
           ) : null}
         </DialogContent>
@@ -377,7 +387,7 @@ export default function PayrollAuditPage() {
             onClick={() => {
               setSnapshot(null);
               setDiff(null);
-              setPdfId(null);
+              setPdfAuditId(null);
             }}
           >
             Close

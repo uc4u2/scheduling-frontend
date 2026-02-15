@@ -39,7 +39,6 @@ import api from "../../utils/api";
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 import dayjs from "dayjs";
 import DownloadPayrollButton from "./DownloadPayrollButton";
-import { recalcNetPay } from "./netpay";
 import PayrollFilters from "./PayrollFilters";
 import PayrollPreview from "./PayrollPreview";
 import PayslipModal from "./PayslipModal";
@@ -844,22 +843,6 @@ useEffect(() => {
 
     const value = isText ? rawVal : parseFloat(rawVal) || 0;
     const updated = { ...payroll, [field]: value };
-
-    if (["vacation_percent", "bonus", "tip", "commission",
-      "parental_insurance", "travel_allowance",
-      "family_bonus", "tax_credit", "deduction",
-      "parental_top_up", "shift_premium", "union_dues",
-      "garnishment", "non_taxable_reimbursement",
-      "medical_insurance", "dental_insurance", "life_insurance", "retirement_amount"].includes(field)) {
- 
-      const newCalc = recalcNetPay(updated, region);
-      Object.assign(updated, {
-        vacation_pay: newCalc.vacation_pay,
-        gross_pay: newCalc.gross_pay,
-        total_deductions: newCalc.total_deductions,
-        net_pay: newCalc.net_pay,
-      });
-    }
 
     setPayroll(updated);
 
