@@ -123,7 +123,11 @@ export default function DownloadPayrollButton({
       if (payroll.pay_frequency) payload.pay_frequency = payroll.pay_frequency;
 
       /* ── unified location field ── */
-      if (payroll.province) payload.province = payroll.province;
+      if (region === "us") {
+        if (payroll.state || payroll.province) payload.state = payroll.state || payroll.province;
+      } else if (payroll.province) {
+        payload.province = payroll.province;
+      }
       /* (no silent fall-backs here; backend validates/defaults) */
 
       /* 1️⃣  PDF branch: finalise-and-export → blob → download + toast */

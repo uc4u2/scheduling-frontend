@@ -169,13 +169,18 @@ export default function PayrollFilters({
 
   /* when an existing payroll row is opened for edit */
   useEffect(() => {
-    if (payroll?.province) setProvince(payroll.province);
+    if (payroll?.state) setProvince(payroll.state);
+    else if (payroll?.province) setProvince(payroll.province);
   }, [payroll]);
 
-  /* keep payroll.province in sync with UI */
+  /* keep payroll location in sync with UI */
   useEffect(() => {
-    setPayroll((p) => (p ? { ...p, province } : p));
-  }, [province, setPayroll]);
+    setPayroll((p) => {
+      if (!p) return p;
+      if (region === "us") return { ...p, state: province, province };
+      return { ...p, province };
+    });
+  }, [province, region, setPayroll]);
 
   /* helper: one-click “today” */
   const pickToday = () => {
@@ -247,7 +252,7 @@ export default function PayrollFilters({
 
                 if (!rec) return;
 
-                /* derive region + province from recruiter object */
+                /* derive region + province/state from recruiter object */
                 const recProv = rec.province || "ON";
                 const recReg  = rec.country?.toLowerCase().includes("us")
                   ? "us"
@@ -264,6 +269,7 @@ export default function PayrollFilters({
                   employee_name: `${rec.first_name} ${rec.last_name}`,
                   name: `${rec.first_name} ${rec.last_name}`,
                   rate: rec.hourly_rate || 0,
+                  state: recReg === "us" ? recProv : undefined,
                   province: recProv,
                   garnishment: Number(rec.default_garnishment ?? 0) || 0,
                   union_dues: Number(rec.default_union_dues ?? 0) || 0,
@@ -421,8 +427,10 @@ export default function PayrollFilters({
               label="Province / State"
               value={province || (region === "qc" ? "QC" : "ON")}
               onChange={(e) => {
-                setProvince(e.target.value);
-                handleFieldChange("province", e.target.value);
+                const v = e.target.value;
+                setProvince(v);
+                handleFieldChange(region === "us" ? "state" : "province", v);
+                if (region === "us") handleFieldChange("province", v);
               }}
             >
               {(OPTIONS[region || "ca"] || []).map((code) => {

@@ -561,7 +561,7 @@ useEffect(() => {
   const runBackendCalculate = async (payload = {}) => {
     const location =
       region === "us"
-        ? { state: payload.state || payroll?.state }
+        ? { state: payload.state || payload.province || payroll?.state || payroll?.province }
         : { province: payload.province || payroll?.province };
     const body = {
       recruiter_id: selectedRecruiter,
@@ -660,7 +660,7 @@ useEffect(() => {
           end_date: endDate,
           pay_frequency: payFrequency,
           ...(region === "us"
-            ? { state: payroll?.state || "CA" }
+            ? { state: payroll?.state || payroll?.province || "CA" }
             : { province: payroll?.province || "ON" }),
         },
         {
@@ -692,7 +692,7 @@ useEffect(() => {
         /* where & when */
         region,
         ...(region === "us"
-          ? { state: payroll?.state || generatedRecord.state || "CA" }
+          ? { state: payroll?.state || payroll?.province || generatedRecord.state || generatedRecord.province || "CA" }
           : { province: payroll?.province || generatedRecord.province || "ON" }),
         start_date: startDate,
         end_date: endDate,
