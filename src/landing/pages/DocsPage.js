@@ -333,7 +333,7 @@ const DocsPage = () => {
           <Stack spacing={8}>
             <Stack id="payroll-coverage" spacing={3}>
               <Typography variant="h4" component="h2" fontWeight={700}>
-                Payroll coverage (2025)
+                Payroll coverage (2026)
               </Typography>
 
               <Paper
@@ -366,7 +366,7 @@ const DocsPage = () => {
                   gutterBottom
                   sx={{ textAlign: "center" }}
                 >
-                  Our payroll engine calculates core federal and state payroll items for most U.S. states.
+                  Our payroll engine calculates core federal payroll items across U.S. states, with full finalize currently limited to supported no-income-tax states.
                 </Typography>
                 <Typography variant="subtitle2" gutterBottom>Supported</Typography>
                 <List
@@ -380,9 +380,9 @@ const DocsPage = () => {
                 >
                   {[
                     "Federal income tax (IRS brackets)",
-                    "State income tax (where applicable)",
+                    "State withholding for supported finalize states only (AK, FL, NV, SD, TX, WA, WY, TN, NH)",
                     "FICA (Social Security & Medicare)",
-                    "Employer unemployment: SUI/SUTA reporting",
+                    "Employer unemployment: FUTA/SUTA reporting (employer-only; does not reduce employee net pay)",
                     "PTO & basic leave tracking",
                     "Payroll exports (PDF / CSV / XLSX)",
                     "Year-end forms: W-2 generation / export",
@@ -413,15 +413,15 @@ const DocsPage = () => {
                   ))}
                 </List>
                 <Typography variant="body2" color="text.secondary">
-                  Fully supported states (2025): Alabama, Arizona, Arkansas, California***, Colorado, Connecticut, Delaware, District of Columbia (DC), Florida, Georgia, Idaho, Illinois, Indiana, Iowa, Kansas, Kentucky, Louisiana, Maine, Maryland**, Massachusetts, Michigan, Minnesota, Mississippi, Missouri**, Montana, Nebraska, Nevada, New Hampshire*, New Jersey**, New Mexico, North Carolina, North Dakota, Ohio**, Oklahoma, Oregon**, Pennsylvania**, South Carolina, South Dakota, Tennessee*, Texas, Utah, Vermont, Virginia, Washington**, West Virginia, Wisconsin, Wyoming.
+                  Full U.S. finalize support (2026): AK, FL, NV, SD, TX, WA, WY, TN, NH.
                 </Typography>
 
                 <Typography variant="caption" color="text.secondary" component="div"
                   sx={{ mt: 2, textAlign: 'left', ml: { xs: 0, md: 1.5 } }}
                 >
-                  * TN & NH: No earned income tax (only dividend/interest).<br />
+                  * Other U.S. states are available in raw preview mode only (finalize blocked).<br />
                   ** Local/city levies may apply and are not automated.<br />
-                  *** CA SDI must be handled externally when required.
+                  *** WA-specific programs (PFML / WA Cares) must be handled externally.
                 </Typography>
                 <Typography
                   variant="caption"
