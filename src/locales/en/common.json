@@ -1153,8 +1153,9 @@
         },
         "seoPrompt": "Need page-level SEO? Visit <seoLink>Website Manager \u2192 SEO</seoLink> to set site defaults.",
         "seo": {
-          "cardTitle": "Page SEO & sharing",
+          "cardTitle": "SEO",
           "cardDescription": "Override how this page appears in search results and on social media.",
+          "advancedPrompt": "Need advanced SEO? Open <seoLink>Website Manager \u2192 SEO & Metadata</seoLink>.",
           "fields": {
             "title": "Meta title",
             "description": "Meta description",

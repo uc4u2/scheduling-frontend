@@ -3421,6 +3421,120 @@ const autoProvisionIfEmpty = useCallback(
       </SectionCard>
     ) : null;
 
+  const SeoSettingsSection = (
+    <CollapsibleSection
+      id="builder-page-seo"
+      title={t("manager.visualBuilder.pages.seo.cardTitle", "SEO")}
+      description={t("manager.visualBuilder.pages.seo.cardDescription")}
+    >
+      <Stack spacing={1.5}>
+        <Alert severity="info">
+          <Trans
+            i18nKey="manager.visualBuilder.pages.seo.advancedPrompt"
+            defaults="Need advanced SEO? Open <seoLink>Website Manager -> SEO & Metadata</seoLink>."
+            components={{
+              seoLink: (
+                <Link component={RouterLink} to="/manager/website#seo" underline="hover" />
+              ),
+            }}
+          />
+        </Alert>
+        <TextField
+          label={t("manager.visualBuilder.pages.seo.fields.title")}
+          size="small"
+          fullWidth
+          value={editing.seo_title || ""}
+          onChange={(e) => setEditing((s) => ({ ...s, seo_title: e.target.value }))}
+          helperText={t("manager.visualBuilder.pages.seo.helpers.title")}
+        />
+        <TextField
+          label={t("manager.visualBuilder.pages.seo.fields.description")}
+          size="small"
+          fullWidth
+          multiline
+          minRows={2}
+          value={editing.seo_description || ""}
+          onChange={(e) => setEditing((s) => ({ ...s, seo_description: e.target.value }))}
+          helperText={t("manager.visualBuilder.pages.seo.helpers.description")}
+        />
+        <TextField
+          label={t("manager.visualBuilder.pages.seo.fields.keywords")}
+          size="small"
+          fullWidth
+          value={editing.seo_keywords || ""}
+          onChange={(e) => setEditing((s) => ({ ...s, seo_keywords: e.target.value }))}
+          helperText={t("manager.visualBuilder.pages.seo.helpers.keywords")}
+        />
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          <TextField
+            label={t("manager.visualBuilder.pages.seo.fields.ogTitle")}
+            size="small"
+            fullWidth
+            value={editing.og_title || ""}
+            onChange={(e) => setEditing((s) => ({ ...s, og_title: e.target.value }))}
+          />
+          <TextField
+            label={t("manager.visualBuilder.pages.seo.fields.ogDescription")}
+            size="small"
+            fullWidth
+            value={editing.og_description || ""}
+            onChange={(e) => setEditing((s) => ({ ...s, og_description: e.target.value }))}
+          />
+        </Stack>
+        <TextField
+          label={t("manager.visualBuilder.pages.seo.fields.ogImage")}
+          size="small"
+          fullWidth
+          value={editing.og_image_url || ""}
+          onChange={(e) => setEditing((s) => ({ ...s, og_image_url: e.target.value }))}
+        />
+        <TextField
+          label={t("manager.visualBuilder.pages.seo.fields.canonicalPath")}
+          size="small"
+          fullWidth
+          value={editing.canonical_path || ""}
+          onChange={(e) => updatePageMeta({ canonical_path: e.target.value })}
+          helperText={slugBase ? t("manager.visualBuilder.pages.seo.helpers.canonicalPath", { base: slugBase }) : undefined}
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={Boolean(editing.noindex)}
+              onChange={(_, v) => setEditing((s) => ({ ...s, noindex: v }))}
+            />
+          }
+          label={t("manager.visualBuilder.pages.seo.fields.noindex")}
+        />
+        <SearchSnippetPreview
+          title={seoPreviewTitle}
+          url={pageCanonicalPreview || slugBase || canonicalBase || "https://example.com"}
+          description={seoPreviewDescription}
+        />
+        <SocialCardPreview
+          title={socialPreviewTitle}
+          description={socialPreviewDescription}
+          image={socialPreviewImage}
+        />
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          justifyContent="flex-end"
+          sx={{ pt: 0.5 }}
+        >
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<SaveIcon fontSize="small" />}
+            onClick={onSavePage}
+            disabled={busy || !companyId}
+          >
+            {t("management.domainSettings.seo.buttons.save", "Save SEO")}
+          </Button>
+        </Stack>
+      </Stack>
+    </CollapsibleSection>
+  );
+
   const LeftColumn = (
     <Stack spacing={1.5}>
       <InspectorColumn />
@@ -3798,107 +3912,6 @@ const autoProvisionIfEmpty = useCallback(
       </CollapsibleSection>
 
       <CollapsibleSection
-        id="builder-page-seo"
-        title={t("manager.visualBuilder.pages.seo.cardTitle")}
-        description={t("manager.visualBuilder.pages.seo.cardDescription")}
-      >
-        <Stack spacing={1.5}>
-          <TextField
-            label={t("manager.visualBuilder.pages.seo.fields.title")}
-            size="small"
-            fullWidth
-            value={editing.seo_title || ""}
-            onChange={(e) => setEditing((s) => ({ ...s, seo_title: e.target.value }))}
-            helperText={t("manager.visualBuilder.pages.seo.helpers.title")}
-          />
-          <TextField
-            label={t("manager.visualBuilder.pages.seo.fields.description")}
-            size="small"
-            fullWidth
-            multiline
-            minRows={2}
-            value={editing.seo_description || ""}
-            onChange={(e) => setEditing((s) => ({ ...s, seo_description: e.target.value }))}
-            helperText={t("manager.visualBuilder.pages.seo.helpers.description")}
-          />
-          <TextField
-            label={t("manager.visualBuilder.pages.seo.fields.keywords")}
-            size="small"
-            fullWidth
-            value={editing.seo_keywords || ""}
-            onChange={(e) => setEditing((s) => ({ ...s, seo_keywords: e.target.value }))}
-            helperText={t("manager.visualBuilder.pages.seo.helpers.keywords")}
-          />
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <TextField
-              label={t("manager.visualBuilder.pages.seo.fields.ogTitle")}
-              size="small"
-              fullWidth
-              value={editing.og_title || ""}
-              onChange={(e) => setEditing((s) => ({ ...s, og_title: e.target.value }))}
-            />
-            <TextField
-              label={t("manager.visualBuilder.pages.seo.fields.ogDescription")}
-              size="small"
-              fullWidth
-              value={editing.og_description || ""}
-              onChange={(e) => setEditing((s) => ({ ...s, og_description: e.target.value }))}
-            />
-          </Stack>
-          <TextField
-            label={t("manager.visualBuilder.pages.seo.fields.ogImage")}
-            size="small"
-            fullWidth
-            value={editing.og_image_url || ""}
-            onChange={(e) => setEditing((s) => ({ ...s, og_image_url: e.target.value }))}
-          />
-          <TextField
-            label={t("manager.visualBuilder.pages.seo.fields.canonicalPath")}
-            size="small"
-            fullWidth
-            value={editing.canonical_path || ""}
-            onChange={(e) => updatePageMeta({ canonical_path: e.target.value })}
-            helperText={slugBase ? t("manager.visualBuilder.pages.seo.helpers.canonicalPath", { base: slugBase }) : undefined}
-          />
-          <FormControlLabel
-            control={
-              <Switch
-                checked={Boolean(editing.noindex)}
-                onChange={(_, v) => setEditing((s) => ({ ...s, noindex: v }))}
-              />
-            }
-            label={t("manager.visualBuilder.pages.seo.fields.noindex")}
-          />
-          <SearchSnippetPreview
-            title={seoPreviewTitle}
-            url={pageCanonicalPreview || slugBase || canonicalBase || "https://example.com"}
-            description={seoPreviewDescription}
-          />
-          <SocialCardPreview
-            title={socialPreviewTitle}
-            description={socialPreviewDescription}
-            image={socialPreviewImage}
-          />
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            justifyContent="flex-end"
-            sx={{ pt: 0.5 }}
-          >
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<SaveIcon fontSize="small" />}
-              onClick={onSavePage}
-              disabled={busy || !companyId}
-            >
-              {t("management.domainSettings.seo.buttons.save", "Save SEO")}
-            </Button>
-          </Stack>
-        </Stack>
-      </CollapsibleSection>
-
-      <CollapsibleSection
         id="nav-settings-card"
         title={t("manager.visualBuilder.nav.title", "Navigation & Menu")}
         description={t(
@@ -4071,6 +4084,7 @@ const autoProvisionIfEmpty = useCallback(
           </Stack>
         </CollapsibleSection>
       </CollapsibleSection>
+      {SeoSettingsSection}
     </Stack>
   );
 
