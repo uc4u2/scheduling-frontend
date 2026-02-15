@@ -121,11 +121,14 @@ export default function SiteFrame({
   const navStyle = useMemo(() => normalizeNavStyle(rawNavStyle), [rawNavStyle]);
   const navButtonSx = useMemo(() => createNavButtonStyles(navStyle), [navStyle]);
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
-  const headerTextColor = headerConfig?.text || themeOverrides?.header?.text || theme.palette.text.primary;
+  const headerTextColor =
+    headerConfig?.text_color ||
+    themeOverrides?.header?.text ||
+    theme.palette.text.primary;
   const navButtonStyling = useMemo(() => {
     const useReadableText = ["ghost", "underline", "overline", "doubleline", "sideline", "sideline-all", "link", "text"].includes(navStyle?.variant);
     const fallbackText = pickTextColorForBg(headerBg);
-    const preferred = navStyle?.text || headerTextColor;
+    const preferred = navStyle?.text || fallbackText;
     const bgLum = getLuminance(headerBg);
     const prefLum = getLuminance(preferred);
     const readableText =
@@ -147,9 +150,9 @@ export default function SiteFrame({
         }
         return base;
       }
-      return { ...base, color: active ? base.color : headerTextColor };
+      return { ...base, color: active ? base.color : preferred || fallbackText };
     };
-  }, [navButtonSx, headerTextColor, headerBg, navStyle?.variant, navStyle?.text, theme.palette.text.primary]);
+  }, [navButtonSx, headerBg, navStyle?.variant, navStyle?.text]);
 
   // auth state for showing login / my bookings / logout
   const token = (typeof localStorage !== "undefined" && localStorage.getItem("token")) || "";

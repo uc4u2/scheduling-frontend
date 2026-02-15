@@ -1709,7 +1709,7 @@ const siteTitle = useMemo(() => {
   const navButtonStyling = useMemo(() => {
     const useReadableText = ["ghost", "underline", "overline", "doubleline", "sideline", "sideline-all", "link", "text"].includes(navStyle?.variant);
     const fallbackText = pickTextColorForBg(headerBg);
-    const preferred = navStyle?.text || headerTextColor;
+    const preferred = navStyle?.text || fallbackText;
     const bgLum = getLuminance(headerBg);
     const prefLum = getLuminance(preferred);
     const readableText =
@@ -1731,9 +1731,9 @@ const siteTitle = useMemo(() => {
         }
         return base;
       }
-      return { ...base, color: headerTextColor };
+      return { ...base, color: preferred || fallbackText };
     };
-  }, [navButtonSx, headerTextColor, headerBg, navStyle?.variant, navStyle?.text]);
+  }, [navButtonSx, headerBg, navStyle?.variant, navStyle?.text]);
 
   const showBrandText = headerConfig?.show_brand_text !== false;
   const navBrandName = useMemo(() => {
