@@ -99,7 +99,7 @@ const overviewConfig = {
     primaryCta: { label: "See payroll workspace", href: REGISTER_URL },
     secondaryCta: { label: "Read the docs", href: "/docs#payroll" },
     notice:
-      "Includes calculators, payslip portals, and compliance exports for Canada and the United States; local/city taxes and special programs (for example WA PFML / WA Cares) remain external.",
+      "* U.S. full finalize: AK, FL, NV, SD, TX, WA, WY, TN, NH only. ** Other U.S. states are raw preview only (finalize blocked). *** Local/city taxes and special programs (for example WA PFML / WA Cares) remain external.",
   },
   featuresHeading: "Platform",
   featuresTitle: "One place for calculations, slips, and employee updates",
@@ -215,6 +215,18 @@ const overviewConfig = {
   ],
   callouts: [
     {
+      icon: "compliance",
+      label: "Coverage & limits",
+      title: "Current U.S. support boundaries",
+      body:
+        "Full U.S. finalize is currently supported only in AK, FL, NV, SD, TX, WA, WY, TN, and NH. Other U.S. states are available in raw preview mode with warnings and finalize blocked. Employer FUTA/SUTA is reported separately and does not reduce employee net pay.",
+      points: [
+        "* Full finalize states: AK, FL, NV, SD, TX, WA, WY, TN, NH",
+        "** Unsupported states: preview-only raw mode",
+        "*** Local/city taxes + WA PFML/WA Cares: external handling",
+      ],
+    },
+    {
       icon: "analytics",
       label: "Insights",
       title: "Finance and HR see the same truth",
@@ -241,6 +253,11 @@ const overviewConfig = {
   faqHeading: "FAQ",
   faqTitle: "Payroll overview questions",
   faq: [
+    {
+      question: "Do you support all U.S. states for finalize?",
+      answer:
+        "Not yet. Full finalize is currently supported in AK, FL, NV, SD, TX, WA, WY, TN, and NH. Other U.S. states remain available as raw preview with finalize blocked.",
+    },
     {
       question: "Is /payroll different from the Canada or USA pages?",
       answer:
@@ -691,7 +708,7 @@ const usaConfig = {
   cta: sharedCta,
   secondaryLinks: sharedSecondaryLinks,
   notice:
-    "U.S. full finalize is supported in AK, FL, NV, SD, TX, WA, WY, TN, and NH. Other states are preview-only (raw mode). Local/city taxes and WA PFML / WA Cares are handled externally.",
+    "* Full U.S. finalize: AK, FL, NV, SD, TX, WA, WY, TN, NH. ** Other states: raw preview only (finalize blocked). *** Employer FUTA/SUTA is reporting-only (not deducted from employee net pay). **** Local/city taxes and WA PFML / WA Cares are handled externally.",
 };
 
 const roeConfig = {
