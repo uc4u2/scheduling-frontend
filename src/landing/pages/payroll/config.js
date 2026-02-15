@@ -88,17 +88,18 @@ const overviewConfig = {
     badge: "Scheduling + payroll + docs",
     title: "Payroll that stays in sync with operations",
     subtitle:
-      "Pull real-time hours from scheduling and time tracking, apply CRA or IRS logic, layer in tips, bonus, commission, shift premiums, union dues, garnishments, and non-taxable reimbursements, then ship payslips plus ROE/T4/W-2 without leaving Schedulaa.",
+      "Pull real-time hours from scheduling and time tracking, apply CRA or IRS logic, layer in tips, bonus, commission, shift premiums, union dues, garnishments, and non-taxable reimbursements, then ship payslips plus ROE/T4/W-2 without leaving Schedulaa. U.S. full finalize is currently available in AK, FL, NV, SD, TX, WA, WY, TN, and NH; other U.S. states run in raw preview mode.",
     bullets: [
-      "Regional engines for Canada (CPP/EI/BPA, CPP/EI exemptions) and the USA (FICA plus state tax logic).",
+      "Regional engines for Canada (CPP/EI/BPA, CPP/EI exemptions) and the USA (federal tax, FICA/Medicare, employer FUTA/SUTA reporting).",
       "Taxable extras like shift premium, tips, commission, bonus plus deductions like union dues and garnishments—net pay matches the preview.",
+      "Unsupported U.S. states remain available for raw preview, with clear warnings and finalize blocked.",
       "ROE, T4 (with Box 40/44), W-2, and payslip exports backed by our public docs.",
       "Employee self-serve portal plus automated notifications.",
     ],
     primaryCta: { label: "See payroll workspace", href: REGISTER_URL },
     secondaryCta: { label: "Read the docs", href: "/docs#payroll" },
     notice:
-      "Includes calculators, payslip portals, and compliance exports for Canada and the United States; local/city taxes and specialized fringe rules remain external.",
+      "Includes calculators, payslip portals, and compliance exports for Canada and the United States; local/city taxes and special programs (for example WA PFML / WA Cares) remain external.",
   },
   featuresHeading: "Platform",
   featuresTitle: "One place for calculations, slips, and employee updates",
@@ -119,7 +120,7 @@ const overviewConfig = {
       label: "Compliance",
       title: "Canada & USA tax engines",
       description:
-        "Employees automatically run on Canadian CPP/EI/BPA logic (with CPP/EI exemptions) or U.S. FICA and state tax rules based on work location. Both engines support shift premium, tips, commission, bonus, union dues, garnishments, and non-taxable reimbursements while respecting regional settings.",
+        "Employees automatically run on Canadian CPP/EI/BPA logic (with CPP/EI exemptions) or U.S. federal tax + FICA/Medicare logic based on work location. U.S. full finalize is supported in AK, FL, NV, SD, TX, WA, WY, TN, and NH; unsupported states remain available as raw preview with warnings. Both engines support shift premium, tips, commission, bonus, union dues, garnishments, and non-taxable reimbursements.",
       link: "/payroll/canada",
       linkLabel: "See regional calculators",
     },
@@ -150,7 +151,7 @@ const overviewConfig = {
         "Two regional engines, one workspace. Employees automatically use the right CRA or IRS/FICA/state logic based on their work location—no duplicate setups.",
       points: [
         "CA: Federal & provincial tax, CPP/EI (with exemptions), vacation/stat holidays, T4 boxes 14/16/18/22/24/26/40/44, ROE.",
-        "US: Federal income tax, supported state income tax, FICA, SUI/SUTA, W-2 exports.",
+        "US: Federal income tax, FICA/Medicare, employer FUTA/SUTA reporting, and W-2 exports. Full finalize is supported in AK, FL, NV, SD, TX, WA, WY, TN, and NH.",
         "Local/city/municipal payroll taxes remain external where they apply.",
       ],
     },
@@ -496,14 +497,14 @@ const canadaConfig = {
 
 const usaConfig = {
   meta: {
-    title: "USA Payroll Calculator (Federal & State, FICA/Medicare) | Schedulaa",
+    title: "USA Payroll Calculator (Federal, FICA/Medicare, Supported State Finalize) | Schedulaa",
     description:
-      "Calculate US payroll with federal and state income tax, FICA, and Medicare. Finalize payslips, export CSV/Excel, and give employees a self-serve portal.",
+      "Calculate US payroll with federal tax, FICA, Medicare, and employer FUTA/SUTA reporting. Full finalize is supported in AK, FL, NV, SD, TX, WA, WY, TN, and NH; other states run in raw preview mode.",
     canonical: `${BASE_URL}/payroll/usa`,
     og: {
       title: "USA Payroll Calculator for Teams with Multi-State Workers | Schedulaa",
       description:
-        "Preview and finalize US payroll with federal and state tax, FICA, and Medicare. Export payslips and enable employee downloads instantly.",
+        "Preview US payroll in all states with federal tax, FICA, and Medicare. Finalize is supported in AK, FL, NV, SD, TX, WA, WY, TN, and NH.",
       image: `${BASE_URL}/images/payroll-usa-preview.png`,
       url: `${BASE_URL}/payroll/usa`,
     },
@@ -529,8 +530,10 @@ const usaConfig = {
       },
       featureList: [
         "Federal income tax withholding",
-        "State income tax calculations",
+        "Supported-state full finalize (AK, FL, NV, SD, TX, WA, WY, TN, NH)",
+        "Raw preview mode for unsupported states",
         "FICA and Medicare deductions",
+        "Employer FUTA/SUTA reporting (not deducted from net pay)",
         "Bonuses, tips, and commissions support",
         "Payslip PDF, CSV, and Excel export",
         "Employee self-service portal",
@@ -545,13 +548,14 @@ const usaConfig = {
     payrollBreadcrumb("USA payroll", `${BASE_URL}/payroll/usa`),
   ],
   hero: {
-    badge: "Federal + state + FICA",
+    badge: "Federal + FICA + employer unemployment",
     title: "USA Payroll Calculator with FICA and Medicare built in",
     subtitle:
-      "Handle federal and state income tax, FICA, Medicare, bonuses, tips, commissions, and employer contributions in the same pay run.",
+      "Handle federal withholding, FICA, Medicare, bonuses, tips, commissions, and employer taxes in the same pay run. Full finalize is available in AK, FL, NV, SD, TX, WA, WY, TN, and NH; unsupported states stay in raw preview mode.",
     bullets: [
-      "Preview multi-state deductions before you finalize payroll.",
-      "Track employer unemployment contributions alongside employee withholding.",
+      "Preview payroll in all U.S. states before finalize.",
+      "Track employer FUTA/SUTA alongside employee withholding without reducing employee net pay.",
+      "Unsupported states return raw mode warnings and finalize is blocked.",
       "Email PDF payslips and keep a downloadable archive for staff.",
     ],
     primaryCta: { label: "Run US payroll", href: REGISTER_URL },
@@ -565,9 +569,9 @@ const usaConfig = {
     {
       icon: "compliance",
       label: "Tax engine",
-      title: "Federal and state withholding",
+      title: "Federal withholding + supported-state finalize",
       description:
-        "Automatically apply federal income tax, FICA/Medicare, and the correct state withholding per employee based on work location. Employer unemployment contributions display alongside employee deductions.",
+        "Automatically apply federal income tax and FICA/Medicare by employee work location. Full finalize is supported in AK, FL, NV, SD, TX, WA, WY, TN, and NH; unsupported states remain available in raw preview with explicit warnings. Employer FUTA/SUTA is reported separately from employee deductions.",
     },
     {
       icon: "retirement",
@@ -581,7 +585,7 @@ const usaConfig = {
       label: "Workflow",
       title: "Multi-state previews",
       description:
-        "Preview each employee's deductions with the correct jurisdictions applied automatically, edit wages and taxable benefits, rerun the calculation in seconds, and keep payroll audit/overwrite history when a period is re-finalized.",
+        "Preview each employee's deductions, edit wages and taxable benefits, rerun in seconds, and keep payroll audit/overwrite history when a period is re-finalized. Unsupported states can preview in raw mode but cannot finalize.",
     },
     {
       icon: "document",
@@ -598,7 +602,7 @@ const usaConfig = {
       overline: "Preview",
       title: "Transparent deductions before you finalize",
       body:
-        "See how each tax and contribution will hit net pay, including federal brackets, FICA, Medicare, and state-specific withholding. Override rates or earnings and recalc on demand.",
+        "See how each tax and contribution will hit net pay, including federal brackets, FICA, and Medicare. Employer FUTA/SUTA is shown for reporting and does not reduce employee net pay. Override earnings and recalc on demand.",
       points: [
         "Highlight overtime, tips, bonuses, and commissions for every employee.",
         "Record employer 401(k) matches and insurance premiums next to payroll taxes.",
@@ -629,7 +633,7 @@ const usaConfig = {
   stepsHeading: "Process",
   stepsTitle: "How teams finish a US pay cycle in Schedulaa",
   stepsIntro:
-    "Bring in hours, preview withholding, finalize, and deliver payslips without leaving the platform.",
+    "Bring in hours, preview withholding, and finalize where supported without leaving the platform.",
   steps: [
     {
       title: "Import hours or salaries",
@@ -639,21 +643,21 @@ const usaConfig = {
     {
       title: "Preview deductions per jurisdiction",
       description:
-        "Review federal and state withholding, FICA, Medicare, and employer taxes. Adjust wages or overrides and rerun the preview.",
+        "Review federal withholding, FICA, Medicare, and employer FUTA/SUTA. Unsupported states run in raw preview mode with warnings. Adjust wages or overrides and rerun the preview.",
     },
     {
       title: "Finalize and export",
       description:
-        "Finalize the payroll, email PDF payslips, download CSV/Excel, and prepare W-2s at year end.",
+        "Finalize payroll in AK, FL, NV, SD, TX, WA, WY, TN, and NH; email PDF payslips, download CSV/Excel, and prepare W-2s at year end.",
     },
   ],
   callouts: [
     {
       icon: "compliance",
       label: "Limitations",
-      title: "Local and city taxes",
+      title: "State support and local taxes",
       body:
-        "Local and city income taxes (for example, New York City or county levies) are not automated yet. Track these outside Schedulaa and import adjustments if needed.",
+        "Full U.S. finalize is currently supported only in AK, FL, NV, SD, TX, WA, WY, TN, and NH. Other states remain preview-only (raw mode). Local/city taxes and special programs (for example WA PFML / WA Cares) are not automated and should be handled externally.",
     },
     {
       icon: "document",
@@ -671,12 +675,12 @@ const usaConfig = {
     {
       question: "Do you handle local or city income taxes?",
       answer:
-        "Not yet. Schedulaa calculates federal and state income tax, FICA, and Medicare. Local and city levies (for example, NYC or county surcharges) should be tracked separately and uploaded if needed.",
+        "Not yet. Schedulaa calculates federal withholding plus FICA/Medicare, and reports employer FUTA/SUTA. Local and city levies should be tracked separately and uploaded if needed.",
     },
     {
       question: "Can I run multi-state payroll?",
       answer:
-        "Yes. Each employee record can store multiple state configurations. The preview shows deduction splits so you can confirm the correct jurisdictions before finalizing.",
+        "Yes for preview. You can preview payroll in all U.S. states. Finalize is currently supported in AK, FL, NV, SD, TX, WA, WY, TN, and NH; unsupported states remain in raw preview mode.",
     },
     {
       question: "How do employees get their payslips?",
@@ -686,7 +690,8 @@ const usaConfig = {
   ],
   cta: sharedCta,
   secondaryLinks: sharedSecondaryLinks,
-  notice: "Local and city payroll taxes are handled externally.",
+  notice:
+    "U.S. full finalize is supported in AK, FL, NV, SD, TX, WA, WY, TN, and NH. Other states are preview-only (raw mode). Local/city taxes and WA PFML / WA Cares are handled externally.",
 };
 
 const roeConfig = {
