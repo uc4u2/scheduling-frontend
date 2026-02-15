@@ -49,7 +49,7 @@ const scenarios = [
       "One-time bonus ($300) or commission ($200). Enter these in Bonus and Commission. They are taxable, increase gross pay, and are included in W-2/T4 wages. For a bonus-only run (e.g., annual bonus), leave hours at 0 and just enter the bonus amount.",
     fields: ["bonus", "commission"],
     story:
-      "Real-life example: Daniel is an inside sales rep in New York. His base pay is hourly, but he also earned a $300 bonus for hitting his quarterly target and $150 in commission on upsells. At payroll time, the manager enters 300 in Bonus and 150 in Commission. Schedulaa adds $450 on top of his base wages, taxes it, and shows the combined amount in his payslip and year-end W-2.",
+      "Real-life example: Daniel is an inside sales rep in Texas. His base pay is hourly, but he also earned a $300 bonus for hitting his quarterly target and $150 in commission on upsells. At payroll time, the manager enters 300 in Bonus and 150 in Commission. Schedulaa adds $450 on top of his base wages, taxes it, and shows the combined amount in his payslip and year-end W-2.",
   },
   {
     title: "Union dues",
@@ -97,7 +97,7 @@ const scenarios = [
       "Employee is on approved parental leave. If the employer pays a top-up (e.g., $200 per pay), enter this in Parental Leave Top-up. It is taxable, increases employment income, and flows to W-2/T4 wages. Parental leave hours themselves are tracked separately for ROE in Canada.",
     fields: ["parental_leave_hours", "parental_top_up"],
     story:
-      "Real-life example (Canada): Éric in Ontario is on parental leave receiving EI benefits, and his employer has a policy to top up his income by $200 every pay period for the first three months. The manager enters 200 in Parental Leave Top-up each pay. Schedulaa adds the $200 to his taxable income, applies the correct tax/CPP/EI, and tracks parental leave hours separately so an ROE can be generated later if needed. Real-life example (U.S.): Danielle in California is on bonding leave and her employer pays a $200 top-up on top of the state Paid Family Leave benefit. The manager enters 200 in Parental Leave Top-up; Schedulaa treats it as taxable wages and applies federal/state/FICA/Medicare while the state benefit itself is handled outside the system.",
+      "Real-life example (Canada): Éric in Ontario is on parental leave receiving EI benefits, and his employer has a policy to top up his income by $200 every pay period for the first three months. The manager enters 200 in Parental Leave Top-up each pay. Schedulaa adds the $200 to his taxable income, applies the correct tax/CPP/EI, and tracks parental leave hours separately so an ROE can be generated later if needed. Real-life example (U.S.): Danielle in Washington is on bonding leave and her employer pays a $200 top-up on top of an external state benefit. The manager enters 200 in Parental Leave Top-up; Schedulaa treats it as taxable wages and applies federal/FICA/Medicare while the state benefit itself is handled outside the system.",
   },
   {
     title: "Medical/dental/life insurance",
@@ -105,7 +105,7 @@ const scenarios = [
       "If the employee contributes $30 medical / $10 dental / $5 life this period, enter each amount in the respective fields. These reduce net pay. In many Canadian setups, employer-paid portions are counted as taxable benefits and end up in T4 Box 40. If the amounts recur, set defaults in Employee Profile so they auto-fill each pay period.",
     fields: ["medical_insurance", "dental_insurance", "life_insurance"],
     story:
-      "Real-life example: Mei in California participates in the company’s health plan and pays $30 medical, $10 dental, and $5 life per pay period as employee contributions. The manager enters 30, 10, and 5 in the respective fields. Schedulaa reduces Mei’s net pay by $45, and in Canada, the employer-paid portion of similar benefits can be reported as taxable benefits in Box 40 on the T4.",
+      "Real-life example: Mei in Florida participates in the company’s health plan and pays $30 medical, $10 dental, and $5 life per pay period as employee contributions. The manager enters 30, 10, and 5 in the respective fields. Schedulaa reduces Mei’s net pay by $45, and in Canada, the employer-paid portion of similar benefits can be reported as taxable benefits in Box 40 on the T4.",
   },
   {
     title: "Retirement contributions",
@@ -129,12 +129,12 @@ const scenarios = [
       "If you want an allowance taxed and included in wages (per diem, small stipends), use Travel Allowance. If you want to simply pay back an expense without tax (e.g., a receipt-backed purchase), use Non-taxable Reimbursement instead.",
     fields: ["travel_allowance", "non_taxable_reimbursement"],
     story:
-      "Real-life example: Quinn works as a field tech in Colorado. The company gives a flat $100 monthly travel allowance that should be taxed, and also reimburses exact fuel receipts as non-taxable. In Payroll Preview, the manager enters 100 in Travel Allowance and the exact fuel receipt total (e.g., 65) in Non-taxable Reimbursement. Schedulaa taxes the $100 and treats it as wages, but adds the $65 only to net pay without affecting gross or taxes.",
+      "Real-life example: Quinn works as a field tech in Nevada. The company gives a flat $100 monthly travel allowance that should be taxed, and also reimburses exact fuel receipts as non-taxable. In Payroll Preview, the manager enters 100 in Travel Allowance and the exact fuel receipt total (e.g., 65) in Non-taxable Reimbursement. Schedulaa taxes the $100 and treats it as wages, but adds the $65 only to net pay without affecting gross or taxes.",
   },
   {
     title: "Remote US vs Canada",
     detail:
-      "The tax engine follows the employee’s work location on the payroll: US state for US employees, province for Canadian employees. Make sure the Employee profile has the correct country and work location, especially for remote workers.",
+      "The tax engine follows the employee’s work location on the payroll: US state for US employees, province for Canadian employees. For U.S. employees, full finalize is currently supported only in AK, FL, NV, SD, TX, WA, WY, TN, and NH; other states run in raw preview mode. Make sure the Employee profile has the correct country and work location, especially for remote workers.",
     fields: ["region", "state", "province"],
     story:
       "Real-life example: John lives and works remotely from Texas for a software company incorporated in California. His Employee profile is set to Country: US, Work location: Texas. Schedulaa uses Texas rules (no state income tax, just Federal + FICA/Medicare) for John’s payroll, even though the company HQ is in California. Later, the company hires Anna in Vancouver; her profile is set to Country: Canada, Province: BC, so Schedulaa applies Canadian CRA rules (federal + BC tax, CPP/EI) for her, even though they work on the same team.",
@@ -153,7 +153,7 @@ const scenarios = [
       "For Canadian employees, T4 boxes include: 14 (income), 16/26 (CPP/pensionable), 18/24 (EI/insurable), 22 (tax), 40 (taxable benefits), 44 (union dues). Make sure benefits, shift premiums, and union dues are recorded during payroll so T4 totals match accountant expectations.",
     fields: ["box14", "box16", "box18", "box22", "box24", "box26", "box40", "box44"],
     story:
-      "Real-life example: During the year, a salon in Alberta uses Schedulaa to pay wages, vacation, shift premiums, health benefits, and union dues for staff. At year-end, the owner opens the T4 page and generates slips for 2025. A quick scan shows Box 14 = total employment income, Box 16/26 = CPP/pensionable earnings, Box 18/24 = EI/insurable earnings, Box 22 = tax deducted, Box 40 = taxable benefits, and Box 44 = union dues. Because the manager recorded these items correctly during each pay run, the accountant can sign off on the T4s with minimal adjustments.",
+      "Real-life example: During the year, a salon in Alberta uses Schedulaa to pay wages, vacation, shift premiums, health benefits, and union dues for staff. At year-end, the owner opens the T4 page and generates slips for 2026. A quick scan shows Box 14 = total employment income, Box 16/26 = CPP/pensionable earnings, Box 18/24 = EI/insurable earnings, Box 22 = tax deducted, Box 40 = taxable benefits, and Box 44 = union dues. Because the manager recorded these items correctly during each pay run, the accountant can sign off on the T4s with minimal adjustments.",
   },
   {
     title: "W-2 year-end check",
@@ -161,7 +161,7 @@ const scenarios = [
       "For US employees, wages flow into Box 1/3/5; taxes into Box 2/4/6; Box 13 flags are set in the W-2 flow. Ensure taxable earnings (overtime, bonus, shift premium, tips) are recorded during payroll so annual W-2 totals match what was actually paid.",
     fields: ["box1", "box3", "box5", "box2", "box4", "box6"],
     story:
-      "Real-life example: A call center in Florida has 80 agents. All year, managers record regular wages, overtime, bonuses, shift premiums, and tips in Schedulaa. At year-end, they generate W-2 forms. For each agent, Box 1/3/5 show the correct taxable wages (including shift premium and bonus), Boxes 2/4/6 show taxes withheld, and state boxes are filled where applicable. Because earnings and deductions were entered correctly each pay, W-2 totals match what employees saw on their payslips.",
+      "Real-life example: A call center in Florida has 80 agents. All year, managers record regular wages, overtime, bonuses, shift premiums, and tips in Schedulaa. At year-end, they generate W-2 forms. For each agent, Box 1/3/5 show the correct taxable wages (including shift premium and bonus), Boxes 2/4/6 show taxes withheld, and supported-state details are included in the export snapshot. Because earnings and deductions were entered correctly each pay, W-2 totals match what employees saw on their payslips.",
   },
   {
     title: "Call center mixed shift example",
@@ -169,7 +169,7 @@ const scenarios = [
       "A call center agent works regular weekday shifts, does 4 hours of weekend work, and receives $200 in bonus and $80 in tips. Hours and overtime come from Time/Leave; enter the $200 in Bonus, $80 in Tips, and any extra night/weekend pay in Shift Premium. Union dues and garnishments, if any, are handled in the Deductions section.",
     fields: ["hours_worked", "shift_premium", "bonus", "tip", "union_dues", "garnishment"],
     story:
-      "Real-life example: Priya works at a 24/7 call center in New Jersey. In one bi-weekly period she works 64 total hours: 48 regular weekday hours, 8 weekend hours with a $1.50/hour premium, earns $200 in bonus, and $80 in tips. Time tracking already holds the 64 hours, and the overtime split is handled automatically by Schedulaa. At payroll time, the manager enters 12 (8 × 1.5) in Shift Premium, 200 in Bonus, and 80 in Tips. If Priya also belongs to a union, the manager enters her $35 union dues. All of this flows through gross, deductions, net pay, and later into her W-2 or T4 as appropriate.",
+      "Real-life example: Priya works at a 24/7 call center in Texas. In one bi-weekly period she works 64 total hours: 48 regular weekday hours, 8 weekend hours with a $1.50/hour premium, earns $200 in bonus, and $80 in tips. Time tracking already holds the 64 hours, and the overtime split is handled automatically by Schedulaa. At payroll time, the manager enters 12 (8 × 1.5) in Shift Premium, 200 in Bonus, and 80 in Tips. If Priya also belongs to a union, the manager enters her $35 union dues. All of this flows through gross, deductions, net pay, and later into her W-2 or T4 as appropriate.",
   },
   {
     title: "US 401(k) — Enterprise default with cap enforcement",

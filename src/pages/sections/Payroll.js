@@ -1017,15 +1017,15 @@ return (
 
     {guideTab === "overview" && (
       <>
-        <Typography variant="h5" gutterBottom>🇺🇸 U.S. Payroll Coverage (2025)</Typography>
+        <Typography variant="h5" gutterBottom>🇺🇸 U.S. Payroll Coverage (2026)</Typography>
         <Typography variant="body1" gutterBottom>
           Supported (core compliance):
         </Typography>
         <ul>
           <li>✅ Federal income tax</li>
-          <li>✅ State income tax (where applicable)</li>
+          <li>✅ State withholding for supported finalize states only (AK, FL, NV, SD, TX, WA, WY, TN, NH)</li>
           <li>✅ FICA: Social Security & Medicare</li>
-          <li>✅ SUI/SUTA (employer unemployment)</li>
+          <li>✅ Employer FUTA/SUTA (employer-only reporting; not deducted from employee net pay)</li>
           <li>✅ PTO & time tracking</li>
           <li>✅ Shift premiums (taxable earnings)</li>
           <li>✅ Simple union dues (employee deduction)</li>
@@ -1059,17 +1059,16 @@ return (
         <Typography variant="body2" gutterBottom>
           Company default pay frequency and employee recurring deduction defaults help prevent setup mistakes across pay runs.
         </Typography>
-        <Typography variant="subtitle1" sx={{ mt: 2 }}><strong>📍 States Fully Supported (2025)</strong></Typography>
+        <Typography variant="subtitle1" sx={{ mt: 2 }}><strong>📍 States Fully Supported for Finalize (2026)</strong></Typography>
         <Typography variant="body2">
-          ✓ AL, AZ, AR, CA***, CO, CT, DE, DC, FL, GA, ID, IL, IN, IA, KS, KY, LA, ME, MD**, MA, MI, MN, MS, MO**, MT, NE, NV, NH*, NJ**, NM, NC, ND, OH**, OK, OR**, PA**, SC, SD, TN*, TX, UT, VT, VA, WA**, WV, WI, WY
+          ✓ AK, FL, NV, SD, TX, WA, WY, TN, NH
         </Typography>
         <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 1 }}>
-          * TN & NH: No earned income tax (only dividend/interest tax).<br />
-          ** Local taxes may apply (not supported). (Examples: MD county tax, MO St. Louis/KC, NJ locals/transit, OH municipalities, OR TriMet/Metro, PA local EIT, WA certain cities.)<br />
-          *** CA: SDI not withheld by default; handle externally if required.
+          Unsupported U.S. states are available in raw preview mode only.<br />
+          Raw mode shows warnings and blocks finalize.
         </Typography>
         <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 1.5 }}>
-          Note: Schedulaa calculates federal and state taxes in supported states. Local/city/municipal taxes are not automatically calculated and must be handled externally where applicable.
+          Note: Local/city/municipal taxes are not automatically calculated and must be handled externally where applicable.
         </Typography>
         <Typography variant="caption" color="text.secondary" component="div" sx={{ mt: 1 }}>
           WA has no state income tax. WA-specific programs (PFML / WA Cares) are not automated and must be handled externally.
@@ -1077,7 +1076,7 @@ return (
 
         <Divider sx={{ my: 3 }} />
 
-        <Typography variant="h5" gutterBottom>🇨🇦 Canadian Payroll Coverage (2025)</Typography>
+        <Typography variant="h5" gutterBottom>🇨🇦 Canadian Payroll Coverage (2026)</Typography>
         <Typography variant="body1" gutterBottom>
           Supported (ex‑Québec):
         </Typography>
