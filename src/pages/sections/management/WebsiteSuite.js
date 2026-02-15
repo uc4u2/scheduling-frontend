@@ -28,7 +28,7 @@ export default function WebsiteSuite() {
   const { t } = useTranslation();
   const [tab, setTab] = useState(0);
   const [open, setOpen] = useState(false);
-  const [full, setFull] = useState(false);
+  const [full, setFull] = useState(true);
   const supportSessionId = useMemo(() => {
     try {
       return new URLSearchParams(window.location.search || "").get("support_session");
@@ -79,6 +79,7 @@ export default function WebsiteSuite() {
         value={tab}
         onChange={(_, value) => {
           setTab(value);
+          setFull(true);
           setOpen(true);
         }}
         variant="scrollable"
