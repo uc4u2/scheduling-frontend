@@ -737,7 +737,7 @@ export default function SiteFrame({
         zIndex: 30,
         borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.4)}`,
         backgroundColor: headerConfig.bg || theme.palette.background.paper,
-        color: headerConfig.text || theme.palette.text.primary,
+        color: headerConfig.text_color || theme.palette.text.primary,
       }}
     >
       <Container

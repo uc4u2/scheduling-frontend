@@ -1705,7 +1705,7 @@ const siteTitle = useMemo(() => {
   }, [sitePayload, headerLogoUrl]);
 
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
-  const headerTextColor = headerConfig?.text || themeOverrides?.header?.text || "inherit";
+  const headerTextColor = headerConfig?.text_color || themeOverrides?.header?.text || "inherit";
   const navButtonStyling = useMemo(() => {
     const useReadableText = ["ghost", "underline", "overline", "doubleline", "sideline", "sideline-all", "link", "text"].includes(navStyle?.variant);
     const fallbackText = pickTextColorForBg(headerBg);

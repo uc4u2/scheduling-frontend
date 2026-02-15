@@ -617,7 +617,7 @@ function deslug(value) {
 
 function HeaderPreview({ header, theme, onLogoDragStart, companySlug = "Preview brand" }) {
   const bg = header.bg || theme.header?.background || "#0f172a";
-  const textColor = header.text || theme.header?.text || "#ffffff";
+  const textColor = header.text_color || theme.header?.text || "#ffffff";
   const logoWidth = clampValue(header.logo_width ?? 140, LOGO_WIDTH_MIN, LOGO_WIDTH_MAX);
   const paddingY = clampValue(header.padding_y ?? 20, HEADER_PADDING_MIN, HEADER_PADDING_MAX);
   const alignToFlex = (val) => {
@@ -1197,9 +1197,15 @@ export default function WebsiteBrandingCard({
             onChange={(val) => updateHeader({ bg: val })}
           />
           <ColorTokenInput
+            label="Header text color"
+            value={header.text_color || themeOverrides.header?.text}
+            onChange={(val) => updateHeader({ text_color: val })}
+          />
+          <TextField
             label="Header text"
-            value={header.text || themeOverrides.header?.text}
-            onChange={(val) => updateHeader({ text: val })}
+            size="small"
+            value={header.text || ""}
+            onChange={(e) => updateHeader({ text: e.target.value })}
             helperText="Used for brand headline."
           />
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
