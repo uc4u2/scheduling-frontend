@@ -3,25 +3,28 @@
 Use this as a quick, repeatable checklist when publishing new marketing pages or blog posts.
 
 ## Blog posts
-- Add the post metadata + content in `frontend/src/landing/pages/blog/posts.js`.
+- Add the post metadata + content in `schedulaa-marketing-techwind/src/legacy-content/blog/posts.js`.
 - Ensure each post has: `slug`, `title`, `description`, `datePublished`, `dateModified`, `category`, `tags`, `sections`.
-- If you want a custom layout, create a dedicated page component and keep the listing entry in `posts.js`.
-- Add the new `/blog/<slug>` path to `frontend/config/seoRoutes.js`.
+- If you want a custom layout, create/patch the route in:
+  - `schedulaa-marketing-techwind/src/app/blog/[slug]/page.tsx`
+- Verify both locale paths work:
+  - `/en/blog/<slug>`
+  - `/fa/blog/<slug>`
 
 ## Meta + schema
-- Blog list page JSON-LD is emitted in `frontend/src/landing/pages/BlogPage.js`.
-- Individual BlogPosting JSON-LD is emitted in `frontend/src/landing/pages/blog/BlogPostPage.jsx`.
+- Blog list metadata lives in `schedulaa-marketing-techwind/src/app/blog/page.tsx`.
+- Blog detail metadata lives in `schedulaa-marketing-techwind/src/app/blog/[slug]/page.tsx`.
 - Use accurate, verifiable claims only; avoid marketing promises not backed by product behavior.
 
 ## Sitemap + robots
-- Routes are centralized in `frontend/config/seoRoutes.js`.
-- Rebuild crawl assets by running `npm run generate:seo` or `npm run build` in `frontend/`.
+- Routes are file-based in `schedulaa-marketing-techwind/src/app`.
+- Rebuild crawl assets by running `npm run build` in `schedulaa-marketing-techwind/`.
 
 ## GA4 verification
-- Set `REACT_APP_GA_MEASUREMENT_ID` (or `window.__ENV__.GA_MEASUREMENT_ID`) and redeploy.
+- Set marketing env values in Next (for example `NEXT_PUBLIC_*` variables) and redeploy.
 - Verify realtime events after deploy.
 
 ## Post-deploy checklist
 - Fetch `https://www.schedulaa.com/robots.txt` and `https://www.schedulaa.com/sitemap.xml`.
 - Use Search Console to resubmit the sitemap.
-- Run Rich Results test on `/blog/<slug>` if needed.
+- Run Rich Results test on locale URLs (for example `/en/blog/<slug>`).

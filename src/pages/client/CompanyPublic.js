@@ -846,6 +846,21 @@ export default function CompanyPublic({ slugOverride }) {
   const basePath = slugForHref ? `/${slugForHref}` : "";
   const rootPath = basePath || "/";
   const navigate = useNavigate();
+
+  // Guard against reserved dashboard paths accidentally falling into public slug routing.
+  useEffect(() => {
+    if (slugOverride) return;
+    const lowered = String(slug || "").toLowerCase();
+    if (lowered !== "manager" && lowered !== "employee") return;
+
+    const hasToken = Boolean(localStorage.getItem("token"));
+    const target = lowered === "manager" ? "/manager/dashboard" : "/employee/my-time";
+    if (hasToken) {
+      navigate(target, { replace: true });
+    } else {
+      navigate(`/login?next=${encodeURIComponent(target)}`, { replace: true });
+    }
+  }, [slug, slugOverride, navigate]);
   // Persist slug for later redirects (login → dashboard)
   useEffect(() => {
     if (!slug) return;
@@ -1018,7 +1033,14 @@ export default function CompanyPublic({ slugOverride }) {
         );
         setPages(cleaned);
       } catch {
-        setErr("Failed to load the public website for this company.");
+        const lowered = String(slug || "").toLowerCase();
+        if (lowered === "manager") {
+          setErr("This is a public website URL. For Manager Dashboard, open /manager/dashboard.");
+        } else if (lowered === "employee") {
+          setErr("This is a public website URL. For Employee Dashboard, open /employee/my-time.");
+        } else {
+          setErr("Failed to load the public website for this company.");
+        }
         setCompany(null); setPages([]); setSitePayload(null);
       } finally {
         if (alive) setLoading(false);

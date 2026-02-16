@@ -3,6 +3,11 @@
 This guide explains how Schedulaa handles SEO fields, Open Graph previews, and
 favicons for public sites and custom domains.
 
+Domain split note
+- Marketing/public pages live on `https://www.schedulaa.com` (locale-prefixed paths such as `/en/...`, `/fa/...`).
+- App/auth/dashboard pages live on `https://app.schedulaa.com`.
+- SEO settings in this guide apply to public website pages, not app-auth screens.
+
 What you can control
 - Meta title/description: what search engines show.
 - Open Graph title/description/image: what appears in WhatsApp, Facebook, and other
@@ -39,6 +44,12 @@ Sitemap & robots
 - If your custom domain is verified, those URLs use your custom domain.
 - If your custom domain is not verified yet, they use your schedulaa.com slug URL.
 - Search engines use these files to discover published pages.
+
+Locale examples (marketing)
+- `https://www.schedulaa.com/en`
+- `https://www.schedulaa.com/fa`
+- `https://www.schedulaa.com/en/pricing`
+- `https://www.schedulaa.com/fa/blog`
 
 Google Search Console verification
 - In SEO & Metadata → Advanced settings, paste the Google verification token.
