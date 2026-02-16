@@ -35,6 +35,8 @@ import { useTheme, alpha } from "@mui/material/styles";
 import LanguageSelector from "./components/LanguageSelector";
 import LogoImage from "./logo/logo.png";
 
+const MARKETING_HOME = process.env.REACT_APP_MARKETING_ORIGIN || "https://www.schedulaa.com/en";
+
 const marketingLinks = [
   { label: "Features", translationKey: "nav.features", to: "/features", icon: <AutoAwesomeIcon fontSize="small" /> },
   { label: "Booking", translationKey: "nav.booking", to: "/booking", icon: <EventAvailableIcon fontSize="small" /> },
@@ -241,10 +243,10 @@ const NavBar = ({ token, setToken }) => {
         <Box sx={{ width: 290, p: 2, height: "100%", display: "flex", flexDirection: "column", gap: 2 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Box
-              component={Link}
-              to="/"
+              component="a"
+              href={MARKETING_HOME}
               onClick={toggleMobile}
-              sx={{ display: "inline-flex", alignItems: "center" }}
+              sx={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}
             >
               <Box component="img" src={LogoImage} alt="Schedulaa" sx={logoDrawerImageSx} />
             </Box>
@@ -328,7 +330,7 @@ const NavBar = ({ token, setToken }) => {
       }}
     >
       <Toolbar sx={{ gap: 1, alignItems: "center", overflow: "visible" }}>
-        <Box component={Link} to="/" sx={logoLinkSx}>
+        <Box component="a" href={MARKETING_HOME} sx={{ ...logoLinkSx, textDecoration: "none" }}>
           <Box component="img" src={LogoImage} alt="Schedulaa" sx={logoImageSx} />
         </Box>
 
