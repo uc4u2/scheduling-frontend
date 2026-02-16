@@ -27,7 +27,8 @@ import api, { publicSite } from "./utils/api";
 import MainNav from "./landing/components/MainNav";
 import Footer from "./components/Footer";
 import PublicLayout from "./layouts/PublicLayout";
-import HomePage from "./landing/pages/HomePage";
+import LandingLayout from "./layouts/LandingLayout";
+import LandingPage from "./landing/pages/LandingPage";
 import PricingPage from "./landing/pages/PricingPage";
 import BillingUpgradeController from "./components/billing/BillingUpgradeController";
 import { BillingBannerProvider } from "./components/billing/BillingBannerContext";
@@ -352,6 +353,16 @@ const FeatureGate = ({ feature, children }) => {
   return <>{children}</>;
 };
 
+const RequireAuthRoute = ({ children }) => {
+  const location = useLocation();
+  const hasToken = Boolean(localStorage.getItem("token"));
+  if (!hasToken) {
+    const next = `${location.pathname}${location.search || ""}${location.hash || ""}`;
+    return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />;
+  }
+  return <>{children}</>;
+};
+
 
 const AppContent = ({ token, setToken }) => {
   const hostMode = getTenantHostMode(window.location.host);
@@ -566,65 +577,70 @@ const AppContent = ({ token, setToken }) => {
 
           {/* Marketing site */}
           {!isCustomDomain && (
-            <Route element={<PublicLayout token={token} setToken={setToken} />}>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/compare" element={<CompareHubPage />} />
-          <Route path="/compare/:vendor" element={<ComparisonPage />} />
-          <Route path="/alternatives" element={<AlternativesHubPage />} />
-          <Route path="/alternatives/:vendor" element={<ComparisonPage pageType="alternatives" />} />
-            <Route path="/payroll/gusto" element={<Navigate to="/compare/gusto" replace />} />
-            <Route path="/payroll/adp" element={<Navigate to="/compare/adp" replace />} />
-            <Route path="/features" element={<FeaturePage />} />
-            <Route path="/platform" element={<PlatformPage />} />
-            <Route path="/website-builder" element={<WebsiteBuilderPage />} />
-            <Route path="/workforce" element={<WorkforcePage />} />
-            <Route path="/booking" element={<BookingHubPage />} />
-            <Route path="/booking/salon" element={<SalonBookingPage />} />
-            <Route path="/booking/spa" element={<SpaBookingPage />} />
-            <Route path="/booking/tutor" element={<TutorBookingPage />} />
-            <Route path="/booking/doctor" element={<DoctorBookingPage />} />
-            <Route path="/marketing" element={<MarketingHubPage />} />
-            <Route path="/marketing/email-campaigns" element={<MarketingCampaignsPage />} />
-            <Route path="/marketing/analytics-dashboard" element={<MarketingAnalyticsPage />} />
-            <Route path="/marketing/clients-360" element={<MarketingClientsPage />} />
-            <Route path="/zapier" element={<ZapierPage />} />
-            <Route path="/industries" element={<IndustryDirectoryPage />} />
-            <Route path="/payroll" element={<PayrollOverviewPage />} />
-            <Route path="/payroll/canada" element={<CanadaPayrollPage />} />
-            <Route path="/payroll/usa" element={<USPayrollPage />} />
-            <Route path="/payroll/tools/roe" element={<ROEToolPage />} />
-            <Route path="/payroll/tools/t4" element={<T4ToolPage />} />
-          <Route path="/payroll/tools/w2" element={<W2ToolPage />} />
-          <Route path="/payslips" element={<PayslipPortalPage />} />
-          <Route path="/settings/zapier" element={<Navigate to="/manager/zapier" replace />} />
-          <Route path="/xero/callback" element={<XeroCallback />} />
-            <Route path="/docs" element={<DocsPage />} />
-            <Route path="/resources/staffing-formulas" element={<StaffingFormulasPage />} />
-            <Route path="/webinars/payroll-compliance" element={<PayrollComplianceWebinarPage />} />
-            <Route path="/help/domains" element={<DomainHelpPage />} />
-            <Route path="/help/enterprise-retirement" element={<EnterpriseRetirementHelp />} />
-            <Route path="/blog" element={<BlogPage />} />
-            <Route path="/blog/client-journey" element={<ClientJourneyPage />} />
-            <Route path="/blog/category/:slug" element={<BlogCategoryPage />} />
-            <Route path="/blog/:slug" element={<BlogPostPage />} />
-            <Route path="/status" element={<StatusPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/demo" element={<DemoPage />} />
-            <Route path="/faq" element={<FAQPage />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/user-agreement" element={<UserAgreementPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/cookie" element={<CookiePolicyPage />} />
-            <Route path="/acceptable-use" element={<AcceptableUsePage />} />
-            <Route path="/data-processing" element={<DataProcessingAddendumPage />} />
-            <Route path="/security" element={<SecurityPage />} />
-            <Route path="/legal/support-access-consent" element={<SupportAccessConsentPage />} />
-            </Route>
+            <>
+              <Route element={<LandingLayout />}>
+                <Route path="/" element={<LandingPage />} />
+              </Route>
+              <Route element={<PublicLayout token={token} setToken={setToken} />}>
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/compare" element={<CompareHubPage />} />
+                <Route path="/compare/:vendor" element={<ComparisonPage />} />
+                <Route path="/alternatives" element={<AlternativesHubPage />} />
+                <Route path="/alternatives/:vendor" element={<ComparisonPage pageType="alternatives" />} />
+                <Route path="/payroll/gusto" element={<Navigate to="/compare/gusto" replace />} />
+                <Route path="/payroll/adp" element={<Navigate to="/compare/adp" replace />} />
+                <Route path="/features" element={<FeaturePage />} />
+                <Route path="/platform" element={<PlatformPage />} />
+                <Route path="/website-builder" element={<WebsiteBuilderPage />} />
+                <Route path="/workforce" element={<WorkforcePage />} />
+                <Route path="/booking" element={<BookingHubPage />} />
+                <Route path="/booking/salon" element={<SalonBookingPage />} />
+                <Route path="/booking/spa" element={<SpaBookingPage />} />
+                <Route path="/booking/tutor" element={<TutorBookingPage />} />
+                <Route path="/booking/doctor" element={<DoctorBookingPage />} />
+                <Route path="/marketing" element={<MarketingHubPage />} />
+                <Route path="/marketing/email-campaigns" element={<MarketingCampaignsPage />} />
+                <Route path="/marketing/analytics-dashboard" element={<MarketingAnalyticsPage />} />
+                <Route path="/marketing/clients-360" element={<MarketingClientsPage />} />
+                <Route path="/zapier" element={<ZapierPage />} />
+                <Route path="/industries" element={<IndustryDirectoryPage />} />
+                <Route path="/payroll" element={<PayrollOverviewPage />} />
+                <Route path="/payroll/canada" element={<CanadaPayrollPage />} />
+                <Route path="/payroll/usa" element={<USPayrollPage />} />
+                <Route path="/payroll/tools/roe" element={<ROEToolPage />} />
+                <Route path="/payroll/tools/t4" element={<T4ToolPage />} />
+                <Route path="/payroll/tools/w2" element={<W2ToolPage />} />
+                <Route path="/payslips" element={<PayslipPortalPage />} />
+                <Route path="/settings/zapier" element={<Navigate to="/manager/zapier" replace />} />
+                <Route path="/xero/callback" element={<XeroCallback />} />
+                <Route path="/docs" element={<DocsPage />} />
+                <Route path="/resources/staffing-formulas" element={<StaffingFormulasPage />} />
+                <Route path="/webinars/payroll-compliance" element={<PayrollComplianceWebinarPage />} />
+                <Route path="/help/domains" element={<DomainHelpPage />} />
+                <Route path="/help/enterprise-retirement" element={<EnterpriseRetirementHelp />} />
+                <Route path="/blog" element={<BlogPage />} />
+                <Route path="/blog/client-journey" element={<ClientJourneyPage />} />
+                <Route path="/blog/category/:slug" element={<BlogCategoryPage />} />
+                <Route path="/blog/:slug" element={<BlogPostPage />} />
+                <Route path="/status" element={<StatusPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/demo" element={<DemoPage />} />
+                <Route path="/faq" element={<FAQPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/user-agreement" element={<UserAgreementPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/cookie" element={<CookiePolicyPage />} />
+                <Route path="/acceptable-use" element={<AcceptableUsePage />} />
+                <Route path="/data-processing" element={<DataProcessingAddendumPage />} />
+                <Route path="/security" element={<SecurityPage />} />
+                <Route path="/legal/support-access-consent" element={<SupportAccessConsentPage />} />
+              </Route>
+            </>
           )}
           {/* Auth */}
           <Route path="/login" element={<Login setToken={setToken} />} />
+          <Route path="/signup" element={<Navigate to="/register" replace />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
@@ -702,15 +718,67 @@ const AppContent = ({ token, setToken }) => {
         <Route path="/employee/my-time" element={<RecruiterMyTimePage token={token} />} />
         <Route path="/recruiter/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
         <Route path="/employee/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
-        <Route path="/recruiter/*" element={<RecruiterDashboard token={token} />} />
-        <Route path="/employee/*" element={<RecruiterDashboard token={token} />} />
+        <Route
+          path="/recruiter"
+          element={
+            <RequireAuthRoute>
+              <Navigate to="/recruiter/my-time" replace />
+            </RequireAuthRoute>
+          }
+        />
+        <Route
+          path="/employee"
+          element={
+            <RequireAuthRoute>
+              <Navigate to="/employee/my-time" replace />
+            </RequireAuthRoute>
+          }
+        />
+        <Route
+          path="/recruiter/*"
+          element={
+            <RequireAuthRoute>
+              <RecruiterDashboard token={token} />
+            </RequireAuthRoute>
+          }
+        />
+        <Route
+          path="/employee/*"
+          element={
+            <RequireAuthRoute>
+              <RecruiterDashboard token={token} />
+            </RequireAuthRoute>
+          }
+        />
           <Route path="/recruiter/candidates/:email" element={<RecruiterCandidates token={token} />} />
           <Route path="/employee/candidates/:email" element={<RecruiterCandidates token={token} />} />
           <Route path="/recruiter/candidates" element={<RecruiterCandidates token={token} />} />
           <Route path="/employee/candidates" element={<RecruiterCandidates token={token} />} />
           <Route path="/recruiter-stats/:recruiterId" element={<RecruiterStats token={token} />} />
-          <Route path="/manager/dashboard" element={<ManagerDashboard token={token} />} />
-          <Route path="/manager/:view" element={<ManagerDashboard token={token} />} />
+          <Route
+            path="/manager/dashboard"
+            element={
+              <RequireAuthRoute>
+                <ManagerDashboard token={token} />
+              </RequireAuthRoute>
+            }
+          />
+          <Route
+            path="/manager"
+            element={
+              <RequireAuthRoute>
+                <Navigate to="/manager/dashboard" replace />
+              </RequireAuthRoute>
+            }
+          />
+          <Route
+            path="/manager/:view"
+            element={
+              <RequireAuthRoute>
+                <ManagerDashboard token={token} />
+              </RequireAuthRoute>
+            }
+          />
           <Route path="/manager/support-consent" element={<SupportConsentPage />} />
           <Route path="/manager/onboarding" element={<OnboardingPage />} />
           <Route
