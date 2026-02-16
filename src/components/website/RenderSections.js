@@ -203,6 +203,48 @@ function colorWithOpacity(base, op) {
   return base;
 }
 
+const CTA_STYLE_SELECTORS = [
+  "pricing-logo-cta",
+  "logo-cloud-card-cta",
+  "zig-cta",
+  ".cta",
+];
+
+function normalizeCtaColorToken(prop, value) {
+  if (typeof value !== "string" || !value.includes("var(--page-heading-color")) {
+    return value;
+  }
+  if (prop === "color") {
+    return "var(--page-btn-color, #fff)";
+  }
+  return value.replace(
+    /var\(--page-heading-color[^)]*\)/g,
+    "var(--page-btn-bg, var(--sched-primary))"
+  );
+}
+
+function normalizeSectionSxForButtons(input, inCtaSelector = false) {
+  if (Array.isArray(input)) {
+    return input.map((entry) => normalizeSectionSxForButtons(entry, inCtaSelector));
+  }
+  if (!input || typeof input !== "object") return input;
+
+  const out = {};
+  Object.entries(input).forEach(([key, value]) => {
+    const keyIsSelector =
+      typeof key === "string" &&
+      CTA_STYLE_SELECTORS.some((needle) => key.includes(needle));
+    const nextInCtaSelector = inCtaSelector || keyIsSelector;
+
+    if (nextInCtaSelector && typeof value === "string") {
+      out[key] = normalizeCtaColorToken(key, value);
+      return;
+    }
+    out[key] = normalizeSectionSxForButtons(value, nextInCtaSelector);
+  });
+  return out;
+}
+
 // -----------------------------------------------------------------------------
 // Motion helpers
 // -----------------------------------------------------------------------------
@@ -2042,7 +2084,26 @@ const PricingTable = ({
                   variant={
                     ctaStyle === "pill" || p.featured ? "contained" : "outlined"
                   }
-                  color={p.featured ? "secondary" : "primary"}
+                  sx={
+                    ctaStyle === "pill" || p.featured
+                      ? {
+                          backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
+                          color: "var(--page-btn-color, #fff)",
+                          "&:hover": {
+                            backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
+                            filter: "brightness(0.95)",
+                          },
+                        }
+                      : {
+                          borderColor: "var(--page-btn-bg, var(--sched-primary))",
+                          color: "var(--page-btn-bg, var(--sched-primary))",
+                          "&:hover": {
+                            borderColor: "var(--page-btn-bg, var(--sched-primary))",
+                            color: "var(--page-btn-bg, var(--sched-primary))",
+                            backgroundColor: "rgba(0,0,0,0.03)",
+                          },
+                        }
+                  }
                 >
                   {toPlain(p.ctaText)}
                 </Button>
@@ -2104,10 +2165,11 @@ const PricingTable = ({
                   textAlign: "center",
                   borderRadius: 4,
                   p: 3,
-                  background: "rgba(6,10,22,0.78)",
+                  background: "var(--page-card-bg, rgba(6,10,22,0.78))",
                   border: "1px solid rgba(255,255,255,0.15)",
                   color: "var(--page-heading-color, #f5f7ff)",
-                  boxShadow: "0 30px 60px rgba(5,6,20,0.45)",
+                  boxShadow: "var(--page-card-shadow, 0 30px 60px rgba(5,6,20,0.45))",
+                  backdropFilter: "blur(var(--page-card-blur, 0px))",
                 }}
               >
                 {p.ribbon && (
@@ -2175,7 +2237,15 @@ const PricingTable = ({
                     href={p.ctaLink || "#"}
                     className="pricing-logo-cta"
                     variant="contained"
-                    sx={{ mt: "auto" }}
+                    sx={{
+                      mt: "auto",
+                      backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
+                      color: "var(--page-btn-color, #fff)",
+                      "&:hover": {
+                        backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
+                        filter: "brightness(0.95)",
+                      },
+                    }}
                   >
                     {toPlain(p.ctaText)}
                   </Button>
@@ -2199,7 +2269,7 @@ const PricingTable = ({
                 height: "100%",
                 borderWidth: p.featured ? 2 : 1,
                 borderStyle: "solid",
-                borderColor: p.featured ? "primary.main" : "divider",
+                borderColor: p.featured ? "var(--page-btn-bg, var(--sched-primary))" : "divider",
                 boxShadow: p.featured ? 6 : 1,
               }}
             >
@@ -2207,12 +2277,16 @@ const PricingTable = ({
                 {p.ribbon && (
                   <Chip
                     label={toPlain(p.ribbon)}
-                    color="primary"
                     size="small"
-                    sx={{ mb: 1, fontWeight: 700 }}
+                    sx={{
+                      mb: 1,
+                      fontWeight: 700,
+                      backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
+                      color: "var(--page-btn-color, #fff)",
+                    }}
                   />
                 )}
-                <Typography variant="h6" fontWeight={800}>
+                <Typography variant="h6" fontWeight={800} sx={{ color: "var(--page-heading-color, currentColor)" }}>
                   {toPlain(p.name)}
                 </Typography>
                 <Typography
@@ -2239,6 +2313,26 @@ const PricingTable = ({
                     href={p.ctaLink || "#"}
                     fullWidth
                     variant={p.featured ? "contained" : "outlined"}
+                    sx={
+                      p.featured
+                        ? {
+                            backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
+                            color: "var(--page-btn-color, #fff)",
+                            "&:hover": {
+                              backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
+                              filter: "brightness(0.95)",
+                            },
+                          }
+                        : {
+                            borderColor: "var(--page-btn-bg, var(--sched-primary))",
+                            color: "var(--page-btn-bg, var(--sched-primary))",
+                            "&:hover": {
+                              borderColor: "var(--page-btn-bg, var(--sched-primary))",
+                              color: "var(--page-btn-bg, var(--sched-primary))",
+                              backgroundColor: "rgba(0,0,0,0.03)",
+                            },
+                          }
+                    }
                   >
                     {toPlain(p.ctaText)}
                   </Button>
@@ -2925,8 +3019,9 @@ const normalizeLogoItem = (item) => {
   if (typeof item === "object") {
     const label = item.label ?? item.alt ?? item.name ?? item.title ?? "";
     return {
-      src: item.src || null,
+      src: item.src || item.image || item.logo || item.logoUrl || null,
       label,
+      imageShape: item.imageShape || item.shape || "",
       caption: item.caption ?? item.subtitle ?? "",
       meta: item.meta ?? item.price ?? "",
       description: item.description ?? "",
@@ -2954,6 +3049,7 @@ const LogoCloud = ({
   tabs = [],
   tabsAlign = "center",
   cardRadius = 12,
+  imageShape = "rounded",
 }) => {
   const entries = toArray(logos)
     .map(normalizeLogoItem)
@@ -2974,9 +3070,18 @@ const LogoCloud = ({
     .filter((tab) => tab && tab.label);
 
   const normalizedVariant = typeof variant === "string" ? variant.toLowerCase() : "grid";
+  const normalizedImageShape =
+    typeof imageShape === "string" ? imageShape.toLowerCase() : "rounded";
   const hasEntries = entries.length > 0;
   const resolvedTitleAlign = titleAlign || "left";
   const resolvedSupportingAlign = supportingTextAlign || resolvedTitleAlign;
+  const shapeMetrics = (shape) => {
+    const normalized = typeof shape === "string" ? shape.toLowerCase() : "rounded";
+    if (normalized === "rectangle") return { width: 248, height: 160, radius: 12 };
+    if (normalized === "circle") return { width: 224, height: 224, radius: "50%" };
+    if (normalized === "square") return { width: 224, height: 224, radius: 0 };
+    return { width: 224, height: 224, radius: 18 };
+  };
 
   const renderGrid = () => (
     <Grid container spacing={3} alignItems="center" justifyContent="center">
@@ -3147,8 +3252,53 @@ const LogoCloud = ({
                   fontSize: "1rem",
                   fontWeight: 600,
                 },
+                "& .logo-cloud-card-image-wrap": {
+                  width: "100%",
+                  minHeight: 232,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginInline: "auto",
+                  marginBottom: 4,
+                },
+                "& .logo-cloud-card-image": {
+                  width: 224,
+                  height: 224,
+                  objectFit: "cover",
+                  objectPosition: "center",
+                  display: "block",
+                  borderRadius: 18,
+                  border: "1px solid rgba(203,255,247,0.55)",
+                  background:
+                    "radial-gradient(circle at 30% 20%, rgba(170,255,245,0.38), rgba(255,255,255,0.05))",
+                  boxShadow:
+                    "0 20px 42px rgba(6,10,22,0.38), 0 0 36px rgba(143,255,237,0.42)",
+                },
               }}
             >
+              {item.src && (
+                <Box
+                  className="logo-cloud-card-image-wrap"
+                  sx={{
+                    minHeight:
+                      shapeMetrics(item.imageShape || normalizedImageShape).height + 8,
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={item.src}
+                    alt={toPlain(item.label || item.caption || "")}
+                    loading="lazy"
+                    className="logo-cloud-card-image"
+                    sx={{
+                      width: shapeMetrics(item.imageShape || normalizedImageShape).width,
+                      height: shapeMetrics(item.imageShape || normalizedImageShape).height,
+                      borderRadius:
+                        shapeMetrics(item.imageShape || normalizedImageShape).radius,
+                    }}
+                  />
+                </Box>
+              )}
               {item.label && (
                 <Typography
                   variant="subtitle2"
@@ -5449,9 +5599,10 @@ return (
 
         // NEW: per-section spacing overrides from the builder
         const hasPxPy = Number.isFinite(s?.sx?.py); // we store py in *pixels* in the builder
+        const normalizedSectionSx = normalizeSectionSxForButtons(s.sx || {});
         const perSectionSx = {
           ...sectionBaseSx, // global defaults
-          ...(s.sx || {}),  // any other local sx
+          ...normalizedSectionSx, // local sx (with CTA token safety remap)
           ...(hasPxPy ? { py: `${s.sx.py}px` } : {}), // override paddingY in px if provided
           ...(typeof s?.props?.spaceAbove === "number"
             ? { "& + &": { mt: s.props.spaceAbove } } // per-section gap ABOVE (theme units)

@@ -1,7 +1,6 @@
 // src/components/website/FloatingInspector.js
 import * as React from "react";
 import {
-  Popper,
   Paper,
   Box,
   Typography,
@@ -19,6 +18,8 @@ import VerticalAlignTopIcon from "@mui/icons-material/VerticalAlignTop";
 import VerticalAlignBottomIcon from "@mui/icons-material/VerticalAlignBottom";
 import WestIcon from "@mui/icons-material/West";   // start
 import EastIcon from "@mui/icons-material/East";   // end
+import CloseIcon from "@mui/icons-material/Close";
+import OpenWithIcon from "@mui/icons-material/OpenWith";
 
 import SchemaInspector from "./SchemaInspector"; // your existing inspector
 
@@ -30,6 +31,21 @@ import SchemaInspector from "./SchemaInspector"; // your existing inspector
  */
 export function useFloatingInspector({ mode }) {
   const sectionRefs = React.useRef({}); // index -> DOM node
+  const STORAGE_KEY = "vsb_floating_inspector_offset_v1";
+  const clampSavedOffset = React.useCallback((offset) => {
+    const x = Number(offset?.x);
+    const y = Number(offset?.y);
+    const safeX = Number.isFinite(x) ? x : 0;
+    const safeY = Number.isFinite(y) ? y : 0;
+    if (typeof window === "undefined") return { x: safeX, y: safeY };
+    // Keep restored offsets within a sane envelope of current viewport.
+    const limitX = Math.max(200, window.innerWidth);
+    const limitY = Math.max(200, window.innerHeight);
+    return {
+      x: Math.max(-limitX, Math.min(limitX, safeX)),
+      y: Math.max(-limitY, Math.min(limitY, safeY)),
+    };
+  }, []);
 
   const [inspectorMode, setInspectorMode] = React.useState("dock"); // 'dock' | 'float'
   const [followSelection, setFollowSelection] = React.useState(true);
@@ -37,6 +53,31 @@ export function useFloatingInspector({ mode }) {
     vertical: "bottom", // 'top' | 'bottom'
     horizontal: "start", // 'start' | 'end'
   });
+  const [panelOffset, setPanelOffset] = React.useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { x: 0, y: 0 };
+      const parsed = JSON.parse(raw);
+      return clampSavedOffset(parsed);
+    } catch {
+      return { x: 0, y: 0 };
+    }
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(panelOffset));
+    } catch {
+      // ignore storage errors
+    }
+  }, [panelOffset]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const onResize = () => setPanelOffset((prev) => clampSavedOffset(prev));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [clampSavedOffset]);
 
   const anchorRef = React.useCallback(
     (index) => (el) => {
@@ -60,6 +101,8 @@ export function useFloatingInspector({ mode }) {
     setFollowSelection,
     placement,
     setPlacement,
+    panelOffset,
+    setPanelOffset,
     // anchors
     anchorRef,
     getAnchorEl,
@@ -148,49 +191,150 @@ function PanelInner({
   onChangeProps,
   onChangeProp,
   renderAdvancedEditor,
+  onClose,
 }) {
-  const { getAnchorEl, isFloatingActive, placement, followSelection, setInspectorMode, mode } = fi;
-  const anchorEl = getAnchorEl(selectedIndex);
+  const { isFloatingActive, mode, panelOffset, setPanelOffset } = fi;
+  const dragStateRef = React.useRef(null);
+  const paperRef = React.useRef(null);
 
-  // auto-scroll to selection if enabled
+  const handleDragMove = React.useCallback((event) => {
+    if (!dragStateRef.current) return;
+    const point = event.touches ? event.touches[0] : event;
+    if (!point) return;
+    setPanelOffset({
+      x: dragStateRef.current.baseX + (point.clientX - dragStateRef.current.startX),
+      y: dragStateRef.current.baseY + (point.clientY - dragStateRef.current.startY),
+    });
+    if (event.cancelable) event.preventDefault();
+  }, [setPanelOffset]);
+
+  const stopDrag = React.useCallback(() => {
+    dragStateRef.current = null;
+    window.removeEventListener("mousemove", handleDragMove);
+    window.removeEventListener("mouseup", stopDrag);
+    window.removeEventListener("touchmove", handleDragMove);
+    window.removeEventListener("touchend", stopDrag);
+  }, [handleDragMove]);
+
+  const startDrag = React.useCallback((event) => {
+    const point = event.touches ? event.touches[0] : event;
+    if (!point) return;
+    dragStateRef.current = {
+      startX: point.clientX,
+      startY: point.clientY,
+      baseX: panelOffset?.x || 0,
+      baseY: panelOffset?.y || 0,
+    };
+    window.addEventListener("mousemove", handleDragMove);
+    window.addEventListener("mouseup", stopDrag);
+    window.addEventListener("touchmove", handleDragMove, { passive: false });
+    window.addEventListener("touchend", stopDrag);
+    if (event.cancelable) event.preventDefault();
+  }, [panelOffset?.x, panelOffset?.y, handleDragMove, stopDrag]);
+
+  React.useEffect(() => () => stopDrag(), [stopDrag]);
+
+  // Keep the floating panel reachable even if a saved offset pushes it off-screen.
   React.useEffect(() => {
-    if (!followSelection || !anchorEl) return;
-    try {
-      anchorEl.scrollIntoView({ behavior: "smooth", block: "center" });
-    } catch {}
-  }, [anchorEl, followSelection]);
+    if (!isFloatingActive || selectedIndex < 0) return;
+    const node = paperRef.current;
+    if (!node) return;
+
+    const raf = window.requestAnimationFrame(() => {
+      const rect = node.getBoundingClientRect();
+      const margin = 12;
+      const maxX = window.innerWidth - margin;
+      const maxY = window.innerHeight - margin;
+      let dx = 0;
+      let dy = 0;
+
+      // If the panel is substantially outside viewport, hard reset.
+      const largelyOffscreen =
+        rect.right < margin ||
+        rect.left > window.innerWidth - margin ||
+        rect.bottom < margin ||
+        rect.top > window.innerHeight - margin;
+      if (largelyOffscreen) {
+        setPanelOffset({ x: 0, y: 0 });
+        return;
+      }
+
+      if (rect.left < margin) dx = margin - rect.left;
+      else if (rect.right > maxX) dx = maxX - rect.right;
+
+      if (rect.top < margin) dy = margin - rect.top;
+      else if (rect.bottom > maxY) dy = maxY - rect.bottom;
+
+      if (dx || dy) {
+        setPanelOffset((prev) => ({
+          x: (prev?.x || 0) + dx,
+          y: (prev?.y || 0) + dy,
+        }));
+      }
+    });
+
+    return () => window.cancelAnimationFrame(raf);
+  }, [isFloatingActive, selectedIndex, panelOffset?.x, panelOffset?.y, setPanelOffset]);
 
   if (!isFloatingActive || selectedIndex < 0) return null;
-  if (!anchorEl) return null;
-
-  const popperPlacement = `${placement.vertical}-${placement.horizontal}`;
 
   return (
-    <Popper
-      open
-      anchorEl={anchorEl}
-      placement={popperPlacement}
-      modifiers={[
-        { name: "offset", options: { offset: [0, 12] } },
-        { name: "preventOverflow", options: { boundary: "viewport", tether: true } },
-        { name: "flip", options: { fallbackPlacements: ["bottom", "top", "right", "left"] } },
-      ]}
-      style={{ zIndex: 1300 }}
+    <Box
+      sx={{
+        position: "fixed",
+        top: { xs: 92, md: 140 },
+        left: { xs: 10, md: 24 },
+        zIndex: 1300,
+        pointerEvents: "none",
+      }}
     >
       <ClickAwayListener onClickAway={() => { /* keep open; click away only dismisses if desired */ }}>
-        <Paper elevation={8} sx={{ width: { xs: 320, md: 380 }, maxWidth: "90vw", borderRadius: 2, overflow: "hidden" }}>
+        <Paper
+          ref={paperRef}
+          elevation={8}
+          sx={{
+            width: { xs: 320, md: 380 },
+            maxWidth: "90vw",
+            maxHeight: "80vh",
+            borderRadius: 2,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            transform: `translate(${panelOffset?.x || 0}px, ${panelOffset?.y || 0}px)`,
+            pointerEvents: "auto",
+          }}
+        >
           <Box sx={{ p: 1, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, flex: 1 }}>
               Simple editor — #{selectedIndex + 1}
             </Typography>
-            <Tooltip title="Dock to right">
-              <IconButton size="small" onClick={() => setInspectorMode("dock")}>
-                <PushPinIcon fontSize="small" />
+            <Tooltip title="Move panel">
+              <IconButton
+                size="small"
+                onMouseDown={startDrag}
+                onTouchStart={startDrag}
+                sx={{ cursor: "grab" }}
+              >
+                <OpenWithIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Close">
+              <IconButton size="small" onClick={() => onClose?.()}>
+                <CloseIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Box>
 
-          <Box sx={{ p: 2 }}>
+          <Box
+            sx={{
+              p: 2,
+              overflowY: "auto",
+              overflowX: "hidden",
+              minHeight: 0,
+              flex: 1,
+              overscrollBehavior: "contain",
+            }}
+          >
             {mode === "simple" && schemaForBlock ? (
               <SchemaInspector
                 schema={schemaForBlock}
@@ -206,7 +350,7 @@ function PanelInner({
           </Box>
         </Paper>
       </ClickAwayListener>
-    </Popper>
+    </Box>
   );
 }
 

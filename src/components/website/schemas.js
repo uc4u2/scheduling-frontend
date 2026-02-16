@@ -245,6 +245,7 @@ export const SCHEMA_REGISTRY = {
           { name: "src", type: "image",  label: "Logo image" },
           { name: "alt", type: "text",   label: "Alt text" },
           { name: "label", type: "text", label: "Label (display name)" },
+          { name: "imageShape", type: "select", label: "Image shape", options: ["rounded","circle","square","rectangle"], default: "rounded" },
           { name: "caption", type: "text", label: "Caption (optional)" },
           { name: "meta", type: "text", label: "Meta (price/stat)" },
           { name: "description", type: "text", label: "Description", minRows: 2 },
@@ -269,6 +270,7 @@ export const SCHEMA_REGISTRY = {
       { name: "showLabels", type: "boolean",    label: "Show labels under logos" },
       { name: "monochrome", type: "boolean",    label: "Monochrome (grayscale) logos" },
       { name: "variant", type: "select", label: "Display style", options: ["grid","badges","cards"], default: "grid" },
+      { name: "imageShape", type: "select", label: "Card image shape", options: ["rounded","circle","square","rectangle"], default: "rounded" },
 
       { name: "titleAlign", type: "select",     label: "Title alignment", options: ["left","center","right"], default: "left" },
       { name: "maxWidth",   type: "select",     label: "Max width", labelKey: "manager.visualBuilder.schemas.shared.maxWidth", options: ["xs","sm","md","lg","xl","full"] },

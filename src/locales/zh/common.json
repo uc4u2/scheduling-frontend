@@ -1179,9 +1179,19 @@
           "discoverStory": "Add Discover our story",
           "logoCloud": "Add logo cloud",
           "workshopsCommissions": "Add Workshops & Commissions",
+          "pricingTable": "Add Menu & Pricing",
           "teamGrid": "Add team grid",
           "cta": "Add CTA",
-          "bookingCtaBar": "Add booking CTA bar"
+          "bookingCtaBar": "Add booking CTA bar",
+          "logoCarousel": "Add logo carousel",
+          "serviceGridSmart": "Add smart services",
+          "teamMetrics": "Add team metrics",
+          "cultureValues": "Add culture values",
+          "processSteps": "Add process steps",
+          "stats": "Add stats",
+          "videoGallery": "Add video gallery",
+          "blogList": "Add blog list",
+          "mapEmbed": "Add map"
         },
         "hint": "Select a section to edit (or add a Hero).",
         "types": {

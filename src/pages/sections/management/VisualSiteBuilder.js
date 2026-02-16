@@ -145,6 +145,7 @@ const BLOCK_PREVIEWS = {
   contact: "/block-previews/contact.png",
   contactForm: "/block-previews/contactForm.png",
   cta: "/block-previews/cta.png",
+  pricingTable: "/block-previews/workshopsCommissions.png",
   bookingCtaBar: "/block-previews/bookingCtaBar.png",
   footer: "/block-previews/footer.png",
 };
@@ -1695,12 +1696,6 @@ useEffect(() => {
   }, [editing?.id]);
 
 
-useEffect(() => {
-  if (selectedBlock >= 0) {
-    setInspectorOpen(true);
-  }
-}, [selectedBlock]);
-
 const handleNavDraftChange = useCallback(
   (draft) => {
     if (!draft) return;
@@ -1968,11 +1963,100 @@ const saveNavSettings = useCallback(
   ]
 );
 
-  // Simple / Advanced toggle
-  const [mode, setMode] = useState("simple"); // "simple" | "advanced"
+  // Simple / Advanced toggle (persisted per browser with company fallback key)
+  const simpleModeStorageKey = useMemo(
+    () => `vsb.simpleMode.${companyId || "global"}`,
+    [companyId]
+  );
+  const [modeState, setModeState] = useState(() => {
+    if (typeof window === "undefined") return "simple";
+    try {
+      const stored = localStorage.getItem("vsb.simpleMode");
+      if (stored === "simple" || stored === "advanced") return stored;
+    } catch {
+      // Ignore storage access errors.
+    }
+    return "simple";
+  }); // "simple" | "advanced"
+  const mode = modeState;
+
+  const persistSimpleMode = useCallback(
+    (nextMode) => {
+      if (typeof window === "undefined") return;
+      try {
+        localStorage.setItem("vsb.simpleMode", nextMode);
+        localStorage.setItem(simpleModeStorageKey, nextMode);
+      } catch {
+        // Ignore storage access errors.
+      }
+    },
+    [simpleModeStorageKey]
+  );
+
+  const setMode = useCallback(
+    (nextModeOrUpdater) => {
+      setModeState((prev) => {
+        const nextMode =
+          typeof nextModeOrUpdater === "function"
+            ? nextModeOrUpdater(prev)
+            : nextModeOrUpdater;
+        if (nextMode === "simple" || nextMode === "advanced") {
+          persistSimpleMode(nextMode);
+          return nextMode;
+        }
+        return prev;
+      });
+    },
+    [persistSimpleMode]
+  );
+
+  // When company id resolves later, mirror current choice to scoped key.
+  useEffect(() => {
+    persistSimpleMode(mode);
+  }, [persistSimpleMode, mode]);
 
   // floating inspector controller
   const fi = useFloatingInspector({ mode });
+
+  const sectionCount = safeSections(editing).length;
+  const prevModeRef = useRef(mode);
+
+  // Phase 1 UX simplification:
+  // - Simple mode: always floating quick editor + follow selection
+  // - Advanced mode: docked/left inspector flow
+  // Keep existing internals unchanged to avoid behavioral regressions.
+  useEffect(() => {
+    const modeChanged = prevModeRef.current !== mode;
+    prevModeRef.current = mode;
+
+    if (mode === "simple") {
+      setInspectorOpen(false);
+      if (modeChanged) fi.setPanelOffset({ x: 0, y: 0 });
+      if (fi.inspectorMode !== "float") fi.setInspectorMode("float");
+      if (!fi.followSelection) fi.setFollowSelection(true);
+      // Only auto-select when entering simple mode.
+      if (modeChanged && selectedBlock < 0 && sectionCount) {
+        setSelectedBlock(0);
+      }
+      return;
+    }
+    if (fi.inspectorMode !== "dock") fi.setInspectorMode("dock");
+  }, [
+    mode,
+    selectedBlock,
+    sectionCount,
+    fi.inspectorMode,
+    fi.followSelection,
+    fi.setInspectorMode,
+    fi.setPanelOffset,
+    fi.setFollowSelection,
+  ]);
+
+  useEffect(() => {
+    if (mode !== "simple" && selectedBlock >= 0) {
+      setInspectorOpen(true);
+    }
+  }, [selectedBlock, mode]);
 
   // THEME drawer
   const [themeOpen, setThemeOpen] = useState(false);
@@ -2808,8 +2892,43 @@ const autoProvisionIfEmpty = useCallback(
   const addBlock = (type) => {
     setEditing((cur) => {
       const arr = [...safeSections(cur)];
-      const factory = NEW_BLOCKS[type] || NEW_BLOCKS.text;
-      const created = factory();
+      const makeSchemaDefaults = (schema) => {
+        if (!schema || !Array.isArray(schema.fields)) return {};
+        const buildFieldDefault = (field) => {
+          if (!field || typeof field !== "object") return undefined;
+          if (field.default !== undefined) return field.default;
+          if (field.type === "boolean") return false;
+          if (field.type === "number") return 0;
+          if (field.type === "arrayOfStrings") return [];
+          if (field.type === "objectArray") return [];
+          if (field.type === "imageArray") return [];
+          if (field.type === "arrayOfObjects") return [];
+          if (field.type === "object" && Array.isArray(field.fields)) {
+            const nested = {};
+            for (const child of field.fields) {
+              const childDefault = buildFieldDefault(child);
+              if (childDefault !== undefined) nested[child.name] = childDefault;
+            }
+            return nested;
+          }
+          return "";
+        };
+
+        const defaults = {};
+        for (const field of schema.fields) {
+          const value = buildFieldDefault(field);
+          if (value !== undefined) defaults[field.name] = value;
+        }
+        return defaults;
+      };
+
+      const factory = NEW_BLOCKS[type];
+      const created = factory
+        ? factory()
+        : {
+            type,
+            props: makeSchemaDefaults(SCHEMA_REGISTRY[type]),
+          };
       if (!created.id) created.id = uid();
       arr.push(created);
       return withLiftedLayout({ ...cur, content: { sections: arr } });
@@ -2828,7 +2947,7 @@ const autoProvisionIfEmpty = useCallback(
           flexDirection: "column",
           alignItems: "center",
           gap: 0.75,
-          minWidth: 140,
+          width: "100%",
         }}
       >
         {previewSrc ? (
@@ -2858,12 +2977,46 @@ const autoProvisionIfEmpty = useCallback(
           size="small"
           startIcon={<AddIcon />}
           onClick={() => addBlock(type)}
+          sx={{ justifyContent: "center" }}
         >
           {label}
         </Button>
       </Box>
     );
   };
+
+  const ADD_BLOCK_ORDER = [
+    ["hero", "manager.visualBuilder.sections.add.hero"],
+    ["heroCarousel", "manager.visualBuilder.sections.add.heroCarousel"],
+    ["heroSplit", "manager.visualBuilder.sections.add.heroSplit"],
+    ["richText", "manager.visualBuilder.sections.add.richText"],
+    ["gallery", "manager.visualBuilder.sections.add.gallery"],
+    ["photoGallery", "manager.visualBuilder.sections.add.photoGallery"],
+    ["collectionShowcase", "manager.visualBuilder.sections.add.collectionShowcase"],
+    ["featureZigzagModern", "manager.visualBuilder.sections.add.featureZigzagModern"],
+    ["discoverStory", "manager.visualBuilder.sections.add.discoverStory"],
+    ["logoCloud", "manager.visualBuilder.sections.add.logoCloud"],
+    ["workshopsCommissions", "manager.visualBuilder.sections.add.workshopsCommissions"],
+    ["pricingTable", "manager.visualBuilder.sections.add.pricingTable"],
+    ["galleryCarousel", "manager.visualBuilder.sections.add.carousel"],
+    ["logoCarousel", "manager.visualBuilder.sections.add.logoCarousel"],
+    ["faq", "manager.visualBuilder.sections.add.faq"],
+    ["serviceGrid", "manager.visualBuilder.sections.add.services"],
+    ["serviceGridSmart", "manager.visualBuilder.sections.add.serviceGridSmart"],
+    ["teamGrid", "manager.visualBuilder.sections.add.teamGrid"],
+    ["teamMetrics", "manager.visualBuilder.sections.add.teamMetrics"],
+    ["cultureValues", "manager.visualBuilder.sections.add.cultureValues"],
+    ["processSteps", "manager.visualBuilder.sections.add.processSteps"],
+    ["stats", "manager.visualBuilder.sections.add.stats"],
+    ["videoGallery", "manager.visualBuilder.sections.add.videoGallery"],
+    ["blogList", "manager.visualBuilder.sections.add.blogList"],
+    ["mapEmbed", "manager.visualBuilder.sections.add.mapEmbed"],
+    ["contact", "manager.visualBuilder.sections.add.contact"],
+    ["contactForm", "manager.visualBuilder.sections.add.contactForm"],
+    ["cta", "manager.visualBuilder.sections.add.cta"],
+    ["bookingCtaBar", "manager.visualBuilder.sections.add.bookingCtaBar"],
+    ["footer", "manager.visualBuilder.sections.add.footer"],
+  ];
 
   /* ----- Page meta helpers ----- */
   const updatePageMeta = (patch) => {
@@ -3378,27 +3531,21 @@ const autoProvisionIfEmpty = useCallback(
             />
           }
         />
-
-        <FloatingInspector.Controls fi={fi} />
-
-        <ToggleButtonGroup
-          value={mode}
-          exclusive
-          onChange={(_, v) => {
-            if (!v) return;
-            fi.setInspectorMode(v);
-            fi.setEnabled?.(v !== "dock");
-
-            if (v !== "dock" && selectedBlock < 0 && safeSections(editing).length) {
-              setSelectedBlock(0);
-            }
-          }}
-          size="small"
+        <Tooltip
+          title={t(
+            "manager.visualBuilder.controls.tooltips.simpleModeFloating",
+            "Simple mode: click any section on the canvas to open the floating editor. Drag the editor header to move it. Use X to close, then click a section to reopen."
+          )}
         >
-          <ToggleButton value="dock">{t("manager.visualBuilder.controls.toggles.dock")}</ToggleButton>
-          <ToggleButton value="inline">{t("manager.visualBuilder.controls.toggles.inline")}</ToggleButton>
-          <ToggleButton value="float">{t("manager.visualBuilder.controls.toggles.float")}</ToggleButton>
-        </ToggleButtonGroup>
+          <IconButton size="small" aria-label="Simple mode help">
+            <HelpOutlineIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/*
+          Phase 1: hide dock/inline/float/follow controls from end users.
+          Behavior is now driven by the Simple mode switch above.
+        */}
 
         <FormControlLabel
           sx={{ ml: 1 }}
@@ -3426,6 +3573,9 @@ const autoProvisionIfEmpty = useCallback(
       id="builder-page-seo"
       title={t("manager.visualBuilder.pages.seo.cardTitle", "SEO")}
       description={t("manager.visualBuilder.pages.seo.cardDescription")}
+      onChange={(open) => {
+        if (open && mode === "simple") setSelectedBlock(-1);
+      }}
     >
       <Stack spacing={1.5}>
         <Alert severity="info">
@@ -4058,30 +4208,18 @@ const autoProvisionIfEmpty = useCallback(
           description="Click a preview to see the block, then add it to the page."
           defaultExpanded={false}
         >
-          <Stack direction="row" spacing={1.5} flexWrap="wrap">
-            {renderAddBlockButton("hero", "manager.visualBuilder.sections.add.hero")}
-            {renderAddBlockButton("heroCarousel", "manager.visualBuilder.sections.add.heroCarousel")}
-            {renderAddBlockButton("heroSplit", "manager.visualBuilder.sections.add.heroSplit")}
-            {renderAddBlockButton("text", "manager.visualBuilder.sections.add.text")}
-            {renderAddBlockButton("richText", "manager.visualBuilder.sections.add.richText")}
-            {renderAddBlockButton("gallery", "manager.visualBuilder.sections.add.gallery")}
-            {renderAddBlockButton("photoGallery", "manager.visualBuilder.sections.add.photoGallery")}
-            {renderAddBlockButton("collectionShowcase", "manager.visualBuilder.sections.add.collectionShowcase")}
-            {renderAddBlockButton("featureZigzagModern", "manager.visualBuilder.sections.add.featureZigzagModern")}
-            {renderAddBlockButton("discoverStory", "manager.visualBuilder.sections.add.discoverStory")}
-            {renderAddBlockButton("logoCloud", "manager.visualBuilder.sections.add.logoCloud")}
-            {renderAddBlockButton("workshopsCommissions", "manager.visualBuilder.sections.add.workshopsCommissions")}
-            {renderAddBlockButton("textFree", "manager.visualBuilder.sections.add.textFree")}
-            {renderAddBlockButton("galleryCarousel", "manager.visualBuilder.sections.add.carousel")}
-            {renderAddBlockButton("faq", "manager.visualBuilder.sections.add.faq")}
-            {renderAddBlockButton("serviceGrid", "manager.visualBuilder.sections.add.services")}
-            {renderAddBlockButton("teamGrid", "manager.visualBuilder.sections.add.teamGrid")}
-            {renderAddBlockButton("contact", "manager.visualBuilder.sections.add.contact")}
-            {renderAddBlockButton("contactForm", "manager.visualBuilder.sections.add.contactForm")}
-            {renderAddBlockButton("cta", "manager.visualBuilder.sections.add.cta")}
-            {renderAddBlockButton("bookingCtaBar", "manager.visualBuilder.sections.add.bookingCtaBar")}
-            {renderAddBlockButton("footer", "manager.visualBuilder.sections.add.footer")}
-          </Stack>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(165px, 1fr))",
+              gap: 1.5,
+              alignItems: "start",
+            }}
+          >
+            {ADD_BLOCK_ORDER.map(([type, labelKey]) =>
+              renderAddBlockButton(type, labelKey)
+            )}
+          </Box>
         </CollapsibleSection>
       </CollapsibleSection>
       {SeoSettingsSection}
@@ -4341,6 +4479,7 @@ const CanvasColumn = (
                   return (
                     <React.Fragment key={key}>
                       <Box
+                        ref={fi.anchorRef(idx)}
                         sx={{
                           position: "relative",
                           borderRadius: 2,
@@ -4420,7 +4559,6 @@ const CanvasColumn = (
                             }
                           />
                         </Box>
-
                         <Box
                           title={t(
                             "manager.visualBuilder.canvas.drag.spaceBelow",
@@ -4832,7 +4970,10 @@ function InspectorColumn() {
       title={t("manager.visualBuilder.pageStyle.title")}
       description={t("manager.visualBuilder.pageStyle.description")}
       expanded={pageStyleOpen}
-      onChange={(next) => setPageStyleOpen(next)}
+      onChange={(next) => {
+        setPageStyleOpen(next);
+        if (next && mode === "simple") setSelectedBlock(-1);
+      }}
       defaultExpanded={false}
     >
       <PageStyleCard
@@ -4885,6 +5026,7 @@ function InspectorColumn() {
       />
     </CollapsibleSection>
 
+    {mode !== "simple" && (
     <CollapsibleSection
       id="inspector-block"
       title={t("manager.visualBuilder.inspector.title")}
@@ -5654,6 +5796,7 @@ function InspectorColumn() {
         </>
       )}
     </CollapsibleSection>
+    )}
     </Stack>
   );
 }
@@ -5867,6 +6010,7 @@ if (authError) {
         companyId={companyId}
         onChangeProps={(np) => setBlockPropsAll(selectedBlock, np)}
         onChangeProp={(k, v) => setBlockProp(selectedBlock, k, v)}
+        onClose={() => setSelectedBlock(-1)}
         renderAdvancedEditor={({ block, onChangeProps, onChangeProp }) => (
           <SectionInspector
             block={block}
