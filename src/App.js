@@ -20,7 +20,7 @@ import {
   plumMistTheme,
 } from "./theme";
 
-import { getTenantHostMode } from "./utils/tenant";
+import { getTenantHostMode, normalizeDomain } from "./utils/tenant";
 import api, { publicSite } from "./utils/api";
 
 // Components
@@ -365,8 +365,10 @@ const RequireAuthRoute = ({ children }) => {
 
 
 const AppContent = ({ token, setToken }) => {
+  const normalizedHost = normalizeDomain(window.location.host);
   const hostMode = getTenantHostMode(window.location.host);
   const isCustomDomain = hostMode === "custom";
+  const isAppHost = normalizedHost === "app.schedulaa.com";
   const [tenantSlug, setTenantSlug] = useState(null);
   const [tenantLoaded, setTenantLoaded] = useState(!isCustomDomain);
   const [chatbotConfig, setChatbotConfig] = useState(null);
@@ -487,6 +489,14 @@ const AppContent = ({ token, setToken }) => {
   );
   const showChatBot = !isEmbed && (marketingChatbot || tenantChatbotReady);
   const showAppChrome = !isEmbed && !isCompanyRoute && !isNoChromeRoute;
+  const rootAppRedirect = (() => {
+    if (!isAppHost) return "/";
+    if (!token) return "/login";
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    if (role === "employee" || role === "recruiter") return "/employee/my-time";
+    if (role === "client") return "/dashboard";
+    return "/manager/dashboard";
+  })();
 
   const content = (
     <BillingBannerProvider>
@@ -579,7 +589,10 @@ const AppContent = ({ token, setToken }) => {
           {!isCustomDomain && (
             <>
               <Route element={<LandingLayout />}>
-                <Route path="/" element={<LandingPage />} />
+                <Route
+                  path="/"
+                  element={isAppHost ? <Navigate to={rootAppRedirect} replace /> : <LandingPage />}
+                />
               </Route>
               <Route element={<PublicLayout token={token} setToken={setToken} />}>
                 <Route path="/pricing" element={<PricingPage />} />
