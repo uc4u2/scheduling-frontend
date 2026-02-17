@@ -35,7 +35,20 @@ import { useTheme, alpha } from "@mui/material/styles";
 import LanguageSelector from "./components/LanguageSelector";
 import LogoImage from "./logo/logo.png";
 
-const MARKETING_HOME = process.env.REACT_APP_MARKETING_ORIGIN || "https://www.schedulaa.com/en";
+const DEFAULT_MARKETING_HOME = "https://www.schedulaa.com/en";
+
+const resolveMarketingHome = () => {
+  if (process.env.REACT_APP_MARKETING_ORIGIN) {
+    return process.env.REACT_APP_MARKETING_ORIGIN;
+  }
+  if (typeof window !== "undefined") {
+    const host = (window.location.hostname || "").toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1") {
+      return `${window.location.protocol}//${host}:3001/en`;
+    }
+  }
+  return DEFAULT_MARKETING_HOME;
+};
 
 const marketingLinks = [
   { label: "Features", translationKey: "nav.features", to: "/features", icon: <AutoAwesomeIcon fontSize="small" /> },
@@ -72,6 +85,7 @@ const NavBar = ({ token, setToken }) => {
   const location = useLocation();
   const theme = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const marketingHome = resolveMarketingHome();
 
   const isLoggedIn = Boolean(token);
   const translateNav = (key, fallback) => {
@@ -244,7 +258,7 @@ const NavBar = ({ token, setToken }) => {
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Box
               component="a"
-              href={MARKETING_HOME}
+              href={marketingHome}
               onClick={toggleMobile}
               sx={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}
             >
@@ -330,7 +344,7 @@ const NavBar = ({ token, setToken }) => {
       }}
     >
       <Toolbar sx={{ gap: 1, alignItems: "center", overflow: "visible" }}>
-        <Box component="a" href={MARKETING_HOME} sx={{ ...logoLinkSx, textDecoration: "none" }}>
+        <Box component="a" href={marketingHome} sx={{ ...logoLinkSx, textDecoration: "none" }}>
           <Box component="img" src={LogoImage} alt="Schedulaa" sx={logoImageSx} />
         </Box>
 
