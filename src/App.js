@@ -200,7 +200,7 @@ import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 import SupportConsentPage from "./pages/sections/management/SupportConsentPage";
 
 export const ThemeModeContext = createContext({
-  themeName: "sunset",
+  themeName: "cool",
   setThemeName: () => {},
 });
 
@@ -881,7 +881,7 @@ const AppContent = ({ token, setToken }) => {
 
 const App = () => {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
-  const [themeName, setThemeName] = useState(() => localStorage.getItem("theme") || "sunset");
+  const [themeName, setThemeName] = useState(() => localStorage.getItem("theme") || "cool");
 
   const tenantHostMode = useMemo(() => getTenantHostMode(), []);
   // TODO: custom domain routing (swap route tree when tenantHostMode === "custom")
