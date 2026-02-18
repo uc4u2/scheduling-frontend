@@ -36,6 +36,7 @@ const SettingsBillingSubscription = () => {
   const seatAddon = Number(status?.seats_addon_qty || 0);
   const activeStaff = Number(status?.active_staff_count || 0);
   const [syncState, setSyncState] = useState({ loading: false, error: "", message: "" });
+  const [portalError, setPortalError] = useState("");
   const [modeMismatchDismissed, setModeMismatchDismissed] = useState(false);
 
   const handleAddSeats = () => {
@@ -48,6 +49,20 @@ const SettingsBillingSubscription = () => {
         },
       })
     );
+  };
+
+  const handleManageBilling = async () => {
+    setPortalError("");
+    try {
+      await openBillingPortal();
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Unable to open billing portal.";
+      setPortalError(message);
+    }
   };
 
   const handleSync = async () => {
@@ -78,7 +93,7 @@ const SettingsBillingSubscription = () => {
         subtitle={t("billing.subtitle")}
         actions={
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button size="small" variant="outlined" onClick={() => (window.location.href = BILLING_SETTINGS_URL)}>
+            <Button size="small" variant="outlined" onClick={handleManageBilling}>
               {t("billing.actions.manageBilling")}
             </Button>
             <Button size="small" variant="outlined" onClick={() => (window.location.href = MARKETING_PRICING_URL)}>
@@ -120,6 +135,7 @@ const SettingsBillingSubscription = () => {
             {status.seats_overage && <Alert severity="info">{t("billing.seatsOverage")}</Alert>}
             {syncState.message && <Alert severity="success">{syncState.message}</Alert>}
             {syncState.error && <Alert severity="error">{syncState.error}</Alert>}
+            {portalError && <Alert severity="error">{portalError}</Alert>}
             <Stack direction="row" spacing={3} flexWrap="wrap">
               <Typography variant="body2">
                 <strong>{t("billing.labels.plan")}:</strong> {planLabel(status.plan_key, t)}
@@ -186,7 +202,7 @@ const SettingsBillingSubscription = () => {
                   {t("billing.actions.viewLastInvoice")}
                 </Button>
               )}
-              <Button size="small" variant="text" onClick={() => openBillingPortal()}>
+              <Button size="small" variant="text" onClick={handleManageBilling}>
                 {t("billing.actions.cancelSubscription")}
               </Button>
             </Stack>
