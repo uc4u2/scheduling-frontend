@@ -10,12 +10,14 @@ import {
   Stack,
   FormControlLabel,
   Checkbox,
+  CircularProgress,
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import TimezoneSelect from "./components/TimezoneSelect";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api, publicSite } from "./utils/api";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
+import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
 
 const ROLE_OPTIONS = [
   {
@@ -63,7 +65,7 @@ const getRoleMeta = (value) =>
 const Login = ({ setToken }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const hasSession = Boolean(localStorage.getItem("token"));
+  const [authChecking, setAuthChecking] = useState(true);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -85,21 +87,41 @@ const Login = ({ setToken }) => {
   const planParam = (qs.get("plan") || "").toLowerCase();
   const intervalParam = (qs.get("interval") || "").toLowerCase();
   const returnToParam = (qs.get("returnTo") || "").trim();
-  const tabParam = (qs.get("tab") || "").toLowerCase();
 
   useEffect(() => {
-    if (!hasSession) return;
-    if (tabParam === "billing" || planParam) {
-      const billingParams = new URLSearchParams();
-      billingParams.set("tab", "billing");
-      if (planParam) billingParams.set("plan", planParam);
-      if (intervalParam) billingParams.set("interval", intervalParam);
-      if (returnToParam) billingParams.set("returnTo", returnToParam);
-      navigate(`/manager/settings?${billingParams.toString()}`, { replace: true });
-      return;
+    let active = true;
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setAuthChecking(false);
+      return () => {
+        active = false;
+      };
     }
-    navigate("/manager/dashboard", { replace: true });
-  }, [hasSession, intervalParam, navigate, planParam, returnToParam, tabParam]);
+
+    (async () => {
+      const user = await getSessionUser();
+      if (!active) return;
+
+      if (!user) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        if (typeof setToken === "function") setToken("");
+        setAuthChecking(false);
+        return;
+      }
+
+      const redirectTarget = getAuthRedirectTarget({
+        user,
+        searchParams: new URLSearchParams(location.search),
+      });
+      navigate(redirectTarget, { replace: true });
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [location.search, navigate, setToken]);
 
   // Persist site from query once present
   useEffect(() => {
@@ -343,7 +365,21 @@ const Login = ({ setToken }) => {
     };
   }, [resendCooldown]);
 
-  if (hasSession) return null;
+  if (authChecking) {
+    return (
+      <AuthCardShell
+        title="Welcome back to Schedulaa"
+        subtitle="Checking your session..."
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
+          <CircularProgress size={22} />
+          <Typography variant="body2" color="text.secondary">
+            Redirecting to your workspace
+          </Typography>
+        </Stack>
+      </AuthCardShell>
+    );
+  }
 
   return (
     <AuthCardShell

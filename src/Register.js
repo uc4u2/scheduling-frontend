@@ -12,6 +12,7 @@ import {
   FormControlLabel,
   Checkbox,
   Link as MuiLink,
+  CircularProgress,
 } from "@mui/material";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -19,6 +20,7 @@ import PasswordField from "./PasswordField";
 import api from "./utils/api";
 import TimezoneSelect from "./components/TimezoneSelect";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
+import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
 
 const ROLE_OPTIONS = [
   {
@@ -54,12 +56,12 @@ const Register = () => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("");
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const hasSession = Boolean(localStorage.getItem("token"));
   const passwordChecklist = useMemo(
     () => [
       { label: "At least 8 characters", pass: password.length >= 8 },
@@ -120,17 +122,35 @@ const Register = () => {
   };
 
   React.useEffect(() => {
-    if (!hasSession) return;
-    const redirectParams = new URLSearchParams();
-    redirectParams.set("tab", "billing");
-    const plan = (searchParams.get("plan") || "").toLowerCase();
-    const interval = (searchParams.get("interval") || "").toLowerCase();
-    const returnTo = (searchParams.get("returnTo") || "").trim();
-    if (plan) redirectParams.set("plan", plan);
-    if (interval) redirectParams.set("interval", interval);
-    if (returnTo) redirectParams.set("returnTo", returnTo);
-    navigate(`/manager/settings?${redirectParams.toString()}`, { replace: true });
-  }, [hasSession, navigate, searchParams]);
+    let active = true;
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setAuthChecking(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    (async () => {
+      const user = await getSessionUser();
+      if (!active) return;
+
+      if (!user) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        setAuthChecking(false);
+        return;
+      }
+
+      const redirectTarget = getAuthRedirectTarget({ user, searchParams });
+      navigate(redirectTarget, { replace: true });
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [navigate, searchParams]);
 
   React.useEffect(() => {
     const planParam = (searchParams.get("plan") || "").toLowerCase();
@@ -142,7 +162,21 @@ const Register = () => {
     }
   }, [searchParams]);
 
-  if (hasSession) return null;
+  if (authChecking) {
+    return (
+      <AuthCardShell
+        title="Create your account"
+        subtitle="Checking your session..."
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
+          <CircularProgress size={22} />
+          <Typography variant="body2" color="text.secondary">
+            Redirecting to your workspace
+          </Typography>
+        </Stack>
+      </AuthCardShell>
+    );
+  }
 
   return (
     <AuthCardShell
