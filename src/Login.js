@@ -89,12 +89,17 @@ const Login = ({ setToken }) => {
 
   useEffect(() => {
     if (!hasSession) return;
-    if (tabParam === "billing") {
-      navigate("/manager/settings?tab=billing", { replace: true });
+    if (tabParam === "billing" || planParam) {
+      const billingParams = new URLSearchParams();
+      billingParams.set("tab", "billing");
+      if (planParam) billingParams.set("plan", planParam);
+      if (intervalParam) billingParams.set("interval", intervalParam);
+      if (returnToParam) billingParams.set("returnTo", returnToParam);
+      navigate(`/manager/settings?${billingParams.toString()}`, { replace: true });
       return;
     }
     navigate("/manager/dashboard", { replace: true });
-  }, [hasSession, navigate, tabParam]);
+  }, [hasSession, intervalParam, navigate, planParam, returnToParam, tabParam]);
 
   // Persist site from query once present
   useEffect(() => {
