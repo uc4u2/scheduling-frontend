@@ -30,6 +30,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import TaxHelpGuide from "./TaxHelpGuide";
 import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
+import { buildMarketingUrl } from "../../config/origins";
 
 const MODE_LABEL_KEY = {
   offline: "settings.stripeHub.checkout.mode.offline",
@@ -653,7 +654,7 @@ export default function SettingsStripeHub() {
               variant="contained"
               onClick={() => {
                 if (typeof window !== "undefined") {
-                  window.location.href = "https://www.schedulaa.com/en/pricing?from=app";
+                  window.location.href = `${buildMarketingUrl("/en/pricing")}?from=app`;
                 }
               }}
             >

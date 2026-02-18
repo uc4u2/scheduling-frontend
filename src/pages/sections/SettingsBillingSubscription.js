@@ -6,6 +6,7 @@ import useBillingStatus from "../../components/billing/useBillingStatus";
 import { openBillingPortal } from "../../components/billing/billingHelpers";
 import api from "../../utils/api";
 import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
+import { buildMarketingUrl } from "../../config/origins";
 
 const planLabel = (key, t) => {
   const map = {
@@ -27,7 +28,7 @@ const formatDate = (value, t) => {
 
 const SettingsBillingSubscription = () => {
   const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
-  const MARKETING_PRICING_URL = "https://www.schedulaa.com/en/pricing?from=app";
+  const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const { t } = useTranslation();
   const { status, loading, error } = useBillingStatus();
   const seatAllowed = Number(status?.seats_allowed || 0);

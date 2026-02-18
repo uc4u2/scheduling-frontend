@@ -21,6 +21,7 @@ import api from "./utils/api";
 import TimezoneSelect from "./components/TimezoneSelect";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
 import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
+import { buildMarketingUrl } from "./config/origins";
 
 const ROLE_OPTIONS = [
   {
@@ -374,6 +375,11 @@ const Register = () => {
                   sx={{ fontWeight: 600 }}
                 >
                   Log in
+                </MuiLink>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
+                  Back to website
                 </MuiLink>
               </Typography>
             </Stack>

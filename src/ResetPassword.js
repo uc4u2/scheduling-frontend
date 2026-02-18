@@ -4,11 +4,14 @@ import {
   Alert,
   Box,
   Stack,
+  Typography,
+  Link as MuiLink,
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "./utils/api";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
+import { buildMarketingUrl } from "./config/origins";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -149,6 +152,11 @@ const ResetPassword = () => {
             {isTempReset ? "Set Password" : "Reset Password"}
           </Button>
         </Box>
+        <Typography variant="body2" color="text.secondary" textAlign="center">
+          <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
+            Back to website
+          </MuiLink>
+        </Typography>
         </Stack>
       </form>
     </AuthCardShell>

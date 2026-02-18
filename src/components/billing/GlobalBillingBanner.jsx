@@ -4,6 +4,7 @@ import { useTheme } from "@mui/material/styles";
 import useBillingStatus from "./useBillingStatus";
 import { useBillingBanner } from "./BillingBannerContext";
 import api from "../../utils/api";
+import { buildMarketingUrl } from "../../config/origins";
 
 const planLabel = (key) => {
   const map = { starter: "Starter", pro: "Pro", business: "Business" };
@@ -12,7 +13,7 @@ const planLabel = (key) => {
 
 const GlobalBillingBanner = () => {
   const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
-  const MARKETING_PRICING_URL = "https://www.schedulaa.com/en/pricing?from=app";
+  const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const theme = useTheme();
   const hideOnSmallScreens = useMediaQuery(theme.breakpoints.down("md"));
   const { status } = useBillingStatus();

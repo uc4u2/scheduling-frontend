@@ -46,34 +46,35 @@ import { useTranslation } from "react-i18next";
 import { useTheme, alpha } from "@mui/material/styles";
 import LanguageSelector from "../../components/LanguageSelector";
 import LogoImage from "../../logo/logo.png";
+import { buildMarketingUrl } from "../../config/origins";
 
 const productLeftLinks = [
-  { label: "Features", to: "/features", desc: "See everything included", icon: <AutoAwesomeIcon fontSize="small" /> },
-  { label: "Workforce", to: "/workforce", desc: "Staff, scheduling, availability", icon: <GroupsIcon fontSize="small" /> },
-  { label: "Booking", to: "/booking", desc: "Online booking flows & calendars", icon: <EventAvailableIcon fontSize="small" /> },
-  { label: "Marketing", to: "/marketing", desc: "Campaigns, analytics, clients", icon: <CampaignIcon fontSize="small" /> },
-  { label: "Payroll", to: "/payroll", desc: "Exports & payroll workflows", icon: <PaymentsOutlinedIcon fontSize="small" /> },
-  { label: "Website Builder", to: "/website-builder", desc: "Branded site + custom domain", icon: <LanguageIcon fontSize="small" /> },
+  { label: "Features", href: buildMarketingUrl("/en/features"), desc: "See everything included", icon: <AutoAwesomeIcon fontSize="small" /> },
+  { label: "Workforce", href: buildMarketingUrl("/en/workforce"), desc: "Staff, scheduling, availability", icon: <GroupsIcon fontSize="small" /> },
+  { label: "Booking", href: buildMarketingUrl("/en/booking"), desc: "Online booking flows & calendars", icon: <EventAvailableIcon fontSize="small" /> },
+  { label: "Marketing", href: buildMarketingUrl("/en/marketing"), desc: "Campaigns, analytics, clients", icon: <CampaignIcon fontSize="small" /> },
+  { label: "Payroll", href: buildMarketingUrl("/en/payroll"), desc: "Exports & payroll workflows", icon: <PaymentsOutlinedIcon fontSize="small" /> },
+  { label: "Website Builder", href: buildMarketingUrl("/en/website-builder"), desc: "Branded site + custom domain", icon: <LanguageIcon fontSize="small" /> },
 ];
 
 const productRightLinks = [
-  { label: "Industries", to: "/industries", icon: <BusinessIcon fontSize="small" /> },
-  { label: "Status", to: "/status", icon: <SignalCellularAltIcon fontSize="small" /> },
+  { label: "Industries", href: buildMarketingUrl("/en/industries"), icon: <BusinessIcon fontSize="small" /> },
+  { label: "Status", href: buildMarketingUrl("/en/status"), icon: <SignalCellularAltIcon fontSize="small" /> },
   { label: "Roadmap", href: "mailto:admin@schedulaa.com", icon: <MailOutlineIcon fontSize="small" /> },
 ];
 
 const resourceLeftLinks = [
-  { label: "Blog", to: "/blog", desc: "Updates and guides", icon: <ArticleOutlinedIcon fontSize="small" /> },
-  { label: "Demo / Test Drive", to: "/demo", desc: "Try the product quickly", icon: <PlayCircleOutlineIcon fontSize="small" /> },
-  { label: "FAQ", to: "/faq", desc: "Common questions", icon: <HelpOutlineIcon fontSize="small" /> },
-  { label: "Help Center", to: "/client/support", desc: "Support for clients & teams", icon: <SupportAgentIcon fontSize="small" /> },
-  { label: "Documentation", to: "/docs", desc: "Developer & product docs", icon: <DescriptionOutlinedIcon fontSize="small" /> },
+  { label: "Blog", href: buildMarketingUrl("/en/blog"), desc: "Updates and guides", icon: <ArticleOutlinedIcon fontSize="small" /> },
+  { label: "Demo / Test Drive", href: buildMarketingUrl("/en/demo"), desc: "Try the product quickly", icon: <PlayCircleOutlineIcon fontSize="small" /> },
+  { label: "FAQ", href: buildMarketingUrl("/en/faq"), desc: "Common questions", icon: <HelpOutlineIcon fontSize="small" /> },
+  { label: "Help Center", href: buildMarketingUrl("/en/client/support"), desc: "Support for clients & teams", icon: <SupportAgentIcon fontSize="small" /> },
+  { label: "Documentation", href: buildMarketingUrl("/en/docs"), desc: "Developer & product docs", icon: <DescriptionOutlinedIcon fontSize="small" /> },
 ];
 
 const resourceRightLinks = [
-  { label: "Zapier automation", to: "/settings/zapier", icon: <BoltIcon fontSize="small" /> },
-  { label: "QuickBooks onboarding", to: "/docs?topic=quickbooks-onboarding", icon: <AccountBalanceIcon fontSize="small" /> },
-  { label: "Xero onboarding", to: "/docs?topic=xero-onboarding", icon: <AssessmentIcon fontSize="small" /> },
+  { label: "Zapier automation", href: buildMarketingUrl("/en/zapier"), icon: <BoltIcon fontSize="small" /> },
+  { label: "QuickBooks onboarding", href: buildMarketingUrl("/en/docs?topic=quickbooks-onboarding"), icon: <AccountBalanceIcon fontSize="small" /> },
+  { label: "Xero onboarding", href: buildMarketingUrl("/en/docs?topic=xero-onboarding"), icon: <AssessmentIcon fontSize="small" /> },
 ];
 
 const loggedInLinks = [
@@ -305,9 +306,8 @@ const MainNav = ({ token, setToken }) => {
   const MegaMenuPopover = ({ open, anchorEl, onClose, leftItems, rightItems, leftTitle, rightTitle, onMenuEnter, onMenuLeave, paperRef }) => {
     const renderRichItem = (link) => (
       <Button
-        key={link.to || link.href}
-        component={link.to ? Link : "a"}
-        to={link.to}
+        key={link.href}
+        component="a"
         href={link.href}
         onClick={onClose}
         sx={richRowSx}
@@ -326,9 +326,8 @@ const MainNav = ({ token, setToken }) => {
 
     const renderSimpleItem = (link) => (
       <Button
-        key={link.to || link.href}
-        component={link.to ? Link : "a"}
-        to={link.to}
+        key={link.href}
+        component="a"
         href={link.href}
         onClick={onClose}
         sx={simpleRowSx}
@@ -427,10 +426,10 @@ const MainNav = ({ token, setToken }) => {
       />
 
       <Button
-        component={Link}
-        to="/pricing"
+        component="a"
+        href={buildMarketingUrl("/en/pricing")}
         startIcon={<MonetizationOnIcon fontSize="small" />}
-        sx={marketingButtonSx(isActive("/pricing"))}
+        sx={marketingButtonSx(false)}
       >
         {t("landing.nav.pricing")}
       </Button>
@@ -525,7 +524,7 @@ const MainNav = ({ token, setToken }) => {
           ...productMobileLinks,
           { label: t("landing.nav.resources"), header: true },
           ...resourceMobileLinks,
-          { label: t("landing.nav.pricing"), to: "/pricing" },
+          { label: t("landing.nav.pricing"), href: buildMarketingUrl("/en/pricing") },
           ...loggedOutLinks,
         ];
 
@@ -533,7 +532,7 @@ const MainNav = ({ token, setToken }) => {
       <Drawer anchor="right" open={mobileOpen} onClose={toggleMobile}>
         <Box sx={{ width: 280, p: 2, height: "100%", display: "flex", flexDirection: "column", gap: 2 }} role="presentation">
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6" component={Link} to="/" sx={{ textDecoration: "none", color: "inherit" }} onClick={toggleMobile}>
+            <Typography variant="h6" component="a" href={buildMarketingUrl("/en")} sx={{ textDecoration: "none", color: "inherit" }} onClick={toggleMobile}>
               Schedulaa
             </Typography>
             <IconButton onClick={toggleMobile}>
@@ -634,8 +633,8 @@ const MainNav = ({ token, setToken }) => {
       <Toolbar sx={{ gap: 1, alignItems: "center", overflow: "visible", py: 0, minHeight: 56 }}>
         <Box sx={{ display: "flex", alignItems: "center" }}>
           <Box
-            component={Link}
-            to="/"
+            component="a"
+            href={buildMarketingUrl("/en")}
             sx={logoLinkSx}
           >
             <Box

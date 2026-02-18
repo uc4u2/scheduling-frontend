@@ -1,6 +1,7 @@
 import React from "react";
 import { Dialog, DialogActions, DialogContent, DialogTitle, Button, Stack, Typography } from "@mui/material";
 import { openBillingPortal } from "./billingHelpers";
+import { buildMarketingUrl } from "../../config/origins";
 
 const PLAN_LABELS = {
   pro: "Pro",
@@ -9,7 +10,7 @@ const PLAN_LABELS = {
 
 const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) => {
   const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
-  const MARKETING_PRICING_URL = "https://www.schedulaa.com/en/pricing?from=app";
+  const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const planLabel = PLAN_LABELS[requiredPlan] || "Pro";
   const detail = message || `This feature requires the ${planLabel} plan.`;
 

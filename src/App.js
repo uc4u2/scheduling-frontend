@@ -197,13 +197,14 @@ import DomainHelpPage from "./landing/pages/help/DomainHelpPage";
 import EnterpriseRetirementHelp from "./pages/help/EnterpriseRetirementHelp";
 import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 import SupportConsentPage from "./pages/sections/management/SupportConsentPage";
+import { buildMarketingUrl } from "./config/origins";
 
 export const ThemeModeContext = createContext({
   themeName: "cool",
   setThemeName: () => {},
 });
 
-const APP_MARKETING_PRICING_URL = "https://www.schedulaa.com/en/pricing?from=app";
+const APP_MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
 
 const ExternalRedirect = ({ to }) => {
   useEffect(() => {
@@ -394,13 +395,20 @@ const AppContent = ({ token, setToken }) => {
   const isDocumentRequestRoute = Boolean(matchPath({ path: "/document-request/:token" }, location.pathname));
   const isMeetRoute = Boolean(matchPath({ path: "/:slug/meet/:token" }, location.pathname));
   const isKioskRoute = Boolean(matchPath({ path: "/kiosk/*" }, location.pathname));
+  const isAuthRoute = Boolean(
+    matchPath({ path: "/login" }, location.pathname) ||
+      matchPath({ path: "/register" }, location.pathname) ||
+      matchPath({ path: "/reset-password" }, location.pathname) ||
+      matchPath({ path: "/reset-password/*" }, location.pathname)
+  );
   const isNoChromeRoute =
     isApplyRoute ||
     isPublicJobsRoute ||
     isCandidatePortalRoute ||
     isDocumentRequestRoute ||
     isMeetRoute ||
-    isKioskRoute;
+    isKioskRoute ||
+    isAuthRoute;
   const slugMatch = matchPath({ path: '/:slug/*' }, location.pathname) || matchPath({ path: '/:slug' }, location.pathname);
   const slugCandidate = isMarketingRoute ? null : slugMatch?.params?.slug?.toLowerCase();
   const isCompanyRoute = Boolean(

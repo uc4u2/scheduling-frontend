@@ -11,6 +11,7 @@ import {
   FormControlLabel,
   Checkbox,
   CircularProgress,
+  Link as MuiLink,
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import TimezoneSelect from "./components/TimezoneSelect";
@@ -18,6 +19,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { api, publicSite } from "./utils/api";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
 import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
+import { buildMarketingUrl } from "./config/origins";
 
 const ROLE_OPTIONS = [
   {
@@ -534,6 +536,11 @@ const Login = ({ setToken }) => {
               </Stack>
             </Box>
           )}
+          <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mt: 2.5 }}>
+            <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
+              Back to website
+            </MuiLink>
+          </Typography>
     </AuthCardShell>
   );
 };
