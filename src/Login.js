@@ -1,7 +1,6 @@
 // src/Login.js
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Container,
   Typography,
   TextField,
   MenuItem,
@@ -16,6 +15,7 @@ import PasswordField from "./PasswordField";
 import TimezoneSelect from "./components/TimezoneSelect";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api, publicSite } from "./utils/api";
+import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
 
 const ROLE_OPTIONS = [
   {
@@ -63,6 +63,7 @@ const getRoleMeta = (value) =>
 const Login = ({ setToken }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const hasSession = Boolean(localStorage.getItem("token"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,6 +83,18 @@ const Login = ({ setToken }) => {
   const nextParam = qs.get("next") || "";
   const siteParam = qs.get("site") || "";
   const planParam = (qs.get("plan") || "").toLowerCase();
+  const intervalParam = (qs.get("interval") || "").toLowerCase();
+  const returnToParam = (qs.get("returnTo") || "").trim();
+  const tabParam = (qs.get("tab") || "").toLowerCase();
+
+  useEffect(() => {
+    if (!hasSession) return;
+    if (tabParam === "billing") {
+      navigate("/manager/settings?tab=billing", { replace: true });
+      return;
+    }
+    navigate("/manager/dashboard", { replace: true });
+  }, [hasSession, navigate, tabParam]);
 
   // Persist site from query once present
   useEffect(() => {
@@ -325,35 +338,13 @@ const Login = ({ setToken }) => {
     };
   }, [resendCooldown]);
 
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        py: { xs: 8, md: 12 },
-        px: 2,
-        background: "linear-gradient(135deg, rgba(255,112,51,0.08) 0%, rgba(56,189,248,0.08) 100%)",
-      }}
-    >
-      <Container maxWidth="sm">
-        <Box
-          sx={{
-            p: { xs: 3, md: 4 },
-            borderRadius: 3,
-            boxShadow: "0 4px 20px rgba(15, 23, 42, 0.05)",
-            bgcolor: "background.paper",
-          }}
-        >
-          <Box sx={{ height: 4, width: "100%", bgcolor: "#FF7033", borderRadius: 1, mb: 3 }} />
+  if (hasSession) return null;
 
-          <Typography component="h1" variant="h4" fontWeight="bold" gutterBottom>
-            Welcome Back to Schedulaa
-          </Typography>
-          
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Select your role to log into the right dashboard.
-          </Typography>
+  return (
+    <AuthCardShell
+      title="Welcome back to Schedulaa"
+      subtitle="Sign in to manage bookings, staffing, payroll, and operations from one workspace."
+    >
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -372,6 +363,7 @@ const Login = ({ setToken }) => {
                 <TextField
                   label="Email"
                   type="email"
+                  sx={authInputSx}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   fullWidth
@@ -383,6 +375,7 @@ const Login = ({ setToken }) => {
 
                 <PasswordField
                   label="Password"
+                  sx={authInputSx}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   fullWidth
@@ -412,6 +405,7 @@ const Login = ({ setToken }) => {
                 <TextField
                   select
                   label="Role"
+                  sx={authInputSx}
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value)}
                   fullWidth
@@ -435,10 +429,11 @@ const Login = ({ setToken }) => {
                   label="Timezone"
                   value={timezone}
                   onChange={setTimezone}
+                  textFieldSx={authInputSx}
                   helperText="We store an IANA timezone (e.g., America/New_York). Type to search."
                 />
 
-                <Button type="submit" variant="contained" fullWidth sx={{ py: 1.25 }}>
+                <Button type="submit" variant="contained" fullWidth sx={authButtonSx}>
                   Sign In
                 </Button>
 
@@ -446,7 +441,17 @@ const Login = ({ setToken }) => {
                   <Typography variant="body2" color="text.secondary">
                     New to Schedulaa?
                   </Typography>
-                  <Button size="small" onClick={() => navigate("/register")}>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      const registerQs = new URLSearchParams();
+                      if (planParam) registerQs.set("plan", planParam);
+                      if (intervalParam) registerQs.set("interval", intervalParam);
+                      if (returnToParam) registerQs.set("returnTo", returnToParam);
+                      const suffix = registerQs.toString();
+                      navigate(suffix ? `/register?${suffix}` : "/register");
+                    }}
+                  >
                     Create an account
                   </Button>
                 </Stack>
@@ -461,13 +466,14 @@ const Login = ({ setToken }) => {
                 </Typography>
                 <TextField
                   label="One-time Passcode"
+                  sx={authInputSx}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   fullWidth
                   required
                   inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                 />
-                <Button type="submit" variant="contained" fullWidth sx={{ py: 1.25 }}>
+                <Button type="submit" variant="contained" fullWidth sx={authButtonSx}>
                   Verify OTP
                 </Button>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
@@ -487,9 +493,7 @@ const Login = ({ setToken }) => {
               </Stack>
             </Box>
           )}
-        </Box>
-      </Container>
-    </Box>
+    </AuthCardShell>
   );
 };
 

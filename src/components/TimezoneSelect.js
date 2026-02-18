@@ -17,7 +17,16 @@ const formatOption = (tz) => {
   return tz.replace("_", " ");
 };
 
-const TimezoneSelect = ({ label = "Timezone", value, onChange, helperText, required, disabled, fullWidth = true }) => {
+const TimezoneSelect = ({
+  label = "Timezone",
+  value,
+  onChange,
+  helperText,
+  required,
+  disabled,
+  fullWidth = true,
+  textFieldSx,
+}) => {
   const detected = useMemo(detectTimezone, []);
 
   const options = useMemo(() => {
@@ -52,6 +61,7 @@ const TimezoneSelect = ({ label = "Timezone", value, onChange, helperText, requi
             label={label}
             required={required}
             disabled={disabled}
+            sx={textFieldSx}
             helperText={helperText || "IANA timezone (e.g., America/New_York). Type to search."}
             fullWidth={fullWidth}
           />

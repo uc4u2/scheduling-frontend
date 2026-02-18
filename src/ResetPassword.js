@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import {
-  Container,
   Button,
   Alert,
-  Typography,
   Box,
+  Stack,
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "./utils/api";
+import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -88,14 +88,16 @@ const ResetPassword = () => {
   };
 
   return (
-    <Container sx={{ mt: 6, maxWidth: "sm" }}>
-      <Typography variant="h4" gutterBottom fontWeight={700}>
-        {isTempReset
-          ? "Set New Password (Temporary Reset)"
+    <AuthCardShell
+      title={
+        isTempReset
+          ? "Set new password"
           : isTokenReset
-          ? "Set New Password"
-          : "Reset Your Password"}
-      </Typography>
+          ? "Set new password"
+          : "Reset your password"
+      }
+      subtitle="Use a strong password to secure your account access."
+    >
 
       {isTempReset && (
         <Alert severity="info" sx={{ mb: 2 }}>
@@ -112,9 +114,11 @@ const ResetPassword = () => {
       {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
 
       <form onSubmit={handleSubmit}>
+        <Stack spacing={2}>
         {isTempReset && (
           <PasswordField
             label="Current Temporary Password"
+            sx={authInputSx}
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             autoComplete="current-password"
@@ -124,6 +128,7 @@ const ResetPassword = () => {
 
         <PasswordField
           label="New Password"
+          sx={authInputSx}
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           autoComplete="new-password"
@@ -132,19 +137,21 @@ const ResetPassword = () => {
 
         <PasswordField
           label="Confirm New Password"
+          sx={authInputSx}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           autoComplete="new-password"
           required
         />
 
-        <Box mt={3}>
-          <Button variant="contained" fullWidth type="submit">
+        <Box mt={1}>
+          <Button variant="contained" fullWidth type="submit" sx={authButtonSx}>
             {isTempReset ? "Set Password" : "Reset Password"}
           </Button>
         </Box>
+        </Stack>
       </form>
-    </Container>
+    </AuthCardShell>
   );
 };
 

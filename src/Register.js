@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import {
-  Container,
   Button,
   Alert,
   Typography,
@@ -19,6 +18,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PasswordField from "./PasswordField";
 import api from "./utils/api";
 import TimezoneSelect from "./components/TimezoneSelect";
+import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
 
 const ROLE_OPTIONS = [
   {
@@ -59,6 +59,7 @@ const Register = () => {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const hasSession = Boolean(localStorage.getItem("token"));
   const passwordChecklist = useMemo(
     () => [
       { label: "At least 8 characters", pass: password.length >= 8 },
@@ -74,6 +75,7 @@ const Register = () => {
   const passwordsMatch = password && password === confirmPassword;
   const canSubmit =
     Boolean(firstName && lastName && email && phone && password && timezone && role) &&
+    passwordIsStrong &&
     passwordsMatch &&
     !loading &&
     acceptedTerms;
@@ -118,6 +120,19 @@ const Register = () => {
   };
 
   React.useEffect(() => {
+    if (!hasSession) return;
+    const redirectParams = new URLSearchParams();
+    redirectParams.set("tab", "billing");
+    const plan = (searchParams.get("plan") || "").toLowerCase();
+    const interval = (searchParams.get("interval") || "").toLowerCase();
+    const returnTo = (searchParams.get("returnTo") || "").trim();
+    if (plan) redirectParams.set("plan", plan);
+    if (interval) redirectParams.set("interval", interval);
+    if (returnTo) redirectParams.set("returnTo", returnTo);
+    navigate(`/manager/settings?${redirectParams.toString()}`, { replace: true });
+  }, [hasSession, navigate, searchParams]);
+
+  React.useEffect(() => {
     const planParam = (searchParams.get("plan") || "").toLowerCase();
     if (["starter", "pro", "business"].includes(planParam)) {
       setSelectedPlan(planParam);
@@ -127,36 +142,21 @@ const Register = () => {
     }
   }, [searchParams]);
 
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        py: { xs: 8, md: 12 },
-        px: 2,
-        background: "linear-gradient(135deg, rgba(255,112,51,0.08) 0%, rgba(56,189,248,0.08) 100%)",
-      }}
-    >
-      <Container maxWidth="sm">
-        <Box
-          sx={{
-            p: { xs: 3, md: 4 },
-            borderRadius: 3,
-            boxShadow: "0 4px 20px rgba(15, 23, 42, 0.05)",
-            bgcolor: "background.paper",
-          }}
-        >
-          <Box sx={{ height: 4, width: "100%", bgcolor: "#FF7033", borderRadius: 1, mb: 3 }} />
+  if (hasSession) return null;
 
-          <Tooltip
-            title="Enterprise-grade scheduling & payroll, made simple. Whether you're a business owner, team member, or customer, choose your role below and get started."
-            placement="right"
-          >
-            <Typography component="h1" variant="h4" fontWeight="bold" gutterBottom sx={{ cursor: "help" }}>
-              Create Your Account
-            </Typography>
-          </Tooltip>
+  return (
+    <AuthCardShell
+      title="Create your account"
+      subtitle="Set up your Schedulaa workspace and launch scheduling, payroll, and booking from one panel."
+    >
+      <Tooltip
+        title="Enterprise-grade scheduling & payroll, made simple. Whether you're a business owner, team member, or customer, choose your role below and get started."
+        placement="right"
+      >
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, cursor: "help" }}>
+          Start with business owner for full billing and operations access.
+        </Typography>
+      </Tooltip>
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -180,6 +180,7 @@ const Register = () => {
                 <TextField
                   label="First Name"
                   fullWidth
+                  sx={authInputSx}
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   autoComplete="given-name"
@@ -189,6 +190,7 @@ const Register = () => {
                 <TextField
                   label="Last Name"
                   fullWidth
+                  sx={authInputSx}
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   autoComplete="family-name"
@@ -199,6 +201,7 @@ const Register = () => {
               <TextField
                 label="Email"
                 fullWidth
+                sx={authInputSx}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -209,6 +212,7 @@ const Register = () => {
               <TextField
                 label="Phone"
                 fullWidth
+                sx={authInputSx}
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -219,6 +223,7 @@ const Register = () => {
               <PasswordField
                 label="Password"
                 fullWidth
+                sx={authInputSx}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="new-password"
@@ -240,6 +245,7 @@ const Register = () => {
               <PasswordField
                 label="Confirm Password"
                 fullWidth
+                sx={authInputSx}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
@@ -255,6 +261,7 @@ const Register = () => {
                 label="Timezone"
                 value={timezone}
                 onChange={setTimezone}
+                textFieldSx={authInputSx}
                 required
               />
 
@@ -262,6 +269,7 @@ const Register = () => {
                 select
                 label="Role"
                 fullWidth
+                sx={authInputSx}
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 required
@@ -320,7 +328,7 @@ const Register = () => {
                 fullWidth
                 type="submit"
                 disabled={!canSubmit}
-                sx={{ py: 1.25 }}
+                sx={authButtonSx}
               >
                 {loading ? "Registering..." : "Create account"}
               </Button>
@@ -336,9 +344,7 @@ const Register = () => {
               </Typography>
             </Stack>
           </Box>
-        </Box>
-      </Container>
-    </Box>
+    </AuthCardShell>
   );
 };
 
