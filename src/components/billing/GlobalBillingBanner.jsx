@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Stack, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import useBillingStatus from "./useBillingStatus";
-import { openBillingPortal } from "./billingHelpers";
 import { useBillingBanner } from "./BillingBannerContext";
 import api from "../../utils/api";
 
@@ -12,6 +11,8 @@ const planLabel = (key) => {
 };
 
 const GlobalBillingBanner = () => {
+  const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
+  const MARKETING_PRICING_URL = "https://www.schedulaa.com/en/pricing?from=app";
   const theme = useTheme();
   const hideOnSmallScreens = useMediaQuery(theme.breakpoints.down("md"));
   const { status } = useBillingStatus();
@@ -57,17 +58,22 @@ const GlobalBillingBanner = () => {
   const actions = (
     <Stack direction="row" spacing={1}>
       {banner.action === "update_payment" && (
-        <Button color="inherit" size="small" onClick={() => openBillingPortal()}>
+        <Button color="inherit" size="small" onClick={() => (window.location.href = BILLING_SETTINGS_URL)}>
           Update payment
         </Button>
       )}
       {banner.action === "start_plan" && (
-        <Button color="inherit" size="small" onClick={() => (window.location.href = "/pricing")}>
+        <Button color="inherit" size="small" onClick={() => (window.location.href = BILLING_SETTINGS_URL)}>
           Start plan
         </Button>
       )}
+      {banner.action === "start_plan" && (
+        <Button color="inherit" size="small" onClick={() => (window.location.href = MARKETING_PRICING_URL)}>
+          Choose a plan
+        </Button>
+      )}
       {status?.error !== "mode_mismatch" && (
-        <Button color="inherit" size="small" onClick={() => openBillingPortal()}>
+        <Button color="inherit" size="small" onClick={() => (window.location.href = BILLING_SETTINGS_URL)}>
           Manage billing
         </Button>
       )}

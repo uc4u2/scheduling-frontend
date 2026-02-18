@@ -11,7 +11,7 @@ export const openBillingPortal = async () => {
   } catch (err) {
     const apiError = err?.response?.data?.error;
     if (apiError === "billing_customer_missing" && typeof window !== "undefined") {
-      window.location.href = "/pricing";
+      window.location.href = "/manager/settings?tab=billing";
     }
     throw err;
   }

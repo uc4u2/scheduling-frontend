@@ -7,6 +7,7 @@ import { openBillingPortal } from "./billingHelpers";
 const PLAN_RANK = { starter: 0, pro: 1, business: 2 };
 
 const UpgradeNoticeBanner = ({ requiredPlan = "pro", message }) => {
+  const MARKETING_PRICING_URL = "https://www.schedulaa.com/en/pricing?from=app";
   const { status } = useBillingStatus();
   const { visible } = useBillingBanner();
   const planKey = status?.plan_key || "starter";
@@ -25,7 +26,7 @@ const UpgradeNoticeBanner = ({ requiredPlan = "pro", message }) => {
           <Button color="inherit" size="small" onClick={() => openBillingPortal()}>
             Upgrade
           </Button>
-          <Button color="inherit" size="small" onClick={() => (window.location.href = "/pricing")}>
+          <Button color="inherit" size="small" onClick={() => (window.location.href = MARKETING_PRICING_URL)}>
             View plans
           </Button>
         </Stack>

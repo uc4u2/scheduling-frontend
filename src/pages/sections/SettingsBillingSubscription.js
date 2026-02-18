@@ -26,6 +26,8 @@ const formatDate = (value, t) => {
 };
 
 const SettingsBillingSubscription = () => {
+  const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
+  const MARKETING_PRICING_URL = "https://www.schedulaa.com/en/pricing?from=app";
   const { t } = useTranslation();
   const { status, loading, error } = useBillingStatus();
   const seatAllowed = Number(status?.seats_allowed || 0);
@@ -75,10 +77,10 @@ const SettingsBillingSubscription = () => {
         subtitle={t("billing.subtitle")}
         actions={
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button size="small" variant="outlined" onClick={() => openBillingPortal()}>
+            <Button size="small" variant="outlined" onClick={() => (window.location.href = BILLING_SETTINGS_URL)}>
               {t("billing.actions.manageBilling")}
             </Button>
-            <Button size="small" variant="outlined" onClick={() => (window.location.href = "/pricing")}>
+            <Button size="small" variant="outlined" onClick={() => (window.location.href = MARKETING_PRICING_URL)}>
               {t("billing.actions.viewPlans")}
             </Button>
             <Button size="small" variant="contained" onClick={handleAddSeats}>
@@ -103,7 +105,7 @@ const SettingsBillingSubscription = () => {
                 severity="warning"
                 onClose={handleModeMismatchDismiss}
                 action={
-                  <Button color="inherit" size="small" onClick={() => (window.location.href = "/pricing")}>
+                  <Button color="inherit" size="small" onClick={() => (window.location.href = BILLING_SETTINGS_URL)}>
                     {t("billing.actions.startPlan")}
                   </Button>
                 }

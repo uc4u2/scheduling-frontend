@@ -29,7 +29,6 @@ import Footer from "./components/Footer";
 import PublicLayout from "./layouts/PublicLayout";
 import LandingLayout from "./layouts/LandingLayout";
 import LandingPage from "./landing/pages/LandingPage";
-import PricingPage from "./landing/pages/PricingPage";
 import BillingUpgradeController from "./components/billing/BillingUpgradeController";
 import { BillingBannerProvider } from "./components/billing/BillingBannerContext";
 import BillingSuccessPage from "./pages/billing/BillingSuccessPage";
@@ -203,6 +202,17 @@ export const ThemeModeContext = createContext({
   themeName: "cool",
   setThemeName: () => {},
 });
+
+const APP_MARKETING_PRICING_URL = "https://www.schedulaa.com/en/pricing?from=app";
+
+const ExternalRedirect = ({ to }) => {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.location.href = to;
+    }
+  }, [to]);
+  return null;
+};
 
 const themeMap = {
   cool: coolTheme, dark: darkTheme, navy: navyTheme, sunset: sunsetTheme,
@@ -595,7 +605,7 @@ const AppContent = ({ token, setToken }) => {
                 />
               </Route>
               <Route element={<PublicLayout token={token} setToken={setToken} />}>
-                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/pricing" element={<ExternalRedirect to={APP_MARKETING_PRICING_URL} />} />
                 <Route path="/compare" element={<CompareHubPage />} />
                 <Route path="/compare/:vendor" element={<ComparisonPage />} />
                 <Route path="/alternatives" element={<AlternativesHubPage />} />

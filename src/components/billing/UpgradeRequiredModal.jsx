@@ -1,6 +1,5 @@
 import React from "react";
 import { Dialog, DialogActions, DialogContent, DialogTitle, Button, Stack, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
 import { openBillingPortal } from "./billingHelpers";
 
 const PLAN_LABELS = {
@@ -9,7 +8,8 @@ const PLAN_LABELS = {
 };
 
 const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) => {
-  const navigate = useNavigate();
+  const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
+  const MARKETING_PRICING_URL = "https://www.schedulaa.com/en/pricing?from=app";
   const planLabel = PLAN_LABELS[requiredPlan] || "Pro";
   const detail = message || `This feature requires the ${planLabel} plan.`;
 
@@ -18,18 +18,18 @@ const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) 
     try {
       await openBillingPortal();
     } catch {
-      navigate("/pricing");
+      window.location.href = BILLING_SETTINGS_URL;
     }
   };
 
   const handleStartPlan = () => {
     if (onClose) onClose();
-    navigate("/pricing");
+    window.location.href = BILLING_SETTINGS_URL;
   };
 
   const handleViewPlans = () => {
     if (onClose) onClose();
-    navigate("/pricing");
+    window.location.href = MARKETING_PRICING_URL;
   };
 
   return (

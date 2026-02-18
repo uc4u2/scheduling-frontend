@@ -653,7 +653,7 @@ export default function SettingsStripeHub() {
               variant="contained"
               onClick={() => {
                 if (typeof window !== "undefined") {
-                  window.location.href = "/pricing";
+                  window.location.href = "https://www.schedulaa.com/en/pricing?from=app";
                 }
               }}
             >
