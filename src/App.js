@@ -306,6 +306,7 @@ const RESERVED_SLUG_PREFIXES = new Set([
   'recruiter',
   'recruiter-stats',
   'register',
+  'upgrade',
   'reset-password',
   'security',
   'settings',
