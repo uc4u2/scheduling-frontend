@@ -33,6 +33,7 @@ import BillingUpgradeController from "./components/billing/BillingUpgradeControl
 import { BillingBannerProvider } from "./components/billing/BillingBannerContext";
 import BillingSuccessPage from "./pages/billing/BillingSuccessPage";
 import BillingCancelPage from "./pages/billing/BillingCancelPage";
+import UpgradeBridgePage from "./pages/UpgradeBridgePage";
 import FeaturePage from "./landing/pages/FeaturePage";
 import WorkforcePage from "./landing/pages/WorkforcePage";
 import ZapierPage from "./landing/pages/ZapierPage";
@@ -398,6 +399,7 @@ const AppContent = ({ token, setToken }) => {
   const isAuthRoute = Boolean(
     matchPath({ path: "/login" }, location.pathname) ||
       matchPath({ path: "/register" }, location.pathname) ||
+      matchPath({ path: "/upgrade" }, location.pathname) ||
       matchPath({ path: "/reset-password" }, location.pathname) ||
       matchPath({ path: "/reset-password/*" }, location.pathname)
   );
@@ -673,6 +675,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/login" element={<Login setToken={setToken} />} />
           <Route path="/signup" element={<Navigate to="/register" replace />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/upgrade" element={<UpgradeBridgePage />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
