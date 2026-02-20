@@ -36,6 +36,7 @@ import { useNavWithEmbed } from "../../embed";
 import PublicPageShell from "./PublicPageShell";
 import { getUserTimezone } from "../../utils/timezone";
 import { getTenantHostMode } from "../../utils/tenant";
+import { isoFromParts as isoFromPartsTz } from "../../utils/datetime";
 import {
   resolveSeatsLeft,
   slotIsAvailable,
@@ -92,13 +93,6 @@ const prettyDate = (yyyyMmDd) =>
       })
     : "";
 
-/** format a UTC ISO string in the viewer's local time */
-const timeFromUTCForViewer = (startUtc) => {
-  if (!startUtc) return "";
-  const dt = new Date(startUtc);
-  return dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-};
-
 /** get YYYY-MM-DD in a specific TZ from a UTC ISO */
 const dateYMDInTZ = (startUtc, tz) => {
   return new Date(startUtc).toLocaleDateString("en-CA", {
@@ -117,24 +111,6 @@ const timeHMInTZ = (startUtc, tz) => {
     minute: "2-digit",
     hour12: false,
   }); // "HH:MM"
-};
-
-const isoFromParts = (dateStr, timeStr, tz) => {
-  try {
-    const d = new Date(`${dateStr}T${timeStr || "00:00"}`);
-    return d.toLocaleString("sv-SE", {
-      timeZone: tz || "UTC",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).replace(" ", "T");
-  } catch {
-    return null;
-  }
 };
 
 export default function ServiceDetails({ slugOverride, companySlug, serviceId: serviceIdProp }) {
@@ -306,6 +282,49 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
     }, 250);
   }, [armCloseGuard, isMobile, scrollSectionIntoView]);
 
+  const slotTimezone = useCallback(
+    (slot) =>
+      slot?.providers?.find((p) => p?.timezone)?.timezone ||
+      slot?.timezone ||
+      userTz ||
+      "UTC",
+    [userTz]
+  );
+
+  const slotDateLabel = useCallback(
+    (slot) => {
+      if (!slot?.start_utc) return prettyDate(slot?.date);
+      try {
+        return new Date(slot.start_utc).toLocaleDateString(undefined, {
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: slotTimezone(slot),
+        });
+      } catch {
+        return prettyDate(slot?.date);
+      }
+    },
+    [slotTimezone]
+  );
+
+  const slotTimeLabel = useCallback(
+    (slot) => {
+      if (!slot?.start_utc) return "";
+      try {
+        return new Date(slot.start_utc).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+          timeZone: slotTimezone(slot),
+        });
+      } catch {
+        return "";
+      }
+    },
+    [slotTimezone]
+  );
+
   useEffect(() => {
     return () => {
       if (focusTimeoutRef.current) {
@@ -428,7 +447,7 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
             const stUtc = s.start_utc
               ? new Date(s.start_utc)
               : (s.date && s.start_time && s.timezone
-                ? new Date(isoFromParts(s.date, s.start_time, s.timezone))
+                ? new Date(isoFromPartsTz(s.date, s.start_time, s.timezone))
                 : null);
             if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
             const etUtc = s.end_utc
@@ -498,7 +517,7 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
             const stUtc = s.start_utc
               ? new Date(s.start_utc)
               : (s.date && s.start_time && s.timezone
-                ? new Date(isoFromParts(s.date, s.start_time, s.timezone))
+                ? new Date(isoFromPartsTz(s.date, s.start_time, s.timezone))
                 : null);
             if (!stUtc || Number.isNaN(stUtc.getTime())) return s;
             const etUtc = s.end_utc
@@ -601,7 +620,7 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
         const tz = s.timezone || "UTC";
         const startUtc =
           s.start_utc ||
-          (s.date && s.start_time ? isoFromParts(s.date, s.start_time, tz) : null);
+          (s.date && s.start_time ? isoFromPartsTz(s.date, s.start_time, tz) : null);
         if (!startUtc) continue;
 
         const key = startUtc;
@@ -617,8 +636,9 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
         if (!map.has(key)) {
           map.set(key, {
             key,
-            date: selectedDateStr, // UI-selected day
+            date: s.date || selectedDateStr,
             start_utc: startUtc,
+            timezone: tz,
             type: isUnavailable ? "booked" : "available",
             mode,
             seats_left: Number.isFinite(seatsLeft) ? seatsLeft : null,
@@ -935,7 +955,7 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
           }}
         >
           <Typography variant="subtitle1" fontWeight={700} color={calendarText}>
-            Choose a Provider — {prettyDate(selectedSlot?.date)} · {timeFromUTCForViewer(selectedSlot?.start_utc)}
+            Choose a Provider — {slotDateLabel(selectedSlot)} · {slotTimeLabel(selectedSlot)}
           </Typography>
           <Chip
             size="small"
@@ -1084,7 +1104,7 @@ export default function ServiceDetails({ slugOverride, companySlug, serviceId: s
                   : "1 provider available at this time"
               }
             >
-              {timeFromUTCForViewer(s.start_utc)}
+              {slotTimeLabel(s)}
               {s.count > 1 ? ` • ${s.count}` : ""}
               {(alreadyBooked || isBooked)
                 ? (isFullGroup ? " • Full" : " • booked")
