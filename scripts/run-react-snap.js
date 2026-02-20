@@ -27,6 +27,13 @@ const startServer = (preferredPort) =>
 
 const runSnap = async () => {
   let server;
+  const isIgnorableSnapError = (err) => {
+    const text = String(err && (err.stack || err.message || err));
+    return (
+      text.includes("Execution context was destroyed") ||
+      text.includes("Failed to load Stripe.js")
+    );
+  };
   try {
     try {
       server = await startServer(port);
@@ -45,6 +52,18 @@ const runSnap = async () => {
     });
     server.close();
   } catch (err) {
+    if (isIgnorableSnapError(err)) {
+      if (server) {
+        server.close(() => {
+          console.warn("react-snap warning ignored:", String(err.message || err));
+          process.exit(0);
+        });
+      } else {
+        console.warn("react-snap warning ignored:", String(err.message || err));
+        process.exit(0);
+      }
+      return;
+    }
     if (server) {
       server.close(() => {
         console.error(err);

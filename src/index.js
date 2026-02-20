@@ -20,6 +20,15 @@ const activeTheme = useV2 ? themeV2 : coolTheme;
 
 initGA();
 
+if (typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = String(event?.reason?.message || event?.reason || "");
+    if (reason.includes("Failed to load Stripe.js")) {
+      event.preventDefault();
+    }
+  });
+}
+
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
