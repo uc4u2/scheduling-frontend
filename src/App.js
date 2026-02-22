@@ -752,7 +752,7 @@ const AppContent = ({ token, setToken }) => {
         <Route path="/recruiter/my-time" element={<RecruiterMyTimePage token={token} />} />
         <Route path="/employee/my-time" element={<RecruiterMyTimePage token={token} />} />
         <Route path="/recruiter/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
-        <Route path="/employee/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
+        <Route path="/employee/my-shifts" element={<Navigate to="/employee/my-time" replace />} />
         <Route
           path="/recruiter"
           element={

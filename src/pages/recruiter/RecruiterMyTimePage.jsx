@@ -1,6 +1,6 @@
 import React from "react";
-import { Stack, Paper } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Stack } from "@mui/material";
+import { useLocation, useNavigate } from "react-router-dom";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
 import SecondEmployeeShiftView from "../sections/SecondEmployeeShiftView";
 import ManagementFrame from "../../components/ui/ManagementFrame";
@@ -8,9 +8,13 @@ import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsA
 
 const RecruiterMyTimePage = ({ token }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
   const handleLocalTabChange = (value) => {
-    navigate(`/employee?tab=${value}`);
+    const basePath = location.pathname.startsWith("/recruiter")
+      ? "/recruiter"
+      : "/employee";
+    navigate(`${basePath}?tab=${value}`);
   };
 
   return (
@@ -19,7 +23,10 @@ const RecruiterMyTimePage = ({ token }) => {
       subtitle="Review your time tracking and shift history."
       fullWidth
       sx={{ minHeight: "100vh", px: { xs: 1, md: 2 } }}
-      contentSx={{ p: { xs: 1.5, md: 2.5 } }}
+      disableContentCard
+      contentSx={{
+        p: 0,
+      }}
     >
       <RecruiterTabs
         localTab="my-time"
@@ -27,11 +34,9 @@ const RecruiterMyTimePage = ({ token }) => {
         allowHrAccess={allowHrAccess}
         isLoading={isLoading}
       />
-      <Paper sx={{ p: { xs: 2, md: 3 }, mt: 2 }} elevation={0}>
-        <Stack spacing={2}>
-          <SecondEmployeeShiftView />
-        </Stack>
-      </Paper>
+      <Stack spacing={2} sx={{ mt: 2 }}>
+        <SecondEmployeeShiftView />
+      </Stack>
     </ManagementFrame>
   );
 };
