@@ -207,6 +207,8 @@ import MobileSubtabListPage from "./mobile/pages/MobileSubtabListPage";
 import ManagerEmployeesListPage from "./mobile/pages/ManagerEmployeesListPage";
 import ManagerServicesListPage from "./mobile/pages/ManagerServicesListPage";
 import ManagerBookingsListPage from "./mobile/pages/ManagerBookingsListPage";
+import EmployeeCalendarPage from "./mobile/pages/EmployeeCalendarPage";
+import EmployeeBookingsListPage from "./mobile/pages/EmployeeBookingsListPage";
 
 export const ThemeModeContext = createContext({
   themeName: "cool",
@@ -390,6 +392,17 @@ const AppContent = ({ token, setToken }) => {
   const hostMode = getTenantHostMode(window.location.host);
   const isCustomDomain = hostMode === "custom";
   const isAppHost = normalizedHost === "app.schedulaa.com";
+  const isNativeRuntime = (() => {
+    try {
+      const cap = window?.Capacitor;
+      if (!cap) return false;
+      if (typeof cap.isNativePlatform === "function") return cap.isNativePlatform();
+      const platform = typeof cap.getPlatform === "function" ? cap.getPlatform() : cap.platform;
+      return Boolean(platform && platform !== "web");
+    } catch {
+      return false;
+    }
+  })();
   const [tenantSlug, setTenantSlug] = useState(null);
   const [tenantLoaded, setTenantLoaded] = useState(!isCustomDomain);
   const [chatbotConfig, setChatbotConfig] = useState(null);
@@ -581,9 +594,9 @@ const AppContent = ({ token, setToken }) => {
           >
             <Route index element={<Navigate to="today" replace />} />
             <Route path="today" element={<EmployeeTodayPage />} />
-            <Route path="calendar" element={<RecruiterMyTimePage token={token} />} />
+            <Route path="calendar" element={<EmployeeCalendarPage />} />
             <Route path="shifts" element={<RecruiterMyTimePage token={token} />} />
-            <Route path="bookings" element={<RecruiterUpcomingMeetingsPage token={token} />} />
+            <Route path="bookings" element={<EmployeeBookingsListPage />} />
             <Route path="my-time" element={<RecruiterMyTimePage token={token} />} />
             <Route path="upcoming-meetings" element={<RecruiterUpcomingMeetingsPage token={token} />} />
             <Route path="public-link" element={<RecruiterPublicLinkPage token={token} />} />
@@ -601,7 +614,7 @@ const AppContent = ({ token, setToken }) => {
           >
             <Route index element={<Navigate to="today" replace />} />
             <Route path="today" element={<ManagerTodayPage />} />
-            <Route path="calendar" element={<EmployeeShiftView />} />
+            <Route path="calendar" element={<MonthlyAttendanceCalendar />} />
             <Route path="shifts" element={<EmployeeAvailabilityManagement />} />
             <Route path="bookings" element={<ManagerBookingsListPage />} />
             <Route path="employees" element={<ManagerEmployeesListPage />} />
@@ -620,8 +633,8 @@ const AppContent = ({ token, setToken }) => {
                     },
                     {
                       label: "Bookings list",
-                      description: "Recent bookings in stacked cards.",
-                      to: "/app/manager/bookings",
+                      description: "Open full bookings management.",
+                      to: "/manager/dashboard?view=recent-bookings",
                     },
                     {
                       label: "Booking checkout",
@@ -713,7 +726,11 @@ const AppContent = ({ token, setToken }) => {
               <Route element={<LandingLayout />}>
                 <Route
                   path="/"
-                  element={isAppHost ? <Navigate to={rootAppRedirect} replace /> : <LandingPage />}
+                  element={
+                    isNativeRuntime
+                      ? <Navigate to="/app" replace />
+                      : (isAppHost ? <Navigate to={rootAppRedirect} replace /> : <LandingPage />)
+                  }
                 />
               </Route>
               <Route element={<PublicLayout token={token} setToken={setToken} />}>
