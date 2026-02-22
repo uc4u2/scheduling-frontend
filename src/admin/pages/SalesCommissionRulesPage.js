@@ -20,13 +20,27 @@ export default function SalesCommissionRulesPage() {
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState("");
-  const [form, setForm] = useState({
-    version: "",
-    close_bonus_pct: "",
-    recurring_pct: "",
-    months_cap: "",
-    is_active: true,
-  });
+  const BASELINE_DEFAULTS = useMemo(
+    () => ({
+      close_bonus_pct: "40",
+      recurring_pct: "20",
+      months_cap: "12",
+    }),
+    []
+  );
+
+  const initialState = useMemo(
+    () => ({
+      version: "",
+      close_bonus_pct: "",
+      recurring_pct: "",
+      months_cap: "",
+      is_active: true,
+    }),
+    []
+  );
+
+  const [form, setForm] = useState(initialState);
 
   const sortedRules = useMemo(() => {
     const list = Array.isArray(rules) ? [...rules] : [];
@@ -38,6 +52,35 @@ export default function SalesCommissionRulesPage() {
     });
     return list;
   }, [rules]);
+
+  const getNextVersion = useCallback(() => {
+    const maxVersion = (rules || []).reduce((acc, r) => {
+      const v = Number(r?.version || 0);
+      return v > acc ? v : acc;
+    }, 0);
+    return String(maxVersion + 1);
+  }, [rules]);
+
+  const getActiveRuleDefaults = useCallback(() => {
+    const active = (rules || []).find((r) => r?.is_active);
+    if (!active) return null;
+    return {
+      close_bonus_pct: String(active?.close_bonus_pct ?? BASELINE_DEFAULTS.close_bonus_pct),
+      recurring_pct: String(active?.recurring_pct ?? BASELINE_DEFAULTS.recurring_pct),
+      months_cap: String(active?.months_cap ?? BASELINE_DEFAULTS.months_cap),
+    };
+  }, [BASELINE_DEFAULTS, rules]);
+
+  const openNewRuleModal = useCallback(() => {
+    const activeDefaults = getActiveRuleDefaults();
+    setForm({
+      ...initialState,
+      ...(activeDefaults || BASELINE_DEFAULTS),
+      version: getNextVersion(),
+      is_active: true,
+    });
+    setOpen(true);
+  }, [BASELINE_DEFAULTS, getActiveRuleDefaults, getNextVersion, initialState]);
 
   const load = useCallback(async () => {
     setError("");
@@ -81,7 +124,7 @@ export default function SalesCommissionRulesPage() {
     try {
       await platformAdminApi.post("/sales/rules", payload);
       setOpen(false);
-      setForm({ version: "", close_bonus_pct: "", recurring_pct: "", months_cap: "", is_active: true });
+      setForm(initialState);
       setNotice("Rule created.");
       load();
     } catch (err) {
@@ -98,7 +141,7 @@ export default function SalesCommissionRulesPage() {
             Help
           </Button>
         </Stack>
-        <Button variant="contained" onClick={() => setOpen(true)}>New Rule</Button>
+        <Button variant="contained" onClick={openNewRuleModal}>New Rule</Button>
       </Stack>
       <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
         Rules affect future commissions only. Existing ledger entries are not recalculated.
