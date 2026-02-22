@@ -95,9 +95,10 @@ const RecruiterTabs = ({
         onLocalTabChange(newValue);
         return;
       }
-      if (config.path) {
-        navigate(config.path);
-      }
+      const localBasePath = location.pathname.startsWith("/recruiter")
+        ? "/recruiter/dashboard"
+        : "/employee/dashboard";
+      navigate(`${localBasePath}?tab=${newValue}`);
       return;
     }
 
