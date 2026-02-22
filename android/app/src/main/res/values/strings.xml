@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Schedulaa Staff</string>
-    <string name="title_activity_main">Schedulaa Staff</string>
+    <string name="app_name">Schedulaa</string>
+    <string name="title_activity_main">Schedulaa</string>
     <string name="package_name">com.schedulaa.staff</string>
     <string name="custom_url_scheme">com.schedulaa.staff</string>
 </resources>
