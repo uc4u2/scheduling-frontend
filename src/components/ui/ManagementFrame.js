@@ -12,6 +12,7 @@ export default function ManagementFrame({
   maxWidth = 1400,
   contentSx = {},
   contentVariant = "outlined",
+  disableContentCard = false,
 }) {
   return (
     <Box sx={{ maxWidth: fullWidth ? "none" : maxWidth, mx: fullWidth ? 0 : "auto", width: "100%", ...sx }}>
@@ -35,9 +36,13 @@ export default function ManagementFrame({
         </Paper>
       ) : null}
 
-      <Paper variant={contentVariant} sx={{ p: 2.5, borderRadius: 3, ...contentSx }}>
-        {children}
-      </Paper>
+      {disableContentCard ? (
+        <Box sx={{ ...contentSx }}>{children}</Box>
+      ) : (
+        <Paper variant={contentVariant} sx={{ p: 2.5, borderRadius: 3, ...contentSx }}>
+          {children}
+        </Paper>
+      )}
     </Box>
   );
 }

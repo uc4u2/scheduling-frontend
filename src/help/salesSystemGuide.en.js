@@ -164,6 +164,8 @@ Applied for a limited number of months (for example: up to 12 months)
 
 Created only when Stripe payments succeed
 
+Current baseline rule: Close Bonus 40%, Recurring 20%, cap 12 months.
+
 Both appear in the Ledger and later in Payouts.
 
 6) What happens if there is a discount or promotion?
@@ -370,6 +372,8 @@ Monthly commission
 Applied for a limited number of months (for example: up to 12 months)
 
 Created only when Stripe payments succeed
+
+Current baseline rule: Close Bonus 40%, Recurring 20%, cap 12 months.
 
 Both appear in the Ledger and later in Payouts.
 

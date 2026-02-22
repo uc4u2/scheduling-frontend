@@ -199,6 +199,7 @@ This ensures:
 
 - **Close Bonus**: one‑time commission (first successful payment)
 - **Recurring Commission**: monthly commission for a limited number of months
+- **Current baseline rule**: Close Bonus `40%`, Recurring `20%`, cap `12` months
 
 Both appear in the Ledger and later in Payouts.
 

@@ -207,6 +207,8 @@ Commission ledger entries are written in `backend/app/routes.py` in the billing 
 
 ### Eligibility timing (v1)
 
+**Active baseline rule:** close bonus `40%`, recurring `20%`, recurring cap `12` months.
+
 1) **Close bonus**
    - Created on **invoice #1** with status `pending_hold`.
    - Becomes `payable` only after **invoice #2** is paid.

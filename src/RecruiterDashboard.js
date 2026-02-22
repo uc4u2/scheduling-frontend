@@ -14,7 +14,6 @@ import {
   AccordionDetails,
   CircularProgress,
   useMediaQuery,
-  Paper,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -233,19 +232,9 @@ const RecruiterDashboard = ({ token }) => {
               }}
             >
               {authLoaded ? (
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: { xs: 1.5, md: 2.5 },
-                    borderRadius: theme.shape.borderRadius * 1.5,
-                    border: `1px solid ${theme.palette.divider}`,
-                    background: theme.palette.background.paper,
-                    flex: 1,
-                    overflow: "visible",
-                  }}
-                >
+                <Box sx={{ flex: 1 }}>
                   <MySetmoreCalendar token={token} />
-                </Paper>
+                </Box>
               ) : (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <CircularProgress size={20} />

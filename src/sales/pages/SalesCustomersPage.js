@@ -12,12 +12,14 @@ import {
   ToggleButtonGroup,
 } from "@mui/material";
 import salesRepApi from "../../api/salesRepApi";
+import { APP_ORIGIN } from "../../config/origins";
 
 export default function SalesCustomersPage() {
   const [customers, setCustomers] = useState([]);
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [copyNotice, setCopyNotice] = useState("");
+  const buildPublicSiteUrl = (slug) => `${APP_ORIGIN}/${encodeURIComponent(String(slug || "").trim())}`;
 
   const load = useCallback(async () => {
     const { data } = await salesRepApi.get("/customers");
@@ -164,7 +166,7 @@ export default function SalesCustomersPage() {
                   size="small"
                   variant="outlined"
                   onClick={async () => {
-                    const link = `https://www.schedulaa.com/${c.slug}`;
+                    const link = buildPublicSiteUrl(c.slug);
                     try {
                       await navigator.clipboard.writeText(link);
                       setCopyNotice("Public link copied.");
@@ -178,7 +180,7 @@ export default function SalesCustomersPage() {
                 <Button
                   size="small"
                   variant="contained"
-                  onClick={() => window.open(`https://www.schedulaa.com/${c.slug}`, "_blank", "noopener,noreferrer")}
+                  onClick={() => window.open(buildPublicSiteUrl(c.slug), "_blank", "noopener,noreferrer")}
                 >
                   Open
                 </Button>

@@ -29,6 +29,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonIcon from "@mui/icons-material/Person";
 import WorkspacesIcon from "@mui/icons-material/Workspaces";
 import LogoutIcon from "@mui/icons-material/Logout";
+import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme, alpha } from "@mui/material/styles";
@@ -304,6 +305,12 @@ const NavBar = ({ token, setToken }) => {
                 </ListItemButton>
               );
             })}
+            <ListItemButton component={Link} to="/app" onClick={toggleMobile}>
+              <ListItemIcon>
+                <PhoneIphoneIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Open Mobile App Mode" />
+            </ListItemButton>
 
             {isLoggedIn && (
               <ListItemButton onClick={handleLogout}>
@@ -366,6 +373,16 @@ const NavBar = ({ token, setToken }) => {
             </Button>
           </Stack>
         )}
+        <Button
+          component={Link}
+          to="/app"
+          variant="outlined"
+          color="primary"
+          startIcon={<PhoneIphoneIcon fontSize="small" />}
+          sx={{ display: { xs: "none", md: "inline-flex" }, textTransform: "none", borderRadius: 999, ml: 1 }}
+        >
+          Open Mobile App Mode
+        </Button>
 
         <Box sx={{ ml: 2, display: { xs: "none", md: "block" } }}>
           <LanguageSelector size="small" />

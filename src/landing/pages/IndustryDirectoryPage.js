@@ -24,6 +24,7 @@ import api from "../../utils/api";
 import { PROFESSION_OPTIONS } from "../../constants/professions";
 import Meta from "../../components/Meta";
 import JsonLd from "../../components/seo/JsonLd";
+import { APP_ORIGIN } from "../../config/origins";
 
 const SITE_BASE_URL =
   (typeof window !== "undefined" && window.location.origin) ||
@@ -43,6 +44,12 @@ const META = {
 
 const industryLabel = (value) =>
   PROFESSION_OPTIONS.find((opt) => opt.value === value)?.label || "General";
+
+const buildPublicSiteUrl = (slug) => {
+  const safeSlug = String(slug || "").trim().replace(/^\/+|\/+$/g, "");
+  if (!safeSlug) return APP_ORIGIN;
+  return `${APP_ORIGIN}/${encodeURIComponent(safeSlug)}?embed=0`;
+};
 
 const IndustryDirectoryPage = () => {
   const [companies, setCompanies] = useState([]);
@@ -328,7 +335,7 @@ const IndustryDirectoryPage = () => {
                     variant="contained"
                     fullWidth
                     endIcon={<OpenInNewIcon />}
-                    onClick={() => window.open(`/${company.slug}?embed=0`, "_blank", "noopener")}
+                    onClick={() => window.open(buildPublicSiteUrl(company.slug), "_blank", "noopener,noreferrer")}
                   >
                     View site
                   </Button>

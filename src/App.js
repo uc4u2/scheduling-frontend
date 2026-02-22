@@ -199,6 +199,14 @@ import EnterpriseRetirementHelp from "./pages/help/EnterpriseRetirementHelp";
 import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 import SupportConsentPage from "./pages/sections/management/SupportConsentPage";
 import { buildMarketingUrl } from "./config/origins";
+import AppRoleGate from "./mobile/AppRoleGate";
+import StaffAppShell from "./mobile/StaffAppShell";
+import EmployeeTodayPage from "./mobile/pages/EmployeeTodayPage";
+import ManagerTodayPage from "./mobile/pages/ManagerTodayPage";
+import MobileSubtabListPage from "./mobile/pages/MobileSubtabListPage";
+import ManagerEmployeesListPage from "./mobile/pages/ManagerEmployeesListPage";
+import ManagerServicesListPage from "./mobile/pages/ManagerServicesListPage";
+import ManagerBookingsListPage from "./mobile/pages/ManagerBookingsListPage";
 
 export const ThemeModeContext = createContext({
   themeName: "cool",
@@ -404,6 +412,7 @@ const AppContent = ({ token, setToken }) => {
       matchPath({ path: "/reset-password" }, location.pathname) ||
       matchPath({ path: "/reset-password/*" }, location.pathname)
   );
+  const isMobileAppRoute = Boolean(matchPath({ path: "/app/*" }, location.pathname));
   const isNoChromeRoute =
     isApplyRoute ||
     isPublicJobsRoute ||
@@ -411,7 +420,8 @@ const AppContent = ({ token, setToken }) => {
     isDocumentRequestRoute ||
     isMeetRoute ||
     isKioskRoute ||
-    isAuthRoute;
+    isAuthRoute ||
+    isMobileAppRoute;
   const slugMatch = matchPath({ path: '/:slug/*' }, location.pathname) || matchPath({ path: '/:slug' }, location.pathname);
   const slugCandidate = isMarketingRoute ? null : slugMatch?.params?.slug?.toLowerCase();
   const isCompanyRoute = Boolean(
@@ -559,6 +569,97 @@ const AppContent = ({ token, setToken }) => {
             <Route path="ledger" element={<SalesRepLedgerPage />} />
             <Route path="payouts" element={<SalesRepPayoutsPage />} />
             <Route path="*" element={<SalesSummaryPage />} />
+          </Route>
+          <Route path="/app" element={<AppRoleGate />} />
+          <Route
+            path="/app/employee"
+            element={
+              <RequireAuthRoute>
+                <StaffAppShell role="employee" />
+              </RequireAuthRoute>
+            }
+          >
+            <Route index element={<Navigate to="today" replace />} />
+            <Route path="today" element={<EmployeeTodayPage />} />
+            <Route path="calendar" element={<RecruiterMyTimePage token={token} />} />
+            <Route path="shifts" element={<RecruiterMyTimePage token={token} />} />
+            <Route path="bookings" element={<RecruiterUpcomingMeetingsPage token={token} />} />
+            <Route path="my-time" element={<RecruiterMyTimePage token={token} />} />
+            <Route path="upcoming-meetings" element={<RecruiterUpcomingMeetingsPage token={token} />} />
+            <Route path="public-link" element={<RecruiterPublicLinkPage token={token} />} />
+            <Route path="candidate-search" element={<RecruiterCandidateSearchPage token={token} />} />
+            <Route path="questionnaires" element={<RecruiterQuestionnairesPage token={token} />} />
+            <Route path="invitations" element={<RecruiterInvitationsPage token={token} />} />
+          </Route>
+          <Route
+            path="/app/manager"
+            element={
+              <RequireAuthRoute>
+                <StaffAppShell role="manager" />
+              </RequireAuthRoute>
+            }
+          >
+            <Route index element={<Navigate to="today" replace />} />
+            <Route path="today" element={<ManagerTodayPage />} />
+            <Route path="calendar" element={<EmployeeShiftView />} />
+            <Route path="shifts" element={<EmployeeAvailabilityManagement />} />
+            <Route path="bookings" element={<ManagerBookingsListPage />} />
+            <Route path="employees" element={<ManagerEmployeesListPage />} />
+            <Route path="services" element={<ManagerServicesListPage />} />
+            <Route
+              path="services-bookings"
+              element={
+                <MobileSubtabListPage
+                  title="Services & Bookings"
+                  intro="Open service and booking modules optimized for app mode."
+                  items={[
+                    {
+                      label: "Services list",
+                      description: "Quick service card list for mobile.",
+                      to: "/app/manager/services",
+                    },
+                    {
+                      label: "Bookings list",
+                      description: "Recent bookings in stacked cards.",
+                      to: "/app/manager/bookings",
+                    },
+                    {
+                      label: "Booking checkout",
+                      description: "Jump to manager payment tools.",
+                      to: "/manager/payments",
+                    },
+                  ]}
+                />
+              }
+            />
+            <Route
+              path="payroll"
+              element={
+                <MobileSubtabListPage
+                  title="Payroll"
+                  intro="Choose a payroll workflow."
+                  items={[
+                    {
+                      label: "Payroll overview",
+                      description: "Open payroll dashboard.",
+                      to: "/manager/payroll",
+                    },
+                    {
+                      label: "Raw payroll",
+                      description: "Inspect raw payroll calculations.",
+                      to: "/app/manager/payroll/raw",
+                    },
+                    {
+                      label: "Payroll audit",
+                      description: "Review payroll audit trail.",
+                      to: "/app/manager/payroll/audit",
+                    },
+                  ]}
+                />
+              }
+            />
+            <Route path="payroll/raw" element={<PayrollRawPage />} />
+            <Route path="payroll/audit" element={<PayrollAuditPage />} />
           </Route>
 
           {isCustomDomain && tenantSlug && (
