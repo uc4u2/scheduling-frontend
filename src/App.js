@@ -1,6 +1,6 @@
 // src/App.js
 import React, { useState, useMemo, createContext, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Navigate, matchPath } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Navigate, matchPath, Outlet } from "react-router-dom";
 import { ThemeProvider, CssBaseline, Box, Toolbar, Typography } from "@mui/material";
 import { createTheme } from "@mui/material/styles";
 import { SnackbarProvider } from "notistack";
@@ -199,6 +199,10 @@ import EnterpriseRetirementHelp from "./pages/help/EnterpriseRetirementHelp";
 import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 import SupportConsentPage from "./pages/sections/management/SupportConsentPage";
 import { buildMarketingUrl } from "./config/origins";
+import { isMobileAppMode } from "./utils/runtime";
+import MobileLayout from "./components/mobile/MobileLayout";
+import MobileTodayPage from "./components/mobile/MobileTodayPage";
+import MobileMorePage from "./components/mobile/MobileMorePage";
 
 export const ThemeModeContext = createContext({
   themeName: "cool",
@@ -376,6 +380,37 @@ const RequireAuthRoute = ({ children }) => {
   return <>{children}</>;
 };
 
+const MobileShiftsRoute = ({ token }) => {
+  const role = (localStorage.getItem("role") || "").toLowerCase();
+  if (role === "employee" || role === "recruiter") {
+    return <RecruiterMyTimePage token={token} />;
+  }
+  return <EmployeeShiftView />;
+};
+
+const MobileBookingsRoute = ({ token }) => {
+  const role = (localStorage.getItem("role") || "").toLowerCase();
+  if (role === "employee" || role === "recruiter") {
+    return <RecruiterUpcomingMeetingsPage token={token} />;
+  }
+  return <CandidateManagement token={token} />;
+};
+
+const MobileAppGate = () => {
+  const location = useLocation();
+  if (isMobileAppMode()) return <Outlet />;
+
+  const map = {
+    "/app/today": "/manager/dashboard",
+    "/app/calendar": "/calendar",
+    "/app/shifts": "/manager/employee-shift-view",
+    "/app/bookings": "/manager/candidates",
+    "/app/more": "/manager/dashboard",
+    "/app": "/manager/dashboard",
+  };
+  return <Navigate to={map[location.pathname] || "/manager/dashboard"} replace />;
+};
+
 
 const AppContent = ({ token, setToken }) => {
   const normalizedHost = normalizeDomain(window.location.host);
@@ -413,6 +448,8 @@ const AppContent = ({ token, setToken }) => {
     isKioskRoute ||
     isAuthRoute;
   const slugMatch = matchPath({ path: '/:slug/*' }, location.pathname) || matchPath({ path: '/:slug' }, location.pathname);
+  const isAppMobileRoute = Boolean(matchPath({ path: "/app/*" }, location.pathname));
+  const mobileAppMode = isMobileAppMode();
   const slugCandidate = isMarketingRoute ? null : slugMatch?.params?.slug?.toLowerCase();
   const isCompanyRoute = Boolean(
     (isCustomDomain && tenantSlug) ||
@@ -509,7 +546,7 @@ const AppContent = ({ token, setToken }) => {
     chatbotSlug && chatbotConfigLoaded && chatbotConfig && chatbotConfig.enabled === true
   );
   const showChatBot = !isEmbed && (marketingChatbot || tenantChatbotReady);
-  const showAppChrome = !isEmbed && !isCompanyRoute && !isNoChromeRoute;
+  const showAppChrome = !isEmbed && !isCompanyRoute && !isNoChromeRoute && !(isAppMobileRoute && mobileAppMode);
   const rootAppRedirect = (() => {
     if (!isAppHost) return "/";
     if (!token) return "/login";
@@ -859,6 +896,25 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/payroll/portal" element={<EmployeePayslipPortal token={token} />} />
           <Route path="/manager/payroll/raw" element={<PayrollRawPage />} />
           <Route path="/manager/payroll/audit" element={<PayrollAuditPage />} />
+
+          {/* Mobile app mode shell (/app/*) */}
+          <Route
+            path="/app"
+            element={
+              <RequireAuthRoute>
+                <MobileAppGate />
+              </RequireAuthRoute>
+            }
+          >
+            <Route element={<MobileLayout />}>
+              <Route index element={<Navigate to="today" replace />} />
+              <Route path="today" element={<MobileTodayPage />} />
+              <Route path="calendar" element={<CalendarView />} />
+              <Route path="shifts" element={<MobileShiftsRoute token={token} />} />
+              <Route path="bookings" element={<MobileBookingsRoute token={token} />} />
+              <Route path="more" element={<MobileMorePage />} />
+            </Route>
+          </Route>
 
           {/* Misc */}
           <Route path="/calendar" element={<CalendarView />} />
