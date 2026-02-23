@@ -199,7 +199,7 @@ import EnterpriseRetirementHelp from "./pages/help/EnterpriseRetirementHelp";
 import IndustryDirectoryPage from "./landing/pages/IndustryDirectoryPage";
 import SupportConsentPage from "./pages/sections/management/SupportConsentPage";
 import { buildMarketingUrl } from "./config/origins";
-import { isMobileAppMode } from "./utils/runtime";
+import { isMobileAppMode, isNativeRuntime } from "./utils/runtime";
 import MobileLayout from "./components/mobile/MobileLayout";
 import MobileTodayPage from "./components/mobile/MobileTodayPage";
 import MobileMorePage from "./components/mobile/MobileMorePage";
@@ -413,6 +413,7 @@ const MobileAppGate = () => {
 
 
 const AppContent = ({ token, setToken }) => {
+  const nativeRuntime = isNativeRuntime();
   const normalizedHost = normalizeDomain(window.location.host);
   const hostMode = getTenantHostMode(window.location.host);
   const isCustomDomain = hostMode === "custom";
@@ -555,6 +556,13 @@ const AppContent = ({ token, setToken }) => {
     if (role === "client") return "/dashboard";
     return "/manager/dashboard";
   })();
+  const nativeRootRedirect = (() => {
+    if (!token) return "/login";
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    if (role === "employee" || role === "recruiter") return "/employee/my-time";
+    if (role === "client") return "/dashboard";
+    return "/manager/dashboard";
+  })();
 
   const content = (
     <BillingBannerProvider>
@@ -647,11 +655,19 @@ const AppContent = ({ token, setToken }) => {
           {!isCustomDomain && (
             <>
               <Route element={<LandingLayout />}>
-                <Route
-                  path="/"
-                  element={isAppHost ? <Navigate to={rootAppRedirect} replace /> : <LandingPage />}
-                />
-              </Route>
+              <Route
+                path="/"
+                element={
+                  nativeRuntime ? (
+                    <Navigate to={nativeRootRedirect} replace />
+                  ) : isAppHost ? (
+                    <Navigate to={rootAppRedirect} replace />
+                  ) : (
+                    <LandingPage />
+                  )
+                }
+              />
+            </Route>
               <Route element={<PublicLayout token={token} setToken={setToken} />}>
                 <Route path="/pricing" element={<ExternalRedirect to={APP_MARKETING_PRICING_URL} />} />
                 <Route path="/compare" element={<CompareHubPage />} />
@@ -967,6 +983,41 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem("theme", themeName);
   }, [themeName]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    if (isNativeRuntime()) {
+      document.body.dataset.runtime = "native";
+    } else {
+      delete document.body.dataset.runtime;
+    }
+    return () => {
+      delete document.body.dataset.runtime;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isNativeRuntime() || typeof document === "undefined") return undefined;
+
+    const hydrateAuth = () => {
+      const latestToken = localStorage.getItem("token") || "";
+      setToken((prev) => (prev === latestToken ? prev : latestToken));
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        hydrateAuth();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", hydrateAuth);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", hydrateAuth);
+    };
+  }, []);
 
   const baseTheme = useMemo(() => {
     if (tenantHostMode === "custom") {
