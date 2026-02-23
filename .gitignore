@@ -4,3 +4,8 @@ build/
 .DS_Store
 .env.local
 .env.render
+android/.gradle/
+android/**/build/
+android/local.properties
+android/.idea/
+*.iml
