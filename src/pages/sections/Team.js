@@ -265,7 +265,7 @@ const asLocalDate = (ymd) => {
 };
 
   // NEW — enterprise week/day options
-  const [innerCalView, setInnerCalView] = useState("timeGridDay"); // "timeGridWeek" | "timeGridDay"
+  const [innerCalView, setInnerCalView] = useState("timeGridWeek"); // "timeGridWeek" | "timeGridDay"
   const [granularity, setGranularity] = useState("00:30:00");       // 15/30/60
   const [timeFmt12h, setTimeFmt12h] = useState(false);
   const [showWeekends, setShowWeekends] = useState(true);
@@ -821,6 +821,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       const ids = selectedRecruiters.length
         ? selectedRecruiters.join(",")
         : recruiters.map((r) => r.id).join(",");
+      if (!ids) {
+        setShifts([]);
+        return;
+      }
       const res = await api.get("/automation/shifts/range", {
         params: {
           start_date: dateRange.start,
@@ -1705,6 +1709,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const ids = selectedRecruiters.length
       ? selectedRecruiters.join(",")
       : recruiters.map((r) => r.id).join(",");
+    if (!ids) {
+      setErrorMsg("No employees selected for export.");
+      return;
+    }
     try {
       const res = await api.get("/automation/shifts/export", {
         params: {
@@ -2004,7 +2012,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     <Box
       sx={{
         bgcolor: { xs: "transparent", md: "background.default" },
-        pt: 0,
+        pt: { xs: 1, md: 2 },
         mt: 0,
         px: { xs: 1, md: 2 },
         pb: { xs: 1, md: 2 },
