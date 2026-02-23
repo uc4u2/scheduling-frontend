@@ -47,6 +47,31 @@ const detectedTz =
     Intl.DateTimeFormat().resolvedOptions().timeZone) ||
   "America/New_York";
 
+const AUTH_API_ORIGIN = "https://scheduling-application.onrender.com";
+
+const shouldForceAuthOrigin = () => {
+  try {
+    if (typeof window === "undefined") return false;
+    const protocol = String(window.location?.protocol || "").toLowerCase();
+    const host = String(window.location?.hostname || "").toLowerCase();
+    const ua = String(window.navigator?.userAgent || "").toLowerCase();
+    const isAndroidWebView = ua.includes("android") && (ua.includes(" wv") || ua.includes("; wv"));
+    const isCapacitor = protocol === "capacitor:";
+    const isCapLocalhost = host === "localhost" || host === "127.0.0.1";
+    return isAndroidWebView || isCapacitor || isCapLocalhost;
+  } catch {
+    return false;
+  }
+};
+
+const authRequestConfig = (config = {}) => {
+  if (!shouldForceAuthOrigin()) return config;
+  return {
+    ...config,
+    baseURL: AUTH_API_ORIGIN,
+  };
+};
+
 // Helper: append query params to a URL safely
 function appendQuery(url, paramsObj = {}) {
   const hasQ = url.includes("?");
@@ -219,7 +244,7 @@ const Login = ({ setToken }) => {
 
     try {
       const res = await api.post(
-        `/login`,
+        `${AUTH_API_ORIGIN}/login`,
         {
         email,
         password,
@@ -227,7 +252,7 @@ const Login = ({ setToken }) => {
         timezone,
         remember_device: rememberDevice,
         },
-        { noAuth: true, noCompanyHeader: true }
+        authRequestConfig({ noAuth: true, noCompanyHeader: true })
       );
 
       if (targetRole === "client" && res.data?.access_token) {
@@ -268,9 +293,9 @@ const Login = ({ setToken }) => {
 
     try {
       const res = await api.post(
-        `/verify-otp`,
+        `${AUTH_API_ORIGIN}/verify-otp`,
         { email, otp },
-        { noAuth: true, noCompanyHeader: true }
+        authRequestConfig({ noAuth: true, noCompanyHeader: true })
       );
 
       const token = res.data?.access_token;
@@ -335,9 +360,9 @@ const Login = ({ setToken }) => {
     setMessage("Sending a new code...");
     try {
       await api.post(
-        `/login/resend-otp`,
+        `${AUTH_API_ORIGIN}/login/resend-otp`,
         { email },
-        { noAuth: true, noCompanyHeader: true }
+        authRequestConfig({ noAuth: true, noCompanyHeader: true })
       );
       setMessage("We just sent a new code. It may take a moment to arrive.");
       setResendCooldown(45);
