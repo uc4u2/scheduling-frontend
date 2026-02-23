@@ -414,6 +414,8 @@ const MobileAppGate = () => {
 
 const AppContent = ({ token, setToken }) => {
   const nativeRuntime = isNativeRuntime();
+  const hasToken = Boolean(localStorage.getItem("token"));
+  const role = (localStorage.getItem("role") || "").toLowerCase();
   const normalizedHost = normalizeDomain(window.location.host);
   const hostMode = getTenantHostMode(window.location.host);
   const isCustomDomain = hostMode === "custom";
@@ -449,8 +451,6 @@ const AppContent = ({ token, setToken }) => {
     isKioskRoute ||
     isAuthRoute;
   const slugMatch = matchPath({ path: '/:slug/*' }, location.pathname) || matchPath({ path: '/:slug' }, location.pathname);
-  const isAppMobileRoute = Boolean(matchPath({ path: "/app/*" }, location.pathname));
-  const mobileAppMode = isMobileAppMode();
   const slugCandidate = isMarketingRoute ? null : slugMatch?.params?.slug?.toLowerCase();
   const isCompanyRoute = Boolean(
     (isCustomDomain && tenantSlug) ||
@@ -546,23 +546,25 @@ const AppContent = ({ token, setToken }) => {
   const tenantChatbotReady = Boolean(
     chatbotSlug && chatbotConfigLoaded && chatbotConfig && chatbotConfig.enabled === true
   );
-  const showChatBot = !isEmbed && (marketingChatbot || tenantChatbotReady);
-  const showAppChrome = !isEmbed && !isCompanyRoute && !isNoChromeRoute && !(isAppMobileRoute && mobileAppMode);
+  const showChatBot = !isEmbed && !nativeRuntime && (marketingChatbot || tenantChatbotReady);
+  const showAppChrome = !isEmbed && !nativeRuntime && !isCompanyRoute && !isNoChromeRoute;
   const rootAppRedirect = (() => {
     if (!isAppHost) return "/";
     if (!token) return "/login";
-    const role = (localStorage.getItem("role") || "").toLowerCase();
     if (role === "employee" || role === "recruiter") return "/employee/my-time";
     if (role === "client") return "/dashboard";
     return "/manager/dashboard";
   })();
   const nativeRootRedirect = (() => {
-    if (!token) return "/login";
-    const role = (localStorage.getItem("role") || "").toLowerCase();
+    if (!hasToken) return "/login";
     if (role === "employee" || role === "recruiter") return "/employee/my-time";
     if (role === "client") return "/dashboard";
     return "/manager/dashboard";
   })();
+
+  if (nativeRuntime && (location.pathname === "/" || MARKETING_PATHS.includes(location.pathname))) {
+    return <Navigate to={nativeRootRedirect} replace />;
+  }
 
   const content = (
     <BillingBannerProvider>

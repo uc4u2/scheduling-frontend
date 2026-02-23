@@ -1,11 +1,14 @@
+import { Capacitor } from "@capacitor/core";
+
 export const isNativeRuntime = () => {
-  if (typeof window === "undefined") return false;
-  const cap = window.Capacitor;
-  const byCapacitor =
-    typeof cap?.isNativePlatform === "function"
-      ? cap.isNativePlatform()
-      : Boolean(cap?.isNativePlatform);
-  return byCapacitor || window.location.protocol === "capacitor:";
+  try {
+    return (
+      Capacitor?.isNativePlatform?.() === true ||
+      (Capacitor?.getPlatform?.() && Capacitor.getPlatform() !== "web")
+    );
+  } catch {
+    return false;
+  }
 };
 
 export const isMobileViewport = () => {
@@ -16,4 +19,3 @@ export const isMobileViewport = () => {
 };
 
 export const isMobileAppMode = () => isNativeRuntime() || isMobileViewport();
-
