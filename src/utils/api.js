@@ -19,13 +19,115 @@ const envBase =
   procEnv.REACT_APP_API_URL ||
   "";
 
+const isNativeRuntime = () => {
+  try {
+    if (typeof window === "undefined") return false;
+    const cap = window.Capacitor;
+    if (!cap) return false;
+    if (typeof cap.isNativePlatform === "function") return cap.isNativePlatform();
+    const platform = typeof cap.getPlatform === "function" ? cap.getPlatform() : cap.platform;
+    return Boolean(platform && platform !== "web");
+  } catch {
+    return false;
+  }
+};
+
+const getNativePlatform = () => {
+  try {
+    if (typeof window === "undefined") return "";
+    const cap = window.Capacitor;
+    if (!cap) return "";
+    if (typeof cap.getPlatform === "function") return String(cap.getPlatform() || "").toLowerCase();
+    return String(cap.platform || "").toLowerCase();
+  } catch {
+    return "";
+  }
+};
+
+const isAndroidWebView = () => {
+  try {
+    if (typeof navigator === "undefined") return false;
+    const ua = String(navigator.userAgent || "").toLowerCase();
+    return ua.includes("android") && (ua.includes(" wv") || ua.includes("; wv"));
+  } catch {
+    return false;
+  }
+};
+
+const isCapacitorLocalhostHost = () => {
+  try {
+    if (typeof window === "undefined" || !window.location) return false;
+    const host = String(window.location.hostname || "").toLowerCase();
+    const port = String(window.location.port || "");
+    if (host !== "localhost" && host !== "127.0.0.1") return false;
+    // CRA dev server uses explicit ports; Capacitor app shell is typically localhost without 3000/3001.
+    return !port || (port !== "3000" && port !== "3001");
+  } catch {
+    return false;
+  }
+};
+
+const isNativeLikeRuntime = () => {
+  try {
+    if (typeof window === "undefined") return false;
+    const protocol = String(window.location?.protocol || "").toLowerCase();
+    return (
+      isNativeRuntime() ||
+      isAndroidWebView() ||
+      isCapacitorLocalhostHost() ||
+      protocol === "capacitor:"
+    );
+  } catch {
+    return false;
+  }
+};
+
 const inferBase = () => {
   try {
+    if (typeof window !== "undefined") {
+      const ua = String(window.navigator?.userAgent || "");
+      const protocol = String(window.location?.protocol || "").toLowerCase();
+      const androidWebView = /\bwv\b/i.test(ua) || /Android WebView/i.test(ua);
+      const capacitorProtocol = protocol === "capacitor:";
+
+      // Mobile hard rule: never call localhost backend from WebView/Capacitor.
+      if (androidWebView || capacitorProtocol) {
+        return "https://scheduling-application.onrender.com";
+      }
+    }
+
+    const explicitNative =
+      procEnv.REACT_APP_NATIVE_API_URL ||
+      procEnv.REACT_APP_API_URL ||
+      "https://scheduling-application.onrender.com";
+
+    if (isNativeRuntime()) {
+      const platform = getNativePlatform();
+      const rawNativeBase =
+        procEnv.REACT_APP_NATIVE_API_URL ||
+        procEnv.REACT_APP_API_URL ||
+        "https://scheduling-application.onrender.com";
+
+      // Android emulator cannot reach host machine through localhost.
+      if (platform === "android" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(rawNativeBase)) {
+        return rawNativeBase.replace(/\/\/(localhost|127\.0\.0\.1)/i, "//10.0.2.2");
+      }
+      return rawNativeBase;
+    }
+
     if (
       typeof window !== "undefined" &&
       (/^localhost$|^127\.0\.0\.1$/.test(window.location.hostname) ||
         window.location.hostname.endsWith(".local"))
     ) {
+      if (isCapacitorLocalhostHost()) {
+        return explicitNative;
+      }
+      // Capacitor Android WebView may still report localhost as the app origin.
+      // In that case, route API calls to native/prod backend instead of emulator localhost.
+      if (isAndroidWebView()) {
+        return explicitNative;
+      }
       return "http://localhost:5000";
     }
     if (
@@ -48,7 +150,35 @@ const inferBase = () => {
   return "/";
 };
 
-export const API_BASE_URL = envBase || inferBase();
+export const API_BASE_URL = (() => {
+  const nativeDefault = "https://scheduling-application.onrender.com";
+  const nativeExplicit = (procEnv.REACT_APP_NATIVE_API_URL || "").trim();
+  const apiExplicit = (procEnv.REACT_APP_API_URL || "").trim();
+  const explicit = nativeExplicit || apiExplicit;
+
+  // Deterministic native rule: never use localhost in Capacitor/WebView runtime.
+  if (isNativeLikeRuntime()) {
+    if (!explicit || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(explicit)) {
+      return nativeDefault;
+    }
+    return explicit;
+  }
+
+  // Android WebView should never use localhost from .env.local defaults.
+  if (isAndroidWebView()) {
+    const candidate = explicit;
+    if (!candidate || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(candidate)) return nativeDefault;
+    return candidate;
+  }
+
+  if (isNativeRuntime()) {
+    const candidate = explicit;
+    // For native app builds, never fall back to localhost accidentally.
+    if (!candidate || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(candidate)) return nativeDefault;
+    return candidate;
+  }
+  return envBase || inferBase();
+})();
 
 const getSupportSessionId = () => {
   if (typeof window === "undefined") return null;
@@ -106,6 +236,14 @@ const api = axios.create({
 export { api };
 
 api.interceptors.request.use((config) => {
+  // Release hardening: native runtimes must never call localhost backend.
+  if (isNativeLikeRuntime()) {
+    const base = String(config?.baseURL || API_BASE_URL || "").trim();
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(base)) {
+      config.baseURL = "https://scheduling-application.onrender.com";
+    }
+  }
+
   const supportSession = getSupportSessionId();
   if (supportSession && config?.url) {
     const url = String(config.url);
@@ -1011,7 +1149,11 @@ export const publicSite = {
       if (typeof window !== 'undefined') {
         const host = window.location.host || '';
         const isLocalFrontend = /localhost:3\d{3}$/.test(host) || host.endsWith('.local');
-        if (isLocalFrontend && /^https?:\/\/localhost:5000/.test(API_BASE_URL)) {
+        if (
+          !isNativeLikeRuntime() &&
+          isLocalFrontend &&
+          /^https?:\/\/localhost:5000/.test(API_BASE_URL)
+        ) {
           config.baseURL = '';
         }
       }
