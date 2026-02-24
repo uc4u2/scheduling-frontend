@@ -29,6 +29,10 @@ import PricingTable from "../components/PricingTable";
 import platformMap from "../../assets/marketing/platform-map.svg";
 import JsonLd from "../../components/seo/JsonLd";
 import api from "../../utils/api";
+import {
+  MOBILE_PAYMENTS_MESSAGE,
+  isMobileComplianceMode,
+} from "../../utils/mobileCompliance";
 
 const HERO_PRIMARY_CTA_TO = "/register";
 const HERO_SECONDARY_CTA_TO = "#plans";
@@ -520,6 +524,10 @@ const PricingPage = () => {
   const handleCheckout = useCallback(async (planKey) => {
     if (!planKey) return;
     setCtaError("");
+    if (isMobileComplianceMode()) {
+      setCtaError(MOBILE_PAYMENTS_MESSAGE);
+      return;
+    }
     const token =
       typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
     if (!token) {
@@ -559,6 +567,10 @@ const PricingPage = () => {
 
   const handleWebsiteDesignCheckout = useCallback(async () => {
     setAddonError("");
+    if (isMobileComplianceMode()) {
+      setAddonError(MOBILE_PAYMENTS_MESSAGE);
+      return;
+    }
     const token =
       typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
     if (!token) {
@@ -593,6 +605,7 @@ const PricingPage = () => {
 
   React.useEffect(() => {
     const planParam = (searchParams.get("plan") || "").toLowerCase();
+    if (isMobileComplianceMode()) return;
     const token =
       typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
     if (!planParam || !token) return;

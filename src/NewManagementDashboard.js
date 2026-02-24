@@ -118,6 +118,10 @@ import SavedPayrollsPortal from "./pages/sections/SavedPayrollsPortal";
 import AddRecruiter from "./AddRecruiter";
 import WebsiteSuite from "./pages/sections/management/WebsiteSuite";
 import ManagementFrame from "./components/ui/ManagementFrame";
+import {
+  MOBILE_PAYMENTS_MESSAGE,
+  isMobileComplianceMode,
+} from "./utils/mobileCompliance";
 import ManagerInvoicesPage from "./pages/sections/ManagerInvoicesPage";
 import { getUserTimezone } from "./utils/timezone";
 import TeamActivity from "./TeamActivity";
@@ -2178,6 +2182,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
   };
 
   const handleBillingPortal = async () => {
+    if (isMobileComplianceMode()) {
+      setBillingStatusError(MOBILE_PAYMENTS_MESSAGE);
+      return;
+    }
     setBillingPortalLoading(true);
     try {
       const res = await api.post("/billing/portal");

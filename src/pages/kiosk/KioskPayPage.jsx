@@ -12,6 +12,7 @@ import {
   Paper,
 } from "@mui/material";
 import api from "../../utils/api";
+import { MOBILE_PAYMENTS_MESSAGE, isMobileComplianceMode } from "../../utils/mobileCompliance";
 
 const decodeTokenPayload = (token) => {
   if (!token || !token.includes(".")) return null;
@@ -54,6 +55,10 @@ const KioskPayPage = () => {
 
   const handlePay = async () => {
     if (!token) return;
+    if (isMobileComplianceMode()) {
+      setError(MOBILE_PAYMENTS_MESSAGE);
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {

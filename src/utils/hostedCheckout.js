@@ -1,6 +1,7 @@
 import { api as apiClient } from "./api";
 import { normalizeCurrency } from "./currency";
 import { CartTypes, CartErrorCodes } from "./cart";
+import { isMobileComplianceMode, MOBILE_PAYMENTS_MESSAGE } from "./mobileCompliance";
 
 const CHECKOUT_SESSION_KEY = "checkout_stripe_session_id";
 const PENDING_CHECKOUT_KEY = "checkout_pending_checkout_id";
@@ -221,6 +222,9 @@ export const startHostedCheckout = async ({
   payload,
   api = apiClient,
 }) => {
+  if (isMobileComplianceMode()) {
+    throw new Error(MOBILE_PAYMENTS_MESSAGE);
+  }
   if (!slug) {
     throw new Error("Unable to determine company.");
   }
