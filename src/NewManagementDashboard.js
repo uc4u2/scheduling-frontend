@@ -167,6 +167,12 @@ const overviewChildrenConfig = [
 
 
 const menuConfig = [
+  {
+    label: "Employee Dashboard",
+    key: "employee-dashboard",
+    icon: <People />,
+  },
+
   // Employee group (first)
   {
     labelKey: "manager.menu.employeeManagement",
@@ -2158,6 +2164,13 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
   };
 
   const handleNavSelect = (viewKey) => {
+    if (viewKey === "employee-dashboard") {
+      navigate("/employee/my-time?workspace=manager");
+      if (isMobileViewport) {
+        setMobileDrawerOpen(false);
+      }
+      return;
+    }
     if (viewKey === "billing") {
       navigate("/manager/settings?tab=billing");
       setSelectedView("settings");

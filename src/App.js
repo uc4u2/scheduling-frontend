@@ -115,6 +115,7 @@ import RecruiterQuestionnairesPage from "./pages/recruiter/RecruiterQuestionnair
 import RecruiterUpcomingMeetingsPage from "./pages/recruiter/RecruiterUpcomingMeetingsPage";
 import RecruiterPublicLinkPage from "./pages/recruiter/PublicLinkPage";
 import RecruiterMyTimePage from "./pages/recruiter/RecruiterMyTimePage";
+import RecruiterMyShiftsPage from "./pages/recruiter/RecruiterMyShiftsPage";
 import RecruiterCandidateSearchPage from "./pages/recruiter/RecruiterCandidateSearchPage";
 import ManagerDashboard from "./ManagerDashboard";
 import CandidateBooking from "./CandidateBooking";
@@ -471,6 +472,24 @@ const MobileBookingsRoute = ({ token }) => {
   );
 };
 
+const MobileMyShiftsRoute = ({ token }) => {
+  const role = (localStorage.getItem("role") || "").toLowerCase();
+  const mobileMode = isMobileAppMode();
+  const tick = useMobileRefreshTick();
+  if (role === "employee" || role === "recruiter") {
+    return (
+      <MobileRoutePrefetch enabled={mobileMode} title="Loading my shifts">
+        <RecruiterMyShiftsPage key={`mobile-my-shifts-employee-${tick}`} token={token} />
+      </MobileRoutePrefetch>
+    );
+  }
+  return (
+    <MobileRoutePrefetch enabled={mobileMode} title="Loading shifts">
+      <EmployeeShiftView key={`mobile-my-shifts-manager-${tick}`} />
+    </MobileRoutePrefetch>
+  );
+};
+
 const MobileAppGate = () => {
   const location = useLocation();
   const role = (localStorage.getItem("role") || "").toLowerCase();
@@ -483,6 +502,7 @@ const MobileAppGate = () => {
     "/app/today": "/manager/dashboard",
     "/app/calendar": "/calendar",
     "/app/shifts": "/manager/employee-shift-view",
+    "/app/my-shifts": role === "employee" || role === "recruiter" ? "/employee/my-shifts" : "/manager/employee-shift-view",
     "/app/bookings": "/manager/candidates",
     "/app/more": "/manager/dashboard",
     "/app": "/manager/dashboard",
@@ -899,8 +919,8 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/employee/candidate-search" element={<RecruiterCandidateSearchPage token={token} />} />
         <Route path="/recruiter/my-time" element={<RecruiterMyTimePage token={token} />} />
         <Route path="/employee/my-time" element={<RecruiterMyTimePage token={token} />} />
-        <Route path="/recruiter/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
-        <Route path="/employee/my-shifts" element={<Navigate to="/employee/my-time" replace />} />
+        <Route path="/recruiter/my-shifts" element={<RecruiterMyShiftsPage token={token} />} />
+        <Route path="/employee/my-shifts" element={<RecruiterMyShiftsPage token={token} />} />
         <Route
           path="/recruiter"
           element={
@@ -1022,6 +1042,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="today" element={<MobileTodayPage />} />
               <Route path="calendar" element={<MobileCalendarRoute />} />
               <Route path="shifts" element={<MobileShiftsRoute token={token} />} />
+              <Route path="my-shifts" element={<MobileMyShiftsRoute token={token} />} />
               <Route path="bookings" element={<MobileBookingsRoute token={token} />} />
               <Route path="more" element={<MobileMorePage />} />
               <Route path="about" element={<MobileAboutPage />} />

@@ -11,6 +11,7 @@ import {
 import TodayIcon from "@mui/icons-material/Today";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EventNoteIcon from "@mui/icons-material/EventNote";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import BookOnlineIcon from "@mui/icons-material/BookOnline";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -19,7 +20,13 @@ import MobileHeader from "./MobileHeader";
 import { getNetworkStatus, subscribeNetworkStatus } from "../../utils/networkStatusStore";
 import { hapticImpact } from "../../utils/mobileFeedback";
 
-const tabToValue = (pathname) => {
+const tabToValue = (pathname, isEmployee) => {
+  if (isEmployee) {
+    if (pathname.startsWith("/app/calendar")) return "calendar";
+    if (pathname.startsWith("/app/my-shifts")) return "my-shifts";
+    if (pathname.startsWith("/app/more")) return "more";
+    return "my-time";
+  }
   if (pathname.startsWith("/app/calendar")) return "calendar";
   if (pathname.startsWith("/app/shifts")) return "shifts";
   if (pathname.startsWith("/app/bookings")) return "bookings";
@@ -54,9 +61,9 @@ const MobileLayout = () => {
   const isEmployee = role === "employee" || role === "recruiter";
   const tabConfig = isEmployee
     ? [
-        { label: "Today", value: "today", icon: <TodayIcon /> },
         { label: "Calendar", value: "calendar", icon: <CalendarMonthIcon /> },
-        { label: "Shifts", value: "shifts", icon: <EventNoteIcon /> },
+        { label: "My Time", value: "my-time", icon: <AccessTimeIcon /> },
+        { label: "My Shifts", value: "my-shifts", icon: <EventNoteIcon /> },
         { label: "More", value: "more", icon: <MoreHorizIcon /> },
       ]
     : [
@@ -67,7 +74,7 @@ const MobileLayout = () => {
         { label: "More", value: "more", icon: <MoreHorizIcon /> },
       ];
   const title = role === "employee" || role === "recruiter" ? "Employee App" : "Manager App";
-  const value = tabToValue(location.pathname);
+  const value = tabToValue(location.pathname, isEmployee);
   const canPullRefresh = value !== "more";
 
   const startPull = (event) => {
@@ -157,6 +164,15 @@ const MobileLayout = () => {
           onChange={(_, next) => {
             if (next === "more") {
               setDrawerOpen(true);
+              return;
+            }
+            if (isEmployee) {
+              const employeeRouteMap = {
+                calendar: "/app/calendar",
+                "my-time": "/app/shifts",
+                "my-shifts": "/app/my-shifts",
+              };
+              navigate(employeeRouteMap[next] || "/app/shifts");
               return;
             }
             navigate(`/app/${next}`);
