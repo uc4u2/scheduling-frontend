@@ -20,14 +20,14 @@ const managerItems = [
   { label: "Payroll", to: "/manager/payroll" },
   { label: "Support", to: "/manager/support-consent" },
   { label: "Settings", to: "/admin/CompanyProfile" },
+  { label: "About", to: "/app/about" },
 ];
 
 const employeeItems = [
-  { label: "Employees", to: "/employee" },
-  { label: "Services", to: "/employee/public-link" },
-  { label: "Payroll", to: "/employee/my-time" },
-  { label: "Support", to: "/client/support" },
-  { label: "Settings", to: "/employee" },
+  { label: "My Time", to: "/employee/my-time" },
+  { label: "My Meetings", to: "/recruiter/upcoming-meetings" },
+  { label: "Public Link", to: "/employee/public-link" },
+  { label: "About", to: "/app/about" },
 ];
 
 const MobileDrawer = ({ open, onClose, navigate }) => {

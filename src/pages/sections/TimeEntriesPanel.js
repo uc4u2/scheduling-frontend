@@ -27,6 +27,7 @@ import {
   TableRow,
   TableContainer,
   TextField,
+  Skeleton,
   Tooltip,
   Typography,
   Switch,
@@ -1098,9 +1099,29 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
 
             <Box sx={{ mt: 2 }}>
               {loading ? (
-                <Box display="flex" justifyContent="center" py={4}>
-                  <CircularProgress size={28} />
-                </Box>
+                isMobileCards ? (
+                  <Stack spacing={1.25} sx={{ mt: 1 }}>
+                    {[0, 1, 2].map((idx) => (
+                      <Paper key={idx} variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                        <Stack spacing={1}>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Skeleton variant="circular" width={34} height={34} />
+                            <Box sx={{ flex: 1 }}>
+                              <Skeleton height={18} width="55%" />
+                              <Skeleton height={14} width="35%" />
+                            </Box>
+                          </Stack>
+                          <Skeleton variant="rounded" height={22} />
+                          <Skeleton variant="rounded" height={22} width="85%" />
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Box display="flex" justifyContent="center" py={4}>
+                    <CircularProgress size={28} />
+                  </Box>
+                )
               ) : entries.length === 0 ? (
                 <Typography color="text.secondary">No time entries found for this filter.</Typography>
               ) : (
@@ -1599,9 +1620,29 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         </Stack>
         <Collapse in={!rosterCollapsed} timeout="auto" unmountOnExit>
           {loading ? (
-            <Box display="flex" justifyContent="center" py={4}>
-              <CircularProgress size={24} />
-            </Box>
+            isMobileCards ? (
+              <Stack spacing={1.25} sx={{ mt: 2 }}>
+                {[0, 1].map((idx) => (
+                  <Paper key={idx} variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                    <Stack direction="row" spacing={1.25} alignItems="center">
+                      <Skeleton variant="circular" width={40} height={40} />
+                      <Box sx={{ flex: 1 }}>
+                        <Skeleton height={18} width="45%" />
+                        <Skeleton height={14} width="35%" />
+                      </Box>
+                    </Stack>
+                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                      <Skeleton variant="rounded" height={22} width={90} />
+                      <Skeleton variant="rounded" height={22} width={90} />
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <Box display="flex" justifyContent="center" py={4}>
+                <CircularProgress size={24} />
+              </Box>
+            )
           ) : roster.length ? (
             <Grid container spacing={2} sx={{ mt: 2 }}>
               {roster.map((active) => (

@@ -4,6 +4,9 @@ import {
   BottomNavigation,
   BottomNavigationAction,
   Paper,
+  Alert,
+  Button,
+  Collapse,
 } from "@mui/material";
 import TodayIcon from "@mui/icons-material/Today";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -13,6 +16,7 @@ import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import MobileDrawer from "./MobileDrawer";
 import MobileHeader from "./MobileHeader";
+import { getNetworkStatus, subscribeNetworkStatus } from "../../utils/networkStatusStore";
 
 const tabToValue = (pathname) => {
   if (pathname.startsWith("/app/calendar")) return "calendar";
@@ -26,16 +30,61 @@ const MobileLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [networkState, setNetworkState] = useState(getNetworkStatus);
   const role = useMemo(
     () => (typeof window !== "undefined" ? (localStorage.getItem("role") || "").toLowerCase() : ""),
     []
   );
+  React.useEffect(() => subscribeNetworkStatus(setNetworkState), []);
+  React.useEffect(() => {
+    const onOnline = () => setNetworkState({ status: "ok", message: "" });
+    const onOffline = () => setNetworkState({ status: "offline", message: "No internet connection." });
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
+  const isEmployee = role === "employee" || role === "recruiter";
+  const tabConfig = isEmployee
+    ? [
+        { label: "Today", value: "today", icon: <TodayIcon /> },
+        { label: "Calendar", value: "calendar", icon: <CalendarMonthIcon /> },
+        { label: "Shifts", value: "shifts", icon: <EventNoteIcon /> },
+        { label: "More", value: "more", icon: <MoreHorizIcon /> },
+      ]
+    : [
+        { label: "Today", value: "today", icon: <TodayIcon /> },
+        { label: "Calendar", value: "calendar", icon: <CalendarMonthIcon /> },
+        { label: "Shifts", value: "shifts", icon: <EventNoteIcon /> },
+        { label: "Bookings", value: "bookings", icon: <BookOnlineIcon /> },
+        { label: "More", value: "more", icon: <MoreHorizIcon /> },
+      ];
   const title = role === "employee" || role === "recruiter" ? "Employee App" : "Manager App";
   const value = tabToValue(location.pathname);
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
       <MobileHeader title={title} onMenuClick={() => setDrawerOpen(true)} />
+      <Collapse in={networkState.status !== "ok"}>
+        <Alert
+          severity={networkState.status === "offline" ? "warning" : "error"}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => window.location.reload()}
+            >
+              Retry
+            </Button>
+          }
+          sx={{ borderRadius: 0 }}
+        >
+          {networkState.message || "Connection issue detected."}
+        </Alert>
+      </Collapse>
 
       <Box sx={{ p: 1.5, pb: "94px" }}>
         <Outlet />
@@ -63,11 +112,14 @@ const MobileLayout = () => {
             navigate(`/app/${next}`);
           }}
         >
-          <BottomNavigationAction label="Today" value="today" icon={<TodayIcon />} />
-          <BottomNavigationAction label="Calendar" value="calendar" icon={<CalendarMonthIcon />} />
-          <BottomNavigationAction label="Shifts" value="shifts" icon={<EventNoteIcon />} />
-          <BottomNavigationAction label="Bookings" value="bookings" icon={<BookOnlineIcon />} />
-          <BottomNavigationAction label="More" value="more" icon={<MoreHorizIcon />} />
+          {tabConfig.map((tab) => (
+            <BottomNavigationAction
+              key={tab.value}
+              label={tab.label}
+              value={tab.value}
+              icon={tab.icon}
+            />
+          ))}
         </BottomNavigation>
       </Paper>
 

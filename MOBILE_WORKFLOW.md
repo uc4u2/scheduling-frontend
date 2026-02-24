@@ -7,8 +7,12 @@
   - Native runtime is detected (`Capacitor` / `capacitor:` protocol), or
   - Viewport is mobile (`max-width: 900px`).
 - In mobile mode, `/app/*` uses `MobileLayout`:
-  - Bottom tabs: `Today`, `Calendar`, `Shifts`, `Bookings`, `More`
+  - Bottom tabs (role-based):
+    - Employee/Recruiter: `Today`, `Calendar`, `Shifts`, `More`
+    - Manager: `Today`, `Calendar`, `Shifts`, `Bookings`, `More`
   - `More` opens a drawer with links to existing modules.
+  - A native/mobile-only network banner is shown at the top for offline/server errors.
+- `/app/about` provides app version/build/runtime diagnostics.
 - On desktop screens, `/app/*` routes redirect to existing desktop pages.
 - Non-`/app/*` routes are unchanged.
 
@@ -19,6 +23,7 @@
 - `src/components/mobile/MobileDrawer.jsx`
 - `src/components/mobile/MobileTodayPage.jsx`
 - `src/components/mobile/MobileMorePage.jsx`
+- `src/components/mobile/MobileAboutPage.jsx`
 - `src/App.js` (routing + chrome gate for mobile mode)
 
 ## Mobile Compliance Mode (Play Store)

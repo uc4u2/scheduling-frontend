@@ -1,7 +1,7 @@
 // src/App.js
 import React, { useState, useMemo, createContext, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Navigate, matchPath, Outlet } from "react-router-dom";
-import { ThemeProvider, CssBaseline, Box, Toolbar, Typography } from "@mui/material";
+import { ThemeProvider, CssBaseline, Box, Typography, Card, CardContent, Stack, Skeleton } from "@mui/material";
 import { createTheme } from "@mui/material/styles";
 import { SnackbarProvider } from "notistack";
 import RouteTracker from "./analytics/RouteTracker";
@@ -204,6 +204,7 @@ import MobileLayout from "./components/mobile/MobileLayout";
 import MobileTodayPage from "./components/mobile/MobileTodayPage";
 import MobileMorePage from "./components/mobile/MobileMorePage";
 import MobileWebOnlyNotice from "./components/mobile/MobileWebOnlyNotice";
+import MobileAboutPage from "./components/mobile/MobileAboutPage";
 
 export const ThemeModeContext = createContext({
   themeName: "cool",
@@ -381,24 +382,80 @@ const RequireAuthRoute = ({ children }) => {
   return <>{children}</>;
 };
 
+const MobileRouteSkeleton = ({ title = "Loading" }) => (
+  <Card variant="outlined">
+    <CardContent>
+      <Typography variant="subtitle1" sx={{ mb: 1.25 }}>
+        {title}
+      </Typography>
+      <Stack spacing={1}>
+        <Skeleton variant="rounded" height={22} width="48%" />
+        <Skeleton variant="rounded" height={18} />
+        <Skeleton variant="rounded" height={18} width="90%" />
+        <Skeleton variant="rounded" height={62} sx={{ mt: 0.5 }} />
+      </Stack>
+    </CardContent>
+  </Card>
+);
+
+const MobileRoutePrefetch = ({ children, enabled = true, title }) => {
+  const [ready, setReady] = useState(!enabled);
+  useEffect(() => {
+    if (!enabled) {
+      setReady(true);
+      return undefined;
+    }
+    setReady(false);
+    const timer = window.setTimeout(() => setReady(true), 280);
+    return () => window.clearTimeout(timer);
+  }, [enabled]);
+
+  if (!ready) {
+    return <MobileRouteSkeleton title={title} />;
+  }
+  return children;
+};
+
 const MobileShiftsRoute = ({ token }) => {
   const role = (localStorage.getItem("role") || "").toLowerCase();
+  const mobileMode = isMobileAppMode();
   if (role === "employee" || role === "recruiter") {
-    return <RecruiterMyTimePage token={token} />;
+    return (
+      <MobileRoutePrefetch enabled={mobileMode} title="Loading shifts">
+        <RecruiterMyTimePage token={token} />
+      </MobileRoutePrefetch>
+    );
   }
-  return <EmployeeShiftView />;
+  return (
+    <MobileRoutePrefetch enabled={mobileMode} title="Loading shifts">
+      <EmployeeShiftView />
+    </MobileRoutePrefetch>
+  );
 };
 
 const MobileBookingsRoute = ({ token }) => {
   const role = (localStorage.getItem("role") || "").toLowerCase();
+  const mobileMode = isMobileAppMode();
   if (role === "employee" || role === "recruiter") {
-    return <RecruiterUpcomingMeetingsPage token={token} />;
+    return (
+      <MobileRoutePrefetch enabled={mobileMode} title="Loading bookings">
+        <RecruiterUpcomingMeetingsPage token={token} />
+      </MobileRoutePrefetch>
+    );
   }
-  return <CandidateManagement token={token} />;
+  return (
+    <MobileRoutePrefetch enabled={mobileMode} title="Loading bookings">
+      <CandidateManagement token={token} />
+    </MobileRoutePrefetch>
+  );
 };
 
 const MobileAppGate = () => {
   const location = useLocation();
+  const role = (localStorage.getItem("role") || "").toLowerCase();
+  if (role === "client") {
+    return <Navigate to="/dashboard" replace />;
+  }
   if (isMobileAppMode()) return <Outlet />;
 
   const map = {
@@ -946,6 +1003,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="shifts" element={<MobileShiftsRoute token={token} />} />
               <Route path="bookings" element={<MobileBookingsRoute token={token} />} />
               <Route path="more" element={<MobileMorePage />} />
+              <Route path="about" element={<MobileAboutPage />} />
             </Route>
           </Route>
 

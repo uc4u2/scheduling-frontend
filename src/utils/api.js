@@ -2,6 +2,7 @@
 import axios from "axios";
 import { clearCachedCompanyId, getAuthedCompanyId } from "./authedCompany";
 import { captureCurrencyFromResponse } from "./currency";
+import { setNetworkStatus } from "./networkStatusStore";
 
 /* ------------------------------ Base URL ------------------------------ */
 const viteBase =
@@ -126,6 +127,9 @@ const api = axios.create({
 export { api };
 
 api.interceptors.request.use((config) => {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    setNetworkStatus({ status: "offline", message: "No internet connection." });
+  }
   const supportSession = getSupportSessionId();
   if (supportSession && config?.url) {
     const url = String(config.url);
@@ -148,12 +152,21 @@ api.interceptors.request.use((config) => {
 /* -------------------- Auth + Company header injector -------------------- */
 api.interceptors.response.use(
   (resp) => {
+    setNetworkStatus({ status: "ok", message: "" });
     try {
       captureCurrencyFromResponse(resp?.data);
     } catch {}
     return resp;
   },
   (error) => {
+    if (!error?.response) {
+      setNetworkStatus({ status: "offline", message: "No internet connection." });
+    } else if (error.response.status >= 500) {
+      setNetworkStatus({
+        status: "error",
+        message: "Server error. Please retry.",
+      });
+    }
     const status = error?.response?.status;
     const data = error?.response?.data || {};
     const code = data.code || data.error || data.error_code;
