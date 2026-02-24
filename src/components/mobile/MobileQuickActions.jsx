@@ -24,9 +24,9 @@ const managerActions = [
 ];
 
 const employeeActions = [
-  { label: "Calendar", to: "/employee?tab=calendar" },
-  { label: "My Time", to: "/employee/my-time" },
-  { label: "My Shifts", to: "/employee/my-shifts" },
+  { label: "Calendar", to: "/app/calendar" },
+  { label: "My Time", to: "/app/shifts" },
+  { label: "My Shifts", to: "/app/my-shifts" },
 ];
 
 const MobileQuickActions = () => {
