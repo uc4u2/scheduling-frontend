@@ -67,9 +67,9 @@ const getRoleMeta = (value) =>
 
 const getRoleHome = (role) => {
   const normalized = String(role || "").toLowerCase();
-  if (normalized === "employee" || normalized === "recruiter") return "/employee/my-time";
+  if (normalized === "employee" || normalized === "recruiter") return "/app/today";
   if (normalized === "client") return "/dashboard";
-  return "/manager/dashboard";
+  return "/app/today";
 };
 
 const Login = ({ setToken }) => {

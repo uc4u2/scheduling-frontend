@@ -636,9 +636,9 @@ const AppContent = ({ token, setToken }) => {
   })();
   const nativeRootRedirect = (() => {
     if (!hasToken) return "/login";
-    if (role === "employee" || role === "recruiter") return "/employee/my-time";
+    if (role === "employee" || role === "recruiter") return "/app/today";
     if (role === "client") return "/dashboard";
-    return "/manager/dashboard";
+    return "/app/today";
   })();
   const nativeBlockedBillingRoute =
     location.pathname === "/pricing" ||
