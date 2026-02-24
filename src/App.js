@@ -206,6 +206,7 @@ import MobileTodayPage from "./components/mobile/MobileTodayPage";
 import MobileMorePage from "./components/mobile/MobileMorePage";
 import MobileWebOnlyNotice from "./components/mobile/MobileWebOnlyNotice";
 import MobileAboutPage from "./components/mobile/MobileAboutPage";
+import MobileQuickActions from "./components/mobile/MobileQuickActions";
 
 export const ThemeModeContext = createContext({
   themeName: "cool",
@@ -647,6 +648,16 @@ const AppContent = ({ token, setToken }) => {
   );
   const showChatBot = !isEmbed && !nativeRuntime && (marketingChatbot || tenantChatbotReady);
   const showAppChrome = !isEmbed && !nativeRuntime && !isCompanyRoute && !isNoChromeRoute;
+  const showMobileQuickActions =
+    !isEmbed &&
+    hasToken &&
+    isMobileAppMode() &&
+    !isAuthRoute &&
+    !isMarketingRoute &&
+    !isCandidatePortalRoute &&
+    !isDocumentRequestRoute &&
+    !isMeetRoute &&
+    !isKioskRoute;
   const rootAppRedirect = (() => {
     if (!isAppHost) return "/";
     if (!token) return "/login";
@@ -1068,6 +1079,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="*" element={<Typography sx={{ mt: 5, textAlign: "center" }}>Page Not Found</Typography>} />
         </Routes>
       </Box>
+      {showMobileQuickActions && <MobileQuickActions />}
 
       {showAppChrome && <Footer />}
       {!isEmbed && showChatBot && (
