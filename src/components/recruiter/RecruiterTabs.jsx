@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
-import { Box, Tabs, Tab } from "@mui/material";
+import { Box, Tabs, Tab, Button, Stack } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -83,6 +83,27 @@ const RecruiterTabs = ({
     }
     return tabs[0]?.value || value;
   }, [tabs, value]);
+  const quickBasePath = location.pathname.startsWith("/recruiter")
+    ? "/recruiter"
+    : "/employee";
+  const quickSwitchItems = [
+    { value: "calendar", label: "Calendar", path: `${quickBasePath}?tab=calendar` },
+    { value: "my-time", label: "My Time", path: `${quickBasePath}/my-time` },
+    { value: "my-shifts", label: "View My Shift", path: `${quickBasePath}/my-shifts` },
+  ];
+  const quickSwitchValue = useMemo(() => {
+    if (location.pathname.startsWith("/recruiter/my-shifts") || location.pathname.startsWith("/employee/my-shifts")) {
+      return "my-shifts";
+    }
+    if (location.pathname.startsWith("/recruiter/my-time") || location.pathname.startsWith("/employee/my-time")) {
+      return "my-time";
+    }
+    const localTabValue = searchParams.get("tab");
+    if (localTabValue === "calendar") {
+      return "calendar";
+    }
+    return null;
+  }, [location.pathname, searchParams]);
 
   const handleChange = (_event, newValue) => {
     const config = TAB_CONFIG.find((tab) => tab.value === newValue);
@@ -112,69 +133,115 @@ const RecruiterTabs = ({
   }
 
   return (
-    <Box
-      sx={{
-        mb: 3,
-        p: 0.75,
-        borderRadius: 999,
-        border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
-        backgroundColor: alpha(theme.palette.background.paper, 0.8),
-      }}
-    >
-      <Tabs
-        value={resolvedValue}
-        onChange={handleChange}
-        variant="scrollable"
-        scrollButtons="auto"
-        allowScrollButtonsMobile
-        aria-label="Employee dashboard tabs"
+    <Box sx={{ mb: 3 }}>
+      <Stack
         sx={{
-          minHeight: 40,
-          "& .MuiTabs-flexContainer": {
-            flexWrap: "nowrap",
-            gap: 0.5,
-          },
-          "& .MuiTabs-indicator": {
-            display: "none",
-          },
-          "& .MuiTabs-scrollButtons": {
-            display: { xs: "flex", md: "flex" },
-          },
+          display: { xs: "none", md: "flex" },
+          mb: 1.25,
+          p: 0.75,
+          borderRadius: 999,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
+          backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.08),
+        }}
+        direction="row"
+        spacing={1}
+      >
+        {quickSwitchItems.map((item) => (
+          <Button
+            key={item.value}
+            onClick={() => navigate(item.path)}
+            sx={{
+              minHeight: 34,
+              px: 2,
+              borderRadius: 999,
+              textTransform: "none",
+              fontWeight: 700,
+              border: "1px solid",
+              borderColor:
+                quickSwitchValue === item.value
+                  ? alpha(theme.palette.primary.main, 0.5)
+                  : alpha(theme.palette.text.primary, 0.22),
+              color:
+                quickSwitchValue === item.value
+                  ? theme.palette.primary.main
+                  : theme.palette.text.primary,
+              backgroundColor:
+                quickSwitchValue === item.value
+                  ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.26 : 0.12)
+                  : alpha(theme.palette.background.paper, 0.92),
+              "&:hover": {
+                borderColor: alpha(theme.palette.primary.main, 0.42),
+                backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.12),
+              },
+            }}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </Stack>
+      <Box
+        sx={{
+          p: 0.75,
+          borderRadius: 999,
+          border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
+          backgroundColor: alpha(theme.palette.background.paper, 0.8),
         }}
       >
-      {tabs.map((tab) => (
-        <Tab
-          key={tab.value}
-          value={tab.value}
-          label={tab.labelKey ? t(tab.labelKey) : tab.label}
-          aria-label={tab.labelKey ? t(tab.labelKey) : tab.label}
+        <Tabs
+          value={resolvedValue}
+          onChange={handleChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          aria-label="Employee dashboard tabs"
           sx={{
-            minHeight: 36,
-            minWidth: "auto",
-            px: 2.5,
-            borderRadius: 999,
-            textTransform: "none",
-            fontWeight: 600,
-            color: theme.palette.text.primary,
-            border: `1px solid ${alpha(theme.palette.text.primary, 0.2)}`,
-            "&.Mui-selected": {
-              color: theme.palette.primary.main,
-              borderColor: alpha(theme.palette.primary.main, 0.45),
-              backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.32 : 0.14),
-              fontWeight: 700,
+            minHeight: 40,
+            "& .MuiTabs-flexContainer": {
+              flexWrap: "nowrap",
+              gap: 0.5,
             },
-            "&:hover": {
-              borderColor: alpha(theme.palette.primary.main, 0.4),
-              backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.12),
+            "& .MuiTabs-indicator": {
+              display: "none",
             },
-            "&:focus-visible": {
-              outline: `2px solid ${theme.palette.primary.main}`,
-              outlineOffset: 2,
+            "& .MuiTabs-scrollButtons": {
+              display: { xs: "flex", md: "flex" },
             },
           }}
-        />
-      ))}
-      </Tabs>
+        >
+          {tabs.map((tab) => (
+            <Tab
+              key={tab.value}
+              value={tab.value}
+              label={tab.labelKey ? t(tab.labelKey) : tab.label}
+              aria-label={tab.labelKey ? t(tab.labelKey) : tab.label}
+              sx={{
+                minHeight: 36,
+                minWidth: "auto",
+                px: 2.5,
+                borderRadius: 999,
+                textTransform: "none",
+                fontWeight: 600,
+                color: theme.palette.text.primary,
+                border: `1px solid ${alpha(theme.palette.text.primary, 0.2)}`,
+                "&.Mui-selected": {
+                  color: theme.palette.primary.main,
+                  borderColor: alpha(theme.palette.primary.main, 0.45),
+                  backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.32 : 0.14),
+                  fontWeight: 700,
+                },
+                "&:hover": {
+                  borderColor: alpha(theme.palette.primary.main, 0.4),
+                  backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.12),
+                },
+                "&:focus-visible": {
+                  outline: `2px solid ${theme.palette.primary.main}`,
+                  outlineOffset: 2,
+                },
+              }}
+            />
+          ))}
+        </Tabs>
+      </Box>
     </Box>
   );
 };

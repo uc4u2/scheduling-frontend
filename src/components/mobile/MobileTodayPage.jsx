@@ -203,20 +203,34 @@ const MobileTodayPage = () => {
           <Typography variant="subtitle1" gutterBottom>
             Workspace shortcuts
           </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button
-              size="small"
-              onClick={() => navigate(isEmployee ? "/employee/my-time" : "/manager/dashboard")}
-            >
-              Dashboard
-            </Button>
-            <Button size="small" onClick={() => navigate("/manager/payroll")}>
-              Payroll
-            </Button>
-            <Button size="small" onClick={() => navigate("/manager/service-management")}>
-              Services
-            </Button>
-          </Stack>
+          {isEmployee ? (
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button size="small" onClick={() => navigate("/employee/my-time")}>
+                My Time
+              </Button>
+              <Button size="small" onClick={() => navigate("/app/calendar")}>
+                Calendar
+              </Button>
+              <Button size="small" onClick={() => navigate("/employee/my-shifts")}>
+                My Shifts
+              </Button>
+            </Stack>
+          ) : (
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button size="small" onClick={() => navigate("/manager/team")}>
+                Shift
+              </Button>
+              <Button size="small" onClick={() => navigate("/manager/booking-checkout")}>
+                Checkout
+              </Button>
+              <Button size="small" onClick={() => navigate("/manager/advanced-management")}>
+                Services
+              </Button>
+              <Button size="small" onClick={() => navigate("/manager/time-tracking")}>
+                Time Tracking
+              </Button>
+            </Stack>
+          )}
         </CardContent>
       </Card>
     </Stack>
