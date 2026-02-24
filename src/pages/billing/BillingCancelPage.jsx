@@ -1,8 +1,23 @@
 import React, { useEffect } from "react";
 import { Box, Button, Paper, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { isMobileComplianceMode } from "../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../../components/mobile/MobileWebOnlyNotice";
 
 const BillingCancelPage = () => {
+  if (isMobileComplianceMode()) {
+    return (
+      <Box sx={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", px: 2 }}>
+        <Box sx={{ width: "100%", maxWidth: 720 }}>
+          <MobileWebOnlyNotice
+            title="Billing checkout actions are web-only in mobile app mode"
+            webPath="/manager/dashboard?view=settings&tab=billing"
+          />
+        </Box>
+      </Box>
+    );
+  }
+
   const navigate = useNavigate();
 
   useEffect(() => {

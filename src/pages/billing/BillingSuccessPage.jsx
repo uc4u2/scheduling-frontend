@@ -12,6 +12,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../../utils/api";
 import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
+import { isMobileComplianceMode } from "../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../../components/mobile/MobileWebOnlyNotice";
 
 const PLAN_LABELS = {
   starter: "Starter",
@@ -40,6 +42,19 @@ const formatDate = (value) => {
 };
 
 const BillingSuccessPage = () => {
+  if (isMobileComplianceMode()) {
+    return (
+      <Box sx={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", px: 2 }}>
+        <Box sx={{ width: "100%", maxWidth: 720 }}>
+          <MobileWebOnlyNotice
+            title="Billing checkout confirmation is web-only in mobile app mode"
+            webPath="/manager/dashboard?view=settings&tab=billing"
+          />
+        </Box>
+      </Box>
+    );
+  }
+
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const sid = params.get("sid") || "";

@@ -31,6 +31,8 @@ import { useNavigate, Link as RouterLink } from "react-router-dom";
 import TaxHelpGuide from "./TaxHelpGuide";
 import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
 import { buildMarketingUrl } from "../../config/origins";
+import { isMobileComplianceMode } from "../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../../components/mobile/MobileWebOnlyNotice";
 
 const MODE_LABEL_KEY = {
   offline: "settings.stripeHub.checkout.mode.offline",
@@ -84,6 +86,21 @@ export default function SettingsStripeHub() {
   const [seatDialogError, setSeatDialogError] = useState("");
   const [seatNotice, setSeatNotice] = useState("");
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
+  const mobileComplianceMode = isMobileComplianceMode();
+
+  if (mobileComplianceMode) {
+    return (
+      <SectionCard
+        title={t("settings.stripeHub.title", "Stripe Hub")}
+        subtitle={t("settings.stripeHub.subtitle", "Connect Stripe and manage payout readiness.")}
+      >
+        <MobileWebOnlyNotice
+          title="Stripe Connect is web-only in mobile app mode"
+          webPath="/manager/dashboard?view=settings&tab=stripe-hub"
+        />
+      </SectionCard>
+    );
+  }
 
   const loadProfile = useCallback(async () => {
     if (!token) return;

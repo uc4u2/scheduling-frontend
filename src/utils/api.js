@@ -13,6 +13,23 @@ const viteBase =
 const procEnv =
   typeof process !== "undefined" && process.env ? process.env : {};
 
+const RENDER_API_BASE_URL = "https://scheduling-application.onrender.com";
+
+const getNativeApiBase = () =>
+  procEnv.REACT_APP_CAPACITOR_API_URL ||
+  procEnv.REACT_APP_NATIVE_API_URL ||
+  RENDER_API_BASE_URL;
+
+const isNativeRuntime = () => {
+  if (typeof window === "undefined") return false;
+  const cap = window.Capacitor;
+  const byCapacitor =
+    typeof cap?.isNativePlatform === "function"
+      ? cap.isNativePlatform()
+      : Boolean(cap?.isNativePlatform);
+  return byCapacitor || window.location.protocol === "capacitor:";
+};
+
 const envBase =
   viteBase ||
   procEnv.VITE_API_BASE_URL ||
@@ -21,6 +38,9 @@ const envBase =
 
 const inferBase = () => {
   try {
+    if (isNativeRuntime()) {
+      return getNativeApiBase();
+    }
     if (
       typeof window !== "undefined" &&
       (/^localhost$|^127\.0\.0\.1$/.test(window.location.hostname) ||
@@ -39,10 +59,10 @@ const inferBase = () => {
         host === "www.schedulaa.com" ||
         host.endsWith(".schedulaa.com")
       ) {
-        return "https://scheduling-application.onrender.com";
+        return RENDER_API_BASE_URL;
       }
       // Custom domains should still call the shared backend.
-      return "https://scheduling-application.onrender.com";
+      return RENDER_API_BASE_URL;
     }
   } catch {}
   return "/";

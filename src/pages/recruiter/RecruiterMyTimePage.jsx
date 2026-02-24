@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack } from "@mui/material";
+import { Alert, Button, Stack } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
 import SecondEmployeeShiftView from "../sections/SecondEmployeeShiftView";
@@ -9,6 +9,12 @@ import useRecruiterTabsAccess from "../../components/recruiter/useRecruiterTabsA
 const RecruiterMyTimePage = ({ token }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const role =
+    typeof window !== "undefined"
+      ? (localStorage.getItem("role") || "").toLowerCase()
+      : "";
+  const managerViewingEmployee =
+    role === "manager" && location.pathname.startsWith("/employee");
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
   const handleLocalTabChange = (value) => {
     const basePath = location.pathname.startsWith("/recruiter")
@@ -35,6 +41,22 @@ const RecruiterMyTimePage = ({ token }) => {
         isLoading={isLoading}
       />
       <Stack spacing={2} sx={{ mt: 2 }}>
+        {managerViewingEmployee && (
+          <Alert
+            severity="info"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => navigate("/manager/dashboard")}
+              >
+                Back to Manager
+              </Button>
+            }
+          >
+            Viewing Employee Workspace (Manager Mode)
+          </Alert>
+        )}
         <SecondEmployeeShiftView />
       </Stack>
     </ManagementFrame>

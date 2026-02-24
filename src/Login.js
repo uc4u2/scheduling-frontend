@@ -20,6 +20,7 @@ import { api, publicSite } from "./utils/api";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
 import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
 import { buildMarketingUrl } from "./config/origins";
+import { isMobileAppMode, isNativeRuntime } from "./utils/runtime";
 
 const ROLE_OPTIONS = [
   {
@@ -63,6 +64,13 @@ function appendQuery(url, paramsObj = {}) {
 
 const getRoleMeta = (value) =>
   ROLE_OPTIONS.find((option) => option.value === value) || ROLE_OPTIONS[1];
+
+const getRoleHome = (role) => {
+  const normalized = String(role || "").toLowerCase();
+  if (normalized === "employee" || normalized === "recruiter") return "/employee/my-time";
+  if (normalized === "client") return "/dashboard";
+  return "/manager/dashboard";
+};
 
 const Login = ({ setToken }) => {
   const navigate = useNavigate();
@@ -239,6 +247,11 @@ const Login = ({ setToken }) => {
 
         await resolveAndStoreCompanyId(token, res.data?.company_id);
 
+        if (isNativeRuntime() || isMobileAppMode()) {
+          navigate(getRoleHome(targetRole), { replace: true });
+          return;
+        }
+
         const site = siteForRedirect();
         const next =
           nextParam ||
@@ -292,6 +305,11 @@ const Login = ({ setToken }) => {
         navigate("/reset-password/temp", {
           state: { email, currentPassword: password },
         });
+        return;
+      }
+
+      if (isNativeRuntime() || isMobileAppMode()) {
+        navigate(getRoleHome(targetRole), { replace: true });
         return;
       }
 

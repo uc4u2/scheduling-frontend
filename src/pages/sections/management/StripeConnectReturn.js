@@ -2,11 +2,25 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { stripeConnect } from "../../../utils/api";
 import { Button, Alert, CircularProgress, Stack, Typography } from "@mui/material";
+import { isMobileComplianceMode } from "../../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../../../components/mobile/MobileWebOnlyNotice";
 
 export default function StripeConnectReturn() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null);
   const token = localStorage.getItem("token"); // your app already stores JWT here for manager
+  const mobileComplianceMode = isMobileComplianceMode();
+
+  if (mobileComplianceMode) {
+    return (
+      <Stack p={4}>
+        <MobileWebOnlyNotice
+          title="Stripe onboarding is web-only in mobile app mode"
+          webPath="/manager/dashboard?view=settings&tab=stripe-hub"
+        />
+      </Stack>
+    );
+  }
 
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 

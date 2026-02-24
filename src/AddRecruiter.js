@@ -36,6 +36,7 @@ import TimezoneSelect from "./components/TimezoneSelect";
 import useBillingStatus from "./components/billing/useBillingStatus";
 import { formatBillingNextDateLabel } from "./components/billing/billingLabels";
 import AddMemberHelpDrawer from "./pages/sections/management/components/AddMemberHelpDrawer";
+import { isMobileComplianceMode, MOBILE_PAYMENTS_MESSAGE } from "./utils/mobileCompliance";
 
 const PASSWORD_HELP =
   "8+ chars, uppercase, lowercase, number, and symbol required.";
@@ -46,6 +47,7 @@ const ROLE_OPTIONS = [
 ];
 
 const AddRecruiter = () => {
+  const mobileComplianceMode = isMobileComplianceMode();
   const navigate = useNavigate();
   const employeeManagementUrl = "/manager/employee-management?focus=employees";
   const [form, setForm] = useState({
@@ -188,6 +190,10 @@ const passwordStrength = useMemo(() => {
     } catch (error) {
       const apiData = error?.response?.data;
       if (error?.response?.status === 409 && apiData?.error === "limit_exceeded" && apiData?.limit === "seats") {
+        if (mobileComplianceMode) {
+          setSubmitState({ status: "error", message: MOBILE_PAYMENTS_MESSAGE });
+          return;
+        }
         const allowed = Number(apiData?.allowed || 0);
         const current = Number(apiData?.current || 0);
         const needed = Math.max(1, current - allowed);
@@ -226,6 +232,10 @@ const passwordStrength = useMemo(() => {
   };
 
   const handleSeatPurchase = async () => {
+    if (mobileComplianceMode) {
+      setSubmitState({ status: "error", message: MOBILE_PAYMENTS_MESSAGE });
+      return;
+    }
     const token = localStorage.getItem("token");
     const additional = Math.max(0, parseInt(seatInput, 10) || 0);
     if (!additional) {
@@ -412,6 +422,10 @@ const passwordStrength = useMemo(() => {
                   color="inherit"
                   size="small"
                   onClick={async () => {
+                    if (mobileComplianceMode) {
+                      setSubmitState({ status: "error", message: MOBILE_PAYMENTS_MESSAGE });
+                      return;
+                    }
                     try {
                       const res = await api.post("/billing/portal");
                       const url = res?.data?.url;

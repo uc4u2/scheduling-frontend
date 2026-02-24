@@ -7,6 +7,8 @@ import { openBillingPortal } from "../../components/billing/billingHelpers";
 import api from "../../utils/api";
 import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
 import { buildMarketingUrl } from "../../config/origins";
+import { isMobileComplianceMode, MOBILE_PAYMENTS_MESSAGE } from "../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../../components/mobile/MobileWebOnlyNotice";
 
 const planLabel = (key, t) => {
   const map = {
@@ -38,8 +40,13 @@ const SettingsBillingSubscription = () => {
   const [syncState, setSyncState] = useState({ loading: false, error: "", message: "" });
   const [portalError, setPortalError] = useState("");
   const [modeMismatchDismissed, setModeMismatchDismissed] = useState(false);
+  const mobileComplianceMode = isMobileComplianceMode();
 
   const handleAddSeats = () => {
+    if (mobileComplianceMode) {
+      setPortalError(MOBILE_PAYMENTS_MESSAGE);
+      return;
+    }
     if (typeof window === "undefined") return;
     window.dispatchEvent(
       new CustomEvent("billing:seats-required", {
@@ -52,6 +59,10 @@ const SettingsBillingSubscription = () => {
   };
 
   const handleManageBilling = async () => {
+    if (mobileComplianceMode) {
+      setPortalError(MOBILE_PAYMENTS_MESSAGE);
+      return;
+    }
     setPortalError("");
     try {
       await openBillingPortal();
@@ -66,6 +77,10 @@ const SettingsBillingSubscription = () => {
   };
 
   const handleSync = async () => {
+    if (mobileComplianceMode) {
+      setPortalError(MOBILE_PAYMENTS_MESSAGE);
+      return;
+    }
     setSyncState({ loading: true, error: "", message: "" });
     try {
       await api.post("/billing/sync-from-stripe");
@@ -85,6 +100,20 @@ const SettingsBillingSubscription = () => {
       // Ignore reset failures to avoid blocking dismissal.
     }
   };
+
+  if (mobileComplianceMode) {
+    return (
+      <SectionCard
+        title={t("billing.title")}
+        subtitle={t("billing.subtitle")}
+      >
+        <MobileWebOnlyNotice
+          title="Billing is web-only in mobile app mode"
+          webPath="/manager/dashboard?view=settings&tab=billing"
+        />
+      </SectionCard>
+    );
+  }
 
   return (
     <Box>
