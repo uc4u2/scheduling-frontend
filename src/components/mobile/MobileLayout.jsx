@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Box,
   BottomNavigation,
@@ -17,6 +17,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import MobileDrawer from "./MobileDrawer";
 import MobileHeader from "./MobileHeader";
 import { getNetworkStatus, subscribeNetworkStatus } from "../../utils/networkStatusStore";
+import { hapticImpact } from "../../utils/mobileFeedback";
 
 const tabToValue = (pathname) => {
   if (pathname.startsWith("/app/calendar")) return "calendar";
@@ -31,6 +32,9 @@ const MobileLayout = () => {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [networkState, setNetworkState] = useState(getNetworkStatus);
+  const [pullDistance, setPullDistance] = useState(0);
+  const pullStartY = useRef(null);
+  const pullArmed = useRef(false);
   const role = useMemo(
     () => (typeof window !== "undefined" ? (localStorage.getItem("role") || "").toLowerCase() : ""),
     []
@@ -64,6 +68,38 @@ const MobileLayout = () => {
       ];
   const title = role === "employee" || role === "recruiter" ? "Employee App" : "Manager App";
   const value = tabToValue(location.pathname);
+  const canPullRefresh = value !== "more";
+
+  const startPull = (event) => {
+    if (!canPullRefresh) return;
+    if (window.scrollY > 0) return;
+    pullStartY.current = event.touches?.[0]?.clientY ?? null;
+    pullArmed.current = false;
+  };
+
+  const movePull = (event) => {
+    if (!canPullRefresh) return;
+    if (pullStartY.current == null) return;
+    const y = event.touches?.[0]?.clientY ?? pullStartY.current;
+    const delta = Math.max(0, y - pullStartY.current);
+    const capped = Math.min(delta, 110);
+    setPullDistance(capped);
+    if (capped > 72 && !pullArmed.current) {
+      pullArmed.current = true;
+      hapticImpact("light");
+    }
+  };
+
+  const endPull = () => {
+    if (!canPullRefresh) return;
+    const shouldRefresh = pullDistance > 72;
+    pullStartY.current = null;
+    pullArmed.current = false;
+    setPullDistance(0);
+    if (shouldRefresh) {
+      window.dispatchEvent(new Event("mobile:refresh"));
+    }
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
@@ -85,8 +121,22 @@ const MobileLayout = () => {
           {networkState.message || "Connection issue detected."}
         </Alert>
       </Collapse>
+      <Collapse in={pullDistance > 0}>
+        <Alert
+          severity="info"
+          icon={false}
+          sx={{ borderRadius: 0, py: 0.5 }}
+        >
+          {pullDistance > 72 ? "Release to refresh" : "Pull to refresh"}
+        </Alert>
+      </Collapse>
 
-      <Box sx={{ p: 1.5, pb: "94px" }}>
+      <Box
+        sx={{ p: 1.5, pb: "94px", pt: "max(12px, env(safe-area-inset-top))" }}
+        onTouchStart={startPull}
+        onTouchMove={movePull}
+        onTouchEnd={endPull}
+      >
         <Outlet />
       </Box>
 

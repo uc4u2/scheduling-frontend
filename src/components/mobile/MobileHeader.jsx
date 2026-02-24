@@ -13,7 +13,7 @@ const MobileHeader = ({
     elevation={1}
     sx={{ top: 0, zIndex: (theme) => theme.zIndex.drawer + 1 }}
   >
-    <Toolbar sx={{ minHeight: "56px !important", px: 1.5 }}>
+    <Toolbar sx={{ minHeight: "56px !important", px: 1.5, pt: "env(safe-area-inset-top)" }}>
       <IconButton edge="start" onClick={onMenuClick} aria-label="Open menu">
         <MenuIcon />
       </IconButton>

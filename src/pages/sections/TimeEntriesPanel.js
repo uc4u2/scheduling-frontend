@@ -35,6 +35,7 @@ import {
   Menu,
   ListItemIcon,
   useMediaQuery,
+  Drawer,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { DateTime } from "luxon";
@@ -49,6 +50,8 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditIcon from "@mui/icons-material/Edit";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import BlockIcon from "@mui/icons-material/Block";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import { hapticSuccess } from "../../utils/mobileFeedback";
 
 const statusColor = {
   assigned: "default",
@@ -141,6 +144,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     breakMinutes: "",
     breakPaid: true,
   });
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [roster, setRoster] = useState([]);
   const [rosterCollapsed, setRosterCollapsed] = useState(false);
   const [rosterUpdatedAt, setRosterUpdatedAt] = useState(null);
@@ -539,6 +543,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         severity: "success",
         message: "Time entry approved.",
       });
+      await hapticSuccess();
       fetchEntries();
     } catch (err) {
       setSnackbar({
@@ -822,6 +827,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         severity: "info",
         message: "Time entry rejected.",
       });
+      await hapticSuccess();
       setRejectState({ open: false, entryId: null, reason: "" });
       fetchEntries();
     } catch (err) {
@@ -944,6 +950,15 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1}>
+                {isMobileCards && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<FilterListIcon />}
+                    onClick={() => setMobileFiltersOpen(true)}
+                  >
+                    Filters
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   startIcon={<RefreshIcon />}
@@ -955,6 +970,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
               </Stack>
             </Stack>
 
+            {!isMobileCards && (
             <Grid container spacing={2} sx={{ mt: 2 }}>
               <Grid item xs={12} md={3}>
                 <TextField
@@ -1056,6 +1072,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                 </Stack>
               </Grid>
             </Grid>
+            )}
 
             {selectedCount > 0 && (
               <Paper
@@ -1397,6 +1414,131 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           </Paper>
         </Grid>
       </Grid>
+
+      <Drawer
+        anchor="bottom"
+        open={isMobileCards && mobileFiltersOpen}
+        onClose={() => setMobileFiltersOpen(false)}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            p: 2,
+            pb: "calc(env(safe-area-inset-bottom, 0px) + 14px)",
+          },
+        }}
+      >
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            Filters
+          </Typography>
+          <TextField
+            select
+            fullWidth
+            label="Status"
+            value={filters.status}
+            onChange={handleChange("status")}
+          >
+            {statusOptions.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            fullWidth
+            label="Department"
+            value={filters.departmentId}
+            onChange={handleDepartmentChange}
+          >
+            <MenuItem value="">All departments</MenuItem>
+            {departmentOptions.map((dept) => (
+              <MenuItem key={dept.id} value={dept.id}>
+                {dept.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            fullWidth
+            label="Employee"
+            value={filters.recruiterId}
+            onChange={handleChange("recruiterId")}
+          >
+            <MenuItem value="">All employees (show everyone)</MenuItem>
+            {visibleEmployees.map((rec) => {
+              const displayName =
+                rec.name ||
+                rec.full_name ||
+                [rec.first_name, rec.last_name].filter(Boolean).join(" ") ||
+                (rec.email ? rec.email : `#${rec.id}`);
+              return (
+                <MenuItem key={rec.id} value={rec.id}>
+                  {displayName}
+                </MenuItem>
+              );
+            })}
+          </TextField>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              type="date"
+              fullWidth
+              label="From"
+              InputLabelProps={{ shrink: true }}
+              value={filters.startDate}
+              onChange={handleChange("startDate")}
+            />
+            <TextField
+              type="date"
+              fullWidth
+              label="To"
+              InputLabelProps={{ shrink: true }}
+              value={filters.endDate}
+              onChange={handleChange("endDate")}
+            />
+          </Stack>
+          <Stack direction="row" spacing={1}>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("today")}>
+              Today
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("this_week")}>
+              This week
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("last_week")}>
+              Last week
+            </Button>
+          </Stack>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={includeArchived}
+                onChange={(e) => setIncludeArchived(e.target.checked)}
+              />
+            }
+            label="Show archived employees"
+          />
+          <Stack direction="row" spacing={1}>
+            <Button fullWidth variant="contained" onClick={() => setMobileFiltersOpen(false)}>
+              Apply
+            </Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() => {
+                setFilters((prev) => ({
+                  ...prev,
+                  status: "all",
+                  recruiterId: "",
+                  departmentId: "",
+                }));
+              }}
+            >
+              Clear
+            </Button>
+          </Stack>
+        </Stack>
+      </Drawer>
 
       <Menu
         anchorEl={rowMenuAnchor}

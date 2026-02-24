@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { MOBILE_PAYMENTS_MESSAGE, toWebAppUrl } from "../../utils/mobileCompliance";
+import { hapticSuccess } from "../../utils/mobileFeedback";
 
 const MobileWebOnlyNotice = ({
   title = "Web-only billing action",
@@ -14,6 +15,7 @@ const MobileWebOnlyNotice = ({
   const copyUrl = async () => {
     try {
       await navigator.clipboard.writeText(webUrl);
+      await hapticSuccess();
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

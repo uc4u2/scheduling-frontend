@@ -12,6 +12,7 @@
     - Manager: `Today`, `Calendar`, `Shifts`, `Bookings`, `More`
   - `More` opens a drawer with links to existing modules.
   - A native/mobile-only network banner is shown at the top for offline/server errors.
+  - Pull-to-refresh is available on `Today`, `Calendar`, `Shifts`, and `Bookings`.
 - `/app/about` provides app version/build/runtime diagnostics.
 - On desktop screens, `/app/*` routes redirect to existing desktop pages.
 - Non-`/app/*` routes are unchanged.
@@ -25,6 +26,10 @@
 - `src/components/mobile/MobileMorePage.jsx`
 - `src/components/mobile/MobileAboutPage.jsx`
 - `src/App.js` (routing + chrome gate for mobile mode)
+- `src/utils/networkStatusStore.js`
+- `src/utils/mobileFeedback.js`
+- `android/app/src/main/res/values/styles.xml` (native splash theme)
+- `android/app/src/main/res/drawable/launch_splash.xml` (splash background/icon layer)
 
 ## Mobile Compliance Mode (Play Store)
 

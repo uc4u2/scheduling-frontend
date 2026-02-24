@@ -416,19 +416,39 @@ const MobileRoutePrefetch = ({ children, enabled = true, title }) => {
   return children;
 };
 
+const useMobileRefreshTick = () => {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const onRefresh = () => setTick((prev) => prev + 1);
+    window.addEventListener("mobile:refresh", onRefresh);
+    return () => window.removeEventListener("mobile:refresh", onRefresh);
+  }, []);
+  return tick;
+};
+
+const MobileCalendarRoute = () => {
+  const tick = useMobileRefreshTick();
+  return (
+    <MobileRoutePrefetch enabled={isMobileAppMode()} title="Loading calendar">
+      <CalendarView key={`mobile-calendar-${tick}`} />
+    </MobileRoutePrefetch>
+  );
+};
+
 const MobileShiftsRoute = ({ token }) => {
   const role = (localStorage.getItem("role") || "").toLowerCase();
   const mobileMode = isMobileAppMode();
+  const tick = useMobileRefreshTick();
   if (role === "employee" || role === "recruiter") {
     return (
       <MobileRoutePrefetch enabled={mobileMode} title="Loading shifts">
-        <RecruiterMyTimePage token={token} />
+        <RecruiterMyTimePage key={`mobile-shifts-employee-${tick}`} token={token} />
       </MobileRoutePrefetch>
     );
   }
   return (
     <MobileRoutePrefetch enabled={mobileMode} title="Loading shifts">
-      <EmployeeShiftView />
+      <EmployeeShiftView key={`mobile-shifts-manager-${tick}`} />
     </MobileRoutePrefetch>
   );
 };
@@ -436,16 +456,17 @@ const MobileShiftsRoute = ({ token }) => {
 const MobileBookingsRoute = ({ token }) => {
   const role = (localStorage.getItem("role") || "").toLowerCase();
   const mobileMode = isMobileAppMode();
+  const tick = useMobileRefreshTick();
   if (role === "employee" || role === "recruiter") {
     return (
       <MobileRoutePrefetch enabled={mobileMode} title="Loading bookings">
-        <RecruiterUpcomingMeetingsPage token={token} />
+        <RecruiterUpcomingMeetingsPage key={`mobile-bookings-employee-${tick}`} token={token} />
       </MobileRoutePrefetch>
     );
   }
   return (
     <MobileRoutePrefetch enabled={mobileMode} title="Loading bookings">
-      <CandidateManagement token={token} />
+      <CandidateManagement key={`mobile-bookings-manager-${tick}`} token={token} />
     </MobileRoutePrefetch>
   );
 };
@@ -999,7 +1020,7 @@ const AppContent = ({ token, setToken }) => {
             <Route element={<MobileLayout />}>
               <Route index element={<Navigate to="today" replace />} />
               <Route path="today" element={<MobileTodayPage />} />
-              <Route path="calendar" element={<CalendarView />} />
+              <Route path="calendar" element={<MobileCalendarRoute />} />
               <Route path="shifts" element={<MobileShiftsRoute token={token} />} />
               <Route path="bookings" element={<MobileBookingsRoute token={token} />} />
               <Route path="more" element={<MobileMorePage />} />

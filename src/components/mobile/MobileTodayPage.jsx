@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import api, { timeTracking } from "../../utils/api";
+import { hapticSuccess } from "../../utils/mobileFeedback";
 
 const MobileTodayPage = () => {
   const navigate = useNavigate();
@@ -85,6 +86,14 @@ const MobileTodayPage = () => {
     fetchHub();
   }, [fetchHub]);
 
+  React.useEffect(() => {
+    const onRefresh = () => {
+      fetchHub();
+    };
+    window.addEventListener("mobile:refresh", onRefresh);
+    return () => window.removeEventListener("mobile:refresh", onRefresh);
+  }, [fetchHub]);
+
   const onClockAction = async (type) => {
     const shiftId = hub?.nextShift?.id || hub?.nextShift?.shift_id;
     if (!shiftId) return;
@@ -96,6 +105,7 @@ const MobileTodayPage = () => {
       } else {
         await timeTracking.clockOut(shiftId);
       }
+      await hapticSuccess();
       await fetchHub();
     } catch (err) {
       setError(err?.response?.data?.error || "Clock action failed.");
