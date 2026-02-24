@@ -2,12 +2,17 @@ import React from "react";
 import {
   Box,
   Button,
+  Chip,
+  Collapse,
   Drawer,
+  IconButton,
   Fab,
   Stack,
   Typography,
 } from "@mui/material";
 import BoltIcon from "@mui/icons-material/Bolt";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const managerActions = [
@@ -27,6 +32,7 @@ const MobileQuickActions = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = React.useState(false);
+  const [dockOpen, setDockOpen] = React.useState(false);
   const role =
     typeof window !== "undefined"
       ? (localStorage.getItem("role") || "").toLowerCase()
@@ -44,6 +50,58 @@ const MobileQuickActions = () => {
 
   return (
     <>
+      <Box
+        sx={{
+          position: "fixed",
+          left: 12,
+          right: 12,
+          bottom: location.pathname.startsWith("/app/")
+            ? "calc(env(safe-area-inset-bottom) + 84px)"
+            : "calc(env(safe-area-inset-bottom) + 14px)",
+          zIndex: 1299,
+          pointerEvents: "none",
+        }}
+      >
+        <Box
+          sx={{
+            pointerEvents: "auto",
+            border: "1px solid",
+            borderColor: "divider",
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            px: 1,
+            py: 0.5,
+            boxShadow: 2,
+          }}
+        >
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+            <Typography variant="caption" fontWeight={700}>
+              Quick Links
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => setDockOpen((prev) => !prev)}
+              aria-label="Toggle quick links"
+            >
+              {dockOpen ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowUpIcon fontSize="small" />}
+            </IconButton>
+          </Stack>
+          <Collapse in={dockOpen}>
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ pt: 0.5 }}>
+              {actions.map((item) => (
+                <Chip
+                  key={`dock-${item.to}`}
+                  size="small"
+                  label={item.label}
+                  onClick={() => openRoute(item.to)}
+                  clickable
+                />
+              ))}
+            </Stack>
+          </Collapse>
+        </Box>
+      </Box>
+
       <Fab
         color="primary"
         size="medium"
@@ -51,7 +109,7 @@ const MobileQuickActions = () => {
         sx={{
           position: "fixed",
           right: 16,
-          bottom: bottomOffset,
+          bottom: `calc(${bottomOffset} + 64px)`,
           zIndex: 1301,
           textTransform: "none",
           fontWeight: 700,
