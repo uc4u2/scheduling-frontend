@@ -203,6 +203,7 @@ import { isMobileAppMode, isNativeRuntime } from "./utils/runtime";
 import MobileLayout from "./components/mobile/MobileLayout";
 import MobileTodayPage from "./components/mobile/MobileTodayPage";
 import MobileMorePage from "./components/mobile/MobileMorePage";
+import MobileWebOnlyNotice from "./components/mobile/MobileWebOnlyNotice";
 
 export const ThemeModeContext = createContext({
   themeName: "cool",
@@ -561,9 +562,23 @@ const AppContent = ({ token, setToken }) => {
     if (role === "client") return "/dashboard";
     return "/manager/dashboard";
   })();
+  const nativeBlockedBillingRoute =
+    location.pathname === "/pricing" ||
+    location.pathname.startsWith("/billing") ||
+    location.pathname.startsWith("/upgrade");
 
   if (nativeRuntime && (location.pathname === "/" || MARKETING_PATHS.includes(location.pathname))) {
     return <Navigate to={nativeRootRedirect} replace />;
+  }
+  if (nativeRuntime && nativeBlockedBillingRoute) {
+    return (
+      <Box sx={{ maxWidth: 760, mx: "auto", px: 2, py: 6 }}>
+        <MobileWebOnlyNotice
+          title="Billing and pricing are web-only in mobile app mode"
+          webPath="/manager/dashboard?view=settings&tab=billing"
+        />
+      </Box>
+    );
   }
 
   const content = (
