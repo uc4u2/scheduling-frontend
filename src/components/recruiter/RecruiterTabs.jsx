@@ -4,6 +4,7 @@ import { Box, Tabs, Tab, Button, Stack } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { isMobileAppMode } from "../../utils/runtime";
 
 const TAB_CONFIG = [
   { value: "calendar", labelKey: "recruiter.tabs.calendar", path: "/employee?tab=calendar" },
@@ -91,6 +92,7 @@ const RecruiterTabs = ({
     { value: "my-time", label: "My Time", path: `${quickBasePath}/my-time` },
     { value: "my-shifts", label: "View My Shift", path: `${quickBasePath}/my-shifts` },
   ];
+  const showMobileQuickSwitch = isMobileAppMode();
   const quickSwitchValue = useMemo(() => {
     if (location.pathname.startsWith("/recruiter/my-shifts") || location.pathname.startsWith("/employee/my-shifts")) {
       return "my-shifts";
@@ -134,51 +136,53 @@ const RecruiterTabs = ({
 
   return (
     <Box sx={{ mb: 3 }}>
-      <Stack
-        sx={{
-          display: { xs: "none", md: "flex" },
-          mb: 1.25,
-          p: 0.75,
-          borderRadius: 999,
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
-          backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.08),
-        }}
-        direction="row"
-        spacing={1}
-      >
-        {quickSwitchItems.map((item) => (
-          <Button
-            key={item.value}
-            onClick={() => navigate(item.path)}
-            sx={{
-              minHeight: 34,
-              px: 2,
-              borderRadius: 999,
-              textTransform: "none",
-              fontWeight: 700,
-              border: "1px solid",
-              borderColor:
-                quickSwitchValue === item.value
-                  ? alpha(theme.palette.primary.main, 0.5)
-                  : alpha(theme.palette.text.primary, 0.22),
-              color:
-                quickSwitchValue === item.value
-                  ? theme.palette.primary.main
-                  : theme.palette.text.primary,
-              backgroundColor:
-                quickSwitchValue === item.value
-                  ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.26 : 0.12)
-                  : alpha(theme.palette.background.paper, 0.92),
-              "&:hover": {
-                borderColor: alpha(theme.palette.primary.main, 0.42),
-                backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.12),
-              },
-            }}
-          >
-            {item.label}
-          </Button>
-        ))}
-      </Stack>
+      {showMobileQuickSwitch ? (
+        <Stack
+          sx={{
+            display: { xs: "flex", md: "none" },
+            mb: 1.25,
+            p: 0.75,
+            borderRadius: 999,
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
+            backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.08),
+          }}
+          direction="row"
+          spacing={1}
+        >
+          {quickSwitchItems.map((item) => (
+            <Button
+              key={item.value}
+              onClick={() => navigate(item.path)}
+              sx={{
+                minHeight: 34,
+                px: 2,
+                borderRadius: 999,
+                textTransform: "none",
+                fontWeight: 700,
+                border: "1px solid",
+                borderColor:
+                  quickSwitchValue === item.value
+                    ? alpha(theme.palette.primary.main, 0.5)
+                    : alpha(theme.palette.text.primary, 0.22),
+                color:
+                  quickSwitchValue === item.value
+                    ? theme.palette.primary.main
+                    : theme.palette.text.primary,
+                backgroundColor:
+                  quickSwitchValue === item.value
+                    ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.26 : 0.12)
+                    : alpha(theme.palette.background.paper, 0.92),
+                "&:hover": {
+                  borderColor: alpha(theme.palette.primary.main, 0.42),
+                  backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.12),
+                },
+              }}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </Stack>
+      ) : null}
       <Box
         sx={{
           p: 0.75,
