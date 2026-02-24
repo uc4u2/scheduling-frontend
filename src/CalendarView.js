@@ -4,9 +4,11 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import { Container, Typography } from "@mui/material";
 import api from "./utils/api";
+import { isMobileAppMode } from "./utils/runtime";
 
 const CalendarView = () => {
   const [events, setEvents] = useState([]);
+  const mobileMode = isMobileAppMode();
 
   useEffect(() => {
     api.get("/my-availability")
@@ -31,13 +33,13 @@ const CalendarView = () => {
       </Typography>
       <FullCalendar
         plugins={[dayGridPlugin]}
-        initialView="dayGridMonth"
+        initialView={mobileMode ? "dayGridDay" : "dayGridMonth"}
         events={events}
         height="auto"
         headerToolbar={{
           left: "prev,next today",
           center: "title",
-          right: "dayGridMonth,dayGridWeek,dayGridDay",
+          right: mobileMode ? "dayGridDay,dayGridWeek" : "dayGridMonth,dayGridWeek,dayGridDay",
         }}
       />
     </Container>

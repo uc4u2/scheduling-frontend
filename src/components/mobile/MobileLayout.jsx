@@ -1,22 +1,18 @@
 import React, { useMemo, useState } from "react";
 import {
-  AppBar,
-  Toolbar,
-  Typography,
   Box,
   BottomNavigation,
   BottomNavigationAction,
   Paper,
-  IconButton,
 } from "@mui/material";
 import TodayIcon from "@mui/icons-material/Today";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import BookOnlineIcon from "@mui/icons-material/BookOnline";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
-import MenuIcon from "@mui/icons-material/Menu";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import MobileDrawer from "./MobileDrawer";
+import MobileHeader from "./MobileHeader";
 
 const tabToValue = (pathname) => {
   if (pathname.startsWith("/app/calendar")) return "calendar";
@@ -39,18 +35,9 @@ const MobileLayout = () => {
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "background.default" }}>
-      <AppBar position="sticky" color="inherit" elevation={1}>
-        <Toolbar sx={{ minHeight: "56px !important" }}>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontSize: 18 }}>
-            {title}
-          </Typography>
-          <IconButton edge="end" onClick={() => setDrawerOpen(true)}>
-            <MenuIcon />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+      <MobileHeader title={title} onMenuClick={() => setDrawerOpen(true)} />
 
-      <Box sx={{ p: 1.5, pb: "92px" }}>
+      <Box sx={{ p: 1.5, pb: "94px" }}>
         <Outlet />
       </Box>
 
@@ -71,7 +58,6 @@ const MobileLayout = () => {
           onChange={(_, next) => {
             if (next === "more") {
               setDrawerOpen(true);
-              navigate("/app/more");
               return;
             }
             navigate(`/app/${next}`);
@@ -91,4 +77,3 @@ const MobileLayout = () => {
 };
 
 export default MobileLayout;
-

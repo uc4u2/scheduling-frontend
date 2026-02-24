@@ -350,6 +350,7 @@ const asLocalDate = (ymd) => {
   const [employeesPerPage, setEmployeesPerPage] = useState(8);
   const [rowMenuAnchor, setRowMenuAnchor] = useState(null);
   const [rowMenuId, setRowMenuId] = useState(null);
+  const [mobileActionsAnchor, setMobileActionsAnchor] = useState(null);
 
   // flatten shifts into table rows (stable keys for selection/edit)
   const resolveRecruiterTimezone = useCallback(
@@ -1736,6 +1737,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       setErrorMsg("Export failed.");
     }
   };
+  const openMobileActionsMenu = (event) => setMobileActionsAnchor(event.currentTarget);
+  const closeMobileActionsMenu = () => setMobileActionsAnchor(null);
 
   /* --------------------------- event rendering (pro) -------------------------- */
   const eventTimeFormat = useMemo(
@@ -2102,15 +2105,56 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Button variant="outlined" onClick={openTemplateModal}>
-            Edit Templates
-          </Button>
-          <Button variant="outlined" onClick={handleExportToExcel}>
-            Export
-          </Button>
-          <Button variant="outlined" onClick={fetchShifts}>
-            Refresh
-          </Button>
+          {!isMdDown && (
+            <>
+              <Button variant="outlined" onClick={openTemplateModal}>
+                Edit Templates
+              </Button>
+              <Button variant="outlined" onClick={handleExportToExcel}>
+                Export
+              </Button>
+              <Button variant="outlined" onClick={fetchShifts}>
+                Refresh
+              </Button>
+            </>
+          )}
+          {isMdDown && (
+            <>
+              <IconButton aria-label="More actions" onClick={openMobileActionsMenu}>
+                <MoreVertIcon />
+              </IconButton>
+              <Menu
+                anchorEl={mobileActionsAnchor}
+                open={Boolean(mobileActionsAnchor)}
+                onClose={closeMobileActionsMenu}
+              >
+                <MenuItem
+                  onClick={() => {
+                    closeMobileActionsMenu();
+                    openTemplateModal();
+                  }}
+                >
+                  Edit Templates
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    closeMobileActionsMenu();
+                    handleExportToExcel();
+                  }}
+                >
+                  Export
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    closeMobileActionsMenu();
+                    fetchShifts();
+                  }}
+                >
+                  Refresh
+                </MenuItem>
+              </Menu>
+            </>
+          )}
           <Tooltip title={selectedRecruiters.length === 0 ? "Select at least one employee above" : ""}>
             <span>
               <Button

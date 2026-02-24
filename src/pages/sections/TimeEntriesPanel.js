@@ -33,6 +33,7 @@ import {
   Avatar,
   Menu,
   ListItemIcon,
+  useMediaQuery,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { DateTime } from "luxon";
@@ -101,6 +102,7 @@ const SummaryCard = ({ label, value, icon }) => {
 
 const TimeEntriesPanel = ({ recruiters = [] }) => {
   const theme = useTheme();
+  const isMobileCards = useMediaQuery("(max-width:900px)");
   const viewerTimezone = getUserTimezone();
   const today = useMemo(() => new Date(), []);
   const [departments, setDepartments] = useState([]);
@@ -1102,205 +1104,273 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
               ) : entries.length === 0 ? (
                 <Typography color="text.secondary">No time entries found for this filter.</Typography>
               ) : (
-                <TableContainer component={Paper} variant="outlined" sx={{ mt: 1, borderRadius: 2 }}>
-                  <Table size="small" stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            indeterminate={selectedCount > 0 && selectedCount < entries.length}
-                            checked={entries.length > 0 && selectedCount === entries.length}
-                            onChange={handleSelectAll}
-                          />
-                        </TableCell>
-                        <TableCell>Employee</TableCell>
-                        <TableCell>Date</TableCell>
-                        <TableCell>Clocked</TableCell>
-                        <TableCell>Hours</TableCell>
-                        <TableCell>Anomalies</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                    {entries.map((entry) => {
-                      const r =
-                        entry.recruiter ||
-                        recruiterMap[entry.recruiter_id] ||
-                        {};
-                      const name =
-                        r.name ||
-                        r.full_name ||
-                        `${(r.first_name || "").trim()} ${(r.last_name || "").trim()}`.trim() ||
-                        entry.recruiter?.name ||
-                        entry.recruiter?.full_name ||
-                        entry.recruiter?.email ||
-                        `#${entry.recruiter_id}`;
-                      const email = r.email || entry.recruiter?.email;
-                      const avatarSrc = r.profile_image_url || r.avatar || undefined;
-                      const avatarAlt = name || email || "Employee";
-                      const breakChips = (
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" mt={0.5} useFlexGap>
-                          {entry.break_schedule_label && (
-                            <Chip
-                              size="small"
-                              variant="outlined"
-                              color="info"
-                              label={`Scheduled ${entry.break_schedule_label}`}
-                            />
-                          )}
-                          {entry.break_plan_max_simultaneous && (
-                            <Chip
-                              size="small"
-                              variant="outlined"
-                              label={`Max ${entry.break_plan_max_simultaneous} on break`}
-                            />
-                          )}
-                          {entry.break_non_compliant ? (
-                            <Chip
-                              size="small"
-                              sx={{
-                                bgcolor: alpha(theme.palette.error.light, 0.16),
-                                color: theme.palette.text.primary,
-                                fontWeight: 600,
-                              }}
-                              label={`Break missing ${entry.break_missing_minutes}m`}
-                            />
-                          ) : entry.break_taken_minutes ? (
-                            <Chip
-                              size="small"
-                              sx={{
-                                bgcolor: alpha(theme.palette.success.light, 0.18),
-                                color: theme.palette.text.primary,
-                                fontWeight: 600,
-                              }}
-                              label={`Break ${entry.break_taken_minutes}m`}
-                            />
-                          ) : null}
-                          {entry.break_auto_enforced && (
-                            <Tooltip title={entry.break_auto_reason || "Break auto-enforced"}>
-                              <Chip
-                                size="small"
-                                sx={{
-                                  bgcolor: alpha(theme.palette.warning.light, 0.2),
-                                  color: theme.palette.text.primary,
-                                  fontWeight: 600,
-                                }}
-                                label={
-                                  entry.break_auto_reason
-                                    ? `Auto break · ${entry.break_auto_reason}`
-                                    : "Auto break enforced"
-                                }
-                              />
-                            </Tooltip>
-                          )}
-                        </Stack>
-                      );
-                      return (
-                        <TableRow key={entry.id} hover selected={selectedIds.includes(entry.id)}>
-                          <TableCell padding="checkbox">
-                            <Checkbox
-                              checked={selectedIds.includes(entry.id)}
-                              onChange={handleSelectOne(entry.id)}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="small"
-                              onClick={() => {
-                                openHistoryDetail({
-                                  ...entry.recruiter,
-                                  id: entry.recruiter_id,
-                                });
-                              }}
-                              sx={{ p: 0, textTransform: "none" }}
-                            >
-                              <Stack direction="row" spacing={1} alignItems="center">
-                                <Avatar
-                                  src={avatarSrc}
-                                  alt={avatarAlt}
-                                  sx={{ width: 36, height: 36 }}
+                <>
+                  {isMobileCards ? (
+                    <Stack spacing={1.25} sx={{ mt: 1 }}>
+                      {entries.map((entry) => {
+                        const r = entry.recruiter || recruiterMap[entry.recruiter_id] || {};
+                        const name =
+                          r.name ||
+                          r.full_name ||
+                          `${(r.first_name || "").trim()} ${(r.last_name || "").trim()}`.trim() ||
+                          entry.recruiter?.name ||
+                          entry.recruiter?.full_name ||
+                          entry.recruiter?.email ||
+                          `#${entry.recruiter_id}`;
+                        const email = r.email || entry.recruiter?.email;
+                        const avatarSrc = r.profile_image_url || r.avatar || undefined;
+                        const avatarAlt = name || email || "Employee";
+                        return (
+                          <Paper key={entry.id} variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                            <Stack spacing={1}>
+                              <Stack direction="row" alignItems="center" justifyContent="space-between">
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <Checkbox
+                                    checked={selectedIds.includes(entry.id)}
+                                    onChange={handleSelectOne(entry.id)}
+                                    size="small"
+                                  />
+                                  <Avatar src={avatarSrc} alt={avatarAlt} sx={{ width: 34, height: 34 }}>
+                                    {(name || avatarAlt || "E").charAt(0)}
+                                  </Avatar>
+                                  <Box>
+                                    <Typography fontWeight={600} variant="body2">{name}</Typography>
+                                    {email && <Typography variant="caption" color="text.secondary">{email}</Typography>}
+                                  </Box>
+                                </Stack>
+                                <IconButton
+                                  size="small"
+                                  aria-label="Row actions"
+                                  onClick={(e) => {
+                                    setRowMenuAnchor(e.currentTarget);
+                                    setRowMenuEntry(entry);
+                                  }}
                                 >
-                                  {(name || avatarAlt || "E").charAt(0)}
-                                </Avatar>
-                                <Box textAlign="left">
-                                  <Typography fontWeight={600}>
-                                    {name}
-                                  </Typography>
-                                  {email && (
-                                    <Typography variant="caption" color="text.secondary">
-                                      {email}
-                                    </Typography>
-                                  )}
-                                </Box>
+                                  <MoreVertIcon fontSize="small" />
+                                </IconButton>
                               </Stack>
-                            </Button>
-                          </TableCell>
-                          <TableCell>{entry.date}</TableCell>
-                          <TableCell>
-                            <Stack spacing={0.5}>
-                              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                                <Chip size="small" variant="outlined" label="In" />
-                                <Typography variant="body2">{formatClock(entry.clock_in, entry.timezone)}</Typography>
-                                {entry.clock_in_ip && (
-                                  <Tooltip title={entry.clock_in_device_hint || "Clock-in device"}>
+                              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                                <Chip label={entry.date} size="small" variant="outlined" />
+                                <Chip label={`In ${formatClock(entry.clock_in, entry.timezone)}`} size="small" />
+                                <Chip label={`Out ${formatClock(entry.clock_out, entry.timezone)}`} size="small" />
+                                <Chip label={`${entry.hours_worked_rounded ?? entry.hours_worked}h`} size="small" />
+                                <Chip
+                                  label={entry.status}
+                                  size="small"
+                                  color={statusColor[entry.status] || "default"}
+                                  variant="outlined"
+                                />
+                              </Stack>
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                {anomalyChips(entry)}
+                              </Stack>
+                            </Stack>
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+                  ) : (
+                    <TableContainer component={Paper} variant="outlined" sx={{ mt: 1, borderRadius: 2 }}>
+                      <Table size="small" stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell padding="checkbox">
+                              <Checkbox
+                                indeterminate={selectedCount > 0 && selectedCount < entries.length}
+                                checked={entries.length > 0 && selectedCount === entries.length}
+                                onChange={handleSelectAll}
+                              />
+                            </TableCell>
+                            <TableCell>Employee</TableCell>
+                            <TableCell>Date</TableCell>
+                            <TableCell>Clocked</TableCell>
+                            <TableCell>Hours</TableCell>
+                            <TableCell>Anomalies</TableCell>
+                            <TableCell>Status</TableCell>
+                            <TableCell align="right">Actions</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {entries.map((entry) => {
+                            const r =
+                              entry.recruiter ||
+                              recruiterMap[entry.recruiter_id] ||
+                              {};
+                            const name =
+                              r.name ||
+                              r.full_name ||
+                              `${(r.first_name || "").trim()} ${(r.last_name || "").trim()}`.trim() ||
+                              entry.recruiter?.name ||
+                              entry.recruiter?.full_name ||
+                              entry.recruiter?.email ||
+                              `#${entry.recruiter_id}`;
+                            const email = r.email || entry.recruiter?.email;
+                            const avatarSrc = r.profile_image_url || r.avatar || undefined;
+                            const avatarAlt = name || email || "Employee";
+                            const breakChips = (
+                              <Stack direction="row" spacing={0.5} flexWrap="wrap" mt={0.5} useFlexGap>
+                                {entry.break_schedule_label && (
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    color="info"
+                                    label={`Scheduled ${entry.break_schedule_label}`}
+                                  />
+                                )}
+                                {entry.break_plan_max_simultaneous && (
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    label={`Max ${entry.break_plan_max_simultaneous} on break`}
+                                  />
+                                )}
+                                {entry.break_non_compliant ? (
+                                  <Chip
+                                    size="small"
+                                    sx={{
+                                      bgcolor: alpha(theme.palette.error.light, 0.16),
+                                      color: theme.palette.text.primary,
+                                      fontWeight: 600,
+                                    }}
+                                    label={`Break missing ${entry.break_missing_minutes}m`}
+                                  />
+                                ) : entry.break_taken_minutes ? (
+                                  <Chip
+                                    size="small"
+                                    sx={{
+                                      bgcolor: alpha(theme.palette.success.light, 0.18),
+                                      color: theme.palette.text.primary,
+                                      fontWeight: 600,
+                                    }}
+                                    label={`Break ${entry.break_taken_minutes}m`}
+                                  />
+                                ) : null}
+                                {entry.break_auto_enforced && (
+                                  <Tooltip title={entry.break_auto_reason || "Break auto-enforced"}>
                                     <Chip
-                                      label={entry.clock_in_ip}
-                                      color={entry.clock_in_unusual ? "error" : "default"}
                                       size="small"
-                                      variant={entry.clock_in_unusual ? "filled" : "outlined"}
+                                      sx={{
+                                        bgcolor: alpha(theme.palette.warning.light, 0.2),
+                                        color: theme.palette.text.primary,
+                                        fontWeight: 600,
+                                      }}
+                                      label={
+                                        entry.break_auto_reason
+                                          ? `Auto break · ${entry.break_auto_reason}`
+                                          : "Auto break enforced"
+                                      }
                                     />
                                   </Tooltip>
                                 )}
                               </Stack>
-                              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                                <Chip size="small" variant="outlined" label="Out" />
-                                <Typography variant="body2">{formatClock(entry.clock_out, entry.timezone)}</Typography>
-                                {entry.clock_out_ip && (
-                                  <Tooltip title={entry.clock_out_device_hint || "Clock-out device"}>
-                                    <Chip
-                                      label={entry.clock_out_ip}
-                                      color={entry.clock_out_unusual ? "error" : "default"}
-                                      size="small"
-                                      variant={entry.clock_out_unusual ? "filled" : "outlined"}
-                                    />
-                                  </Tooltip>
-                                )}
-                              </Stack>
-                            </Stack>
-                          </TableCell>
-                          <TableCell>
-                            <Stack spacing={0.5}>
-                              <Typography>{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
-                              {breakChips}
-                            </Stack>
-                          </TableCell>
-                          <TableCell>
-                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                              {anomalyChips(entry)}
-                            </Stack>
-                          </TableCell>
-                          <TableCell>
-                            <Chip label={entry.status} size="small" color={statusColor[entry.status] || "default"} variant="outlined" />
-                          </TableCell>
-                          <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              aria-label="Row actions"
-                              onClick={(e) => {
-                                setRowMenuAnchor(e.currentTarget);
-                                setRowMenuEntry(entry);
-                              }}
-                            >
-                              <MoreVertIcon fontSize="small" />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                            );
+                            return (
+                              <TableRow key={entry.id} hover selected={selectedIds.includes(entry.id)}>
+                                <TableCell padding="checkbox">
+                                  <Checkbox
+                                    checked={selectedIds.includes(entry.id)}
+                                    onChange={handleSelectOne(entry.id)}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <Button
+                                    size="small"
+                                    onClick={() => {
+                                      openHistoryDetail({
+                                        ...entry.recruiter,
+                                        id: entry.recruiter_id,
+                                      });
+                                    }}
+                                    sx={{ p: 0, textTransform: "none" }}
+                                  >
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                      <Avatar
+                                        src={avatarSrc}
+                                        alt={avatarAlt}
+                                        sx={{ width: 36, height: 36 }}
+                                      >
+                                        {(name || avatarAlt || "E").charAt(0)}
+                                      </Avatar>
+                                      <Box textAlign="left">
+                                        <Typography fontWeight={600}>
+                                          {name}
+                                        </Typography>
+                                        {email && (
+                                          <Typography variant="caption" color="text.secondary">
+                                            {email}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    </Stack>
+                                  </Button>
+                                </TableCell>
+                                <TableCell>{entry.date}</TableCell>
+                                <TableCell>
+                                  <Stack spacing={0.5}>
+                                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                      <Chip size="small" variant="outlined" label="In" />
+                                      <Typography variant="body2">{formatClock(entry.clock_in, entry.timezone)}</Typography>
+                                      {entry.clock_in_ip && (
+                                        <Tooltip title={entry.clock_in_device_hint || "Clock-in device"}>
+                                          <Chip
+                                            label={entry.clock_in_ip}
+                                            color={entry.clock_in_unusual ? "error" : "default"}
+                                            size="small"
+                                            variant={entry.clock_in_unusual ? "filled" : "outlined"}
+                                          />
+                                        </Tooltip>
+                                      )}
+                                    </Stack>
+                                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                      <Chip size="small" variant="outlined" label="Out" />
+                                      <Typography variant="body2">{formatClock(entry.clock_out, entry.timezone)}</Typography>
+                                      {entry.clock_out_ip && (
+                                        <Tooltip title={entry.clock_out_device_hint || "Clock-out device"}>
+                                          <Chip
+                                            label={entry.clock_out_ip}
+                                            color={entry.clock_out_unusual ? "error" : "default"}
+                                            size="small"
+                                            variant={entry.clock_out_unusual ? "filled" : "outlined"}
+                                          />
+                                        </Tooltip>
+                                      )}
+                                    </Stack>
+                                  </Stack>
+                                </TableCell>
+                                <TableCell>
+                                  <Stack spacing={0.5}>
+                                    <Typography>{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
+                                    {breakChips}
+                                  </Stack>
+                                </TableCell>
+                                <TableCell>
+                                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                    {anomalyChips(entry)}
+                                  </Stack>
+                                </TableCell>
+                                <TableCell>
+                                  <Chip label={entry.status} size="small" color={statusColor[entry.status] || "default"} variant="outlined" />
+                                </TableCell>
+                                <TableCell align="right">
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Row actions"
+                                    onClick={(e) => {
+                                      setRowMenuAnchor(e.currentTarget);
+                                      setRowMenuEntry(entry);
+                                    }}
+                                  >
+                                    <MoreVertIcon fontSize="small" />
+                                  </IconButton>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </>
               )}
             </Box>
           </Paper>
