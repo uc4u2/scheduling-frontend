@@ -759,6 +759,11 @@ const passwordStrength = useMemo(() => {
               <Button
                 variant="contained"
                 onClick={() => {
+                  if (mobileComplianceMode) {
+                    setSubmitState({ status: "error", message: MOBILE_PAYMENTS_MESSAGE });
+                    setSeatDialogOpen(false);
+                    return;
+                  }
                   if (typeof window !== "undefined") {
                     window.location.href = "/pricing";
                   }
