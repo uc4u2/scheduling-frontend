@@ -178,7 +178,12 @@ api.interceptors.response.use(
       error.displayMessage = userMessage;
     }
 
-    if (!skipBillingModal && status === 402 && data?.error === "subscription_required") {
+    if (
+      !skipBillingModal &&
+      status === 402 &&
+      data?.error === "subscription_required" &&
+      !isNativeRuntime()
+    ) {
       if (typeof window !== "undefined") {
         const audience = data?.audience || "manager";
         if (audience !== "public") {
@@ -196,7 +201,13 @@ api.interceptors.response.use(
       }
     }
 
-    if (!skipBillingModal && status === 409 && data?.error === "limit_exceeded" && data?.limit === "seats") {
+    if (
+      !skipBillingModal &&
+      status === 409 &&
+      data?.error === "limit_exceeded" &&
+      data?.limit === "seats" &&
+      !isNativeRuntime()
+    ) {
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("billing:seats-required", {
@@ -209,7 +220,13 @@ api.interceptors.response.use(
       }
     }
 
-    if (!skipBillingModal && status === 409 && data?.error === "limit_exceeded" && data?.limit !== "seats") {
+    if (
+      !skipBillingModal &&
+      status === 409 &&
+      data?.error === "limit_exceeded" &&
+      data?.limit !== "seats" &&
+      !isNativeRuntime()
+    ) {
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent("billing:upgrade-required", {
