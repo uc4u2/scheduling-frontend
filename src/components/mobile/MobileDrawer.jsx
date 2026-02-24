@@ -9,6 +9,11 @@ import {
   Divider,
 } from "@mui/material";
 
+const workspaceItems = [
+  { label: "Manager Dashboard", to: "/manager/dashboard" },
+  { label: "Employee Dashboard", to: "/employee/my-time" },
+];
+
 const managerItems = [
   { label: "Employees", to: "/manager/employee-profiles" },
   { label: "Services", to: "/manager/service-management" },
@@ -41,7 +46,26 @@ const MobileDrawer = ({ open, onClose, navigate }) => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Quick access to additional modules
         </Typography>
+        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
+          Switch Workspace
+        </Typography>
+        <List disablePadding sx={{ mb: 1.5 }}>
+          {workspaceItems.map((item) => (
+            <ListItemButton
+              key={item.to}
+              onClick={() => {
+                onClose();
+                navigate(item.to);
+              }}
+            >
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          ))}
+        </List>
         <Divider sx={{ mb: 1 }} />
+        <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
+          Modules
+        </Typography>
         <List disablePadding>
           {items.map((item) => (
             <ListItemButton

@@ -158,6 +158,7 @@ const MainNav = ({ token, setToken }) => {
     { label: "Billing & Subscription", to: "/manager/dashboard?view=settings&tab=billing", view: "settings", tab: "billing" },
     { label: "Stripe Hub", to: "/manager/dashboard?view=settings&tab=stripe-hub", view: "settings", tab: "stripe-hub" },
     { label: "Checkout Pro & Payments", to: "/manager/dashboard?view=settings&tab=checkout", view: "settings", tab: "checkout" },
+    { label: "Employee View", to: "/employee/my-time" },
   ]), []);
 
   const isOpsActive = (link) => {
