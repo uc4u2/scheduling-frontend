@@ -14,6 +14,7 @@ import BoltIcon from "@mui/icons-material/Bolt";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useLocation, useNavigate } from "react-router-dom";
+import { hapticImpact, hapticSuccess } from "../../utils/mobileFeedback";
 
 const managerActions = [
   { label: "Shift", to: "/manager/team" },
@@ -32,11 +33,16 @@ const MobileQuickActions = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = React.useState(false);
-  const [dockOpen, setDockOpen] = React.useState(false);
+  const [dockOpen, setDockOpen] = React.useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("mobile.quickDockOpen") === "1";
+  });
+  const hasToken = typeof window !== "undefined" ? Boolean(localStorage.getItem("token")) : false;
   const role =
     typeof window !== "undefined"
       ? (localStorage.getItem("role") || "").toLowerCase()
       : "";
+  const isAppRoute = location.pathname.startsWith("/app/");
   const isEmployee = role === "employee" || role === "recruiter";
   const actions = isEmployee ? employeeActions : managerActions;
   const bottomOffset = location.pathname.startsWith("/app/")
@@ -45,8 +51,18 @@ const MobileQuickActions = () => {
 
   const openRoute = (path) => {
     setOpen(false);
+    hapticSuccess();
     navigate(path);
   };
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("mobile.quickDockOpen", dockOpen ? "1" : "0");
+  }, [dockOpen]);
+
+  if (!isAppRoute || !hasToken || !role) {
+    return null;
+  }
 
   return (
     <>
@@ -82,7 +98,10 @@ const MobileQuickActions = () => {
             </Typography>
             <IconButton
               size="small"
-              onClick={() => setDockOpen((prev) => !prev)}
+              onClick={() => {
+                hapticImpact("light");
+                setDockOpen((prev) => !prev);
+              }}
               aria-label="Toggle quick links"
               sx={{ color: "white" }}
             >
@@ -102,6 +121,10 @@ const MobileQuickActions = () => {
                     color: "white",
                     borderColor: "rgba(255,255,255,0.22)",
                     bgcolor: "rgba(255,255,255,0.08)",
+                    borderRadius: 99,
+                    height: 31,
+                    fontWeight: 700,
+                    letterSpacing: 0.2,
                     "&:hover": { bgcolor: "rgba(255,255,255,0.16)" },
                   }}
                   variant="outlined"
