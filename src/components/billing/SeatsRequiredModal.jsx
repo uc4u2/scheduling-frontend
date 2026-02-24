@@ -14,8 +14,11 @@ import api from "../../utils/api";
 import { openBillingPortal } from "./billingHelpers";
 import useBillingStatus from "./useBillingStatus";
 import { formatBillingNextDateLabel } from "./billingLabels";
+import { isMobileComplianceMode } from "../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../mobile/MobileWebOnlyNotice";
 
 const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
+  const mobileComplianceMode = isMobileComplianceMode();
   const needed = Math.max(1, (current || 0) - (allowed || 0));
   const [seatInput, setSeatInput] = useState(String(needed));
   const [preview, setPreview] = useState(null);
@@ -103,6 +106,23 @@ const SeatsRequiredModal = ({ open, allowed, current, onClose }) => {
       setLoading(false);
     }
   };
+
+  if (mobileComplianceMode) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Add seats</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <MobileWebOnlyNotice
+            title="Seat purchases are web-only in mobile app mode"
+            webPath="/manager/dashboard?view=settings&tab=billing"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={onClose}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>

@@ -45,6 +45,8 @@ import { DataGrid } from "@mui/x-data-grid";
 import { formatCurrencyWithCode, formatCurrencyFromCents } from "../../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, resolveActiveCurrencyFromCompany, getActiveCurrency } from "../../../utils/currency";
 import { getUserTimezone } from "../../../utils/timezone";
+import { isMobileComplianceMode } from "../../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../../../components/mobile/MobileWebOnlyNotice";
 const fulfillmentOptions = [
   { value: "all", label: "All statuses" },
   { value: "pending", label: "Pending" },
@@ -283,6 +285,17 @@ const timelineIcon = (eventType) => {
   return <NoteAddIcon fontSize="small" color="action" />;
 };
 const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
+  if (isMobileComplianceMode()) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <MobileWebOnlyNotice
+          title="Product order payments are web-only in mobile app mode"
+          webPath="/manager/dashboard?view=product-orders"
+        />
+      </Box>
+    );
+  }
+
   const token = tokenProp || (typeof window !== "undefined" ? localStorage.getItem("token") : "");
   const headers = useMemo(() => {
     if (!token) return {};
@@ -1934,7 +1947,6 @@ const TableView = ({ headers, rows, footer }) => (
   </Box>
 );
 export default ManagerProductOrdersView;
-
 
 
 

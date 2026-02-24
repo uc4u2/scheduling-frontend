@@ -3,6 +3,8 @@ import { Alert, Box, Button, CircularProgress, Stack, Typography } from "@mui/ma
 import { useLocation } from "react-router-dom";
 import api from "../utils/api";
 import { getSessionUser } from "../utils/authRedirect";
+import { isMobileComplianceMode } from "../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../components/mobile/MobileWebOnlyNotice";
 
 const VALID_PLANS = new Set(["starter", "pro", "business"]);
 
@@ -21,6 +23,20 @@ const UpgradeBridgePage = () => {
   const plan = String(query.get("plan") || "").toLowerCase();
   const interval = String(query.get("interval") || "").toLowerCase();
   const returnTo = String(query.get("returnTo") || "").trim();
+  const mobileComplianceMode = isMobileComplianceMode();
+
+  if (mobileComplianceMode) {
+    return (
+      <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center", px: 2 }}>
+        <Box sx={{ width: "100%", maxWidth: 720 }}>
+          <MobileWebOnlyNotice
+            title="Plan upgrades are web-only in mobile app mode"
+            webPath={`/manager/dashboard?view=settings&tab=billing${plan ? `&plan=${plan}` : ""}`}
+          />
+        </Box>
+      </Box>
+    );
+  }
 
   useEffect(() => {
     let active = true;

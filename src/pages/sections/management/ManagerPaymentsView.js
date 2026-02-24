@@ -51,6 +51,8 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import ReplayIcon from "@mui/icons-material/Replay";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import { isMobileComplianceMode } from "../../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../../../components/mobile/MobileWebOnlyNotice";
 
 // Timezone helpers
 const resolveTZ = () => getUserTimezone();
@@ -235,6 +237,17 @@ const paymentStatusChipColor = (status) => {
 };
 
 export default function ManagerPaymentsView({ connect }) {
+  if (isMobileComplianceMode()) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <MobileWebOnlyNotice
+          title="Payments manager is web-only in mobile app mode"
+          webPath="/manager/payments"
+        />
+      </Box>
+    );
+  }
+
   const location = useLocation();
 
   const hasConnect = Boolean(connect && typeof connect === 'object');

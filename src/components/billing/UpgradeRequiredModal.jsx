@@ -2,6 +2,8 @@ import React from "react";
 import { Dialog, DialogActions, DialogContent, DialogTitle, Button, Stack, Typography } from "@mui/material";
 import { openBillingPortal } from "./billingHelpers";
 import { buildMarketingUrl } from "../../config/origins";
+import { isMobileComplianceMode } from "../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../mobile/MobileWebOnlyNotice";
 
 const PLAN_LABELS = {
   pro: "Pro",
@@ -13,6 +15,23 @@ const UpgradeRequiredModal = ({ open, requiredPlan, message, action, onClose }) 
   const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const planLabel = PLAN_LABELS[requiredPlan] || "Pro";
   const detail = message || `This feature requires the ${planLabel} plan.`;
+
+  if (isMobileComplianceMode()) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Upgrade required</DialogTitle>
+        <DialogContent>
+          <MobileWebOnlyNotice
+            title="Upgrades are web-only in mobile app mode"
+            webPath="/manager/dashboard?view=settings&tab=billing"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={onClose}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
 
   const handlePortal = async () => {
     if (onClose) onClose();

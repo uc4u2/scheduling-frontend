@@ -42,6 +42,8 @@ import {
 import TaxSetupCard from "./TaxSetupCard";
 import TaxHelpGuide from "./TaxHelpGuide";
 import { useTranslation } from "react-i18next";
+import { isMobileComplianceMode } from "../../utils/mobileCompliance";
+import MobileWebOnlyNotice from "../../components/mobile/MobileWebOnlyNotice";
 
 const CANADA_PROVINCES = [
   "AB","BC","MB","NB","NL","NS","NT","NU","ON","PE","SK","YT",
@@ -59,6 +61,7 @@ const CURRENCY_OPTIONS = getCurrencyOptions();
 
 export default function SettingsCheckoutPro() {
   const { t } = useTranslation();
+  const mobileComplianceMode = isMobileComplianceMode();
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const cardOnFileTaxTooltip = (
     <Box sx={{ maxWidth: 360, whiteSpace: "normal" }}>
@@ -129,6 +132,23 @@ export default function SettingsCheckoutPro() {
 
   // 👇 Help drawer state
   const [guideOpen, setGuideOpen] = useState(false);
+
+  if (mobileComplianceMode) {
+    return (
+      <Card variant="outlined">
+        <CardHeader
+          title={t("settings.tabs.checkout", "Checkout Pro & Payments")}
+          subheader={t("settings.checkout.subtitle", "Configure checkout and payment collection rules.")}
+        />
+        <CardContent>
+          <MobileWebOnlyNotice
+            title="Checkout Pro settings are web-only in mobile app mode"
+            webPath="/manager/dashboard?view=settings&tab=checkout"
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   const enableStripe = paymentMode === "pay_now";
   const allowCardOnFile = paymentMode !== "offline";

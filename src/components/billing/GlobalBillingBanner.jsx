@@ -5,6 +5,7 @@ import useBillingStatus from "./useBillingStatus";
 import { useBillingBanner } from "./BillingBannerContext";
 import api from "../../utils/api";
 import { buildMarketingUrl } from "../../config/origins";
+import { isMobileComplianceMode } from "../../utils/mobileCompliance";
 
 const planLabel = (key) => {
   const map = { starter: "Starter", pro: "Pro", business: "Business" };
@@ -12,6 +13,7 @@ const planLabel = (key) => {
 };
 
 const GlobalBillingBanner = () => {
+  if (isMobileComplianceMode()) return null;
   const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
   const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const theme = useTheme();

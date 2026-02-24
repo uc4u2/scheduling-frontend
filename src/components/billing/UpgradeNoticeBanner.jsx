@@ -4,10 +4,12 @@ import useBillingStatus from "./useBillingStatus";
 import { useBillingBanner } from "./BillingBannerContext";
 import { openBillingPortal } from "./billingHelpers";
 import { buildMarketingUrl } from "../../config/origins";
+import { isMobileComplianceMode } from "../../utils/mobileCompliance";
 
 const PLAN_RANK = { starter: 0, pro: 1, business: 2 };
 
 const UpgradeNoticeBanner = ({ requiredPlan = "pro", message }) => {
+  if (isMobileComplianceMode()) return null;
   const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const { status } = useBillingStatus();
   const { visible } = useBillingBanner();
