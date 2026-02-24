@@ -11,7 +11,7 @@
     </item>
     <item
         android:gravity="center"
-        android:width="144dp"
-        android:height="144dp"
+        android:width="220dp"
+        android:height="56dp"
         android:drawable="@mipmap/ic_launcher_foreground" />
 </layer-list>

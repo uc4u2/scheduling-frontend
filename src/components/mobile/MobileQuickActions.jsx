@@ -66,22 +66,25 @@ const MobileQuickActions = () => {
           sx={{
             pointerEvents: "auto",
             border: "1px solid",
-            borderColor: "divider",
-            bgcolor: "background.paper",
-            borderRadius: 2,
-            px: 1,
-            py: 0.5,
-            boxShadow: 2,
+            borderColor: "rgba(255,255,255,0.18)",
+            bgcolor: "rgba(15, 23, 42, 0.88)",
+            color: "white",
+            backdropFilter: "blur(10px)",
+            borderRadius: 2.5,
+            px: 1.25,
+            py: 0.75,
+            boxShadow: "0 12px 28px rgba(0,0,0,0.35)",
           }}
         >
           <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-            <Typography variant="caption" fontWeight={700}>
+            <Typography variant="caption" fontWeight={700} sx={{ letterSpacing: 0.5, textTransform: "uppercase", color: "rgba(255,255,255,0.8)" }}>
               Quick Links
             </Typography>
             <IconButton
               size="small"
               onClick={() => setDockOpen((prev) => !prev)}
               aria-label="Toggle quick links"
+              sx={{ color: "white" }}
             >
               {dockOpen ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowUpIcon fontSize="small" />}
             </IconButton>
@@ -95,6 +98,13 @@ const MobileQuickActions = () => {
                   label={item.label}
                   onClick={() => openRoute(item.to)}
                   clickable
+                  sx={{
+                    color: "white",
+                    borderColor: "rgba(255,255,255,0.22)",
+                    bgcolor: "rgba(255,255,255,0.08)",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.16)" },
+                  }}
+                  variant="outlined"
                 />
               ))}
             </Stack>
@@ -103,10 +113,11 @@ const MobileQuickActions = () => {
       </Box>
 
       <Fab
-        color="primary"
+        color="secondary"
         size="medium"
         onClick={() => setOpen(true)}
         sx={{
+          display: open ? "none" : "inline-flex",
           position: "fixed",
           right: 16,
           bottom: `calc(${bottomOffset} + 64px)`,
@@ -123,9 +134,18 @@ const MobileQuickActions = () => {
         anchor="bottom"
         open={open}
         onClose={() => setOpen(false)}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 18,
+            borderTopRightRadius: 18,
+            bgcolor: "#0f172a",
+            color: "white",
+            borderTop: "1px solid rgba(255,255,255,0.12)",
+          },
+        }}
       >
         <Box sx={{ px: 2, pb: "max(16px, env(safe-area-inset-bottom))", pt: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1, color: "white" }}>
             Quick Actions
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
@@ -133,21 +153,49 @@ const MobileQuickActions = () => {
               <Button
                 key={item.to}
                 size="small"
-                variant="outlined"
+                variant="contained"
                 onClick={() => openRoute(item.to)}
+                sx={{
+                  borderRadius: 99,
+                  textTransform: "none",
+                  bgcolor: "rgba(59,130,246,0.2)",
+                  color: "#bfdbfe",
+                  border: "1px solid rgba(96,165,250,0.35)",
+                  "&:hover": { bgcolor: "rgba(59,130,246,0.32)" },
+                }}
               >
                 {item.label}
               </Button>
             ))}
           </Stack>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: "rgba(255,255,255,0.85)" }}>
             Switch Workspace
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Button size="small" variant="text" onClick={() => openRoute("/manager/dashboard")}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => openRoute("/manager/dashboard")}
+              sx={{
+                borderRadius: 99,
+                textTransform: "none",
+                borderColor: "rgba(255,255,255,0.24)",
+                color: "white",
+              }}
+            >
               Manager Dashboard
             </Button>
-            <Button size="small" variant="text" onClick={() => openRoute("/employee/my-time?workspace=manager")}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => openRoute("/employee/my-time?workspace=manager")}
+              sx={{
+                borderRadius: 99,
+                textTransform: "none",
+                borderColor: "rgba(255,255,255,0.24)",
+                color: "white",
+              }}
+            >
               Employee Dashboard
             </Button>
           </Stack>
