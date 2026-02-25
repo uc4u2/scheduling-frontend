@@ -7,6 +7,7 @@ import { isMobileComplianceMode } from "../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../components/mobile/MobileWebOnlyNotice";
 
 const VALID_PLANS = new Set(["starter", "pro", "business"]);
+const VALID_ADDONS = new Set(["website_design"]);
 
 const fallbackByRole = (role) => {
   if (role === "manager") return "/manager/dashboard";
@@ -21,6 +22,7 @@ const UpgradeBridgePage = () => {
 
   const query = useMemo(() => new URLSearchParams(location.search || ""), [location.search]);
   const plan = String(query.get("plan") || "").toLowerCase();
+  const addon = String(query.get("addon") || "").toLowerCase();
   const interval = String(query.get("interval") || "").toLowerCase();
   const returnTo = String(query.get("returnTo") || "").trim();
   const mobileComplianceMode = isMobileComplianceMode();
@@ -46,6 +48,7 @@ const UpgradeBridgePage = () => {
       const loginParams = new URLSearchParams();
       loginParams.set("tab", "billing");
       if (plan) loginParams.set("plan", plan);
+      if (addon) loginParams.set("addon", addon);
       if (interval) loginParams.set("interval", interval);
       if (returnTo) loginParams.set("returnTo", returnTo);
 
@@ -69,11 +72,32 @@ const UpgradeBridgePage = () => {
         return;
       }
 
+      if (addon && VALID_ADDONS.has(addon)) {
+        try {
+          const res = await api.post("/api/manager/website-design/checkout");
+          const url = res?.data?.checkout_url;
+          if (!url) throw new Error("Checkout URL missing.");
+          window.location.href = url;
+          return;
+        } catch (error) {
+          if (!active) return;
+          setState({
+            loading: false,
+            error:
+              error?.displayMessage ||
+              error?.response?.data?.error ||
+              error?.message ||
+              "Unable to start checkout.",
+          });
+          return;
+        }
+      }
+
       if (!VALID_PLANS.has(plan)) {
         if (!active) return;
         setState({
           loading: false,
-          error: "Invalid or missing plan. Please select a plan from the pricing page.",
+          error: "Invalid or missing plan/add-on. Please select a plan from the pricing page.",
         });
         return;
       }
@@ -100,7 +124,7 @@ const UpgradeBridgePage = () => {
     return () => {
       active = false;
     };
-  }, [interval, plan, returnTo]);
+  }, [addon, interval, plan, returnTo]);
 
   if (state.loading) {
     return (
