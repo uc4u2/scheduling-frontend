@@ -1,5 +1,5 @@
 // src/pages/NewManagementDashboard.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppBar,
@@ -140,7 +140,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import { format, endOfMonth } from "date-fns";
+import { format, endOfMonth, addDays } from "date-fns";
 
 // NEW — Toggle group for views/options
 import { ToggleButtonGroup, ToggleButton } from "@mui/material";
@@ -737,7 +737,9 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [calendarView, setCalendarView] = useState("dayGridMonth");
+  const [calendarView, setCalendarView] = useState(() =>
+    isSmall ? "timeGridDay" : "dayGridMonth"
+  );
   const [selected, setSelected] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
@@ -754,6 +756,8 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const [recruiters, setRecruiters] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
+  const calendarRef = useRef(null);
+  const [mobileDate, setMobileDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const isManager = Boolean(currentUserInfo?.is_manager);
   const canManageShifts = Boolean(currentUserInfo?.can_manage_shifts);
   const canCollectPaymentsSelf = Boolean(currentUserInfo?.can_collect_payments_self);
@@ -1138,6 +1142,27 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
     "--fc-border-color": theme.palette.divider,
   };
 
+  const mobileWeekStart = useMemo(() => {
+    const dt = new Date(`${mobileDate}T00:00:00`);
+    const start = new Date(dt);
+    start.setDate(dt.getDate() - dt.getDay());
+    return start;
+  }, [mobileDate]);
+
+  const mobileWeekDays = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, i) => {
+        const d = addDays(mobileWeekStart, i);
+        return {
+          date: d,
+          key: format(d, "yyyy-MM-dd"),
+          dow: format(d, "EE"),
+          day: format(d, "d"),
+        };
+      }),
+    [mobileWeekStart]
+  );
+
   return (
     <ManagementFrame>
       <GlobalStyles
@@ -1172,97 +1197,197 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         }}
       />
       <Stack spacing={2}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
-          <Box>
-            <Typography variant="h5" fontWeight={700}>
-              Booking Checkout Calendar
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Click a booking to mark it completed and collect payment.
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={loadBookings}
-              disabled={loading}
-              sx={pillButtonSx(false)}
-            >
-              {loading ? "Refreshing..." : "Refresh"}
-            </Button>
-          </Stack>
-        </Stack>
+        {isSmall ? (
+          <Paper sx={{ p: 0, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }} elevation={0}>
+            <Accordion disableGutters defaultExpanded={false} sx={{ boxShadow: "none", "&:before": { display: "none" } }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Checkout filters
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Stack spacing={2}>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
+                    <Box>
+                      <Typography variant="h5" fontWeight={700}>
+                        Booking Checkout Calendar
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Click a booking to mark it completed and collect payment.
+                      </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={loadBookings}
+                        disabled={loading}
+                        sx={pillButtonSx(false)}
+                      >
+                        {loading ? "Refreshing..." : "Refresh"}
+                      </Button>
+                    </Stack>
+                  </Stack>
 
-        {error && <Alert severity="error">{error}</Alert>}
+                  {error && <Alert severity="error">{error}</Alert>}
 
-        <Paper
-          sx={{
-            p: 2,
-            borderRadius: 3,
-            border: `1px solid ${theme.palette.divider}`,
-            backgroundColor: theme.palette.background.paper,
-          }}
-        >
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
-            {isSelfOnly ? (
-              <Alert severity="info" sx={{ py: 1, width: "100%" }}>
-                Showing only your bookings.
-              </Alert>
-            ) : (
-              <>
-                <FormControl sx={{ minWidth: 220 }}>
-                  <InputLabel id="booking-checkout-department">Department</InputLabel>
-                  <Select
-                    labelId="booking-checkout-department"
-                    value={selectedDepartment}
-                    label="Department"
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                  >
-                    <MenuItem value="">All Departments</MenuItem>
-                    {departments.map((dept) => (
-                      <MenuItem key={dept.id} value={String(dept.id)}>
-                        {dept.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl sx={{ minWidth: 220 }}>
-                  <InputLabel id="booking-checkout-employee">Employee</InputLabel>
-                  <Select
-                    labelId="booking-checkout-employee"
-                    value={selectedRecruiter}
-                    label="Employee"
-                    onChange={(e) => setSelectedRecruiter(e.target.value)}
-                  >
-                    <MenuItem value="">All Employees</MenuItem>
-                    {recruiters.map((rec) => (
-                      <MenuItem key={rec.id} value={String(rec.id)}>
-                        {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </>
-            )}
-            <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
-              <ToggleButtonGroup
-                value={calendarView}
-                exclusive
-                onChange={(_, v) => v && setCalendarView(v)}
-                size="small"
-                sx={{
-                  "& .MuiToggleButton-root": pillButtonSx(false),
-                  "& .MuiToggleButton-root.Mui-selected": pillButtonSx(true),
-                }}
-              >
-                <ToggleButton value="timeGridDay">Day</ToggleButton>
-                <ToggleButton value="timeGridWeek">Week</ToggleButton>
-                <ToggleButton value="dayGridMonth">Month</ToggleButton>
-              </ToggleButtonGroup>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
+                    {isSelfOnly ? (
+                      <Alert severity="info" sx={{ py: 1, width: "100%" }}>
+                        Showing only your bookings.
+                      </Alert>
+                    ) : (
+                      <>
+                        <FormControl sx={{ minWidth: 220 }}>
+                          <InputLabel id="booking-checkout-department">Department</InputLabel>
+                          <Select
+                            labelId="booking-checkout-department"
+                            value={selectedDepartment}
+                            label="Department"
+                            onChange={(e) => setSelectedDepartment(e.target.value)}
+                          >
+                            <MenuItem value="">All Departments</MenuItem>
+                            {departments.map((dept) => (
+                              <MenuItem key={dept.id} value={String(dept.id)}>
+                                {dept.name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <FormControl sx={{ minWidth: 220 }}>
+                          <InputLabel id="booking-checkout-employee">Employee</InputLabel>
+                          <Select
+                            labelId="booking-checkout-employee"
+                            value={selectedRecruiter}
+                            label="Employee"
+                            onChange={(e) => setSelectedRecruiter(e.target.value)}
+                          >
+                            <MenuItem value="">All Employees</MenuItem>
+                            {recruiters.map((rec) => (
+                              <MenuItem key={rec.id} value={String(rec.id)}>
+                                {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </>
+                    )}
+                    <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
+                      <ToggleButtonGroup
+                        value={calendarView}
+                        exclusive
+                        onChange={(_, v) => v && setCalendarView(v)}
+                        size="small"
+                        sx={{
+                          "& .MuiToggleButton-root": pillButtonSx(false),
+                          "& .MuiToggleButton-root.Mui-selected": pillButtonSx(true),
+                        }}
+                      >
+                        <ToggleButton value="timeGridDay">Day</ToggleButton>
+                        <ToggleButton value="timeGridWeek">Week</ToggleButton>
+                        <ToggleButton value="dayGridMonth">Month</ToggleButton>
+                      </ToggleButtonGroup>
+                    </Stack>
+                  </Stack>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          </Paper>
+        ) : (
+          <>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ md: "center" }}>
+              <Box>
+                <Typography variant="h5" fontWeight={700}>
+                  Booking Checkout Calendar
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Click a booking to mark it completed and collect payment.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={loadBookings}
+                  disabled={loading}
+                  sx={pillButtonSx(false)}
+                >
+                  {loading ? "Refreshing..." : "Refresh"}
+                </Button>
+              </Stack>
             </Stack>
-          </Stack>
-        </Paper>
+
+            {error && <Alert severity="error">{error}</Alert>}
+
+            <Paper
+              sx={{
+                p: 2,
+                borderRadius: 3,
+                border: `1px solid ${theme.palette.divider}`,
+                backgroundColor: theme.palette.background.paper,
+              }}
+            >
+              <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
+                {isSelfOnly ? (
+                  <Alert severity="info" sx={{ py: 1, width: "100%" }}>
+                    Showing only your bookings.
+                  </Alert>
+                ) : (
+                  <>
+                    <FormControl sx={{ minWidth: 220 }}>
+                      <InputLabel id="booking-checkout-department">Department</InputLabel>
+                      <Select
+                        labelId="booking-checkout-department"
+                        value={selectedDepartment}
+                        label="Department"
+                        onChange={(e) => setSelectedDepartment(e.target.value)}
+                      >
+                        <MenuItem value="">All Departments</MenuItem>
+                        {departments.map((dept) => (
+                          <MenuItem key={dept.id} value={String(dept.id)}>
+                            {dept.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <FormControl sx={{ minWidth: 220 }}>
+                      <InputLabel id="booking-checkout-employee">Employee</InputLabel>
+                      <Select
+                        labelId="booking-checkout-employee"
+                        value={selectedRecruiter}
+                        label="Employee"
+                        onChange={(e) => setSelectedRecruiter(e.target.value)}
+                      >
+                        <MenuItem value="">All Employees</MenuItem>
+                        {recruiters.map((rec) => (
+                          <MenuItem key={rec.id} value={String(rec.id)}>
+                            {rec.name || rec.full_name || rec.email || `Employee ${rec.id}`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </>
+                )}
+                <Stack direction="row" spacing={1} alignItems="center" ml={{ md: "auto" }}>
+                  <ToggleButtonGroup
+                    value={calendarView}
+                    exclusive
+                    onChange={(_, v) => v && setCalendarView(v)}
+                    size="small"
+                    sx={{
+                      "& .MuiToggleButton-root": pillButtonSx(false),
+                      "& .MuiToggleButton-root.Mui-selected": pillButtonSx(true),
+                    }}
+                  >
+                    <ToggleButton value="timeGridDay">Day</ToggleButton>
+                    <ToggleButton value="timeGridWeek">Week</ToggleButton>
+                    <ToggleButton value="dayGridMonth">Month</ToggleButton>
+                  </ToggleButtonGroup>
+                </Stack>
+              </Stack>
+            </Paper>
+          </>
+        )}
 
         <Paper
           className="booking-checkout-calendar"
@@ -1274,16 +1399,114 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
             overflow: "hidden",
           }}
         >
+          {isSmall && (
+            <Box sx={{ mb: 1.5 }}>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    const next = format(addDays(mobileWeekStart, -7), "yyyy-MM-dd");
+                    setMobileDate(next);
+                    const api = calendarRef.current?.getApi();
+                    if (api) {
+                      api.gotoDate(next);
+                      api.changeView("timeGridDay", next);
+                    }
+                    setCalendarView("timeGridDay");
+                  }}
+                  sx={{ minWidth: 36, height: 34, px: 0, borderRadius: 1.5 }}
+                >
+                  ‹
+                </Button>
+                <Typography
+                  sx={{
+                    flex: 1,
+                    textAlign: "center",
+                    fontSize: "1.05rem",
+                    fontWeight: 700,
+                    letterSpacing: 0.1,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {format(mobileWeekStart, "MMM yyyy")}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    const next = format(addDays(mobileWeekStart, 7), "yyyy-MM-dd");
+                    setMobileDate(next);
+                    const api = calendarRef.current?.getApi();
+                    if (api) {
+                      api.gotoDate(next);
+                      api.changeView("timeGridDay", next);
+                    }
+                    setCalendarView("timeGridDay");
+                  }}
+                  sx={{ minWidth: 36, height: 34, px: 0, borderRadius: 1.5 }}
+                >
+                  ›
+                </Button>
+              </Stack>
+              <Stack direction="row" spacing={0.5} justifyContent="space-between">
+                {mobileWeekDays.map((d) => {
+                  const active = d.key === mobileDate;
+                  return (
+                    <Box
+                      key={d.key}
+                      onClick={() => {
+                        setMobileDate(d.key);
+                        const api = calendarRef.current?.getApi();
+                        if (api) {
+                          api.gotoDate(d.key);
+                          api.changeView("timeGridDay", d.key);
+                        }
+                        setCalendarView("timeGridDay");
+                      }}
+                      sx={{
+                        flex: 1,
+                        textAlign: "center",
+                        py: 0.25,
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        background: active ? alpha(theme.palette.primary.main, 0.14) : "transparent",
+                        color: active ? theme.palette.primary.main : theme.palette.text.primary,
+                        fontWeight: active ? 700 : 500,
+                      }}
+                    >
+                      <Typography sx={{ display: "block", fontSize: "0.65rem", lineHeight: 1 }}>
+                        {d.dow}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.86rem", fontWeight: active ? 700 : 600, lineHeight: 1 }}>
+                        {d.day}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Box>
+          )}
           <FullCalendar
+            ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView={calendarView}
             key={`booking-cal-${calendarView}`}
             events={events}
             height={isSmall ? "auto" : 700}
-            headerToolbar={{
-              left: "prev,next today",
-              center: "title",
-              right: "",
+            headerToolbar={
+              isSmall
+                ? false
+                : {
+                    left: "prev,next today",
+                    center: "title",
+                    right: "",
+                  }
+            }
+            datesSet={(arg) => {
+              if (arg?.start) {
+                setMobileDate(format(arg.start, "yyyy-MM-dd"));
+              }
             }}
             eventClick={handleEventClick}
             eventContent={renderBookingEvent}

@@ -123,6 +123,7 @@ import EnterpriseAnalytics from "./EnterpriseAnalytics";
 import useStripeConnectStatus from "../../../hooks/useStripeConnectStatus";
 
 import { stripeConnect } from "../../../utils/api";
+import { isMobileAppMode } from "../../../utils/runtime";
 
 
 
@@ -143,6 +144,12 @@ const SecondNewManagementDashboard = ({ token }) => {
   const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const isCompactTabs = useMediaQuery(theme.breakpoints.down("md"));
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const narrowViewport =
+    typeof window !== "undefined" && window.matchMedia
+      ? window.matchMedia("(max-width: 1100px)").matches
+      : false;
+  const hideMobileHeaderAndStripe =
+    isMobileAppMode() || isCompactTabs || narrowViewport;
 
 
 
@@ -719,239 +726,138 @@ const panels = useMemo(
 
     <Container maxWidth="xl" sx={{ py: 3 }}>
 
-      {/* Header */}
-
-      <Paper
-
-        elevation={0}
-
-        sx={{
-
-          p: 3,
-
-          mb: 2,
-
-          borderRadius: 3,
-
-          background:
-
-            "linear-gradient(135deg, rgba(25,118,210,0.1) 0%, rgba(25,118,210,0.04) 100%)",
-
-          border: "1px solid",
-
-          borderColor: "divider",
-
-        }}
-
-      >
-
-        <Stack
-
-          direction={{ xs: "column", md: "row" }}
-
-          spacing={2}
-
-          alignItems={{ xs: "flex-start", md: "center" }}
-
-          justifyContent="space-between"
-
-        >
-
-          <Box>
-
-            <Typography variant="h4" fontWeight={800}>
-
-              {t("manager.advanced.heading")}
-
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-
-              Configure services, staff, and schedules. Review bookings, handle charges & refunds,
-
-              and open analytics in place.
-
-            </Typography>
-
-          </Box>
-
-
-
-          {/* Quick actions */}
-
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            flexWrap="wrap"
-            sx={{ width: { xs: "100%", md: "auto" } }}
+      {!hideMobileHeaderAndStripe && (
+        <>
+          {/* Header */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              mb: 2,
+              borderRadius: 3,
+              background:
+                "linear-gradient(135deg, rgba(25,118,210,0.1) 0%, rgba(25,118,210,0.04) 100%)",
+              border: "1px solid",
+              borderColor: "divider",
+            }}
           >
-
-            <Button
-
-              variant="contained"
-
-              startIcon={<PaymentsIcon />}
-
-              component={RouterLink}
-
-              to="/manager/payments"
-
-              fullWidth={isSmallScreen}
-
-            >
-
-              {t("manager.advanced.quickActions.payments")}
-
-            </Button>
-
-            <Button
-
-              variant="outlined"
-
-              startIcon={<InsightsIcon />}
-
-              onClick={openAnalytics}
-
-              fullWidth={isSmallScreen}
-
-            >
-
-              {t("manager.advanced.quickActions.analytics")}
-
-            </Button>
-
-          </Stack>
-
-        </Stack>
-
-      </Paper>
-
-
-
-      {/* Stripe Connect status */}
-
-      {connectLoading ? (
-
-        <Alert severity="info" sx={{ mb: 2 }}>
-
-          {t("manager.advanced.stripe.loading")}
-
-        </Alert>
-
-      ) : (
-
-        <Alert severity={connectBannerSeverity} sx={{ mb: 2 }}>
-
-          <Stack
-
-            direction={{ xs: "column", md: "row" }}
-
-            spacing={2}
-
-            alignItems={{ xs: "flex-start", md: "center" }}
-
-            justifyContent="space-between"
-
-          >
-
-            <Box>
-
-              <Typography variant="subtitle1" fontWeight={700}>
-
-                {t("manager.advanced.stripe.title")}
-
-              </Typography>
-
-              <Typography variant="body2" color="text.secondary">
-
-                {connectSummary}
-
-              </Typography>
-
-              {needsOnboarding && requirementsDue > 0 ? (
-
-                <Typography variant="caption" color="text.secondary">
-
-                  {t("manager.advanced.stripe.requirements", { count: requirementsDue })}
-
-                </Typography>
-
-              ) : null}
-
-            </Box>
-
             <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1}
-              flexWrap="wrap"
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
+              alignItems={{ xs: "flex-start", md: "center" }}
+              justifyContent="space-between"
             >
+              <Box>
+                <Typography variant="h4" fontWeight={800}>
+                  {t("manager.advanced.heading")}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Configure services, staff, and schedules. Review bookings, handle charges & refunds,
+                  and open analytics in place.
+                </Typography>
+              </Box>
 
-              <Button
-
-                variant="contained"
-
-                onClick={primaryConnectAction}
-
-                disabled={disablePrimary}
-                fullWidth={isSmallScreen}
-
+              {/* Quick actions */}
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                flexWrap="wrap"
+                sx={{ width: { xs: "100%", md: "auto" } }}
               >
-
-                {primaryActionLabel}
-
-              </Button>
-
-              <Button
-
-                variant="outlined"
-
-                onClick={handleRefreshLink}
-
-                disabled={disableRefresh}
-                fullWidth={isSmallScreen}
-
-              >
-
-                {refreshLabel}
-
-              </Button>
-
-              {!needsOnboarding ? (
-
                 <Button
-
-                  variant="text"
-
-                  onClick={handleStartOnboarding}
-
-                  disabled={disableStartLink}
+                  variant="contained"
+                  startIcon={<PaymentsIcon />}
+                  component={RouterLink}
+                  to="/manager/payments"
                   fullWidth={isSmallScreen}
-
                 >
-
-                  {startLinkLabel}
-
+                  {t("manager.advanced.quickActions.payments")}
                 </Button>
 
-              ) : null}
-
+                <Button
+                  variant="outlined"
+                  startIcon={<InsightsIcon />}
+                  onClick={openAnalytics}
+                  fullWidth={isSmallScreen}
+                >
+                  {t("manager.advanced.quickActions.analytics")}
+                </Button>
+              </Stack>
             </Stack>
+          </Paper>
 
-          </Stack>
+          {/* Stripe Connect status */}
+          {connectLoading ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {t("manager.advanced.stripe.loading")}
+            </Alert>
+          ) : (
+            <Alert severity={connectBannerSeverity} sx={{ mb: 2 }}>
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={2}
+                alignItems={{ xs: "flex-start", md: "center" }}
+                justifyContent="space-between"
+              >
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    {t("manager.advanced.stripe.title")}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {connectSummary}
+                  </Typography>
+                  {needsOnboarding && requirementsDue > 0 ? (
+                    <Typography variant="caption" color="text.secondary">
+                      {t("manager.advanced.stripe.requirements", { count: requirementsDue })}
+                    </Typography>
+                  ) : null}
+                </Box>
 
-        </Alert>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  flexWrap="wrap"
+                >
+                  <Button
+                    variant="contained"
+                    onClick={primaryConnectAction}
+                    disabled={disablePrimary}
+                    fullWidth={isSmallScreen}
+                  >
+                    {primaryActionLabel}
+                  </Button>
 
+                  <Button
+                    variant="outlined"
+                    onClick={handleRefreshLink}
+                    disabled={disableRefresh}
+                    fullWidth={isSmallScreen}
+                  >
+                    {refreshLabel}
+                  </Button>
+
+                  {!needsOnboarding ? (
+                    <Button
+                      variant="text"
+                      onClick={handleStartOnboarding}
+                      disabled={disableStartLink}
+                      fullWidth={isSmallScreen}
+                    >
+                      {startLinkLabel}
+                    </Button>
+                  ) : null}
+                </Stack>
+              </Stack>
+            </Alert>
+          )}
+
+          {connectError ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {connectError}
+            </Alert>
+          ) : null}
+        </>
       )}
-
-      {connectError ? (
-
-        <Alert severity="error" sx={{ mb: 2 }}>
-
-          {connectError}
-
-        </Alert>
-
-      ) : null}
 
 
 

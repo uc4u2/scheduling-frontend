@@ -55,10 +55,12 @@ import "./manager-calendar.css";
 // Timezone-safe utilities (use these for the TZ rules)
 import { isoFromParts } from "../../utils/datetime";
 import { formatSlotWithTZ } from "../../utils/timezone-wrapper";
+import { isMobileAppMode } from "../../utils/runtime";
 
 const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
+  const mobileMode = isMobileAppMode() || isSmDown;
   const calRef = useRef(null);
   const isRecruiter = window.location.pathname.includes("recruiter");
 
@@ -155,7 +157,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   });
 
   // enterprise calendar options
-  const [calendarView, setCalendarView] = useState("dayGridMonth"); // "timeGridWeek" | "timeGridDay"
+  const [calendarView, setCalendarView] = useState(isSmDown ? "timeGridDay" : "dayGridMonth"); // "timeGridWeek" | "timeGridDay"
   const [showWeekends, setShowWeekends] = useState(true);
   const [workHoursOnly, setWorkHoursOnly] = useState(false);
   const [compactDensity, setCompactDensity] = useState(false);
@@ -175,6 +177,24 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const [slotEditOpen, setSlotEditOpen] = useState(false);
   const [slotEditForm, setSlotEditForm] = useState({ date: "", start: "", end: "" });
 
+  const mobileWeekStart = useMemo(() => {
+    const base = moment(selectedDate, "YYYY-MM-DD", true);
+    return (base.isValid() ? base : moment()).startOf("week");
+  }, [selectedDate]);
+
+  const mobileWeekDays = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, i) => {
+        const d = mobileWeekStart.clone().add(i, "day");
+        return {
+          key: d.format("YYYY-MM-DD"),
+          dow: d.format("dd"),
+          day: d.format("D"),
+        };
+      }),
+    [mobileWeekStart]
+  );
+
   // Day menu/actions
   const [dayMenuAnchor, setDayMenuAnchor] = useState(null);
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
@@ -189,6 +209,13 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     end: "17:00",
     tz: null,       // which tz these times are in
   });
+
+  useEffect(() => {
+    if (!mobileMode) return;
+    if (calendarView !== "timeGridDay") {
+      setCalendarView("timeGridDay");
+    }
+  }, [mobileMode, calendarView]);
 
   /* ------------------------- data-fetch helpers ------------------------ */
   const fetchDepartments = async () => {
@@ -746,14 +773,22 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     eventClick: onEventClick,
     eventContent: renderEventContent,
     eventDidMount,
-    headerToolbar: isSmDown
-      ? { left: "prev", center: "title", right: "next" }
+    datesSet: (arg) => {
+      if (!mobileMode) return;
+      if (arg?.view?.type !== "timeGridDay") return;
+      const visible = moment(arg.start).format("YYYY-MM-DD");
+      if (visible !== selectedDate) {
+        setSelectedDate(visible);
+      }
+    },
+    headerToolbar: mobileMode
+      ? false
       : {
           left: "prev,next today",
           center: "title",
           right: "dayGridMonth,timeGridWeek,timeGridDay",
         },
-    titleFormat: isSmDown ? { month: "short", day: "numeric" } : { month: "long", day: "numeric", year: "numeric" },
+    titleFormat: mobileMode ? { month: "short", day: "numeric" } : { month: "long", day: "numeric", year: "numeric" },
   };
 
   /* ---------------- Recompute suggested window from FREE slots --------------- */
@@ -902,6 +937,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
       <Paper
         sx={{
+          order: { xs: 2, md: 0 },
           p: 2,
           mb: 2,
           borderRadius: 3,
@@ -992,12 +1028,14 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                 </Menu>
               </>
             )}
-            <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)}>
-              <ToggleButton value="dayGridMonth">Month</ToggleButton>
-              <ToggleButton value="timeGridWeek">Week</ToggleButton>
-              <ToggleButton value="timeGridDay">Day</ToggleButton>
-            </ToggleButtonGroup>
-            {!isSmDown && (
+            {!mobileMode && (
+              <ToggleButtonGroup size="small" value={calendarView} exclusive onChange={(_, v) => v && setCalendarView(v)}>
+                <ToggleButton value="dayGridMonth">Month</ToggleButton>
+                <ToggleButton value="timeGridWeek">Week</ToggleButton>
+                <ToggleButton value="timeGridDay">Day</ToggleButton>
+              </ToggleButtonGroup>
+            )}
+            {!mobileMode && (
               <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                 <Chip size="small" label="Available" sx={{ bgcolor: ui.available.bg, color: ui.available.text }} />
                 <Chip size="small" label="Booked" sx={{ bgcolor: ui.booked.bg, color: ui.booked.text }} />
@@ -1007,8 +1045,105 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         </Stack>
       </Paper>
 
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minHeight: { xs: "auto", md: "calc(100vh - 260px)" } }}>
-        {isSmDown && (
+      <Box
+        sx={{
+          order: { xs: 1, md: 0 },
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          minHeight: { xs: "auto", md: "calc(100vh - 260px)" },
+        }}
+      >
+        {mobileMode && (
+          <Paper
+            sx={{
+              p: 1.5,
+              borderRadius: 3,
+              border: `1px solid ${theme.palette.divider}`,
+              boxShadow: "none",
+            }}
+            elevation={0}
+          >
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  const next = mobileWeekStart.clone().add(-7, "day").format("YYYY-MM-DD");
+                  setSelectedDate(next);
+                  setCalendarView("timeGridDay");
+                  const api = calRef.current?.getApi?.();
+                  if (api) api.changeView("timeGridDay", next);
+                }}
+                sx={{ minWidth: 36, height: 34, px: 0, borderRadius: 1.5 }}
+              >
+                ‹
+              </Button>
+              <Typography
+                sx={{
+                  flex: 1,
+                  textAlign: "center",
+                  fontSize: "1.05rem",
+                  fontWeight: 700,
+                  letterSpacing: 0.1,
+                  lineHeight: 1.1,
+                }}
+              >
+                {mobileWeekStart.format("MMM YYYY")}
+              </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  const next = mobileWeekStart.clone().add(7, "day").format("YYYY-MM-DD");
+                  setSelectedDate(next);
+                  setCalendarView("timeGridDay");
+                  const api = calRef.current?.getApi?.();
+                  if (api) api.changeView("timeGridDay", next);
+                }}
+                sx={{ minWidth: 36, height: 34, px: 0, borderRadius: 1.5 }}
+              >
+                ›
+              </Button>
+            </Stack>
+
+            <Stack direction="row" spacing={0.5} justifyContent="space-between">
+              {mobileWeekDays.map((d) => {
+                const active = d.key === selectedDate;
+                return (
+                  <Box
+                    key={d.key}
+                    onClick={() => {
+                      setSelectedDate(d.key);
+                      setCalendarView("timeGridDay");
+                      const api = calRef.current?.getApi?.();
+                      if (api) api.changeView("timeGridDay", d.key);
+                    }}
+                    sx={{
+                      flex: 1,
+                      textAlign: "center",
+                      py: 0.25,
+                      borderRadius: 2,
+                      cursor: "pointer",
+                      background: active ? alpha(theme.palette.primary.main, 0.14) : "transparent",
+                      color: active ? theme.palette.primary.main : theme.palette.text.primary,
+                      fontWeight: active ? 700 : 500,
+                    }}
+                  >
+                    <Typography sx={{ display: "block", fontSize: "0.65rem", lineHeight: 1 }}>
+                      {d.dow}
+                    </Typography>
+                    <Typography sx={{ fontSize: "0.86rem", fontWeight: active ? 700 : 600, lineHeight: 1 }}>
+                      {d.day}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Stack>
+          </Paper>
+        )}
+
+        {mobileMode && (
           <Paper sx={{ p: 0 }} elevation={0} variant="outlined">
             <Accordion disableGutters defaultExpanded={false} sx={{ boxShadow: "none", "&:before": { display: "none" } }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -1081,7 +1216,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           />
         </Paper>
 
-        {!isSmDown && (
+        {!mobileMode && (
         <Paper sx={{ p: 2, order: { xs: 1, md: 2 } }} elevation={0} variant="outlined">
         <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ mb: 1 }}>
           <Typography variant="subtitle1" fontWeight={700} sx={{ whiteSpace: "nowrap" }}>

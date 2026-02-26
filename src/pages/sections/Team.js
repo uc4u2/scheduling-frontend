@@ -357,6 +357,27 @@ const asLocalDate = (ymd) => {
   const [rowMenuId, setRowMenuId] = useState(null);
   const [mobileActionsAnchor, setMobileActionsAnchor] = useState(null);
 
+  const mobileWeekStart = useMemo(() => {
+    const dt = asLocalDate(selectedDate);
+    const start = new Date(dt);
+    start.setDate(dt.getDate() - dt.getDay());
+    return start;
+  }, [selectedDate]);
+
+  const mobileWeekDays = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, i) => {
+        const d = addDays(mobileWeekStart, i);
+        return {
+          date: d,
+          key: format(d, "yyyy-MM-dd"),
+          dow: format(d, "EE"),
+          day: format(d, "d"),
+        };
+      }),
+    [mobileWeekStart]
+  );
+
   // flatten shifts into table rows (stable keys for selection/edit)
   const resolveRecruiterTimezone = useCallback(
     (recruiterId) =>
@@ -2007,13 +2028,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     eventClick: handleEventClick,
     eventDrop: handleEventDrop,
     eventResize: handleEventResize,
-    headerToolbar: {
-      left: "prev,next",
-      center: "title",
-      right: isMdDown
-        ? "timeGridDay,dayGridMonth"
-        : "timeGridWeek,timeGridDay,dayGridMonth",
-    },
+    headerToolbar: isMdDown
+      ? false
+      : {
+          left: "prev,next",
+          center: "title",
+          right: "timeGridWeek,timeGridDay,dayGridMonth",
+        },
     titleFormat:
       isMdDown && activeCalView === "timeGridDay"
         ? { month: "short", day: "numeric" }
@@ -2716,6 +2737,95 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
 
       {/* =============================== WEEK/DAY MODE ============================== */}
       <>
+          {isMdDown && (
+            <Paper
+              sx={{
+                p: 1.5,
+                borderRadius: 3,
+                border: `1px solid ${theme.palette.divider}`,
+                boxShadow: "none",
+              }}
+              elevation={0}
+            >
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    const next = format(addDays(mobileWeekStart, -7), "yyyy-MM-dd");
+                    setSelectedDate(next);
+                    setInnerCalView("timeGridDay");
+                    const api = calendarRef.current?.getApi();
+                    if (api) api.changeView("timeGridDay", next);
+                  }}
+                  sx={{ minWidth: 36, height: 34, px: 0, borderRadius: 1.5 }}
+                >
+                  ‹
+                </Button>
+                <Typography
+                  sx={{
+                    flex: 1,
+                    textAlign: "center",
+                    fontSize: "1.05rem",
+                    fontWeight: 700,
+                    letterSpacing: 0.1,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {format(mobileWeekStart, "MMM yyyy")}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    const next = format(addDays(mobileWeekStart, 7), "yyyy-MM-dd");
+                    setSelectedDate(next);
+                    setInnerCalView("timeGridDay");
+                    const api = calendarRef.current?.getApi();
+                    if (api) api.changeView("timeGridDay", next);
+                  }}
+                  sx={{ minWidth: 36, height: 34, px: 0, borderRadius: 1.5 }}
+                >
+                  ›
+                </Button>
+              </Stack>
+
+              <Stack direction="row" spacing={0.5} justifyContent="space-between">
+                {mobileWeekDays.map((d) => {
+                  const active = d.key === selectedDate;
+                  return (
+                    <Box
+                      key={d.key}
+                      onClick={() => {
+                        setSelectedDate(d.key);
+                        setInnerCalView("timeGridDay");
+                        const api = calendarRef.current?.getApi();
+                        if (api) api.changeView("timeGridDay", d.key);
+                      }}
+                      sx={{
+                        flex: 1,
+                        textAlign: "center",
+                        py: 0.25,
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        background: active ? alpha(theme.palette.primary.main, 0.14) : "transparent",
+                        color: active ? theme.palette.primary.main : theme.palette.text.primary,
+                        fontWeight: active ? 700 : 500,
+                      }}
+                    >
+                      <Typography sx={{ display: "block", fontSize: "0.65rem", lineHeight: 1 }}>
+                        {d.dow}
+                      </Typography>
+                      <Typography sx={{ fontSize: "0.86rem", fontWeight: active ? 700 : 600, lineHeight: 1 }}>
+                        {d.day}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </Paper>
+          )}
+
           <Paper
             sx={{
               p: compactDensity ? 1 : 2,
