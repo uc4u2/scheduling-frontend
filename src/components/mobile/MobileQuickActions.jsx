@@ -2,19 +2,15 @@ import React from "react";
 import {
   Box,
   Button,
-  Chip,
-  Collapse,
   Drawer,
-  IconButton,
   Fab,
   Stack,
   Typography,
 } from "@mui/material";
 import BoltIcon from "@mui/icons-material/Bolt";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useLocation, useNavigate } from "react-router-dom";
-import { hapticImpact, hapticSuccess } from "../../utils/mobileFeedback";
+import { hapticSuccess } from "../../utils/mobileFeedback";
+import { isMobileAppMode } from "../../utils/runtime";
 
 const managerActions = [
   { label: "Shift", to: "/manager/team" },
@@ -24,27 +20,39 @@ const managerActions = [
 ];
 
 const employeeActions = [
-  { label: "Calendar", to: "/app/calendar" },
-  { label: "My Time", to: "/app/shifts" },
-  { label: "My Shifts", to: "/app/my-shifts" },
+  { label: "Calendar", to: "/employee/dashboard?tab=calendar" },
+  { label: "My Time", to: "/recruiter/my-time" },
+  { label: "My Availability", to: "/employee/dashboard?tab=availability" },
 ];
 
 const MobileQuickActions = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = React.useState(false);
-  const [dockOpen, setDockOpen] = React.useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("mobile.quickDockOpen") === "1";
-  });
-  const hasToken = typeof window !== "undefined" ? Boolean(localStorage.getItem("token")) : false;
-  const role =
+  const hasToken =
     typeof window !== "undefined"
-      ? (localStorage.getItem("role") || "").toLowerCase()
+      ? Boolean(localStorage.getItem("token"))
+      : false;
+  const roleRaw =
+    typeof window !== "undefined"
+      ? (localStorage.getItem("role") ||
+          localStorage.getItem("userRole") ||
+          "").toLowerCase()
       : "";
-  const isAppRoute = location.pathname.startsWith("/app/");
-  const isEmployee = role === "employee" || role === "recruiter";
-  const actions = isEmployee ? employeeActions : managerActions;
+  const isMobileDashboardRoute =
+    location.pathname.startsWith("/app/") ||
+    location.pathname.startsWith("/manager/") ||
+    location.pathname.startsWith("/employee/") ||
+    location.pathname.startsWith("/recruiter/") ||
+    location.pathname === "/calendar";
+  const employeeRouteContext =
+    location.pathname.startsWith("/employee/") ||
+    location.pathname.startsWith("/recruiter/") ||
+    location.pathname.startsWith("/app/calendar") ||
+    location.pathname.startsWith("/app/shifts") ||
+    location.pathname.startsWith("/app/my-shifts");
+  const isEmployeeRole = roleRaw === "employee" || roleRaw === "recruiter";
+  const actions = employeeRouteContext || isEmployeeRole ? employeeActions : managerActions;
   const bottomOffset = location.pathname.startsWith("/app/")
     ? "calc(env(safe-area-inset-bottom) + 84px)"
     : "calc(env(safe-area-inset-bottom) + 18px)";
@@ -55,86 +63,12 @@ const MobileQuickActions = () => {
     navigate(path);
   };
 
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("mobile.quickDockOpen", dockOpen ? "1" : "0");
-  }, [dockOpen]);
-
-  if (!isAppRoute || !hasToken || !role) {
+  if (!isMobileAppMode() || !isMobileDashboardRoute || !hasToken || !roleRaw) {
     return null;
   }
 
   return (
     <>
-      <Box
-        sx={{
-          position: "fixed",
-          left: 12,
-          right: 12,
-          bottom: location.pathname.startsWith("/app/")
-            ? "calc(env(safe-area-inset-bottom) + 84px)"
-            : "calc(env(safe-area-inset-bottom) + 14px)",
-          zIndex: 1299,
-          pointerEvents: "none",
-        }}
-      >
-        <Box
-          sx={{
-            pointerEvents: "auto",
-            border: "1px solid",
-            borderColor: "rgba(255,255,255,0.18)",
-            bgcolor: "rgba(15, 23, 42, 0.88)",
-            color: "white",
-            backdropFilter: "blur(10px)",
-            borderRadius: 2.5,
-            px: 1.25,
-            py: 0.75,
-            boxShadow: "0 12px 28px rgba(0,0,0,0.35)",
-          }}
-        >
-          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-            <Typography variant="caption" fontWeight={700} sx={{ letterSpacing: 0.5, textTransform: "uppercase", color: "rgba(255,255,255,0.8)" }}>
-              Quick Links
-            </Typography>
-            <IconButton
-              size="small"
-              onClick={() => {
-                hapticImpact("light");
-                setDockOpen((prev) => !prev);
-              }}
-              aria-label="Toggle quick links"
-              sx={{ color: "white" }}
-            >
-              {dockOpen ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowUpIcon fontSize="small" />}
-            </IconButton>
-          </Stack>
-          <Collapse in={dockOpen}>
-            <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ pt: 0.5 }}>
-              {actions.map((item) => (
-                <Chip
-                  key={`dock-${item.to}`}
-                  size="small"
-                  label={item.label}
-                  onClick={() => openRoute(item.to)}
-                  clickable
-                  sx={{
-                    color: "white",
-                    borderColor: "rgba(255,255,255,0.22)",
-                    bgcolor: "rgba(255,255,255,0.08)",
-                    borderRadius: 99,
-                    height: 31,
-                    fontWeight: 700,
-                    letterSpacing: 0.2,
-                    "&:hover": { bgcolor: "rgba(255,255,255,0.16)" },
-                  }}
-                  variant="outlined"
-                />
-              ))}
-            </Stack>
-          </Collapse>
-        </Box>
-      </Box>
-
       <Fab
         color="secondary"
         size="medium"

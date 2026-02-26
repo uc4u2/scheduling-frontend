@@ -10,7 +10,7 @@ const RecruiterMyShiftsPage = ({ token }) => {
   const navigate = useNavigate();
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
   const handleLocalTabChange = (value) => {
-    navigate(`/employee?tab=${value}`);
+    navigate(`/employee/dashboard?tab=${value}`);
   };
 
   return (

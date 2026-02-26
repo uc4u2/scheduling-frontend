@@ -27,9 +27,10 @@ const tabToValue = (pathname, isEmployee) => {
     if (pathname.startsWith("/app/more")) return "more";
     return "my-time";
   }
-  if (pathname.startsWith("/app/calendar")) return "calendar";
-  if (pathname.startsWith("/app/shifts")) return "shifts";
-  if (pathname.startsWith("/app/bookings")) return "bookings";
+  if (pathname.startsWith("/manager/team")) return "shift-management";
+  if (pathname.startsWith("/manager/advanced-management")) return "services-bookings";
+  if (pathname.startsWith("/manager/time-tracking")) return "more";
+  if (pathname.startsWith("/manager/booking-checkout")) return "booking-checkout";
   if (pathname.startsWith("/app/more")) return "more";
   return "today";
 };
@@ -68,9 +69,9 @@ const MobileLayout = () => {
       ]
     : [
         { label: "Today", value: "today", icon: <TodayIcon /> },
-        { label: "Calendar", value: "calendar", icon: <CalendarMonthIcon /> },
-        { label: "Shifts", value: "shifts", icon: <EventNoteIcon /> },
-        { label: "Bookings", value: "bookings", icon: <BookOnlineIcon /> },
+        { label: "Shift Mgmt", value: "shift-management", icon: <EventNoteIcon /> },
+        { label: "Services", value: "services-bookings", icon: <BookOnlineIcon /> },
+        { label: "Checkout", value: "booking-checkout", icon: <CalendarMonthIcon /> },
         { label: "More", value: "more", icon: <MoreHorizIcon /> },
       ];
   const title = role === "employee" || role === "recruiter" ? "Employee App" : "Manager App";
@@ -175,7 +176,13 @@ const MobileLayout = () => {
               navigate(employeeRouteMap[next] || "/app/shifts");
               return;
             }
-            navigate(`/app/${next}`);
+            const managerRouteMap = {
+              today: "/manager/dashboard",
+              "shift-management": "/manager/team",
+              "services-bookings": "/manager/advanced-management",
+              "booking-checkout": "/manager/booking-checkout",
+            };
+            navigate(managerRouteMap[next] || "/manager/dashboard");
           }}
         >
           {tabConfig.map((tab) => (

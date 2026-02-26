@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Drawer,
   Box,
@@ -8,6 +8,7 @@ import {
   ListItemText,
   Divider,
 } from "@mui/material";
+import useRecruiterTabsAccess from "../recruiter/useRecruiterTabsAccess";
 
 const workspaceItems = [
   { label: "Manager Dashboard", to: "/manager/dashboard" },
@@ -24,18 +25,46 @@ const managerItems = [
 ];
 
 const employeeItems = [
-  { label: "My Time", to: "/employee/my-time" },
-  { label: "My Meetings", to: "/recruiter/upcoming-meetings" },
-  { label: "Public Link", to: "/employee/public-link" },
+  { label: "Calendar", to: "/employee/dashboard?tab=calendar" },
+  { label: "My Time", to: "/recruiter/my-time" },
+  { label: "My Availability", to: "/employee/dashboard?tab=availability", requiresHrAccess: true },
+  { label: "Invitations", to: "/recruiter/invitations", requiresHrAccess: true },
+  { label: "Candidate Forms", to: "/recruiter/invitations?section=forms", requiresHrAccess: true },
+  { label: "Questionnaires", to: "/recruiter/questionnaires", requiresHrAccess: true },
+  { label: "Upcoming Meetings", to: "/recruiter/upcoming-meetings", requiresHrAccess: true },
+  { label: "Candidate Search", to: "/employee/candidate-search", requiresHrAccess: true },
+  { label: "Public Booking Link", to: "/recruiter/public-link", requiresHrAccess: true },
+  { label: "Job Postings", to: "/manager/job-openings", requiresOnboardingManager: true },
   { label: "About", to: "/app/about" },
 ];
 
 const MobileDrawer = ({ open, onClose, navigate }) => {
+  const {
+    isManager,
+    allowHrAccess,
+    canManageOnboarding,
+  } = useRecruiterTabsAccess();
+
   const role =
     typeof window !== "undefined"
       ? (localStorage.getItem("role") || "").toLowerCase()
       : "";
-  const items = role === "employee" || role === "recruiter" ? employeeItems : managerItems;
+  const isEmployeeRole = role === "employee" || role === "recruiter";
+  const items = useMemo(() => {
+    if (!isEmployeeRole) {
+      return managerItems;
+    }
+
+    return employeeItems.filter((item) => {
+      if (item.requiresOnboardingManager) {
+        return Boolean(isManager || canManageOnboarding);
+      }
+      if (item.requiresHrAccess) {
+        return Boolean(allowHrAccess);
+      }
+      return true;
+    });
+  }, [allowHrAccess, canManageOnboarding, isEmployeeRole, isManager]);
 
   return (
     <Drawer anchor="right" open={open} onClose={onClose}>

@@ -17,10 +17,7 @@ const RecruiterMyTimePage = ({ token }) => {
     role === "manager" && location.pathname.startsWith("/employee");
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
   const handleLocalTabChange = (value) => {
-    const basePath = location.pathname.startsWith("/recruiter")
-      ? "/recruiter/dashboard"
-      : "/employee/dashboard";
-    navigate(`${basePath}?tab=${value}`);
+    navigate(`/employee/dashboard?tab=${value}`);
   };
 
   return (

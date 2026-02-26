@@ -259,6 +259,12 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     };
   }, [detailEntries]);
 
+  useEffect(() => {
+    if (isMobileCards) {
+      setRosterCollapsed(true);
+    }
+  }, [isMobileCards]);
+
   const handleChange = (key) => (event) => {
     const value = event.target.value;
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -1734,6 +1740,15 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
             )}
           </Box>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            {isMobileCards && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setRosterCollapsed((prev) => !prev)}
+              >
+                {rosterCollapsed ? "Show live roster" : "Hide live roster"}
+              </Button>
+            )}
             <Chip
               size="small"
               color="primary"
@@ -1746,11 +1761,13 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
               variant="outlined"
               label={`${rosterStats.onBreak} on break`}
             />
-            <Tooltip title={rosterCollapsed ? "Expand roster" : "Collapse roster"}>
-              <IconButton size="small" onClick={() => setRosterCollapsed((prev) => !prev)}>
-                {rosterCollapsed ? <ExpandMoreIcon fontSize="small" /> : <ExpandLessIcon fontSize="small" />}
-              </IconButton>
-            </Tooltip>
+            {!isMobileCards && (
+              <Tooltip title={rosterCollapsed ? "Expand roster" : "Collapse roster"}>
+                <IconButton size="small" onClick={() => setRosterCollapsed((prev) => !prev)}>
+                  {rosterCollapsed ? <ExpandMoreIcon fontSize="small" /> : <ExpandLessIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Refresh roster">
               <span>
                 <IconButton size="small" onClick={fetchEntries} disabled={loading}>

@@ -180,9 +180,6 @@ const MobileTodayPage = () => {
       )}
 
       <Stack direction="row" spacing={1} flexWrap="wrap">
-        <Button variant="contained" onClick={() => navigate("/app/calendar")}>Calendar</Button>
-        <Button variant="outlined" onClick={() => navigate("/app/shifts")}>Shifts</Button>
-        {!isEmployee && <Button variant="outlined" onClick={() => navigate("/app/bookings")}>Bookings</Button>}
         <Button variant="outlined" onClick={fetchHub} disabled={refreshing}>
           {refreshing ? "Refreshing..." : "Refresh"}
         </Button>
@@ -198,41 +195,7 @@ const MobileTodayPage = () => {
         )}
       </Stack>
 
-      <Card variant="outlined">
-        <CardContent>
-          <Typography variant="subtitle1" gutterBottom>
-            Workspace shortcuts
-          </Typography>
-          {isEmployee ? (
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Button size="small" onClick={() => navigate("/employee/my-time")}>
-                My Time
-              </Button>
-              <Button size="small" onClick={() => navigate("/app/calendar")}>
-                Calendar
-              </Button>
-              <Button size="small" onClick={() => navigate("/employee/my-shifts")}>
-                My Shifts
-              </Button>
-            </Stack>
-          ) : (
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Button size="small" onClick={() => navigate("/manager/team")}>
-                Shift
-              </Button>
-              <Button size="small" onClick={() => navigate("/manager/booking-checkout")}>
-                Checkout
-              </Button>
-              <Button size="small" onClick={() => navigate("/manager/advanced-management")}>
-                Services
-              </Button>
-              <Button size="small" onClick={() => navigate("/manager/time-tracking")}>
-                Time Tracking
-              </Button>
-            </Stack>
-          )}
-        </CardContent>
-      </Card>
+      
     </Stack>
   );
 };

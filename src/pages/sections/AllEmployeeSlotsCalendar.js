@@ -27,6 +27,9 @@ import {
   Dialog,
   alpha,
   Menu,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -39,6 +42,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import api from "../../utils/api";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -1004,8 +1008,58 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       </Paper>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2, minHeight: { xs: "auto", md: "calc(100vh - 260px)" } }}>
+        {isSmDown && (
+          <Paper sx={{ p: 0 }} elevation={0} variant="outlined">
+            <Accordion disableGutters defaultExpanded={false} sx={{ boxShadow: "none", "&:before": { display: "none" } }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ whiteSpace: "nowrap" }}>
+                  {moment(selectedDate).format("ddd, MMM D")} — {daySlots.length} slot(s)
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap" sx={{ mb: 1 }}>
+                  <Chip size="small" label="Available" sx={{ bgcolor: ui.available.bg, color: ui.available.text }} />
+                  <Chip size="small" label="Reserved" sx={{ bgcolor: ui.booked.bg, color: ui.booked.text }} />
+                  <Box sx={{ flexGrow: 1 }} />
+                  <Button size="small" onClick={() => fetchEvents()} sx={{ minWidth: 88 }}>
+                    Refresh
+                  </Button>
+                </Stack>
+                {daySlots.length === 0 ? (
+                  <Typography color="text.secondary">No availability for this day.</Typography>
+                ) : (
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    {daySlots.map((s) => (
+                      <Box key={`m-${s.startISO}-${s.recruiter_id}`} sx={{ display: "inline-flex", alignItems: "center" }}>
+                        <Chip
+                          clickable
+                          onClick={() => handleChipClick(s)}
+                          color={s.booked ? "error" : "success"}
+                          label={`${moment(s.startISO).format(timeFmt12h ? "hh:mm A" : "HH:mm")}–${moment(s.endISO).format(timeFmt12h ? "hh:mm A" : "HH:mm")}`}
+                          sx={{
+                            mr: 0.5,
+                            mb: 0.75,
+                            border: `1px solid ${s.booked ? ui.booked.border : ui.available.border}`,
+                            bgcolor: s.booked ? ui.booked.bg : ui.available.bg,
+                            color: s.booked ? ui.booked.text : ui.available.text,
+                          }}
+                        />
+                        {canCloseSlots && !s.booked && (
+                          <IconButton size="small" onClick={() => openChipMenu(s)} aria-label="slot actions">
+                            <MoreVertIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          </Paper>
+        )}
         <Paper
           sx={{
+            order: { xs: 2, md: 1 },
             p: compactDensity ? 1 : 2,
             flex: "1 1 auto",
             minHeight: 520,
@@ -1027,7 +1081,8 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           />
         </Paper>
 
-        <Paper sx={{ p: 2 }} elevation={0} variant="outlined">
+        {!isSmDown && (
+        <Paper sx={{ p: 2, order: { xs: 1, md: 2 } }} elevation={0} variant="outlined">
         <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} sx={{ mb: 1 }}>
           <Typography variant="subtitle1" fontWeight={700} sx={{ whiteSpace: "nowrap" }}>
             {moment(selectedDate).format(timeFmt12h ? "ddd, MMM D" : "ddd, MMM D")} — {daySlots.length} slot(s)
@@ -1138,7 +1193,8 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             ))}
           </Stack>
         )}
-      </Paper>
+        </Paper>
+        )}
       </Box>
 
       {/* Create/Edit modal (unchanged core) */}

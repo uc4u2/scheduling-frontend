@@ -26,6 +26,7 @@ import SecondEmployeeShiftView from "./pages/sections/SecondEmployeeShiftView";
 import MySetmoreCalendar from "./MySetmoreCalendar";
 import ManagementFrame from "./components/ui/ManagementFrame";
 import RecruiterTabs from "./components/recruiter/RecruiterTabs";
+import { isMobileAppMode } from "./utils/runtime";
 const LOCAL_TABS = ["calendar", "availability"];
 
 const RecruiterDashboard = ({ token }) => {
@@ -52,6 +53,7 @@ const RecruiterDashboard = ({ token }) => {
   const defaultTab = availableTabs.includes(initialTab) ? initialTab : availableTabs[0];
   const [activeTab, setActiveTab] = useState(defaultTab);
   const navigate = useNavigate();
+  const mobileAppMode = isMobileAppMode();
 
   useEffect(() => {
     const queryValue = searchParams.get("tab");
@@ -207,8 +209,8 @@ const RecruiterDashboard = ({ token }) => {
   /* ------------------------------------------------------------------ */
   return (
     <ManagementFrame
-      title="Employee Dashboard"
-      subtitle="Manage your availability, bookings, and invites."
+      title={mobileAppMode ? undefined : "Employee Dashboard"}
+      subtitle={mobileAppMode ? undefined : "Manage your availability, bookings, and invites."}
       fullWidth
       sx={{ minHeight: "100vh", mt: { xs: 4, md: 0 }, px: { xs: 1, md: 2 } }}
       contentSx={{ p: { xs: 1.5, md: 2.5 } }}

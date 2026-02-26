@@ -1069,9 +1069,11 @@ const breakTimelineMeta = useMemo(() => {
 // ───────────────────────────────────────────────────────
   return (
   <>
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
     <Paper
       elevation={0}
       sx={{
+        order: 1,
         mb: 2,
         p: 3,
         borderRadius: 3,
@@ -1102,11 +1104,20 @@ const breakTimelineMeta = useMemo(() => {
           )}
         </Stack>
       </Stack>
+      <Button
+        variant="outlined"
+        startIcon={<CalendarMonthIcon />}
+        onClick={() => setDrawerOpen(true)}
+        sx={{ mt: 1.5 }}
+      >
+        View My Shifts
+      </Button>
     </Paper>
 
     <Paper
       elevation={0}
       sx={{
+        order: isSmDown ? 3 : 2,
         mb: 2,
         p: 3,
         borderRadius: 3,
@@ -1184,19 +1195,10 @@ const breakTimelineMeta = useMemo(() => {
       )}
     </Paper>
 
-    {/* Top-level button */}
-    <Button
-      variant="outlined"
-      startIcon={<CalendarMonthIcon />}
-      onClick={() => setDrawerOpen(true)}
-      sx={{ mb: 2 }}
-    >
-      View My Shifts
-    </Button>
-
     <Paper
       elevation={0}
       sx={{
+        order: isSmDown ? 4 : 3,
         mb: 3,
         p: 3,
         borderRadius: 3,
@@ -1404,6 +1406,7 @@ const breakTimelineMeta = useMemo(() => {
     <Paper
       elevation={0}
       sx={{
+        order: isSmDown ? 2 : 4,
         mb: 3,
         p: 3,
         borderRadius: 3,
@@ -1715,6 +1718,7 @@ const breakTimelineMeta = useMemo(() => {
         </Box>
       </Collapse>
     </Paper>
+    </Box>
     
     {/* Manager-only toggle for approvals */}
     {isManager && (
