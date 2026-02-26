@@ -34,11 +34,16 @@ import {
   Menu,
   useMediaQuery,
   Drawer,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import moment from "moment-timezone";
 import api from "./utils/api";
+import { isMobileAppMode } from "./utils/runtime";
 
 // timezone-safe helpers (paths you confirmed)
 import { formatSlot } from "./utils/timezone-wrapper";
@@ -52,6 +57,7 @@ import { isoFromParts } from "./utils/datetime";
 export default function MySetmoreCalendar({ token, initialDate }) {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
+  const mobileAppMode = isMobileAppMode();
   const calRef = useRef(null);
 
   const [events, setEvents] = useState([]);
@@ -1047,31 +1053,34 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         <Snackbar open onClose={() => setMsg("")} autoHideDuration={3000} message={msg} />
       )}
 
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        alignItems={{ xs: "flex-start", md: "center" }}
-        justifyContent="space-between"
-        spacing={2}
-        sx={{ mb: 2 }}
-      >
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Employee Calendar
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Availability, bookings, meetings, and leave — all in one view.
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Button variant="outlined" onClick={fetchEvents} aria-label="Refresh calendar">
-            Refresh
-          </Button>
+      {!mobileAppMode ? (
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          alignItems={{ xs: "flex-start", md: "center" }}
+          justifyContent="space-between"
+          spacing={2}
+          sx={{ mb: 2 }}
+        >
+          <Box>
+            <Typography variant="h5" fontWeight={700}>
+              Employee Calendar
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Availability, bookings, meetings, and leave — all in one view.
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button variant="outlined" onClick={fetchEvents} aria-label="Refresh calendar">
+              Refresh
+            </Button>
+          </Stack>
         </Stack>
-      </Stack>
+      ) : null}
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <Paper
           sx={{
+            order: { xs: 2, md: 1 },
             p: { xs: 2, md: 3 },
             borderRadius: 3,
             border: `1px solid ${theme.palette.divider}`,
@@ -1197,92 +1206,150 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           </Box>
         </Paper>
 
-        <Paper sx={{ p: 2, flex: "0 0 auto" }} elevation={1}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          alignItems={{ xs: "flex-start", md: "center" }}
-          spacing={1}
-          sx={{ mb: 1 }}
-        >
-          <Typography variant="subtitle1" fontWeight={700}>
-            {moment(selectedDate).format("ddd, MMM D")} — {daySlots.length} slot(s)
-          </Typography>
-          <Stack direction="row" spacing={1}>
-            <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
-            <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
-          </Stack>
-          <Box sx={{ flex: 1, display: { xs: "none", md: "block" } }} />
-          {(canCloseSlots || canEditAvailability) && (
-            <>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={(e) => setDayMenuEl(e.currentTarget)}
-                fullWidth={isSmDown}
-              >
-                Day ▾
-              </Button>
-              <Menu
-                open={!!dayMenuEl}
-                anchorEl={dayMenuEl}
-                onClose={() => setDayMenuEl(null)}
-              >
-                <MenuItem onClick={() => { setDayMode("close-day"); setDayDialogOpen(true); }}>
-                  Close entire day
-                </MenuItem>
-                <MenuItem onClick={() => { setDayMode("close-before"); setDayDialogOpen(true); }}>
-                  Close BEFORE time…
-                </MenuItem>
-                <MenuItem onClick={() => { setDayMode("close-after"); setDayDialogOpen(true); }}>
-                  Close AFTER time…
-                </MenuItem>
-                <MenuItem onClick={() => { setDayMode("keep-range"); setDayDialogOpen(true); }}>
-                  Edit Available Window… (keep range)
-                </MenuItem>
-              </Menu>
-            </>
-          )}
-          <Button size="small" onClick={fetchEvents}>Refresh</Button>
-        </Stack>
+        {isSmDown ? (
+          <Paper sx={{ order: { xs: 1, md: 2 }, p: 0, flex: "0 0 auto" }} elevation={1}>
+            <Accordion disableGutters defaultExpanded={false} sx={{ boxShadow: "none", "&:before": { display: "none" } }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {moment(selectedDate).format("ddd, MMM D")} — {daySlots.length} slot(s)
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} useFlexGap flexWrap="wrap">
+                  <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
+                  <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
+                  <Box sx={{ flex: 1 }} />
+                  <Button size="small" onClick={fetchEvents}>Refresh</Button>
+                </Stack>
 
-        {daySlots.length === 0 ? (
-          <Typography color="text.secondary">No availability for this day.</Typography>
+                {daySlots.length === 0 ? (
+                  <Typography color="text.secondary">No availability for this day.</Typography>
+                ) : (
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    {daySlots.map((s) => (
+                      <Tooltip
+                        key={`${s.startISO}-${s.availability_id || s.id}`}
+                        title={`${s.startLabel}–${s.endLabel}${s.service_name ? `\nService: ${s.service_name}` : ""}${s.created_by_manager && s.__status === "booked" ? `\nMeeting` : ""}`}
+                        arrow
+                      >
+                        <Chip
+                          color={s.__status === "booked" ? "error" : "success"}
+                          variant={s.__status === "booked" ? "filled" : "outlined"}
+                          label={`${s.startLabel}–${s.endLabel}${s.service_name ? ` • ${s.service_name}` : ""}${s.created_by_manager && s.__status === "booked" ? " • Meeting" : ""}`}
+                          sx={
+                            s.created_by_manager && s.__status === "booked"
+                              ? { bgcolor: ui.meeting.bg, color: ui.meeting.text, borderColor: ui.meeting.border }
+                              : undefined
+                          }
+                          onDelete={
+                            (canCloseSlots || canEditAvailability) && s.__status === "available"
+                              ? async () => {
+                                  const ok = await tryDeleteAvailability(s);
+                                  if (!ok) setErr("Could not delete this slot.");
+                                  else { setMsg("Slot deleted."); fetchEvents(); }
+                                }
+                              : undefined
+                          }
+                          deleteIcon={(canCloseSlots || canEditAvailability) && s.__status === "available" ? undefined : <MoreVertIcon />}
+                          onClick={() => {
+                            if (s.__status === "booked") setMsg("This time is reserved.");
+                          }}
+                        />
+                      </Tooltip>
+                    ))}
+                  </Stack>
+                )}
+              </AccordionDetails>
+            </Accordion>
+          </Paper>
         ) : (
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-            {daySlots.map((s) => (
-              <Tooltip
-                key={`${s.startISO}-${s.availability_id || s.id}`}
-                title={`${s.startLabel}–${s.endLabel}${s.service_name ? `\nService: ${s.service_name}` : ""}${s.created_by_manager && s.__status === "booked" ? `\nMeeting` : ""}`}
-                arrow
-              >
-                <Chip
-                  color={s.__status === "booked" ? "error" : "success"}
-                  variant={s.__status === "booked" ? "filled" : "outlined"}
-                  label={`${s.startLabel}–${s.endLabel}${s.service_name ? ` • ${s.service_name}` : ""}${s.created_by_manager && s.__status === "booked" ? " • Meeting" : ""}`}
-                  sx={
-                    s.created_by_manager && s.__status === "booked"
-                      ? { bgcolor: ui.meeting.bg, color: ui.meeting.text, borderColor: ui.meeting.border }
-                      : undefined
-                  }
-                  onDelete={
-                    (canCloseSlots || canEditAvailability) && s.__status === "available"
-                      ? async () => {
-                          const ok = await tryDeleteAvailability(s);
-                          if (!ok) setErr("Could not delete this slot.");
-                          else { setMsg("Slot deleted."); fetchEvents(); }
-                        }
-                      : undefined
-                  }
-                  deleteIcon={(canCloseSlots || canEditAvailability) && s.__status === "available" ? undefined : <MoreVertIcon />}
-                  onClick={() => {
-                    if (s.__status === "booked") setMsg("This time is reserved.");
-                  }}
-                />
-              </Tooltip>
-            ))}
-          </Stack>
+          <Paper sx={{ order: { xs: 1, md: 2 }, p: 2, flex: "0 0 auto" }} elevation={1}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              alignItems={{ xs: "flex-start", md: "center" }}
+              spacing={1}
+              sx={{ mb: 1 }}
+            >
+              <Typography variant="subtitle1" fontWeight={700}>
+                {moment(selectedDate).format("ddd, MMM D")} — {daySlots.length} slot(s)
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <Chip size="small" label="Available" sx={{ bgcolor: ui.availability.bg, color: ui.availability.text }} />
+                <Chip size="small" label="Reserved" sx={{ bgcolor: ui.reserved.bg, color: ui.reserved.text }} />
+              </Stack>
+              <Box sx={{ flex: 1, display: { xs: "none", md: "block" } }} />
+              {(canCloseSlots || canEditAvailability) && (
+                <>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={(e) => setDayMenuEl(e.currentTarget)}
+                    fullWidth={isSmDown}
+                  >
+                    Day ▾
+                  </Button>
+                  <Menu
+                    open={!!dayMenuEl}
+                    anchorEl={dayMenuEl}
+                    onClose={() => setDayMenuEl(null)}
+                  >
+                    <MenuItem onClick={() => { setDayMode("close-day"); setDayDialogOpen(true); }}>
+                      Close entire day
+                    </MenuItem>
+                    <MenuItem onClick={() => { setDayMode("close-before"); setDayDialogOpen(true); }}>
+                      Close BEFORE time…
+                    </MenuItem>
+                    <MenuItem onClick={() => { setDayMode("close-after"); setDayDialogOpen(true); }}>
+                      Close AFTER time…
+                    </MenuItem>
+                    <MenuItem onClick={() => { setDayMode("keep-range"); setDayDialogOpen(true); }}>
+                      Edit Available Window… (keep range)
+                    </MenuItem>
+                  </Menu>
+                </>
+              )}
+              <Button size="small" onClick={fetchEvents}>Refresh</Button>
+            </Stack>
+
+            {daySlots.length === 0 ? (
+              <Typography color="text.secondary">No availability for this day.</Typography>
+            ) : (
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                {daySlots.map((s) => (
+                  <Tooltip
+                    key={`${s.startISO}-${s.availability_id || s.id}`}
+                    title={`${s.startLabel}–${s.endLabel}${s.service_name ? `\nService: ${s.service_name}` : ""}${s.created_by_manager && s.__status === "booked" ? `\nMeeting` : ""}`}
+                    arrow
+                  >
+                    <Chip
+                      color={s.__status === "booked" ? "error" : "success"}
+                      variant={s.__status === "booked" ? "filled" : "outlined"}
+                      label={`${s.startLabel}–${s.endLabel}${s.service_name ? ` • ${s.service_name}` : ""}${s.created_by_manager && s.__status === "booked" ? " • Meeting" : ""}`}
+                      sx={
+                        s.created_by_manager && s.__status === "booked"
+                          ? { bgcolor: ui.meeting.bg, color: ui.meeting.text, borderColor: ui.meeting.border }
+                          : undefined
+                      }
+                      onDelete={
+                        (canCloseSlots || canEditAvailability) && s.__status === "available"
+                          ? async () => {
+                              const ok = await tryDeleteAvailability(s);
+                              if (!ok) setErr("Could not delete this slot.");
+                              else { setMsg("Slot deleted."); fetchEvents(); }
+                            }
+                          : undefined
+                      }
+                      deleteIcon={(canCloseSlots || canEditAvailability) && s.__status === "available" ? undefined : <MoreVertIcon />}
+                      onClick={() => {
+                        if (s.__status === "booked") setMsg("This time is reserved.");
+                      }}
+                    />
+                  </Tooltip>
+                ))}
+              </Stack>
+            )}
+          </Paper>
         )}
-        </Paper>
       </Box>
 
       {/* Day Actions dialog */}

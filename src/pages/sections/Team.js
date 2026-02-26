@@ -265,7 +265,12 @@ const asLocalDate = (ymd) => {
 };
 
   // NEW — enterprise week/day options
-  const [innerCalView, setInnerCalView] = useState("timeGridWeek"); // "timeGridWeek" | "timeGridDay"
+  const [innerCalView, setInnerCalView] = useState(
+    isMdDown ? "timeGridDay" : "timeGridWeek"
+  ); // "timeGridWeek" | "timeGridDay"
+  const [activeCalView, setActiveCalView] = useState(
+    isMdDown ? "timeGridDay" : "timeGridWeek"
+  );
   const [granularity, setGranularity] = useState("00:30:00");       // 15/30/60
   const [timeFmt12h, setTimeFmt12h] = useState(false);
   const [showWeekends, setShowWeekends] = useState(true);
@@ -2005,10 +2010,256 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     headerToolbar: {
       left: "prev,next",
       center: "title",
-      right: "timeGridWeek,timeGridDay,dayGridMonth",
+      right: isMdDown
+        ? "timeGridDay,dayGridMonth"
+        : "timeGridWeek,timeGridDay,dayGridMonth",
     },
+    titleFormat:
+      isMdDown && activeCalView === "timeGridDay"
+        ? { month: "short", day: "numeric" }
+        : undefined,
     initialView: innerCalView,
+    datesSet: (arg) => {
+      const viewType = arg?.view?.type || "timeGridDay";
+      setActiveCalView(viewType);
+      setInnerCalView(viewType);
+    },
   };
+
+  const renderEmployeeShiftSummaryBlock = (withTopMargin = true) => (
+    <Box mt={withTopMargin ? 4 : 0}>
+      <Paper elevation={0} sx={{ mb: 2, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
+        <Toolbar sx={{ gap: 2, flexWrap: "wrap" }}>
+          {selectedShiftIds.length > 0 ? (
+            <>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
+                {selectedShiftIds.length} selected
+              </Typography>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleBulkDeleteShifts}
+              >
+                Delete Selected
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => setSelectedShiftIds([])}
+              >
+                Clear selection
+              </Button>
+            </>
+          ) : (
+            <>
+              <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                Employee Shift Summary
+              </Typography>
+              <TextField
+                size="small"
+                placeholder="Search employee / date / status / note…"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setEmpPage(1);
+                }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ minWidth: 280 }}
+              />
+              <FormControl sx={{ minWidth: 120 }}>
+                <InputLabel id="per-page-label">Per page</InputLabel>
+                <Select
+                  labelId="per-page-label"
+                  label="Per page"
+                  size="small"
+                  value={employeesPerPage}
+                  onChange={(e) => {
+                    setEmployeesPerPage(Number(e.target.value));
+                    setEmpPage(1);
+                  }}
+                >
+                  <MenuItem value={5}>5</MenuItem>
+                  <MenuItem value={8}>8</MenuItem>
+                  <MenuItem value={12}>12</MenuItem>
+                  <MenuItem value={20}>20</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={compact}
+                    onChange={(e) => setCompact(e.target.checked)}
+                  />
+                }
+                label="Compact"
+              />
+            </>
+          )}
+        </Toolbar>
+        <Divider />
+        <Box display="flex" alignItems="center" gap={1} sx={{ px: 2, py: 1 }}>
+          <Checkbox
+            indeterminate={someSelectedOnPage}
+            checked={allSelectedOnPage}
+            onChange={(e) => toggleSelectAllVisible(e.target.checked)}
+            inputProps={{ "aria-label": "select all visible shifts" }}
+          />
+          <Typography variant="body2">
+            Select all shifts on this page
+          </Typography>
+          <Box sx={{ ml: "auto" }}>
+            <Pagination
+              color="primary"
+              shape="rounded"
+              page={empPage}
+              count={totalEmployeePages}
+              onChange={(_, p) => setEmpPage(p)}
+            />
+          </Box>
+        </Box>
+      </Paper>
+
+      {pagedEmployees.length === 0 ? (
+        <Paper sx={{ p: 2 }}>
+          <Typography color="text.secondary">No shifts match your filters.</Typography>
+        </Paper>
+      ) : (
+        <Stack spacing={1}>
+          {pagedEmployees.map((group) => {
+            const gid = group.recruiter_id;
+            const empAll = isEmployeeAllSelected(gid);
+            const empSome = isEmployeeSomeSelected(gid);
+
+            return (
+              <Accordion key={gid} disableGutters>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}>
+                    <Checkbox
+                      indeterminate={empSome}
+                      checked={empAll}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => toggleSelectEmployee(gid, e.target.checked)}
+                    />
+                    <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main, width: 32, height: 32 }}>
+                      {group.employee?.charAt(0) || "E"}
+                    </Avatar>
+                    <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>
+                      {group.employee}
+                    </Typography>
+                    <Chip size="small" label={`${group.rows.length} shifts`} />
+                  </Box>
+                </AccordionSummary>
+
+                <AccordionDetails>
+                  <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                    <Table size={compact ? "small" : "medium"} stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell padding="checkbox" />
+                          <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>Time</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                          <TableCell sx={{ minWidth: 160, fontWeight: 600 }}>Note</TableCell>
+                          <TableCell align="right">Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {group.rows.map((row) => {
+                          const checked = selectedShiftIds.includes(row.id);
+                          const statusColor =
+                            row.status === "accepted"
+                              ? "success"
+                              : row.status === "pending"
+                              ? "warning"
+                              : row.status === "rejected"
+                              ? "error"
+                              : "info";
+                          return (
+                            <TableRow key={row.id} hover selected={checked}>
+                              <TableCell padding="checkbox">
+                                <Checkbox
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    setSelectedShiftIds((prev) =>
+                                      e.target.checked
+                                        ? [...prev, row.id]
+                                        : prev.filter((id) => id !== row.id)
+                                    );
+                                  }}
+                                />
+                              </TableCell>
+
+                              <TableCell sx={{ whiteSpace: "nowrap" }}><Typography variant="body2">{row.date}</Typography></TableCell>
+                              <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                {row.start}–{row.end}
+                              </TableCell>
+                              <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                <Chip size="small" label={row.status} color={statusColor} variant="outlined" />
+                              </TableCell>
+                              <TableCell sx={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {row.note}
+                              </TableCell>
+
+                              <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                                <IconButton
+                                  size="small"
+                                  aria-label="Row actions"
+                                  onClick={(e) => {
+                                    setRowMenuAnchor(e.currentTarget);
+                                    setRowMenuId(row.id);
+                                  }}
+                                >
+                                  <MoreVertIcon fontSize="small" />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </AccordionDetails>
+              </Accordion>
+            );
+          })}
+        </Stack>
+      )}
+
+      <Menu
+        anchorEl={rowMenuAnchor}
+        open={Boolean(rowMenuAnchor)}
+        onClose={() => {
+          setRowMenuAnchor(null);
+          setRowMenuId(null);
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (rowMenuId) openEditShiftById(rowMenuId);
+            setRowMenuAnchor(null);
+            setRowMenuId(null);
+          }}
+        >
+          <EditIcon fontSize="small" sx={{ mr: 1 }} /> Edit
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (rowMenuId) handleDeleteSingle(rowMenuId);
+            setRowMenuAnchor(null);
+            setRowMenuId(null);
+          }}
+          sx={{ color: "error.main" }}
+        >
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Delete
+        </MenuItem>
+      </Menu>
+    </Box>
+  );
 
   /* --------------------------------- render --------------------------------- */
   return (
@@ -2079,6 +2330,30 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           ".fc .fc-toolbar-title": {
             fontWeight: 700,
             color: theme.palette.text.primary,
+            whiteSpace: "nowrap",
+            lineHeight: 1,
+            fontSize: isSmDown ? "1.05rem" : undefined,
+            margin: isSmDown ? "0 6px" : undefined,
+          },
+          ".fc .fc-header-toolbar": {
+            flexWrap: "nowrap",
+            alignItems: "center",
+            gap: 8,
+          },
+          ".fc .fc-toolbar-chunk": {
+            display: "flex",
+            alignItems: "center",
+            minWidth: 0,
+          },
+          ".fc .fc-header-toolbar .fc-toolbar-chunk:first-of-type, .fc .fc-header-toolbar .fc-toolbar-chunk:last-of-type": {
+            flexShrink: 0,
+          },
+          ".fc .fc-header-toolbar .fc-toolbar-chunk:nth-of-type(2)": {
+            flex: 1,
+            justifyContent: "center",
+          },
+          ".fc .fc-header-toolbar .fc-toolbar-chunk > *": {
+            margin: isSmDown ? "0 !important" : undefined,
           },
           ".fc .fc-col-header-cell-cushion": {
             color: theme.palette.text.primary,
@@ -2096,14 +2371,18 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         spacing={2}
         sx={{ mb: 2 }}
       >
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Shift Management
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Plan, assign, and manage team schedules in one place.
-          </Typography>
-        </Box>
+        {!isMdDown ? (
+          <Box>
+            <Typography variant="h5" fontWeight={700}>
+              Shift Management
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Plan, assign, and manage team schedules in one place.
+            </Typography>
+          </Box>
+        ) : (
+          <Box />
+        )}
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           {!isMdDown && (
             <>
@@ -2419,6 +2698,21 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
         </Grid>
       )}
       </Paper>
+
+      {isMdDown && (
+        <Paper sx={{ p: 0, mb: 2, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }} elevation={0}>
+          <Accordion disableGutters defaultExpanded={false} sx={{ boxShadow: "none", "&:before": { display: "none" } }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                Employee Shift Summary
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ pt: 0 }}>
+              {renderEmployeeShiftSummaryBlock(false)}
+            </AccordionDetails>
+          </Accordion>
+        </Paper>
+      )}
 
       {/* =============================== WEEK/DAY MODE ============================== */}
       <>
@@ -3302,240 +3596,7 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
         </Alert>
       </Snackbar>
 
-      {/* ======================= Employee Shift Summary — Accordion per Employee ====================== */}
-      <Box mt={4}>
-        <Paper elevation={0} sx={{ mb: 2, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
-          <Toolbar sx={{ gap: 2, flexWrap: "wrap" }}>
-            {selectedShiftIds.length > 0 ? (
-              <>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
-                  {selectedShiftIds.length} selected
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={handleBulkDeleteShifts}
-                >
-                  Delete Selected
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => setSelectedShiftIds([])}
-                >
-                  Clear selection
-                </Button>
-              </>
-            ) : (
-              <>
-                <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                  Employee Shift Summary
-                </Typography>
-                <TextField
-                  size="small"
-                  placeholder="Search employee / date / status / note…"
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setEmpPage(1);
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ minWidth: 280 }}
-                />
-                <FormControl sx={{ minWidth: 120 }}>
-                  <InputLabel id="per-page-label">Per page</InputLabel>
-                  <Select
-                    labelId="per-page-label"
-                    label="Per page"
-                    size="small"
-                    value={employeesPerPage}
-                    onChange={(e) => {
-                      setEmployeesPerPage(Number(e.target.value));
-                      setEmpPage(1);
-                    }}
-                  >
-                    <MenuItem value={5}>5</MenuItem>
-                    <MenuItem value={8}>8</MenuItem>
-                    <MenuItem value={12}>12</MenuItem>
-                    <MenuItem value={20}>20</MenuItem>
-                  </Select>
-                </FormControl>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={compact}
-                      onChange={(e) => setCompact(e.target.checked)}
-                    />
-                  }
-                  label="Compact"
-                />
-              </>
-            )}
-          </Toolbar>
-          <Divider />
-          <Box display="flex" alignItems="center" gap={1} sx={{ px: 2, py: 1 }}>
-            <Checkbox
-              indeterminate={someSelectedOnPage}
-              checked={allSelectedOnPage}
-              onChange={(e) => toggleSelectAllVisible(e.target.checked)}
-              inputProps={{ "aria-label": "select all visible shifts" }}
-            />
-            <Typography variant="body2">
-              Select all shifts on this page
-            </Typography>
-            <Box sx={{ ml: "auto" }}>
-              <Pagination
-                color="primary"
-                shape="rounded"
-                page={empPage}
-                count={totalEmployeePages}
-                onChange={(_, p) => setEmpPage(p)}
-              />
-            </Box>
-          </Box>
-        </Paper>
-
-        {/* one accordion per employee, collapsed by default */}
-        {pagedEmployees.length === 0 ? (
-          <Paper sx={{ p: 2 }}>
-            <Typography color="text.secondary">No shifts match your filters.</Typography>
-          </Paper>
-        ) : (
-          <Stack spacing={1}>
-            {pagedEmployees.map((group) => {
-              const gid = group.recruiter_id;
-              const empAll = isEmployeeAllSelected(gid);
-              const empSome = isEmployeeSomeSelected(gid);
-
-              return (
-                <Accordion key={gid} disableGutters>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}>
-                      <Checkbox
-                        indeterminate={empSome}
-                        checked={empAll}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => toggleSelectEmployee(gid, e.target.checked)}
-                      />
-                      <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main, width: 32, height: 32 }}>
-                        {group.employee?.charAt(0) || "E"}
-                      </Avatar>
-                      <Typography sx={{ fontWeight: 600, flexGrow: 1 }}>
-                        {group.employee}
-                      </Typography>
-                      <Chip size="small" label={`${group.rows.length} shifts`} />
-                    </Box>
-                  </AccordionSummary>
-
-                  <AccordionDetails>
-                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
-                      <Table size={compact ? "small" : "medium"} stickyHeader>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell padding="checkbox" />
-                            <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Time</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-                            <TableCell sx={{ minWidth: 160, fontWeight: 600 }}>Note</TableCell>
-                            <TableCell align="right">Actions</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {group.rows.map((row) => {
-                            const checked = selectedShiftIds.includes(row.id);
-                            const statusColor =
-                              row.status === "accepted"
-                                ? "success"
-                                : row.status === "pending"
-                                ? "warning"
-                                : row.status === "rejected"
-                                ? "error"
-                                : "info";
-                            return (
-                              <TableRow key={row.id} hover selected={checked}>
-                                <TableCell padding="checkbox">
-                                  <Checkbox
-                                    checked={checked}
-                                    onChange={(e) => {
-                                      setSelectedShiftIds((prev) =>
-                                        e.target.checked
-                                          ? [...prev, row.id]
-                                          : prev.filter((id) => id !== row.id)
-                                      );
-                                    }}
-                                  />
-                                </TableCell>
-
-                                <TableCell sx={{ whiteSpace: "nowrap" }}><Typography variant="body2">{row.date}</Typography></TableCell>
-                                <TableCell sx={{ whiteSpace: "nowrap" }}>
-                                  {row.start}–{row.end}
-                                </TableCell>
-                                <TableCell sx={{ whiteSpace: "nowrap" }}>
-                                  <Chip size="small" label={row.status} color={statusColor} variant="outlined" />
-                                </TableCell>
-                                <TableCell sx={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis" }}>
-                                  {row.note}
-                                </TableCell>
-
-                                <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
-                                  <IconButton
-                                    size="small"
-                                    aria-label="Row actions"
-                                    onClick={(e) => {
-                                      setRowMenuAnchor(e.currentTarget);
-                                      setRowMenuId(row.id);
-                                    }}
-                                  >
-                                    <MoreVertIcon fontSize="small" />
-                                  </IconButton>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </AccordionDetails>
-                </Accordion>
-              );
-            })}
-          </Stack>
-        )}
-
-        <Menu
-          anchorEl={rowMenuAnchor}
-          open={Boolean(rowMenuAnchor)}
-          onClose={() => {
-            setRowMenuAnchor(null);
-            setRowMenuId(null);
-          }}
-        >
-          <MenuItem
-            onClick={() => {
-              if (rowMenuId) openEditShiftById(rowMenuId);
-              setRowMenuAnchor(null);
-              setRowMenuId(null);
-            }}
-          >
-            <EditIcon fontSize="small" sx={{ mr: 1 }} /> Edit
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              if (rowMenuId) handleDeleteSingle(rowMenuId);
-              setRowMenuAnchor(null);
-              setRowMenuId(null);
-            }}
-            sx={{ color: "error.main" }}
-          >
-            <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Delete
-          </MenuItem>
-        </Menu>
-      </Box>
+      {!isMdDown && renderEmployeeShiftSummaryBlock(true)}
     </Box>
   );
 };
