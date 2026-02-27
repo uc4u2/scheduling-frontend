@@ -150,6 +150,19 @@ const formatTimeForViewer = (slot) => {
   return dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 };
 
+const DEFAULT_PUBLIC_MEET_VIDEO_URL = "https://youtu.be/y7kygIhnZm8";
+
+const toYouTubeEmbedUrl = (raw) => {
+  const input = String(raw || "").trim();
+  if (!input) return "";
+  if (/^https?:\/\/(www\.)?youtube\.com\/embed\//i.test(input)) return input;
+  const shortMatch = input.match(/^https?:\/\/youtu\.be\/([a-zA-Z0-9_-]{6,})/i);
+  if (shortMatch?.[1]) return `https://www.youtube.com/embed/${shortMatch[1]}`;
+  const watchMatch = input.match(/[?&]v=([a-zA-Z0-9_-]{6,})/i);
+  if (watchMatch?.[1]) return `https://www.youtube.com/embed/${watchMatch[1]}`;
+  return "";
+};
+
 /* Normalize + filter backend slots (drop anything in the past) */
 function normalizeSlots(raw, fallbackTz) {
   const now = new Date();
@@ -641,6 +654,12 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
             <Grid container spacing={4}>
               {/* Left: Artist info */}
               <Grid item xs={12} md={4}>
+                {(() => {
+                  const resolvedVideo =
+                    toYouTubeEmbedUrl(artist?.public_video_url) ||
+                    toYouTubeEmbedUrl(DEFAULT_PUBLIC_MEET_VIDEO_URL);
+                  return (
+                    <>
                 <Card
                   sx={{
                     borderRadius: cardRadius,
@@ -721,7 +740,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                   </CardContent>
                 </Card>
 
-              <Card
+                <Card
                 sx={{
                   mt: 3,
                   borderRadius: cardRadius,
@@ -765,9 +784,54 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                       </Stack>
                     )}
                   </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
+                  </CardContent>
+                </Card>
+                {resolvedVideo ? (
+                  <Card
+                    sx={{
+                      mt: 3,
+                      borderRadius: cardRadius,
+                      boxShadow:
+                        "var(--page-card-shadow, 0 14px 30px rgba(15,23,42,0.12))",
+                      bgcolor: cardSurface,
+                      backdropFilter: "blur(var(--page-card-blur, 0px))",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <CardContent>
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={700}
+                        sx={{ color: "var(--page-heading-color, inherit)", mb: 1.2 }}
+                      >
+                        Quick intro video
+                      </Typography>
+                      <Box
+                        sx={{
+                          width: "100%",
+                          borderRadius: 2,
+                          overflow: "hidden",
+                          border: "1px solid rgba(15,23,42,0.08)",
+                          aspectRatio: "16 / 9",
+                          bgcolor: "rgba(15,23,42,0.04)",
+                        }}
+                      >
+                        <iframe
+                          title="Provider intro video"
+                          src={resolvedVideo}
+                          style={{ width: "100%", height: "100%", border: 0 }}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          referrerPolicy="strict-origin-when-cross-origin"
+                          allowFullScreen
+                        />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ) : null}
+                    </>
+                  );
+                })()}
+              </Grid>
 
               {/* Right: calendar + booking form */}
               <Grid item xs={12} md={8}>
@@ -1138,6 +1202,8 @@ const MeetWithArtistPage = ({ slugOverride }) => {
       initialSite={sitePayload || undefined}
       disableFetch={Boolean(sitePayload)}
       wrapChildrenInContainer={false}
+      hideHeader
+      hideFooter
     >
       <MeetWithArtistPageContent
         slug={slug}

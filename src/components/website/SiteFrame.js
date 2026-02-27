@@ -84,6 +84,8 @@ export default function SiteFrame({
   initialSite = null,
   disableFetch = false,
   wrapChildrenInContainer = true,
+  hideHeader = false,
+  hideFooter = false,
   onTogglePageMenu,
   onRemoveFooterItem,
   onRemoveHeaderItem,
@@ -1228,37 +1230,39 @@ export default function SiteFrame({
 
   return (
     <ThemeRuntimeProvider themeOverrides={site?.theme_overrides || {}}>
-      {headerNode}
-      <Drawer
-        anchor="top"
-        open={mobileOpen}
-        onClose={handleMobileClose}
-        ModalProps={{ keepMounted: true }}
-        PaperProps={{
-          sx: {
-            pt: 2,
-            pb: 3,
-            px: 2.5,
-            backgroundColor: theme.palette.background.paper,
-          },
-        }}
-      >
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700}>
-            {site?.company?.name || slug}
-          </Typography>
-          <IconButton onClick={handleMobileClose}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
-        {mobileNavButtons}
-      </Drawer>
+      {!hideHeader && headerNode}
+      {!hideHeader && (
+        <Drawer
+          anchor="top"
+          open={mobileOpen}
+          onClose={handleMobileClose}
+          ModalProps={{ keepMounted: true }}
+          PaperProps={{
+            sx: {
+              pt: 2,
+              pb: 3,
+              px: 2.5,
+              backgroundColor: theme.palette.background.paper,
+            },
+          }}
+        >
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={700}>
+              {site?.company?.name || slug}
+            </Typography>
+            <IconButton onClick={handleMobileClose}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          {mobileNavButtons}
+        </Drawer>
+      )}
       {wrapChildrenInContainer ? (
         <Container sx={{ py: { xs: 3, md: 5 } }}>{children}</Container>
       ) : (
         children
       )}
-      {footerNode}
+      {!hideFooter && footerNode}
     </ThemeRuntimeProvider>
   );
 }

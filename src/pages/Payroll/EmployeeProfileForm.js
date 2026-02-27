@@ -245,6 +245,7 @@ const FRONTEND_ORIGIN =
         company_id: data.company_id,
         allow_public_booking: data.allow_public_booking,
         public_bio: data.public_bio || "",
+        public_video_url: data.public_video_url || "",
         role: data.role || "",
         public_meet_token: data.public_meet_token || "",
         cpp_exempt: Boolean(data.cpp_exempt),
@@ -1089,6 +1090,16 @@ const FRONTEND_ORIGIN =
               minRows={3}
               sx={{ mb: 2 }}
               placeholder="Short intro that appears on the meeting page and services."
+            />
+            <TextField
+              label="Public booking YouTube link"
+              name="public_video_url"
+              value={employee.public_video_url || ""}
+              onChange={handleChange}
+              fullWidth
+              sx={{ mb: 2 }}
+              placeholder="https://youtu.be/y7kygIhnZm8"
+              helperText="Optional. Shows under Meeting details on the public booking page."
             />
             {employee.allow_public_booking ? (
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
