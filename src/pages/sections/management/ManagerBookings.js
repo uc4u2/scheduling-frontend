@@ -37,6 +37,7 @@ import { api } from "../../../utils/api";
 import { DateTime } from "luxon";
 import { isoFromParts } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
+import { isMobileAppMode } from "../../../utils/runtime";
 import LinearProgress from "@mui/material/LinearProgress";
 
 /* ---------------------------------------------------------
@@ -141,6 +142,7 @@ const paymentStatusChipColor = (status) => {
 const ManagerBookings = ({ slug, connect }) => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const mobileAppMode = isMobileAppMode();
 
 
   const [bookings, setBookings] = useState([]);
@@ -1047,7 +1049,7 @@ const RowActions = ({ row }) => {
             {t("manager.bookings.title")}
           </Typography>
 
-          {showConnectBanner ? (
+          {!mobileAppMode && showConnectBanner ? (
             connectLoading ? (
               <Alert severity="info" sx={{ mb: 2 }}>
                 {t("manager.bookings.connect.checking")}
@@ -1166,31 +1168,34 @@ const RowActions = ({ row }) => {
             {loading ? (
               <CircularProgress />
             ) : (
-              <DataGrid
-                rows={visibleRows}
-                columns={columns}
-                autoHeight
-                density="compact"
-                pagination
-                initialState={{
-                  pagination: { paginationModel: { page: 0, pageSize: paginationModel.pageSize } },
-                }}
-                pageSizeOptions={[10, 20, 50, 100]}
-                paginationModel={paginationModel}
-                onPaginationModelChange={handlePaginationChange}
-                localeText={localeText}
-                getRowId={(row) => row.id ?? row.appointment_id}
-                getRowClassName={(params) => {
-                  if (params.row.status === "no_show") return "row-no-show";
-                  if (params.row.status === "refunded") return "row-refunded";
-                  return "";
-                }}
-                sx={{
-                  "& .row-no-show": { backgroundColor: "rgba(255, 152, 0, 0.06)" },
-                  "& .row-refunded": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
-                  "& .MuiDataGrid-virtualScroller": { overflowX: "hidden" },
-                }}
-              />
+              <Box sx={{ width: "100%", overflowX: "auto" }}>
+                <DataGrid
+                  rows={visibleRows}
+                  columns={columns}
+                  autoHeight
+                  density="compact"
+                  pagination
+                  initialState={{
+                    pagination: { paginationModel: { page: 0, pageSize: paginationModel.pageSize } },
+                  }}
+                  pageSizeOptions={[10, 20, 50, 100]}
+                  paginationModel={paginationModel}
+                  onPaginationModelChange={handlePaginationChange}
+                  localeText={localeText}
+                  getRowId={(row) => row.id ?? row.appointment_id}
+                  getRowClassName={(params) => {
+                    if (params.row.status === "no_show") return "row-no-show";
+                    if (params.row.status === "refunded") return "row-refunded";
+                    return "";
+                  }}
+                  sx={{
+                    minWidth: mobileAppMode ? 980 : "100%",
+                    "& .row-no-show": { backgroundColor: "rgba(255, 152, 0, 0.06)" },
+                    "& .row-refunded": { backgroundColor: "rgba(0, 0, 0, 0.04)" },
+                    "& .MuiDataGrid-virtualScroller": { overflowX: "auto" },
+                  }}
+                />
+              </Box>
             )}
           </Paper>
 
@@ -1593,8 +1598,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
-
 
 
 

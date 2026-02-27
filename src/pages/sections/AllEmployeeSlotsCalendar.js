@@ -174,6 +174,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   // slot chip menu / edit dialog
   const [chipMenuAnchor, setChipMenuAnchor] = useState(null);
   const [chipSlot, setChipSlot] = useState(null);
+  const [mobileChipSlot, setMobileChipSlot] = useState(null);
   const [slotEditOpen, setSlotEditOpen] = useState(false);
   const [slotEditForm, setSlotEditForm] = useState({ date: "", start: "", end: "" });
 
@@ -880,53 +881,55 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         }}
       />
 
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        alignItems={{ xs: "flex-start", md: "center" }}
-        justifyContent="space-between"
-        spacing={2}
-        sx={{ mb: 2 }}
-      >
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Team Availability
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Manage bookable slots for employees.
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-          <Button
-            startIcon={<AddIcon />}
-            variant="contained"
-            onClick={() => {
-              setEditingEvent(null);
-              setForm({
-                title: "New Meeting",
-                date: selectedDate,
-                start: "09:00",
-                end: "09:30",
-                recruiter_id: selectedRecruiter !== "all" ? selectedRecruiter : "",
-                location: "",
-                invite_link: "",
-                description: "",
-                attendees: [],
-                candidate_name: "",
-                candidate_email: ""
-              });
-              setOpenModal(true);
-            }}
-          >
-            Add
-          </Button>
-          <Button variant="outlined" onClick={() => fetchEvents()}>
-            Refresh
-          </Button>
-          <Tooltip title="Export CSV/XLSX">
-            <IconButton onClick={exportToExcel}><DownloadIcon /></IconButton>
-          </Tooltip>
+      {!mobileMode && (
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          alignItems={{ xs: "flex-start", md: "center" }}
+          justifyContent="space-between"
+          spacing={2}
+          sx={{ mb: 2 }}
+        >
+          <Box>
+            <Typography variant="h5" fontWeight={700}>
+              Team Availability
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Manage bookable slots for employees.
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+            <Button
+              startIcon={<AddIcon />}
+              variant="contained"
+              onClick={() => {
+                setEditingEvent(null);
+                setForm({
+                  title: "New Meeting",
+                  date: selectedDate,
+                  start: "09:00",
+                  end: "09:30",
+                  recruiter_id: selectedRecruiter !== "all" ? selectedRecruiter : "",
+                  location: "",
+                  invite_link: "",
+                  description: "",
+                  attendees: [],
+                  candidate_name: "",
+                  candidate_email: ""
+                });
+                setOpenModal(true);
+              }}
+            >
+              Add
+            </Button>
+            <Button variant="outlined" onClick={() => fetchEvents()}>
+              Refresh
+            </Button>
+            <Tooltip title="Export CSV/XLSX">
+              <IconButton onClick={exportToExcel}><DownloadIcon /></IconButton>
+            </Tooltip>
+          </Stack>
         </Stack>
-      </Stack>
+      )}
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {successMessage && (
@@ -1179,8 +1182,12 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                             color: s.booked ? ui.booked.text : ui.available.text,
                           }}
                         />
-                        {canCloseSlots && !s.booked && (
-                          <IconButton size="small" onClick={() => openChipMenu(s)} aria-label="slot actions">
+                        {(canCloseSlots || canEditAvailability) && !s.booked && (
+                          <IconButton
+                            size="small"
+                            onClick={() => setMobileChipSlot(s)}
+                            aria-label="slot actions"
+                          >
                             <MoreVertIcon fontSize="small" />
                           </IconButton>
                         )}
@@ -1399,6 +1406,51 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       </Modal>
 
       {/* Slot chip menu & Edit availability dialog */}
+      <Dialog
+        open={Boolean(mobileChipSlot)}
+        onClose={() => setMobileChipSlot(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Slot actions</DialogTitle>
+        <DialogActions sx={{ px: 2, pb: 2, justifyContent: "flex-start", gap: 1, flexWrap: "wrap" }}>
+          <Button
+            variant="outlined"
+            startIcon={<EditOutlinedIcon />}
+            onClick={() => {
+              if (!mobileChipSlot) return;
+              const d = mobileChipSlot.localDate || (mobileChipSlot.startISO || "").slice(0, 10);
+              setChipSlot(mobileChipSlot);
+              setSlotEditForm({ date: d, start: mobileChipSlot.startHH, end: mobileChipSlot.endHH });
+              setMobileChipSlot(null);
+              setSlotEditOpen(true);
+            }}
+          >
+            Edit slot
+          </Button>
+          <Button
+            color="error"
+            variant="outlined"
+            startIcon={<DeleteOutlineIcon />}
+            onClick={async () => {
+              try {
+                const id = availabilityIdFromEvent(mobileChipSlot);
+                if (!id) throw new Error("No availability id");
+                await tryDeleteAvailability(id);
+                setMobileChipSlot(null);
+                setSuccessMessage("Availability deleted ✔");
+                fetchEvents();
+              } catch {
+                setError("Failed to delete slot.");
+              }
+            }}
+          >
+            Delete slot
+          </Button>
+          <Button onClick={() => setMobileChipSlot(null)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
       <Menu anchorEl={chipMenuAnchor} open={Boolean(chipMenuAnchor)} onClose={() => setChipMenuAnchor(null)}>
         <MenuItem
           onClick={() => {
@@ -1446,10 +1498,13 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             variant="contained"
             onClick={async () => {
               try {
-                const id = availabilityIdFromEvent(chipSlot);
+                const targetSlot = chipSlot || mobileChipSlot;
+                const id = availabilityIdFromEvent(targetSlot);
                 if (!id) throw new Error("No availability id");
                 await tryUpdateAvailability(id, { date: slotEditForm.date, start_time: slotEditForm.start, end_time: slotEditForm.end });
                 setSlotEditOpen(false);
+                setChipSlot(null);
+                setMobileChipSlot(null);
                 setSuccessMessage("Availability updated ✔");
                 fetchEvents();
               } catch { setError("Failed to update slot."); }
