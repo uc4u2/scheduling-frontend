@@ -191,6 +191,40 @@ api.interceptors.response.use(
       error.displayMessage = userMessage;
     }
 
+    const isAccountDisabled =
+      code === "TENANT_DISABLED" ||
+      code === "USER_DISABLED" ||
+      data?.error === "account_access_denied";
+    if (isAccountDisabled) {
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("token");
+          localStorage.removeItem("role");
+          localStorage.removeItem("company_id");
+        } catch {}
+        window.dispatchEvent(
+          new CustomEvent("schedulaa:account-disabled", {
+            detail: {
+              code: code || (data?.error === "account_access_denied" ? "ACCOUNT_ACCESS_DENIED" : null),
+              message:
+                userMessage ||
+                data?.error_description ||
+                "This account is currently disabled.",
+            },
+          })
+        );
+        const currentPath = String(window.location?.pathname || "");
+        if (!currentPath.startsWith("/login")) {
+          const reason = encodeURIComponent(
+            userMessage || data?.error_description || "This account is currently disabled."
+          );
+          window.location.assign(`/login?reason=${reason}`);
+        }
+      }
+      error.accountDisabled = true;
+      return Promise.reject(error);
+    }
+
     if (
       !skipBillingModal &&
       status === 402 &&
