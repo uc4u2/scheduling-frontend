@@ -5,6 +5,10 @@ import {
   Alert,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Grid,
   List,
@@ -34,7 +38,11 @@ export default function Tenant360Page() {
   const [domainDiagError, setDomainDiagError] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const [tenantActionBusy, setTenantActionBusy] = useState(false);
-  const [disableTenantReason, setDisableTenantReason] = useState("");
+  const [disableDialogOpen, setDisableDialogOpen] = useState(false);
+  const [disableDialogBusy, setDisableDialogBusy] = useState(false);
+  const [disableReason, setDisableReason] = useState("");
+  const [disableDialogError, setDisableDialogError] = useState("");
+  const [disableTarget, setDisableTarget] = useState(null);
 
   const load = useCallback(async () => {
     const [tenantRes, usersRes, billingRes, eventsRes, notesRes] = await Promise.all([
@@ -55,19 +63,27 @@ export default function Tenant360Page() {
     load();
   }, [load]);
 
-  const disableUser = async (id) => {
-    const reason = (window.prompt("Disable reason (required):") || "").trim();
-    if (!reason) return;
-    try {
-      await platformAdminApi.post(`/tenants/${companyId}/users/${id}/disable`, { reason });
-      await load();
-    } catch (err) {
-      if (err?.response?.data?.error === "reason_required") {
-        window.alert("Disable reason is required.");
-        return;
-      }
-      throw err;
-    }
+  const openDisableDialog = (target) => {
+    setDisableTarget(target);
+    setDisableReason("");
+    setDisableDialogError("");
+    setDisableDialogOpen(true);
+  };
+
+  const closeDisableDialog = () => {
+    if (disableDialogBusy) return;
+    setDisableDialogOpen(false);
+    setDisableTarget(null);
+    setDisableReason("");
+    setDisableDialogError("");
+  };
+
+  const disableUser = (id, fullName) => {
+    openDisableDialog({
+      type: "user",
+      id,
+      label: fullName || `User #${id}`,
+    });
   };
 
   const enableUser = async (id) => {
@@ -75,25 +91,39 @@ export default function Tenant360Page() {
     await load();
   };
 
-  const disableTenant = async () => {
-    const reason = disableTenantReason.trim();
+  const disableTenant = () => {
+    openDisableDialog({
+      type: "tenant",
+      label: tenant?.name || `Tenant #${companyId}`,
+    });
+  };
+
+  const confirmDisable = async () => {
+    const reason = disableReason.trim();
     if (!reason) {
-      window.alert("Disable reason is required.");
+      setDisableDialogError("Disable reason is required.");
       return;
     }
-    setTenantActionBusy(true);
+    setDisableDialogBusy(true);
     try {
-      await platformAdminApi.post(`/tenants/${companyId}/disable`, { reason });
-      setDisableTenantReason("");
+      if (disableTarget?.type === "user" && disableTarget?.id) {
+        await platformAdminApi.post(`/tenants/${companyId}/users/${disableTarget.id}/disable`, { reason });
+      } else {
+        await platformAdminApi.post(`/tenants/${companyId}/disable`, { reason });
+      }
       await load();
+      setDisableDialogOpen(false);
+      setDisableTarget(null);
+      setDisableReason("");
+      setDisableDialogError("");
     } catch (err) {
       if (err?.response?.data?.error === "reason_required") {
-        window.alert("Disable reason is required.");
+        setDisableDialogError("Disable reason is required.");
         return;
       }
       throw err;
     } finally {
-      setTenantActionBusy(false);
+      setDisableDialogBusy(false);
     }
   };
 
@@ -284,14 +314,6 @@ export default function Tenant360Page() {
           <Button variant="outlined" onClick={clearCache}>Clear cache</Button>
         </Stack>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 2 }}>
-          <TextField
-            size="small"
-            label="Disable tenant reason"
-            placeholder="Required when disabling tenant"
-            value={disableTenantReason}
-            onChange={(e) => setDisableTenantReason(e.target.value)}
-            fullWidth
-          />
           {accountStatus === "disabled" ? (
             <Button variant="contained" onClick={enableTenant} disabled={tenantActionBusy}>
               Enable tenant
@@ -486,7 +508,12 @@ export default function Tenant360Page() {
               key={u.id}
               secondaryAction={
                 String(u?.status || "").toLowerCase() === "active" && !u?.archived_at ? (
-                  <Button size="small" variant="outlined" color="error" onClick={() => disableUser(u.id)}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    onClick={() => disableUser(u.id, u.full_name)}
+                  >
                     Disable
                   </Button>
                 ) : (
@@ -721,6 +748,41 @@ export default function Tenant360Page() {
           </Paper>
         </>
       ) : null}
+
+      <Dialog open={disableDialogOpen} onClose={closeDisableDialog} fullWidth maxWidth="sm">
+        <DialogTitle>
+          {disableTarget?.type === "user" ? `Disable User: ${disableTarget?.label}` : "Disable Tenant"}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Disable reason"
+            placeholder="Required"
+            fullWidth
+            multiline
+            minRows={2}
+            value={disableReason}
+            onChange={(e) => {
+              setDisableReason(e.target.value);
+              if (disableDialogError) setDisableDialogError("");
+            }}
+          />
+          {disableDialogError ? (
+            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+              {disableDialogError}
+            </Typography>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDisableDialog} disabled={disableDialogBusy}>
+            Cancel
+          </Button>
+          <Button color="error" variant="contained" onClick={confirmDisable} disabled={disableDialogBusy}>
+            Disable
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
