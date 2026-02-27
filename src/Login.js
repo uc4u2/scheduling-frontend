@@ -72,6 +72,14 @@ const getRoleHome = (role) => {
   return "/manager/dashboard";
 };
 
+const getAuthErrorMessage = (err, fallback) => {
+  const payload = err?.response?.data || {};
+  const code = payload.code || payload.error_code || payload.error;
+  if (code === "USER_DISABLED") return "This user account is disabled.";
+  if (code === "TENANT_DISABLED") return "This tenant account is disabled.";
+  return payload.message || payload.error || fallback;
+};
+
 const Login = ({ setToken }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,6 +105,7 @@ const Login = ({ setToken }) => {
   const planParam = (qs.get("plan") || "").toLowerCase();
   const intervalParam = (qs.get("interval") || "").toLowerCase();
   const returnToParam = (qs.get("returnTo") || "").trim();
+  const disabledReasonParam = (qs.get("reason") || "").trim();
 
   useEffect(() => {
     let active = true;
@@ -132,6 +141,12 @@ const Login = ({ setToken }) => {
       active = false;
     };
   }, [location.search, navigate, setToken]);
+
+  useEffect(() => {
+    if (disabledReasonParam) {
+      setError(disabledReasonParam);
+    }
+  }, [disabledReasonParam]);
 
   // Persist site from query once present
   useEffect(() => {
@@ -270,7 +285,7 @@ const Login = ({ setToken }) => {
       setResendCooldown(45);
       if (res.data?.force_password_change) setForceChange(true);
     } catch (err) {
-      setError(err?.response?.data?.error || "Login failed.");
+      setError(getAuthErrorMessage(err, "Login failed."));
     }
   };
 
@@ -343,7 +358,7 @@ const Login = ({ setToken }) => {
         navigate(site ? `/dashboard?site=${encodeURIComponent(site)}` : "/dashboard");
       }
     } catch (err) {
-      setError(err?.response?.data?.error || "OTP verification failed.");
+      setError(getAuthErrorMessage(err, "OTP verification failed."));
     }
   };
 
@@ -360,7 +375,7 @@ const Login = ({ setToken }) => {
       setMessage("We just sent a new code. It may take a moment to arrive.");
       setResendCooldown(45);
     } catch (err) {
-      setError(err?.response?.data?.error || "Unable to resend the code right now.");
+      setError(getAuthErrorMessage(err, "Unable to resend the code right now."));
     }
   };
 

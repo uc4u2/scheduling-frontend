@@ -19,4 +19,20 @@ platformAdminApi.interceptors.request.use((config) => {
   return config;
 });
 
+platformAdminApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const data = error?.response?.data || {};
+    const code = data.code || data.error_code || data.error;
+    if (code === "TENANT_DISABLED" || code === "USER_DISABLED") {
+      error.normalized = {
+        code,
+        message: data.message || data.user_message || data.error || "Account access denied.",
+        status: error?.response?.status || 403,
+      };
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default platformAdminApi;

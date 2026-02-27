@@ -33,6 +33,8 @@ export default function Tenant360Page() {
   const [domainDiagLoading, setDomainDiagLoading] = useState(false);
   const [domainDiagError, setDomainDiagError] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const [tenantActionBusy, setTenantActionBusy] = useState(false);
+  const [disableTenantReason, setDisableTenantReason] = useState("");
 
   const load = useCallback(async () => {
     const [tenantRes, usersRes, billingRes, eventsRes, notesRes] = await Promise.all([
@@ -54,8 +56,55 @@ export default function Tenant360Page() {
   }, [load]);
 
   const disableUser = async (id) => {
-    await platformAdminApi.post(`/tenants/${companyId}/users/${id}/disable`);
-    load();
+    const reason = (window.prompt("Disable reason (required):") || "").trim();
+    if (!reason) return;
+    try {
+      await platformAdminApi.post(`/tenants/${companyId}/users/${id}/disable`, { reason });
+      await load();
+    } catch (err) {
+      if (err?.response?.data?.error === "reason_required") {
+        window.alert("Disable reason is required.");
+        return;
+      }
+      throw err;
+    }
+  };
+
+  const enableUser = async (id) => {
+    await platformAdminApi.post(`/tenants/${companyId}/users/${id}/enable`);
+    await load();
+  };
+
+  const disableTenant = async () => {
+    const reason = disableTenantReason.trim();
+    if (!reason) {
+      window.alert("Disable reason is required.");
+      return;
+    }
+    setTenantActionBusy(true);
+    try {
+      await platformAdminApi.post(`/tenants/${companyId}/disable`, { reason });
+      setDisableTenantReason("");
+      await load();
+    } catch (err) {
+      if (err?.response?.data?.error === "reason_required") {
+        window.alert("Disable reason is required.");
+        return;
+      }
+      throw err;
+    } finally {
+      setTenantActionBusy(false);
+    }
+  };
+
+  const enableTenant = async () => {
+    setTenantActionBusy(true);
+    try {
+      await platformAdminApi.post(`/tenants/${companyId}/enable`);
+      await load();
+    } finally {
+      setTenantActionBusy(false);
+    }
   };
 
   const republish = async () => {
@@ -154,6 +203,7 @@ export default function Tenant360Page() {
   const domainStatus = website.domain_status || "none";
   const sslStatus = website.ssl_status || "unknown";
   const publishStatus = website.is_live ? "live" : "draft";
+  const accountStatus = String(tenant.account_status || "active").toLowerCase();
   const dnsTxtOk = domainDiag?.dns?.txt?.ok;
   const dnsCnameOk = domainDiag?.dns?.cname?.ok;
   const diagCheckedAt = domainDiag?.checked_at || domainDiag?.last_checked;
@@ -199,6 +249,12 @@ export default function Tenant360Page() {
             sx={badgeSx}
           />
           <Chip
+            label={`Account: ${accountStatus}`}
+            color={accountStatus === "active" ? "success" : "error"}
+            variant={accountStatus === "active" ? "filled" : "outlined"}
+            sx={badgeSx}
+          />
+          <Chip
             label={`Domain: ${domainStatus}`}
             color={domainStatus === "verified" ? "success" : "default"}
             variant={domainStatus === "verified" ? "filled" : "outlined"}
@@ -227,6 +283,30 @@ export default function Tenant360Page() {
           <Button variant="outlined" onClick={republish}>Republish website</Button>
           <Button variant="outlined" onClick={clearCache}>Clear cache</Button>
         </Stack>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 2 }}>
+          <TextField
+            size="small"
+            label="Disable tenant reason"
+            placeholder="Required when disabling tenant"
+            value={disableTenantReason}
+            onChange={(e) => setDisableTenantReason(e.target.value)}
+            fullWidth
+          />
+          {accountStatus === "disabled" ? (
+            <Button variant="contained" onClick={enableTenant} disabled={tenantActionBusy}>
+              Enable tenant
+            </Button>
+          ) : (
+            <Button
+              color="error"
+              variant="contained"
+              onClick={disableTenant}
+              disabled={tenantActionBusy}
+            >
+              Disable tenant
+            </Button>
+          )}
+        </Stack>
       </Paper>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -236,6 +316,15 @@ export default function Tenant360Page() {
             <List dense>
               <ListItem>
                 <ListItemText primary="Plan" secondary={`${ent.plan_key || "starter"} • ${ent.status || "inactive"}`} />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="Account status" secondary={tenant.account_status || "active"} />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="Disabled at" secondary={tenant.disabled_at || "—"} />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="Disabled reason" secondary={tenant.disabled_reason || "—"} />
               </ListItem>
               <ListItem>
                 <ListItemText primary="Seats allowed" secondary={ent.seats_allowed ?? "—"} />
@@ -393,9 +482,20 @@ export default function Tenant360Page() {
         <Typography variant="subtitle1">Users</Typography>
         <List>
           {users.map((u) => (
-            <ListItem key={u.id} secondaryAction={
-              <Button size="small" variant="outlined" onClick={() => disableUser(u.id)}>Disable</Button>
-            }>
+            <ListItem
+              key={u.id}
+              secondaryAction={
+                String(u?.status || "").toLowerCase() === "active" && !u?.archived_at ? (
+                  <Button size="small" variant="outlined" color="error" onClick={() => disableUser(u.id)}>
+                    Disable
+                  </Button>
+                ) : (
+                  <Button size="small" variant="outlined" onClick={() => enableUser(u.id)}>
+                    Enable
+                  </Button>
+                )
+              }
+            >
               <ListItemText primary={`${u.full_name} (${u.role})`} secondary={`${u.email} • ${u.status}`} />
             </ListItem>
           ))}
