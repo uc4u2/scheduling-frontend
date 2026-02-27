@@ -74,14 +74,14 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build:seo": "npm run generate:seo && npm run generate:react-snap && npm run build",
     "postbuild": "node scripts/run-react-snap.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint --ext .js,.jsx src",
     "generate:seo": "node scripts/generate-site-assets.js",
     "generate:react-snap": "node scripts/generate-react-snap.js",
-    "verify:react-snap": "node scripts/verify-react-snap.js",
-    "prebuild": "npm run generate:seo && npm run generate:react-snap"
+    "verify:react-snap": "node scripts/verify-react-snap.js"
   },
   "eslintConfig": {
     "extends": [
