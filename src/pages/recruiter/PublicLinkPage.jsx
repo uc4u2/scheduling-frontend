@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Box, Button, CircularProgress, Stack, TextField, Typography, Alert } from "@mui/material";
+import { Box, Button, CircularProgress, Stack, TextField, Typography, Alert, FormControlLabel, Switch } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { api } from "../../utils/api";
 import ManagementFrame from "../../components/ui/ManagementFrame";
@@ -14,6 +14,8 @@ export default function RecruiterPublicLinkPage({ token }) {
   const [rid, setRid] = useState("");
   const [publicToken, setPublicToken] = useState("");
   const [allowed, setAllowed] = useState(false);
+  const [includeVideo, setIncludeVideo] = useState(true);
+  const [saving, setSaving] = useState(false);
   const { allowHrAccess, isLoading } = useRecruiterTabsAccess();
 
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function RecruiterPublicLinkPage({ token }) {
         setRid(recruiterId);
         setAllowed(allow);
         setPublicToken(pubToken);
+        setIncludeVideo(Boolean(me?.public_meet_include_video ?? true));
       } catch (e) {
         setErr("Failed to load your profile.");
       } finally {
@@ -92,6 +95,21 @@ export default function RecruiterPublicLinkPage({ token }) {
       setErr("Failed to generate a new link.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const savePublicLinkSettings = async () => {
+    if (!rid) return;
+    try {
+      setSaving(true);
+      setErr("");
+      await api.put(`/api/recruiters/${rid}`, {
+        public_meet_include_video: Boolean(includeVideo),
+      });
+    } catch {
+      setErr("Failed to save public-link video setting.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -123,6 +141,21 @@ export default function RecruiterPublicLinkPage({ token }) {
           <Typography variant="body1">
             Share this link on LinkedIn, email signatures, or anywhere else to let clients book a meeting with you directly.
           </Typography>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={includeVideo}
+                onChange={(e) => setIncludeVideo(e.target.checked)}
+              />
+            }
+            label="Include Jitsi video link for my public bookings"
+          />
+          <Typography variant="body2" color="text.secondary">
+            This affects only your own public booking link. It does not change company-wide Client Video settings.
+          </Typography>
+          <Button variant="outlined" onClick={savePublicLinkSettings} disabled={!rid || saving}>
+            {saving ? "Saving..." : "Save video setting"}
+          </Button>
           <TextField fullWidth size="small" value={link || "Unavailable"} InputProps={{ readOnly: true }} />
           <Button
             variant="contained"
