@@ -222,6 +222,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
   const [website, setWebsite] = useState("");
   const [note, setNote] = useState("");
   const [honeypot, setHoneypot] = useState("");
+  const [meetingDetailsExpanded, setMeetingDetailsExpanded] = useState(false);
   const [challenge, setChallenge] = useState(() => {
     const a = Math.floor(Math.random() * 4) + 2;
     const b = Math.floor(Math.random() * 4) + 2;
@@ -289,6 +290,13 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
   const cardShadow =
     "var(--page-card-shadow, 0 22px 40px rgba(15,23,42,0.12))";
   const cardRadius = "var(--page-card-radius, 18px)";
+  const leftCardSx = {
+    borderRadius: cardRadius,
+    boxShadow: cardShadow,
+    bgcolor: cardSurface,
+    backdropFilter: "blur(var(--page-card-blur, 0px))",
+    border: "1px solid rgba(255,255,255,0.08)",
+  };
   const buttonBg = "var(--page-btn-bg, var(--sched-primary))";
   const buttonColor = "var(--page-btn-color, #fff)";
   const buttonRadius = "var(--page-btn-radius, 999px)";
@@ -296,6 +304,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
     "var(--page-calendar-accent, var(--page-btn-bg, var(--sched-primary)))";
   const calendarAccentContrast =
     "var(--page-calendar-accent-contrast, var(--page-btn-color, #fff))";
+  const meetingDetailsPreviewLimit = 420;
 
   /* Load artist + availability */
   useEffect(() => {
@@ -414,10 +423,10 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
       });
       return;
     }
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !country.trim() || !website.trim()) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !country.trim()) {
       setSnack({
         open: true,
-        message: "All fields are required.",
+        message: "Please complete the required fields.",
         severity: "warning",
       });
       return;
@@ -432,10 +441,10 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
     }
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
-    const noteParts = [
-      `Country/Region: ${country.trim()}`,
-      `Website: ${website.trim()}`,
-    ];
+    const noteParts = [`Country/Region: ${country.trim()}`];
+    if (website.trim()) {
+      noteParts.push(`Website: ${website.trim()}`);
+    }
     if (note.trim()) {
       noteParts.push(note.trim());
     }
@@ -660,15 +669,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                     toYouTubeEmbedUrl(DEFAULT_PUBLIC_MEET_VIDEO_URL);
                   return (
                     <>
-                <Card
-                  sx={{
-                    borderRadius: cardRadius,
-                    boxShadow: cardShadow,
-                    bgcolor: cardSurface,
-                    backdropFilter: "blur(var(--page-card-blur, 0px))",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
+                <Card sx={leftCardSx}>
                   <CardContent>
                     <Stack spacing={2} alignItems="center">
                       <Avatar
@@ -740,17 +741,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                   </CardContent>
                 </Card>
 
-                <Card
-                sx={{
-                  mt: 3,
-                  borderRadius: cardRadius,
-                  boxShadow:
-                    "var(--page-card-shadow, 0 14px 30px rgba(15,23,42,0.12))",
-                  bgcolor: cardSurface,
-                  backdropFilter: "blur(var(--page-card-blur, 0px))",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-              >
+                <Card sx={{ ...leftCardSx, mt: 3 }}>
                 <CardContent>
                   <Typography
                     variant="subtitle1"
@@ -760,16 +751,63 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                   >
                     Meeting details
                   </Typography>
-                  <Stack spacing={1.2}>
-                    {artist.bio ? (
-                      <Typography variant="body2" color="text.secondary">
-                        {artist.bio}
-                      </Typography>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        Choose a time that works for you.
-                      </Typography>
-                    )}
+                  <Stack spacing={1.4}>
+                    {(() => {
+                      const fullBio = String(artist.bio || "").trim();
+                      const fallbackText =
+                        "Choose a time that works for you and share your details to confirm the meeting.";
+                      const hasLongBio =
+                        fullBio.length > meetingDetailsPreviewLimit;
+                      const visibleBio =
+                        !fullBio
+                          ? fallbackText
+                          : meetingDetailsExpanded || !hasLongBio
+                          ? fullBio
+                          : `${fullBio.slice(0, meetingDetailsPreviewLimit).trim()}...`;
+                      return (
+                        <>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ lineHeight: 1.65, whiteSpace: "pre-line" }}
+                          >
+                            {visibleBio}
+                          </Typography>
+                          {hasLongBio ? (
+                            <Button
+                              variant="text"
+                              size="small"
+                              onClick={() =>
+                                setMeetingDetailsExpanded((prev) => !prev)
+                              }
+                              sx={{
+                                alignSelf: "flex-start",
+                                px: 0,
+                                minWidth: 0,
+                                textTransform: "none",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {meetingDetailsExpanded ? "Show less" : "Read more"}
+                            </Button>
+                          ) : null}
+                        </>
+                      );
+                    })()}
+                    <Box
+                      component="ul"
+                      sx={{
+                        m: 0,
+                        pl: 2.2,
+                        color: "text.secondary",
+                        fontSize: "0.85rem",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      <Box component="li">Pick an available time slot.</Box>
+                      <Box component="li">Complete the required fields.</Box>
+                      <Box component="li">You will receive a confirmation after booking.</Box>
+                    </Box>
                     {availabilityTz && (
                       <Stack direction="row" spacing={1} alignItems="center">
                         <ScheduleIcon fontSize="small" />
@@ -788,15 +826,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                 </Card>
                 {resolvedVideo ? (
                   <Card
-                    sx={{
-                      mt: 3,
-                      borderRadius: cardRadius,
-                      boxShadow:
-                        "var(--page-card-shadow, 0 14px 30px rgba(15,23,42,0.12))",
-                      bgcolor: cardSurface,
-                      backdropFilter: "blur(var(--page-card-blur, 0px))",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}
+                    sx={{ ...leftCardSx, mt: 3 }}
                   >
                     <CardContent>
                       <Typography
@@ -1009,8 +1039,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <TextField
-                            label="WhatsApp Phone Number"
-                            required
+                            label="WhatsApp Phone Number (optional)"
                             fullWidth
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
@@ -1027,8 +1056,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                         </Grid>
                         <Grid item xs={12} sm={6}>
                           <TextField
-                            label="Website URL"
-                            required
+                            label="Website URL (optional)"
                             fullWidth
                             value={website}
                             onChange={(e) => setWebsite(e.target.value)}
