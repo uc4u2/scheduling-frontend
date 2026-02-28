@@ -24,6 +24,7 @@ import {
 import axios from "axios";
 import { API_BASE_URL } from "../../utils/api";
 import platformAdminApi from "../../api/platformAdminApi";
+import { APP_ORIGIN } from "../../config/origins";
 
 export default function Tenant360Page() {
   const { companyId } = useParams();
@@ -221,7 +222,7 @@ export default function Tenant360Page() {
     (website.domain_status === "verified" || website.domain_verified_at)
       ? `https://${website.custom_domain.replace(/^https?:\/\//, "")}`
       : null;
-  const publicSite = domain || `https://www.schedulaa.com/${tenant.slug}`;
+  const publicSite = domain || (tenant.slug ? `${APP_ORIGIN}/${tenant.slug}` : APP_ORIGIN);
 
   const badgeSx = {
     fontWeight: 600,
