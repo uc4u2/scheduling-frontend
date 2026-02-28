@@ -37,6 +37,7 @@ const SettingsBillingSubscription = () => {
   const seatIncluded = Number(status?.seats_included || 0);
   const seatAddon = Number(status?.seats_addon_qty || 0);
   const activeStaff = Number(status?.active_staff_count || 0);
+  const riskStatus = String(status?.risk_status || "normal").toLowerCase();
   const [syncState, setSyncState] = useState({ loading: false, error: "", message: "" });
   const [portalError, setPortalError] = useState("");
   const [modeMismatchDismissed, setModeMismatchDismissed] = useState(false);
@@ -161,6 +162,12 @@ const SettingsBillingSubscription = () => {
             {status.sync_error === "multiple_subscriptions" && (
               <Alert severity="warning">{t("billing.syncErrors.multipleSubscriptions")}</Alert>
             )}
+            {(riskStatus === "review_hold" || riskStatus === "suspended") && (
+              <Alert severity="error">
+                {status?.risk_hold_reason ||
+                  "Billing is currently blocked by fraud risk controls. Contact support to review this account."}
+              </Alert>
+            )}
             {status.seats_overage && <Alert severity="info">{t("billing.seatsOverage")}</Alert>}
             {syncState.message && <Alert severity="success">{syncState.message}</Alert>}
             {syncState.error && <Alert severity="error">{syncState.error}</Alert>}
@@ -174,6 +181,9 @@ const SettingsBillingSubscription = () => {
               </Typography>
               <Typography variant="body2">
                 <strong>{t("billing.labels.subscription")}:</strong> {status.subscription_state || t("billing.values.none")}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Risk status:</strong> {riskStatus}
               </Typography>
             </Stack>
             {(() => {

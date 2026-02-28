@@ -548,6 +548,7 @@ const PricingPage = () => {
       }
       setCtaError(
         error?.displayMessage ||
+          error?.response?.data?.message ||
           error?.response?.data?.error ||
           error?.message ||
           "Unable to start checkout."

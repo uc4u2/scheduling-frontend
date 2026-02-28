@@ -32,6 +32,7 @@ export default function Tenant360Page() {
   const [users, setUsers] = useState([]);
   const [billing, setBilling] = useState(null);
   const [events, setEvents] = useState([]);
+  const [riskEvents, setRiskEvents] = useState([]);
   const [notes, setNotes] = useState([]);
   const [noteDraft, setNoteDraft] = useState("");
   const [domainDiag, setDomainDiag] = useState(null);
@@ -57,6 +58,7 @@ export default function Tenant360Page() {
     setUsers(usersRes.data?.users || []);
     setBilling(billingRes.data || null);
     setEvents(eventsRes.data?.events || []);
+    setRiskEvents(eventsRes.data?.risk_events || []);
     setNotes(notesRes.data?.notes || []);
   }, [companyId]);
 
@@ -235,6 +237,7 @@ export default function Tenant360Page() {
   const sslStatus = website.ssl_status || "unknown";
   const publishStatus = website.is_live ? "live" : "draft";
   const accountStatus = String(tenant.account_status || "active").toLowerCase();
+  const riskStatus = String(tenant.risk_status || "normal").toLowerCase();
   const dnsTxtOk = domainDiag?.dns?.txt?.ok;
   const dnsCnameOk = domainDiag?.dns?.cname?.ok;
   const diagCheckedAt = domainDiag?.checked_at || domainDiag?.last_checked;
@@ -283,6 +286,12 @@ export default function Tenant360Page() {
             label={`Account: ${accountStatus}`}
             color={accountStatus === "active" ? "success" : "error"}
             variant={accountStatus === "active" ? "filled" : "outlined"}
+            sx={badgeSx}
+          />
+          <Chip
+            label={`Risk: ${riskStatus}`}
+            color={riskStatus === "normal" ? "success" : "warning"}
+            variant={riskStatus === "normal" ? "filled" : "outlined"}
             sx={badgeSx}
           />
           <Chip
@@ -348,6 +357,24 @@ export default function Tenant360Page() {
               </ListItem>
               <ListItem>
                 <ListItemText primary="Disabled reason" secondary={tenant.disabled_reason || "—"} />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="Risk status" secondary={tenant.risk_status || "normal"} />
+              </ListItem>
+              <ListItem>
+                <ListItemText primary="Risk hold reason" secondary={tenant.risk_hold_reason || "—"} />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Risk score"
+                  secondary={tenant.risk_profile?.risk_score ?? 0}
+                />
+              </ListItem>
+              <ListItem>
+                <ListItemText
+                  primary="Risk level"
+                  secondary={tenant.risk_profile?.risk_level || "low"}
+                />
               </ListItem>
               <ListItem>
                 <ListItemText primary="Seats allowed" secondary={ent.seats_allowed ?? "—"} />
@@ -746,6 +773,26 @@ export default function Tenant360Page() {
                 </List>
               </Grid>
             </Grid>
+          </Paper>
+
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1">Fraud & risk events</Typography>
+            <List>
+              {riskEvents.length === 0 ? (
+                <ListItem>
+                  <ListItemText primary="No risk events yet." />
+                </ListItem>
+              ) : (
+                riskEvents.map((evt) => (
+                  <ListItem key={evt.id}>
+                    <ListItemText
+                      primary={`${evt.event_type} • score ${evt.risk_score} • ${evt.risk_level}`}
+                      secondary={`${evt.created_at || "—"}${evt.reason ? ` • ${evt.reason}` : ""}`}
+                    />
+                  </ListItem>
+                ))
+              )}
+            </List>
           </Paper>
         </>
       ) : null}

@@ -26,6 +26,16 @@ const GlobalBillingBanner = () => {
     if (!status) return null;
     if (dismissed) return null;
     const state = status.subscription_state || status.status;
+    const riskStatus = String(status.risk_status || "normal").toLowerCase();
+    if (riskStatus === "review_hold" || riskStatus === "suspended") {
+      return {
+        severity: "error",
+        message:
+          status.risk_hold_reason ||
+          "Billing is temporarily blocked by fraud risk controls. Please contact support.",
+        action: "manage_billing",
+      };
+    }
     if (status.error === "mode_mismatch") {
       return {
         severity: "warning",
@@ -78,6 +88,11 @@ const GlobalBillingBanner = () => {
       {status?.error !== "mode_mismatch" && (
         <Button color="inherit" size="small" onClick={() => (window.location.href = BILLING_SETTINGS_URL)}>
           Manage billing
+        </Button>
+      )}
+      {banner.action === "manage_billing" && (
+        <Button color="inherit" size="small" onClick={() => (window.location.href = BILLING_SETTINGS_URL)}>
+          Billing settings
         </Button>
       )}
     </Stack>

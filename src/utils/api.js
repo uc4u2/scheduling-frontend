@@ -178,6 +178,25 @@ api.interceptors.response.use(
       error.displayMessage = userMessage;
     }
 
+    if (data?.error === "risk_blocked") {
+      error.riskBlocked = true;
+      error.code = code || "risk_blocked";
+      if (!error.displayMessage) {
+        error.displayMessage =
+          data?.message || "This billing action was blocked by fraud prevention policy.";
+      }
+      if (typeof window !== "undefined" && !isNativeRuntime()) {
+        window.dispatchEvent(
+          new CustomEvent("billing:risk-blocked", {
+            detail: {
+              code: error.code,
+              message: error.displayMessage,
+            },
+          })
+        );
+      }
+    }
+
     const isAccountDisabled =
       code === "TENANT_DISABLED" ||
       code === "USER_DISABLED" ||

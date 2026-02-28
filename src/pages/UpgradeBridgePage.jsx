@@ -89,6 +89,7 @@ const UpgradeBridgePage = () => {
           loading: false,
           error:
             error?.displayMessage ||
+            error?.response?.data?.message ||
             error?.response?.data?.error ||
             error?.message ||
             "Unable to start checkout.",
