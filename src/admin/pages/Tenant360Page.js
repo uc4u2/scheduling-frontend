@@ -277,6 +277,12 @@ export default function Tenant360Page() {
     domainDiag?.cdn_provider === "cloudflare" &&
     (domainDiag?.domain_status === "verified" || domainDiag?.verified_at) &&
     domainDiag?.ssl_status === "error";
+  const ageDays = (value) => {
+    if (!value || value === "—") return null;
+    const ts = new Date(value).getTime();
+    if (!Number.isFinite(ts)) return null;
+    return Math.max(0, Math.floor((Date.now() - ts) / (24 * 60 * 60 * 1000)));
+  };
   const formatAge = (value) => {
     if (!value || value === "—") return "—";
     const ts = new Date(value).getTime();
@@ -602,6 +608,15 @@ export default function Tenant360Page() {
             const lastSeenRegion = u?.last_seen?.region || "—";
             const lastSeenCity = u?.last_seen?.city || "—";
             const lastSeenAge = formatAge(lastSeenAt);
+            const lastSeenDays = ageDays(lastSeenAt);
+            const isStaleUser = Number.isFinite(lastSeenDays) && lastSeenDays > 7;
+            const hasCountryShift =
+              lastSeenCountry !== "—" &&
+              geoCountry !== "—" &&
+              String(lastSeenCountry).toUpperCase() !== String(geoCountry).toUpperCase();
+            const riskHints = [];
+            if (isStaleUser) riskHints.push(`stale user (${lastSeenDays}d)`);
+            if (hasCountryShift) riskHints.push("location change hint");
 
             return (
               <Accordion key={u.id} defaultExpanded disableGutters sx={{ borderRadius: 1, "&:before": { display: "none" } }}>
@@ -617,6 +632,15 @@ export default function Tenant360Page() {
                     <Typography variant="body2" color="text.secondary" sx={{ flex: 1.4 }}>
                       {`${u.email} • ${u.status}`}
                     </Typography>
+                    {riskHints.length > 0 ? (
+                      <Chip
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                        label={`Risk hint: ${riskHints.join(" • ")}`}
+                        sx={{ maxWidth: { xs: "100%", sm: 320 } }}
+                      />
+                    ) : null}
                     <Button
                       size="small"
                       variant="outlined"
