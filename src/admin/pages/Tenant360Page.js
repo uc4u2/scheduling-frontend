@@ -202,6 +202,7 @@ export default function Tenant360Page() {
   const stats = tenant.stats || {};
   const website = tenant.website || {};
   const paymentsDiag = tenant.payments_diag || {};
+  const riskTelemetry = tenant.risk_telemetry || {};
   const paymentsCurrency =
     paymentsDiag.display_currency ||
     tenant.display_currency ||
@@ -551,7 +552,42 @@ export default function Tenant360Page() {
                 )
               }
             >
-              <ListItemText primary={`${u.full_name} (${u.role})`} secondary={`${u.email} • ${u.status}`} />
+              <ListItemText
+                primary={`${u.full_name} (${u.role})`}
+                secondary={
+                  <>
+                    <Typography component="span" variant="body2" color="text.secondary">
+                      {`${u.email} • ${u.status}`}
+                    </Typography>
+                    <br />
+                    <Typography component="span" variant="body2" color="text.secondary">
+                      {u.last_login
+                        ? `Last login: ${u.last_login.timestamp || "—"} • ${u.last_login.outcome || "—"} • IP ${u.last_login.ip_address || u.last_login.ip_masked || "—"}`
+                        : "Last login: —"}
+                    </Typography>
+                    {(u.last_login?.country || u.last_login?.region || u.last_login?.city || u.last_risk_geo) ? (
+                      <>
+                        <br />
+                        <Typography component="span" variant="body2" color="text.secondary">
+                          {`Geo: ${u.last_login?.country || u.last_risk_geo?.country || "—"}, ${u.last_login?.region || u.last_risk_geo?.region || "—"}, ${u.last_login?.city || u.last_risk_geo?.city || "—"}${
+                            u.last_login?.timestamp
+                              ? ` • Seen: ${u.last_login.timestamp}`
+                              : (u.last_risk_geo?.at ? ` • Seen: ${u.last_risk_geo.at}` : "")
+                          }`}
+                        </Typography>
+                      </>
+                    ) : null}
+                    {u.last_login?.user_agent ? (
+                      <>
+                        <br />
+                        <Typography component="span" variant="body2" color="text.secondary">
+                          {`User-Agent: ${u.last_login.user_agent}`}
+                        </Typography>
+                      </>
+                    ) : null}
+                  </>
+                }
+              />
             </ListItem>
           ))}
         </List>
@@ -788,6 +824,165 @@ export default function Tenant360Page() {
                     <ListItemText
                       primary={`${evt.event_type} • score ${evt.risk_score} • ${evt.risk_level}`}
                       secondary={`${evt.created_at || "—"}${evt.reason ? ` • ${evt.reason}` : ""}`}
+                    />
+                  </ListItem>
+                ))
+              )}
+            </List>
+          </Paper>
+
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1">Risk telemetry</Typography>
+            <Grid container spacing={2} sx={{ mt: 0.5 }}>
+              <Grid item xs={12} md={6}>
+                <List dense>
+                  <ListItem>
+                    <ListItemText
+                      primary="Latest billing attempt"
+                      secondary={riskTelemetry.latest_billing_attempt?.created_at || "—"}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Latest attempt IP"
+                      secondary={riskTelemetry.latest_billing_attempt?.ip_masked || "—"}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Country mismatch"
+                      secondary={
+                        riskTelemetry.latest_billing_attempt
+                          ? `${riskTelemetry.latest_billing_attempt?.ip_country || "—"} / ${riskTelemetry.latest_billing_attempt?.billing_country || "—"}`
+                          : "—"
+                      }
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Signup country"
+                      secondary={riskTelemetry.latest_billing_attempt?.signup_country || "—"}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Latest user agent"
+                      secondary={riskTelemetry.latest_billing_attempt?.user_agent || "—"}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Time to first paid invoice"
+                      secondary={
+                        riskTelemetry.hours_from_signup_to_first_paid != null
+                          ? `${riskTelemetry.hours_from_signup_to_first_paid}h`
+                          : "—"
+                      }
+                    />
+                  </ListItem>
+                </List>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <List dense>
+                  <ListItem>
+                    <ListItemText
+                      primary="Attempts (30m): tenant total"
+                      secondary={riskTelemetry.attempt_counts_30m?.tenant_total ?? 0}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Attempts (30m): tenant blocked"
+                      secondary={riskTelemetry.attempt_counts_30m?.tenant_blocked ?? 0}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Attempts (30m): tenant failed"
+                      secondary={riskTelemetry.attempt_counts_30m?.tenant_failed ?? 0}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Attempts (30m): global by latest IP"
+                      secondary={riskTelemetry.attempt_counts_30m?.global_by_latest_ip ?? 0}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Attempts (30m): global by latest email"
+                      secondary={riskTelemetry.attempt_counts_30m?.global_by_latest_email ?? 0}
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemText
+                      primary="Latest client telemetry"
+                      secondary={
+                        riskTelemetry.latest_client_telemetry
+                          ? `${riskTelemetry.latest_client_telemetry.country || "—"}, ${riskTelemetry.latest_client_telemetry.region || "—"}, ${riskTelemetry.latest_client_telemetry.city || "—"}`
+                          : "—"
+                      }
+                    />
+                  </ListItem>
+                </List>
+              </Grid>
+            </Grid>
+
+            <Divider sx={{ my: 1.5 }} />
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Recent billing attempts
+            </Typography>
+            <List dense>
+              {(riskTelemetry.recent_billing_attempts || []).length === 0 ? (
+                <ListItem>
+                  <ListItemText primary="No billing attempt telemetry yet." />
+                </ListItem>
+              ) : (
+                (riskTelemetry.recent_billing_attempts || []).map((row, idx) => (
+                  <ListItem key={`risk-attempt-${idx}`}>
+                    <ListItemText
+                      primary={`${row.created_at || "—"} • ${row.outcome || "—"} • ${row.ip_masked || "—"} • ${row.ip_country || "—"}`}
+                      secondary={`${row.event_type || "—"}${row.reason ? ` • ${row.reason}` : ""}${row.billing_country ? ` • billing=${row.billing_country}` : ""}`}
+                    />
+                  </ListItem>
+                ))
+              )}
+            </List>
+
+            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2 }}>
+              Recent client telemetry
+            </Typography>
+            <List dense>
+              {(riskTelemetry.recent_client_telemetry || []).length === 0 ? (
+                <ListItem>
+                  <ListItemText primary="No client telemetry rows yet." />
+                </ListItem>
+              ) : (
+                (riskTelemetry.recent_client_telemetry || []).map((row, idx) => (
+                  <ListItem key={`risk-client-telemetry-${idx}`}>
+                    <ListItemText
+                      primary={`${row.event_at || "—"} • ${row.ip_masked || "—"} • ${row.country || "—"}, ${row.region || "—"}, ${row.city || "—"}`}
+                      secondary={`${row.device || "—"} / ${row.browser || "—"}${row.page ? ` • ${row.page}` : ""}${row.source ? ` • ${row.source}` : ""}`}
+                    />
+                  </ListItem>
+                ))
+              )}
+            </List>
+
+            <Typography variant="subtitle2" sx={{ mb: 1, mt: 2 }}>
+              Recent login audit
+            </Typography>
+            <List dense>
+              {(riskTelemetry.recent_login_audit || []).length === 0 ? (
+                <ListItem>
+                  <ListItemText primary="No login audit rows yet." />
+                </ListItem>
+              ) : (
+                (riskTelemetry.recent_login_audit || []).map((row, idx) => (
+                  <ListItem key={`risk-login-${idx}`}>
+                    <ListItemText
+                      primary={`${row.timestamp || "—"} • ${row.outcome || "—"} • ${row.ip_masked || "—"}`}
+                      secondary={`${row.user_agent || "—"}${row.user_id ? ` • user_id=${row.user_id}` : ""}`}
                     />
                   </ListItem>
                 ))
