@@ -1235,6 +1235,33 @@ export const wb = {
   deletePage: (companyId, id) =>
     api.delete(`/api/website/pages/${id}`, { headers: { "X-Company-Id": companyId } }),
 
+  // CHECKPOINTS
+  listCheckpoints: (companyId, { limit = 20 } = {}) =>
+    api.get("/api/website/checkpoints", {
+      params: { limit },
+      headers: { "X-Company-Id": companyId },
+    }),
+
+  createCheckpoint: (companyId, body = {}) =>
+    api.post("/api/website/checkpoints", body, {
+      headers: { "X-Company-Id": companyId },
+    }),
+
+  getCheckpoint: (companyId, id) =>
+    api.get(`/api/website/checkpoints/${id}`, {
+      headers: { "X-Company-Id": companyId },
+    }),
+
+  restoreCheckpoint: (companyId, id, body = {}) =>
+    api.post(`/api/website/checkpoints/${id}/restore`, body, {
+      headers: { "X-Company-Id": companyId },
+    }),
+
+  deleteCheckpoint: (companyId, id) =>
+    api.delete(`/api/website/checkpoints/${id}`, {
+      headers: { "X-Company-Id": companyId },
+    }),
+
   // TEMPLATES
   listTemplates: async () => ({ data: await website.listTemplates() }),
   getTemplate:   async (key, version) => ({ data: await website.getTemplate(key, version) }),

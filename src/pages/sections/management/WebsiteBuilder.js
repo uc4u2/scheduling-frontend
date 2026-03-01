@@ -97,6 +97,7 @@ export default function WebsiteBuilder() {
   const [settings, setSettings] = useState(null);
   const [themes, setThemes] = useState([]);
   const [pages, setPages] = useState([]);
+  const [checkpoints, setCheckpoints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
 
   // Editing states
@@ -106,6 +107,8 @@ export default function WebsiteBuilder() {
   // Domain
   const [customDomain, setCustomDomain] = useState("");
   const [domainCheck, setDomainCheck] = useState(null);
+  const [checkpointName, setCheckpointName] = useState("");
+  const [checkpointNote, setCheckpointNote] = useState("");
 
   // UI
   const [busy, setBusy] = useState(false);
@@ -157,11 +160,16 @@ const t = Array.isArray(rawThemes)
         console.warn("Failed to load navigation style", styleErr?.response?.data || styleErr);
       }
       const pg = (pagesRes.data || []).map(normalizePage);
+      const checkpointsRes = await wb.listCheckpoints(cid, { limit: 20 });
+      const cp = Array.isArray(checkpointsRes?.data?.checkpoints)
+        ? checkpointsRes.data.checkpoints
+        : [];
 
       setThemes(t);
       setSettings(st);
       setCustomDomain(st?.custom_domain || "");
       setPages(pg);
+      setCheckpoints(cp);
       if (pg.length > 0) {
         setSelectedId(pg[0].id);
         setEditing(pg[0]);
@@ -178,6 +186,13 @@ const t = Array.isArray(rawThemes)
     } finally {
       setBusy(false);
     }
+  };
+
+  const loadCheckpoints = async (cid) => {
+    if (!cid) return;
+    const res = await wb.listCheckpoints(cid, { limit: 20 });
+    const cp = Array.isArray(res?.data?.checkpoints) ? res.data.checkpoints : [];
+    setCheckpoints(cp);
   };
 
   const onPickPage = (id) => {
@@ -353,6 +368,91 @@ const t = Array.isArray(rawThemes)
     }
   };
 
+  const onSaveCheckpoint = async () => {
+    if (!companyId) return;
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await wb.createCheckpoint(companyId, {
+        name: (checkpointName || "").trim() || undefined,
+        note: (checkpointNote || "").trim() || undefined,
+      });
+      await loadCheckpoints(companyId);
+      setCheckpointName("");
+      setCheckpointNote("");
+      setMsg("Checkpoint saved.");
+    } catch (e) {
+      console.error(e);
+      setErr(e?.response?.data?.message || "Failed to save checkpoint.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onRestoreCheckpoint = async (checkpointId, checkpointNameText) => {
+    if (!companyId || !checkpointId) return;
+    const ok = window.confirm(`Restore checkpoint "${checkpointNameText || "Checkpoint"}"? This replaces current draft pages.`);
+    if (!ok) return;
+
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      const { data } = await wb.restoreCheckpoint(companyId, checkpointId, {
+        publish_now: false,
+        restore_live_state: false,
+      });
+      if (data?.draft) {
+        setSettings(data.draft);
+      }
+      if (data?.reload_required) {
+        await loadAll(companyId);
+      } else {
+        const pagesRes = await wb.listPages(companyId);
+        const pg = (pagesRes.data || []).map(normalizePage);
+        setPages(pg);
+        if (pg.length > 0) {
+          setSelectedId(pg[0].id);
+          setEditing(pg[0]);
+          setContentText(JSON.stringify(pg[0].content || { sections: [] }, null, 2));
+        } else {
+          setSelectedId(null);
+          setEditing(emptyPage());
+          setContentText(JSON.stringify({ sections: [] }, null, 2));
+        }
+      }
+      await loadCheckpoints(companyId);
+      const restoredCount = Number(data?.page_count || data?.result?.restored_pages || 0);
+      setMsg(`Checkpoint restored (${restoredCount} page${restoredCount === 1 ? "" : "s"}).`);
+    } catch (e) {
+      console.error(e);
+      setErr(e?.response?.data?.message || "Failed to restore checkpoint.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onDeleteCheckpoint = async (checkpointId, checkpointNameText) => {
+    if (!companyId || !checkpointId) return;
+    const ok = window.confirm(`Delete checkpoint "${checkpointNameText || "Checkpoint"}"?`);
+    if (!ok) return;
+
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await wb.deleteCheckpoint(companyId, checkpointId);
+      await loadCheckpoints(companyId);
+      setMsg("Checkpoint deleted.");
+    } catch (e) {
+      console.error(e);
+      setErr(e?.response?.data?.message || "Failed to delete checkpoint.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const viewerHint = useMemo(() => {
     // Your public viewer routes (CompanyPublic.js) are /:slug/site and /:slug/site/:pageSlug
     // We don’t know the slug here; show a generic hint.
@@ -465,6 +565,113 @@ const t = Array.isArray(rawThemes)
               >
                 {isLive ? "Unpublish" : "Publish"}
               </Button>
+            </Stack>
+          </Paper>
+
+          <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+              Checkpoints
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Save a rollback point before major edits. Latest 20 are kept automatically.
+            </Typography>
+            <Stack spacing={1}>
+              <TextField
+                label="Checkpoint name"
+                size="small"
+                value={checkpointName}
+                onChange={(e) => setCheckpointName(e.target.value)}
+                placeholder="Before homepage redesign"
+                fullWidth
+              />
+              <TextField
+                label="Note (optional)"
+                size="small"
+                value={checkpointNote}
+                onChange={(e) => setCheckpointNote(e.target.value)}
+                multiline
+                minRows={2}
+                fullWidth
+              />
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="contained"
+                  startIcon={<SaveIcon />}
+                  disabled={busy || !companyId}
+                  onClick={onSaveCheckpoint}
+                >
+                  Save checkpoint
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  disabled={busy || !companyId}
+                  onClick={() => loadCheckpoints(companyId)}
+                >
+                  Refresh
+                </Button>
+              </Stack>
+            </Stack>
+
+            <Divider sx={{ my: 1.5 }} />
+            <Stack spacing={1}>
+              {checkpoints.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No checkpoints saved yet.
+                </Typography>
+              ) : (
+                checkpoints.map((cp) => {
+                  const byLabel = cp?.created_by_name
+                    ? `${cp.created_by_name}${cp?.created_by_email ? ` (${cp.created_by_email})` : ""}`
+                    : cp?.created_by_email || "Unknown";
+                  return (
+                    <Paper key={cp.id} variant="outlined" sx={{ p: 1.25 }}>
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        spacing={1}
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                        justifyContent="space-between"
+                      >
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            {cp.name || `Checkpoint #${cp.id}`}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                            {cp.created_at ? new Date(cp.created_at).toLocaleString() : "—"} • {Number(cp.page_count || 0)} page(s)
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                            Saved by: {byLabel}
+                          </Typography>
+                          {cp.note ? (
+                            <Typography variant="body2" sx={{ mt: 0.5 }}>
+                              {cp.note}
+                            </Typography>
+                          ) : null}
+                        </Box>
+                        <Stack direction="row" spacing={1}>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            disabled={busy}
+                            onClick={() => onRestoreCheckpoint(cp.id, cp.name)}
+                          >
+                            Restore
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            disabled={busy}
+                            onClick={() => onDeleteCheckpoint(cp.id, cp.name)}
+                          >
+                            Delete
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </Paper>
+                  );
+                })
+              )}
             </Stack>
           </Paper>
 
