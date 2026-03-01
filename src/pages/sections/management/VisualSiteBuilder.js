@@ -2686,6 +2686,33 @@ const autoProvisionIfEmpty = useCallback(
     }
   }, [applyBrandingFromServer, companyId, editing, setEditing, setPages, setSelectedId, setSiteSettings, t]);
 
+  const onUnpublish = useCallback(async () => {
+    if (!companyId) return;
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await wb.publish(companyId, false);
+      const latestSettings = await wb.getSettings(companyId).catch(() => null);
+      const latestPayload = latestSettings?.data || latestSettings || {};
+      applyBrandingFromServer(latestPayload);
+      setSiteSettings(latestPayload);
+      publicSite.invalidate(
+        (siteSettings?.company?.slug || previewSlug || "").toString()
+      );
+      setMsg("Website unpublished");
+    } catch (e) {
+      setErr(
+        e?.response?.data?.message ||
+          e?.response?.data?.error ||
+          e?.message ||
+          "Unpublish failed"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [applyBrandingFromServer, companyId, previewSlug, setSiteSettings, siteSettings?.company?.slug]);
+
 
   /* ----- Keyboard shortcuts ----- */
   const handlersRef = useRef({ onSavePage, onPublish, undo, redo });
@@ -5978,6 +6005,19 @@ if (authError) {
                   onClick={onPublish}
                 >
                   {t("manager.visualBuilder.controls.buttons.publish")}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title={t("manager.visualBuilder.controls.tooltips.unpublish", "Unpublish website")}>
+              <span>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="warning"
+                  disabled={disablePublish}
+                  onClick={onUnpublish}
+                >
+                  {t("manager.visualBuilder.controls.buttons.unpublish", "Unpublish")}
                 </Button>
               </span>
             </Tooltip>

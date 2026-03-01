@@ -175,6 +175,16 @@ export default function Tenant360Page() {
     await platformAdminApi.post(`/tenants/${companyId}/website/republish`);
   };
 
+  const publishWebsite = async () => {
+    await platformAdminApi.post(`/tenants/${companyId}/website/publish`);
+    await load();
+  };
+
+  const unpublishWebsite = async () => {
+    await platformAdminApi.post(`/tenants/${companyId}/website/unpublish`);
+    await load();
+  };
+
   const clearCache = async () => {
     await platformAdminApi.post(`/tenants/${companyId}/website/clear-cache`);
   };
@@ -371,6 +381,15 @@ export default function Tenant360Page() {
           <Button variant="outlined" onClick={() => window.open(`/manager/dashboard?company_id=${tenant.id}`, "_blank")}>
             Open manager dashboard
           </Button>
+          {publishStatus === "live" ? (
+            <Button color="warning" variant="outlined" onClick={unpublishWebsite}>
+              Unpublish website
+            </Button>
+          ) : (
+            <Button color="success" variant="outlined" onClick={publishWebsite}>
+              Publish website
+            </Button>
+          )}
           <Button variant="outlined" onClick={republish}>Republish website</Button>
           <Button variant="outlined" onClick={clearCache}>Clear cache</Button>
         </Stack>

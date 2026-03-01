@@ -1015,7 +1015,7 @@ export default function CompanyPublic({ slugOverride }) {
     (async () => {
       try {
         setLoading(true); setErr("");
-        const data = await publicSite.getWebsiteShell(slug);
+        const data = await publicSite.getBySlug(slug);
         if (!alive) return;
         setSitePayload(data || null);
         setCompany(data?.company || null);
@@ -1032,12 +1032,15 @@ export default function CompanyPublic({ slugOverride }) {
           (p) => String(p.slug || "").toLowerCase() !== "services"
         );
         setPages(cleaned);
-      } catch {
+      } catch (loadErr) {
+        const apiError = loadErr?.response?.data?.error;
         const lowered = String(slug || "").toLowerCase();
         if (lowered === "manager") {
           setErr("This is a public website URL. For Manager Dashboard, open /manager/dashboard.");
         } else if (lowered === "employee") {
           setErr("This is a public website URL. For Employee Dashboard, open /employee/my-time.");
+        } else if (apiError === "website_unpublished") {
+          setErr("This website is currently unpublished.");
         } else {
           setErr("Failed to load the public website for this company.");
         }
