@@ -1482,6 +1482,9 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [navStyleState, setNavStyleState] = useState(null);
   const [themeOverridesDraft, setThemeOverridesDraft] = useState(defaultThemeOverrides);
   const [pages, setPages] = useState([]);
+  const [checkpoints, setCheckpoints] = useState([]);
+  const [checkpointName, setCheckpointName] = useState("");
+  const [checkpointNote, setCheckpointNote] = useState("");
   const [selectedPageIds, setSelectedPageIds] = useState([]);
   const [navDraft, setNavDraft] = useState(null);
   const [navSaving, setNavSaving] = useState(false);
@@ -1492,6 +1495,18 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingMsg, setBrandingMsg] = useState("");
 const [brandingErr, setBrandingErr] = useState("");
+
+  const loadCheckpoints = useCallback(async (cid) => {
+    if (!cid) return;
+    try {
+      const res = await wb.listCheckpoints(cid, { limit: 20 });
+      const list = Array.isArray(res?.data?.checkpoints) ? res.data.checkpoints : [];
+      setCheckpoints(list);
+    } catch (e) {
+      console.warn("Checkpoint load failed", e?.response?.data || e);
+      setCheckpoints([]);
+    }
+  }, []);
 
   const applyBrandingFromServer = useCallback(
     (settingsObj) => {
@@ -1645,6 +1660,7 @@ useEffect(() => {
 
         if (!alive) return;
         setPages(pagesList);
+        await loadCheckpoints(companyId);
         setLoading(false);
       } catch (e) {
         const code = e?.response?.status;
@@ -1664,7 +1680,7 @@ useEffect(() => {
 
     boot();
     return () => { alive = false; };
-  }, [companyId, slug, location?.key, applyBrandingFromServer]);
+  }, [companyId, slug, location?.key, applyBrandingFromServer, loadCheckpoints]);
 
 
   // ---------- NEW (Step 3: preflight/auth guard needs these) ----------
@@ -2425,6 +2441,7 @@ const autoProvisionIfEmpty = useCallback(
 
     const pg = pgRaw.map((p) => ensureSectionIds(withLiftedLayout(p)));
     setPages(pg);
+    await loadCheckpoints(cid);
 
     if (pg.length) {
       const home =
@@ -2465,7 +2482,7 @@ const autoProvisionIfEmpty = useCallback(
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId]);
+  }, [companyId, loadCheckpoints]);
 
   /* ----- save & publish (HOISTED) ----- */
   const onSavePage = useCallback(async () => {
@@ -2712,6 +2729,111 @@ const autoProvisionIfEmpty = useCallback(
       setBusy(false);
     }
   }, [applyBrandingFromServer, companyId, previewSlug, setSiteSettings, siteSettings?.company?.slug]);
+
+  const onSaveCheckpoint = useCallback(async () => {
+    if (!companyId) return;
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      await wb.createCheckpoint(companyId, {
+        name: (checkpointName || "").trim() || undefined,
+        note: (checkpointNote || "").trim() || undefined,
+      });
+      setCheckpointName("");
+      setCheckpointNote("");
+      await loadCheckpoints(companyId);
+      setMsg("Checkpoint saved.");
+    } catch (e) {
+      setErr(
+        e?.response?.data?.message ||
+          e?.response?.data?.error ||
+          e?.message ||
+          "Failed to save checkpoint."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [checkpointName, checkpointNote, companyId, loadCheckpoints]);
+
+  const onRestoreCheckpoint = useCallback(
+    async (checkpointId, checkpointTitle) => {
+      if (!companyId || !checkpointId) return;
+      const confirmed = window.confirm(
+        `Restore checkpoint "${checkpointTitle || "Checkpoint"}"? This will replace your current draft pages.`
+      );
+      if (!confirmed) return;
+
+      setBusy(true);
+      setErr("");
+      setMsg("");
+      try {
+        const { data } = await wb.restoreCheckpoint(companyId, checkpointId, {
+          publish_now: false,
+          restore_live_state: false,
+        });
+        if (data?.draft) {
+          setSiteSettings(data.draft);
+          applyBrandingFromServer(data.draft);
+        }
+        if (data?.reload_required) {
+          await loadAll(companyId);
+        } else {
+          const pageRes = await wb.listPages(companyId);
+          const pg = (pageRes?.data || []).map((p) =>
+            ensureSectionIds(withLiftedLayout(normalizePage(p)))
+          );
+          setPages(pg);
+          if (pg.length) {
+            setSelectedId(pg[0].id);
+            setEditing(pg[0]);
+          }
+        }
+        await loadCheckpoints(companyId);
+        const restoredCount = Number(data?.page_count || data?.result?.restored_pages || 0);
+        setMsg(`Checkpoint restored (${restoredCount} page${restoredCount === 1 ? "" : "s"}).`);
+      } catch (e) {
+        setErr(
+          e?.response?.data?.message ||
+            e?.response?.data?.error ||
+            e?.message ||
+            "Failed to restore checkpoint."
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [applyBrandingFromServer, companyId, loadAll, loadCheckpoints, setEditing, setPages]
+  );
+
+  const onDeleteCheckpoint = useCallback(
+    async (checkpointId, checkpointTitle) => {
+      if (!companyId || !checkpointId) return;
+      const confirmed = window.confirm(
+        `Delete checkpoint "${checkpointTitle || "Checkpoint"}"?`
+      );
+      if (!confirmed) return;
+
+      setBusy(true);
+      setErr("");
+      setMsg("");
+      try {
+        await wb.deleteCheckpoint(companyId, checkpointId);
+        await loadCheckpoints(companyId);
+        setMsg("Checkpoint deleted.");
+      } catch (e) {
+        setErr(
+          e?.response?.data?.message ||
+            e?.response?.data?.error ||
+            e?.message ||
+            "Failed to delete checkpoint."
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [companyId, loadCheckpoints]
+  );
 
 
   /* ----- Keyboard shortcuts ----- */
@@ -4085,6 +4207,103 @@ const autoProvisionIfEmpty = useCallback(
               {t("manager.visualBuilder.pages.settings.save")}
             </Button>
           </Stack>
+        </Stack>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        id="builder-checkpoints"
+        title="Website checkpoints"
+        description="Save a rollback point before major edits. Latest 20 are kept automatically."
+      >
+        <Stack spacing={1}>
+          <TextField
+            label="Checkpoint name"
+            size="small"
+            value={checkpointName}
+            onChange={(e) => setCheckpointName(e.target.value)}
+            placeholder="Before homepage redesign"
+            fullWidth
+          />
+          <TextField
+            label="Note (optional)"
+            size="small"
+            value={checkpointNote}
+            onChange={(e) => setCheckpointNote(e.target.value)}
+            multiline
+            minRows={2}
+            fullWidth
+          />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SaveIcon fontSize="small" />}
+              onClick={onSaveCheckpoint}
+              disabled={busy || !companyId}
+            >
+              Save checkpoint
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<RefreshIcon fontSize="small" />}
+              onClick={() => loadCheckpoints(companyId)}
+              disabled={busy || !companyId}
+            >
+              Refresh
+            </Button>
+          </Stack>
+
+          <Divider />
+
+          {checkpoints.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No checkpoints saved yet.
+            </Typography>
+          ) : (
+            checkpoints.map((cp) => {
+              const byLabel = cp?.created_by_name
+                ? `${cp.created_by_name}${cp?.created_by_email ? ` (${cp.created_by_email})` : ""}`
+                : cp?.created_by_email || "Unknown";
+              return (
+                <Paper key={cp.id} variant="outlined" sx={{ p: 1.25 }}>
+                  <Stack spacing={0.5}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      {cp.name || `Checkpoint #${cp.id}`}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {cp.created_at ? new Date(cp.created_at).toLocaleString() : "—"} • {Number(cp.page_count || 0)} page(s)
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Saved by: {byLabel}
+                    </Typography>
+                    {cp.note ? (
+                      <Typography variant="body2">{cp.note}</Typography>
+                    ) : null}
+                    <Stack direction="row" spacing={1} sx={{ pt: 0.5 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => onRestoreCheckpoint(cp.id, cp.name)}
+                        disabled={busy}
+                      >
+                        Restore
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        onClick={() => onDeleteCheckpoint(cp.id, cp.name)}
+                        disabled={busy}
+                      >
+                        Delete
+                      </Button>
+                    </Stack>
+                  </Stack>
+                </Paper>
+              );
+            })
+          )}
         </Stack>
       </CollapsibleSection>
 
