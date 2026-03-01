@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Alert,
   Button,
@@ -21,6 +24,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import axios from "axios";
 import { API_BASE_URL } from "../../utils/api";
 import platformAdminApi from "../../api/platformAdminApi";
@@ -531,66 +535,70 @@ export default function Tenant360Page() {
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle1">Users</Typography>
-        <List>
-          {users.map((u) => (
-            <ListItem
-              key={u.id}
-              secondaryAction={
-                String(u?.status || "").toLowerCase() === "active" && !u?.archived_at ? (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    color="error"
-                    onClick={() => disableUser(u.id, u.full_name)}
+        <Stack spacing={1.25} sx={{ mt: 1 }}>
+          {users.map((u) => {
+            const loginTs = u?.last_login?.timestamp || u?.last_login_at || "—";
+            const loginSource = u?.last_login?.source || (u?.last_login_at ? "profile_last_login_at" : "—");
+            const loginOutcome = u?.last_login?.outcome || "—";
+            const ipMasked = u?.last_login?.ip_masked || "—";
+            const geoCountry = u?.last_login?.country || u?.last_risk_geo?.country || "—";
+            const geoRegion = u?.last_login?.region || u?.last_risk_geo?.region || "—";
+            const geoCity = u?.last_login?.city || u?.last_risk_geo?.city || "—";
+            const geoSeenAt = u?.last_login?.timestamp || u?.last_risk_geo?.at || "—";
+
+            return (
+              <Accordion key={u.id} defaultExpanded disableGutters sx={{ borderRadius: 1, "&:before": { display: "none" } }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={{ xs: 0.5, sm: 1.5 }}
+                    sx={{ width: "100%", alignItems: { sm: "center" }, pr: 1 }}
                   >
-                    Disable
-                  </Button>
-                ) : (
-                  <Button size="small" variant="outlined" onClick={() => enableUser(u.id)}>
-                    Enable
-                  </Button>
-                )
-              }
-            >
-              <ListItemText
-                primary={`${u.full_name} (${u.role})`}
-                secondary={
-                  <>
-                    <Typography component="span" variant="body2" color="text.secondary">
+                    <Typography variant="subtitle2" sx={{ flex: 1 }}>
+                      {`${u.full_name} (${u.role})`}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ flex: 1.4 }}>
                       {`${u.email} • ${u.status}`}
                     </Typography>
-                    <br />
-                    <Typography component="span" variant="body2" color="text.secondary">
-                      {u.last_login
-                        ? `Last login: ${u.last_login.timestamp || "—"} • ${u.last_login.outcome || "—"} • IP ${u.last_login.ip_masked || "—"}`
-                        : "Last login: —"}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color={String(u?.status || "").toLowerCase() === "active" && !u?.archived_at ? "error" : "primary"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (String(u?.status || "").toLowerCase() === "active" && !u?.archived_at) {
+                          disableUser(u.id, u.full_name);
+                        } else {
+                          enableUser(u.id);
+                        }
+                      }}
+                    >
+                      {String(u?.status || "").toLowerCase() === "active" && !u?.archived_at ? "Disable" : "Enable"}
+                    </Button>
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Stack spacing={0.6}>
+                    <Typography variant="body2" color="text.secondary">
+                      {`Last login: ${loginTs} • Outcome: ${loginOutcome} • Source: ${loginSource} • IP: ${ipMasked}`}
                     </Typography>
-                    {(u.last_login?.country || u.last_login?.region || u.last_login?.city || u.last_risk_geo) ? (
-                      <>
-                        <br />
-                        <Typography component="span" variant="body2" color="text.secondary">
-                          {`Geo: ${u.last_login?.country || u.last_risk_geo?.country || "—"}, ${u.last_login?.region || u.last_risk_geo?.region || "—"}, ${u.last_login?.city || u.last_risk_geo?.city || "—"}${
-                            u.last_login?.timestamp
-                              ? ` • Seen: ${u.last_login.timestamp}`
-                              : (u.last_risk_geo?.at ? ` • Seen: ${u.last_risk_geo.at}` : "")
-                          }`}
-                        </Typography>
-                      </>
+                    <Typography variant="body2" color="text.secondary">
+                      {`Geo: ${geoCountry}, ${geoRegion}, ${geoCity} • Seen: ${geoSeenAt}`}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {`Phone: ${u.phone || "—"} • Created: ${u.created_at || "—"} • Archived: ${u.archived_at || "—"}`}
+                    </Typography>
+                    {u?.last_login?.user_agent ? (
+                      <Typography variant="body2" color="text.secondary">
+                        {`User-Agent: ${u.last_login.user_agent}`}
+                      </Typography>
                     ) : null}
-                    {u.last_login?.user_agent ? (
-                      <>
-                        <br />
-                        <Typography component="span" variant="body2" color="text.secondary">
-                          {`User-Agent: ${u.last_login.user_agent}`}
-                        </Typography>
-                      </>
-                    ) : null}
-                  </>
-                }
-              />
-            </ListItem>
-          ))}
-        </List>
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
+            );
+          })}
+        </Stack>
       </Paper>
 
       <Paper sx={{ p: 2, mb: 2 }}>
