@@ -30,6 +30,9 @@ import { API_BASE_URL } from "../../utils/api";
 import platformAdminApi from "../../api/platformAdminApi";
 import { APP_ORIGIN } from "../../config/origins";
 
+const TELEMETRY_OK_KEY = "staff_telemetry_ping_ok_count";
+const TELEMETRY_FAIL_KEY = "staff_telemetry_ping_fail_count";
+
 export default function Tenant360Page() {
   const { companyId } = useParams();
   const [tenant, setTenant] = useState(null);
@@ -49,6 +52,7 @@ export default function Tenant360Page() {
   const [disableReason, setDisableReason] = useState("");
   const [disableDialogError, setDisableDialogError] = useState("");
   const [disableTarget, setDisableTarget] = useState(null);
+  const [telemetryHealth, setTelemetryHealth] = useState({ okCount: 0, failCount: 0 });
 
   const load = useCallback(async () => {
     const [tenantRes, usersRes, billingRes, eventsRes, notesRes] = await Promise.all([
@@ -69,6 +73,29 @@ export default function Tenant360Page() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const readHealth = () => ({
+      okCount: Number(sessionStorage.getItem(TELEMETRY_OK_KEY) || 0),
+      failCount: Number(sessionStorage.getItem(TELEMETRY_FAIL_KEY) || 0),
+    });
+    setTelemetryHealth(readHealth());
+    const onPingStatus = (event) => {
+      const detail = event?.detail || {};
+      const okCount = Number(detail.okCount);
+      const failCount = Number(detail.failCount);
+      if (Number.isFinite(okCount) && Number.isFinite(failCount)) {
+        setTelemetryHealth({ okCount, failCount });
+      } else {
+        setTelemetryHealth(readHealth());
+      }
+    };
+    window.addEventListener("telemetry:ping-status", onPingStatus);
+    return () => {
+      window.removeEventListener("telemetry:ping-status", onPingStatus);
+    };
+  }, []);
 
   const openDisableDialog = (target) => {
     setDisableTarget(target);
@@ -250,6 +277,19 @@ export default function Tenant360Page() {
     domainDiag?.cdn_provider === "cloudflare" &&
     (domainDiag?.domain_status === "verified" || domainDiag?.verified_at) &&
     domainDiag?.ssl_status === "error";
+  const formatAge = (value) => {
+    if (!value || value === "—") return "—";
+    const ts = new Date(value).getTime();
+    if (!Number.isFinite(ts)) return "—";
+    const diffSec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `${diffDay}d ago`;
+  };
 
   return (
     <Box>
@@ -534,7 +574,16 @@ export default function Tenant360Page() {
       </Paper>
 
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="subtitle1">Users</Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ alignItems: { sm: "center" }, mb: 0.5 }}>
+          <Typography variant="subtitle1" sx={{ flex: 1 }}>Users</Typography>
+          <Chip
+            size="small"
+            label={`Telemetry health: ok ${telemetryHealth.okCount} / fail ${telemetryHealth.failCount}`}
+            color={telemetryHealth.failCount > 0 ? "warning" : "success"}
+            variant={telemetryHealth.failCount > 0 ? "outlined" : "filled"}
+            sx={badgeSx}
+          />
+        </Stack>
         <Stack spacing={1.25} sx={{ mt: 1 }}>
           {users.map((u) => {
             const loginTs = u?.last_login?.timestamp || u?.last_login_at || "—";
@@ -552,6 +601,7 @@ export default function Tenant360Page() {
             const lastSeenCountry = u?.last_seen?.country || "—";
             const lastSeenRegion = u?.last_seen?.region || "—";
             const lastSeenCity = u?.last_seen?.city || "—";
+            const lastSeenAge = formatAge(lastSeenAt);
 
             return (
               <Accordion key={u.id} defaultExpanded disableGutters sx={{ borderRadius: 1, "&:before": { display: "none" } }}>
@@ -593,7 +643,7 @@ export default function Tenant360Page() {
                       {`Geo: ${geoCountry}, ${geoRegion}, ${geoCity} • Seen: ${geoSeenAt}`}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {`Last seen: ${lastSeenAt} • Source: ${lastSeenSource} • Page: ${lastSeenPage} • IP: ${lastSeenIp}`}
+                      {`Last seen: ${lastSeenAt} (${lastSeenAge}) • Source: ${lastSeenSource} • Page: ${lastSeenPage} • IP: ${lastSeenIp}`}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {`Last seen geo: ${lastSeenCountry}, ${lastSeenRegion}, ${lastSeenCity}`}

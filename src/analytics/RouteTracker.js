@@ -4,10 +4,29 @@ import { trackEvent, trackPageview } from "./ga";
 import { api } from "../utils/api";
 import { getOrCreateTelemetrySessionId, isStaffSession } from "./staffTelemetry";
 
+const TELEMETRY_OK_KEY = "staff_telemetry_ping_ok_count";
+const TELEMETRY_FAIL_KEY = "staff_telemetry_ping_fail_count";
+
 const RouteTracker = () => {
   const location = useLocation();
   const lastPathRef = useRef("");
   const lastPingRef = useRef(0);
+  const routePingTimerRef = useRef(null);
+
+  const reportPingHealth = (ok) => {
+    if (typeof window === "undefined") return;
+    const okCount = Number(sessionStorage.getItem(TELEMETRY_OK_KEY) || 0);
+    const failCount = Number(sessionStorage.getItem(TELEMETRY_FAIL_KEY) || 0);
+    const nextOk = ok ? okCount + 1 : okCount;
+    const nextFail = ok ? failCount : failCount + 1;
+    sessionStorage.setItem(TELEMETRY_OK_KEY, String(nextOk));
+    sessionStorage.setItem(TELEMETRY_FAIL_KEY, String(nextFail));
+    window.dispatchEvent(
+      new CustomEvent("telemetry:ping-status", {
+        detail: { okCount: nextOk, failCount: nextFail, ok },
+      })
+    );
+  };
 
   const sendStaffTelemetryPing = async (source) => {
     if (typeof document === "undefined") return;
@@ -24,7 +43,9 @@ const RouteTracker = () => {
         session_id: sessionId,
       });
       lastPingRef.current = Date.now();
+      reportPingHealth(true);
     } catch {
+      reportPingHealth(false);
       // Intentionally silent: telemetry must never block UX.
     }
   };
@@ -42,7 +63,20 @@ const RouteTracker = () => {
       trackEvent({ action: "demo_request", label: path });
     }
 
-    sendStaffTelemetryPing("route_change");
+    if (routePingTimerRef.current) {
+      window.clearTimeout(routePingTimerRef.current);
+    }
+    routePingTimerRef.current = window.setTimeout(() => {
+      sendStaffTelemetryPing("route_change");
+      routePingTimerRef.current = null;
+    }, 450);
+
+    return () => {
+      if (routePingTimerRef.current) {
+        window.clearTimeout(routePingTimerRef.current);
+        routePingTimerRef.current = null;
+      }
+    };
   }, [location]);
 
   useEffect(() => {
