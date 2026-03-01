@@ -545,6 +545,13 @@ export default function Tenant360Page() {
             const geoRegion = u?.last_login?.region || u?.last_risk_geo?.region || "—";
             const geoCity = u?.last_login?.city || u?.last_risk_geo?.city || "—";
             const geoSeenAt = u?.last_login?.timestamp || u?.last_risk_geo?.at || "—";
+            const lastSeenAt = u?.last_seen?.timestamp || "—";
+            const lastSeenSource = u?.last_seen?.source || "—";
+            const lastSeenPage = u?.last_seen?.page || "—";
+            const lastSeenIp = u?.last_seen?.ip_masked || "—";
+            const lastSeenCountry = u?.last_seen?.country || "—";
+            const lastSeenRegion = u?.last_seen?.region || "—";
+            const lastSeenCity = u?.last_seen?.city || "—";
 
             return (
               <Accordion key={u.id} defaultExpanded disableGutters sx={{ borderRadius: 1, "&:before": { display: "none" } }}>
@@ -584,6 +591,12 @@ export default function Tenant360Page() {
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {`Geo: ${geoCountry}, ${geoRegion}, ${geoCity} • Seen: ${geoSeenAt}`}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {`Last seen: ${lastSeenAt} • Source: ${lastSeenSource} • Page: ${lastSeenPage} • IP: ${lastSeenIp}`}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {`Last seen geo: ${lastSeenCountry}, ${lastSeenRegion}, ${lastSeenCity}`}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {`Phone: ${u.phone || "—"} • Created: ${u.created_at || "—"} • Archived: ${u.archived_at || "—"}`}
