@@ -562,7 +562,7 @@ export default function Tenant360Page() {
                     <br />
                     <Typography component="span" variant="body2" color="text.secondary">
                       {u.last_login
-                        ? `Last login: ${u.last_login.timestamp || "—"} • ${u.last_login.outcome || "—"} • IP ${u.last_login.ip_address || u.last_login.ip_masked || "—"}`
+                        ? `Last login: ${u.last_login.timestamp || "—"} • ${u.last_login.outcome || "—"} • IP ${u.last_login.ip_masked || "—"}`
                         : "Last login: —"}
                     </Typography>
                     {(u.last_login?.country || u.last_login?.region || u.last_login?.city || u.last_risk_geo) ? (
