@@ -69,6 +69,25 @@ const toSuggestionDateTime = (date, hhmm, timezone) => {
     return `${date} ${hhmm}`;
   }
 };
+const ALL_EMPLOYEES_VALUE = "__ALL_EMPLOYEES__";
+const toWeekKey = (dt) => `${dt.weekYear}-W${String(dt.weekNumber).padStart(2, "0")}`;
+const normalizeIdList = (values) =>
+  (Array.isArray(values) ? values : [])
+    .map((v) => Number(v))
+    .filter((v) => Number.isFinite(v));
+const buildWeekKeysInRange = (startDate, endDate) => {
+  const start = DateTime.fromISO(startDate || "");
+  const end = DateTime.fromISO(endDate || "");
+  if (!start.isValid || !end.isValid || end < start) return [];
+  let cursor = start.startOf("day");
+  const last = end.startOf("day");
+  const out = new Set();
+  while (cursor <= last) {
+    out.add(toWeekKey(cursor));
+    cursor = cursor.plus({ days: 1 });
+  }
+  return Array.from(out).sort();
+};
 
 const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = [], onApplied }) => {
   const autoTimezone = useMemo(() => detectTimezone(), []);
@@ -90,9 +109,14 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [includeRecruiterIds, setIncludeRecruiterIds] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [weeksSpan, setWeeksSpan] = useState(4);
+  const [targetShiftsPerWeek, setTargetShiftsPerWeek] = useState(1);
   const [showUnscheduled, setShowUnscheduled] = useState(false);
   const [availabilityPresence, setAvailabilityPresence] = useState({});
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const weekKeysInRange = useMemo(
+    () => buildWeekKeysInRange(range.start_date, range.end_date),
+    [range.start_date, range.end_date]
+  );
 
   const recruiterNameById = useMemo(() => {
     const m = new Map();
@@ -109,17 +133,25 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     () => new Set(filteredRecruiters.map((r) => Number(r.id))),
     [filteredRecruiters]
   );
+  const effectiveRecruiterIds = useMemo(
+    () =>
+      includeRecruiterIds.length
+        ? normalizeIdList(includeRecruiterIds)
+        : filteredRecruiters.map((r) => Number(r.id)),
+    [includeRecruiterIds, filteredRecruiters]
+  );
 
   const selectedInScopeCount = useMemo(() => {
     let count = 0;
-    includeRecruiterIds.forEach((id) => {
+    effectiveRecruiterIds.forEach((id) => {
       if (scopeRecruiterIds.has(Number(id))) count += 1;
     });
     return count;
-  }, [includeRecruiterIds, scopeRecruiterIds]);
+  }, [effectiveRecruiterIds, scopeRecruiterIds]);
 
-  const scheduledRecruiterIds = useMemo(() => {
+  const { scheduledRecruiterIds, recruiterWeekShiftCounts } = useMemo(() => {
     const out = new Set();
+    const byRecruiter = new Map();
     const start = range.start_date || "";
     const end = range.end_date || "";
     shifts.forEach((s) => {
@@ -135,8 +167,17 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       if (start && dateStr < start) return;
       if (end && dateStr > end) return;
       out.add(rid);
+      const dt = DateTime.fromISO(dateStr);
+      const wk = dt.isValid ? toWeekKey(dt) : null;
+      if (!wk) return;
+      if (!byRecruiter.has(rid)) byRecruiter.set(rid, {});
+      const rec = byRecruiter.get(rid);
+      rec[wk] = (rec[wk] || 0) + 1;
     });
-    return out;
+    return {
+      scheduledRecruiterIds: out,
+      recruiterWeekShiftCounts: byRecruiter,
+    };
   }, [shifts, scopeRecruiterIds, range.start_date, range.end_date]);
 
   const unscheduledRecruiters = useMemo(
@@ -146,6 +187,37 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
   const scheduledCount = scheduledRecruiterIds.size;
   const unscheduledCount = unscheduledRecruiters.length;
+
+  const { fullScheduledCount, partialScheduledCount, belowTargetRecruiters } = useMemo(() => {
+    let full = 0;
+    let partial = 0;
+    const below = [];
+    const target = Math.max(1, Number(targetShiftsPerWeek) || 1);
+    filteredRecruiters.forEach((r) => {
+      const rid = Number(r.id);
+      const weekCounts = recruiterWeekShiftCounts.get(rid) || {};
+      if (!weekKeysInRange.length) {
+        below.push(r);
+        return;
+      }
+      let weeksMeetingTarget = 0;
+      let anyShift = false;
+      weekKeysInRange.forEach((wk) => {
+        const c = Number(weekCounts[wk] || 0);
+        if (c > 0) anyShift = true;
+        if (c >= target) weeksMeetingTarget += 1;
+      });
+      if (weeksMeetingTarget === weekKeysInRange.length) {
+        full += 1;
+      } else if (anyShift) {
+        partial += 1;
+      }
+      if (weeksMeetingTarget < weekKeysInRange.length) {
+        below.push(r);
+      }
+    });
+    return { fullScheduledCount: full, partialScheduledCount: partial, belowTargetRecruiters: below };
+  }, [filteredRecruiters, recruiterWeekShiftCounts, weekKeysInRange, targetShiftsPerWeek]);
 
   const buildPayload = () => {
     const normalizedCoverage = coverage
@@ -174,7 +246,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       range,
       coverage: normalizedCoverage,
       filters: {
-        include_recruiter_ids: includeRecruiterIds,
+        include_recruiter_ids: effectiveRecruiterIds,
         respect_leaves: true,
         respect_existing_shifts: true,
         respect_break_policy: true,
@@ -212,14 +284,20 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     setRange((prev) => ({ ...prev, end_date: end }));
   };
 
-  const handleSuggest = async () => {
+  const handleSuggest = async ({ onlyBelowTarget = false } = {}) => {
     setLoading(true);
     setError("");
     setSuccess("");
     try {
       const payload = buildPayload();
+      if (onlyBelowTarget) {
+        payload.filters.include_recruiter_ids = belowTargetRecruiters.map((r) => r.id);
+      }
       if (!payload.coverage.length) {
         throw new Error("Add at least one valid coverage row.");
+      }
+      if (!payload.filters.include_recruiter_ids?.length) {
+        throw new Error("No eligible employees in current filter.");
       }
       const { data } = await smartShifts.manager.suggest(payload);
       setLatestRun(data?.run || null);
@@ -306,12 +384,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   };
 
   const handleSelectAllFilteredEmployees = () => {
-    const ids = filteredRecruiters.map((r) => r.id);
+    const ids = filteredRecruiters.map((r) => Number(r.id));
     setIncludeRecruiterIds(ids);
   };
 
   const handleClearSelectedEmployees = () => {
     setIncludeRecruiterIds([]);
+  };
+
+  const handleSelectUnscheduledEmployees = () => {
+    setIncludeRecruiterIds(unscheduledRecruiters.map((r) => Number(r.id)));
   };
 
   useEffect(() => {
@@ -415,13 +497,23 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               multiple
               label="Employees"
               value={includeRecruiterIds}
-              onChange={(e) => setIncludeRecruiterIds(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.includes(ALL_EMPLOYEES_VALUE)) {
+                  setIncludeRecruiterIds(filteredRecruiters.map((r) => Number(r.id)));
+                  return;
+                }
+                setIncludeRecruiterIds(normalizeIdList(value));
+              }}
               renderValue={(selected) =>
-                selected
+                (selected.length ? selected : filteredRecruiters.map((r) => Number(r.id)))
                   .map((id) => recruiterNameById.get(id) || `#${id}`)
                   .join(", ")
               }
             >
+              <MenuItem value={ALL_EMPLOYEES_VALUE}>
+                <em>All employees</em>
+              </MenuItem>
               {filteredRecruiters.map((r) => (
                 <MenuItem key={r.id} value={r.id}>
                   {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
@@ -434,6 +526,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           <Button variant="outlined" size="small" onClick={handleSelectAllFilteredEmployees}>
             Select all in {selectedDepartment ? "department" : "list"}
           </Button>
+          <Button variant="outlined" size="small" onClick={handleSelectUnscheduledEmployees}>
+            Select unscheduled
+          </Button>
           <Button variant="text" size="small" onClick={handleClearSelectedEmployees}>
             Clear selection
           </Button>
@@ -441,7 +536,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
           <Chip label={`Employees in dept: ${filteredRecruiters.length}`} />
           <Chip label={`Selected: ${selectedInScopeCount}`} />
-          <Chip label={`Scheduled in range: ${scheduledCount}`} color={scheduledCount > 0 ? "success" : "default"} />
+          <Chip label={`Has shifts in range: ${scheduledCount}`} color={scheduledCount > 0 ? "success" : "default"} />
+          <Chip label={`Fully scheduled: ${fullScheduledCount}`} color={fullScheduledCount > 0 ? "success" : "default"} />
+          <Chip label={`Partial: ${partialScheduledCount}`} color={partialScheduledCount > 0 ? "warning" : "default"} />
           <Chip
             label={`Unscheduled: ${unscheduledCount}`}
             color={unscheduledCount > 0 ? "warning" : "success"}
@@ -456,7 +553,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
             {availabilityLoading ? (
               <Typography variant="body2" color="text.secondary">Loading availability status...</Typography>
             ) : unscheduledRecruiters.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">All filtered employees have shifts in this range.</Typography>
+              <Typography variant="body2" color="text.secondary">All filtered employees have at least one shift in this range.</Typography>
             ) : (
               <Stack spacing={0.75}>
                 {unscheduledRecruiters.map((r) => (
@@ -476,6 +573,14 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           </Paper>
         </Collapse>
         <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} flexWrap="wrap" useFlexGap>
+          <TextField
+            size="small"
+            type="number"
+            label="Target shifts/week"
+            value={targetShiftsPerWeek}
+            onChange={(e) => setTargetShiftsPerWeek(Math.max(1, Number(e.target.value) || 1))}
+            sx={{ width: 160 }}
+          />
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>Plan weeks</InputLabel>
             <Select
@@ -697,8 +802,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           <Button variant="text" onClick={() => setShowAdvanced((v) => !v)}>
             {showAdvanced ? "Hide advanced" : "Show advanced"}
           </Button>
-          <Button variant="contained" onClick={handleSuggest} disabled={loading}>
+          <Button variant="contained" onClick={() => handleSuggest()} disabled={loading}>
             Generate Suggestions
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => handleSuggest({ onlyBelowTarget: true })}
+            disabled={loading || belowTargetRecruiters.length === 0}
+          >
+            Fill Gaps
           </Button>
           <Button variant="contained" color="success" onClick={handleApply} disabled={loading || !selectedSuggestionIds.length}>
             Apply Selected
