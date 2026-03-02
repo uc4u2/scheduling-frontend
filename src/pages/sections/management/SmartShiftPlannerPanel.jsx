@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -19,12 +22,14 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { DateTime } from "luxon";
 import { api, smartShifts } from "../../../utils/api";
 import { isoFromParts } from "../../../utils/datetime";
 
 const ALL_EMPLOYEES_VALUE = "__ALL_EMPLOYEES__";
+const DEFAULT_VISIBLE_SUGGESTIONS = 50;
 
 const DEFAULT_COVERAGE = {
   coverage_id: "",
@@ -96,8 +101,23 @@ const buildWeekKeysInRange = (startDate, endDate) => {
   return Array.from(out).sort();
 };
 
+const buildWeekLabel = (weekKey) => {
+  const [yearPart, weekPart] = String(weekKey || "").split("-W");
+  const year = Number(yearPart);
+  const week = Number(weekPart);
+  if (!Number.isFinite(year) || !Number.isFinite(week)) return String(weekKey || "Week");
+  const start = DateTime.fromObject({ weekYear: year, weekNumber: week, weekday: 1 });
+  const end = start.plus({ days: 6 });
+  if (!start.isValid || !end.isValid) return `Week ${week}`;
+  return `Week ${week} (${start.toFormat("LLL d")} - ${end.toFormat("LLL d")})`;
+};
+
+const hasSuggestionWarnings = (suggestion) =>
+  Array.isArray(suggestion?.conflicts) && suggestion.conflicts.length > 0;
+
 const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = [], onApplied }) => {
   const autoTimezone = useMemo(() => detectTimezone(), []);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -110,6 +130,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
   const [coverage, setCoverage] = useState([{ ...DEFAULT_COVERAGE, timezone: autoTimezone }]);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
   const [suggestions, setSuggestions] = useState([]);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState([]);
   const [latestRun, setLatestRun] = useState(null);
@@ -121,13 +142,24 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [weeksSpan, setWeeksSpan] = useState(4);
   const [targetShiftsPerWeek, setTargetShiftsPerWeek] = useState(1);
   const [onlyWithAvailability, setOnlyWithAvailability] = useState(false);
+
   const [showUnscheduled, setShowUnscheduled] = useState(false);
   const [availabilityPresence, setAvailabilityPresence] = useState({});
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
 
+  const [groupMode, setGroupMode] = useState("week");
+  const [weekFocus, setWeekFocus] = useState("current");
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+  const [warningsOnly, setWarningsOnly] = useState(false);
+  const [suggestionEmployeeFilter, setSuggestionEmployeeFilter] = useState("");
+  const [visibleSuggestionCount, setVisibleSuggestionCount] = useState(DEFAULT_VISIBLE_SUGGESTIONS);
+  const [expandedGroups, setExpandedGroups] = useState({});
+
   const recruiterNameById = useMemo(() => {
     const map = new Map();
-    recruiters.forEach((r) => map.set(Number(r.id), r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim()));
+    recruiters.forEach((r) => {
+      map.set(Number(r.id), r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim());
+    });
     return map;
   }, [recruiters]);
 
@@ -269,6 +301,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     return base.filter((id) => allowed.has(id));
   }, [effectiveRecruiterIds, onlyWithAvailability, availabilityFilteredRecruiterIds]);
 
+  const currentWeekKey = useMemo(() => {
+    const dt = DateTime.fromISO(range.start_date || "");
+    return dt.isValid ? toWeekKey(dt) : "";
+  }, [range.start_date]);
+
   const buildPayload = () => {
     const normalizedCoverage = coverage
       .filter((c) => c.start_time && c.end_time && Number(c.headcount || 0) > 0)
@@ -349,10 +386,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       }
 
       const { data } = await smartShifts.manager.suggest(payload);
-      setLatestRun(data?.run || null);
       const list = Array.isArray(data?.suggestions) ? data.suggestions : [];
+      setLatestRun(data?.run || null);
       setSuggestions(list);
       setSelectedSuggestionIds(list.map((s) => s.suggestion_id));
+      setVisibleSuggestionCount(DEFAULT_VISIBLE_SUGGESTIONS);
       setSuccess(`Generated ${list.length} suggestions.`);
 
       const runsRes = await smartShifts.manager.listRuns(20);
@@ -406,7 +444,6 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   };
 
   const handleSeedDefaultAvailability = async () => {
-    // Seed action should also restore planner defaults in the UI.
     setCoverage([
       {
         ...DEFAULT_COVERAGE,
@@ -428,7 +465,6 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     setLoading(true);
     setError("");
     setSuccess("");
-
     try {
       const days = [1, 2, 3, 4, 5];
       let created = 0;
@@ -472,14 +508,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     setError("");
     try {
       const { data } = await smartShifts.manager.getRun(runId);
+      const list = Array.isArray(data?.suggestions) ? data.suggestions : [];
       setRunDetail(data || null);
       setLatestRun(data?.run || null);
-      setSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+      setSuggestions(list);
       setSelectedSuggestionIds(
-        (data?.suggestions || [])
+        list
           .filter((s) => (s.status || "").toLowerCase() !== "failed")
           .map((s) => s.suggestion_id)
       );
+      setVisibleSuggestionCount(DEFAULT_VISIBLE_SUGGESTIONS);
     } catch (e) {
       setError(e?.response?.data?.error || "Failed to load run details.");
     } finally {
@@ -500,10 +538,106 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
   const handleSelectAllFilteredEmployees = () => setIncludeRecruiterIds(filteredRecruiters.map((r) => Number(r.id)));
   const handleClearSelectedEmployees = () => setIncludeRecruiterIds([]);
-  const handleSelectUnscheduledEmployees = () =>
-    setIncludeRecruiterIds(unscheduledRecruiters.map((r) => Number(r.id)));
-  const handleSelectBelowTargetEmployees = () =>
-    setIncludeRecruiterIds(belowTargetRecruiters.map((r) => Number(r.id)));
+  const handleSelectUnscheduledEmployees = () => setIncludeRecruiterIds(unscheduledRecruiters.map((r) => Number(r.id)));
+  const handleSelectBelowTargetEmployees = () => setIncludeRecruiterIds(belowTargetRecruiters.map((r) => Number(r.id)));
+
+  const suggestionsWithMeta = useMemo(() => {
+    return suggestions.map((s) => {
+      const dt = DateTime.fromISO(String(s?.date || ""));
+      const weekKey = dt.isValid ? toWeekKey(dt) : "unknown";
+      const dayKey = dt.isValid ? dt.toFormat("yyyy-MM-dd") : String(s?.date || "unknown");
+      const employeeKey = String(s?.recruiter_id || "unknown");
+      return {
+        ...s,
+        _weekKey: weekKey,
+        _weekLabel: buildWeekLabel(weekKey),
+        _dayKey: dayKey,
+        _dayLabel: dt.isValid ? dt.toFormat("ccc, LLL d") : dayKey,
+        _employeeKey: employeeKey,
+      };
+    });
+  }, [suggestions]);
+
+  const suggestionWeekOptions = useMemo(() => {
+    const set = new Set(suggestionsWithMeta.map((s) => s._weekKey).filter(Boolean));
+    return Array.from(set).sort();
+  }, [suggestionsWithMeta]);
+
+  const focusedWeekKey = useMemo(() => {
+    if (weekFocus === "all") return "all";
+    if (weekFocus === "current") return currentWeekKey || "all";
+    return weekFocus;
+  }, [weekFocus, currentWeekKey]);
+
+  const filteredSuggestionRows = useMemo(() => {
+    let list = suggestionsWithMeta;
+    if (showSelectedOnly) {
+      const selectedSet = new Set(selectedSuggestionIds);
+      list = list.filter((s) => selectedSet.has(s.suggestion_id));
+    }
+    if (warningsOnly) {
+      list = list.filter((s) => hasSuggestionWarnings(s));
+    }
+    if (suggestionEmployeeFilter) {
+      list = list.filter((s) => String(s.recruiter_id) === String(suggestionEmployeeFilter));
+    }
+    if (groupMode === "week" && focusedWeekKey !== "all") {
+      list = list.filter((s) => s._weekKey === focusedWeekKey);
+    }
+    return list;
+  }, [
+    suggestionsWithMeta,
+    showSelectedOnly,
+    selectedSuggestionIds,
+    warningsOnly,
+    suggestionEmployeeFilter,
+    groupMode,
+    focusedWeekKey,
+  ]);
+
+  const visibleSuggestionRows = useMemo(
+    () => filteredSuggestionRows.slice(0, visibleSuggestionCount),
+    [filteredSuggestionRows, visibleSuggestionCount]
+  );
+
+  const groupedSuggestionBlocks = useMemo(() => {
+    const buckets = new Map();
+    visibleSuggestionRows.forEach((s) => {
+      let key = s._weekKey;
+      let label = s._weekLabel;
+      if (groupMode === "day") {
+        key = s._dayKey;
+        label = s._dayLabel;
+      } else if (groupMode === "employee") {
+        key = s._employeeKey;
+        label = recruiterNameById.get(Number(s.recruiter_id)) || `Employee #${s.recruiter_id}`;
+      }
+      if (!buckets.has(key)) buckets.set(key, { key, label, items: [] });
+      buckets.get(key).items.push(s);
+    });
+
+    const out = Array.from(buckets.values());
+    out.sort((a, b) => String(a.key).localeCompare(String(b.key)));
+    return out;
+  }, [visibleSuggestionRows, groupMode, recruiterNameById]);
+
+  useEffect(() => {
+    const next = {};
+    groupedSuggestionBlocks.forEach((g, idx) => {
+      next[g.key] = idx === 0;
+    });
+    setExpandedGroups(next);
+  }, [groupMode, focusedWeekKey, visibleSuggestionCount, suggestions.length]);
+
+  const selectedSet = useMemo(() => new Set(selectedSuggestionIds), [selectedSuggestionIds]);
+
+  const suggestionSummary = useMemo(() => {
+    const total = filteredSuggestionRows.length;
+    const selected = filteredSuggestionRows.filter((s) => selectedSet.has(s.suggestion_id)).length;
+    const warnings = filteredSuggestionRows.filter((s) => hasSuggestionWarnings(s)).length;
+    const fillRate = total > 0 ? Math.round((selected / total) * 100) : 0;
+    return { total, selected, warnings, fillRate };
+  }, [filteredSuggestionRows, selectedSet]);
 
   const scheduledCount = scheduledRecruiterIds.size;
   const unscheduledCount = unscheduledRecruiters.length;
@@ -910,53 +1044,144 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           </Alert>
         ) : null}
 
-        {suggestions.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">No suggestions yet.</Typography>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mb: 1.25 }} flexWrap="wrap" useFlexGap>
+          <Chip label={`Suggestions: ${suggestionSummary.total}`} />
+          <Chip label={`Selected: ${suggestionSummary.selected}`} color={suggestionSummary.selected > 0 ? "primary" : "default"} />
+          <Chip label={`Coverage fill: ${suggestionSummary.fillRate}%`} color={suggestionSummary.fillRate >= 70 ? "success" : "warning"} />
+          <Chip label={`Warnings: ${suggestionSummary.warnings}`} color={suggestionSummary.warnings > 0 ? "warning" : "default"} />
+        </Stack>
+
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mb: 1.25 }} flexWrap="wrap" useFlexGap>
+          <FormControl size="small" sx={{ minWidth: 170 }}>
+            <InputLabel>Group by</InputLabel>
+            <Select label="Group by" value={groupMode} onChange={(e) => setGroupMode(e.target.value)}>
+              <MenuItem value="week">Week</MenuItem>
+              <MenuItem value="day">Day</MenuItem>
+              <MenuItem value="employee">Employee</MenuItem>
+            </Select>
+          </FormControl>
+
+          {groupMode === "week" ? (
+            <FormControl size="small" sx={{ minWidth: 190 }}>
+              <InputLabel>Week focus</InputLabel>
+              <Select label="Week focus" value={weekFocus} onChange={(e) => setWeekFocus(e.target.value)}>
+                <MenuItem value="current">Current viewed week</MenuItem>
+                <MenuItem value="all">All weeks</MenuItem>
+                {suggestionWeekOptions.map((wk) => (
+                  <MenuItem key={wk} value={wk}>{buildWeekLabel(wk)}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : null}
+
+          <FormControl size="small" sx={{ minWidth: 230 }}>
+            <InputLabel>Employee filter</InputLabel>
+            <Select
+              label="Employee filter"
+              value={suggestionEmployeeFilter}
+              onChange={(e) => setSuggestionEmployeeFilter(e.target.value)}
+            >
+              <MenuItem value="">All employees</MenuItem>
+              {filteredRecruiters.map((r) => (
+                <MenuItem key={r.id} value={String(r.id)}>
+                  {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControlLabel
+            control={<Switch checked={showSelectedOnly} onChange={(e) => setShowSelectedOnly(e.target.checked)} />}
+            label="Show selected only"
+          />
+          <FormControlLabel
+            control={<Switch checked={warningsOnly} onChange={(e) => setWarningsOnly(e.target.checked)} />}
+            label="Warnings only"
+          />
+        </Stack>
+
+        {filteredSuggestionRows.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">No suggestions for current filters.</Typography>
         ) : (
           <Stack spacing={1}>
-            {suggestions.map((s) => {
-              const selected = selectedSuggestionIds.includes(s.suggestion_id);
-              const recName = recruiterNameById.get(Number(s.recruiter_id)) || `#${s.recruiter_id}`;
-              return (
-                <Stack
-                  key={s.suggestion_id}
-                  direction={{ xs: "column", md: "row" }}
-                  spacing={1.25}
-                  justifyContent="space-between"
-                  alignItems={{ xs: "flex-start", md: "center" }}
-                  sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}
-                >
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ md: "center" }}>
-                    <Checkbox
-                      checked={selected}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedSuggestionIds((prev) => [...prev, s.suggestion_id]);
-                        else setSelectedSuggestionIds((prev) => prev.filter((id) => id !== s.suggestion_id));
-                      }}
-                    />
-                    <Typography variant="body2" fontWeight={600}>{recName}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {toSuggestionDateTime(s.date, s.start_time, s.timezone)} - {toSuggestionDateTime(s.date, s.end_time, s.timezone)}
-                    </Typography>
-                    <Chip size="small" label={`Score ${Number(s.score || 0).toFixed(2)}`} />
-                    <Chip size="small" variant="outlined" label={s.coverage_id || "coverage"} />
-                    {s.location_id ? (
-                      <Chip
-                        size="small"
-                        variant="outlined"
-                        label={
-                          departments.find((d) => Number(d.id) === Number(s.location_id))?.name ||
-                          `Department ${s.location_id}`
-                        }
-                      />
-                    ) : null}
+            {groupedSuggestionBlocks.map((group) => (
+              <Accordion
+                key={group.key}
+                expanded={Boolean(expandedGroups[group.key])}
+                onChange={(_, expanded) => setExpandedGroups((prev) => ({ ...prev, [group.key]: expanded }))}
+                disableGutters
+                sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1.5, overflow: "hidden" }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                    <Typography variant="body2" fontWeight={700}>{group.label}</Typography>
+                    <Chip size="small" label={`${group.items.length} suggestion${group.items.length === 1 ? "" : "s"}`} />
+                    <Chip size="small" label={`${group.items.filter((s) => selectedSet.has(s.suggestion_id)).length} selected`} />
                   </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    {Array.isArray(s.reasons) && s.reasons.length ? s.reasons.join(", ") : "no reasons"}
-                  </Typography>
-                </Stack>
-              );
-            })}
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Stack spacing={1}>
+                    {group.items.map((s) => {
+                      const selected = selectedSet.has(s.suggestion_id);
+                      const recName = recruiterNameById.get(Number(s.recruiter_id)) || `#${s.recruiter_id}`;
+                      const warnings = hasSuggestionWarnings(s);
+                      return (
+                        <Stack
+                          key={s.suggestion_id}
+                          direction={{ xs: "column", md: "row" }}
+                          spacing={1.25}
+                          justifyContent="space-between"
+                          alignItems={{ xs: "flex-start", md: "center" }}
+                          sx={{ p: 1.25, border: "1px solid", borderColor: warnings ? "warning.main" : "divider", borderRadius: 1.5 }}
+                        >
+                          <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ md: "center" }}>
+                            <Checkbox
+                              checked={selected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedSuggestionIds((prev) => [...prev, s.suggestion_id]);
+                                } else {
+                                  setSelectedSuggestionIds((prev) => prev.filter((id) => id !== s.suggestion_id));
+                                }
+                              }}
+                            />
+                            <Typography variant="body2" fontWeight={600}>{recName}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {toSuggestionDateTime(s.date, s.start_time, s.timezone)} - {toSuggestionDateTime(s.date, s.end_time, s.timezone)}
+                            </Typography>
+                            <Chip size="small" label={`Score ${Number(s.score || 0).toFixed(2)}`} />
+                            <Chip size="small" variant="outlined" label={s.coverage_id || "coverage"} />
+                            {warnings ? <Chip size="small" color="warning" label={`${s.conflicts.length} warning(s)`} /> : null}
+                            {s.location_id ? (
+                              <Chip
+                                size="small"
+                                variant="outlined"
+                                label={
+                                  departments.find((d) => Number(d.id) === Number(s.location_id))?.name ||
+                                  `Department ${s.location_id}`
+                                }
+                              />
+                            ) : null}
+                          </Stack>
+                          <Typography variant="caption" color="text.secondary">
+                            {Array.isArray(s.reasons) && s.reasons.length ? s.reasons.join(", ") : "no reasons"}
+                          </Typography>
+                        </Stack>
+                      );
+                    })}
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
+            ))}
+
+            {visibleSuggestionRows.length < filteredSuggestionRows.length ? (
+              <Button
+                variant="outlined"
+                onClick={() => setVisibleSuggestionCount((prev) => prev + DEFAULT_VISIBLE_SUGGESTIONS)}
+              >
+                Load more ({filteredSuggestionRows.length - visibleSuggestionRows.length} remaining)
+              </Button>
+            ) : null}
           </Stack>
         )}
       </Paper>
@@ -996,7 +1221,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                 sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}
               >
                 <Typography variant="body2">
-                  {r.run_id} • {r.status} • {r.range_start_date} to {r.range_end_date} ({r.timezone || "UTC"})
+                  {String(r.run_id).slice(0, 10)}... • {r.status} • {r.range_start_date} to {r.range_end_date} ({r.timezone || "UTC"})
                 </Typography>
                 <Button size="small" onClick={() => loadRunDetail(r.run_id)}>Open</Button>
               </Stack>
