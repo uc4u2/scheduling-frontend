@@ -16,6 +16,7 @@ import {
   Divider,
   Drawer,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
@@ -70,6 +71,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 import { nanoid } from "nanoid";
 import { Link as RouterLink, useLocation } from "react-router-dom";
@@ -1485,6 +1487,18 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [checkpoints, setCheckpoints] = useState([]);
   const [checkpointName, setCheckpointName] = useState("");
   const [checkpointNote, setCheckpointNote] = useState("");
+  const [checkpointDialog, setCheckpointDialog] = useState({
+    open: false,
+    mode: null, // "restore" | "delete"
+    publishNow: false,
+    checkpoint: null,
+  });
+  const [checkpointPreview, setCheckpointPreview] = useState({
+    open: false,
+    loading: false,
+    error: "",
+    checkpoint: null,
+  });
   const [selectedPageIds, setSelectedPageIds] = useState([]);
   const [navDraft, setNavDraft] = useState(null);
   const [navSaving, setNavSaving] = useState(false);
@@ -2756,20 +2770,45 @@ const autoProvisionIfEmpty = useCallback(
     }
   }, [checkpointName, checkpointNote, companyId, loadCheckpoints]);
 
-  const onRestoreCheckpoint = useCallback(
-    async (checkpointId, checkpointTitle) => {
-      if (!companyId || !checkpointId) return;
-      const confirmed = window.confirm(
-        `Restore checkpoint "${checkpointTitle || "Checkpoint"}"? This will replace your current draft pages.`
-      );
-      if (!confirmed) return;
+  const requestRestoreCheckpoint = useCallback((checkpoint, publishNow = false) => {
+    if (!checkpoint?.id) return;
+    setCheckpointDialog({
+      open: true,
+      mode: "restore",
+      publishNow: Boolean(publishNow),
+      checkpoint,
+    });
+  }, []);
 
-      setBusy(true);
-      setErr("");
-      setMsg("");
-      try {
-        const { data } = await wb.restoreCheckpoint(companyId, checkpointId, {
-          publish_now: false,
+  const requestDeleteCheckpoint = useCallback((checkpoint) => {
+    if (!checkpoint?.id) return;
+    setCheckpointDialog({
+      open: true,
+      mode: "delete",
+      publishNow: false,
+      checkpoint,
+    });
+  }, []);
+
+  const closeCheckpointDialog = useCallback(() => {
+    setCheckpointDialog({ open: false, mode: null, publishNow: false, checkpoint: null });
+  }, []);
+
+  const confirmCheckpointAction = useCallback(async () => {
+    const checkpoint = checkpointDialog?.checkpoint;
+    if (!companyId || !checkpoint?.id || !checkpointDialog?.mode) return;
+
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    try {
+      if (checkpointDialog.mode === "delete") {
+        await wb.deleteCheckpoint(companyId, checkpoint.id);
+        await loadCheckpoints(companyId);
+        setMsg("Checkpoint deleted.");
+      } else if (checkpointDialog.mode === "restore") {
+        const { data } = await wb.restoreCheckpoint(companyId, checkpoint.id, {
+          publish_now: Boolean(checkpointDialog.publishNow),
           restore_live_state: false,
         });
         if (data?.draft) {
@@ -2791,49 +2830,51 @@ const autoProvisionIfEmpty = useCallback(
         }
         await loadCheckpoints(companyId);
         const restoredCount = Number(data?.page_count || data?.result?.restored_pages || 0);
-        setMsg(`Checkpoint restored (${restoredCount} page${restoredCount === 1 ? "" : "s"}).`);
-      } catch (e) {
-        setErr(
-          e?.response?.data?.message ||
-            e?.response?.data?.error ||
-            e?.message ||
-            "Failed to restore checkpoint."
-        );
-      } finally {
-        setBusy(false);
+        const suffix = checkpointDialog.publishNow ? " and published" : "";
+        setMsg(`Checkpoint restored${suffix} (${restoredCount} page${restoredCount === 1 ? "" : "s"}).`);
       }
-    },
-    [applyBrandingFromServer, companyId, loadAll, loadCheckpoints, setEditing, setPages]
-  );
-
-  const onDeleteCheckpoint = useCallback(
-    async (checkpointId, checkpointTitle) => {
-      if (!companyId || !checkpointId) return;
-      const confirmed = window.confirm(
-        `Delete checkpoint "${checkpointTitle || "Checkpoint"}"?`
+      closeCheckpointDialog();
+    } catch (e) {
+      setErr(
+        e?.response?.data?.message ||
+          e?.response?.data?.error ||
+          e?.message ||
+          "Checkpoint action failed."
       );
-      if (!confirmed) return;
+    } finally {
+      setBusy(false);
+    }
+  }, [
+    applyBrandingFromServer,
+    checkpointDialog,
+    closeCheckpointDialog,
+    companyId,
+    loadAll,
+    loadCheckpoints,
+    setEditing,
+    setPages,
+  ]);
 
-      setBusy(true);
-      setErr("");
-      setMsg("");
-      try {
-        await wb.deleteCheckpoint(companyId, checkpointId);
-        await loadCheckpoints(companyId);
-        setMsg("Checkpoint deleted.");
-      } catch (e) {
-        setErr(
+  const previewCheckpoint = useCallback(async (checkpoint) => {
+    if (!companyId || !checkpoint?.id) return;
+    setCheckpointPreview({ open: true, loading: true, error: "", checkpoint: null });
+    try {
+      const res = await wb.getCheckpoint(companyId, checkpoint.id);
+      const data = res?.data?.checkpoint || null;
+      setCheckpointPreview({ open: true, loading: false, error: "", checkpoint: data });
+    } catch (e) {
+      setCheckpointPreview({
+        open: true,
+        loading: false,
+        error:
           e?.response?.data?.message ||
-            e?.response?.data?.error ||
-            e?.message ||
-            "Failed to delete checkpoint."
-        );
-      } finally {
-        setBusy(false);
-      }
-    },
-    [companyId, loadCheckpoints]
-  );
+          e?.response?.data?.error ||
+          e?.message ||
+          "Failed to load checkpoint preview.",
+        checkpoint: null,
+      });
+    }
+  }, [companyId]);
 
 
   /* ----- Keyboard shortcuts ----- */
@@ -4213,7 +4254,14 @@ const autoProvisionIfEmpty = useCallback(
       <CollapsibleSection
         id="builder-checkpoints"
         title="Website checkpoints"
-        description="Save a rollback point before major edits. Latest 20 are kept automatically."
+        description="Save and restore rollback points for this website."
+        actions={
+          <Tooltip title="Save a rollback point before major edits. Checkpoints store page content, order, SEO fields, and current draft website settings (theme/header/footer/nav). Latest 20 are kept automatically.">
+            <IconButton size="small">
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        }
       >
         <Stack spacing={1}>
           <TextField
@@ -4234,15 +4282,19 @@ const autoProvisionIfEmpty = useCallback(
             fullWidth
           />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<SaveIcon fontSize="small" />}
-              onClick={onSaveCheckpoint}
-              disabled={busy || !companyId}
-            >
-              Save checkpoint
-            </Button>
+            <Tooltip title="Creates a restore point for this website draft: pages, section content, SEO/page settings, and website draft settings.">
+              <span>
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<SaveIcon fontSize="small" />}
+                  onClick={onSaveCheckpoint}
+                  disabled={busy || !companyId}
+                >
+                  Save checkpoint
+                </Button>
+              </span>
+            </Tooltip>
             <Button
               size="small"
               variant="outlined"
@@ -4283,8 +4335,17 @@ const autoProvisionIfEmpty = useCallback(
                     <Stack direction="row" spacing={1} sx={{ pt: 0.5 }}>
                       <Button
                         size="small"
+                        variant="outlined"
+                        startIcon={<VisibilityIcon fontSize="small" />}
+                        onClick={() => previewCheckpoint(cp)}
+                        disabled={busy}
+                      >
+                        Preview
+                      </Button>
+                      <Button
+                        size="small"
                         variant="contained"
-                        onClick={() => onRestoreCheckpoint(cp.id, cp.name)}
+                        onClick={() => requestRestoreCheckpoint(cp, false)}
                         disabled={busy}
                       >
                         Restore
@@ -4292,8 +4353,17 @@ const autoProvisionIfEmpty = useCallback(
                       <Button
                         size="small"
                         variant="outlined"
+                        color="success"
+                        onClick={() => requestRestoreCheckpoint(cp, true)}
+                        disabled={busy}
+                      >
+                        Restore & Publish
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
                         color="error"
-                        onClick={() => onDeleteCheckpoint(cp.id, cp.name)}
+                        onClick={() => requestDeleteCheckpoint(cp)}
                         disabled={busy}
                       >
                         Delete
@@ -6357,6 +6427,101 @@ if (authError) {
             />
           ) : null}
         </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={checkpointDialog.open}
+        onClose={closeCheckpointDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>
+          {checkpointDialog.mode === "delete"
+            ? "Delete checkpoint"
+            : checkpointDialog.publishNow
+            ? "Restore and publish"
+            : "Restore checkpoint"}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2">
+            {checkpointDialog.mode === "delete"
+              ? `Delete "${checkpointDialog.checkpoint?.name || "Checkpoint"}"? This cannot be undone.`
+              : checkpointDialog.publishNow
+              ? `Restore "${checkpointDialog.checkpoint?.name || "Checkpoint"}" and publish immediately?`
+              : `Restore "${checkpointDialog.checkpoint?.name || "Checkpoint"}"? This will replace current draft pages.`}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeCheckpointDialog} disabled={busy}>Cancel</Button>
+          <Button
+            onClick={confirmCheckpointAction}
+            color={checkpointDialog.mode === "delete" ? "error" : "primary"}
+            variant="contained"
+            disabled={busy}
+          >
+            {checkpointDialog.mode === "delete"
+              ? "Delete"
+              : checkpointDialog.publishNow
+              ? "Restore & Publish"
+              : "Restore"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={checkpointPreview.open}
+        onClose={() => setCheckpointPreview({ open: false, loading: false, error: "", checkpoint: null })}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Checkpoint preview</DialogTitle>
+        <DialogContent dividers>
+          {checkpointPreview.loading ? (
+            <Typography variant="body2">Loading checkpoint...</Typography>
+          ) : checkpointPreview.error ? (
+            <Alert severity="error">{checkpointPreview.error}</Alert>
+          ) : (
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {checkpointPreview.checkpoint?.name || "Checkpoint"}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {checkpointPreview.checkpoint?.created_at
+                  ? new Date(checkpointPreview.checkpoint.created_at).toLocaleString()
+                  : "—"}
+              </Typography>
+              {checkpointPreview.checkpoint?.note ? (
+                <Typography variant="body2">{checkpointPreview.checkpoint.note}</Typography>
+              ) : null}
+              <Divider />
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Pages in snapshot
+              </Typography>
+              <List dense sx={{ maxHeight: 280, overflowY: "auto" }}>
+                {Array.isArray(checkpointPreview.checkpoint?.snapshot?.pages) &&
+                checkpointPreview.checkpoint.snapshot.pages.length > 0 ? (
+                  checkpointPreview.checkpoint.snapshot.pages.map((p, idx) => (
+                    <ListItem key={`${p?.slug || "page"}-${idx}`} disablePadding>
+                      <ListItemText
+                        primary={p?.title || p?.slug || `Page ${idx + 1}`}
+                        secondary={`${p?.locale || "en"} • ${p?.slug || "—"}${p?.is_homepage ? " • homepage" : ""}`}
+                      />
+                    </ListItem>
+                  ))
+                ) : (
+                  <ListItem disablePadding>
+                    <ListItemText primary="No pages found in snapshot." />
+                  </ListItem>
+                )}
+              </List>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCheckpointPreview({ open: false, loading: false, error: "", checkpoint: null })}>
+            Close
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );
