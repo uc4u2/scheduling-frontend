@@ -5,6 +5,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  Collapse,
   FormControl,
   IconButton,
   InputLabel,
@@ -18,7 +19,7 @@ import {
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { DateTime } from "luxon";
-import { smartShifts } from "../../../utils/api";
+import { api, smartShifts } from "../../../utils/api";
 import { isoFromParts } from "../../../utils/datetime";
 
 const DEFAULT_COVERAGE = {
@@ -69,7 +70,7 @@ const toSuggestionDateTime = (date, hhmm, timezone) => {
   }
 };
 
-const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }) => {
+const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = [], onApplied }) => {
   const autoTimezone = useMemo(() => detectTimezone(), []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -89,6 +90,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
   const [includeRecruiterIds, setIncludeRecruiterIds] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [weeksSpan, setWeeksSpan] = useState(4);
+  const [showUnscheduled, setShowUnscheduled] = useState(false);
+  const [availabilityPresence, setAvailabilityPresence] = useState({});
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
 
   const recruiterNameById = useMemo(() => {
     const m = new Map();
@@ -100,6 +104,48 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
     if (!selectedDepartment) return recruiters;
     return recruiters.filter((r) => String(r.department_id || "") === String(selectedDepartment));
   }, [recruiters, selectedDepartment]);
+
+  const scopeRecruiterIds = useMemo(
+    () => new Set(filteredRecruiters.map((r) => Number(r.id))),
+    [filteredRecruiters]
+  );
+
+  const selectedInScopeCount = useMemo(() => {
+    let count = 0;
+    includeRecruiterIds.forEach((id) => {
+      if (scopeRecruiterIds.has(Number(id))) count += 1;
+    });
+    return count;
+  }, [includeRecruiterIds, scopeRecruiterIds]);
+
+  const scheduledRecruiterIds = useMemo(() => {
+    const out = new Set();
+    const start = range.start_date || "";
+    const end = range.end_date || "";
+    shifts.forEach((s) => {
+      const rid = Number(s?.recruiter_id);
+      if (!scopeRecruiterIds.has(rid)) return;
+      const dateStr =
+        (s?.date && String(s.date).slice(0, 10)) ||
+        (() => {
+          const dt = DateTime.fromISO(String(s?.clock_in || ""));
+          return dt.isValid ? dt.toFormat("yyyy-MM-dd") : "";
+        })();
+      if (!dateStr) return;
+      if (start && dateStr < start) return;
+      if (end && dateStr > end) return;
+      out.add(rid);
+    });
+    return out;
+  }, [shifts, scopeRecruiterIds, range.start_date, range.end_date]);
+
+  const unscheduledRecruiters = useMemo(
+    () => filteredRecruiters.filter((r) => !scheduledRecruiterIds.has(Number(r.id))),
+    [filteredRecruiters, scheduledRecruiterIds]
+  );
+
+  const scheduledCount = scheduledRecruiterIds.size;
+  const unscheduledCount = unscheduledRecruiters.length;
 
   const buildPayload = () => {
     const normalizedCoverage = coverage
@@ -259,6 +305,45 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
     setIncludeRecruiterIds((prev) => prev.filter((id) => allowed.has(id)));
   };
 
+  const handleSelectAllFilteredEmployees = () => {
+    const ids = filteredRecruiters.map((r) => r.id);
+    setIncludeRecruiterIds(ids);
+  };
+
+  const handleClearSelectedEmployees = () => {
+    setIncludeRecruiterIds([]);
+  };
+
+  useEffect(() => {
+    if (!showUnscheduled) return;
+    let active = true;
+    const loadPresence = async () => {
+      setAvailabilityLoading(true);
+      try {
+        const [rulesRes, exceptionsRes] = await Promise.all([
+          api.get("/api/smart-shifts/availability-rules"),
+          api.get("/api/smart-shifts/exceptions"),
+        ]);
+        const set = new Set();
+        (rulesRes?.data?.items || []).forEach((r) => set.add(Number(r.recruiter_id)));
+        (exceptionsRes?.data?.items || []).forEach((r) => set.add(Number(r.recruiter_id)));
+        const map = {};
+        filteredRecruiters.forEach((r) => {
+          map[r.id] = set.has(Number(r.id));
+        });
+        if (active) setAvailabilityPresence(map);
+      } catch {
+        if (active) setAvailabilityPresence({});
+      } finally {
+        if (active) setAvailabilityLoading(false);
+      }
+    };
+    loadPresence();
+    return () => {
+      active = false;
+    };
+  }, [showUnscheduled, filteredRecruiters]);
+
   return (
     <Stack spacing={2} sx={{ mb: 2 }}>
       <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
@@ -345,6 +430,51 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
             </Select>
           </FormControl>
         </Stack>
+        <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+          <Button variant="outlined" size="small" onClick={handleSelectAllFilteredEmployees}>
+            Select all in {selectedDepartment ? "department" : "list"}
+          </Button>
+          <Button variant="text" size="small" onClick={handleClearSelectedEmployees}>
+            Clear selection
+          </Button>
+        </Stack>
+        <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+          <Chip label={`Employees in dept: ${filteredRecruiters.length}`} />
+          <Chip label={`Selected: ${selectedInScopeCount}`} />
+          <Chip label={`Scheduled in range: ${scheduledCount}`} color={scheduledCount > 0 ? "success" : "default"} />
+          <Chip
+            label={`Unscheduled: ${unscheduledCount}`}
+            color={unscheduledCount > 0 ? "warning" : "success"}
+            variant={unscheduledCount > 0 ? "filled" : "outlined"}
+          />
+          <Button size="small" variant="outlined" onClick={() => setShowUnscheduled((v) => !v)}>
+            {showUnscheduled ? "Hide unscheduled" : "View unscheduled"}
+          </Button>
+        </Stack>
+        <Collapse in={showUnscheduled}>
+          <Paper sx={{ p: 1.25, mt: 1, borderRadius: 1.5 }} variant="outlined">
+            {availabilityLoading ? (
+              <Typography variant="body2" color="text.secondary">Loading availability status...</Typography>
+            ) : unscheduledRecruiters.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">All filtered employees have shifts in this range.</Typography>
+            ) : (
+              <Stack spacing={0.75}>
+                {unscheduledRecruiters.map((r) => (
+                  <Stack key={r.id} direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                    <Typography variant="body2">
+                      {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      color={availabilityPresence[r.id] ? "success" : "warning"}
+                      label={availabilityPresence[r.id] ? "Availability exists" : "No availability submitted"}
+                    />
+                  </Stack>
+                ))}
+              </Stack>
+            )}
+          </Paper>
+        </Collapse>
         <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} flexWrap="wrap" useFlexGap>
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>Plan weeks</InputLabel>
@@ -580,6 +710,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
           Suggestions
         </Typography>
+        {unscheduledCount > 0 ? (
+          <Alert severity="warning" sx={{ mb: 1 }}>
+            Warning: {unscheduledCount} employee{unscheduledCount === 1 ? "" : "s"} in this department have no shifts in this range.
+          </Alert>
+        ) : null}
         {suggestions.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             No suggestions yet.

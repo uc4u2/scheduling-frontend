@@ -31,7 +31,6 @@ const DEFAULT_RULE = {
   start_time: "09:00",
   end_time: "17:00",
   timezone: "",
-  location_id: "",
   status: "active",
 };
 
@@ -51,7 +50,6 @@ const DEFAULT_PREF = {
   min_hours_between_shifts: "",
   allow_split_shifts: false,
   preferred_days: [],
-  preferred_locations: [],
 };
 
 const detectTimezone = () => {
@@ -103,7 +101,6 @@ const SmartShiftAvailabilityTab = () => {
         min_hours_between_shifts: pref?.min_hours_between_shifts ?? "",
         allow_split_shifts: Boolean(pref?.allow_split_shifts),
         preferred_days: Array.isArray(pref?.preferred_days) ? pref.preferred_days : [],
-        preferred_locations: Array.isArray(pref?.preferred_locations) ? pref.preferred_locations : [],
       });
 
       if (!ruleForm.timezone) {
@@ -156,7 +153,7 @@ const SmartShiftAvailabilityTab = () => {
         start_time: ruleForm.start_time,
         end_time: ruleForm.end_time,
         timezone: ruleForm.timezone || undefined,
-        location_id: ruleForm.location_id ? Number(ruleForm.location_id) : null,
+        location_id: null,
         status: ruleForm.status,
       });
       setRuleForm({ ...DEFAULT_RULE, timezone: autoTimezone });
@@ -215,8 +212,22 @@ const SmartShiftAvailabilityTab = () => {
           : preset === "weekends"
           ? { start_time: "10:00", end_time: "18:00" }
           : { start_time: "09:00", end_time: "17:00" };
+      const existing = new Set(
+        (data.rules || [])
+          .map((r) => `${Number(r.day_of_week)}|${String(r.start_time || "").slice(0, 5)}|${String(r.end_time || "").slice(0, 5)}|${String(r.status || "active").toLowerCase()}`)
+      );
+      const toCreate = days.filter(
+        (day) =>
+          !existing.has(
+            `${Number(day)}|${base.start_time}|${base.end_time}|active`
+          )
+      );
+      if (!toCreate.length) {
+        setSuccess("Preset already exists.");
+        return;
+      }
       await Promise.all(
-        days.map((day_of_week) =>
+        toCreate.map((day_of_week) =>
           smartShifts.recruiter.createRule({
             day_of_week,
             start_time: base.start_time,
@@ -259,9 +270,7 @@ const SmartShiftAvailabilityTab = () => {
           : null,
         allow_split_shifts: Boolean(prefForm.allow_split_shifts),
         preferred_days: prefForm.preferred_days,
-        preferred_locations: (prefForm.preferred_locations || [])
-          .map((v) => Number(v))
-          .filter((v) => Number.isFinite(v)),
+        preferred_locations: [],
       });
       setSuccess("Preferences saved.");
       await load();
@@ -361,23 +370,6 @@ const SmartShiftAvailabilityTab = () => {
               placeholder={autoTimezone}
             />
           ) : null}
-          <TextField
-            select
-            size="small"
-            label="Preferred department (optional)"
-            className="smart-shift-field"
-            value={ruleForm.location_id}
-            onChange={(e) => setRuleForm((p) => ({ ...p, location_id: e.target.value }))}
-          >
-            <MenuItem value="">
-              <em>Any department</em>
-            </MenuItem>
-            {departments.map((dept) => (
-              <MenuItem key={dept.id} value={dept.id}>
-                {dept.name || `Department #${dept.id}`}
-              </MenuItem>
-            ))}
-          </TextField>
           <Button variant="contained" onClick={handleCreateRule} fullWidth>
             Add Rule
           </Button>
@@ -571,26 +563,6 @@ const SmartShiftAvailabilityTab = () => {
               {DOW.map((d) => (
                 <MenuItem key={d.value} value={d.value}>
                   {d.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" className="smart-shift-field">
-            <InputLabel>Preferred departments</InputLabel>
-            <Select
-              multiple
-              label="Preferred departments"
-              value={prefForm.preferred_locations}
-              onChange={(e) => setPrefForm((p) => ({ ...p, preferred_locations: e.target.value }))}
-              renderValue={(selected) =>
-                selected
-                  .map((id) => deptNameById.get(Number(id)) || `Department #${id}`)
-                  .join(", ")
-              }
-            >
-              {departments.map((dept) => (
-                <MenuItem key={dept.id} value={dept.id}>
-                  {dept.name || `Department #${dept.id}`}
                 </MenuItem>
               ))}
             </Select>
