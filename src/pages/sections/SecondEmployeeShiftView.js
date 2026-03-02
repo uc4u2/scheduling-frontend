@@ -87,7 +87,7 @@ const SecondEmployeeShiftView = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [myTimeQuickTab, setMyTimeQuickTab] = useState("shift-availability");
+  const [drawerPanel, setDrawerPanel] = useState("shifts");
   const [todayCardCollapsed, setTodayCardCollapsed] = useState(false);
   const [countdownTick, setCountdownTick] = useState(Date.now());
   const [shiftPage, setShiftPage] = useState(1);
@@ -1106,16 +1106,19 @@ const breakTimelineMeta = useMemo(() => {
       </Stack>
       <Stack direction="row" spacing={1} sx={{ mt: 2 }} useFlexGap flexWrap="wrap">
         <Button
-          variant={myTimeQuickTab === "shift-availability" ? "contained" : "outlined"}
-          onClick={() => setMyTimeQuickTab("shift-availability")}
+          variant={drawerOpen && drawerPanel === "availability" ? "contained" : "outlined"}
+          onClick={() => {
+            setDrawerPanel("availability");
+            setDrawerOpen(true);
+          }}
         >
           Shift Availability
         </Button>
         <Button
-          variant={myTimeQuickTab === "view-my-shifts" ? "contained" : "outlined"}
+          variant={drawerOpen && drawerPanel === "shifts" ? "contained" : "outlined"}
           startIcon={<CalendarMonthIcon />}
           onClick={() => {
-            setMyTimeQuickTab("view-my-shifts");
+            setDrawerPanel("shifts");
             setDrawerOpen(true);
           }}
         >
@@ -1123,21 +1126,6 @@ const breakTimelineMeta = useMemo(() => {
         </Button>
       </Stack>
     </Paper>
-
-    {myTimeQuickTab === "shift-availability" && (
-      <Paper
-        elevation={0}
-        sx={{
-          mb: 2,
-          p: 3,
-          borderRadius: 3,
-          border: (theme) => `1px solid ${theme.palette.divider}`,
-          background: (theme) => theme.palette.background.paper,
-        }}
-      >
-        <SmartShiftAvailabilityTab />
-      </Paper>
-    )}
 
     <Paper
       elevation={0}
@@ -1775,12 +1763,32 @@ const breakTimelineMeta = useMemo(() => {
         }}
       >
         <Typography variant="h6" fontWeight={700}>
-          My Shifts
+          {drawerPanel === "availability" ? "Shift Availability" : "My Shifts"}
         </Typography>
         <IconButton onClick={() => setDrawerOpen(false)}>
           <CloseIcon />
         </IconButton>
       </Box>
+
+      <Box sx={{ px: 2, pt: 2 }}>
+        <ToggleButtonGroup
+          size="small"
+          value={drawerPanel}
+          exclusive
+          fullWidth
+          onChange={(_, v) => v && setDrawerPanel(v)}
+        >
+          <ToggleButton value="availability">Shift Availability</ToggleButton>
+          <ToggleButton value="shifts">My Shifts</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
+      {drawerPanel === "availability" ? (
+        <Box sx={{ p: 2, pt: 1.5, overflowY: "auto" }}>
+          <SmartShiftAvailabilityTab />
+        </Box>
+      ) : (
+        <>
 
       {/*  ➤ Opt-out toggle */}
       <FormControlLabel
@@ -2123,6 +2131,8 @@ const breakTimelineMeta = useMemo(() => {
             Incoming Swap Requests
           </Typography>
           <IncomingSwapRequests token={token} />
+        </>
+      )}
         </>
       )}
     </Drawer>
