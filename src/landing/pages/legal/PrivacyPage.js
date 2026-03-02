@@ -15,7 +15,7 @@ const PrivacyPage = () => (
           Privacy Policy
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: November 2025
+          Last updated: March 2, 2026
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -34,6 +34,12 @@ const PrivacyPage = () => (
         <Typography variant="h5">3. How we use information</Typography>
         <Typography variant="body1" color="text.secondary">
           We provide, maintain, and improve Schedulaa features; process bookings, payroll, payments, and website publishing; communicate about services, updates, and marketing (with opt-out); ensure security and compliance; and aggregate analytics for product insights.
+        </Typography>
+      </Stack>
+      <Stack spacing={2}>
+        <Typography variant="h5">3A. Security, fraud prevention, and account integrity</Typography>
+        <Typography variant="body1" color="text.secondary">
+          To protect users and prevent payment abuse, we process security and risk signals such as login outcomes, IP address, device/user-agent, approximate geo data (when available), billing risk events, payment fraud/dispute events, and related operational telemetry. We may use these signals to trigger additional verification, apply temporary review holds, limit abusive traffic, block suspicious payment patterns, or suspend access when required for safety, legal compliance, or platform integrity.
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -58,6 +64,9 @@ const PrivacyPage = () => (
         <Typography variant="h5">7. Data retention</Typography>
         <Typography variant="body1" color="text.secondary">
           We retain data as long as necessary for the purposes described. You can delete content or request deletion by contacting support.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Security and fraud logs are retained for reasonable operational periods and may be shortened or extended when needed for abuse prevention, legal obligations, dispute handling, and auditability. Some admin interfaces display masked values (for example, masked IP) while protected internal systems may retain full values for authorized support and security investigations.
         </Typography>
       </Stack>
       <Stack spacing={2}>

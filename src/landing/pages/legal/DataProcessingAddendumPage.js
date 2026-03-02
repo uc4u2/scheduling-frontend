@@ -24,6 +24,9 @@ const DataProcessingAddendumPage = () => (
         <Typography variant="body1" color="text.secondary">
           We process personal data (employees, clients) on your behalf for bookings, payroll, and scheduling tasks.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          This scope includes security and anti-fraud processing necessary to protect the service, including login audit records, billing risk telemetry, dispute/fraud event linkage, and related operational metadata.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">3. Processor obligations</Typography>
@@ -47,6 +50,9 @@ const DataProcessingAddendumPage = () => (
         <Typography variant="h5">6. Termination</Typography>
         <Typography variant="body1" color="text.secondary">
           Upon request, we delete or return personal data at the end of the services.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Reasonable retention exceptions may apply for security logs, fraud investigations, billing disputes, and compliance obligations.
         </Typography>
       </Stack>
       <Typography variant="body1" color="text.secondary">

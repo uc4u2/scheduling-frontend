@@ -15,7 +15,7 @@ const TermsPage = () => (
           Terms of Service
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: December 2025
+          Last updated: March 2, 2026
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -43,6 +43,9 @@ const TermsPage = () => (
         <Typography variant="h5" component="h2">4. Subscription and payment</Typography>
         <Typography variant="body1" color="text.secondary">
           Plans are billed monthly or annually in advance. Fees are non-refundable unless otherwise stated. Add-ons are charged according to current rates. You authorize us or our payment processor to charge subscription fees to your payment method.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          We may apply fraud-prevention and risk controls to billing flows, including challenge requirements, risk-based holds, velocity limits, and payment method restrictions. We may pause or restrict account functionality while a risk review is active, and restore access when review conditions are satisfied.
         </Typography>
       </Stack>
       <Stack spacing={2}>
@@ -97,6 +100,9 @@ const TermsPage = () => (
         </Typography>
         <Typography variant="body1" color="text.secondary">
           We may take immediate action without notice, including removing content, disabling public pages or domains, or terminating accounts, when necessary to protect users, the platform, our SEO/brand, or to comply with law.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          We may also place an account into a security review state (including review hold or suspension) when payment abuse, fraudulent activity, card testing, account takeover risk, or policy evasion is reasonably suspected.
         </Typography>
       </Stack>
       <Stack spacing={2}>

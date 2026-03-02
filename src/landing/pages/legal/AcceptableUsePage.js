@@ -24,6 +24,9 @@ const AcceptableUsePage = () => (
         <Typography variant="body1" color="text.secondary">
           Spamming, phishing, abusing APIs, interfering with others, bypassing security, reverse engineering, or overloading systems is prohibited.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Payment abuse is strictly prohibited, including card testing, stolen card usage, synthetic account creation for payment evasion, dispute abuse, repeated failed payment attempts intended to probe controls, and any attempt to bypass fraud controls.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">3. Violations</Typography>
