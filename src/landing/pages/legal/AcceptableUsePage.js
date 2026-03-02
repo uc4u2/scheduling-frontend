@@ -31,7 +31,7 @@ const AcceptableUsePage = () => (
       <Stack spacing={2}>
         <Typography variant="h5">3. Violations</Typography>
         <Typography variant="body1" color="text.secondary">
-          We may suspend or terminate accounts that violate these rules. Report abuses to abuse@schedulaa.com.
+          We may suspend or terminate accounts that violate these rules. Report abuses to admin@schedulaa.com.
         </Typography>
       </Stack>
       <Stack spacing={2}>
