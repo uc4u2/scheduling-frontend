@@ -44,6 +44,17 @@ const DOW = [
 
 const toDefaultRangeStart = () => DateTime.local().startOf("week").plus({ days: 1 }).toFormat("yyyy-MM-dd");
 const toDefaultRangeEnd = () => DateTime.local().startOf("week").plus({ days: 7 }).toFormat("yyyy-MM-dd");
+const detectTimezone = () => {
+  try {
+    return (
+      localStorage.getItem("timezone") ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      "America/Toronto"
+    );
+  } catch {
+    return "America/Toronto";
+  }
+};
 
 const toSuggestionDateTime = (date, hhmm, timezone) => {
   try {
@@ -56,15 +67,17 @@ const toSuggestionDateTime = (date, hhmm, timezone) => {
 };
 
 const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }) => {
+  const autoTimezone = useMemo(() => detectTimezone(), []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [range, setRange] = useState({
     start_date: toDefaultRangeStart(),
     end_date: toDefaultRangeEnd(),
-    timezone: localStorage.getItem("timezone") || "America/Toronto",
+    timezone: autoTimezone,
   });
-  const [coverage, setCoverage] = useState([{ ...DEFAULT_COVERAGE }]);
+  const [coverage, setCoverage] = useState([{ ...DEFAULT_COVERAGE, timezone: autoTimezone }]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState([]);
   const [latestRun, setLatestRun] = useState(null);
@@ -86,7 +99,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
         location_id: c.location_id ? Number(c.location_id) : null,
         role_key: c.role_key || null,
         days_of_week: c.days_of_week,
-        timezone: c.timezone || range.timezone,
+        timezone: c.timezone || range.timezone || autoTimezone,
         shifts: [
           {
             start_time: c.start_time,
@@ -118,6 +131,20 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
         max_suggestions: 500,
       },
     };
+  };
+
+  const applyCoveragePreset = () => {
+    setCoverage([
+      {
+        ...DEFAULT_COVERAGE,
+        coverage_id: "weekday-core",
+        days_of_week: [1, 2, 3, 4, 5],
+        start_time: "09:00",
+        end_time: "17:00",
+        headcount: 1,
+        timezone: range.timezone || autoTimezone,
+      },
+    ]);
   };
 
   const handleSuggest = async () => {
@@ -211,6 +238,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Generate shift suggestions from employee smart availability, then apply selected rows into real shifts.
         </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
+          Timezone auto-detected: {autoTimezone}
+        </Typography>
       </Paper>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
@@ -236,12 +266,14 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
             value={range.end_date}
             onChange={(e) => setRange((p) => ({ ...p, end_date: e.target.value }))}
           />
-          <TextField
-            label="Timezone"
-            value={range.timezone}
-            onChange={(e) => setRange((p) => ({ ...p, timezone: e.target.value }))}
-            placeholder="America/Toronto"
-          />
+          {showAdvanced ? (
+            <TextField
+              label="Timezone"
+              value={range.timezone}
+              onChange={(e) => setRange((p) => ({ ...p, timezone: e.target.value }))}
+              placeholder={autoTimezone}
+            />
+          ) : null}
           <FormControl sx={{ minWidth: 260 }}>
             <InputLabel>Employees</InputLabel>
             <Select
@@ -356,15 +388,17 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
                     ))}
                   </Select>
                 </FormControl>
-                <TextField
-                  size="small"
-                  label="Coverage timezone"
-                  value={c.timezone}
-                  onChange={(e) =>
-                    setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, timezone: e.target.value } : it)))
-                  }
-                  placeholder={range.timezone}
-                />
+                {showAdvanced ? (
+                  <TextField
+                    size="small"
+                    label="Coverage timezone"
+                    value={c.timezone}
+                    onChange={(e) =>
+                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, timezone: e.target.value } : it)))
+                    }
+                    placeholder={range.timezone || autoTimezone}
+                  />
+                ) : null}
                 <FormControl size="small" sx={{ minWidth: 160 }}>
                   <InputLabel>Break strategy</InputLabel>
                   <Select
@@ -412,8 +446,22 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
         </Stack>
 
         <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-          <Button variant="outlined" onClick={() => setCoverage((prev) => [...prev, { ...DEFAULT_COVERAGE, timezone: range.timezone }])}>
+          <Button variant="outlined" onClick={applyCoveragePreset}>
+            Load sample coverage
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() =>
+              setCoverage((prev) => [
+                ...prev,
+                { ...DEFAULT_COVERAGE, timezone: range.timezone || autoTimezone },
+              ])
+            }
+          >
             Add coverage row
+          </Button>
+          <Button variant="text" onClick={() => setShowAdvanced((v) => !v)}>
+            {showAdvanced ? "Hide advanced" : "Show advanced"}
           </Button>
           <Button variant="contained" onClick={handleSuggest} disabled={loading}>
             Generate Suggestions

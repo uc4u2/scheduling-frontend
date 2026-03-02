@@ -54,15 +54,29 @@ const DEFAULT_PREF = {
   preferred_locations: [],
 };
 
+const detectTimezone = () => {
+  try {
+    return (
+      localStorage.getItem("timezone") ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone ||
+      "America/Toronto"
+    );
+  } catch {
+    return "America/Toronto";
+  }
+};
+
 const SmartShiftAvailabilityTab = () => {
+  const autoTimezone = useMemo(() => detectTimezone(), []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [data, setData] = useState({ rules: [], exceptions: [], preference: null });
-  const [ruleForm, setRuleForm] = useState(DEFAULT_RULE);
-  const [exceptionForm, setExceptionForm] = useState(DEFAULT_EXCEPTION);
+  const [ruleForm, setRuleForm] = useState({ ...DEFAULT_RULE, timezone: autoTimezone });
+  const [exceptionForm, setExceptionForm] = useState({ ...DEFAULT_EXCEPTION, timezone: autoTimezone });
   const [prefForm, setPrefForm] = useState(DEFAULT_PREF);
   const [departments, setDepartments] = useState([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const deptNameById = useMemo(() => {
     const m = new Map();
@@ -93,17 +107,17 @@ const SmartShiftAvailabilityTab = () => {
       });
 
       if (!ruleForm.timezone) {
-        setRuleForm((prev) => ({ ...prev, timezone: localStorage.getItem("timezone") || "" }));
+        setRuleForm((prev) => ({ ...prev, timezone: autoTimezone }));
       }
       if (!exceptionForm.timezone) {
-        setExceptionForm((prev) => ({ ...prev, timezone: localStorage.getItem("timezone") || "" }));
+        setExceptionForm((prev) => ({ ...prev, timezone: autoTimezone }));
       }
     } catch (e) {
       setError(e?.response?.data?.error || "Failed to load smart shift availability.");
     } finally {
       setLoading(false);
     }
-  }, [ruleForm.timezone, exceptionForm.timezone]);
+  }, [ruleForm.timezone, exceptionForm.timezone, autoTimezone]);
 
   useEffect(() => {
     load();
@@ -145,7 +159,7 @@ const SmartShiftAvailabilityTab = () => {
         location_id: ruleForm.location_id ? Number(ruleForm.location_id) : null,
         status: ruleForm.status,
       });
-      setRuleForm(DEFAULT_RULE);
+      setRuleForm({ ...DEFAULT_RULE, timezone: autoTimezone });
       setSuccess("Recurring shift availability added.");
       await load();
     } catch (e) {
@@ -177,11 +191,46 @@ const SmartShiftAvailabilityTab = () => {
         timezone: exceptionForm.timezone || undefined,
         note: exceptionForm.note || undefined,
       });
-      setExceptionForm(DEFAULT_EXCEPTION);
+      setExceptionForm({ ...DEFAULT_EXCEPTION, timezone: autoTimezone });
       setSuccess("Exception added.");
       await load();
     } catch (e) {
       setError(e?.response?.data?.error || "Failed to add exception.");
+    }
+  };
+
+  const applyRulePreset = async (preset) => {
+    setError("");
+    setSuccess("");
+    try {
+      const days =
+        preset === "weekdays"
+          ? [1, 2, 3, 4, 5]
+          : preset === "weekends"
+          ? [0, 6]
+          : [1, 2, 3, 4, 5];
+      const base =
+        preset === "evening"
+          ? { start_time: "13:00", end_time: "21:00" }
+          : preset === "weekends"
+          ? { start_time: "10:00", end_time: "18:00" }
+          : { start_time: "09:00", end_time: "17:00" };
+      await Promise.all(
+        days.map((day_of_week) =>
+          smartShifts.recruiter.createRule({
+            day_of_week,
+            start_time: base.start_time,
+            end_time: base.end_time,
+            timezone: autoTimezone,
+            location_id: null,
+            status: "active",
+          })
+        )
+      );
+      setSuccess("Preset applied.");
+      await load();
+    } catch (e) {
+      setError(e?.response?.data?.error || "Could not apply preset. Some rules may already exist.");
     }
   };
 
@@ -240,6 +289,9 @@ const SmartShiftAvailabilityTab = () => {
         <Typography variant="body2" color="text.secondary">
           It does not change service booking slots.
         </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+          Timezone auto-detected: {autoTimezone}
+        </Typography>
       </Paper>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
@@ -251,6 +303,20 @@ const SmartShiftAvailabilityTab = () => {
           Add recurring rule
         </Typography>
         <Stack spacing={1.25}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button size="small" variant="outlined" onClick={() => applyRulePreset("weekdays")}>
+              Weekdays 9-5
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => applyRulePreset("evening")}>
+              Evenings
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => applyRulePreset("weekends")}>
+              Weekends
+            </Button>
+            <Button size="small" onClick={() => setShowAdvanced((v) => !v)}>
+              {showAdvanced ? "Hide advanced" : "Show advanced"}
+            </Button>
+          </Stack>
           <FormControl size="small" className="smart-shift-field">
             <InputLabel>Day</InputLabel>
             <Select
@@ -285,14 +351,16 @@ const SmartShiftAvailabilityTab = () => {
               onChange={(e) => setRuleForm((p) => ({ ...p, end_time: e.target.value }))}
             />
           </Stack>
-          <TextField
-            size="small"
-            label="Timezone"
-            className="smart-shift-field"
-            value={ruleForm.timezone}
-            onChange={(e) => setRuleForm((p) => ({ ...p, timezone: e.target.value }))}
-            placeholder="America/Toronto"
-          />
+          {showAdvanced ? (
+            <TextField
+              size="small"
+              label="Timezone"
+              className="smart-shift-field"
+              value={ruleForm.timezone}
+              onChange={(e) => setRuleForm((p) => ({ ...p, timezone: e.target.value }))}
+              placeholder={autoTimezone}
+            />
+          ) : null}
           <TextField
             select
             size="small"
@@ -396,14 +464,16 @@ const SmartShiftAvailabilityTab = () => {
               onChange={(e) => setExceptionForm((p) => ({ ...p, end_time: e.target.value }))}
             />
           </Stack>
-          <TextField
-            size="small"
-            label="Timezone"
-            className="smart-shift-field"
-            value={exceptionForm.timezone}
-            onChange={(e) => setExceptionForm((p) => ({ ...p, timezone: e.target.value }))}
-            placeholder="America/Toronto"
-          />
+          {showAdvanced ? (
+            <TextField
+              size="small"
+              label="Timezone"
+              className="smart-shift-field"
+              value={exceptionForm.timezone}
+              onChange={(e) => setExceptionForm((p) => ({ ...p, timezone: e.target.value }))}
+              placeholder={autoTimezone}
+            />
+          ) : null}
           <TextField
             size="small"
             className="smart-shift-field"
