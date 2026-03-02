@@ -6,14 +6,17 @@ import {
   Checkbox,
   Chip,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { DateTime } from "luxon";
 import { smartShifts } from "../../../utils/api";
 import { isoFromParts } from "../../../utils/datetime";
@@ -84,6 +87,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
   const [runs, setRuns] = useState([]);
   const [runDetail, setRunDetail] = useState(null);
   const [includeRecruiterIds, setIncludeRecruiterIds] = useState([]);
+  const [weeksSpan, setWeeksSpan] = useState(4);
 
   const recruiterNameById = useMemo(() => {
     const m = new Map();
@@ -145,6 +149,15 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
         timezone: range.timezone || autoTimezone,
       },
     ]);
+  };
+
+  const applyRangeByWeeks = (weeksInput = weeksSpan) => {
+    const weeks = Math.max(1, Math.min(52, Number(weeksInput) || 1));
+    const start = DateTime.fromISO(range.start_date);
+    if (!start.isValid) return;
+    const end = start.plus({ weeks }).minus({ days: 1 }).toFormat("yyyy-MM-dd");
+    setWeeksSpan(weeks);
+    setRange((prev) => ({ ...prev, end_date: end }));
   };
 
   const handleSuggest = async () => {
@@ -250,6 +263,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
           Suggestion input
         </Typography>
+        <Alert severity="info" sx={{ mb: 1.5 }}>
+          Set a start date, choose how many weeks to plan, then define coverage rows and click Generate Suggestions.
+        </Alert>
 
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
           <TextField
@@ -295,19 +311,48 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
             </Select>
           </FormControl>
         </Stack>
+        <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} flexWrap="wrap" useFlexGap>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Plan weeks</InputLabel>
+            <Select
+              label="Plan weeks"
+              value={weeksSpan}
+              onChange={(e) => setWeeksSpan(Number(e.target.value))}
+            >
+              <MenuItem value={1}>1 week</MenuItem>
+              <MenuItem value={4}>4 weeks</MenuItem>
+              <MenuItem value={12}>12 weeks</MenuItem>
+              <MenuItem value={52}>52 weeks</MenuItem>
+            </Select>
+          </FormControl>
+          <Button variant="outlined" onClick={() => applyRangeByWeeks()}>
+            Set end date from weeks
+          </Button>
+          <Button size="small" onClick={() => applyRangeByWeeks(1)}>1w</Button>
+          <Button size="small" onClick={() => applyRangeByWeeks(4)}>4w</Button>
+          <Button size="small" onClick={() => applyRangeByWeeks(12)}>12w</Button>
+          <Button size="small" onClick={() => applyRangeByWeeks(52)}>52w</Button>
+        </Stack>
 
         <Stack spacing={1.5} sx={{ mt: 2 }}>
           {coverage.map((c, idx) => (
             <Paper key={`cov-${idx}`} sx={{ p: 1.5, borderRadius: 1.5 }} variant="outlined">
               <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
-                <TextField
-                  size="small"
-                  label="Coverage ID"
-                  value={c.coverage_id}
-                  onChange={(e) =>
-                    setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, coverage_id: e.target.value } : it)))
-                  }
-                />
+                <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 210, flex: 1 }}>
+                  <TextField
+                    size="small"
+                    label="Coverage label"
+                    value={c.coverage_id}
+                    onChange={(e) =>
+                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, coverage_id: e.target.value } : it)))
+                    }
+                  />
+                  <Tooltip title="Internal name for this coverage row, such as Front Desk Day Shift.">
+                    <IconButton size="small" sx={{ mt: 0.25 }}>
+                      <HelpOutlineIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
                 <TextField
                   select
                   size="small"
@@ -326,14 +371,21 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField
-                  size="small"
-                  label="Role key"
-                  value={c.role_key}
-                  onChange={(e) =>
-                    setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, role_key: e.target.value } : it)))
-                  }
-                />
+                <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 170, flex: 1 }}>
+                  <TextField
+                    size="small"
+                    label="Role (optional)"
+                    value={c.role_key}
+                    onChange={(e) =>
+                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, role_key: e.target.value } : it)))
+                    }
+                  />
+                  <Tooltip title="Optional tag for matching staff role, like cashier or frontdesk.">
+                    <IconButton size="small" sx={{ mt: 0.25 }}>
+                      <HelpOutlineIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
                 <TextField
                   size="small"
                   label="Start"
@@ -354,40 +406,54 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
                     setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, end_time: e.target.value } : it)))
                   }
                 />
-                <TextField
-                  size="small"
-                  label="Headcount"
-                  type="number"
-                  value={c.headcount}
-                  onChange={(e) =>
-                    setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, headcount: e.target.value } : it)))
-                  }
-                  sx={{ width: 110 }}
-                />
+                <Stack direction="row" spacing={0.25} alignItems="center" sx={{ width: 140 }}>
+                  <TextField
+                    size="small"
+                    label="Headcount"
+                    type="number"
+                    value={c.headcount}
+                    onChange={(e) =>
+                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, headcount: e.target.value } : it)))
+                    }
+                    sx={{ width: 110 }}
+                  />
+                  <Tooltip title="How many employees are needed for this shift window.">
+                    <IconButton size="small" sx={{ mt: 0.25 }}>
+                      <HelpOutlineIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
               </Stack>
               <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} sx={{ mt: 1.25 }}>
-                <FormControl size="small" sx={{ minWidth: 240 }}>
-                  <InputLabel>Days of week</InputLabel>
-                  <Select
-                    multiple
-                    label="Days of week"
-                    value={c.days_of_week}
-                    onChange={(e) =>
-                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, days_of_week: e.target.value } : it)))
-                    }
-                    renderValue={(selected) =>
-                      selected
-                        .map((d) => DOW.find((x) => x.value === d)?.label || d)
-                        .join(", ")
-                    }
-                  >
-                    {DOW.map((d) => (
-                      <MenuItem key={d.value} value={d.value}>
-                        {d.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 260 }}>
+                  <FormControl size="small" sx={{ minWidth: 240 }}>
+                    <InputLabel>Days of week</InputLabel>
+                    <Select
+                      multiple
+                      label="Days of week"
+                      value={c.days_of_week}
+                      onChange={(e) =>
+                        setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, days_of_week: e.target.value } : it)))
+                      }
+                      renderValue={(selected) =>
+                        selected
+                          .map((d) => DOW.find((x) => x.value === d)?.label || d)
+                          .join(", ")
+                      }
+                    >
+                      {DOW.map((d) => (
+                        <MenuItem key={d.value} value={d.value}>
+                          {d.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Tooltip title="Which weekdays this coverage row should repeat on inside the selected date range.">
+                    <IconButton size="small" sx={{ mt: 0.25 }}>
+                      <HelpOutlineIcon fontSize="inherit" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
                 {showAdvanced ? (
                   <TextField
                     size="small"
