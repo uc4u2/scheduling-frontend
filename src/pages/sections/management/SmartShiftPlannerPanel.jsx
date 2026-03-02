@@ -406,6 +406,19 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   };
 
   const handleSeedDefaultAvailability = async () => {
+    // Seed action should also restore planner defaults in the UI.
+    setCoverage([
+      {
+        ...DEFAULT_COVERAGE,
+        coverage_id: "weekday-core",
+        days_of_week: [1, 2, 3, 4, 5],
+        start_time: "09:00",
+        end_time: "17:00",
+        headcount: 1,
+        timezone: range.timezone || autoTimezone,
+      },
+    ]);
+
     const targets = normalizeIdList(effectiveRecruiterIds);
     if (!targets.length) {
       setError("Select at least one employee first.");
