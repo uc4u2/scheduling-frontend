@@ -28,7 +28,7 @@ const UserAgreementPage = () => (
           Schedulaa User Agreement
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Last updated: December 2025
+          Last updated: March 2, 2026
         </Typography>
         <Typography variant="body1" color="text.secondary">
           This User Agreement (“Agreement”) governs your access to and use of Schedulaa, operated by Photo Artisto Corp.,
@@ -66,7 +66,8 @@ const UserAgreementPage = () => (
           list: [
             "Plans are billed monthly or annually through Stripe; fees are non-refundable except where required by law.",
             "You authorize recurring charges and remain responsible for applicable sales/HST/GST/PST or U.S. state taxes.",
-            "Non-payment may lead to suspension or deletion of data.",
+            "Accounts may be assigned a risk state (normal, review_hold, suspended) based on billing or fraud signals, and access or entitlements may be temporarily restricted during review.",
+            "Non-payment may lead to suspension or review hold. Data may be deleted after a reasonable retention period under our Privacy Policy, subject to legal or compliance hold requirements.",
           ],
         },
         {
@@ -87,6 +88,7 @@ const UserAgreementPage = () => (
           list: [
             "Schedulaa uses industry safeguards (AES-256/TLS 1.2+, access controls, backups, breach procedures).",
             "Data may be stored in Canada, the U.S., or other regions under appropriate safeguards.",
+            "For security and fraud prevention, we may process telemetry and billing risk signals, including login and billing attempt metadata, approximate geo (when available), and device/network indicators; masked IP is shown in admin tools while full IP is restricted to protected support/security systems.",
             "You must have a lawful basis for personal data uploaded to Schedulaa. When processing such data, we act as a Processor under the Data Processing Addendum.",
           ],
         },
@@ -155,7 +157,7 @@ const UserAgreementPage = () => (
         {
           title: "17A. Public Company Pages, URLs, and Domains",
           body:
-            "Schedulaa may provide subscribers with public-facing company pages, URLs, subpaths, or websites hosted under the schedulaa.com domain, as well as the ability to connect custom domains (\"Company Pages\").\n\nAll content published on Company Pages is created, controlled, and maintained solely by the subscriber. Such content does not represent the views of Schedulaa, and Schedulaa does not review, endorse, monitor, or assume responsibility for Company Page content.\n\nSchedulaa reserves the right, at its sole discretion and at any time, to suspend, restrict, modify, de-index, disconnect, or permanently remove any Company Page, URL, slug, or domain association that it reasonably believes:\n(a) violates this Agreement or applicable law;\n(b) infringes the rights of third parties;\n(c) is misleading, abusive, deceptive, or harmful; or\n(d) may damage the reputation, brand, security, operations, or search engine standing of Schedulaa.\n\nSubscribers acknowledge that Company Pages hosted under schedulaa.com are part of Schedulaa's domain infrastructure and that Schedulaa retains full authority to manage, restrict, or remove such pages to protect the platform and its users.",
+            "Schedulaa may provide subscribers with public-facing company pages, URLs, subpaths, or websites hosted under the schedulaa.com domain, as well as the ability to connect custom domains (\"Company Pages\").\n\nAll content published on Company Pages is created, controlled, and maintained solely by the subscriber. Such content does not represent the views of Schedulaa, and Schedulaa does not review, endorse, monitor, or assume responsibility for Company Page content.\n\nA subscriber may publish or unpublish website pages, but public booking links and booking availability may be controlled separately by booking and profile settings.\n\nSchedulaa reserves the right, at its sole discretion and at any time, to suspend, restrict, modify, de-index, disconnect, or permanently remove any Company Page, URL, slug, or domain association that it reasonably believes:\n(a) violates this Agreement or applicable law;\n(b) infringes the rights of third parties;\n(c) is misleading, abusive, deceptive, or harmful; or\n(d) may damage the reputation, brand, security, operations, or search engine standing of Schedulaa.\n\nSubscribers acknowledge that Company Pages hosted under schedulaa.com are part of Schedulaa's domain infrastructure and that Schedulaa retains full authority to manage, restrict, or remove such pages to protect the platform and its users.",
         },
         {
           title: "18. Beta & Experimental Features",
@@ -169,9 +171,11 @@ const UserAgreementPage = () => (
           title: "19. Termination",
           list: [
             "You may cancel your subscription at any time; fees already paid remain non-refundable.",
-            "Schedulaa may suspend or terminate access for non-payment, misuse, or violations of this Agreement.",
+            "Schedulaa may suspend, place accounts in review hold, or terminate access for non-payment, misuse, fraud risk, or violations of this Agreement.",
             "Schedulaa may take immediate action without prior notice, including content removal, page disabling, domain disconnection, account suspension, or termination, where such action is reasonably necessary to comply with law, protect users or the public, preserve platform integrity, or prevent legal, reputational, operational, or search engine harm to Schedulaa.",
-            "Data may be deleted after a reasonable retention period per our Privacy Policy.",
+            "During review_hold or suspension, access and entitlements may be restricted while investigation is ongoing.",
+            "Security logs and fraud records are retained for operational periods (typically about 30-180 days by default), and may be retained longer when required for disputes, legal obligations, compliance, or enforcement.",
+            "Data may be deleted after a reasonable retention period per our Privacy Policy, subject to legal and compliance hold requirements.",
           ],
         },
         {
