@@ -87,6 +87,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
   const [runs, setRuns] = useState([]);
   const [runDetail, setRunDetail] = useState(null);
   const [includeRecruiterIds, setIncludeRecruiterIds] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState("");
   const [weeksSpan, setWeeksSpan] = useState(4);
 
   const recruiterNameById = useMemo(() => {
@@ -94,6 +95,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
     recruiters.forEach((r) => m.set(r.id, r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim()));
     return m;
   }, [recruiters]);
+
+  const filteredRecruiters = useMemo(() => {
+    if (!selectedDepartment) return recruiters;
+    return recruiters.filter((r) => String(r.department_id || "") === String(selectedDepartment));
+  }, [recruiters, selectedDepartment]);
 
   const buildPayload = () => {
     const normalizedCoverage = coverage
@@ -242,6 +248,17 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
     }
   };
 
+  const handleChangeDepartment = (value) => {
+    setSelectedDepartment(value);
+    if (!value) return;
+    const allowed = new Set(
+      recruiters
+        .filter((r) => String(r.department_id || "") === String(value))
+        .map((r) => r.id)
+    );
+    setIncludeRecruiterIds((prev) => prev.filter((id) => allowed.has(id)));
+  };
+
   return (
     <Stack spacing={2} sx={{ mb: 2 }}>
       <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
@@ -290,6 +307,23 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
               placeholder={autoTimezone}
             />
           ) : null}
+          <FormControl sx={{ minWidth: 220 }}>
+            <InputLabel>Department filter</InputLabel>
+            <Select
+              label="Department filter"
+              value={selectedDepartment}
+              onChange={(e) => handleChangeDepartment(e.target.value)}
+            >
+              <MenuItem value="">
+                <em>All departments</em>
+              </MenuItem>
+              {departments.map((dept) => (
+                <MenuItem key={dept.id} value={dept.id}>
+                  {dept.name || `Department #${dept.id}`}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <FormControl sx={{ minWidth: 260 }}>
             <InputLabel>Employees</InputLabel>
             <Select
@@ -303,7 +337,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
                   .join(", ")
               }
             >
-              {recruiters.map((r) => (
+              {filteredRecruiters.map((r) => (
                 <MenuItem key={r.id} value={r.id}>
                   {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
                 </MenuItem>
@@ -353,24 +387,6 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
                     </IconButton>
                   </Tooltip>
                 </Stack>
-                <TextField
-                  select
-                  size="small"
-                  label="Department"
-                  value={c.location_id}
-                  onChange={(e) =>
-                    setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, location_id: e.target.value } : it)))
-                  }
-                >
-                  <MenuItem value="">
-                    <em>Any department</em>
-                  </MenuItem>
-                  {departments.map((dept) => (
-                    <MenuItem key={dept.id} value={dept.id}>
-                      {dept.name || `Department #${dept.id}`}
-                    </MenuItem>
-                  ))}
-                </TextField>
                 <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 170, flex: 1 }}>
                   <TextField
                     size="small"
@@ -454,6 +470,28 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }
                     </IconButton>
                   </Tooltip>
                 </Stack>
+                {showAdvanced ? (
+                  <TextField
+                    select
+                    size="small"
+                    label="Target department"
+                    value={c.location_id}
+                    onChange={(e) =>
+                      setCoverage((prev) =>
+                        prev.map((it, i) => (i === idx ? { ...it, location_id: e.target.value } : it))
+                      )
+                    }
+                  >
+                    <MenuItem value="">
+                      <em>Any department</em>
+                    </MenuItem>
+                    {departments.map((dept) => (
+                      <MenuItem key={dept.id} value={dept.id}>
+                        {dept.name || `Department #${dept.id}`}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : null}
                 {showAdvanced ? (
                   <TextField
                     size="small"
