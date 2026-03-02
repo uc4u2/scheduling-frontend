@@ -27,11 +27,17 @@ const DataProcessingAddendumPage = () => (
         <Typography variant="body1" color="text.secondary">
           This scope includes security and anti-fraud processing necessary to protect the service, including login audit records, billing risk telemetry, dispute/fraud event linkage, and related operational metadata.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Depending on integration and request context, this may include limited security attributes such as IP address, user-agent, login outcome, billing attempt metadata, and approximate network location signals.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">3. Processor obligations</Typography>
         <Typography variant="body1" color="text.secondary">
           Process data only per your instructions, maintain confidentiality and security controls, assist with data subject requests and breach notifications, engage sub-processors under similar obligations, and provide audit rights under reasonable requests.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Sub-processors used for payments, hosting, networking/CDN, and related infrastructure may process security-relevant logs under contractual and technical safeguards appropriate to their role.
         </Typography>
       </Stack>
       <Stack spacing={2}>

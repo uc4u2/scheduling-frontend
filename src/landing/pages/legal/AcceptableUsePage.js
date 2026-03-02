@@ -33,6 +33,9 @@ const AcceptableUsePage = () => (
         <Typography variant="body1" color="text.secondary">
           We may suspend or terminate accounts that violate these rules. Report abuses to admin@schedulaa.com.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          During investigations, we may place accounts into review hold or suspended states and temporarily disable access or entitlements until security review is resolved.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">4. Enforcement</Typography>

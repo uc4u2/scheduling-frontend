@@ -47,6 +47,9 @@ const TermsPage = () => (
         <Typography variant="body1" color="text.secondary">
           We may apply fraud-prevention and risk controls to billing flows, including challenge requirements, risk-based holds, velocity limits, and payment method restrictions. We may pause or restrict account functionality while a risk review is active, and restore access when review conditions are satisfied.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          For clarity, internal account risk states may include normal, review_hold, or suspended, and product access may be limited according to those states until verification or review is completed.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5" component="h2">5. Payroll & taxation</Typography>
@@ -67,6 +70,9 @@ const TermsPage = () => (
         <Typography variant="h5" component="h2">6A. Company Pages, URLs, and Domains</Typography>
         <Typography variant="body1" color="text.secondary">
           Company pages, public URLs, hosted websites, and connected custom domains are user-generated and are not reviewed, monitored, or endorsed by Schedulaa. We may disable, remove, de-index, block, or restrict any company page, URL, slug, or domain at our sole discretion.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Website publication state and booking-link availability may be controlled separately by product settings. Unpublishing a website does not necessarily disable all booking endpoints or public booking links unless those booking settings are also disabled.
         </Typography>
       </Stack>
       <Stack spacing={2}>

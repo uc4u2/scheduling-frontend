@@ -41,6 +41,12 @@ const PrivacyPage = () => (
         <Typography variant="body1" color="text.secondary">
           To protect users and prevent payment abuse, we process security and risk signals such as login outcomes, IP address, device/user-agent, approximate geo data (when available), billing risk events, payment fraud/dispute events, and related operational telemetry. We may use these signals to trigger additional verification, apply temporary review holds, limit abusive traffic, block suspicious payment patterns, or suspend access when required for safety, legal compliance, or platform integrity.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          For security logs, full IP addresses may be stored in protected internal systems. Most admin interfaces show masked IP values by default. Access to full IP values is restricted to authorized personnel for security/support purposes and is subject to access logging and review.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Approximate geo data may be derived from network/provider signals (for example, proxy/CDN headers or similar infrastructure metadata) and may be unavailable or imprecise in some requests.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">4. Legal bases</Typography>
@@ -68,6 +74,9 @@ const PrivacyPage = () => (
         <Typography variant="body1" color="text.secondary">
           Security and fraud logs are retained for reasonable operational periods and may be shortened or extended when needed for abuse prevention, legal obligations, dispute handling, and auditability. Some admin interfaces display masked values (for example, masked IP) while protected internal systems may retain full values for authorized support and security investigations.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          As operational defaults, selected risk and telemetry logs are typically retained for limited windows (for example, roughly 30 to 180 days), unless a longer period is required for active investigations, legal holds, billing disputes, or regulatory compliance.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">8. Your rights</Typography>
@@ -79,6 +88,9 @@ const PrivacyPage = () => (
         <Typography variant="h5">9. Cookies & tracking</Typography>
         <Typography variant="body1" color="text.secondary">
           We use cookies for authentication, analytics, and marketing. See the Cookie Policy for details.
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          We also use first-party operational telemetry for service reliability, abuse prevention, and security diagnostics (for example, authenticated route activity and heartbeat events). This operational telemetry is distinct from advertising or third-party marketing tracking.
         </Typography>
       </Stack>
       <Stack spacing={2}>
