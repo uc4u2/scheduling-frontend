@@ -47,6 +47,9 @@ const PrivacyPage = () => (
         <Typography variant="body1" color="text.secondary">
           Approximate geo data may be derived from network/provider signals (for example, proxy/CDN headers or similar infrastructure metadata) and may be unavailable or imprecise in some requests.
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          We may maintain audit logs of administrative actions (for example publish/unpublish actions and checkpoint restore events) for security, integrity, and incident investigation.
+        </Typography>
       </Stack>
       <Stack spacing={2}>
         <Typography variant="h5">4. Legal bases</Typography>
