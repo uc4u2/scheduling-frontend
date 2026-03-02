@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -7,12 +7,14 @@ import {
   Chip,
   Collapse,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   MenuItem,
   Paper,
   Select,
   Stack,
+  Switch,
   TextField,
   Tooltip,
   Typography,
@@ -21,6 +23,8 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { DateTime } from "luxon";
 import { api, smartShifts } from "../../../utils/api";
 import { isoFromParts } from "../../../utils/datetime";
+
+const ALL_EMPLOYEES_VALUE = "__ALL_EMPLOYEES__";
 
 const DEFAULT_COVERAGE = {
   coverage_id: "",
@@ -48,6 +52,7 @@ const DOW = [
 
 const toDefaultRangeStart = () => DateTime.local().startOf("week").plus({ days: 1 }).toFormat("yyyy-MM-dd");
 const toDefaultRangeEnd = () => DateTime.local().startOf("week").plus({ days: 7 }).toFormat("yyyy-MM-dd");
+
 const detectTimezone = () => {
   try {
     return (
@@ -69,12 +74,14 @@ const toSuggestionDateTime = (date, hhmm, timezone) => {
     return `${date} ${hhmm}`;
   }
 };
-const ALL_EMPLOYEES_VALUE = "__ALL_EMPLOYEES__";
+
 const toWeekKey = (dt) => `${dt.weekYear}-W${String(dt.weekNumber).padStart(2, "0")}`;
+
 const normalizeIdList = (values) =>
   (Array.isArray(values) ? values : [])
     .map((v) => Number(v))
     .filter((v) => Number.isFinite(v));
+
 const buildWeekKeysInRange = (startDate, endDate) => {
   const start = DateTime.fromISO(startDate || "");
   const end = DateTime.fromISO(endDate || "");
@@ -94,11 +101,13 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
   const [range, setRange] = useState({
     start_date: toDefaultRangeStart(),
     end_date: toDefaultRangeEnd(),
     timezone: autoTimezone,
   });
+
   const [coverage, setCoverage] = useState([{ ...DEFAULT_COVERAGE, timezone: autoTimezone }]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
@@ -106,22 +115,20 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [latestRun, setLatestRun] = useState(null);
   const [runs, setRuns] = useState([]);
   const [runDetail, setRunDetail] = useState(null);
+
   const [includeRecruiterIds, setIncludeRecruiterIds] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [weeksSpan, setWeeksSpan] = useState(4);
   const [targetShiftsPerWeek, setTargetShiftsPerWeek] = useState(1);
+  const [onlyWithAvailability, setOnlyWithAvailability] = useState(false);
   const [showUnscheduled, setShowUnscheduled] = useState(false);
   const [availabilityPresence, setAvailabilityPresence] = useState({});
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
-  const weekKeysInRange = useMemo(
-    () => buildWeekKeysInRange(range.start_date, range.end_date),
-    [range.start_date, range.end_date]
-  );
 
   const recruiterNameById = useMemo(() => {
-    const m = new Map();
-    recruiters.forEach((r) => m.set(r.id, r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim()));
-    return m;
+    const map = new Map();
+    recruiters.forEach((r) => map.set(Number(r.id), r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim()));
+    return map;
   }, [recruiters]);
 
   const filteredRecruiters = useMemo(() => {
@@ -129,10 +136,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     return recruiters.filter((r) => String(r.department_id || "") === String(selectedDepartment));
   }, [recruiters, selectedDepartment]);
 
+  const weekKeysInRange = useMemo(
+    () => buildWeekKeysInRange(range.start_date, range.end_date),
+    [range.start_date, range.end_date]
+  );
+
   const scopeRecruiterIds = useMemo(
     () => new Set(filteredRecruiters.map((r) => Number(r.id))),
     [filteredRecruiters]
   );
+
   const effectiveRecruiterIds = useMemo(
     () =>
       includeRecruiterIds.length
@@ -150,23 +163,27 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   }, [effectiveRecruiterIds, scopeRecruiterIds]);
 
   const { scheduledRecruiterIds, recruiterWeekShiftCounts } = useMemo(() => {
-    const out = new Set();
+    const scheduledSet = new Set();
     const byRecruiter = new Map();
     const start = range.start_date || "";
     const end = range.end_date || "";
+
     shifts.forEach((s) => {
       const rid = Number(s?.recruiter_id);
       if (!scopeRecruiterIds.has(rid)) return;
+
       const dateStr =
         (s?.date && String(s.date).slice(0, 10)) ||
         (() => {
           const dt = DateTime.fromISO(String(s?.clock_in || ""));
           return dt.isValid ? dt.toFormat("yyyy-MM-dd") : "";
         })();
+
       if (!dateStr) return;
       if (start && dateStr < start) return;
       if (end && dateStr > end) return;
-      out.add(rid);
+
+      scheduledSet.add(rid);
       const dt = DateTime.fromISO(dateStr);
       const wk = dt.isValid ? toWeekKey(dt) : null;
       if (!wk) return;
@@ -174,10 +191,8 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       const rec = byRecruiter.get(rid);
       rec[wk] = (rec[wk] || 0) + 1;
     });
-    return {
-      scheduledRecruiterIds: out,
-      recruiterWeekShiftCounts: byRecruiter,
-    };
+
+    return { scheduledRecruiterIds: scheduledSet, recruiterWeekShiftCounts: byRecruiter };
   }, [shifts, scopeRecruiterIds, range.start_date, range.end_date]);
 
   const unscheduledRecruiters = useMemo(
@@ -185,14 +200,12 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     [filteredRecruiters, scheduledRecruiterIds]
   );
 
-  const scheduledCount = scheduledRecruiterIds.size;
-  const unscheduledCount = unscheduledRecruiters.length;
-
   const { fullScheduledCount, partialScheduledCount, belowTargetRecruiters } = useMemo(() => {
     let full = 0;
     let partial = 0;
     const below = [];
     const target = Math.max(1, Number(targetShiftsPerWeek) || 1);
+
     filteredRecruiters.forEach((r) => {
       const rid = Number(r.id);
       const weekCounts = recruiterWeekShiftCounts.get(rid) || {};
@@ -200,6 +213,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         below.push(r);
         return;
       }
+
       let weeksMeetingTarget = 0;
       let anyShift = false;
       weekKeysInRange.forEach((wk) => {
@@ -207,17 +221,53 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         if (c > 0) anyShift = true;
         if (c >= target) weeksMeetingTarget += 1;
       });
-      if (weeksMeetingTarget === weekKeysInRange.length) {
-        full += 1;
-      } else if (anyShift) {
-        partial += 1;
-      }
-      if (weeksMeetingTarget < weekKeysInRange.length) {
-        below.push(r);
-      }
+
+      if (weeksMeetingTarget === weekKeysInRange.length) full += 1;
+      else if (anyShift) partial += 1;
+
+      if (weeksMeetingTarget < weekKeysInRange.length) below.push(r);
     });
+
     return { fullScheduledCount: full, partialScheduledCount: partial, belowTargetRecruiters: below };
   }, [filteredRecruiters, recruiterWeekShiftCounts, weekKeysInRange, targetShiftsPerWeek]);
+
+  const loadAvailabilityPresence = useCallback(async () => {
+    setAvailabilityLoading(true);
+    try {
+      const [rulesRes, exceptionsRes] = await Promise.all([
+        api.get("/api/smart-shifts/availability-rules"),
+        api.get("/api/smart-shifts/exceptions"),
+      ]);
+      const set = new Set();
+      (rulesRes?.data?.items || []).forEach((r) => set.add(Number(r.recruiter_id)));
+      (exceptionsRes?.data?.items || []).forEach((e) => set.add(Number(e.recruiter_id)));
+      const map = {};
+      filteredRecruiters.forEach((r) => {
+        map[Number(r.id)] = set.has(Number(r.id));
+      });
+      setAvailabilityPresence(map);
+    } catch {
+      setAvailabilityPresence({});
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  }, [filteredRecruiters]);
+
+  useEffect(() => {
+    loadAvailabilityPresence();
+  }, [loadAvailabilityPresence]);
+
+  const availabilityFilteredRecruiterIds = useMemo(
+    () => filteredRecruiters.filter((r) => availabilityPresence[Number(r.id)]).map((r) => Number(r.id)),
+    [filteredRecruiters, availabilityPresence]
+  );
+
+  const effectiveSuggestRecruiterIds = useMemo(() => {
+    const base = normalizeIdList(effectiveRecruiterIds);
+    if (!onlyWithAvailability) return base;
+    const allowed = new Set(availabilityFilteredRecruiterIds);
+    return base.filter((id) => allowed.has(id));
+  }, [effectiveRecruiterIds, onlyWithAvailability, availabilityFilteredRecruiterIds]);
 
   const buildPayload = () => {
     const normalizedCoverage = coverage
@@ -246,7 +296,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       range,
       coverage: normalizedCoverage,
       filters: {
-        include_recruiter_ids: effectiveRecruiterIds,
+        include_recruiter_ids: effectiveSuggestRecruiterIds,
         respect_leaves: true,
         respect_existing_shifts: true,
         respect_break_policy: true,
@@ -291,20 +341,20 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     try {
       const payload = buildPayload();
       if (onlyBelowTarget) {
-        payload.filters.include_recruiter_ids = belowTargetRecruiters.map((r) => r.id);
+        payload.filters.include_recruiter_ids = belowTargetRecruiters.map((r) => Number(r.id));
       }
-      if (!payload.coverage.length) {
-        throw new Error("Add at least one valid coverage row.");
-      }
+      if (!payload.coverage.length) throw new Error("Add at least one valid coverage row.");
       if (!payload.filters.include_recruiter_ids?.length) {
         throw new Error("No eligible employees in current filter.");
       }
+
       const { data } = await smartShifts.manager.suggest(payload);
       setLatestRun(data?.run || null);
       const list = Array.isArray(data?.suggestions) ? data.suggestions : [];
       setSuggestions(list);
       setSelectedSuggestionIds(list.map((s) => s.suggestion_id));
       setSuccess(`Generated ${list.length} suggestions.`);
+
       const runsRes = await smartShifts.manager.listRuns(20);
       setRuns(Array.isArray(runsRes?.data?.items) ? runsRes.data.items : []);
     } catch (e) {
@@ -323,6 +373,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       setError("Select at least one suggestion.");
       return;
     }
+
     setLoading(true);
     setError("");
     setSuccess("");
@@ -337,8 +388,10 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           enforce_leave_conflicts: true,
         },
       });
+
       setSuccess(`Applied ${data?.run?.applied_count || 0} shift(s), failed ${data?.run?.failed_count || 0}.`);
       if (onApplied) onApplied();
+
       const runsRes = await smartShifts.manager.listRuns(20);
       setRuns(Array.isArray(runsRes?.data?.items) ? runsRes.data.items : []);
       if (latestRun?.run_id) {
@@ -347,6 +400,55 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       }
     } catch (e) {
       setError(e?.response?.data?.error || "Failed to apply suggestions.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSeedDefaultAvailability = async () => {
+    const targets = normalizeIdList(effectiveRecruiterIds);
+    if (!targets.length) {
+      setError("Select at least one employee first.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const days = [1, 2, 3, 4, 5];
+      let created = 0;
+      let skipped = 0;
+
+      for (const recruiterId of targets) {
+        for (const day of days) {
+          try {
+            await api.post("/api/smart-shifts/availability-rules", {
+              recruiter_id: recruiterId,
+              day_of_week: day,
+              start_time: "09:00",
+              end_time: "17:00",
+              timezone: range.timezone || autoTimezone,
+              location_id: null,
+              status: "active",
+            });
+            created += 1;
+          } catch (e) {
+            const isDup = e?.response?.status === 409 || e?.response?.data?.error === "duplicate_rule";
+            if (isDup) {
+              skipped += 1;
+              continue;
+            }
+            throw e;
+          }
+        }
+      }
+
+      await loadAvailabilityPresence();
+      setSuccess(`Default availability seeded. Created ${created} rules, skipped ${skipped} duplicates.`);
+    } catch (e) {
+      setError(e?.response?.data?.error || "Failed to seed default availability.");
     } finally {
       setLoading(false);
     }
@@ -378,60 +480,25 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     const allowed = new Set(
       recruiters
         .filter((r) => String(r.department_id || "") === String(value))
-        .map((r) => r.id)
+        .map((r) => Number(r.id))
     );
-    setIncludeRecruiterIds((prev) => prev.filter((id) => allowed.has(id)));
+    setIncludeRecruiterIds((prev) => prev.filter((id) => allowed.has(Number(id))));
   };
 
-  const handleSelectAllFilteredEmployees = () => {
-    const ids = filteredRecruiters.map((r) => Number(r.id));
-    setIncludeRecruiterIds(ids);
-  };
-
-  const handleClearSelectedEmployees = () => {
-    setIncludeRecruiterIds([]);
-  };
-
-  const handleSelectUnscheduledEmployees = () => {
+  const handleSelectAllFilteredEmployees = () => setIncludeRecruiterIds(filteredRecruiters.map((r) => Number(r.id)));
+  const handleClearSelectedEmployees = () => setIncludeRecruiterIds([]);
+  const handleSelectUnscheduledEmployees = () =>
     setIncludeRecruiterIds(unscheduledRecruiters.map((r) => Number(r.id)));
-  };
+  const handleSelectBelowTargetEmployees = () =>
+    setIncludeRecruiterIds(belowTargetRecruiters.map((r) => Number(r.id)));
 
-  useEffect(() => {
-    if (!showUnscheduled) return;
-    let active = true;
-    const loadPresence = async () => {
-      setAvailabilityLoading(true);
-      try {
-        const [rulesRes, exceptionsRes] = await Promise.all([
-          api.get("/api/smart-shifts/availability-rules"),
-          api.get("/api/smart-shifts/exceptions"),
-        ]);
-        const set = new Set();
-        (rulesRes?.data?.items || []).forEach((r) => set.add(Number(r.recruiter_id)));
-        (exceptionsRes?.data?.items || []).forEach((r) => set.add(Number(r.recruiter_id)));
-        const map = {};
-        filteredRecruiters.forEach((r) => {
-          map[r.id] = set.has(Number(r.id));
-        });
-        if (active) setAvailabilityPresence(map);
-      } catch {
-        if (active) setAvailabilityPresence({});
-      } finally {
-        if (active) setAvailabilityLoading(false);
-      }
-    };
-    loadPresence();
-    return () => {
-      active = false;
-    };
-  }, [showUnscheduled, filteredRecruiters]);
+  const scheduledCount = scheduledRecruiterIds.size;
+  const unscheduledCount = unscheduledRecruiters.length;
 
   return (
     <Stack spacing={2} sx={{ mb: 2 }}>
       <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
-        <Typography variant="h6" fontWeight={700}>
-          Smart Shift
-        </Typography>
+        <Typography variant="h6" fontWeight={700}>Smart Shift</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           Generate shift suggestions from employee smart availability, then apply selected rows into real shifts.
         </Typography>
@@ -444,9 +511,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-          Suggestion input
-        </Typography>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Suggestion input</Typography>
         <Alert severity="info" sx={{ mb: 1.5 }}>
           Set a start date, choose how many weeks to plan, then define coverage rows and click Generate Suggestions.
         </Alert>
@@ -474,6 +539,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               placeholder={autoTimezone}
             />
           ) : null}
+
           <FormControl sx={{ minWidth: 220 }}>
             <InputLabel>Department filter</InputLabel>
             <Select
@@ -481,16 +547,13 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               value={selectedDepartment}
               onChange={(e) => handleChangeDepartment(e.target.value)}
             >
-              <MenuItem value="">
-                <em>All departments</em>
-              </MenuItem>
+              <MenuItem value=""><em>All departments</em></MenuItem>
               {departments.map((dept) => (
-                <MenuItem key={dept.id} value={dept.id}>
-                  {dept.name || `Department #${dept.id}`}
-                </MenuItem>
+                <MenuItem key={dept.id} value={dept.id}>{dept.name || `Department #${dept.id}`}</MenuItem>
               ))}
             </Select>
           </FormControl>
+
           <FormControl sx={{ minWidth: 260 }}>
             <InputLabel>Employees</InputLabel>
             <Select
@@ -507,38 +570,43 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               }}
               renderValue={(selected) =>
                 (selected.length ? selected : filteredRecruiters.map((r) => Number(r.id)))
-                  .map((id) => recruiterNameById.get(id) || `#${id}`)
+                  .map((id) => recruiterNameById.get(Number(id)) || `#${id}`)
                   .join(", ")
               }
             >
-              <MenuItem value={ALL_EMPLOYEES_VALUE}>
-                <em>All employees</em>
-              </MenuItem>
+              <MenuItem value={ALL_EMPLOYEES_VALUE}><em>All employees</em></MenuItem>
               {filteredRecruiters.map((r) => (
-                <MenuItem key={r.id} value={r.id}>
+                <MenuItem key={r.id} value={Number(r.id)}>
                   {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
         </Stack>
+
         <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
           <Button variant="outlined" size="small" onClick={handleSelectAllFilteredEmployees}>
             Select all in {selectedDepartment ? "department" : "list"}
           </Button>
-          <Button variant="outlined" size="small" onClick={handleSelectUnscheduledEmployees}>
-            Select unscheduled
-          </Button>
-          <Button variant="text" size="small" onClick={handleClearSelectedEmployees}>
-            Clear selection
+          <Button variant="outlined" size="small" onClick={handleSelectUnscheduledEmployees}>Select unscheduled</Button>
+          <Button variant="outlined" size="small" onClick={handleSelectBelowTargetEmployees}>Select below target</Button>
+          <Button variant="text" size="small" onClick={handleClearSelectedEmployees}>Clear selection</Button>
+          <Button variant="outlined" size="small" onClick={handleSeedDefaultAvailability} disabled={loading}>
+            Seed default availability
           </Button>
         </Stack>
+
         <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
           <Chip label={`Employees in dept: ${filteredRecruiters.length}`} />
           <Chip label={`Selected: ${selectedInScopeCount}`} />
           <Chip label={`Has shifts in range: ${scheduledCount}`} color={scheduledCount > 0 ? "success" : "default"} />
           <Chip label={`Fully scheduled: ${fullScheduledCount}`} color={fullScheduledCount > 0 ? "success" : "default"} />
           <Chip label={`Partial: ${partialScheduledCount}`} color={partialScheduledCount > 0 ? "warning" : "default"} />
+          <Chip
+            label={`Below target this range: ${belowTargetRecruiters.length}`}
+            color={belowTargetRecruiters.length > 0 ? "warning" : "success"}
+            variant={belowTargetRecruiters.length > 0 ? "filled" : "outlined"}
+          />
           <Chip
             label={`Unscheduled: ${unscheduledCount}`}
             color={unscheduledCount > 0 ? "warning" : "success"}
@@ -548,6 +616,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
             {showUnscheduled ? "Hide unscheduled" : "View unscheduled"}
           </Button>
         </Stack>
+
         <Collapse in={showUnscheduled}>
           <Paper sx={{ p: 1.25, mt: 1, borderRadius: 1.5 }} variant="outlined">
             {availabilityLoading ? (
@@ -563,8 +632,8 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     </Typography>
                     <Chip
                       size="small"
-                      color={availabilityPresence[r.id] ? "success" : "warning"}
-                      label={availabilityPresence[r.id] ? "Availability exists" : "No availability submitted"}
+                      color={availabilityPresence[Number(r.id)] ? "success" : "warning"}
+                      label={availabilityPresence[Number(r.id)] ? "Availability exists" : "No availability submitted"}
                     />
                   </Stack>
                 ))}
@@ -572,6 +641,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
             )}
           </Paper>
         </Collapse>
+
         <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} flexWrap="wrap" useFlexGap>
           <TextField
             size="small"
@@ -583,24 +653,27 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           />
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>Plan weeks</InputLabel>
-            <Select
-              label="Plan weeks"
-              value={weeksSpan}
-              onChange={(e) => setWeeksSpan(Number(e.target.value))}
-            >
+            <Select label="Plan weeks" value={weeksSpan} onChange={(e) => setWeeksSpan(Number(e.target.value))}>
               <MenuItem value={1}>1 week</MenuItem>
               <MenuItem value={4}>4 weeks</MenuItem>
               <MenuItem value={12}>12 weeks</MenuItem>
               <MenuItem value={52}>52 weeks</MenuItem>
             </Select>
           </FormControl>
-          <Button variant="outlined" onClick={() => applyRangeByWeeks()}>
-            Set end date from weeks
-          </Button>
+          <Button variant="outlined" onClick={() => applyRangeByWeeks()}>Set end date from weeks</Button>
           <Button size="small" onClick={() => applyRangeByWeeks(1)}>1w</Button>
           <Button size="small" onClick={() => applyRangeByWeeks(4)}>4w</Button>
           <Button size="small" onClick={() => applyRangeByWeeks(12)}>12w</Button>
           <Button size="small" onClick={() => applyRangeByWeeks(52)}>52w</Button>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={onlyWithAvailability}
+                onChange={(e) => setOnlyWithAvailability(e.target.checked)}
+              />
+            }
+            label="Apply only employees with submitted availability"
+          />
         </Stack>
 
         <Stack spacing={1.5} sx={{ mt: 2 }}>
@@ -622,6 +695,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     </IconButton>
                   </Tooltip>
                 </Stack>
+
                 <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 170, flex: 1 }}>
                   <TextField
                     size="small"
@@ -637,6 +711,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     </IconButton>
                   </Tooltip>
                 </Stack>
+
                 <TextField
                   size="small"
                   label="Start"
@@ -657,6 +732,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, end_time: e.target.value } : it)))
                   }
                 />
+
                 <Stack direction="row" spacing={0.25} alignItems="center" sx={{ width: 140 }}>
                   <TextField
                     size="small"
@@ -675,6 +751,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                   </Tooltip>
                 </Stack>
               </Stack>
+
               <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} sx={{ mt: 1.25 }}>
                 <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 260 }}>
                   <FormControl size="small" sx={{ minWidth: 240 }}>
@@ -693,9 +770,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                       }
                     >
                       {DOW.map((d) => (
-                        <MenuItem key={d.value} value={d.value}>
-                          {d.label}
-                        </MenuItem>
+                        <MenuItem key={d.value} value={d.value}>{d.label}</MenuItem>
                       ))}
                     </Select>
                   </FormControl>
@@ -705,6 +780,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     </IconButton>
                   </Tooltip>
                 </Stack>
+
                 {showAdvanced ? (
                   <TextField
                     select
@@ -712,21 +788,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     label="Target department"
                     value={c.location_id}
                     onChange={(e) =>
-                      setCoverage((prev) =>
-                        prev.map((it, i) => (i === idx ? { ...it, location_id: e.target.value } : it))
-                      )
+                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, location_id: e.target.value } : it)))
                     }
                   >
-                    <MenuItem value="">
-                      <em>Any department</em>
-                    </MenuItem>
+                    <MenuItem value=""><em>Any department</em></MenuItem>
                     {departments.map((dept) => (
-                      <MenuItem key={dept.id} value={dept.id}>
-                        {dept.name || `Department #${dept.id}`}
-                      </MenuItem>
+                      <MenuItem key={dept.id} value={dept.id}>{dept.name || `Department #${dept.id}`}</MenuItem>
                     ))}
                   </TextField>
                 ) : null}
+
                 {showAdvanced ? (
                   <TextField
                     size="small"
@@ -738,6 +809,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     placeholder={range.timezone || autoTimezone}
                   />
                 ) : null}
+
                 <FormControl size="small" sx={{ minWidth: 160 }}>
                   <InputLabel>Break strategy</InputLabel>
                   <Select
@@ -753,6 +825,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     <MenuItem value="auto_stagger">Auto stagger</MenuItem>
                   </Select>
                 </FormControl>
+
                 <TextField
                   size="small"
                   label="Break min"
@@ -763,6 +836,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                   }
                   sx={{ width: 120 }}
                 />
+
                 <Box sx={{ display: "flex", alignItems: "center" }}>
                   <Checkbox
                     checked={Boolean(c.break_paid)}
@@ -772,6 +846,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                   />
                   <Typography variant="body2">Paid break</Typography>
                 </Box>
+
                 <Button
                   color="error"
                   disabled={coverage.length <= 1}
@@ -784,17 +859,12 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           ))}
         </Stack>
 
-        <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-          <Button variant="outlined" onClick={applyCoveragePreset}>
-            Load sample coverage
-          </Button>
+        <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} flexWrap="wrap" useFlexGap>
+          <Button variant="outlined" onClick={applyCoveragePreset}>Load sample coverage</Button>
           <Button
             variant="outlined"
             onClick={() =>
-              setCoverage((prev) => [
-                ...prev,
-                { ...DEFAULT_COVERAGE, timezone: range.timezone || autoTimezone },
-              ])
+              setCoverage((prev) => [...prev, { ...DEFAULT_COVERAGE, timezone: range.timezone || autoTimezone }])
             }
           >
             Add coverage row
@@ -820,23 +890,20 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       </Paper>
 
       <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-          Suggestions
-        </Typography>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Suggestions</Typography>
         {unscheduledCount > 0 ? (
           <Alert severity="warning" sx={{ mb: 1 }}>
             Warning: {unscheduledCount} employee{unscheduledCount === 1 ? "" : "s"} in this department have no shifts in this range.
           </Alert>
         ) : null}
+
         {suggestions.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No suggestions yet.
-          </Typography>
+          <Typography variant="body2" color="text.secondary">No suggestions yet.</Typography>
         ) : (
           <Stack spacing={1}>
             {suggestions.map((s) => {
               const selected = selectedSuggestionIds.includes(s.suggestion_id);
-              const recName = recruiterNameById.get(s.recruiter_id) || `#${s.recruiter_id}`;
+              const recName = recruiterNameById.get(Number(s.recruiter_id)) || `#${s.recruiter_id}`;
               return (
                 <Stack
                   key={s.suggestion_id}
@@ -850,16 +917,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     <Checkbox
                       checked={selected}
                       onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedSuggestionIds((prev) => [...prev, s.suggestion_id]);
-                        } else {
-                          setSelectedSuggestionIds((prev) => prev.filter((id) => id !== s.suggestion_id));
-                        }
+                        if (e.target.checked) setSelectedSuggestionIds((prev) => [...prev, s.suggestion_id]);
+                        else setSelectedSuggestionIds((prev) => prev.filter((id) => id !== s.suggestion_id));
                       }}
                     />
-                    <Typography variant="body2" fontWeight={600}>
-                      {recName}
-                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>{recName}</Typography>
                     <Typography variant="body2" color="text.secondary">
                       {toSuggestionDateTime(s.date, s.start_time, s.timezone)} - {toSuggestionDateTime(s.date, s.end_time, s.timezone)}
                     </Typography>
@@ -887,9 +949,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       </Paper>
 
       <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
-          Runs history
-        </Typography>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Runs history</Typography>
         <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
           <Button
             variant="outlined"
@@ -912,9 +972,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
         <Stack spacing={1}>
           {runs.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No runs yet.
-            </Typography>
+            <Typography variant="body2" color="text.secondary">No runs yet.</Typography>
           ) : (
             runs.map((r) => (
               <Stack
@@ -927,9 +985,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                 <Typography variant="body2">
                   {r.run_id} • {r.status} • {r.range_start_date} to {r.range_end_date} ({r.timezone || "UTC"})
                 </Typography>
-                <Button size="small" onClick={() => loadRunDetail(r.run_id)}>
-                  Open
-                </Button>
+                <Button size="small" onClick={() => loadRunDetail(r.run_id)}>Open</Button>
               </Stack>
             ))
           )}
@@ -937,9 +993,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
         {runDetail?.run ? (
           <Box sx={{ mt: 1.5, p: 1.25, border: "1px dashed", borderColor: "divider", borderRadius: 1.5 }}>
-            <Typography variant="body2" fontWeight={700}>
-              Active run: {runDetail.run.run_id}
-            </Typography>
+            <Typography variant="body2" fontWeight={700}>Active run: {runDetail.run.run_id}</Typography>
             <Typography variant="caption" color="text.secondary">
               suggested {runDetail.run.suggested_count} • applied {runDetail.run.applied_count} • failed {runDetail.run.failed_count}
             </Typography>
