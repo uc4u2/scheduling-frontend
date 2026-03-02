@@ -1746,7 +1746,7 @@ const breakTimelineMeta = useMemo(() => {
       anchor="right"
       open={drawerOpen}
       onClose={() => setDrawerOpen(false)}
-      PaperProps={{ sx: { width: { xs: "100%", sm: 420 }, p: 0 } }}
+      PaperProps={{ sx: { width: { xs: "100%", sm: 500, md: 560 }, p: 0 } }}
     >
       {/* Header */}
       <Box

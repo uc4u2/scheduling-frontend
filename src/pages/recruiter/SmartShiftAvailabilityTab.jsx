@@ -73,6 +73,7 @@ const SmartShiftAvailabilityTab = () => {
         exceptions: Array.isArray(payload?.exceptions) ? payload.exceptions : [],
         preference: payload?.preference || null,
       });
+
       const pref = payload?.preference || null;
       setPrefForm({
         max_hours_per_week: pref?.max_hours_per_week ?? "",
@@ -85,16 +86,17 @@ const SmartShiftAvailabilityTab = () => {
           ? pref.preferred_locations.join(",")
           : "",
       });
+
       if (!ruleForm.timezone) {
         setRuleForm((prev) => ({
           ...prev,
-          timezone: payload?.preference?.timezone || localStorage.getItem("timezone") || "",
+          timezone: localStorage.getItem("timezone") || "",
         }));
       }
       if (!exceptionForm.timezone) {
         setExceptionForm((prev) => ({
           ...prev,
-          timezone: payload?.preference?.timezone || localStorage.getItem("timezone") || "",
+          timezone: localStorage.getItem("timezone") || "",
         }));
       }
     } catch (e) {
@@ -184,9 +186,7 @@ const SmartShiftAvailabilityTab = () => {
     setSuccess("");
     try {
       await smartShifts.recruiter.putPreference({
-        max_hours_per_week: prefForm.max_hours_per_week
-          ? Number(prefForm.max_hours_per_week)
-          : null,
+        max_hours_per_week: prefForm.max_hours_per_week ? Number(prefForm.max_hours_per_week) : null,
         earliest_start: prefForm.earliest_start || null,
         latest_end: prefForm.latest_end || null,
         min_hours_between_shifts: prefForm.min_hours_between_shifts
@@ -211,13 +211,23 @@ const SmartShiftAvailabilityTab = () => {
   };
 
   return (
-    <Stack spacing={2}>
+    <Stack
+      spacing={1.5}
+      sx={{
+        "& .smart-shift-field": { width: "100%" },
+        "& .MuiFormControl-root": { width: "100%" },
+        "& .MuiTextField-root": { width: "100%" },
+      }}
+    >
       <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
         <Typography variant="h6" fontWeight={700}>
           Shift Availability
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          This tab controls Smart Shift assignment only. It does not change service booking slots.
+          This tab controls Smart Shift assignment only.
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          It does not change service booking slots.
         </Typography>
       </Paper>
 
@@ -229,8 +239,8 @@ const SmartShiftAvailabilityTab = () => {
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
           Add recurring rule
         </Typography>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-          <FormControl size="small" sx={{ minWidth: 120 }}>
+        <Stack spacing={1.25}>
+          <FormControl size="small" className="smart-shift-field">
             <InputLabel>Day</InputLabel>
             <Select
               label="Day"
@@ -244,25 +254,30 @@ const SmartShiftAvailabilityTab = () => {
               ))}
             </Select>
           </FormControl>
-          <TextField
-            size="small"
-            label="Start"
-            type="time"
-            InputLabelProps={{ shrink: true }}
-            value={ruleForm.start_time}
-            onChange={(e) => setRuleForm((p) => ({ ...p, start_time: e.target.value }))}
-          />
-          <TextField
-            size="small"
-            label="End"
-            type="time"
-            InputLabelProps={{ shrink: true }}
-            value={ruleForm.end_time}
-            onChange={(e) => setRuleForm((p) => ({ ...p, end_time: e.target.value }))}
-          />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+            <TextField
+              size="small"
+              label="Start"
+              type="time"
+              className="smart-shift-field"
+              InputLabelProps={{ shrink: true }}
+              value={ruleForm.start_time}
+              onChange={(e) => setRuleForm((p) => ({ ...p, start_time: e.target.value }))}
+            />
+            <TextField
+              size="small"
+              label="End"
+              type="time"
+              className="smart-shift-field"
+              InputLabelProps={{ shrink: true }}
+              value={ruleForm.end_time}
+              onChange={(e) => setRuleForm((p) => ({ ...p, end_time: e.target.value }))}
+            />
+          </Stack>
           <TextField
             size="small"
             label="Timezone"
+            className="smart-shift-field"
             value={ruleForm.timezone}
             onChange={(e) => setRuleForm((p) => ({ ...p, timezone: e.target.value }))}
             placeholder="America/Toronto"
@@ -270,15 +285,16 @@ const SmartShiftAvailabilityTab = () => {
           <TextField
             size="small"
             label="Location ID"
+            className="smart-shift-field"
             value={ruleForm.location_id}
             onChange={(e) => setRuleForm((p) => ({ ...p, location_id: e.target.value }))}
           />
-          <Button variant="contained" onClick={handleCreateRule}>
+          <Button variant="contained" onClick={handleCreateRule} fullWidth>
             Add Rule
           </Button>
         </Stack>
 
-        <Box sx={{ mt: 2 }}>
+        <Box sx={{ mt: 1.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             Current recurring rules
           </Typography>
@@ -291,18 +307,17 @@ const SmartShiftAvailabilityTab = () => {
               ruleRows.map((r) => (
                 <Stack
                   key={r.id}
-                  direction={{ xs: "column", md: "row" }}
-                  spacing={1}
-                  justifyContent="space-between"
-                  alignItems={{ xs: "flex-start", md: "center" }}
+                  spacing={0.75}
                   sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}
                 >
                   <Typography variant="body2">
                     {DOW.find((d) => d.value === r.day_of_week)?.label || r.day_of_week} • {r.start_time} - {r.end_time}
-                    {r.timezone ? ` • ${r.timezone}` : ""}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {r.timezone || "—"}
                     {r.location_id ? ` • Location ${r.location_id}` : ""}
                   </Typography>
-                  <Button color="error" size="small" onClick={() => handleDeleteRule(r.id)}>
+                  <Button color="error" size="small" onClick={() => handleDeleteRule(r.id)} sx={{ alignSelf: "flex-start" }}>
                     Delete
                   </Button>
                 </Stack>
@@ -316,66 +331,69 @@ const SmartShiftAvailabilityTab = () => {
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
           Add exception
         </Typography>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+        <Stack spacing={1.25}>
           <TextField
             size="small"
             label="Date"
             type="date"
+            className="smart-shift-field"
             InputLabelProps={{ shrink: true }}
             value={exceptionForm.date}
             onChange={(e) => setExceptionForm((p) => ({ ...p, date: e.target.value }))}
           />
-          <FormControl size="small" sx={{ minWidth: 220 }}>
+          <FormControl size="small" className="smart-shift-field">
             <InputLabel>Type</InputLabel>
             <Select
               label="Type"
               value={exceptionForm.exception_type}
-              onChange={(e) =>
-                setExceptionForm((p) => ({ ...p, exception_type: e.target.value }))
-              }
+              onChange={(e) => setExceptionForm((p) => ({ ...p, exception_type: e.target.value }))}
             >
               <MenuItem value="unavailable_all_day">Unavailable all day</MenuItem>
               <MenuItem value="unavailable_window">Unavailable window</MenuItem>
               <MenuItem value="available_window">Available window</MenuItem>
             </Select>
           </FormControl>
-          <TextField
-            size="small"
-            label="Start"
-            type="time"
-            InputLabelProps={{ shrink: true }}
-            value={exceptionForm.start_time}
-            onChange={(e) => setExceptionForm((p) => ({ ...p, start_time: e.target.value }))}
-          />
-          <TextField
-            size="small"
-            label="End"
-            type="time"
-            InputLabelProps={{ shrink: true }}
-            value={exceptionForm.end_time}
-            onChange={(e) => setExceptionForm((p) => ({ ...p, end_time: e.target.value }))}
-          />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+            <TextField
+              size="small"
+              label="Start"
+              type="time"
+              className="smart-shift-field"
+              InputLabelProps={{ shrink: true }}
+              value={exceptionForm.start_time}
+              onChange={(e) => setExceptionForm((p) => ({ ...p, start_time: e.target.value }))}
+            />
+            <TextField
+              size="small"
+              label="End"
+              type="time"
+              className="smart-shift-field"
+              InputLabelProps={{ shrink: true }}
+              value={exceptionForm.end_time}
+              onChange={(e) => setExceptionForm((p) => ({ ...p, end_time: e.target.value }))}
+            />
+          </Stack>
           <TextField
             size="small"
             label="Timezone"
+            className="smart-shift-field"
             value={exceptionForm.timezone}
             onChange={(e) => setExceptionForm((p) => ({ ...p, timezone: e.target.value }))}
             placeholder="America/Toronto"
           />
-          <Button variant="contained" onClick={handleCreateException}>
+          <TextField
+            size="small"
+            className="smart-shift-field"
+            label="Note"
+            value={exceptionForm.note}
+            onChange={(e) => setExceptionForm((p) => ({ ...p, note: e.target.value }))}
+          />
+          <Button variant="contained" onClick={handleCreateException} fullWidth>
             Add Exception
           </Button>
         </Stack>
-        <TextField
-          size="small"
-          fullWidth
-          sx={{ mt: 1.5 }}
-          label="Note"
-          value={exceptionForm.note}
-          onChange={(e) => setExceptionForm((p) => ({ ...p, note: e.target.value }))}
-        />
 
-        <Box sx={{ mt: 2 }}>
+        <Box sx={{ mt: 1.5 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             Current exceptions
           </Typography>
@@ -388,18 +406,17 @@ const SmartShiftAvailabilityTab = () => {
               data.exceptions.map((ex) => (
                 <Stack
                   key={ex.id}
-                  direction={{ xs: "column", md: "row" }}
-                  spacing={1}
-                  justifyContent="space-between"
-                  alignItems={{ xs: "flex-start", md: "center" }}
+                  spacing={0.75}
                   sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}
                 >
                   <Typography variant="body2">
                     {ex.date} • {ex.exception_type}
-                    {ex.start_time && ex.end_time ? ` • ${ex.start_time} - ${ex.end_time}` : ""}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {ex.start_time && ex.end_time ? `${ex.start_time} - ${ex.end_time}` : "All day"}
                     {ex.timezone ? ` • ${ex.timezone}` : ""}
                   </Typography>
-                  <Button color="error" size="small" onClick={() => handleDeleteException(ex.id)}>
+                  <Button color="error" size="small" onClick={() => handleDeleteException(ex.id)} sx={{ alignSelf: "flex-start" }}>
                     Delete
                   </Button>
                 </Stack>
@@ -413,42 +430,44 @@ const SmartShiftAvailabilityTab = () => {
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
           Scheduling preferences
         </Typography>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+        <Stack spacing={1.25}>
           <TextField
             size="small"
             label="Max hours/week"
             type="number"
+            className="smart-shift-field"
             value={prefForm.max_hours_per_week}
             onChange={(e) => setPrefForm((p) => ({ ...p, max_hours_per_week: e.target.value }))}
           />
-          <TextField
-            size="small"
-            label="Earliest start"
-            type="time"
-            InputLabelProps={{ shrink: true }}
-            value={prefForm.earliest_start}
-            onChange={(e) => setPrefForm((p) => ({ ...p, earliest_start: e.target.value }))}
-          />
-          <TextField
-            size="small"
-            label="Latest end"
-            type="time"
-            InputLabelProps={{ shrink: true }}
-            value={prefForm.latest_end}
-            onChange={(e) => setPrefForm((p) => ({ ...p, latest_end: e.target.value }))}
-          />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+            <TextField
+              size="small"
+              label="Earliest start"
+              type="time"
+              className="smart-shift-field"
+              InputLabelProps={{ shrink: true }}
+              value={prefForm.earliest_start}
+              onChange={(e) => setPrefForm((p) => ({ ...p, earliest_start: e.target.value }))}
+            />
+            <TextField
+              size="small"
+              label="Latest end"
+              type="time"
+              className="smart-shift-field"
+              InputLabelProps={{ shrink: true }}
+              value={prefForm.latest_end}
+              onChange={(e) => setPrefForm((p) => ({ ...p, latest_end: e.target.value }))}
+            />
+          </Stack>
           <TextField
             size="small"
             label="Min rest (hours)"
             type="number"
+            className="smart-shift-field"
             value={prefForm.min_hours_between_shifts}
-            onChange={(e) =>
-              setPrefForm((p) => ({ ...p, min_hours_between_shifts: e.target.value }))
-            }
+            onChange={(e) => setPrefForm((p) => ({ ...p, min_hours_between_shifts: e.target.value }))}
           />
-        </Stack>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ mt: 1.5 }}>
-          <FormControl size="small" sx={{ minWidth: 220 }}>
+          <FormControl size="small" className="smart-shift-field">
             <InputLabel>Preferred days</InputLabel>
             <Select
               multiple
@@ -466,6 +485,7 @@ const SmartShiftAvailabilityTab = () => {
           <TextField
             size="small"
             label="Preferred location IDs"
+            className="smart-shift-field"
             helperText="Comma-separated, e.g. 1,2,3"
             value={prefForm.preferred_locations}
             onChange={(e) => setPrefForm((p) => ({ ...p, preferred_locations: e.target.value }))}
@@ -474,14 +494,12 @@ const SmartShiftAvailabilityTab = () => {
             control={
               <Checkbox
                 checked={Boolean(prefForm.allow_split_shifts)}
-                onChange={(e) =>
-                  setPrefForm((p) => ({ ...p, allow_split_shifts: e.target.checked }))
-                }
+                onChange={(e) => setPrefForm((p) => ({ ...p, allow_split_shifts: e.target.checked }))}
               />
             }
             label="Allow split shifts"
           />
-          <Button variant="contained" onClick={handleSavePreference}>
+          <Button variant="contained" onClick={handleSavePreference} fullWidth>
             Save Preferences
           </Button>
         </Stack>
