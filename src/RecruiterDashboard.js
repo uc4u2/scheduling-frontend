@@ -26,6 +26,7 @@ import SecondEmployeeShiftView from "./pages/sections/SecondEmployeeShiftView";
 import MySetmoreCalendar from "./MySetmoreCalendar";
 import ManagementFrame from "./components/ui/ManagementFrame";
 import RecruiterTabs from "./components/recruiter/RecruiterTabs";
+import SmartShiftAvailabilityTab from "./pages/recruiter/SmartShiftAvailabilityTab";
 const LOCAL_TABS = ["calendar", "availability"];
 
 const RecruiterDashboard = ({ token }) => {
@@ -46,7 +47,7 @@ const RecruiterDashboard = ({ token }) => {
     authInfo?.can_manage_onboarding ||
     authInfo?.can_manage_onboarding_limited
   );
-  const availableTabs = allowHrAccess ? LOCAL_TABS : ["calendar"];
+  const availableTabs = LOCAL_TABS;
   const { enqueueSnackbar } = useSnackbar();
   const initialTab = searchParams.get("tab");
   const defaultTab = availableTabs.includes(initialTab) ? initialTab : availableTabs[0];
@@ -82,20 +83,8 @@ const RecruiterDashboard = ({ token }) => {
     }
   }, [activeTab, navigate, searchParams, setSearchParams]);
 
-  useEffect(() => {
-    if (activeTab === "availability" && !allowHrAccess) {
-      setActiveTab("calendar");
-      const params = new URLSearchParams(searchParams);
-      params.set("tab", "calendar");
-      setSearchParams(params, { replace: true });
-    }
-  }, [activeTab, allowHrAccess, searchParams, setSearchParams]);
-
   const handleLocalTabChange = useCallback((newValue) => {
     if (!availableTabs.includes(newValue)) {
-      return;
-    }
-    if (newValue === "availability" && !allowHrAccess) {
       return;
     }
     setActiveTab(newValue);
@@ -108,7 +97,7 @@ const RecruiterDashboard = ({ token }) => {
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, [searchParams, setSearchParams, availableTabs, allowHrAccess]);
+  }, [searchParams, setSearchParams, availableTabs]);
   /* dialogs, calendars, misc (unchanged vars) */
   const [pendingSlotUpdate, setPendingSlotUpdate] = useState(null);
   const [calendarRefreshTrigger, setCalendarRefreshTrigger] = useState(Date.now());
@@ -273,6 +262,17 @@ const RecruiterDashboard = ({ token }) => {
         <Grid container spacing={2}>
           <Grid item xs={12}>
             <Box id="tab-availability" sx={{ scrollMarginTop: theme.spacing(10) }}>
+              <SmartShiftAvailabilityTab />
+
+              <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
+                  Booking Availability (Legacy)
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  These controls are for booking slots and invitations. They are separate from Smart Shift availability above.
+                </Typography>
+              </Paper>
+
               {/* One-Time Availability */}
               <Accordion defaultExpanded={false}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>

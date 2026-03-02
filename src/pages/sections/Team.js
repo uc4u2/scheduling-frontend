@@ -60,6 +60,7 @@ import { alpha } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import { formatDate, formatTime } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
+import SmartShiftPlannerPanel from "./management/SmartShiftPlannerPanel";
 
 // ------------------------------------------------------------------------------------
 // Constants & utils
@@ -576,6 +577,7 @@ const [formData, setFormData] = useState({
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSmartShift, setShowSmartShift] = useState(false);
 
   /* ------------------------------- calendar refs ----------------------------- */
   const calendarRef = useRef(null);
@@ -2102,6 +2104,12 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Button
+            variant={showSmartShift ? "contained" : "outlined"}
+            onClick={() => setShowSmartShift((v) => !v)}
+          >
+            {showSmartShift ? "Hide Smart Shift" : "Smart Shift"}
+          </Button>
           <Button variant="outlined" onClick={openTemplateModal}>
             Edit Templates
           </Button>
@@ -2124,6 +2132,16 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           </Tooltip>
         </Stack>
       </Stack>
+
+      {showSmartShift && (
+        <SmartShiftPlannerPanel
+          recruiters={recruiters}
+          onApplied={() => {
+            fetchShifts();
+            fetchTimeEntries();
+          }}
+        />
+      )}
 
       <Paper sx={{ p: 2, mb: 2, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }} elevation={0}>
       {isMdDown ? (

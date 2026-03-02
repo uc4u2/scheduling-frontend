@@ -1361,7 +1361,29 @@ export const navSettings = {
   },
 };
 
+export const smartShifts = {
+  recruiter: {
+    getAvailability: () => api.get("/api/recruiter/smart-shifts/availability"),
+    createRule: (payload) => api.post("/api/recruiter/smart-shifts/availability-rules", payload),
+    updateRule: (ruleId, payload) =>
+      api.put(`/api/recruiter/smart-shifts/availability-rules/${ruleId}`, payload),
+    deleteRule: (ruleId) => api.delete(`/api/recruiter/smart-shifts/availability-rules/${ruleId}`),
+    createException: (payload) => api.post("/api/recruiter/smart-shifts/exceptions", payload),
+    updateException: (exceptionId, payload) =>
+      api.put(`/api/recruiter/smart-shifts/exceptions/${exceptionId}`, payload),
+    deleteException: (exceptionId) =>
+      api.delete(`/api/recruiter/smart-shifts/exceptions/${exceptionId}`),
+    putPreference: (payload) => api.put("/api/recruiter/smart-shifts/preferences", payload),
+  },
+  manager: {
+    suggest: (payload) => api.post("/api/smart-shifts/suggest", payload),
+    apply: (payload) => api.post("/api/smart-shifts/apply", payload),
+    listRuns: (limit = 20) => api.get("/api/smart-shifts/runs", { params: { limit } }),
+    getRun: (runRef) => api.get(`/api/smart-shifts/runs/${encodeURIComponent(runRef)}`),
+  },
+};
+
 // Default namespace export
-export const apiHelpers = { api, website, websiteAdmin, publicSite, wb, websiteDomains, stripeConnect, isStripeOnboardingIncomplete, questionnaires, invitationQuestionnaires, questionnaireUploadsApi, candidateIntakeApi, settingsApi };
+export const apiHelpers = { api, website, websiteAdmin, publicSite, wb, websiteDomains, stripeConnect, isStripeOnboardingIncomplete, questionnaires, invitationQuestionnaires, questionnaireUploadsApi, candidateIntakeApi, settingsApi, smartShifts };
 
 export default api;
