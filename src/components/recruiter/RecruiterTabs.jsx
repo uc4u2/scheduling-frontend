@@ -70,7 +70,7 @@ const RecruiterTabs = ({
   const tabs = useMemo(() => {
     if (hrAccess) return TAB_CONFIG;
     return TAB_CONFIG.filter((tab) =>
-      ["calendar", "availability", "my-time"].includes(tab.value)
+      ["calendar", "my-time"].includes(tab.value)
     );
   }, [hrAccess]);
 

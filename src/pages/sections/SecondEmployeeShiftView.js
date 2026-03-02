@@ -59,6 +59,7 @@ import ShiftSwapPanel from "../../components/ShiftSwapPanel";
 import IncomingSwapRequests from "../../components/IncomingSwapRequests";
 import { getUserTimezone } from "../../utils/timezone";
 import { timeTracking } from "../../utils/api";
+import SmartShiftAvailabilityTab from "../recruiter/SmartShiftAvailabilityTab";
 
 const statusColor = {
   assigned: "default",
@@ -86,6 +87,7 @@ const SecondEmployeeShiftView = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [myTimeQuickTab, setMyTimeQuickTab] = useState("shift-availability");
   const [todayCardCollapsed, setTodayCardCollapsed] = useState(false);
   const [countdownTick, setCountdownTick] = useState(Date.now());
   const [shiftPage, setShiftPage] = useState(1);
@@ -1102,7 +1104,40 @@ const breakTimelineMeta = useMemo(() => {
           )}
         </Stack>
       </Stack>
+      <Stack direction="row" spacing={1} sx={{ mt: 2 }} useFlexGap flexWrap="wrap">
+        <Button
+          variant={myTimeQuickTab === "shift-availability" ? "contained" : "outlined"}
+          onClick={() => setMyTimeQuickTab("shift-availability")}
+        >
+          Shift Availability
+        </Button>
+        <Button
+          variant={myTimeQuickTab === "view-my-shifts" ? "contained" : "outlined"}
+          startIcon={<CalendarMonthIcon />}
+          onClick={() => {
+            setMyTimeQuickTab("view-my-shifts");
+            setDrawerOpen(true);
+          }}
+        >
+          View My Shifts
+        </Button>
+      </Stack>
     </Paper>
+
+    {myTimeQuickTab === "shift-availability" && (
+      <Paper
+        elevation={0}
+        sx={{
+          mb: 2,
+          p: 3,
+          borderRadius: 3,
+          border: (theme) => `1px solid ${theme.palette.divider}`,
+          background: (theme) => theme.palette.background.paper,
+        }}
+      >
+        <SmartShiftAvailabilityTab />
+      </Paper>
+    )}
 
     <Paper
       elevation={0}
@@ -1183,16 +1218,6 @@ const breakTimelineMeta = useMemo(() => {
         </Typography>
       )}
     </Paper>
-
-    {/* Top-level button */}
-    <Button
-      variant="outlined"
-      startIcon={<CalendarMonthIcon />}
-      onClick={() => setDrawerOpen(true)}
-      sx={{ mb: 2 }}
-    >
-      View My Shifts
-    </Button>
 
     <Paper
       elevation={0}
