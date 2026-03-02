@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { smartShifts } from "../../utils/api";
+import { api, smartShifts } from "../../utils/api";
 
 const DOW = [
   { value: 0, label: "Sun" },
@@ -51,7 +51,7 @@ const DEFAULT_PREF = {
   min_hours_between_shifts: "",
   allow_split_shifts: false,
   preferred_days: [],
-  preferred_locations: "",
+  preferred_locations: [],
 };
 
 const SmartShiftAvailabilityTab = () => {
@@ -62,6 +62,13 @@ const SmartShiftAvailabilityTab = () => {
   const [ruleForm, setRuleForm] = useState(DEFAULT_RULE);
   const [exceptionForm, setExceptionForm] = useState(DEFAULT_EXCEPTION);
   const [prefForm, setPrefForm] = useState(DEFAULT_PREF);
+  const [departments, setDepartments] = useState([]);
+
+  const deptNameById = useMemo(() => {
+    const m = new Map();
+    departments.forEach((d) => m.set(Number(d.id), d.name || `Department #${d.id}`));
+    return m;
+  }, [departments]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,22 +89,14 @@ const SmartShiftAvailabilityTab = () => {
         min_hours_between_shifts: pref?.min_hours_between_shifts ?? "",
         allow_split_shifts: Boolean(pref?.allow_split_shifts),
         preferred_days: Array.isArray(pref?.preferred_days) ? pref.preferred_days : [],
-        preferred_locations: Array.isArray(pref?.preferred_locations)
-          ? pref.preferred_locations.join(",")
-          : "",
+        preferred_locations: Array.isArray(pref?.preferred_locations) ? pref.preferred_locations : [],
       });
 
       if (!ruleForm.timezone) {
-        setRuleForm((prev) => ({
-          ...prev,
-          timezone: localStorage.getItem("timezone") || "",
-        }));
+        setRuleForm((prev) => ({ ...prev, timezone: localStorage.getItem("timezone") || "" }));
       }
       if (!exceptionForm.timezone) {
-        setExceptionForm((prev) => ({
-          ...prev,
-          timezone: localStorage.getItem("timezone") || "",
-        }));
+        setExceptionForm((prev) => ({ ...prev, timezone: localStorage.getItem("timezone") || "" }));
       }
     } catch (e) {
       setError(e?.response?.data?.error || "Failed to load smart shift availability.");
@@ -109,6 +108,23 @@ const SmartShiftAvailabilityTab = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadDepartments = async () => {
+      try {
+        const res = await api.get("/api/departments");
+        const raw = res?.data?.departments || res?.data || [];
+        if (mounted) setDepartments(Array.isArray(raw) ? raw : []);
+      } catch {
+        if (mounted) setDepartments([]);
+      }
+    };
+    loadDepartments();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const ruleRows = useMemo(() => {
     return [...data.rules].sort((a, b) => {
@@ -194,14 +210,9 @@ const SmartShiftAvailabilityTab = () => {
           : null,
         allow_split_shifts: Boolean(prefForm.allow_split_shifts),
         preferred_days: prefForm.preferred_days,
-        preferred_locations: prefForm.preferred_locations
-          ? prefForm.preferred_locations
-              .split(",")
-              .map((v) => v.trim())
-              .filter(Boolean)
-              .map((v) => Number(v))
-              .filter((v) => Number.isFinite(v))
-          : [],
+        preferred_locations: (prefForm.preferred_locations || [])
+          .map((v) => Number(v))
+          .filter((v) => Number.isFinite(v)),
       });
       setSuccess("Preferences saved.");
       await load();
@@ -283,12 +294,22 @@ const SmartShiftAvailabilityTab = () => {
             placeholder="America/Toronto"
           />
           <TextField
+            select
             size="small"
-            label="Location ID"
+            label="Preferred department (optional)"
             className="smart-shift-field"
             value={ruleForm.location_id}
             onChange={(e) => setRuleForm((p) => ({ ...p, location_id: e.target.value }))}
-          />
+          >
+            <MenuItem value="">
+              <em>Any department</em>
+            </MenuItem>
+            {departments.map((dept) => (
+              <MenuItem key={dept.id} value={dept.id}>
+                {dept.name || `Department #${dept.id}`}
+              </MenuItem>
+            ))}
+          </TextField>
           <Button variant="contained" onClick={handleCreateRule} fullWidth>
             Add Rule
           </Button>
@@ -315,7 +336,9 @@ const SmartShiftAvailabilityTab = () => {
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {r.timezone || "—"}
-                    {r.location_id ? ` • Location ${r.location_id}` : ""}
+                    {r.location_id
+                      ? ` • ${deptNameById.get(Number(r.location_id)) || `Department ${r.location_id}`}`
+                      : ""}
                   </Typography>
                   <Button color="error" size="small" onClick={() => handleDeleteRule(r.id)} sx={{ alignSelf: "flex-start" }}>
                     Delete
@@ -482,14 +505,26 @@ const SmartShiftAvailabilityTab = () => {
               ))}
             </Select>
           </FormControl>
-          <TextField
-            size="small"
-            label="Preferred location IDs"
-            className="smart-shift-field"
-            helperText="Comma-separated, e.g. 1,2,3"
-            value={prefForm.preferred_locations}
-            onChange={(e) => setPrefForm((p) => ({ ...p, preferred_locations: e.target.value }))}
-          />
+          <FormControl size="small" className="smart-shift-field">
+            <InputLabel>Preferred departments</InputLabel>
+            <Select
+              multiple
+              label="Preferred departments"
+              value={prefForm.preferred_locations}
+              onChange={(e) => setPrefForm((p) => ({ ...p, preferred_locations: e.target.value }))}
+              renderValue={(selected) =>
+                selected
+                  .map((id) => deptNameById.get(Number(id)) || `Department #${id}`)
+                  .join(", ")
+              }
+            >
+              {departments.map((dept) => (
+                <MenuItem key={dept.id} value={dept.id}>
+                  {dept.name || `Department #${dept.id}`}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <FormControlLabel
             control={
               <Checkbox

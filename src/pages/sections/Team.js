@@ -2136,6 +2136,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       {showSmartShift && (
         <SmartShiftPlannerPanel
           recruiters={recruiters}
+          departments={departments}
           onApplied={() => {
             fetchShifts();
             fetchTimeEntries();

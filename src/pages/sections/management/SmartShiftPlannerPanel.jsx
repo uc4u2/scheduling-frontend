@@ -55,7 +55,7 @@ const toSuggestionDateTime = (date, hhmm, timezone) => {
   }
 };
 
-const SmartShiftPlannerPanel = ({ recruiters = [], onApplied }) => {
+const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], onApplied }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -277,13 +277,23 @@ const SmartShiftPlannerPanel = ({ recruiters = [], onApplied }) => {
                   }
                 />
                 <TextField
+                  select
                   size="small"
-                  label="Location ID"
+                  label="Department"
                   value={c.location_id}
                   onChange={(e) =>
                     setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, location_id: e.target.value } : it)))
                   }
-                />
+                >
+                  <MenuItem value="">
+                    <em>Any department</em>
+                  </MenuItem>
+                  {departments.map((dept) => (
+                    <MenuItem key={dept.id} value={dept.id}>
+                      {dept.name || `Department #${dept.id}`}
+                    </MenuItem>
+                  ))}
+                </TextField>
                 <TextField
                   size="small"
                   label="Role key"
@@ -455,6 +465,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], onApplied }) => {
                     </Typography>
                     <Chip size="small" label={`Score ${Number(s.score || 0).toFixed(2)}`} />
                     <Chip size="small" variant="outlined" label={s.coverage_id || "coverage"} />
+                    {s.location_id ? (
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={
+                          departments.find((d) => Number(d.id) === Number(s.location_id))?.name ||
+                          `Department ${s.location_id}`
+                        }
+                      />
+                    ) : null}
                   </Stack>
                   <Typography variant="caption" color="text.secondary">
                     {Array.isArray(s.reasons) && s.reasons.length ? s.reasons.join(", ") : "no reasons"}
