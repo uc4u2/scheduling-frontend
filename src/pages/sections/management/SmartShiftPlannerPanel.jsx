@@ -13,6 +13,8 @@ import {
   FormControlLabel,
   IconButton,
   InputLabel,
+  Drawer,
+  Divider,
   MenuItem,
   Paper,
   Select,
@@ -154,6 +156,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [suggestionEmployeeFilter, setSuggestionEmployeeFilter] = useState("");
   const [visibleSuggestionCount, setVisibleSuggestionCount] = useState(DEFAULT_VISIBLE_SUGGESTIONS);
   const [expandedGroups, setExpandedGroups] = useState({});
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const recruiterNameById = useMemo(() => {
     const map = new Map();
@@ -645,13 +648,20 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   return (
     <Stack spacing={2} sx={{ mb: 2 }}>
       <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
-        <Typography variant="h6" fontWeight={700}>Smart Shift</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Generate shift suggestions from employee smart availability, then apply selected rows into real shifts.
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
-          Timezone auto-detected: {autoTimezone}
-        </Typography>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ gap: 1 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={700}>Smart Shift</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Generate shift suggestions from employee smart availability, then apply selected rows into real shifts.
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
+              Timezone auto-detected: {autoTimezone}
+            </Typography>
+          </Box>
+          <Button variant="outlined" size="small" onClick={() => setGuideOpen(true)}>
+            Smart Shift Guide
+          </Button>
+        </Stack>
       </Paper>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
@@ -1238,6 +1248,98 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           </Box>
         ) : null}
       </Paper>
+
+      <Drawer
+        anchor="right"
+        open={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        sx={{ "& .MuiDrawer-paper": { width: { xs: "100%", sm: 460 }, p: 2 } }}
+      >
+        <Stack spacing={1.5}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" fontWeight={700}>Smart Shift Guide</Typography>
+            <Button size="small" onClick={() => setGuideOpen(false)}>Close</Button>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            End-to-end guide for planning shifts quickly and safely.
+          </Typography>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>1) Quick workflow</Typography>
+            <Typography variant="body2">
+              1. Pick date range and department. 2. Select employees (or keep empty to include all filtered).
+              3. Set coverage row(s). 4. Generate suggestions. 5. Review and Apply Selected.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>2) Department and employee picker</Typography>
+            <Typography variant="body2">
+              Department filter narrows the pool. Employee selection is optional:
+              if you leave it empty, Smart Shift uses all employees in the filtered department.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>3) Headcount vs selected employees</Typography>
+            <Typography variant="body2">
+              Headcount means how many employees are required per coverage slot.
+              Selected employees are the candidate pool.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              Example: IT has 20 staff. If headcount = 10, Smart Shift tries to place 10 per slot.
+              If headcount = 1, it places 1 per slot even if 10 employees are selected.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>4) New employees with no availability</Typography>
+            <Typography variant="body2">
+              Use <strong>Seed default availability</strong> to create Mon–Fri 09:00–17:00
+              for selected employees. This also resets planner coverage to the same default set.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>5) Range health chips</Typography>
+            <Typography variant="body2">
+              Fully scheduled, Partial, Below target, and Unscheduled are computed for the selected date range.
+              Use <strong>Select below target</strong> or <strong>Select unscheduled</strong> for targeted fixes.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>6) Availability-only mode</Typography>
+            <Typography variant="body2">
+              Toggle <strong>Apply only employees with submitted availability</strong> to exclude employees
+              who have no rules/exceptions from suggestion generation.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>7) Suggestions panel controls</Typography>
+            <Typography variant="body2">
+              Group by Week/Day/Employee, focus a specific week, show selected only, warnings only,
+              and filter by employee to manage large result sets.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>8) Runs history</Typography>
+            <Typography variant="body2">
+              Use runs to reopen previous previews/applies. Keep list compact by default and refresh when needed.
+            </Typography>
+          </Box>
+        </Stack>
+      </Drawer>
     </Stack>
   );
 };
