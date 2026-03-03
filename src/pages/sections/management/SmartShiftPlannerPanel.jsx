@@ -174,6 +174,8 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [reportRecruiterId, setReportRecruiterId] = useState("");
   const [reportDepartmentId, setReportDepartmentId] = useState("");
   const [reportEmployeeIds, setReportEmployeeIds] = useState([]);
+  const [reportOverrideLoading, setReportOverrideLoading] = useState(false);
+  const [reportOverrideByRecruiter, setReportOverrideByRecruiter] = useState({});
   const [hideEmployeeAvailabilityTab, setHideEmployeeAvailabilityTab] = useState(false);
   const [policyLoading, setPolicyLoading] = useState(false);
 
@@ -774,6 +776,63 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     setReportDepartmentId(nextDept);
     setReportEmployeeIds(nextEmp);
     loadAvailabilityReport({ departmentId: nextDept, employeeIds: nextEmp });
+    loadAvailabilityOverrides({ departmentId: nextDept, employeeIds: nextEmp });
+  };
+
+  const loadAvailabilityOverrides = async (opts = {}) => {
+    const departmentId = opts.departmentId ?? reportDepartmentId;
+    const employeeIds = opts.employeeIds ?? reportEmployeeIds;
+    setReportOverrideLoading(true);
+    try {
+      const params = {};
+      if (departmentId) params.department_id = departmentId;
+      if (Array.isArray(employeeIds) && employeeIds.length) {
+        params.recruiter_ids = employeeIds.join(",");
+      }
+      const { data } = await smartShifts.manager.getEmployeeOverrides(params);
+      const map = {};
+      (data?.items || []).forEach((item) => {
+        map[Number(item.recruiter_id)] = Boolean(item.availability_override);
+      });
+      setReportOverrideByRecruiter(map);
+    } catch (e) {
+      setReportError((prev) => prev || e?.response?.data?.error || "Failed to load availability access overrides.");
+      setReportOverrideByRecruiter({});
+    } finally {
+      setReportOverrideLoading(false);
+    }
+  };
+
+  const applyAvailabilityOverride = async (enabled) => {
+    const targetIds = reportEmployeeIds.length
+      ? normalizeIdList(reportEmployeeIds)
+      : reportRecruiterOptions.map((r) => Number(r.id));
+    if (!targetIds.length) {
+      setReportError("Select at least one employee or department with employees.");
+      return;
+    }
+    setReportOverrideLoading(true);
+    setReportError("");
+    try {
+      await smartShifts.manager.putEmployeeOverrides({
+        recruiter_ids: targetIds,
+        availability_override: Boolean(enabled),
+      });
+      setSuccess(
+        enabled
+          ? `Granted availability access override to ${targetIds.length} employee(s).`
+          : `Removed availability access override from ${targetIds.length} employee(s).`
+      );
+      await Promise.all([
+        loadAvailabilityReport(),
+        loadAvailabilityOverrides(),
+        loadManagerPolicy(),
+      ]);
+    } catch (e) {
+      setReportError(e?.response?.data?.error || "Failed to update employee availability overrides.");
+    } finally {
+      setReportOverrideLoading(false);
+    }
   };
 
   const handleToggleEmployeeAvailability = async (nextValue) => {
@@ -1622,10 +1681,49 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               </Select>
             </FormControl>
 
-            <Button variant="outlined" onClick={loadAvailabilityReport} disabled={reportLoading}>
+            <Button
+              variant="outlined"
+              onClick={async () => {
+                await Promise.all([loadAvailabilityReport(), loadAvailabilityOverrides()]);
+              }}
+              disabled={reportLoading || reportOverrideLoading}
+            >
               Refresh
             </Button>
           </Stack>
+
+          <Paper variant="outlined" sx={{ p: 1.25 }}>
+            <Typography variant="subtitle2" fontWeight={700}>
+              Employee Availability Access Overrides
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Use this when global "Hide employee availability tab" is ON. Overrides allow selected employees to still access and submit their availability.
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => applyAvailabilityOverride(true)}
+                disabled={reportOverrideLoading}
+              >
+                Grant access for selected/filter
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="warning"
+                onClick={() => applyAvailabilityOverride(false)}
+                disabled={reportOverrideLoading}
+              >
+                Remove access for selected/filter
+              </Button>
+              <Chip
+                size="small"
+                label={`Overrides in report: ${Object.values(reportOverrideByRecruiter).filter(Boolean).length}`}
+                color="info"
+              />
+            </Stack>
+          </Paper>
 
           <Tabs value={reportTab} onChange={(_, v) => setReportTab(v)}>
             <Tab label="Summary" value="summary" />
@@ -1644,6 +1742,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                 <Chip label={`Employees: ${reportData?.summary?.employees ?? 0}`} />
                 <Chip label={`With availability: ${reportData?.summary?.with_availability ?? 0}`} color="success" />
                 <Chip label={`Without availability: ${reportData?.summary?.without_availability ?? 0}`} color="warning" />
+                <Chip label={`Overrides enabled: ${reportData?.summary?.availability_override_enabled ?? 0}`} color="info" />
                 <Chip label={`Blocked days total: ${reportData?.summary?.blocked_days_total ?? 0}`} />
                 <Chip label={`Range days: ${reportData?.summary?.date_span_days ?? 0}`} />
               </Stack>
@@ -1672,6 +1771,19 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                       <Chip size="small" label={`Rules: ${row?.summary?.rules_count ?? 0}`} />
                       <Chip size="small" label={`Exceptions: ${row?.summary?.exceptions_count ?? 0}`} />
                       <Chip size="small" label={`Leaves: ${row?.summary?.leave_count ?? 0}`} />
+                      <Chip
+                        size="small"
+                        label={
+                          (row?.availability_override ?? reportOverrideByRecruiter[Number(row?.recruiter_id)])
+                            ? "Availability access: override ON"
+                            : "Availability access: default"
+                        }
+                        color={
+                          (row?.availability_override ?? reportOverrideByRecruiter[Number(row?.recruiter_id)])
+                            ? "info"
+                            : "default"
+                        }
+                      />
                       <Chip size="small" label={`Schedulable: ${row?.summary?.schedulable_days ?? 0}`} color="success" />
                       <Chip size="small" label={`Blocked: ${row?.summary?.blocked_days ?? 0}`} color={(row?.summary?.blocked_days ?? 0) > 0 ? "warning" : "default"} />
                     </Stack>
@@ -1703,6 +1815,23 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     <Typography variant="caption" color="text.secondary">
                       Rules: {selectedReportItem?.rules?.length ?? 0} • Exceptions: {selectedReportItem?.exceptions?.length ?? 0}
                     </Typography>
+                    <Box sx={{ mt: 0.75 }}>
+                      <Chip
+                        size="small"
+                        label={
+                          (selectedReportItem?.availability_override ??
+                            reportOverrideByRecruiter[Number(selectedReportItem?.recruiter_id)])
+                            ? "Availability access override: ON"
+                            : "Availability access override: OFF"
+                        }
+                        color={
+                          (selectedReportItem?.availability_override ??
+                            reportOverrideByRecruiter[Number(selectedReportItem?.recruiter_id)])
+                            ? "info"
+                            : "default"
+                        }
+                      />
+                    </Box>
                     <Box sx={{ mt: 1 }}>
                       {(selectedReportItem?.rules || []).slice(0, 12).map((r) => (
                         <Typography key={`rr-${r.id}`} variant="body2">

@@ -1379,6 +1379,10 @@ export const smartShifts = {
   manager: {
     getPolicy: () => api.get("/api/smart-shifts/policy"),
     putPolicy: (payload) => api.put("/api/smart-shifts/policy", payload),
+    getEmployeeOverrides: (params = {}) =>
+      api.get("/api/smart-shifts/policy/employee-overrides", { params }),
+    putEmployeeOverrides: (payload) =>
+      api.put("/api/smart-shifts/policy/employee-overrides", payload),
     suggest: (payload) => api.post("/api/smart-shifts/suggest", payload),
     apply: (payload) => api.post("/api/smart-shifts/apply", payload),
     availabilityReport: (payload) => api.post("/api/smart-shifts/availability-report", payload),
