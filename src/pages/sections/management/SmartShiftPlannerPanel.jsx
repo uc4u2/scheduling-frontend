@@ -59,6 +59,7 @@ const DOW = [
   { value: 5, label: "Sat" },
   { value: 6, label: "Sun" },
 ];
+const DOW_LABEL_BY_VALUE = new Map(DOW.map((d) => [Number(d.value), d.label]));
 
 const toDefaultRangeStart = () => DateTime.local().startOf("week").toFormat("yyyy-MM-dd");
 const toDefaultRangeEnd = () => DateTime.local().startOf("week").plus({ days: 6 }).toFormat("yyyy-MM-dd");
@@ -762,6 +763,13 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     () => reportItems.find((i) => String(i.recruiter_id) === String(reportRecruiterId)) || reportItems[0] || null,
     [reportItems, reportRecruiterId]
   );
+  const reportRangeLabel = useMemo(() => {
+    const start = reportData?.summary?.range_start || range?.start_date;
+    const end = reportData?.summary?.range_end || range?.end_date;
+    const tz = reportData?.summary?.timezone || range?.timezone || autoTimezone;
+    if (!start || !end) return `Timezone: ${tz}`;
+    return `Range: ${start} to ${end} (${tz})`;
+  }, [reportData, range, autoTimezone]);
 
   const suggestionSummary = useMemo(() => {
     const total = filteredSuggestionRows.length;
@@ -1517,6 +1525,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           <Typography variant="body2" color="text.secondary">
             One-click manager report for employee availability inputs, exceptions, and blocked-day reasons.
           </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {reportRangeLabel}
+          </Typography>
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
             <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -1643,7 +1654,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     <Box sx={{ mt: 1 }}>
                       {(selectedReportItem?.rules || []).slice(0, 12).map((r) => (
                         <Typography key={`rr-${r.id}`} variant="body2">
-                          DOW {r.day_of_week} • {r.start_time} - {r.end_time} • {r.status}
+                          {(DOW_LABEL_BY_VALUE.get(Number(r.day_of_week)) || `DOW ${r.day_of_week}`)} • {r.start_time} - {r.end_time} • {r.status}
                         </Typography>
                       ))}
                       {(selectedReportItem?.rules || []).length > 12 ? (
@@ -1652,6 +1663,32 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                         </Typography>
                       ) : null}
                     </Box>
+                    {(selectedReportItem?.exceptions || []).length ? (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Exceptions in range</Typography>
+                        {(selectedReportItem?.exceptions || []).slice(0, 10).map((ex) => (
+                          <Typography key={`rex-${ex.id}`} variant="body2">
+                            {ex.date} • {ex.exception_type}
+                            {ex.start_time && ex.end_time ? ` • ${ex.start_time}-${ex.end_time}` : ""}
+                          </Typography>
+                        ))}
+                      </Box>
+                    ) : null}
+                    {selectedReportItem?.preference ? (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Scheduling preferences</Typography>
+                        <Typography variant="body2">
+                          Max hours/week: {selectedReportItem.preference.max_hours_per_week ?? "—"} • Min rest: {selectedReportItem.preference.min_hours_between_shifts ?? "—"}h
+                        </Typography>
+                        <Typography variant="body2">
+                          Preferred days: {Array.isArray(selectedReportItem.preference.preferred_days) && selectedReportItem.preference.preferred_days.length
+                            ? selectedReportItem.preference.preferred_days
+                                .map((n) => DOW_LABEL_BY_VALUE.get(Number(n)) || String(n))
+                                .join(", ")
+                            : "—"}
+                        </Typography>
+                      </Box>
+                    ) : null}
                   </Paper>
 
                   <Paper variant="outlined" sx={{ p: 1.25 }}>
