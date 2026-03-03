@@ -1378,6 +1378,7 @@ export const smartShifts = {
   manager: {
     suggest: (payload) => api.post("/api/smart-shifts/suggest", payload),
     apply: (payload) => api.post("/api/smart-shifts/apply", payload),
+    availabilityReport: (payload) => api.post("/api/smart-shifts/availability-report", payload),
     listRuns: (opts = 20) => {
       if (typeof opts === "number") {
         return api.get("/api/smart-shifts/runs", { params: { limit: opts } });

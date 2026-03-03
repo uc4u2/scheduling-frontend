@@ -20,6 +20,8 @@ import {
   Select,
   Stack,
   Switch,
+  Tab,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -163,6 +165,12 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [visibleSuggestionCount, setVisibleSuggestionCount] = useState(DEFAULT_VISIBLE_SUGGESTIONS);
   const [expandedGroups, setExpandedGroups] = useState({});
   const [guideOpen, setGuideOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [reportData, setReportData] = useState(null);
+  const [reportTab, setReportTab] = useState("summary");
+  const [reportRecruiterId, setReportRecruiterId] = useState("");
 
   const recruiterNameById = useMemo(() => {
     const map = new Map();
@@ -702,6 +710,35 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     }
   };
 
+  const openAvailabilityReport = async () => {
+    setReportOpen(true);
+    setReportLoading(true);
+    setReportError("");
+    try {
+      const recruiterIds = effectiveSuggestRecruiterIds?.length
+        ? effectiveSuggestRecruiterIds
+        : filteredRecruiters.map((r) => Number(r.id));
+      const { data } = await smartShifts.manager.availabilityReport({
+        range,
+        recruiter_ids: recruiterIds,
+        coverage,
+      });
+      setReportData(data || null);
+      const firstId = data?.items?.[0]?.recruiter_id;
+      setReportRecruiterId(firstId ? String(firstId) : "");
+    } catch (e) {
+      setReportError(e?.response?.data?.error || "Failed to load availability report.");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const reportItems = useMemo(() => (Array.isArray(reportData?.items) ? reportData.items : []), [reportData]);
+  const selectedReportItem = useMemo(
+    () => reportItems.find((i) => String(i.recruiter_id) === String(reportRecruiterId)) || reportItems[0] || null,
+    [reportItems, reportRecruiterId]
+  );
+
   const suggestionSummary = useMemo(() => {
     const total = filteredSuggestionRows.length;
     const selected = filteredSuggestionRows.filter((s) => selectedSet.has(s.suggestion_id)).length;
@@ -728,6 +765,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           </Box>
           <Button variant="outlined" size="small" onClick={() => setGuideOpen(true)}>
             Smart Shift Guide
+          </Button>
+          <Button variant="contained" size="small" onClick={openAvailabilityReport}>
+            Availability Report
           </Button>
         </Stack>
       </Paper>
@@ -1436,6 +1476,139 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               Use runs to reopen previous previews/applies. Keep list compact by default and refresh when needed.
             </Typography>
           </Box>
+        </Stack>
+      </Drawer>
+
+      <Drawer
+        anchor="right"
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        sx={{ "& .MuiDrawer-paper": { width: { xs: "100%", sm: 620 }, p: 2 } }}
+      >
+        <Stack spacing={1.5}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" fontWeight={700}>Availability Report</Typography>
+            <Button size="small" onClick={() => setReportOpen(false)}>Close</Button>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            One-click manager report for employee availability inputs, exceptions, and blocked-day reasons.
+          </Typography>
+
+          <Tabs value={reportTab} onChange={(_, v) => setReportTab(v)}>
+            <Tab label="Summary" value="summary" />
+            <Tab label="Details" value="details" />
+          </Tabs>
+
+          {reportLoading ? (
+            <Alert severity="info">Loading report...</Alert>
+          ) : reportError ? (
+            <Alert severity="error">{reportError}</Alert>
+          ) : null}
+
+          {reportTab === "summary" ? (
+            <Stack spacing={1}>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Chip label={`Employees: ${reportData?.summary?.employees ?? 0}`} />
+                <Chip label={`With availability: ${reportData?.summary?.with_availability ?? 0}`} color="success" />
+                <Chip label={`Without availability: ${reportData?.summary?.without_availability ?? 0}`} color="warning" />
+                <Chip label={`Blocked days total: ${reportData?.summary?.blocked_days_total ?? 0}`} />
+                <Chip label={`Range days: ${reportData?.summary?.date_span_days ?? 0}`} />
+              </Stack>
+
+              {!reportItems.length ? (
+                <Typography variant="body2" color="text.secondary">No report rows.</Typography>
+              ) : (
+                reportItems.map((row) => (
+                  <Paper key={`report-row-${row.recruiter_id}`} variant="outlined" sx={{ p: 1.25 }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={700}>{row.name || `#${row.recruiter_id}`}</Typography>
+                        <Typography variant="caption" color="text.secondary">{row.email || "—"}</Typography>
+                      </Box>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setReportRecruiterId(String(row.recruiter_id));
+                          setReportTab("details");
+                        }}
+                      >
+                        View details
+                      </Button>
+                    </Stack>
+                    <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+                      <Chip size="small" label={`Rules: ${row?.summary?.rules_count ?? 0}`} />
+                      <Chip size="small" label={`Exceptions: ${row?.summary?.exceptions_count ?? 0}`} />
+                      <Chip size="small" label={`Leaves: ${row?.summary?.leave_count ?? 0}`} />
+                      <Chip size="small" label={`Schedulable: ${row?.summary?.schedulable_days ?? 0}`} color="success" />
+                      <Chip size="small" label={`Blocked: ${row?.summary?.blocked_days ?? 0}`} color={(row?.summary?.blocked_days ?? 0) > 0 ? "warning" : "default"} />
+                    </Stack>
+                  </Paper>
+                ))
+              )}
+            </Stack>
+          ) : (
+            <Stack spacing={1.25}>
+              <FormControl size="small">
+                <InputLabel>Employee</InputLabel>
+                <Select
+                  label="Employee"
+                  value={reportRecruiterId}
+                  onChange={(e) => setReportRecruiterId(e.target.value)}
+                >
+                  {reportItems.map((row) => (
+                    <MenuItem key={`report-emp-${row.recruiter_id}`} value={String(row.recruiter_id)}>
+                      {row.name || `#${row.recruiter_id}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {selectedReportItem ? (
+                <Stack spacing={1}>
+                  <Paper variant="outlined" sx={{ p: 1.25 }}>
+                    <Typography variant="body2" fontWeight={700}>Employee Inputs</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Rules: {selectedReportItem?.rules?.length ?? 0} • Exceptions: {selectedReportItem?.exceptions?.length ?? 0}
+                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      {(selectedReportItem?.rules || []).slice(0, 12).map((r) => (
+                        <Typography key={`rr-${r.id}`} variant="body2">
+                          DOW {r.day_of_week} • {r.start_time} - {r.end_time} • {r.status}
+                        </Typography>
+                      ))}
+                      {(selectedReportItem?.rules || []).length > 12 ? (
+                        <Typography variant="caption" color="text.secondary">
+                          +{(selectedReportItem?.rules || []).length - 12} more rules
+                        </Typography>
+                      ) : null}
+                    </Box>
+                  </Paper>
+
+                  <Paper variant="outlined" sx={{ p: 1.25 }}>
+                    <Typography variant="body2" fontWeight={700}>Blocked Date Reasons</Typography>
+                    {!(selectedReportItem?.missing_by_date || []).length ? (
+                      <Typography variant="body2" color="text.secondary">No blocked dates in current range.</Typography>
+                    ) : (
+                      <Stack spacing={0.5} sx={{ mt: 1 }}>
+                        {(selectedReportItem?.missing_by_date || []).slice(0, 60).map((m, idx) => (
+                          <Typography key={`rm-${idx}`} variant="body2">
+                            {m.date} • {m.code} • {m.message}
+                          </Typography>
+                        ))}
+                        {(selectedReportItem?.missing_by_date || []).length > 60 ? (
+                          <Typography variant="caption" color="text.secondary">
+                            +{(selectedReportItem?.missing_by_date || []).length - 60} more reason rows
+                          </Typography>
+                        ) : null}
+                      </Stack>
+                    )}
+                  </Paper>
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">No employee selected.</Typography>
+              )}
+            </Stack>
+          )}
         </Stack>
       </Drawer>
     </Stack>
