@@ -174,6 +174,8 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [reportRecruiterId, setReportRecruiterId] = useState("");
   const [reportDepartmentId, setReportDepartmentId] = useState("");
   const [reportEmployeeIds, setReportEmployeeIds] = useState([]);
+  const [hideEmployeeAvailabilityTab, setHideEmployeeAvailabilityTab] = useState(false);
+  const [policyLoading, setPolicyLoading] = useState(false);
 
   const recruiterNameById = useMemo(() => {
     const map = new Map();
@@ -308,6 +310,22 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   useEffect(() => {
     loadAvailabilityPresence();
   }, [loadAvailabilityPresence]);
+
+  const loadManagerPolicy = useCallback(async () => {
+    setPolicyLoading(true);
+    try {
+      const { data } = await smartShifts.manager.getPolicy();
+      setHideEmployeeAvailabilityTab(Boolean(data?.hide_employee_availability_tab));
+    } catch {
+      setHideEmployeeAvailabilityTab(false);
+    } finally {
+      setPolicyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadManagerPolicy();
+  }, [loadManagerPolicy]);
 
   const availabilityFilteredRecruiterIds = useMemo(
     () => filteredRecruiters.filter((r) => availabilityPresence[Number(r.id)]).map((r) => Number(r.id)),
@@ -758,6 +776,26 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     loadAvailabilityReport({ departmentId: nextDept, employeeIds: nextEmp });
   };
 
+  const handleToggleEmployeeAvailability = async (nextValue) => {
+    setPolicyLoading(true);
+    setError("");
+    try {
+      const { data } = await smartShifts.manager.putPolicy({
+        hide_employee_availability_tab: Boolean(nextValue),
+      });
+      setHideEmployeeAvailabilityTab(Boolean(data?.hide_employee_availability_tab));
+      setSuccess(
+        nextValue
+          ? "Employee Shift Availability tab is now hidden."
+          : "Employee Shift Availability tab is now visible."
+      );
+    } catch (e) {
+      setError(e?.response?.data?.error || "Failed to update Smart Shift policy.");
+    } finally {
+      setPolicyLoading(false);
+    }
+  };
+
   const reportItems = useMemo(() => (Array.isArray(reportData?.items) ? reportData.items : []), [reportData]);
   const selectedReportItem = useMemo(
     () => reportItems.find((i) => String(i.recruiter_id) === String(reportRecruiterId)) || reportItems[0] || null,
@@ -795,12 +833,26 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               Timezone auto-detected: {autoTimezone}
             </Typography>
           </Box>
-          <Button variant="outlined" size="small" onClick={() => setGuideOpen(true)}>
-            Smart Shift Guide
-          </Button>
-          <Button variant="contained" size="small" onClick={openAvailabilityReport}>
-            Availability Report
-          </Button>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+            <FormControlLabel
+              sx={{ ml: 0 }}
+              control={
+                <Switch
+                  size="small"
+                  checked={hideEmployeeAvailabilityTab}
+                  onChange={(e) => handleToggleEmployeeAvailability(e.target.checked)}
+                  disabled={policyLoading}
+                />
+              }
+              label="Hide employee availability tab"
+            />
+            <Button variant="outlined" size="small" onClick={() => setGuideOpen(true)}>
+              Smart Shift Guide
+            </Button>
+            <Button variant="contained" size="small" onClick={openAvailabilityReport}>
+              Availability Report
+            </Button>
+          </Stack>
         </Stack>
       </Paper>
 

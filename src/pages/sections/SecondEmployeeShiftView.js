@@ -88,6 +88,7 @@ const SecondEmployeeShiftView = () => {
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerPanel, setDrawerPanel] = useState("shifts");
+  const [hideAvailabilityTab, setHideAvailabilityTab] = useState(false);
   const [todayCardCollapsed, setTodayCardCollapsed] = useState(false);
   const [countdownTick, setCountdownTick] = useState(Date.now());
   const [shiftPage, setShiftPage] = useState(1);
@@ -323,11 +324,25 @@ const loadSwappableShifts = async (shiftId, scope = "week") => {
   }
 };
 
+const loadSmartShiftPolicy = async () => {
+  try {
+    const res = await api.get("/api/recruiter/smart-shifts/policy", { headers: authHeader });
+    const hidden = Boolean(res?.data?.hide_employee_availability_tab);
+    setHideAvailabilityTab(hidden);
+    if (hidden) {
+      setDrawerPanel("shifts");
+    }
+  } catch {
+    setHideAvailabilityTab(false);
+  }
+};
+
 // eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   loadShifts();
   loadPendingSwaps(showSwapHistory);
   loadOptOut();
+  loadSmartShiftPolicy();
   loadTimeHistory();
 }, [userId]);
 
@@ -1105,15 +1120,17 @@ const breakTimelineMeta = useMemo(() => {
         </Stack>
       </Stack>
       <Stack direction="row" spacing={1} sx={{ mt: 2 }} useFlexGap flexWrap="wrap">
-        <Button
-          variant={drawerOpen && drawerPanel === "availability" ? "contained" : "outlined"}
-          onClick={() => {
-            setDrawerPanel("availability");
-            setDrawerOpen(true);
-          }}
-        >
-          Shift Availability
-        </Button>
+        {!hideAvailabilityTab && (
+          <Button
+            variant={drawerOpen && drawerPanel === "availability" ? "contained" : "outlined"}
+            onClick={() => {
+              setDrawerPanel("availability");
+              setDrawerOpen(true);
+            }}
+          >
+            Shift Availability
+          </Button>
+        )}
         <Button
           variant={drawerOpen && drawerPanel === "shifts" ? "contained" : "outlined"}
           startIcon={<CalendarMonthIcon />}
@@ -1763,7 +1780,7 @@ const breakTimelineMeta = useMemo(() => {
         }}
       >
         <Typography variant="h6" fontWeight={700}>
-          {drawerPanel === "availability" ? "Shift Availability" : "My Shifts"}
+          {drawerPanel === "availability" && !hideAvailabilityTab ? "Shift Availability" : "My Shifts"}
         </Typography>
         <IconButton onClick={() => setDrawerOpen(false)}>
           <CloseIcon />
@@ -1776,14 +1793,14 @@ const breakTimelineMeta = useMemo(() => {
           value={drawerPanel}
           exclusive
           fullWidth
-          onChange={(_, v) => v && setDrawerPanel(v)}
+          onChange={(_, v) => v && (!hideAvailabilityTab || v !== "availability") && setDrawerPanel(v)}
         >
-          <ToggleButton value="availability">Shift Availability</ToggleButton>
+          {!hideAvailabilityTab && <ToggleButton value="availability">Shift Availability</ToggleButton>}
           <ToggleButton value="shifts">My Shifts</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
-      {drawerPanel === "availability" ? (
+      {drawerPanel === "availability" && !hideAvailabilityTab ? (
         <Box sx={{ p: 2, pt: 1.5, overflowY: "auto" }}>
           <SmartShiftAvailabilityTab />
         </Box>

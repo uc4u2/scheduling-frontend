@@ -1363,6 +1363,7 @@ export const navSettings = {
 
 export const smartShifts = {
   recruiter: {
+    getPolicy: () => api.get("/api/recruiter/smart-shifts/policy"),
     getAvailability: () => api.get("/api/recruiter/smart-shifts/availability"),
     createRule: (payload) => api.post("/api/recruiter/smart-shifts/availability-rules", payload),
     updateRule: (ruleId, payload) =>
@@ -1376,6 +1377,8 @@ export const smartShifts = {
     putPreference: (payload) => api.put("/api/recruiter/smart-shifts/preferences", payload),
   },
   manager: {
+    getPolicy: () => api.get("/api/smart-shifts/policy"),
+    putPolicy: (payload) => api.put("/api/smart-shifts/policy", payload),
     suggest: (payload) => api.post("/api/smart-shifts/suggest", payload),
     apply: (payload) => api.post("/api/smart-shifts/apply", payload),
     availabilityReport: (payload) => api.post("/api/smart-shifts/availability-report", payload),
