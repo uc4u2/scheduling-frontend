@@ -171,6 +171,8 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [reportData, setReportData] = useState(null);
   const [reportTab, setReportTab] = useState("summary");
   const [reportRecruiterId, setReportRecruiterId] = useState("");
+  const [reportDepartmentId, setReportDepartmentId] = useState("");
+  const [reportEmployeeIds, setReportEmployeeIds] = useState([]);
 
   const recruiterNameById = useMemo(() => {
     const map = new Map();
@@ -710,19 +712,32 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     }
   };
 
-  const openAvailabilityReport = async () => {
-    setReportOpen(true);
+  const reportRecruiterOptions = useMemo(() => {
+    const base = reportDepartmentId
+      ? recruiters.filter((r) => String(r.department_id || "") === String(reportDepartmentId))
+      : recruiters;
+    return base;
+  }, [recruiters, reportDepartmentId]);
+
+  const loadAvailabilityReport = async (opts = {}) => {
+    const departmentId = opts.departmentId ?? reportDepartmentId;
+    const employeeIds = opts.employeeIds ?? reportEmployeeIds;
+    const recruiterOptions = departmentId
+      ? recruiters.filter((r) => String(r.department_id || "") === String(departmentId))
+      : recruiters;
     setReportLoading(true);
     setReportError("");
     try {
-      const recruiterIds = effectiveSuggestRecruiterIds?.length
-        ? effectiveSuggestRecruiterIds
-        : filteredRecruiters.map((r) => Number(r.id));
-      const { data } = await smartShifts.manager.availabilityReport({
+      const recruiterIds = employeeIds.length
+        ? normalizeIdList(employeeIds)
+        : recruiterOptions.map((r) => Number(r.id));
+      const payload = {
         range,
         recruiter_ids: recruiterIds,
         coverage,
-      });
+      };
+      if (departmentId) payload.department_id = Number(departmentId);
+      const { data } = await smartShifts.manager.availabilityReport(payload);
       setReportData(data || null);
       const firstId = data?.items?.[0]?.recruiter_id;
       setReportRecruiterId(firstId ? String(firstId) : "");
@@ -731,6 +746,15 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     } finally {
       setReportLoading(false);
     }
+  };
+
+  const openAvailabilityReport = async () => {
+    setReportOpen(true);
+    const nextDept = selectedDepartment ? String(selectedDepartment) : "";
+    const nextEmp = effectiveSuggestRecruiterIds || [];
+    setReportDepartmentId(nextDept);
+    setReportEmployeeIds(nextEmp);
+    loadAvailabilityReport({ departmentId: nextDept, employeeIds: nextEmp });
   };
 
   const reportItems = useMemo(() => (Array.isArray(reportData?.items) ? reportData.items : []), [reportData]);
@@ -1493,6 +1517,52 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           <Typography variant="body2" color="text.secondary">
             One-click manager report for employee availability inputs, exceptions, and blocked-day reasons.
           </Typography>
+
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel>Department</InputLabel>
+              <Select
+                label="Department"
+                value={reportDepartmentId}
+                onChange={(e) => {
+                  setReportDepartmentId(e.target.value);
+                  setReportEmployeeIds([]);
+                }}
+              >
+                <MenuItem value=""><em>All departments</em></MenuItem>
+                {departments.map((dept) => (
+                  <MenuItem key={`report-dept-${dept.id}`} value={String(dept.id)}>
+                    {dept.name || `Department #${dept.id}`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ minWidth: 240 }}>
+              <InputLabel>Employees</InputLabel>
+              <Select
+                multiple
+                label="Employees"
+                value={reportEmployeeIds}
+                onChange={(e) => setReportEmployeeIds(normalizeIdList(e.target.value))}
+                renderValue={(selected) =>
+                  selected.length
+                    ? selected.map((id) => recruiterNameById.get(Number(id)) || `#${id}`).join(", ")
+                    : "All in filter"
+                }
+              >
+                {reportRecruiterOptions.map((r) => (
+                  <MenuItem key={`report-rec-${r.id}`} value={Number(r.id)}>
+                    {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Button variant="outlined" onClick={loadAvailabilityReport} disabled={reportLoading}>
+              Refresh
+            </Button>
+          </Stack>
 
           <Tabs value={reportTab} onChange={(_, v) => setReportTab(v)}>
             <Tab label="Summary" value="summary" />
