@@ -17,17 +17,17 @@ import {
 import { api, smartShifts } from "../../utils/api";
 
 const DOW = [
-  { value: 0, label: "Sun" },
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
+  { value: 0, label: "Mon" },
+  { value: 1, label: "Tue" },
+  { value: 2, label: "Wed" },
+  { value: 3, label: "Thu" },
+  { value: 4, label: "Fri" },
+  { value: 5, label: "Sat" },
+  { value: 6, label: "Sun" },
 ];
 
 const DEFAULT_RULE = {
-  day_of_week: 1,
+  day_of_week: 0,
   start_time: "09:00",
   end_time: "17:00",
   timezone: "",
@@ -202,10 +202,10 @@ const SmartShiftAvailabilityTab = () => {
     try {
       const days =
         preset === "weekdays"
-          ? [1, 2, 3, 4, 5]
+          ? [0, 1, 2, 3, 4]
           : preset === "weekends"
-          ? [0, 6]
-          : [1, 2, 3, 4, 5];
+          ? [5, 6]
+          : [0, 1, 2, 3, 4];
       const base =
         preset === "evening"
           ? { start_time: "13:00", end_time: "21:00" }

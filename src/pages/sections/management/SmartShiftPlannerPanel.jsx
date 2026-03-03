@@ -38,7 +38,7 @@ const DEFAULT_COVERAGE = {
   coverage_id: "",
   location_id: "",
   role_key: "",
-  days_of_week: [1, 2, 3, 4, 5],
+  days_of_week: [0, 1, 2, 3, 4],
   timezone: "",
   start_time: "09:00",
   end_time: "17:00",
@@ -49,17 +49,17 @@ const DEFAULT_COVERAGE = {
 };
 
 const DOW = [
-  { value: 0, label: "Sun" },
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
+  { value: 0, label: "Mon" },
+  { value: 1, label: "Tue" },
+  { value: 2, label: "Wed" },
+  { value: 3, label: "Thu" },
+  { value: 4, label: "Fri" },
+  { value: 5, label: "Sat" },
+  { value: 6, label: "Sun" },
 ];
 
-const toDefaultRangeStart = () => DateTime.local().startOf("week").plus({ days: 1 }).toFormat("yyyy-MM-dd");
-const toDefaultRangeEnd = () => DateTime.local().startOf("week").plus({ days: 7 }).toFormat("yyyy-MM-dd");
+const toDefaultRangeStart = () => DateTime.local().startOf("week").toFormat("yyyy-MM-dd");
+const toDefaultRangeEnd = () => DateTime.local().startOf("week").plus({ days: 6 }).toFormat("yyyy-MM-dd");
 
 const detectTimezone = () => {
   try {
@@ -362,7 +362,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       {
         ...DEFAULT_COVERAGE,
         coverage_id: "weekday-core",
-        days_of_week: [1, 2, 3, 4, 5],
+        days_of_week: [0, 1, 2, 3, 4],
         start_time: "09:00",
         end_time: "17:00",
         headcount: 1,
@@ -484,7 +484,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       {
         ...DEFAULT_COVERAGE,
         coverage_id: "weekday-core",
-        days_of_week: [1, 2, 3, 4, 5],
+        days_of_week: [0, 1, 2, 3, 4],
         start_time: "09:00",
         end_time: "17:00",
         headcount: 1,
@@ -502,7 +502,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     setError("");
     setSuccess("");
     try {
-      const days = [1, 2, 3, 4, 5];
+      const days = [0, 1, 2, 3, 4];
       let created = 0;
       let skipped = 0;
 
