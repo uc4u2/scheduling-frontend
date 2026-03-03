@@ -1619,6 +1619,34 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               Use runs to reopen previous previews/applies. Keep list compact by default and refresh when needed.
             </Typography>
           </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>9) Manager policy: hide employee availability tab</Typography>
+            <Typography variant="body2">
+              Turn on <strong>Hide employee availability tab</strong> to block self-service availability for employees.
+              This does not remove manager-side planning tools.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>10) Employee access overrides (bulk)</Typography>
+            <Typography variant="body2">
+              In <strong>Availability Report</strong>, use department/employee filters and
+              <strong> Grant access for selected/filter</strong> to allow exceptions even when global hide is ON.
+              Use <strong>Remove access</strong> to revoke those exceptions in bulk.
+            </Typography>
+          </Box>
+
+          <Divider />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={700}>11) What this does not change</Typography>
+            <Typography variant="body2">
+              Smart Shift suggestions and applies create normal shifts in the existing pipeline.
+              Payroll, leave, overlap checks, and swap behavior stay on the same source-of-truth shift records.
+            </Typography>
+          </Box>
         </Stack>
       </Drawer>
 
