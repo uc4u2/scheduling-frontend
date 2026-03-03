@@ -1378,8 +1378,20 @@ export const smartShifts = {
   manager: {
     suggest: (payload) => api.post("/api/smart-shifts/suggest", payload),
     apply: (payload) => api.post("/api/smart-shifts/apply", payload),
-    listRuns: (limit = 20) => api.get("/api/smart-shifts/runs", { params: { limit } }),
+    listRuns: (opts = 20) => {
+      if (typeof opts === "number") {
+        return api.get("/api/smart-shifts/runs", { params: { limit: opts } });
+      }
+      const params = {
+        limit: opts?.limit ?? 20,
+        offset: opts?.offset ?? 0,
+      };
+      if (opts?.status && opts.status !== "all") params.status = opts.status;
+      if (opts?.q) params.q = opts.q;
+      return api.get("/api/smart-shifts/runs", { params });
+    },
     getRun: (runRef) => api.get(`/api/smart-shifts/runs/${encodeURIComponent(runRef)}`),
+    deleteRun: (runRef) => api.delete(`/api/smart-shifts/runs/${encodeURIComponent(runRef)}`),
   },
 };
 

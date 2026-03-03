@@ -32,6 +32,7 @@ import { isoFromParts } from "../../../utils/datetime";
 
 const ALL_EMPLOYEES_VALUE = "__ALL_EMPLOYEES__";
 const DEFAULT_VISIBLE_SUGGESTIONS = 50;
+const RUNS_PAGE_SIZE = 20;
 
 const DEFAULT_COVERAGE = {
   coverage_id: "",
@@ -138,6 +139,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [latestRun, setLatestRun] = useState(null);
   const [runs, setRuns] = useState([]);
   const [runDetail, setRunDetail] = useState(null);
+  const [runsLoading, setRunsLoading] = useState(false);
+  const [runsStatusFilter, setRunsStatusFilter] = useState("all");
+  const [runsSearch, setRunsSearch] = useState("");
+  const [runsOffset, setRunsOffset] = useState(0);
+  const [runsTotal, setRunsTotal] = useState(0);
 
   const [includeRecruiterIds, setIncludeRecruiterIds] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
@@ -374,6 +380,35 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     setRange((prev) => ({ ...prev, end_date: end }));
   };
 
+  const fetchRuns = useCallback(
+    async ({ reset = false, offsetOverride = 0 } = {}) => {
+      setRunsLoading(true);
+      try {
+        const nextOffset = reset ? 0 : offsetOverride;
+        const { data } = await smartShifts.manager.listRuns({
+          limit: RUNS_PAGE_SIZE,
+          offset: nextOffset,
+          status: runsStatusFilter,
+          q: runsSearch,
+        });
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const total = Number(data?.paging?.total || 0);
+        setRuns((prev) => (reset ? items : [...prev, ...items]));
+        setRunsOffset(nextOffset + items.length);
+        setRunsTotal(total);
+      } catch (e) {
+        setError(e?.response?.data?.error || "Failed to load runs.");
+      } finally {
+        setRunsLoading(false);
+      }
+    },
+    [runsSearch, runsStatusFilter]
+  );
+
+  useEffect(() => {
+    fetchRuns({ reset: true });
+  }, [fetchRuns]);
+
   const handleSuggest = async ({ onlyBelowTarget = false } = {}) => {
     setLoading(true);
     setError("");
@@ -396,8 +431,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       setVisibleSuggestionCount(DEFAULT_VISIBLE_SUGGESTIONS);
       setSuccess(`Generated ${list.length} suggestions.`);
 
-      const runsRes = await smartShifts.manager.listRuns(20);
-      setRuns(Array.isArray(runsRes?.data?.items) ? runsRes.data.items : []);
+      await fetchRuns({ reset: true });
     } catch (e) {
       setError(e?.response?.data?.error || e?.message || "Failed to generate smart shift suggestions.");
     } finally {
@@ -433,8 +467,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       setSuccess(`Applied ${data?.run?.applied_count || 0} shift(s), failed ${data?.run?.failed_count || 0}.`);
       if (onApplied) onApplied();
 
-      const runsRes = await smartShifts.manager.listRuns(20);
-      setRuns(Array.isArray(runsRes?.data?.items) ? runsRes.data.items : []);
+      await fetchRuns({ reset: true });
       if (latestRun?.run_id) {
         const detail = await smartShifts.manager.getRun(latestRun.run_id);
         setRunDetail(detail?.data || null);
@@ -633,6 +666,41 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   }, [groupMode, focusedWeekKey, visibleSuggestionCount, suggestions.length]);
 
   const selectedSet = useMemo(() => new Set(selectedSuggestionIds), [selectedSuggestionIds]);
+  const visibleSuggestionIds = useMemo(
+    () => visibleSuggestionRows.map((s) => s.suggestion_id).filter(Boolean),
+    [visibleSuggestionRows]
+  );
+  const handleSelectAllVisibleSuggestions = () => {
+    setSelectedSuggestionIds((prev) => {
+      const merged = new Set(prev);
+      visibleSuggestionIds.forEach((id) => merged.add(id));
+      return Array.from(merged);
+    });
+  };
+  const handleClearVisibleSuggestions = () => {
+    const visible = new Set(visibleSuggestionIds);
+    setSelectedSuggestionIds((prev) => prev.filter((id) => !visible.has(id)));
+  };
+
+  const handleDeleteRun = async (runId) => {
+    if (!window.confirm("Delete this run? This removes suggestion history only. Real shifts will not be deleted.")) {
+      return;
+    }
+    setError("");
+    try {
+      await smartShifts.manager.deleteRun(runId);
+      setSuccess("Run deleted.");
+      if (runDetail?.run?.run_id === runId || latestRun?.run_id === runId) {
+        setRunDetail(null);
+        setLatestRun(null);
+        setSuggestions([]);
+        setSelectedSuggestionIds([]);
+      }
+      await fetchRuns({ reset: true });
+    } catch (e) {
+      setError(e?.response?.data?.error || "Failed to delete run.");
+    }
+  };
 
   const suggestionSummary = useMemo(() => {
     const total = filteredSuggestionRows.length;
@@ -1108,6 +1176,12 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
             control={<Switch checked={warningsOnly} onChange={(e) => setWarningsOnly(e.target.checked)} />}
             label="Warnings only"
           />
+          <Button size="small" variant="outlined" onClick={handleSelectAllVisibleSuggestions}>
+            Select all visible
+          </Button>
+          <Button size="small" variant="outlined" onClick={handleClearVisibleSuggestions}>
+            Clear visible
+          </Button>
         </Stack>
 
         {filteredSuggestionRows.length === 0 ? (
@@ -1198,24 +1272,35 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
       <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Runs history</Typography>
-        <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              label="Status"
+              value={runsStatusFilter}
+              onChange={(e) => setRunsStatusFilter(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="preview">Preview</MenuItem>
+              <MenuItem value="applied">Applied</MenuItem>
+              <MenuItem value="failed">Failed</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            size="small"
+            label="Search run"
+            value={runsSearch}
+            onChange={(e) => setRunsSearch(e.target.value)}
+            placeholder="run id, status, timezone"
+          />
           <Button
             variant="outlined"
-            onClick={async () => {
-              setLoading(true);
-              try {
-                const { data } = await smartShifts.manager.listRuns(20);
-                setRuns(Array.isArray(data?.items) ? data.items : []);
-              } catch (e) {
-                setError(e?.response?.data?.error || "Failed to load runs.");
-              } finally {
-                setLoading(false);
-              }
-            }}
-            disabled={loading}
+            onClick={() => fetchRuns({ reset: true })}
+            disabled={runsLoading}
           >
             Refresh Runs
           </Button>
+          <Chip size="small" label={`Showing ${runs.length} of ${runsTotal}`} />
         </Stack>
 
         <Stack spacing={1}>
@@ -1233,11 +1318,24 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                 <Typography variant="body2">
                   {String(r.run_id).slice(0, 10)}... • {r.status} • {r.range_start_date} to {r.range_end_date} ({r.timezone || "UTC"})
                 </Typography>
-                <Button size="small" onClick={() => loadRunDetail(r.run_id)}>Open</Button>
+                <Stack direction="row" spacing={1}>
+                  <Button size="small" onClick={() => loadRunDetail(r.run_id)}>Open</Button>
+                  <Button size="small" color="error" onClick={() => handleDeleteRun(r.run_id)}>Delete</Button>
+                </Stack>
               </Stack>
             ))
           )}
         </Stack>
+        {runs.length < runsTotal ? (
+          <Button
+            variant="outlined"
+            sx={{ mt: 1.25 }}
+            onClick={() => fetchRuns({ reset: false, offsetOverride: runsOffset })}
+            disabled={runsLoading}
+          >
+            Load more runs
+          </Button>
+        ) : null}
 
         {runDetail?.run ? (
           <Box sx={{ mt: 1.5, p: 1.25, border: "1px dashed", borderColor: "divider", borderRadius: 1.5 }}>
