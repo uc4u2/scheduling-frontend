@@ -832,11 +832,21 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         fulfillment_notes: fulfillmentForm.fulfillment_notes,
         note: fulfillmentForm.note,
       };
-      await api.patch(`/inventory/product-orders/${orderDetail.id}/fulfillment`, payload, { headers });
+      const response = await api.patch(`/inventory/product-orders/${orderDetail.id}/fulfillment`, payload, { headers });
       showMessage("Fulfillment updated", "success");
-      await fetchOrderDetail(orderDetail.id);
+      const updatedOrder = response?.data?.order || null;
+      if (updatedOrder) {
+        const normalizedUpdatedOrder = normalizeProductOrderRecord(updatedOrder);
+        setOrderDetail(normalizedUpdatedOrder);
+        setFulfillmentForm((prev) => ({
+          ...prev,
+          note: "",
+          status: recommendedFulfillmentAction(normalizedUpdatedOrder || {}),
+        }));
+      } else {
+        await fetchOrderDetail(orderDetail.id);
+      }
       await loadOrders();
-      setFulfillmentForm((prev) => ({ ...prev, note: "", status: recommendedFulfillmentAction(orderDetail || {}) }));
     } catch (error) {
       const message = error?.response?.data?.error || error?.message || "Unable to update fulfillment";
       showMessage(message, "error");
