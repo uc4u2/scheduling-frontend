@@ -437,6 +437,17 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
 
     const showError =
       stripeSessionStatus === "error" && Boolean(stripeSessionError);
+    const paidContext =
+      Boolean(stripeSession?.payment_received) ||
+      PAID_STATUS_SET.has(
+        String(
+          stripeSession?.payment_status ||
+            stripeSession?.status ||
+            productOrder?.payment_status,
+        ).toLowerCase(),
+      );
+    const customerSafePostPaymentMessage =
+      "Payment received successfully. Your order has been received and is now being confirmed. Please do not place another order. We will update you shortly.";
 
     if (!hasSummary && !showLoading && !showPending && !showError) {
       return null;
@@ -456,8 +467,8 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
         )}
 
         {showError && (
-          <Alert severity="warning" sx={{ mb: 1 }}>
-            {stripeSessionError}
+          <Alert severity={paidContext ? "info" : "warning"} sx={{ mb: 1 }}>
+            {paidContext ? customerSafePostPaymentMessage : stripeSessionError}
           </Alert>
         )}
 
@@ -549,7 +560,9 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
                 }
                 secondary={
                   showError
-                    ? "Payment succeeded, but Stripe has not returned the line items. We will retry automatically."
+                    ? paidContext
+                      ? "No action is needed right now. We will contact you if anything else is needed."
+                      : "Payment succeeded, but Stripe has not returned the line items. We will retry automatically."
                     : awaitingStripe
                       ? "This can take a couple of seconds while Stripe finalizes the charge."
                       : undefined
@@ -937,6 +950,18 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
     const isFinalizing = awaitingStripe;
     const isPaid = PAID_STATUS_SET.has(normalizedPaymentStatus);
     const isCardOnFile = CARD_ON_FILE_STATUS_SET.has(normalizedPaymentStatus);
+    const customerStatus = String(
+      stripeSession?.customer_status ||
+        productOrder?.customer_status ||
+        "",
+    ).toLowerCase();
+    const paymentReceived =
+      Boolean(stripeSession?.payment_received) ||
+      Boolean(productOrder?.payment_received) ||
+      isPaid;
+    const underReview =
+      customerStatus === "under_review" ||
+      Boolean(productOrder?.inventory_action_required);
 
     const summaryNode = renderProductSummary();
 
@@ -1035,6 +1060,17 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
               </Typography>
             )}
           </Box>
+
+          {paymentReceived && underReview && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              <Typography sx={{ fontWeight: 700, mb: 0.5 }}>
+                Your payment was received and your order is under final confirmation.
+              </Typography>
+              <Typography variant="body2">
+                No action is needed right now. Please do not place another order. We will update you shortly.
+              </Typography>
+            </Alert>
+          )}
 
           {isFinalizing && (
             <Alert severity="info" sx={{ mt: 2 }}>

@@ -3,6 +3,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { DateTime } from "luxon";
 import { api, isStripeOnboardingIncomplete } from "../../../utils/api";
 import { Box,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Button,
   Alert,
   Chip,
@@ -41,6 +44,7 @@ import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import LocalMallIcon from "@mui/icons-material/LocalMall";
 import CloseIcon from "@mui/icons-material/Close";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { DataGrid } from "@mui/x-data-grid";
 import { formatCurrencyWithCode, formatCurrencyFromCents } from "../../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, resolveActiveCurrencyFromCompany, getActiveCurrency } from "../../../utils/currency";
@@ -51,6 +55,8 @@ const fulfillmentOptions = [
   { value: "all", label: "All statuses" },
   { value: "pending", label: "Pending" },
   { value: "ready", label: "Ready" },
+  { value: "blocked", label: "Blocked" },
+  { value: "backorder", label: "Backorder" },
   { value: "in_transit", label: "In transit" },
   { value: "partial", label: "Partially fulfilled" },
   { value: "fulfilled", label: "Fulfilled" },
@@ -94,6 +100,10 @@ const statusColor = (status) => {
     case "pending":
     case "card_on_file":
       return "warning";
+    case "blocked":
+      return "warning";
+    case "backorder":
+      return "info";
     case "failed":
     case "cancelled":
     case "refused":
@@ -348,6 +358,8 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     refundPlatformFee: false,
     reverseTransfer: false,
   });
+  const [refundSectionOpen, setRefundSectionOpen] = useState(false);
+  const [showRefundAdvanced, setShowRefundAdvanced] = useState(false);
 
   const viewerTimezone = useMemo(() => getUserTimezone(), []);
   const formatTimestamp = useCallback((value, sourceTz, pattern = "MMM d, yyyy h:mm a") => {
@@ -400,6 +412,8 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const [fulfillmentSaving, setFulfillmentSaving] = useState(false);
   const [eventSaving, setEventSaving] = useState(false);
   const [refundSaving, setRefundSaving] = useState(false);
+  const [inventoryResolutionSaving, setInventoryResolutionSaving] = useState("");
+  const [showInventoryFailureDetails, setShowInventoryFailureDetails] = useState(false);
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef(null);
   const showMessage = useCallback((message, severity = "info") => {
@@ -436,6 +450,10 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const outstandingDisplay = useMemo(
     () => formatCurrencyWithCode(outstandingAmount, detailCurrency),
     [outstandingAmount, detailCurrency]
+  );
+  const inventoryActionRequired = useMemo(
+    () => Boolean(orderDetail?.inventory_action_required),
+    [orderDetail]
   );
   const itemsTotal = useMemo(() => {
     if (!orderDetail?.items) return 0;
@@ -552,6 +570,9 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         refundPlatformFee: false,
         reverseTransfer: false,
       });
+      setRefundSectionOpen(false);
+      setShowRefundAdvanced(false);
+      setShowInventoryFailureDetails(false);
     } catch (error) {
       const message = error?.response?.data?.error || error?.message || "Unable to load order details";
       showMessage(message, "error");
@@ -573,6 +594,9 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     setDetailOpen(false);
     setSelectedOrderId(null);
     setOrderDetail(null);
+    setRefundSectionOpen(false);
+    setShowRefundAdvanced(false);
+    setShowInventoryFailureDetails(false);
   }, []);
   const handlePaginationChange = useCallback((model) => {
     setPagination((prev) => ({ ...prev, page: model.page, pageSize: model.pageSize }));
@@ -626,6 +650,9 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
             <Typography variant="caption" color="text.secondary">
               {params.row.client_email}
             </Typography>
+          )}
+          {params.row.inventory_action_required && (
+            <Chip size="small" color="warning" variant="outlined" label="Needs attention" sx={{ width: "fit-content" }} />
           )}
         </Stack>
       ),
@@ -927,6 +954,35 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     detailCurrency,
     displayCurrency,
   ]);
+  const handleResolveInventoryIssue = useCallback(
+    async (action) => {
+      if (!orderDetail?.id || !action) return;
+      setInventoryResolutionSaving(action);
+      try {
+        const response = await api.post(
+          `/inventory/product-orders/${orderDetail.id}/resolve-inventory-issue`,
+          { action },
+          { headers }
+        );
+        const ok = response?.data?.ok;
+        if (ok === false) {
+          showMessage(response?.data?.message || response?.data?.error || "Resolution failed", "warning");
+        } else {
+          if (action === "refund") showMessage("Order resolved by refund.", "success");
+          if (action === "backorder") showMessage("Order marked as backorder.", "success");
+          if (action === "stock_corrected") showMessage("Inventory retry completed.", "success");
+        }
+        await fetchOrderDetail(orderDetail.id);
+        await loadOrders();
+      } catch (error) {
+        const message = error?.response?.data?.error || error?.response?.data?.message || error?.message || "Unable to resolve inventory issue";
+        showMessage(message, "error");
+      } finally {
+        setInventoryResolutionSaving("");
+      }
+    },
+    [orderDetail, headers, showMessage, fetchOrderDetail, loadOrders]
+  );
   const handleStripeAutoToggle = useCallback(
     (event) => {
       const checked = event.target.checked;
@@ -1339,6 +1395,33 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     <Chip label={`Refunded ${formatCurrencyFromCents(orderDetail.refunded_cents, detailCurrency)}`} color={orderDetail.refunded_cents ? "warning" : "default"} variant="outlined" />
                   </Stack>
                 </Stack>
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
+                  <Chip
+                    size="small"
+                    color={orderDetail.inventory_committed ? "success" : "default"}
+                    label={
+                      orderDetail.inventory_committed
+                        ? `Inventory committed${orderDetail.inventory_committed_at ? ` • ${formatTimestamp(orderDetail.inventory_committed_at, orderDetail?.company?.timezone)}` : ""}`
+                        : "Inventory not yet committed"
+                    }
+                  />
+                  {(Number(orderDetail.product_order_restock_total_units || 0) > 0 || Number(orderDetail.refunded_cents || 0) > 0) && (
+                    <Chip
+                      size="small"
+                      color={Number(orderDetail.product_order_restock_total_units || 0) > 0 ? "info" : "default"}
+                      label={
+                        Number(orderDetail.product_order_restock_total_units || 0) > 0
+                          ? `Restocked ${Number(orderDetail.product_order_restock_total_units || 0)} unit(s)`
+                          : "No restock recorded"
+                      }
+                    />
+                  )}
+                </Stack>
+                {orderDetail.payment_status === "paid" && inventoryActionRequired && (
+                  <Alert severity="warning" sx={{ mt: 1.5 }}>
+                    Payment received, but inventory could not be committed. Action required.
+                  </Alert>
+                )}
               </Paper>
               <Tabs value={detailTab} onChange={(_, value) => setDetailTab(value)} variant="scrollable" scrollButtons allowScrollButtonsMobile>
                 <Tab label="Summary" />
@@ -1551,7 +1634,67 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
             </Alert>
           )
         ) : null}
-                  <Paper sx={{ p: 2 }}>
+                  {inventoryActionRequired ? (
+                    <Paper sx={{ p: 2 }}>
+                      <Stack spacing={2}>
+                        <Alert severity="warning">
+                          Payment received, but inventory could not be committed. Choose one action to continue.
+                        </Alert>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            onClick={() => handleResolveInventoryIssue("refund")}
+                            disabled={Boolean(inventoryResolutionSaving)}
+                          >
+                            {inventoryResolutionSaving === "refund" ? <CircularProgress size={18} /> : "Refund customer"}
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={() => handleResolveInventoryIssue("backorder")}
+                            disabled={Boolean(inventoryResolutionSaving)}
+                          >
+                            {inventoryResolutionSaving === "backorder" ? <CircularProgress size={18} /> : "Mark as backorder"}
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            onClick={() => handleResolveInventoryIssue("stock_corrected")}
+                            disabled={Boolean(inventoryResolutionSaving)}
+                          >
+                            {inventoryResolutionSaving === "stock_corrected" ? <CircularProgress size={18} /> : "Retry after stock correction"}
+                          </Button>
+                        </Stack>
+                        <Button
+                          size="small"
+                          onClick={() => setShowInventoryFailureDetails((prev) => !prev)}
+                          sx={{ alignSelf: "flex-start" }}
+                        >
+                          {showInventoryFailureDetails ? "Hide details" : "Show details"}
+                        </Button>
+                        {showInventoryFailureDetails && (
+                          <Stack spacing={0.75}>
+                            <Typography variant="body2" color="text.secondary">
+                              {orderDetail.inventory_commit_failed_reason
+                                ? `Reason: ${titleCase(orderDetail.inventory_commit_failed_reason)}`
+                                : "Reason: Insufficient stock"}
+                            </Typography>
+                            {(orderDetail.inventory_commit_failed_items || []).map((item, idx) => (
+                              <Typography key={`${item.product_id || "p"}-${idx}`} variant="caption" color="text.secondary">
+                                {item.name || "Item"} (SKU: {item.sku || "-"}) - requested {item.requested}, available {item.available}
+                              </Typography>
+                            ))}
+                          </Stack>
+                        )}
+                      </Stack>
+                    </Paper>
+                  ) : (
+                  <>
+                  <Accordion defaultExpanded disableGutters>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle1" fontWeight={600}>Fulfillment</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
                     <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                       Update fulfillment
                     </Typography>
@@ -1635,13 +1778,25 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                       <Button
                         variant="contained"
                         onClick={handleFulfillmentSubmit}
-                        disabled={fulfillmentSaving}
+                        disabled={fulfillmentSaving || inventoryActionRequired}
                       >
                         {fulfillmentSaving ? <CircularProgress size={20} /> : "Save fulfillment"}
                       </Button>
                     </Stack>
+                    {inventoryActionRequired && (
+                      <Typography variant="caption" color="warning.main" sx={{ display: "block", mt: 1 }}>
+                        Fulfillment is blocked until the inventory issue is resolved.
+                      </Typography>
+                    )}
                   </Paper>
-                  <Paper sx={{ p: 2 }}>
+                    </AccordionDetails>
+                  </Accordion>
+                  <Accordion defaultExpanded disableGutters>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle1" fontWeight={600}>Timeline Note</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
                     <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                       Add timeline note
                     </Typography>
@@ -1682,9 +1837,31 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                       </Button>
                     </Stack>
                   </Paper>
-                  <Paper sx={{ p: 2 }}>
+                    </AccordionDetails>
+                  </Accordion>
+                  <Accordion
+                    disableGutters
+                    expanded={refundSectionOpen}
+                    onChange={(_, expanded) => setRefundSectionOpen(Boolean(expanded))}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%", pr: 1 }}>
+                        <Typography variant="subtitle1" fontWeight={600}>Refund</Typography>
+                        <Chip
+                          size="small"
+                          label={orderDetail.inventory_committed ? "Inventory committed" : "Inventory not committed"}
+                          color={orderDetail.inventory_committed ? "success" : "default"}
+                          variant="outlined"
+                        />
+                      </Stack>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
                     <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                       Record refund
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+                      Refund amount records payment reversal. Restock is optional and only available for orders with committed inventory.
                     </Typography>
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={4}>
@@ -1734,7 +1911,18 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           </Typography>
                         )}
                       </Grid>
-                      {refundForm.auto && stripeEligible ? (
+                      <Grid item xs={12}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={showRefundAdvanced}
+                              onChange={(event) => setShowRefundAdvanced(event.target.checked)}
+                            />
+                          }
+                          label="Show advanced refund options"
+                        />
+                      </Grid>
+                      {showRefundAdvanced && refundForm.auto && stripeEligible ? (
                         <Grid item xs={12} md={4}>
                           <FormControlLabel
                             control={
@@ -1768,7 +1956,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           </Typography>
                         </Grid>
                       ) : null}
-                      {!refundForm.auto && (
+                      {showRefundAdvanced && !refundForm.auto && (
                         <>
                           <Grid item xs={12} md={4}>
                             <TextField
@@ -1794,6 +1982,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           </Grid>
                         </>
                       )}
+                      {showRefundAdvanced && (
                       <Grid item xs={12}>
                         <FormLabel>Restock inventory</FormLabel>
                         {Object.values(refundForm.items || {}).length ? (
@@ -1851,6 +2040,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           <Typography variant="caption" color="text.secondary">No line items available to restock.</Typography>
                         )}
                       </Grid>
+                      )}
                       <Grid item xs={12}>
                         <TextField
                           fullWidth
@@ -1885,6 +2075,10 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                       </Button>
                     </Stack>
                   </Paper>
+                    </AccordionDetails>
+                  </Accordion>
+                  </>
+                  )}
                 </Stack>
               )}
             </Stack>
@@ -1947,10 +2141,3 @@ const TableView = ({ headers, rows, footer }) => (
   </Box>
 );
 export default ManagerProductOrdersView;
-
-
-
-
-
-
-
