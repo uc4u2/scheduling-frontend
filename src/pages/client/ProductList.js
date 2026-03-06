@@ -96,6 +96,8 @@ const ProductListBase = ({
   const [error, setError] = useState("");
   const [snack, setSnack] = useState({ open: false, msg: "" });
   const [sortKey, setSortKey] = useState("featured");
+  const [searchText, setSearchText] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
 
@@ -190,8 +192,27 @@ const ProductListBase = ({
     };
   }, [slug, disableShell]);
 
+  const categoryOptions = useMemo(() => {
+    const raw = (Array.isArray(products) ? products : [])
+      .map((item) => String(item?.category || "").trim())
+      .filter(Boolean);
+    return Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
   const visibleProducts = useMemo(() => {
     let list = Array.isArray(products) ? [...products] : [];
+    const term = String(searchText || "").trim().toLowerCase();
+    if (term) {
+      list = list.filter((item) => {
+        const name = String(item?.name || "").toLowerCase();
+        const sku = String(item?.sku || "").toLowerCase();
+        const description = String(item?.description || "").toLowerCase();
+        return name.includes(term) || sku.includes(term) || description.includes(term);
+      });
+    }
+    if (categoryFilter !== "all") {
+      list = list.filter((item) => String(item?.category || "").trim() === categoryFilter);
+    }
     if (inStockOnly) {
       list = list.filter((item) => !item.track_stock || Number(item.qty_on_hand || 0) > 0);
     }
@@ -212,7 +233,7 @@ const ProductListBase = ({
         break;
     }
     return list;
-  }, [products, inStockOnly, sortKey]);
+  }, [products, searchText, categoryFilter, inStockOnly, sortKey]);
 
   const handleAdd = (product) => {
     try {
@@ -308,20 +329,45 @@ const ProductListBase = ({
         alignItems={{ xs: "stretch", md: "center" }}
         sx={{ mb: 3 }}
       >
-        <TextField
-          select
-          label="Sort by"
-          size="small"
-          value={sortKey}
-          onChange={(event) => setSortKey(event.target.value)}
-          sx={{ minWidth: { xs: 180, md: 220 } }}
-        >
-          <MenuItem value="featured">Featured</MenuItem>
-          <MenuItem value="price-asc">Price: Low to High</MenuItem>
-          <MenuItem value="price-desc">Price: High to Low</MenuItem>
-          <MenuItem value="name-asc">Name: A to Z</MenuItem>
-          <MenuItem value="name-desc">Name: Z to A</MenuItem>
-        </TextField>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ width: "100%" }}>
+          <TextField
+            label="Search products"
+            size="small"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="Search by name or SKU"
+            sx={{ minWidth: { xs: "100%", sm: 220 } }}
+          />
+          <TextField
+            select
+            label="Category"
+            size="small"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            sx={{ minWidth: { xs: "100%", sm: 180 } }}
+          >
+            <MenuItem value="all">All categories</MenuItem>
+            {categoryOptions.map((category) => (
+              <MenuItem key={category} value={category}>
+                {category}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Sort by"
+            size="small"
+            value={sortKey}
+            onChange={(event) => setSortKey(event.target.value)}
+            sx={{ minWidth: { xs: "100%", sm: 180 } }}
+          >
+            <MenuItem value="featured">Featured</MenuItem>
+            <MenuItem value="price-asc">Price: Low to High</MenuItem>
+            <MenuItem value="price-desc">Price: High to Low</MenuItem>
+            <MenuItem value="name-asc">Name: A to Z</MenuItem>
+            <MenuItem value="name-desc">Name: Z to A</MenuItem>
+          </TextField>
+        </Stack>
         <FormControlLabel
           control={
             <Switch
@@ -345,7 +391,9 @@ const ProductListBase = ({
         </Typography>
       ) : visibleProducts.length === 0 ? (
         <Typography textAlign="center">
-          {inStockOnly ? "No products currently in stock." : "No products available right now."}
+          {inStockOnly
+            ? "No products currently in stock for this filter."
+            : "No products found for the selected filters."}
         </Typography>
       ) : (
         <Grid container spacing={3} justifyContent="center">
@@ -411,6 +459,10 @@ const ProductListBase = ({
                     <Typography variant="h6" fontWeight={700} noWrap>
                       {product.name}
                     </Typography>
+                    <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
+                      {product.category && <Chip label={product.category} size="small" variant="outlined" />}
+                      {product.is_digital && <Chip label="Digital" size="small" color="info" />}
+                    </Stack>
                     <Typography variant="body2" color="text.secondary" sx={{ minHeight: 60 }}>
                       {product.description || ""}
                     </Typography>

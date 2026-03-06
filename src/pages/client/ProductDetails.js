@@ -336,6 +336,9 @@ const ProductDetails = ({ slugOverride }) => {
             {product.sku && (
               <Chip label={`SKU ${product.sku}`} variant="outlined" size="small" sx={{ alignSelf: "flex-start" }} />
             )}
+            {product.is_digital && (
+              <Chip label="Digital product" color="info" size="small" sx={{ alignSelf: "flex-start" }} />
+            )}
             {Array.isArray(product.tags) && product.tags.length > 0 && (
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
                 {product.tags.slice(0, 6).map((tag, index) => (

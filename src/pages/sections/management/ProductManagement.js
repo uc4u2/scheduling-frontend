@@ -31,10 +31,17 @@ const emptyForm = {
   sku: "",
   name: "",
   description: "",
+  category: "",
+  slug: "",
+  meta_title: "",
+  meta_description: "",
   price: "0",
   cost: "",
   qty_on_hand: 0,
+  low_stock_threshold: "",
   track_stock: true,
+  is_digital: false,
+  digital_asset_id: "",
   is_active: true,
 };
 
@@ -84,10 +91,17 @@ const ProductManagement = ({ token }) => {
         sku: row.sku || "",
         name: row.name || "",
         description: row.description || "",
+        category: row.category || "",
+        slug: row.slug || "",
+        meta_title: row.meta_title || "",
+        meta_description: row.meta_description || "",
         price: row.price != null ? String(row.price) : "0",
         cost: row.cost != null ? String(row.cost) : "",
         qty_on_hand: row.qty_on_hand ?? 0,
+        low_stock_threshold: row.low_stock_threshold ?? "",
         track_stock: !!row.track_stock,
+        is_digital: !!row.is_digital,
+        digital_asset_id: row.digital_asset_id != null ? String(row.digital_asset_id) : "",
         is_active: !!row.is_active,
       });
     } else {
@@ -105,7 +119,7 @@ const ProductManagement = ({ token }) => {
   const handleChange = useCallback(
     (field) => (event) => {
       const value =
-        field === "track_stock" || field === "is_active"
+        field === "track_stock" || field === "is_active" || field === "is_digital"
           ? event.target.checked
           : event.target.value;
       setForm((prev) => ({ ...prev, [field]: value }));
@@ -119,6 +133,8 @@ const ProductManagement = ({ token }) => {
       price: form.price === "" ? "0" : form.price,
       cost: form.cost === "" ? null : form.cost,
       qty_on_hand: Number(form.qty_on_hand || 0),
+      low_stock_threshold: form.low_stock_threshold === "" ? null : Number(form.low_stock_threshold),
+      digital_asset_id: form.digital_asset_id === "" ? null : Number(form.digital_asset_id),
     };
 
     try {
@@ -237,12 +253,26 @@ const ProductManagement = ({ token }) => {
         width: 120,
         valueGetter: (params) => params.row.qty_on_hand ?? 0,
         renderCell: (params) => (
-          <Chip
-            label={params.value ?? 0}
-            color={params.value > 0 ? "success" : "default"}
-            size="small"
-          />
+          (() => {
+            const qty = Number(params.value ?? 0);
+            const threshold = Number(params.row?.low_stock_threshold ?? 0);
+            const isLow = Number.isFinite(threshold) && threshold > 0 && qty <= threshold;
+            const color = qty <= 0 ? "default" : isLow ? "warning" : "success";
+            return <Chip label={qty} color={color} size="small" />;
+          })()
         ),
+      },
+      {
+        field: "category",
+        headerName: "Category",
+        width: 140,
+        valueGetter: (params) => params.row.category || "",
+      },
+      {
+        field: "is_digital",
+        headerName: "Type",
+        width: 120,
+        valueGetter: (params) => (params.row.is_digital ? "Digital" : "Physical"),
       },
       {
         field: "actions",
@@ -335,6 +365,34 @@ const ProductManagement = ({ token }) => {
             />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
+                label="Category"
+                value={form.category}
+                onChange={handleChange("category")}
+                fullWidth
+              />
+              <TextField
+                label="Slug (optional)"
+                value={form.slug}
+                onChange={handleChange("slug")}
+                fullWidth
+              />
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
+                label="Meta title (optional)"
+                value={form.meta_title}
+                onChange={handleChange("meta_title")}
+                fullWidth
+              />
+              <TextField
+                label="Meta description (optional)"
+                value={form.meta_description}
+                onChange={handleChange("meta_description")}
+                fullWidth
+              />
+            </Stack>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <TextField
                 label={t("manager.product.labels.price")}
                 type="number"
                 value={form.price}
@@ -359,6 +417,20 @@ const ProductManagement = ({ token }) => {
                 onChange={handleChange("qty_on_hand")}
                 fullWidth
               />
+              <TextField
+                label="Low stock threshold"
+                type="number"
+                value={form.low_stock_threshold}
+                onChange={handleChange("low_stock_threshold")}
+                fullWidth
+              />
+              <TextField
+                label="Digital asset ID (optional)"
+                type="number"
+                value={form.digital_asset_id}
+                onChange={handleChange("digital_asset_id")}
+                fullWidth
+              />
               <Stack spacing={1}>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <input
@@ -368,6 +440,15 @@ const ProductManagement = ({ token }) => {
                     onChange={handleChange("track_stock")}
                   />
                   <label htmlFor="track_stock">{t("manager.product.labels.track")}</label>
+                </Stack>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <input
+                    id="is_digital"
+                    type="checkbox"
+                    checked={form.is_digital}
+                    onChange={handleChange("is_digital")}
+                  />
+                  <label htmlFor="is_digital">Digital product</label>
                 </Stack>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <input
