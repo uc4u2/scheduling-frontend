@@ -15,6 +15,7 @@ import {
   Stack,
   Chip,
   CircularProgress,
+  Tooltip,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -24,6 +25,7 @@ import {
   PhotoCamera,
   CloudUpload,
   DeleteOutline,
+  InfoOutlined,
 } from "@mui/icons-material";
 import api from "../../../utils/api";
 
@@ -44,6 +46,15 @@ const emptyForm = {
   digital_asset_id: "",
   is_active: true,
 };
+
+const fieldLabelWithTooltip = (label, tooltip) => (
+  <Stack direction="row" spacing={0.5} alignItems="center">
+    <span>{label}</span>
+    <Tooltip title={tooltip} arrow>
+      <InfoOutlined sx={{ fontSize: 16, color: "text.secondary", cursor: "help" }} />
+    </Tooltip>
+  </Stack>
+);
 
 const ProductManagement = ({ token }) => {
   const { t, i18n } = useTranslation();
@@ -342,21 +353,27 @@ const ProductManagement = ({ token }) => {
           <Stack spacing={2} mt={1}>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
-                label={t("manager.product.labels.sku")}
+                label={fieldLabelWithTooltip(
+                  t("manager.product.labels.sku"),
+                  "Unique stock code. Leave blank to auto-generate."
+                )}
                 value={form.sku}
                 onChange={handleChange("sku")}
                 fullWidth
                 helperText="Leave blank to auto-generate"
               />
               <TextField
-                label={t("manager.product.labels.name")}
+                label={fieldLabelWithTooltip(t("manager.product.labels.name"), "Customer-facing product name.")}
                 value={form.name}
                 onChange={handleChange("name")}
                 fullWidth
               />
             </Stack>
             <TextField
-              label={t("manager.product.labels.description")}
+              label={fieldLabelWithTooltip(
+                t("manager.product.labels.description"),
+                "Short description shown on product cards and details."
+              )}
               value={form.description}
               onChange={handleChange("description")}
               fullWidth
@@ -365,13 +382,16 @@ const ProductManagement = ({ token }) => {
             />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
-                label="Category"
+                label={fieldLabelWithTooltip("Category", "Use categories to group and filter products.")}
                 value={form.category}
                 onChange={handleChange("category")}
                 fullWidth
               />
               <TextField
-                label="Slug (optional)"
+                label={fieldLabelWithTooltip(
+                  "Slug (optional)",
+                  "Optional URL-safe identifier for this product."
+                )}
                 value={form.slug}
                 onChange={handleChange("slug")}
                 fullWidth
@@ -379,13 +399,19 @@ const ProductManagement = ({ token }) => {
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
-                label="Meta title (optional)"
+                label={fieldLabelWithTooltip(
+                  "Meta title (optional)",
+                  "SEO page title for this product when indexed."
+                )}
                 value={form.meta_title}
                 onChange={handleChange("meta_title")}
                 fullWidth
               />
               <TextField
-                label="Meta description (optional)"
+                label={fieldLabelWithTooltip(
+                  "Meta description (optional)",
+                  "SEO summary for search engines."
+                )}
                 value={form.meta_description}
                 onChange={handleChange("meta_description")}
                 fullWidth
@@ -393,7 +419,10 @@ const ProductManagement = ({ token }) => {
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
-                label={t("manager.product.labels.price")}
+                label={fieldLabelWithTooltip(
+                  t("manager.product.labels.price"),
+                  "Selling price charged to customers."
+                )}
                 type="number"
                 value={form.price}
                 onChange={handleChange("price")}
@@ -401,7 +430,10 @@ const ProductManagement = ({ token }) => {
                 inputProps={{ step: "0.01" }}
               />
               <TextField
-                label={t("manager.product.labels.cost")}
+                label={fieldLabelWithTooltip(
+                  t("manager.product.labels.cost"),
+                  "Internal cost for margin reporting."
+                )}
                 type="number"
                 value={form.cost}
                 onChange={handleChange("cost")}
@@ -411,21 +443,30 @@ const ProductManagement = ({ token }) => {
             </Stack>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
-                label={t("manager.product.labels.qty")}
+                label={fieldLabelWithTooltip(
+                  t("manager.product.labels.qty"),
+                  "Current on-hand inventory quantity."
+                )}
                 type="number"
                 value={form.qty_on_hand}
                 onChange={handleChange("qty_on_hand")}
                 fullWidth
               />
               <TextField
-                label="Low stock threshold"
+                label={fieldLabelWithTooltip(
+                  "Low stock threshold",
+                  "When stock is at or below this number, the list shows low-stock warning."
+                )}
                 type="number"
                 value={form.low_stock_threshold}
                 onChange={handleChange("low_stock_threshold")}
                 fullWidth
               />
               <TextField
-                label="Digital asset ID (optional)"
+                label={fieldLabelWithTooltip(
+                  "Digital asset ID (optional)",
+                  "Optional media asset reference for downloadable products."
+                )}
                 type="number"
                 value={form.digital_asset_id}
                 onChange={handleChange("digital_asset_id")}
@@ -439,7 +480,12 @@ const ProductManagement = ({ token }) => {
                     checked={form.track_stock}
                     onChange={handleChange("track_stock")}
                   />
-                  <label htmlFor="track_stock">{t("manager.product.labels.track")}</label>
+                  <label htmlFor="track_stock">
+                    {fieldLabelWithTooltip(
+                      t("manager.product.labels.track"),
+                      "If enabled, sales decrement inventory and stock checks apply."
+                    )}
+                  </label>
                 </Stack>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <input
@@ -448,7 +494,12 @@ const ProductManagement = ({ token }) => {
                     checked={form.is_digital}
                     onChange={handleChange("is_digital")}
                   />
-                  <label htmlFor="is_digital">Digital product</label>
+                  <label htmlFor="is_digital">
+                    {fieldLabelWithTooltip(
+                      "Digital product",
+                      "Marks item as digital; physical shipping can be skipped."
+                    )}
+                  </label>
                 </Stack>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <input
@@ -457,7 +508,12 @@ const ProductManagement = ({ token }) => {
                     checked={form.is_active}
                     onChange={handleChange("is_active")}
                   />
-                  <label htmlFor="is_active">{t("manager.product.labels.visible")}</label>
+                  <label htmlFor="is_active">
+                    {fieldLabelWithTooltip(
+                      t("manager.product.labels.visible"),
+                      "If disabled, the product is hidden from public catalog."
+                    )}
+                  </label>
                 </Stack>
               </Stack>
             </Stack>
