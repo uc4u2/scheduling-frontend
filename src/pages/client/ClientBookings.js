@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
 import {
   Box,
@@ -12,21 +12,67 @@ import {
   Alert,
   Divider,
   Link,
+  Tabs,
+  Tab,
+  Stack,
+  CircularProgress,
 } from "@mui/material";
 import api from "../../utils/api";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
 
+const toTitle = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "-";
+  return raw
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+};
+
+const money = (amount, currency) => {
+  const numeric = Number(amount || 0);
+  const code = String(currency || "USD").toUpperCase();
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: code,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(numeric) ? numeric : 0);
+};
+
 export default function ClientBookings() {
+  const [activeSlice, setActiveSlice] = useState(0);
+
   const [bookings, setBookings] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [note, setNote] = useState("");
   const [noteMsg, setNoteMsg] = useState("");
 
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderOpen, setOrderOpen] = useState(false);
+  const [orderLoading, setOrderLoading] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
+  const { slug: routeSlug } = useParams();
+
+  const tenantSlug = useMemo(() => {
+    if (routeSlug) return routeSlug;
+    try {
+      const params = new URLSearchParams(location.search || "");
+      return params.get("site") || "";
+    } catch {
+      return "";
+    }
+  }, [routeSlug, location.search]);
+
+  const userTimezone = getUserTimezone();
 
   // Helper to preserve current query string (e.g. ?embed=1&primary=...)
   const go = (to) =>
@@ -36,51 +82,69 @@ export default function ClientBookings() {
         : { ...to, search: location.search }
     );
 
-  const userTimezone = getUserTimezone();
-
-  useEffect(() => {
+  const authHeaders = () => {
     const token = localStorage.getItem("token");
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const loadBookings = () => {
     api
-      .get("/api/client/bookings", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      .get("/api/client/bookings", { headers: authHeaders() })
       .then((res) => {
         const data = res.data.bookings || res.data || [];
-        setBookings(data);
+        setBookings(Array.isArray(data) ? data : []);
       })
       .catch((err) => console.error("Failed to load bookings:", err));
+  };
+
+  const loadOrders = () => {
+    setOrdersLoading(true);
+    setOrdersError("");
+    api
+      .get("/api/client/product-orders", {
+        headers: authHeaders(),
+        params: {
+          page: 1,
+          per_page: 50,
+          ...(tenantSlug ? { slug: tenantSlug } : {}),
+        },
+      })
+      .then((res) => {
+        const data = res.data?.orders || [];
+        setOrders(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.error("Failed to load orders:", err);
+        setOrdersError("Could not load your product orders.");
+      })
+      .finally(() => setOrdersLoading(false));
+  };
+
+  useEffect(() => {
+    loadBookings();
+    loadOrders();
   }, []);
 
   useEffect(() => {
-    const token = () => localStorage.getItem("token");
     const handler = () => {
-      api
-        .get("/api/client/bookings", {
-          headers: { Authorization: 'Bearer ' + token() },
-        })
-        .then((res) =>
-          setBookings(res.data.bookings || res.data || [])
-        )
-        .catch((err) => console.error("Failed to load bookings:", err));
+      loadBookings();
+      loadOrders();
     };
 
     window.addEventListener("booking:changed", handler);
     return () => window.removeEventListener("booking:changed", handler);
-  }, []);
+  }, [tenantSlug]);
 
   function handleCancel(row) {
     if (row.status === "cancelled" || row.status === "unavailable") return;
     if (window.confirm("Cancel this booking?")) {
-      const token = localStorage.getItem("token");
       api
         .post(`/api/client/bookings/${row.id}/cancel`, null, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: authHeaders(),
         })
         .then(() => {
           setBookings((prev) =>
-            prev.map((b) =>
-              b.id === row.id ? { ...b, status: "cancelled" } : b
-            )
+            prev.map((b) => (b.id === row.id ? { ...b, status: "cancelled" } : b))
           );
           setDetailOpen(false);
         })
@@ -90,12 +154,11 @@ export default function ClientBookings() {
 
   function handleSendNote() {
     if (!note.trim()) return;
-    const token = localStorage.getItem("token");
     api
       .post(
         `/api/client/bookings/${selected.id}/note`,
         { note },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: authHeaders() }
       )
       .then(() => {
         setNoteMsg("Note sent successfully!");
@@ -110,6 +173,23 @@ export default function ClientBookings() {
     setNoteMsg("");
   }
 
+  const openOrderDetail = (row) => {
+    setOrderOpen(true);
+    setOrderLoading(true);
+    setSelectedOrder(null);
+    api
+      .get(`/api/client/product-orders/${row.id}`, {
+        headers: authHeaders(),
+        params: tenantSlug ? { slug: tenantSlug } : {},
+      })
+      .then((res) => setSelectedOrder(res.data || null))
+      .catch((err) => {
+        console.error("Failed to load order detail:", err);
+        setSelectedOrder({ error: "Could not load order details." });
+      })
+      .finally(() => setOrderLoading(false));
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case "cancelled":
@@ -121,6 +201,21 @@ export default function ClientBookings() {
       default:
         return "primary";
     }
+  };
+
+  const paymentChipColor = (status) => {
+    const v = String(status || "").toLowerCase();
+    if (v === "paid") return "success";
+    if (v === "refunded") return "warning";
+    if (v === "failed") return "error";
+    return "default";
+  };
+
+  const fulfillmentChipColor = (status) => {
+    const v = String(status || "").toLowerCase();
+    if (["fulfilled", "delivered", "ready_for_pickup"].includes(v)) return "success";
+    if (["cancelled", "blocked"].includes(v)) return "error";
+    return "default";
   };
 
   const columns = [
@@ -197,15 +292,95 @@ export default function ClientBookings() {
     },
   ];
 
+  const orderColumns = [
+    {
+      field: "display_number",
+      headerName: "Order",
+      width: 110,
+      valueGetter: (p) => p.row.display_number || `#${p.row.id}`,
+    },
+    {
+      field: "created_at",
+      headerName: "Created",
+      width: 180,
+      valueGetter: (p) => {
+        const dt = p.row.created_at ? new Date(p.row.created_at) : null;
+        return dt && !Number.isNaN(dt.getTime()) ? dt.toLocaleString() : "-";
+      },
+    },
+    {
+      field: "payment_status",
+      headerName: "Payment",
+      width: 130,
+      renderCell: (params) => (
+        <Chip label={toTitle(params.value)} size="small" color={paymentChipColor(params.value)} />
+      ),
+    },
+    {
+      field: "fulfillment_status",
+      headerName: "Fulfillment",
+      width: 150,
+      renderCell: (params) => (
+        <Chip label={toTitle(params.value)} size="small" color={fulfillmentChipColor(params.value)} />
+      ),
+    },
+    {
+      field: "delivery_method",
+      headerName: "Delivery",
+      width: 130,
+      valueGetter: (p) => toTitle(p.row.delivery_method),
+    },
+    {
+      field: "total_amount",
+      headerName: "Total",
+      width: 130,
+      valueGetter: (p) => money(p.row.total_amount, p.row.currency),
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      width: 120,
+      renderCell: (params) => (
+        <Button size="small" onClick={() => openOrderDetail(params.row)}>
+          View
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <Box>
       <Typography variant="h6" sx={{ mb: 2 }}>
         My Bookings
       </Typography>
 
-      <div style={{ height: 420, width: "100%" }}>
-        <DataGrid rows={bookings} columns={columns} pageSize={5} disableSelectionOnClick />
-      </div>
+      <Tabs value={activeSlice} onChange={(_, value) => setActiveSlice(value)} sx={{ mb: 2 }}>
+        <Tab label="Bookings" />
+        <Tab label="Orders" />
+      </Tabs>
+
+      {activeSlice === 0 ? (
+        <div style={{ height: 420, width: "100%" }}>
+          <DataGrid rows={bookings} columns={columns} pageSize={5} disableSelectionOnClick />
+        </div>
+      ) : (
+        <Box>
+          {ordersError && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {ordersError}
+            </Alert>
+          )}
+          <div style={{ height: 420, width: "100%" }}>
+            <DataGrid
+              rows={orders}
+              columns={orderColumns}
+              pageSize={5}
+              disableSelectionOnClick
+              loading={ordersLoading}
+            />
+          </div>
+        </Box>
+      )}
 
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent>
@@ -317,50 +492,136 @@ export default function ClientBookings() {
                 </Box>
               )}
 
-              {selected.status !== "cancelled" &&
-                selected.status !== "unavailable" && (
-                  <Box sx={{ mt: 2 }}>
-                    <TextField
-                      fullWidth
-                      label="Send a note to your provider"
-                      multiline
-                      minRows={2}
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                    />
-                    <Button
-                      sx={{ mt: 1 }}
-                      variant="contained"
-                      size="small"
-                      onClick={handleSendNote}
-                    >
-                      Send Note
-                    </Button>
-                    {noteMsg && (
-                      <Alert sx={{ mt: 1 }} severity="info">
-                        {noteMsg}
-                      </Alert>
-                    )}
-                  </Box>
-                )}
+              {selected.status !== "cancelled" && selected.status !== "unavailable" && (
+                <Box sx={{ mt: 2 }}>
+                  <TextField
+                    fullWidth
+                    label="Send a note to your provider"
+                    multiline
+                    minRows={2}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                  <Button
+                    sx={{ mt: 1 }}
+                    variant="contained"
+                    size="small"
+                    onClick={handleSendNote}
+                  >
+                    Send Note
+                  </Button>
+                  {noteMsg && (
+                    <Alert sx={{ mt: 1 }} severity="info">
+                      {noteMsg}
+                    </Alert>
+                  )}
+                </Box>
+              )}
             </Box>
           )}
         </DialogContent>
 
-        {selected &&
-          selected.status !== "cancelled" &&
-          selected.status !== "unavailable" && (
-            <DialogActions sx={{ justifyContent: "flex-end", p: 1 }}>
-              <Button
-                size="small"
-                variant="outlined"
-                color="error"
-                onClick={() => handleCancel(selected)}
-              >
-                Cancel Booking
-              </Button>
-            </DialogActions>
-          )}
+        {selected && selected.status !== "cancelled" && selected.status !== "unavailable" && (
+          <DialogActions sx={{ justifyContent: "flex-end", p: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              onClick={() => handleCancel(selected)}
+            >
+              Cancel Booking
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
+
+      <Dialog open={orderOpen} onClose={() => setOrderOpen(false)} maxWidth="md" fullWidth>
+        <DialogContent>
+          {orderLoading ? (
+            <Box sx={{ py: 5, display: "flex", justifyContent: "center" }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : selectedOrder?.error ? (
+            <Alert severity="error">{selectedOrder.error}</Alert>
+          ) : selectedOrder ? (
+            <Stack spacing={2}>
+              <Typography variant="h6">Order {selectedOrder.display_number || `#${selectedOrder.id}`}</Typography>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Chip label={`Payment: ${toTitle(selectedOrder.payment_status)}`} color={paymentChipColor(selectedOrder.payment_status)} size="small" />
+                <Chip label={`Fulfillment: ${toTitle(selectedOrder.fulfillment_status)}`} color={fulfillmentChipColor(selectedOrder.fulfillment_status)} size="small" />
+                <Chip label={`Delivery: ${toTitle(selectedOrder.delivery_method)}`} size="small" />
+                <Chip label={`Total: ${money(selectedOrder.total_amount, selectedOrder.currency)}`} size="small" />
+              </Stack>
+
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Summary</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Placed {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString() : "-"}
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Items</Typography>
+                {(selectedOrder.items || []).length ? (
+                  <Stack spacing={0.75} sx={{ mt: 1 }}>
+                    {(selectedOrder.items || []).map((item) => (
+                      <Box key={item.id} sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
+                        <Typography sx={{ fontWeight: 600 }}>{item.name || "Item"}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Qty {item.quantity} • {money(item.unit_price, selectedOrder.currency)} each
+                        </Typography>
+                        <Typography variant="body2">Line total: {money(item.total_price, selectedOrder.currency)}</Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No items available.</Typography>
+                )}
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Delivery</Typography>
+                {String(selectedOrder.delivery_method || "pickup").toLowerCase() === "pickup" ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Pickup order.
+                    {selectedOrder.pickup_instructions ? ` ${selectedOrder.pickup_instructions}` : ""}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    {(selectedOrder.shipping?.name || "").trim() || "-"}
+                    {selectedOrder.shipping?.address1 ? ` • ${selectedOrder.shipping.address1}` : ""}
+                    {selectedOrder.shipping?.city ? ` • ${selectedOrder.shipping.city}` : ""}
+                    {selectedOrder.shipping?.region ? ` • ${selectedOrder.shipping.region}` : ""}
+                    {selectedOrder.shipping?.postal_code ? ` • ${selectedOrder.shipping.postal_code}` : ""}
+                    {selectedOrder.shipping?.country ? ` • ${selectedOrder.shipping.country}` : ""}
+                  </Typography>
+                )}
+              </Box>
+
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Timeline</Typography>
+                {(selectedOrder.events || []).length ? (
+                  <Stack spacing={0.75} sx={{ mt: 1 }}>
+                    {(selectedOrder.events || []).map((event) => (
+                      <Box key={event.id} sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
+                        <Typography sx={{ fontWeight: 600 }}>{toTitle(event.event_type)}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
+                        </Typography>
+                        {event.note ? (
+                          <Typography variant="body2" sx={{ mt: 0.25 }}>{event.note}</Typography>
+                        ) : null}
+                      </Box>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No timeline events yet.</Typography>
+                )}
+              </Box>
+            </Stack>
+          ) : null}
+        </DialogContent>
       </Dialog>
     </Box>
   );
