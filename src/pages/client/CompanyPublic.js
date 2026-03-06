@@ -451,11 +451,27 @@ const PLACEHOLDER_SITE_TITLES = new Set([
   "FE Test Site",
 ]);
 
+const AUTH_DIALOG_SURFACE = "#f8fafc";
+const AUTH_DIALOG_SX = {
+  "& .MuiDialog-paper": {
+    backgroundColor: AUTH_DIALOG_SURFACE,
+    backgroundImage: "none",
+    color: "#1f2937",
+  },
+  "& .MuiDialogTitle-root, & .MuiDialogContent-root, & .MuiDialogActions-root": {
+    backgroundColor: AUTH_DIALOG_SURFACE,
+    color: "#1f2937",
+  },
+  "& .MuiInputBase-root": {
+    backgroundColor: "#ffffff",
+  },
+};
+
 function ClientLoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
   const dialogPaperSx = {
-    backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+    backgroundColor: AUTH_DIALOG_SURFACE,
     backgroundImage: "none",
-    color: "var(--page-body-color, #111827)",
+    color: "#1f2937",
   };
 
   const [email, setEmail] = useState("");
@@ -500,15 +516,7 @@ function ClientLoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
         fullWidth
         maxWidth="xs"
         PaperProps={{ sx: dialogPaperSx }}
-        sx={{
-          "& .MuiDialog-paper": dialogPaperSx,
-          "& .MuiDialogContent-root": {
-            backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
-          },
-          "& .MuiDialogTitle-root": {
-            backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
-          },
-        }}
+        sx={AUTH_DIALOG_SX}
       >
         <DialogTitle>Client Login</DialogTitle>
         <DialogContent>
@@ -588,7 +596,7 @@ function ForgotPasswordDialog({ open, onClose }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs" sx={AUTH_DIALOG_SX}>
       <DialogTitle>Reset Password</DialogTitle>
       <DialogContent>
         {error && (
@@ -627,9 +635,9 @@ function ForgotPasswordDialog({ open, onClose }) {
 
 function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenForgot, companySlug }) {
   const dialogPaperSx = {
-    backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
+    backgroundColor: AUTH_DIALOG_SURFACE,
     backgroundImage: "none",
-    color: "var(--page-body-color, #111827)",
+    color: "#1f2937",
   };
 
   const [firstName, setFirstName] = useState("");
@@ -716,15 +724,7 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
       fullWidth
       maxWidth="xs"
       PaperProps={{ sx: dialogPaperSx }}
-      sx={{
-        "& .MuiDialog-paper": dialogPaperSx,
-        "& .MuiDialogContent-root": {
-          backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
-        },
-        "& .MuiDialogTitle-root": {
-          backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
-        },
-      }}
+      sx={AUTH_DIALOG_SX}
     >
       <DialogTitle>Client Sign Up</DialogTitle>
       <DialogContent>

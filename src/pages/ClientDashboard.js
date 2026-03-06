@@ -44,6 +44,9 @@ function getRoleFromToken(token) {
 export default function ClientDashboard() {
   const [tab, setTab] = useState(0);
   const navigate = useNavigate();
+  const dashboardSurface = "var(--page-card-bg, var(--checkout-card-bg, #ffffff))";
+  const dashboardText = "var(--page-body-color, #111827)";
+  const dashboardBorder = "var(--page-border-color, rgba(15,23,42,0.12))";
 
   // Restrict page to clients only
   useEffect(() => {
@@ -85,10 +88,21 @@ export default function ClientDashboard() {
     <Box sx={{
       width: "100%",
       minHeight: "100vh",
-      bgcolor: "background.default",
+      bgcolor: "transparent",
+      color: dashboardText,
       pt: { xs: 6, sm: 8 } // space for AppBar
     }}>
-      <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}>
+      <Box
+        sx={{
+          borderBottom: 1,
+          borderColor: dashboardBorder,
+          bgcolor: dashboardSurface,
+          color: dashboardText,
+          "& .MuiTab-root": { color: "inherit", opacity: 0.85 },
+          "& .MuiTab-root.Mui-selected": { color: "var(--page-btn-bg, #1976d2)", opacity: 1 },
+          "& .MuiTabs-indicator": { backgroundColor: "var(--page-btn-bg, #1976d2)" },
+        }}
+      >
         <Tabs
           value={tab}
           onChange={handleTabChange}
@@ -102,7 +116,16 @@ export default function ClientDashboard() {
           ))}
         </Tabs>
       </Box>
-      <Box sx={{ p: { xs: 1, sm: 3 } }}>
+      <Box
+        sx={{
+          p: { xs: 1, sm: 3 },
+          color: dashboardText,
+          "& .MuiPaper-root, & .MuiCard-root, & .MuiDialog-paper": {
+            backgroundColor: dashboardSurface,
+            color: dashboardText,
+          },
+        }}
+      >
         {tab === 0 && <ClientDashboardOverview />}
         {tab === 1 && <ClientBookings />}
         {tab === 2 && <ClientPackages />}
