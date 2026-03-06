@@ -20,6 +20,10 @@ import {
   Chip,
   CircularProgress,
   Tooltip,
+  Alert,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -31,6 +35,7 @@ import {
   CloudUpload,
   DeleteOutline,
   InfoOutlined,
+  History,
 } from "@mui/icons-material";
 import api from "../../../utils/api";
 
@@ -50,6 +55,7 @@ const emptyForm = {
   is_digital: false,
   digital_asset_id: "",
   is_active: true,
+  adjustment_note: "",
 };
 
 const fieldLabelWithTooltip = (label, tooltip) => (
@@ -75,6 +81,12 @@ const ProductManagement = ({ token }) => {
   const [imageTarget, setImageTarget] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [lowStockSummary, setLowStockSummary] = useState({ count: 0, out_of_stock_count: 0, low_stock_count: 0 });
+  const [lowStockItems, setLowStockItems] = useState([]);
+  const [movementOpen, setMovementOpen] = useState(false);
+  const [movementLoading, setMovementLoading] = useState(false);
+  const [movementRows, setMovementRows] = useState([]);
+  const [movementTarget, setMovementTarget] = useState(null);
 
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
 
@@ -87,6 +99,14 @@ const ProductManagement = ({ token }) => {
     try {
       const { data } = await api.get(`/inventory/products`, auth);
       setProducts(Array.isArray(data) ? data : []);
+      try {
+        const { data: lowStock } = await api.get(`/inventory/products/low-stock?limit=10`, auth);
+        setLowStockSummary(lowStock?.summary || { count: 0, out_of_stock_count: 0, low_stock_count: 0 });
+        setLowStockItems(Array.isArray(lowStock?.items) ? lowStock.items : []);
+      } catch {
+        setLowStockSummary({ count: 0, out_of_stock_count: 0, low_stock_count: 0 });
+        setLowStockItems([]);
+      }
     } catch (err) {
       console.error("Failed to load products", err);
       const fallback = t("manager.product.messages.loadError");
@@ -120,6 +140,7 @@ const ProductManagement = ({ token }) => {
         is_digital: !!row.is_digital,
         digital_asset_id: row.digital_asset_id != null ? String(row.digital_asset_id) : "",
         is_active: !!row.is_active,
+        adjustment_note: "",
       });
     } else {
       setForm(emptyForm);
@@ -153,6 +174,10 @@ const ProductManagement = ({ token }) => {
       low_stock_threshold: form.low_stock_threshold === "" ? null : Number(form.low_stock_threshold),
       digital_asset_id: form.digital_asset_id === "" ? null : Number(form.digital_asset_id),
     };
+    if (editing && Number(form.qty_on_hand || 0) !== Number(editing.qty_on_hand || 0)) {
+      payload.adjustment_note = String(form.adjustment_note || "").trim() || null;
+      payload.adjustment_reason = "manual_adjustment";
+    }
 
     try {
       if (editing) {
@@ -294,7 +319,7 @@ const ProductManagement = ({ token }) => {
       {
         field: "actions",
         headerName: t("manager.product.columns.actions"),
-        width: 180,
+        width: 220,
         sortable: false,
         filterable: false,
         disableColumnMenu: true,
@@ -309,6 +334,12 @@ const ProductManagement = ({ token }) => {
             >
               <PhotoCamera />
             </IconButton>
+            <IconButton onClick={() => {
+              setMovementTarget(params.row);
+              setMovementOpen(true);
+            }}>
+              <History />
+            </IconButton>
             <IconButton color="error" onClick={() => handleDelete(params.row.id)}>
               <Delete />
             </IconButton>
@@ -318,6 +349,29 @@ const ProductManagement = ({ token }) => {
     ],
     [handleDelete, handleOpen, openImages, t, i18n.language]
   );
+
+  useEffect(() => {
+    if (!movementOpen || !movementTarget?.id) return;
+    let alive = true;
+    setMovementLoading(true);
+    api
+      .get(`/inventory/products/${movementTarget.id}/movements?page=1&page_size=100`, auth)
+      .then(({ data }) => {
+        if (!alive) return;
+        setMovementRows(Array.isArray(data?.items) ? data.items : []);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setMovementRows([]);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setMovementLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [movementOpen, movementTarget, auth]);
 
   const localeText = useMemo(
     () => ({
@@ -346,6 +400,26 @@ const ProductManagement = ({ token }) => {
           Help
         </Button>
       </Stack>
+
+      <Paper sx={{ mb: 2, p: 1.5 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "flex-start", sm: "center" }}>
+          <Chip label={`Low-stock alerts: ${Number(lowStockSummary.count || 0)}`} color={Number(lowStockSummary.count || 0) > 0 ? "warning" : "default"} />
+          <Chip label={`Out of stock: ${Number(lowStockSummary.out_of_stock_count || 0)}`} color="default" size="small" />
+          <Chip label={`Low stock: ${Number(lowStockSummary.low_stock_count || 0)}`} color="warning" size="small" />
+        </Stack>
+        {lowStockItems.length > 0 && (
+          <List dense sx={{ mt: 1 }}>
+            {lowStockItems.slice(0, 5).map((item) => (
+              <ListItem key={item.id} disableGutters>
+                <ListItemText
+                  primary={`${item.name} (${item.sku})`}
+                  secondary={`Stock ${item.qty_on_hand} / threshold ${item.low_stock_threshold ?? "-"}`}
+                />
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </Paper>
 
       <Paper>
         <DataGrid
@@ -490,6 +564,22 @@ const ProductManagement = ({ token }) => {
                 fullWidth
               />
             </Stack>
+            {editing && Number(form.qty_on_hand || 0) !== Number(editing.qty_on_hand || 0) && (
+              <Alert severity="info">
+                Stock will be adjusted from {Number(editing.qty_on_hand || 0)} to {Number(form.qty_on_hand || 0)}.
+                Add a note for audit history.
+              </Alert>
+            )}
+            {editing && Number(form.qty_on_hand || 0) !== Number(editing.qty_on_hand || 0) && (
+              <TextField
+                label="Stock adjustment note (optional)"
+                value={form.adjustment_note}
+                onChange={handleChange("adjustment_note")}
+                fullWidth
+                multiline
+                minRows={2}
+              />
+            )}
             <TextField
               label={fieldLabelWithTooltip(
                 "Digital asset ID (optional)",
@@ -703,6 +793,58 @@ const ProductManagement = ({ token }) => {
           </Stack>
         </Stack>
       </Drawer>
+
+      <Dialog
+        open={movementOpen}
+        onClose={() => {
+          setMovementOpen(false);
+          setMovementRows([]);
+          setMovementTarget(null);
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Stock history {movementTarget?.name ? `- ${movementTarget.name}` : ""}
+        </DialogTitle>
+        <DialogContent dividers>
+          {movementLoading ? (
+            <Box py={4} textAlign="center"><CircularProgress /></Box>
+          ) : movementRows.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">No stock movements yet.</Typography>
+          ) : (
+            <Stack spacing={1}>
+              {movementRows.map((row) => (
+                <Paper key={row.id} variant="outlined" sx={{ p: 1.25 }}>
+                  <Stack direction="row" justifyContent="space-between" spacing={2}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {row.qty_change > 0 ? `+${row.qty_change}` : row.qty_change}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {row.created_at ? new Date(row.created_at).toLocaleString() : ""}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="body2">{row.reason || "movement"}</Typography>
+                  {row.note && (
+                    <Typography variant="caption" color="text.secondary">
+                      {row.note}
+                    </Typography>
+                  )}
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setMovementOpen(false);
+            setMovementRows([]);
+            setMovementTarget(null);
+          }}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snk.open}

@@ -152,22 +152,31 @@ const ProductListBase = ({
     let alive = true;
     setLoading(true);
     setError("");
-    api
-      .get(`/public/${slug}/products`, { noCompanyHeader: true })
-      .then(({ data }) => {
-        if (!alive) return;
-        setProducts(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setError("Unable to load products");
-        setProducts([]);
-      })
-      .finally(() => alive && setLoading(false));
+    const params = {};
+    const query = String(searchText || "").trim();
+    if (query) params.q = query;
+    if (categoryFilter !== "all") params.category = categoryFilter;
+    params.sort = sortKey === "featured" ? "newest" : sortKey;
+    params.stock = inStockOnly ? "in" : "all";
+    const timer = setTimeout(() => {
+      api
+        .get(`/public/${slug}/products`, { noCompanyHeader: true, params })
+        .then(({ data }) => {
+          if (!alive) return;
+          setProducts(Array.isArray(data) ? data : []);
+        })
+        .catch(() => {
+          if (!alive) return;
+          setError("Unable to load products");
+          setProducts([]);
+        })
+        .finally(() => alive && setLoading(false));
+    }, 150);
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
-  }, [slug]);
+  }, [slug, searchText, categoryFilter, sortKey, inStockOnly]);
 
   useEffect(() => {
     if (!slug || disableShell) return;
@@ -200,40 +209,8 @@ const ProductListBase = ({
   }, [products]);
 
   const visibleProducts = useMemo(() => {
-    let list = Array.isArray(products) ? [...products] : [];
-    const term = String(searchText || "").trim().toLowerCase();
-    if (term) {
-      list = list.filter((item) => {
-        const name = String(item?.name || "").toLowerCase();
-        const sku = String(item?.sku || "").toLowerCase();
-        const description = String(item?.description || "").toLowerCase();
-        return name.includes(term) || sku.includes(term) || description.includes(term);
-      });
-    }
-    if (categoryFilter !== "all") {
-      list = list.filter((item) => String(item?.category || "").trim() === categoryFilter);
-    }
-    if (inStockOnly) {
-      list = list.filter((item) => !item.track_stock || Number(item.qty_on_hand || 0) > 0);
-    }
-    switch (sortKey) {
-      case 'price-asc':
-        list.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
-        break;
-      case 'price-desc':
-        list.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
-        break;
-      case 'name-desc':
-        list.sort((a, b) => String(b.name || '').localeCompare(String(a.name || '')));
-        break;
-      case 'name-asc':
-        list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
-        break;
-      default:
-        break;
-    }
-    return list;
-  }, [products, searchText, categoryFilter, inStockOnly, sortKey]);
+    return Array.isArray(products) ? products : [];
+  }, [products]);
 
   const handleAdd = (product) => {
     try {
@@ -362,6 +339,7 @@ const ProductListBase = ({
             sx={{ minWidth: { xs: "100%", sm: 180 } }}
           >
             <MenuItem value="featured">Featured</MenuItem>
+            <MenuItem value="newest">Newest</MenuItem>
             <MenuItem value="price-asc">Price: Low to High</MenuItem>
             <MenuItem value="price-desc">Price: High to Low</MenuItem>
             <MenuItem value="name-asc">Name: A to Z</MenuItem>
@@ -400,7 +378,8 @@ const ProductListBase = ({
           {visibleProducts.map((product) => {
             const quantity = Number(product.qty_on_hand || 0);
             const soldOut = Boolean(product.track_stock) && quantity <= 0;
-            const lowStock = Boolean(product.track_stock) && quantity > 0 && quantity <= 3;
+            const threshold = Number(product.low_stock_threshold || 0);
+            const lowStock = Boolean(product.track_stock) && quantity > 0 && ((threshold > 0 && quantity <= threshold) || (threshold <= 0 && quantity <= 3));
 
             return (
               <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={product.id}>
