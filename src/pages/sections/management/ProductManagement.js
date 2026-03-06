@@ -24,6 +24,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  MenuItem,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -87,6 +88,16 @@ const ProductManagement = ({ token }) => {
   const [movementLoading, setMovementLoading] = useState(false);
   const [movementRows, setMovementRows] = useState([]);
   const [movementTarget, setMovementTarget] = useState(null);
+  const [globalMovementOpen, setGlobalMovementOpen] = useState(false);
+  const [globalMovementLoading, setGlobalMovementLoading] = useState(false);
+  const [globalMovementRows, setGlobalMovementRows] = useState([]);
+  const [globalMovementPagination, setGlobalMovementPagination] = useState({ page: 1, per_page: 50, total: 0 });
+  const [globalMovementFilters, setGlobalMovementFilters] = useState({
+    product_id: "",
+    reason: "",
+    q: "",
+    page: 1,
+  });
 
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
 
@@ -373,6 +384,43 @@ const ProductManagement = ({ token }) => {
     };
   }, [movementOpen, movementTarget, auth]);
 
+  useEffect(() => {
+    if (!globalMovementOpen) return;
+    let alive = true;
+    setGlobalMovementLoading(true);
+    const params = {
+      page: globalMovementFilters.page || 1,
+      page_size: globalMovementPagination.per_page || 50,
+    };
+    if (globalMovementFilters.product_id) params.product_id = globalMovementFilters.product_id;
+    if (globalMovementFilters.reason) params.reason = globalMovementFilters.reason;
+    if (String(globalMovementFilters.q || "").trim()) params.q = String(globalMovementFilters.q).trim();
+    api
+      .get(`/inventory/stock-movements`, { ...auth, params })
+      .then(({ data }) => {
+        if (!alive) return;
+        setGlobalMovementRows(Array.isArray(data?.items) ? data.items : []);
+        const pg = data?.pagination || {};
+        setGlobalMovementPagination((prev) => ({
+          page: Number(pg.page || params.page || 1),
+          per_page: Number(pg.per_page || prev.per_page || 50),
+          total: Number(pg.total || 0),
+        }));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setGlobalMovementRows([]);
+        setGlobalMovementPagination((prev) => ({ ...prev, total: 0 }));
+      })
+      .finally(() => {
+        if (!alive) return;
+        setGlobalMovementLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [globalMovementOpen, globalMovementFilters, globalMovementPagination.per_page, auth]);
+
   const localeText = useMemo(
     () => ({
       noRowsLabel: t("manager.product.table.noRows"),
@@ -390,6 +438,14 @@ const ProductManagement = ({ token }) => {
       <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
         <Button startIcon={<Add />} variant="contained" onClick={() => handleOpen()}>
           {t("manager.product.buttonAdd")}
+        </Button>
+        <Button
+          startIcon={<History />}
+          variant="outlined"
+          color="inherit"
+          onClick={() => setGlobalMovementOpen(true)}
+        >
+          Stock history
         </Button>
         <Button
           startIcon={<HelpOutline />}
@@ -790,6 +846,116 @@ const ProductManagement = ({ token }) => {
             <Typography variant="body2">Use the Images action to upload product photos after saving.</Typography>
             <Typography variant="body2">For physical products, keep <strong>Track inventory</strong> enabled.</Typography>
             <Typography variant="body2">Set low-stock threshold early to avoid overselling.</Typography>
+          </Stack>
+        </Stack>
+      </Drawer>
+
+      <Drawer
+        anchor="right"
+        open={globalMovementOpen}
+        onClose={() => setGlobalMovementOpen(false)}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 560 }, p: 2 } }}
+      >
+        <Stack spacing={2}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Global stock movements
+            </Typography>
+            <Button size="small" onClick={() => setGlobalMovementOpen(false)}>Close</Button>
+          </Stack>
+
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <TextField
+              select
+              size="small"
+              label="Product"
+              value={globalMovementFilters.product_id}
+              onChange={(e) => setGlobalMovementFilters((prev) => ({ ...prev, product_id: e.target.value, page: 1 }))}
+              sx={{ minWidth: 180 }}
+            >
+              <MenuItem value="">All</MenuItem>
+              {products.map((p) => (
+                <MenuItem key={p.id} value={String(p.id)}>
+                  {p.name} ({p.sku})
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              size="small"
+              label="Reason"
+              value={globalMovementFilters.reason}
+              onChange={(e) => setGlobalMovementFilters((prev) => ({ ...prev, reason: e.target.value, page: 1 }))}
+              sx={{ minWidth: 170 }}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="manual_adjustment">Manual adjustment</MenuItem>
+              <MenuItem value="sale">Sale</MenuItem>
+              <MenuItem value="refund_restock">Refund restock</MenuItem>
+              <MenuItem value="order_capture">Order capture</MenuItem>
+            </TextField>
+            <TextField
+              size="small"
+              label="Search"
+              value={globalMovementFilters.q}
+              onChange={(e) => setGlobalMovementFilters((prev) => ({ ...prev, q: e.target.value, page: 1 }))}
+              placeholder="SKU, name, note"
+              fullWidth
+            />
+          </Stack>
+
+          {globalMovementLoading ? (
+            <Box py={4} textAlign="center"><CircularProgress /></Box>
+          ) : globalMovementRows.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">No movement records for current filters.</Typography>
+          ) : (
+            <Stack spacing={1}>
+              {globalMovementRows.map((row) => (
+                <Paper key={row.id} variant="outlined" sx={{ p: 1.25 }}>
+                  <Stack direction="row" justifyContent="space-between" spacing={2}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {row.qty_change > 0 ? `+${row.qty_change}` : row.qty_change}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {row.created_at ? new Date(row.created_at).toLocaleString() : ""}
+                    </Typography>
+                  </Stack>
+                  <Typography variant="body2">
+                    {row.product_name} ({row.product_sku})
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Reason: {row.reason || "movement"}
+                  </Typography>
+                  {row.note && (
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {row.note}
+                    </Typography>
+                  )}
+                </Paper>
+              ))}
+            </Stack>
+          )}
+
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="caption" color="text.secondary">
+              {globalMovementPagination.total} records
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                disabled={globalMovementFilters.page <= 1 || globalMovementLoading}
+                onClick={() => setGlobalMovementFilters((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+              >
+                Previous
+              </Button>
+              <Button
+                size="small"
+                disabled={(globalMovementFilters.page * globalMovementPagination.per_page) >= globalMovementPagination.total || globalMovementLoading}
+                onClick={() => setGlobalMovementFilters((prev) => ({ ...prev, page: prev.page + 1 }))}
+              >
+                Next
+              </Button>
+            </Stack>
           </Stack>
         </Stack>
       </Drawer>
