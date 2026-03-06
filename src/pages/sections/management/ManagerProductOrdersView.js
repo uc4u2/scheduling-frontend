@@ -55,9 +55,12 @@ const fulfillmentOptions = [
   { value: "all", label: "All statuses" },
   { value: "pending", label: "Pending" },
   { value: "ready", label: "Ready" },
+  { value: "packed", label: "Packed" },
+  { value: "ready_for_pickup", label: "Ready for pickup" },
   { value: "blocked", label: "Blocked" },
   { value: "backorder", label: "Backorder" },
   { value: "in_transit", label: "In transit" },
+  { value: "delivered", label: "Delivered" },
   { value: "partial", label: "Partially fulfilled" },
   { value: "fulfilled", label: "Fulfilled" },
   { value: "cancelled", label: "Cancelled" },
@@ -89,10 +92,13 @@ const statusColor = (status) => {
   const normalized = status.toLowerCase();
   switch (normalized) {
     case "fulfilled":
+    case "delivered":
     case "paid":
     case "captured":
       return "success";
     case "ready":
+    case "packed":
+    case "ready_for_pickup":
     case "in_transit":
     case "partial":
     case "partially_refunded":
@@ -119,6 +125,38 @@ const titleCase = (value) => {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+};
+
+const recommendedFulfillmentAction = (order = {}) => {
+  const delivery = String(order?.delivery_method || "pickup").toLowerCase();
+  const status = String(order?.fulfillment_status || "pending").toLowerCase();
+  if (delivery === "pickup") {
+    if (["ready_for_pickup", "packed"].includes(status)) return "deliver";
+    if (["fulfilled", "delivered"].includes(status)) return "reset_to_pending";
+    return "pack";
+  }
+  if (status === "pending") return "pack";
+  if (status === "packed") return "ship";
+  if (status === "in_transit") return "deliver";
+  if (["fulfilled", "delivered"].includes(status)) return "reset_to_pending";
+  return "pack";
+};
+
+const fulfillmentActionOptions = (order = {}) => {
+  const delivery = String(order?.delivery_method || "pickup").toLowerCase();
+  if (delivery === "pickup") {
+    return [
+      { value: "pack", label: "Mark ready for pickup" },
+      { value: "deliver", label: "Mark picked up" },
+      { value: "reset_to_pending", label: "Reset to pending" },
+    ];
+  }
+  return [
+    { value: "pack", label: "Mark packed" },
+    { value: "ship", label: "Mark shipped" },
+    { value: "deliver", label: "Mark delivered" },
+    { value: "reset_to_pending", label: "Reset to pending" },
+  ];
 };
 
 const toLowerSafe = (value) => (value == null ? "" : String(value).toLowerCase());
@@ -369,6 +407,9 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   });
   const [refundSectionOpen, setRefundSectionOpen] = useState(false);
   const [showRefundAdvanced, setShowRefundAdvanced] = useState(false);
+  const [shippingSettings, setShippingSettings] = useState(null);
+  const [shippingSettingsLoading, setShippingSettingsLoading] = useState(false);
+  const [shippingSettingsSaving, setShippingSettingsSaving] = useState(false);
 
   const viewerTimezone = useMemo(() => getUserTimezone(), []);
   const formatTimestamp = useCallback((value, sourceTz, pattern = "MMM d, yyyy h:mm a") => {
@@ -510,6 +551,38 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+  const loadShippingSettings = useCallback(async () => {
+    setShippingSettingsLoading(true);
+    try {
+      const { data } = await api.get("/inventory/shipping-settings", { headers });
+      setShippingSettings({
+        mode: data?.mode || "manual",
+        enabled: Boolean(data?.enabled),
+        allow_pickup: data?.allow_pickup !== false,
+        allow_shipping: data?.allow_shipping !== false,
+        allow_local_delivery: Boolean(data?.allow_local_delivery),
+        origin_name: data?.origin_name || "",
+        origin_phone: data?.origin_phone || "",
+        origin_address1: data?.origin_address1 || "",
+        origin_address2: data?.origin_address2 || "",
+        origin_city: data?.origin_city || "",
+        origin_region: data?.origin_region || "",
+        origin_postal_code: data?.origin_postal_code || "",
+        origin_country: data?.origin_country || "",
+        shipping_label_pickup: data?.shipping_label_pickup || "",
+        shipping_label_shipping: data?.shipping_label_shipping || "",
+        shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
+      });
+    } catch (error) {
+      const message = error?.response?.data?.error || error?.message || "Unable to load shipping settings";
+      showMessage(message, "error");
+    } finally {
+      setShippingSettingsLoading(false);
+    }
+  }, [headers, showMessage]);
+  useEffect(() => {
+    loadShippingSettings();
+  }, [loadShippingSettings]);
   const fetchOrderDetail = useCallback(async (orderId) => {
     if (!orderId) return;
     setDetailLoading(true);
@@ -518,7 +591,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       setOrderDetail(data ? normalizeProductOrderRecord(data) : null);
       setDetailTab(0);
       setFulfillmentForm({
-        status: data?.fulfillment_status || "pending",
+        status: recommendedFulfillmentAction(data || {}),
         tracking_company: data?.tracking_company || "",
         tracking_number: data?.tracking_number || "",
         tracking_url: data?.tracking_url || "",
@@ -673,7 +746,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       headerName: "Delivery",
       width: 140,
       renderCell: (params) => (
-        <Chip label={titleCase(params.value)} color="default" size="small" />
+        <Chip label={params.row?.delivery_method_label || titleCase(params.value)} color="default" size="small" />
       ),
     },
     {
@@ -681,7 +754,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       headerName: "Fulfillment",
       width: 160,
       renderCell: (params) => (
-        <Chip label={titleCase(params.value)} color={statusColor(params.value)} size="small" />
+        <Chip label={params.row?.fulfillment_status_label || titleCase(params.value)} color={statusColor(params.value)} size="small" />
       ),
     },
     {
@@ -689,7 +762,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       headerName: "Payment",
       width: 150,
       renderCell: (params) => (
-        <Chip label={formatPaymentStatusLabel(params.value)} color={statusColor(params.value)} size="small" />
+        <Chip label={params.row?.payment_status_label || formatPaymentStatusLabel(params.value)} color={statusColor(params.value)} size="small" />
       ),
     },
     {
@@ -735,10 +808,23 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   }, [loadOrders, detailOpen, selectedOrderId, fetchOrderDetail]);
   const handleFulfillmentSubmit = useCallback(async () => {
     if (!orderDetail) return;
+    const selectedAction = fulfillmentForm.status;
+    if (!selectedAction) {
+      showMessage("Select a fulfillment action", "warning");
+      return;
+    }
+    if (
+      selectedAction === "ship" &&
+      ["shipping", "local_delivery"].includes(String(orderDetail?.delivery_method || "").toLowerCase()) &&
+      !(fulfillmentForm.tracking_number || "").trim()
+    ) {
+      showMessage("Tracking number is required before marking as shipped.", "warning");
+      return;
+    }
     setFulfillmentSaving(true);
     try {
       const payload = {
-        status: fulfillmentForm.status,
+        action: selectedAction,
         tracking_company: fulfillmentForm.tracking_company,
         tracking_number: fulfillmentForm.tracking_number,
         tracking_url: fulfillmentForm.tracking_url,
@@ -746,11 +832,11 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         fulfillment_notes: fulfillmentForm.fulfillment_notes,
         note: fulfillmentForm.note,
       };
-      await api.post(`/inventory/product-orders/${orderDetail.id}/fulfill`, payload, { headers });
+      await api.patch(`/inventory/product-orders/${orderDetail.id}/fulfillment`, payload, { headers });
       showMessage("Fulfillment updated", "success");
       await fetchOrderDetail(orderDetail.id);
       await loadOrders();
-      setFulfillmentForm((prev) => ({ ...prev, note: "" }));
+      setFulfillmentForm((prev) => ({ ...prev, note: "", status: recommendedFulfillmentAction(orderDetail || {}) }));
     } catch (error) {
       const message = error?.response?.data?.error || error?.message || "Unable to update fulfillment";
       showMessage(message, "error");
@@ -780,6 +866,55 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       setEventSaving(false);
     }
   }, [orderDetail, eventForm, headers, showMessage, fetchOrderDetail]);
+  const handleSaveShippingSettings = useCallback(async () => {
+    if (!shippingSettings) return;
+    setShippingSettingsSaving(true);
+    try {
+      const payload = {
+        mode: "manual",
+        enabled: Boolean(shippingSettings.enabled),
+        allow_pickup: Boolean(shippingSettings.allow_pickup),
+        allow_shipping: Boolean(shippingSettings.allow_shipping),
+        allow_local_delivery: Boolean(shippingSettings.allow_local_delivery),
+        origin_name: shippingSettings.origin_name || null,
+        origin_phone: shippingSettings.origin_phone || null,
+        origin_address1: shippingSettings.origin_address1 || null,
+        origin_address2: shippingSettings.origin_address2 || null,
+        origin_city: shippingSettings.origin_city || null,
+        origin_region: shippingSettings.origin_region || null,
+        origin_postal_code: shippingSettings.origin_postal_code || null,
+        origin_country: shippingSettings.origin_country || null,
+        shipping_label_pickup: shippingSettings.shipping_label_pickup || null,
+        shipping_label_shipping: shippingSettings.shipping_label_shipping || null,
+        shipping_label_local_delivery: shippingSettings.shipping_label_local_delivery || null,
+      };
+      const { data } = await api.patch("/inventory/shipping-settings", payload, { headers });
+      setShippingSettings({
+        mode: data?.mode || "manual",
+        enabled: Boolean(data?.enabled),
+        allow_pickup: data?.allow_pickup !== false,
+        allow_shipping: data?.allow_shipping !== false,
+        allow_local_delivery: Boolean(data?.allow_local_delivery),
+        origin_name: data?.origin_name || "",
+        origin_phone: data?.origin_phone || "",
+        origin_address1: data?.origin_address1 || "",
+        origin_address2: data?.origin_address2 || "",
+        origin_city: data?.origin_city || "",
+        origin_region: data?.origin_region || "",
+        origin_postal_code: data?.origin_postal_code || "",
+        origin_country: data?.origin_country || "",
+        shipping_label_pickup: data?.shipping_label_pickup || "",
+        shipping_label_shipping: data?.shipping_label_shipping || "",
+        shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
+      });
+      showMessage("Shipping settings updated", "success");
+    } catch (error) {
+      const message = error?.response?.data?.error || error?.message || "Unable to save shipping settings";
+      showMessage(message, "error");
+    } finally {
+      setShippingSettingsSaving(false);
+    }
+  }, [shippingSettings, headers, showMessage]);
   const handleRefundSubmit = useCallback(async () => {
     if (!orderDetail) return;
 
@@ -1092,9 +1227,9 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         email,
         total,
         currency,
-        formatPaymentStatusLabel(order.payment_status),
-        titleCase(order.fulfillment_status),
-        titleCase(order.delivery_method),
+        order.payment_status_label || formatPaymentStatusLabel(order.payment_status),
+        order.fulfillment_status_label || titleCase(order.fulfillment_status),
+        order.delivery_method_label || titleCase(order.delivery_method),
       ];
     });
     const allRows = [headersRow, ...csvRows]
@@ -1397,9 +1532,10 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     </Typography>
                   </Stack>
                   <Stack direction="row" spacing={1} flexWrap="wrap">
-                    <Chip label={`Delivery: ${titleCase(orderDetail.delivery_method)}`} />
-                    <Chip label={`Fulfillment: ${titleCase(orderDetail.fulfillment_status)}`} color={statusColor(orderDetail.fulfillment_status)} />
-                    <Chip label={`Payment: ${formatPaymentStatusLabel(orderDetail.payment_status)}`} color={statusColor(orderDetail.payment_status)} />
+                    <Chip label={`Delivery: ${orderDetail.delivery_method_label || titleCase(orderDetail.delivery_method)}`} />
+                    <Chip label={`Fulfillment: ${orderDetail.fulfillment_status_label || titleCase(orderDetail.fulfillment_status)}`} color={statusColor(orderDetail.fulfillment_status)} />
+                    <Chip label={`Payment: ${orderDetail.payment_status_label || formatPaymentStatusLabel(orderDetail.payment_status)}`} color={statusColor(orderDetail.payment_status)} />
+                    <Chip label={`Customer status: ${orderDetail.status_label || "Processing"}`} color="default" variant="outlined" />
                     <Chip label={`Total ${formatCurrencyWithCode(orderDetail.total_amount, detailCurrency)}`} color="primary" variant="outlined" />
                     <Chip label={`Refunded ${formatCurrencyFromCents(orderDetail.refunded_cents, detailCurrency)}`} color={orderDetail.refunded_cents ? "warning" : "default"} variant="outlined" />
                   </Stack>
@@ -1424,6 +1560,23 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           : "No restock recorded"
                       }
                     />
+                  )}
+                  {orderDetail.tracking_status && (
+                    <Chip
+                      size="small"
+                      color="info"
+                      variant="outlined"
+                      label={`Tracking: ${titleCase(orderDetail.tracking_status)}`}
+                    />
+                  )}
+                  {orderDetail.tracking_url_public && (
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => window.open(orderDetail.tracking_url_public, "_blank", "noopener,noreferrer")}
+                    >
+                      Open tracking link
+                    </Button>
                   )}
                 </Stack>
                 {orderDetail.payment_status === "paid" && inventoryActionRequired && (
@@ -1710,12 +1863,12 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={4}>
                         <FormControl fullWidth size="small">
-                          <FormLabel shrink>Fulfillment status</FormLabel>
+                          <FormLabel shrink>Next action</FormLabel>
                           <Select
                             value={fulfillmentForm.status}
                             onChange={(event) => setFulfillmentForm((prev) => ({ ...prev, status: event.target.value }))}
                           >
-                            {fulfillmentOptions.filter((opt) => opt.value !== "all").map((opt) => (
+                            {fulfillmentActionOptions(orderDetail).map((opt) => (
                               <MenuItem key={opt.value} value={opt.value}>
                                 {opt.label}
                               </MenuItem>
@@ -1748,6 +1901,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                           label="Tracking URL"
                           value={fulfillmentForm.tracking_url}
                           onChange={(event) => setFulfillmentForm((prev) => ({ ...prev, tracking_url: event.target.value }))}
+                          helperText="Use a full http/https URL"
                         />
                       </Grid>
                       <Grid item xs={12} md={6}>
@@ -1789,7 +1943,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                         onClick={handleFulfillmentSubmit}
                         disabled={fulfillmentSaving || inventoryActionRequired}
                       >
-                        {fulfillmentSaving ? <CircularProgress size={20} /> : "Save fulfillment"}
+                        {fulfillmentSaving ? <CircularProgress size={20} /> : "Apply action"}
                       </Button>
                     </Stack>
                     {inventoryActionRequired && (
@@ -2084,6 +2238,204 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                       </Button>
                     </Stack>
                   </Paper>
+                    </AccordionDetails>
+                  </Accordion>
+                  <Accordion disableGutters>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle1" fontWeight={600}>Shipping settings (manual)</Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Paper variant="outlined" sx={{ p: 2 }}>
+                        {shippingSettingsLoading || !shippingSettings ? (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <CircularProgress size={18} />
+                            <Typography variant="body2" color="text.secondary">Loading shipping settings...</Typography>
+                          </Stack>
+                        ) : (
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} md={3}>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={Boolean(shippingSettings.enabled)}
+                                    onChange={(event) =>
+                                      setShippingSettings((prev) => ({ ...prev, enabled: event.target.checked }))
+                                    }
+                                  />
+                                }
+                                label="Enabled"
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={3}>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={Boolean(shippingSettings.allow_pickup)}
+                                    onChange={(event) =>
+                                      setShippingSettings((prev) => ({ ...prev, allow_pickup: event.target.checked }))
+                                    }
+                                  />
+                                }
+                                label="Allow pickup"
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={3}>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={Boolean(shippingSettings.allow_shipping)}
+                                    onChange={(event) =>
+                                      setShippingSettings((prev) => ({ ...prev, allow_shipping: event.target.checked }))
+                                    }
+                                  />
+                                }
+                                label="Allow shipping"
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={3}>
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={Boolean(shippingSettings.allow_local_delivery)}
+                                    onChange={(event) =>
+                                      setShippingSettings((prev) => ({ ...prev, allow_local_delivery: event.target.checked }))
+                                    }
+                                  />
+                                }
+                                label="Allow local delivery"
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Origin name"
+                                value={shippingSettings.origin_name}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, origin_name: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Origin phone"
+                                value={shippingSettings.origin_phone}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, origin_phone: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Country (ISO-2)"
+                                value={shippingSettings.origin_country}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, origin_country: event.target.value.toUpperCase() }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Address line 1"
+                                value={shippingSettings.origin_address1}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, origin_address1: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={6}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Address line 2"
+                                value={shippingSettings.origin_address2}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, origin_address2: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="City"
+                                value={shippingSettings.origin_city}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, origin_city: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Region"
+                                value={shippingSettings.origin_region}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, origin_region: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Postal code"
+                                value={shippingSettings.origin_postal_code}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, origin_postal_code: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Pickup label"
+                                value={shippingSettings.shipping_label_pickup}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, shipping_label_pickup: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Shipping label"
+                                value={shippingSettings.shipping_label_shipping}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, shipping_label_shipping: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12} md={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Local delivery label"
+                                value={shippingSettings.shipping_label_local_delivery}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, shipping_label_local_delivery: event.target.value }))
+                                }
+                              />
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Stack direction="row" justifyContent="flex-end">
+                                <Button variant="contained" onClick={handleSaveShippingSettings} disabled={shippingSettingsSaving}>
+                                  {shippingSettingsSaving ? <CircularProgress size={20} /> : "Save shipping settings"}
+                                </Button>
+                              </Stack>
+                            </Grid>
+                          </Grid>
+                        )}
+                      </Paper>
                     </AccordionDetails>
                   </Accordion>
                   </>

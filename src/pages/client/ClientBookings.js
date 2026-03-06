@@ -214,6 +214,7 @@ export default function ClientBookings() {
   const fulfillmentChipColor = (status) => {
     const v = String(status || "").toLowerCase();
     if (["fulfilled", "delivered", "ready_for_pickup"].includes(v)) return "success";
+    if (["packed", "in_transit"].includes(v)) return "info";
     if (["cancelled", "blocked"].includes(v)) return "error";
     return "default";
   };
@@ -313,7 +314,11 @@ export default function ClientBookings() {
       headerName: "Payment",
       width: 130,
       renderCell: (params) => (
-        <Chip label={toTitle(params.value)} size="small" color={paymentChipColor(params.value)} />
+        <Chip
+          label={params.row?.payment_status_label || toTitle(params.value)}
+          size="small"
+          color={paymentChipColor(params.value)}
+        />
       ),
     },
     {
@@ -321,14 +326,18 @@ export default function ClientBookings() {
       headerName: "Fulfillment",
       width: 150,
       renderCell: (params) => (
-        <Chip label={toTitle(params.value)} size="small" color={fulfillmentChipColor(params.value)} />
+        <Chip
+          label={params.row?.fulfillment_status_label || toTitle(params.value)}
+          size="small"
+          color={fulfillmentChipColor(params.value)}
+        />
       ),
     },
     {
       field: "delivery_method",
       headerName: "Delivery",
       width: 130,
-      valueGetter: (p) => toTitle(p.row.delivery_method),
+      valueGetter: (p) => p.row.delivery_method_label || toTitle(p.row.delivery_method),
     },
     {
       field: "total_amount",
@@ -548,9 +557,10 @@ export default function ClientBookings() {
               <Typography variant="h6">Order {selectedOrder.display_number || `#${selectedOrder.id}`}</Typography>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                <Chip label={`Payment: ${toTitle(selectedOrder.payment_status)}`} color={paymentChipColor(selectedOrder.payment_status)} size="small" />
-                <Chip label={`Fulfillment: ${toTitle(selectedOrder.fulfillment_status)}`} color={fulfillmentChipColor(selectedOrder.fulfillment_status)} size="small" />
-                <Chip label={`Delivery: ${toTitle(selectedOrder.delivery_method)}`} size="small" />
+                <Chip label={`Payment: ${selectedOrder.payment_status_label || toTitle(selectedOrder.payment_status)}`} color={paymentChipColor(selectedOrder.payment_status)} size="small" />
+                <Chip label={`Fulfillment: ${selectedOrder.fulfillment_status_label || toTitle(selectedOrder.fulfillment_status)}`} color={fulfillmentChipColor(selectedOrder.fulfillment_status)} size="small" />
+                <Chip label={`Delivery: ${selectedOrder.delivery_method_label || toTitle(selectedOrder.delivery_method)}`} size="small" />
+                <Chip label={`Status: ${selectedOrder.status_label || "Processing"}`} size="small" variant="outlined" />
                 <Chip label={`Total: ${money(selectedOrder.total_amount, selectedOrder.currency)}`} size="small" />
               </Stack>
 
@@ -598,6 +608,24 @@ export default function ClientBookings() {
                   </Typography>
                 )}
               </Box>
+
+              {selectedOrder.can_track && selectedOrder.tracking_url_public ? (
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Tracking</Typography>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
+                    {selectedOrder.tracking_status ? (
+                      <Chip label={`Tracking: ${toTitle(selectedOrder.tracking_status)}`} size="small" color="info" />
+                    ) : null}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => window.open(selectedOrder.tracking_url_public, "_blank", "noopener,noreferrer")}
+                    >
+                      Track package
+                    </Button>
+                  </Stack>
+                </Box>
+              ) : null}
 
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Timeline</Typography>
