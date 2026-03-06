@@ -468,6 +468,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const [showInventoryFailureDetails, setShowInventoryFailureDetails] = useState(false);
   const [importing, setImporting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [detailHelpOpen, setDetailHelpOpen] = useState(false);
   const importInputRef = useRef(null);
   const showMessage = useCallback((message, severity = "info") => {
     setSnackbar({ open: true, message, severity });
@@ -1612,6 +1613,16 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                 <Tab label="Timeline" />
                 <Tab label="Actions" />
               </Tabs>
+              <Stack direction="row" justifyContent="flex-end">
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<HelpOutlineIcon />}
+                  onClick={() => setDetailHelpOpen(true)}
+                >
+                  Order Help
+                </Button>
+              </Stack>
               {detailTab === 0 && (
                 <Stack spacing={2}>
                   <Paper sx={{ p: 2 }}>
@@ -2469,6 +2480,96 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
           <Button onClick={closeDetail}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      <Drawer
+        anchor="right"
+        open={detailHelpOpen}
+        onClose={() => setDetailHelpOpen(false)}
+        sx={{
+          zIndex: (theme) => theme.zIndex.modal + 3000,
+          "& .MuiDrawer-paper": { zIndex: "inherit" },
+        }}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 560 }, p: 2.5 } }}
+      >
+        <Stack spacing={2}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" fontWeight={700}>
+              Order Detail Help
+            </Typography>
+            <Button size="small" onClick={() => setDetailHelpOpen(false)}>
+              Close
+            </Button>
+          </Stack>
+
+          <Typography variant="body2" color="text.secondary">
+            This panel explains every tab in the order view and the safest action sequence for shipping and pickup orders.
+          </Typography>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>
+            Header chips (top section)
+          </Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2"><strong>Delivery:</strong> pickup, shipping, or local delivery.</Typography>
+            <Typography variant="body2"><strong>Fulfillment:</strong> operational progress (pending, packed, in transit, delivered, etc.).</Typography>
+            <Typography variant="body2"><strong>Payment:</strong> financial state (pending, paid, partially refunded, refunded).</Typography>
+            <Typography variant="body2"><strong>Customer status:</strong> simplified customer-facing state from payment + fulfillment.</Typography>
+            <Typography variant="body2"><strong>Inventory committed:</strong> confirms stock was decremented for this order.</Typography>
+            <Typography variant="body2"><strong>Tracking:</strong> indicates current tracking phase and quick link to carrier page.</Typography>
+          </Stack>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>
+            Tab guide
+          </Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2"><strong>Summary:</strong> delivery method, recipient/contact details, and financial totals.</Typography>
+            <Typography variant="body2"><strong>Items:</strong> exact line items, quantity, SKU, and price totals.</Typography>
+            <Typography variant="body2"><strong>Payments:</strong> payment/refund transactions and provider status.</Typography>
+            <Typography variant="body2"><strong>Timeline:</strong> immutable event history for operational/audit tracing.</Typography>
+            <Typography variant="body2"><strong>Actions:</strong> fulfillment, timeline notes, refunds, and shipping settings.</Typography>
+          </Stack>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>
+            Fulfillment workflow (recommended)
+          </Typography>
+          <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
+            <Stack spacing={0.75}>
+              <Typography variant="body2"><strong>Shipping/local delivery:</strong></Typography>
+              <Typography variant="body2">1) Mark packed</Typography>
+              <Typography variant="body2">2) Enter tracking number + valid tracking URL</Typography>
+              <Typography variant="body2">3) Mark shipped</Typography>
+              <Typography variant="body2">4) Mark delivered</Typography>
+              <Typography variant="body2"><strong>Pickup:</strong></Typography>
+              <Typography variant="body2">1) Mark ready for pickup</Typography>
+              <Typography variant="body2">2) Mark picked up (delivered)</Typography>
+            </Stack>
+          </Paper>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>
+            Refunds and inventory exceptions
+          </Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2">Use refund when payment must be returned fully or partially.</Typography>
+            <Typography variant="body2">Restock options apply only for tracked items and should match actual physical returns.</Typography>
+            <Typography variant="body2">If inventory action is required, normal fulfillment is blocked until resolved.</Typography>
+            <Typography variant="body2">Resolution options are: refund, backorder, or retry after stock correction.</Typography>
+          </Stack>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>
+            Data quality checklist
+          </Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2">Always capture tracking number before marking shipped.</Typography>
+            <Typography variant="body2">Use full <code>http://</code> or <code>https://</code> tracking URLs only.</Typography>
+            <Typography variant="body2">Add timeline notes for manual/phone actions to keep audit history clear.</Typography>
+            <Typography variant="body2">Confirm refund amount and restock quantities before saving.</Typography>
+          </Stack>
+        </Stack>
+      </Drawer>
 
       <Drawer
         anchor="right"
