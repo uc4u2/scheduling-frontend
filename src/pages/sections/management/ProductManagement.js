@@ -3,10 +3,14 @@ import { useTranslation } from "react-i18next";
 import {
   Box,
   Button,
+  Checkbox,
+  Divider,
+  Drawer,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControlLabel,
   TextField,
   Typography,
   IconButton,
@@ -20,6 +24,7 @@ import {
 import { DataGrid } from "@mui/x-data-grid";
 import {
   Add,
+  HelpOutline,
   Edit,
   Delete,
   PhotoCamera,
@@ -69,6 +74,7 @@ const ProductManagement = ({ token }) => {
   const [imageModal, setImageModal] = useState(false);
   const [imageTarget, setImageTarget] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
 
@@ -327,9 +333,19 @@ const ProductManagement = ({ token }) => {
         {t("manager.product.title")}
       </Typography>
 
-      <Button startIcon={<Add />} variant="contained" sx={{ mb: 2 }} onClick={() => handleOpen()}>
-        {t("manager.product.buttonAdd")}
-      </Button>
+      <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
+        <Button startIcon={<Add />} variant="contained" onClick={() => handleOpen()}>
+          {t("manager.product.buttonAdd")}
+        </Button>
+        <Button
+          startIcon={<HelpOutline />}
+          variant="outlined"
+          color="inherit"
+          onClick={() => setHelpOpen(true)}
+        >
+          Help
+        </Button>
+      </Stack>
 
       <Paper>
         <DataGrid
@@ -349,8 +365,11 @@ const ProductManagement = ({ token }) => {
         <DialogTitle>
           {editing ? t("manager.product.dialog.editTitle") : t("manager.product.dialog.addTitle")}
         </DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
+        <DialogContent dividers sx={{ backgroundColor: (theme) => theme.palette.background.paper }}>
+          <Stack spacing={2.5} mt={0.5}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
+              Core details
+            </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 label={fieldLabelWithTooltip(
@@ -380,6 +399,10 @@ const ProductManagement = ({ token }) => {
               multiline
               minRows={3}
             />
+            <Divider />
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
+              Catalog and SEO
+            </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 label={fieldLabelWithTooltip("Category", "Use categories to group and filter products.")}
@@ -397,6 +420,10 @@ const ProductManagement = ({ token }) => {
                 fullWidth
               />
             </Stack>
+            <Divider />
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
+              Pricing and inventory
+            </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 label={fieldLabelWithTooltip(
@@ -462,60 +489,61 @@ const ProductManagement = ({ token }) => {
                 onChange={handleChange("low_stock_threshold")}
                 fullWidth
               />
-              <TextField
-                label={fieldLabelWithTooltip(
-                  "Digital asset ID (optional)",
-                  "Optional media asset reference for downloadable products."
-                )}
-                type="number"
-                value={form.digital_asset_id}
-                onChange={handleChange("digital_asset_id")}
-                fullWidth
-              />
-              <Stack spacing={1}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <input
+            </Stack>
+            <TextField
+              label={fieldLabelWithTooltip(
+                "Digital asset ID (optional)",
+                "Optional media asset reference for downloadable products."
+              )}
+              type="number"
+              value={form.digital_asset_id}
+              onChange={handleChange("digital_asset_id")}
+              fullWidth
+            />
+            <Divider />
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
+              Product behavior
+            </Typography>
+            <Stack spacing={0.5}>
+              <FormControlLabel
+                control={(
+                  <Checkbox
                     id="track_stock"
-                    type="checkbox"
                     checked={form.track_stock}
                     onChange={handleChange("track_stock")}
                   />
-                  <label htmlFor="track_stock">
-                    {fieldLabelWithTooltip(
-                      t("manager.product.labels.track"),
-                      "If enabled, sales decrement inventory and stock checks apply."
-                    )}
-                  </label>
-                </Stack>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <input
+                )}
+                label={fieldLabelWithTooltip(
+                  t("manager.product.labels.track"),
+                  "If enabled, sales decrement inventory and stock checks apply."
+                )}
+              />
+              <FormControlLabel
+                control={(
+                  <Checkbox
                     id="is_digital"
-                    type="checkbox"
                     checked={form.is_digital}
                     onChange={handleChange("is_digital")}
                   />
-                  <label htmlFor="is_digital">
-                    {fieldLabelWithTooltip(
-                      "Digital product",
-                      "Marks item as digital; physical shipping can be skipped."
-                    )}
-                  </label>
-                </Stack>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <input
+                )}
+                label={fieldLabelWithTooltip(
+                  "Digital product",
+                  "Marks item as digital; physical shipping can be skipped."
+                )}
+              />
+              <FormControlLabel
+                control={(
+                  <Checkbox
                     id="is_active"
-                    type="checkbox"
                     checked={form.is_active}
                     onChange={handleChange("is_active")}
                   />
-                  <label htmlFor="is_active">
-                    {fieldLabelWithTooltip(
-                      t("manager.product.labels.visible"),
-                      "If disabled, the product is hidden from public catalog."
-                    )}
-                  </label>
-                </Stack>
-              </Stack>
+                )}
+                label={fieldLabelWithTooltip(
+                  t("manager.product.labels.visible"),
+                  "If disabled, the product is hidden from public catalog."
+                )}
+              />
             </Stack>
           </Stack>
         </DialogContent>
@@ -606,6 +634,75 @@ const ProductManagement = ({ token }) => {
           <Button onClick={closeImages}>{t("manager.product.images.close")}</Button>
         </DialogActions>
       </Dialog>
+
+      <Drawer
+        anchor="right"
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        sx={{
+          zIndex: (theme) => theme.zIndex.modal + 2000,
+          "& .MuiDrawer-paper": { zIndex: "inherit" },
+        }}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 460 }, p: 2.5 } }}
+      >
+        <Stack spacing={2}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Product Management Help
+            </Typography>
+            <Button size="small" onClick={() => setHelpOpen(false)}>Close</Button>
+          </Stack>
+
+          <Typography variant="body2" color="text.secondary">
+            Use this page to create products, control visibility, and keep inventory accurate for checkout and fulfillment.
+          </Typography>
+
+          <Divider />
+
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Field Guide</Typography>
+          <Stack spacing={1.25}>
+            <Typography variant="body2"><strong>SKU:</strong> Internal stock code. Keep it unique and stable for reporting.</Typography>
+            <Typography variant="body2"><strong>Name:</strong> Customer-facing product name.</Typography>
+            <Typography variant="body2"><strong>Description:</strong> Short plain-language summary shown on product pages.</Typography>
+            <Typography variant="body2"><strong>Category:</strong> Used for grouping/filtering catalog items.</Typography>
+            <Typography variant="body2"><strong>Slug:</strong> Optional URL-safe identifier for cleaner links.</Typography>
+            <Typography variant="body2"><strong>Meta title / description:</strong> Optional SEO text for public product pages.</Typography>
+            <Typography variant="body2"><strong>Price:</strong> Amount customer pays.</Typography>
+            <Typography variant="body2"><strong>Cost:</strong> Internal cost for margin tracking.</Typography>
+            <Typography variant="body2"><strong>Quantity on hand:</strong> Current inventory count.</Typography>
+            <Typography variant="body2"><strong>Low stock threshold:</strong> Warning level used in manager list.</Typography>
+            <Typography variant="body2"><strong>Digital asset ID:</strong> Optional link to a digital media/download record.</Typography>
+            <Typography variant="body2"><strong>Track inventory:</strong> If on, sales decrement stock and stock checks apply.</Typography>
+            <Typography variant="body2"><strong>Digital product:</strong> Marks item as digital; physical delivery may be skipped.</Typography>
+            <Typography variant="body2"><strong>Visible on site:</strong> If off, hidden from public catalog.</Typography>
+          </Stack>
+
+          <Divider />
+
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Example Setup</Typography>
+          <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: "background.default" }}>
+            <Stack spacing={0.75}>
+              <Typography variant="body2"><strong>Example:</strong> “Sterling Silver Ring”</Typography>
+              <Typography variant="body2">SKU: <code>RING-STERLING-001</code></Typography>
+              <Typography variant="body2">Category: <code>Jewelry</code></Typography>
+              <Typography variant="body2">Price: <code>129.00</code> / Cost: <code>62.00</code></Typography>
+              <Typography variant="body2">Quantity on hand: <code>18</code></Typography>
+              <Typography variant="body2">Low stock threshold: <code>5</code></Typography>
+              <Typography variant="body2">Track inventory: <code>On</code></Typography>
+              <Typography variant="body2">Visible on site: <code>On</code></Typography>
+            </Stack>
+          </Paper>
+
+          <Divider />
+
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Manager Tips</Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2">Use the Images action to upload product photos after saving.</Typography>
+            <Typography variant="body2">For physical products, keep <strong>Track inventory</strong> enabled.</Typography>
+            <Typography variant="body2">Set low-stock threshold early to avoid overselling.</Typography>
+          </Stack>
+        </Stack>
+      </Drawer>
 
       <Snackbar
         open={snk.open}
