@@ -24,7 +24,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  MenuItem,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -854,6 +853,10 @@ const ProductManagement = ({ token }) => {
         anchor="right"
         open={globalMovementOpen}
         onClose={() => setGlobalMovementOpen(false)}
+        sx={{
+          zIndex: (theme) => theme.zIndex.modal + 2000,
+          "& .MuiDrawer-paper": { zIndex: "inherit" },
+        }}
         PaperProps={{ sx: { width: { xs: "100%", sm: 560 }, p: 2 } }}
       >
         <Stack spacing={2}>
@@ -870,14 +873,16 @@ const ProductManagement = ({ token }) => {
               size="small"
               label="Product"
               value={globalMovementFilters.product_id}
+              SelectProps={{ native: true, displayEmpty: true }}
+              InputLabelProps={{ shrink: true }}
               onChange={(e) => setGlobalMovementFilters((prev) => ({ ...prev, product_id: e.target.value, page: 1 }))}
               sx={{ minWidth: 180 }}
             >
-              <MenuItem value="">All</MenuItem>
+              <option value="">All</option>
               {products.map((p) => (
-                <MenuItem key={p.id} value={String(p.id)}>
+                <option key={p.id} value={String(p.id)}>
                   {p.name} ({p.sku})
-                </MenuItem>
+                </option>
               ))}
             </TextField>
             <TextField
@@ -885,14 +890,16 @@ const ProductManagement = ({ token }) => {
               size="small"
               label="Reason"
               value={globalMovementFilters.reason}
+              SelectProps={{ native: true, displayEmpty: true }}
+              InputLabelProps={{ shrink: true }}
               onChange={(e) => setGlobalMovementFilters((prev) => ({ ...prev, reason: e.target.value, page: 1 }))}
               sx={{ minWidth: 170 }}
             >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="manual_adjustment">Manual adjustment</MenuItem>
-              <MenuItem value="sale">Sale</MenuItem>
-              <MenuItem value="refund_restock">Refund restock</MenuItem>
-              <MenuItem value="order_capture">Order capture</MenuItem>
+              <option value="">All</option>
+              <option value="manual_adjustment">Manual adjustment</option>
+              <option value="sale">Sale</option>
+              <option value="refund_restock">Refund restock</option>
+              <option value="order_capture">Order capture</option>
             </TextField>
             <TextField
               size="small"
@@ -937,9 +944,32 @@ const ProductManagement = ({ token }) => {
           )}
 
           <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography variant="caption" color="text.secondary">
-              {globalMovementPagination.total} records
-            </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }}>
+              <Typography variant="caption" color="text.secondary">
+                {globalMovementPagination.total} records
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Page {globalMovementFilters.page}
+              </Typography>
+              <TextField
+                select
+                size="small"
+                label="Rows"
+                value={globalMovementPagination.per_page}
+                SelectProps={{ native: true }}
+                onChange={(e) =>
+                  setGlobalMovementPagination((prev) => ({
+                    ...prev,
+                    per_page: Number(e.target.value) || 50,
+                  }))
+                }
+                sx={{ width: 96 }}
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </TextField>
+            </Stack>
             <Stack direction="row" spacing={1}>
               <Button
                 size="small"
