@@ -248,10 +248,19 @@ const downloadCsv = (filename, contents) => {
 
 function ShippingSummary({ order }) {
   const shipping = order?.shipping;
+  const deliveryMethod = String(order?.delivery_method || "pickup").toLowerCase();
+  const countryLabel = (code) => {
+    const token = String(code || "").trim().toUpperCase();
+    if (token === "CA") return "Canada (CA)";
+    if (token === "US") return "United States (US)";
+    return code;
+  };
   if (!shipping && !order?.pickup_instructions) {
     return (
       <Typography variant="body2" color="text.secondary">
-        No additional delivery instructions provided.
+        {deliveryMethod === "pickup"
+          ? "Pickup order. No additional pickup instructions provided."
+          : "No additional delivery instructions provided."}
       </Typography>
     );
   }
@@ -269,7 +278,7 @@ function ShippingSummary({ order }) {
             </Typography>
           )}
           {shipping.postal_code && <Typography>{shipping.postal_code}</Typography>}
-          {shipping.country && <Typography>{shipping.country}</Typography>}
+          {shipping.country && <Typography>{countryLabel(shipping.country)}</Typography>}
           {shipping.instructions && (
             <Typography variant="body2" color="text.secondary">
               Instructions: {shipping.instructions}

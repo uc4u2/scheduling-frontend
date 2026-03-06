@@ -77,6 +77,21 @@ const normalizeProductOrder = (payload) => {
   return payload;
 };
 
+const DELIVERY_COUNTRY_OPTIONS = [
+  { code: "CA", label: "Canada" },
+  { code: "US", label: "United States" },
+];
+
+const normalizeDeliveryCountryCode = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const token = raw.toUpperCase();
+  if (token === "CA" || token === "CANADA") return "CA";
+  if (token === "US" || token === "USA" || token === "UNITED STATES" || token === "UNITED STATES OF AMERICA") return "US";
+  if (token.length === 2 && /^[A-Z]{2}$/.test(token)) return token;
+  return "";
+};
+
 /* ------------------------------------------------------------------ */
 /* LoginDialog component (unchanged) */
 function LoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
@@ -624,6 +639,21 @@ function CheckoutFormCore({
 
   const [client, setClient] = useState(null);
   const [guest, setGuest] = useState({ name: "", email: "" });
+  const [productDelivery, setProductDelivery] = useState({
+    delivery_method: "pickup",
+    pickup_instructions: "",
+    shipping: {
+      name: "",
+      phone: "",
+      address1: "",
+      address2: "",
+      city: "",
+      region: "",
+      postal_code: "",
+      country: "",
+      instructions: "",
+    },
+  });
   const [cart, setCart] = useState([]);
   const [clientPackages, setClientPackages] = useState([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
@@ -664,6 +694,46 @@ function CheckoutFormCore({
       }
     })();
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("checkout_product_delivery_prefill");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return;
+      const parsedShipping = parsed.shipping && typeof parsed.shipping === "object" ? parsed.shipping : {};
+      const normalizedPrefillCountry = normalizeDeliveryCountryCode(
+        parsedShipping.country || parsed.shipping_country || parsed.country
+      );
+      setProductDelivery((prev) => ({
+        delivery_method: ["pickup", "shipping", "local_delivery"].includes(parsed.delivery_method)
+          ? parsed.delivery_method
+          : prev.delivery_method,
+        pickup_instructions: parsed.pickup_instructions || prev.pickup_instructions || "",
+        shipping: {
+          ...prev.shipping,
+          ...parsedShipping,
+          country: normalizedPrefillCountry || prev.shipping.country || "",
+        },
+      }));
+    } catch {
+      // ignore parse/storage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    setProductDelivery((prev) => {
+      const next = {
+        ...prev,
+        shipping: {
+          ...prev.shipping,
+          name: prev.shipping.name || client?.full_name || `${client?.first_name || ""} ${client?.last_name || ""}`.trim(),
+          phone: prev.shipping.phone || client?.phone || "",
+        },
+      };
+      return next;
+    });
+  }, [client?.id, client?.full_name, client?.first_name, client?.last_name, client?.phone]);
 
   useEffect(() => {
     if (!client?.id) {
@@ -976,6 +1046,83 @@ function CheckoutFormCore({
 
   const guestOk =
     guest.name.trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guest.email.trim());
+  const requiresShippingAddress =
+    productItems.length > 0 &&
+    ["shipping", "local_delivery"].includes((productDelivery.delivery_method || "pickup").toLowerCase());
+  const deliveryErrors = useMemo(() => {
+    if (productItems.length === 0) return [];
+    const errors = [];
+    const shipping = productDelivery.shipping || {};
+    if (requiresShippingAddress) {
+      const required = [
+        ["name", "Full name"],
+        ["phone", "Phone"],
+        ["address1", "Address line 1"],
+        ["city", "City"],
+        ["region", "State/Province/Region"],
+        ["postal_code", "Postal/ZIP code"],
+        ["country", "Country"],
+      ];
+      required.forEach(([field, label]) => {
+        if (!String(shipping[field] || "").trim()) errors.push(`${label} is required for shipping.`);
+      });
+      const countryCode = normalizeDeliveryCountryCode(shipping.country);
+      const postalCode = String(shipping.postal_code || "").trim();
+      if (countryCode === "CA" && postalCode && !/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(postalCode)) {
+        errors.push("Enter a valid Canadian postal code.");
+      }
+      if (countryCode === "US" && postalCode && !/^\d{5}(-\d{4})?$/.test(postalCode)) {
+        errors.push("Enter a valid US ZIP code.");
+      }
+    }
+    return errors;
+  }, [productItems.length, productDelivery, requiresShippingAddress]);
+  const deliveryOk = deliveryErrors.length === 0;
+
+  const persistDeliveryPrefill = () => {
+    try {
+      localStorage.setItem(
+        "checkout_product_delivery_prefill",
+        JSON.stringify({
+          delivery_method: productDelivery.delivery_method || "pickup",
+          pickup_instructions: productDelivery.pickup_instructions || "",
+          shipping: productDelivery.shipping || {},
+        })
+      );
+    } catch {
+      // ignore
+    }
+  };
+
+  const ensureProductDeliveryValid = () => {
+    if (productItems.length === 0) return true;
+    if (!deliveryOk) {
+      setErr(deliveryErrors[0] || "Please complete delivery details.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleDeliveryMethod = (event) => {
+    const value = String(event.target.value || "pickup").toLowerCase();
+    setProductDelivery((prev) => ({
+      ...prev,
+      delivery_method: ["pickup", "shipping", "local_delivery"].includes(value) ? value : "pickup",
+    }));
+  };
+
+  const handleShippingField = (field) => (event) => {
+    const value = field === "country"
+      ? normalizeDeliveryCountryCode(event.target.value)
+      : event.target.value;
+    setProductDelivery((prev) => ({
+      ...prev,
+      shipping: {
+        ...prev.shipping,
+        [field]: value,
+      },
+    }));
+  };
 
   const handleGuest = (e) => setGuest({ ...guest, [e.target.name]: e.target.value });
 
@@ -1180,6 +1327,20 @@ function CheckoutFormCore({
     allowUnpaid = false,
   } = {}) => {
     if (productItems.length === 0) return null;
+    if (!ensureProductDeliveryValid()) {
+      throw new Error("Delivery details are incomplete.");
+    }
+    const shippingPayload = {
+      name: productDelivery.shipping?.name || "",
+      phone: productDelivery.shipping?.phone || "",
+      address1: productDelivery.shipping?.address1 || "",
+      address2: productDelivery.shipping?.address2 || "",
+      city: productDelivery.shipping?.city || "",
+      region: productDelivery.shipping?.region || "",
+      postal_code: productDelivery.shipping?.postal_code || "",
+      country: normalizeDeliveryCountryCode(productDelivery.shipping?.country || ""),
+      instructions: productDelivery.shipping?.instructions || "",
+    };
     const payload = {
       items: productItems.map((item) => ({
         product_id: Number(item.product_id ?? String(item.id).replace(/^product-/, "")),
@@ -1187,20 +1348,25 @@ function CheckoutFormCore({
       })),
       client_name: client?.full_name || guest.name,
       client_email: client?.email || guest.email,
+      client_phone: client?.phone || productDelivery.shipping?.phone || "",
       payment_intent_id: paymentIntentId,
       setup_intent_id: setupIntentId,
       allow_unpaid: allowUnpaid,
       currency: (normalizeCurrency(displayCurrency) || "USD").toLowerCase(),
+      delivery_method: productDelivery.delivery_method || "pickup",
+      pickup_instructions: productDelivery.pickup_instructions || "",
+      shipping: shippingPayload,
     };
 
     try {
+      persistDeliveryPrefill();
       const { data } = await apiClient.post(
         `/public/${slugLocal}/buy-products`,
         payload
       );
       return data;
     } catch (error) {
-      const msg = error?.response?.data?.error || error.message || "Product order failed";
+      const msg = error?.response?.data?.message || error?.response?.data?.error || error.message || "Product order failed";
       setErr(msg);
       throw error;
     }
@@ -1251,6 +1417,9 @@ function CheckoutFormCore({
     }
     if ((serviceItems.length > 0 && productItems.length > 0) || (packageItems.length > 0 && (serviceItems.length > 0 || productItems.length > 0))) {
       setErr("Services and retail products must be checked out separately. Please complete one checkout before starting another.");
+      return;
+    }
+    if (!ensureProductDeliveryValid()) {
       return;
     }
     setErr("");
@@ -1306,6 +1475,9 @@ function CheckoutFormCore({
       setErr("Services and retail products must be checked out separately. Please complete one checkout before starting another.");
       return;
     }
+    if (!ensureProductDeliveryValid()) {
+      return;
+    }
 
     setErr("");
     setLoading(true);
@@ -1319,9 +1491,12 @@ function CheckoutFormCore({
         currency: displayCurrency,
         clientName: client?.full_name || guest.name,
         clientEmail: client?.email || guest.email,
+        clientPhone: client?.phone || productDelivery.shipping?.phone || "",
+        productDelivery,
         metadata: { source: "checkout", flow: policyMode },
       });
 
+      persistDeliveryPrefill();
       await startHostedCheckout({
         slug,
         payload,
@@ -1334,7 +1509,7 @@ function CheckoutFormCore({
         setLoading(false);
         return;
       }
-      const message = data?.error || ex?.message || "Unable to start Stripe Checkout.";
+      const message = data?.message || data?.error || ex?.message || "Unable to start Stripe Checkout.";
       setErr(message);
       setLoading(false);
     }
@@ -1380,6 +1555,8 @@ function CheckoutFormCore({
         currency: displayCurrency,
         clientName: client?.full_name || guest.name,
         clientEmail: client?.email || guest.email,
+        clientPhone: client?.phone || productDelivery.shipping?.phone || "",
+        productDelivery,
         metadata: { source: "checkout", flow: "capture" },
       });
 
@@ -1395,7 +1572,7 @@ function CheckoutFormCore({
         setLoading(false);
         return;
       }
-      const message = data?.error || ex?.message || "Unable to start Stripe Checkout.";
+      const message = data?.message || data?.error || ex?.message || "Unable to start Stripe Checkout.";
       setErr(message);
       setLoading(false);
     }
@@ -2009,10 +2186,126 @@ function CheckoutFormCore({
             </Typography>
           </ListItem>
         )}
-        <ListItem>
+      <ListItem>
           <Typography variant="h6">Total: {formatCurrency(finalTotal, currencyCode)}</Typography>
         </ListItem>
       </List>
+
+      {productItems.length > 0 && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+            Delivery details
+          </Typography>
+          <TextField
+            select
+            fullWidth
+            label="Delivery method"
+            value={productDelivery.delivery_method || "pickup"}
+            onChange={handleDeliveryMethod}
+            sx={{ mb: 2 }}
+          >
+            <MenuItem value="pickup">Pickup</MenuItem>
+            <MenuItem value="shipping">Shipping</MenuItem>
+            <MenuItem value="local_delivery">Local delivery</MenuItem>
+          </TextField>
+
+          {requiresShippingAddress ? (
+            <Stack spacing={1.5}>
+              <TextField
+                fullWidth
+                required
+                label="Full name"
+                value={productDelivery.shipping?.name || ""}
+                onChange={handleShippingField("name")}
+              />
+              <TextField
+                fullWidth
+                required
+                label="Phone"
+                value={productDelivery.shipping?.phone || ""}
+                onChange={handleShippingField("phone")}
+              />
+              <TextField
+                fullWidth
+                required
+                label="Address line 1"
+                value={productDelivery.shipping?.address1 || ""}
+                onChange={handleShippingField("address1")}
+              />
+              <TextField
+                fullWidth
+                label="Address line 2 (optional)"
+                value={productDelivery.shipping?.address2 || ""}
+                onChange={handleShippingField("address2")}
+              />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <TextField
+                  fullWidth
+                  required
+                  label="City"
+                  value={productDelivery.shipping?.city || ""}
+                  onChange={handleShippingField("city")}
+                />
+                <TextField
+                  fullWidth
+                  required
+                  label="State / Province / Region"
+                  value={productDelivery.shipping?.region || ""}
+                  onChange={handleShippingField("region")}
+                />
+              </Stack>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <TextField
+                  fullWidth
+                  required
+                  label="Postal / ZIP code"
+                  value={productDelivery.shipping?.postal_code || ""}
+                  onChange={handleShippingField("postal_code")}
+                  helperText={
+                    normalizeDeliveryCountryCode(productDelivery.shipping?.country) === "CA"
+                      ? "Format: A1A 1A1"
+                      : normalizeDeliveryCountryCode(productDelivery.shipping?.country) === "US"
+                        ? "Format: 12345 or 12345-6789"
+                        : ""
+                  }
+                />
+                <TextField
+                  select
+                  fullWidth
+                  required
+                  label="Country"
+                  value={normalizeDeliveryCountryCode(productDelivery.shipping?.country) || ""}
+                  onChange={handleShippingField("country")}
+                >
+                  <MenuItem value="" disabled>
+                    Select country
+                  </MenuItem>
+                  {DELIVERY_COUNTRY_OPTIONS.map((country) => (
+                    <MenuItem key={country.code} value={country.code}>
+                      {country.label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+              <TextField
+                fullWidth
+                label="Delivery instructions (optional)"
+                value={productDelivery.shipping?.instructions || ""}
+                onChange={handleShippingField("instructions")}
+              />
+            </Stack>
+          ) : (
+            <TextField
+              fullWidth
+              label="Pickup instructions (optional)"
+              value={productDelivery.pickup_instructions || ""}
+              onChange={(event) =>
+                setProductDelivery((prev) => ({ ...prev, pickup_instructions: event.target.value }))
+              }
+            />
+          )}
+        </Paper>
+      )}
 
       {err && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -2066,7 +2359,7 @@ function CheckoutFormCore({
                 <Button
                   fullWidth
                   variant="contained"
-                  disabled={loading || (!showPayOption && hasPackagePurchase)}
+                  disabled={loading || (!showPayOption && hasPackagePurchase) || !deliveryOk}
                   onClick={payAndBook}
                   sx={primaryButtonSx}
                 >
@@ -2092,7 +2385,7 @@ function CheckoutFormCore({
             <Button
               fullWidth
               variant="contained"
-              disabled={loading}
+              disabled={loading || !deliveryOk}
               onClick={bookWithoutPayment}
               sx={primaryButtonSx}
             >
@@ -2151,7 +2444,7 @@ function CheckoutFormCore({
                     fullWidth
                     variant="contained"
                     type="button"
-                    disabled={loading || !guestOk || (!showPayOption && hasPackagePurchase)}
+                    disabled={loading || !guestOk || !deliveryOk || (!showPayOption && hasPackagePurchase)}
                     onClick={payAndBook}
                     sx={primaryButtonSx}
                   >
@@ -2179,7 +2472,7 @@ function CheckoutFormCore({
                 fullWidth
                 variant="contained"
                 type="button"
-                disabled={loading || !guestOk}
+                disabled={loading || !guestOk || !deliveryOk}
                 onClick={bookWithoutPayment}
                 sx={primaryButtonSx}
               >

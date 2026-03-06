@@ -26,6 +26,15 @@ const parseProductId = (item) => {
   return coerceNumber(fromId);
 };
 
+const normalizeCountryCode = (value) => {
+  const token = String(value || "").trim().toUpperCase();
+  if (!token) return "";
+  if (token === "CA" || token === "CANADA") return "CA";
+  if (token === "US" || token === "USA" || token === "UNITED STATES" || token === "UNITED STATES OF AMERICA") return "US";
+  if (/^[A-Z]{2}$/.test(token)) return token;
+  return "";
+};
+
 const collectAddonIds = (item) => {
   const ids = ensureArray(item?.addon_ids || (item?.addons || []).map((addon) => addon?.id));
   return ids
@@ -55,6 +64,7 @@ export const buildHostedCheckoutPayload = ({
   clientName,
   clientEmail,
   clientPhone,
+  productDelivery,
   metadata,
 }) => {
   const itemsPayload = [];
@@ -170,6 +180,42 @@ export const buildHostedCheckoutPayload = ({
   }
   if (clientPhone) {
     payload.client_phone = clientPhone;
+  }
+
+  if (productCount > 0 && productDelivery && typeof productDelivery === "object") {
+    const method = String(productDelivery.delivery_method || "pickup").toLowerCase();
+    if (["pickup", "shipping", "local_delivery"].includes(method)) {
+      payload.delivery_method = method;
+    }
+    if (productDelivery.pickup_instructions) {
+      payload.pickup_instructions = String(productDelivery.pickup_instructions).trim();
+    }
+    if (productDelivery.shipping && typeof productDelivery.shipping === "object") {
+      const shipping = {};
+      const fields = [
+        "name",
+        "phone",
+        "address1",
+        "address2",
+        "city",
+        "region",
+        "postal_code",
+        "country",
+        "instructions",
+      ];
+      fields.forEach((field) => {
+        let value = productDelivery.shipping[field];
+        if (field === "country") {
+          value = normalizeCountryCode(value);
+        }
+        if (value != null && String(value).trim()) {
+          shipping[field] = String(value).trim();
+        }
+      });
+      if (Object.keys(shipping).length) {
+        payload.shipping = shipping;
+      }
+    }
   }
 
   const cleanedMetadata = sanitizeMetadata(metadata);
