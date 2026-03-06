@@ -83,6 +83,19 @@ const Overview = () => {
   const [awaitingManagerSwaps, setAwaitingManagerSwaps] = useState(0);
   const [availability, setAvailability] = useState({ ok: 0, low: 0 });
   const [activityFeed, setActivityFeed] = useState([]);
+  const [productLowStockSummary, setProductLowStockSummary] = useState({
+    count: 0,
+    low_stock_count: 0,
+    out_of_stock_count: 0,
+  });
+  const [productOrdersSummary, setProductOrdersSummary] = useState({
+    total: 0,
+    paid: 0,
+    pending: 0,
+    backorder: 0,
+    inventory_action_required: 0,
+    untracked_shipping: 0,
+  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -120,6 +133,8 @@ const Overview = () => {
         swapPeerRes,
         availRes,
         feedRes,
+        lowStockRes,
+        productOrdersRes,
       ] = await Promise.all([
         safeGet(`/manager/recruiters`, []),
         safeGet(`/api/departments`, []),
@@ -130,6 +145,8 @@ const Overview = () => {
         safeGet(`/shift-swap-requests?status=peer_accepted`, []),
         safeGet(`/manager/availability-summary`, { ok: 0, low: 0 }),
         safeGet(`/manager/activity-feed`, []),
+        safeGet(`/inventory/products/low-stock?limit=1`, { summary: { count: 0, low_stock_count: 0, out_of_stock_count: 0 }, items: [] }),
+        safeGet(`/inventory/product-orders?page=1&page_size=200`, { orders: [], pagination: { total: 0 } }),
       ]);
 
       /* convert to arrays safely */
@@ -152,6 +169,33 @@ const Overview = () => {
         low: availRes?.low ?? 0,
       });
       setActivityFeed(asArray(feedRes).slice(0, 5));
+
+      const lowSummary = lowStockRes?.summary || {};
+      setProductLowStockSummary({
+        count: Number(lowSummary.count || 0),
+        low_stock_count: Number(lowSummary.low_stock_count || 0),
+        out_of_stock_count: Number(lowSummary.out_of_stock_count || 0),
+      });
+
+      const orderRows = Array.isArray(productOrdersRes?.orders) ? productOrdersRes.orders : [];
+      const totalOrders = Number(productOrdersRes?.pagination?.total || orderRows.length || 0);
+      const paidCount = orderRows.filter((o) => String(o?.payment_status || "").toLowerCase() === "paid").length;
+      const pendingCount = orderRows.filter((o) => String(o?.payment_status || "").toLowerCase() === "pending").length;
+      const backorderCount = orderRows.filter((o) => String(o?.fulfillment_status || "").toLowerCase() === "backorder").length;
+      const inventoryActionCount = orderRows.filter((o) => Boolean(o?.inventory_action_required)).length;
+      const untrackedShippingCount = orderRows.filter((o) => {
+        const delivery = String(o?.delivery_method || "").toLowerCase();
+        const tracking = o?.tracking_url_public || o?.tracking_url;
+        return (delivery === "shipping" || delivery === "local_delivery") && !tracking;
+      }).length;
+      setProductOrdersSummary({
+        total: totalOrders,
+        paid: paidCount,
+        pending: pendingCount,
+        backorder: backorderCount,
+        inventory_action_required: inventoryActionCount,
+        untracked_shipping: untrackedShippingCount,
+      });
 
       setLoading(false);
     } catch (e) {
@@ -382,6 +426,30 @@ const Overview = () => {
                 "Departments",
                 departments,
                 "#455a64"
+              )}
+            </Grid>
+          </Grid>
+
+          <Typography variant="subtitle1" sx={{ mt: 3, mb: 1, fontWeight: 700 }}>
+            Product Operations
+          </Typography>
+          <Grid container spacing={3} sx={{ mt: 0 }}>
+            <Grid item xs={12} md={6}>
+              {renderCard(
+                <BusinessCenterIcon />,
+                "Product Snapshot",
+                `Orders: ${productOrdersSummary.total} • Paid: ${productOrdersSummary.paid} • Pending: ${productOrdersSummary.pending} • Backorder: ${productOrdersSummary.backorder}`,
+                "#1565c0",
+                () => navigate("/manager/dashboard?tab=product-orders")
+              )}
+            </Grid>
+            <Grid item xs={12} md={6}>
+              {renderCard(
+                <WarningAmberIcon />,
+                "Product Risk",
+                `Low stock: ${productLowStockSummary.count} • Out of stock: ${productLowStockSummary.out_of_stock_count} • Inventory actions: ${productOrdersSummary.inventory_action_required} • Untracked shipping: ${productOrdersSummary.untracked_shipping}`,
+                productLowStockSummary.count || productOrdersSummary.inventory_action_required ? "#d32f2f" : "#2e7d32",
+                () => navigate("/manager/dashboard?tab=products")
               )}
             </Grid>
           </Grid>
