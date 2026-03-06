@@ -13,6 +13,9 @@ import {
 } from "@mui/material";
 import salesRepApi from "../../api/salesRepApi";
 
+const APP_ORIGIN = (process.env.REACT_APP_APP_ORIGIN || "https://app.schedulaa.com").replace(/\/$/, "");
+const buildTenantAppUrl = (slug) => `${APP_ORIGIN}/${String(slug || "").replace(/^\/+/, "")}`;
+
 export default function SalesCustomersPage() {
   const [customers, setCustomers] = useState([]);
   const [filter, setFilter] = useState("all");
@@ -164,7 +167,7 @@ export default function SalesCustomersPage() {
                   size="small"
                   variant="outlined"
                   onClick={async () => {
-                    const link = `https://www.schedulaa.com/${c.slug}`;
+                    const link = buildTenantAppUrl(c.slug);
                     try {
                       await navigator.clipboard.writeText(link);
                       setCopyNotice("Public link copied.");
@@ -178,7 +181,7 @@ export default function SalesCustomersPage() {
                 <Button
                   size="small"
                   variant="contained"
-                  onClick={() => window.open(`https://www.schedulaa.com/${c.slug}`, "_blank", "noopener,noreferrer")}
+                  onClick={() => window.open(buildTenantAppUrl(c.slug), "_blank", "noopener,noreferrer")}
                 >
                   Open
                 </Button>
