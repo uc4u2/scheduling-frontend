@@ -10,6 +10,7 @@ import { Box,
   Alert,
   Chip,
   CircularProgress,
+  Drawer,
   Dialog,
   DialogActions,
   DialogContent,
@@ -44,6 +45,7 @@ import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import LocalMallIcon from "@mui/icons-material/LocalMall";
 import CloseIcon from "@mui/icons-material/Close";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { DataGrid } from "@mui/x-data-grid";
 import { formatCurrencyWithCode, formatCurrencyFromCents } from "../../../utils/formatters";
@@ -465,6 +467,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const [inventoryResolutionSaving, setInventoryResolutionSaving] = useState("");
   const [showInventoryFailureDetails, setShowInventoryFailureDetails] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const importInputRef = useRef(null);
   const showMessage = useCallback((message, severity = "info") => {
     setSnackbar({ open: true, message, severity });
@@ -1426,6 +1429,13 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
             <Button onClick={() => { setFilters(defaultFilters); setPagination((prev) => ({ ...prev, page: 0 })); }}>
               Clear filters
             </Button>
+            <Button
+              variant="outlined"
+              startIcon={<HelpOutlineIcon />}
+              onClick={() => setHelpOpen(true)}
+            >
+              Help
+            </Button>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
               <Button variant="outlined" onClick={handleExportCsv} disabled={!orders.length}>
                 Export CSV
@@ -1434,7 +1444,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                 {importing ? <CircularProgress size={18} /> : "Import CSV"}
               </Button>
             </Stack>
-          </Stack>/Stack>
+          </Stack>
         </Stack>
         <Paper sx={{ p: 2 }}>
           <div style={{ width: "100%" }}>
@@ -2459,6 +2469,77 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
           <Button onClick={closeDetail}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      <Drawer
+        anchor="right"
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        sx={{
+          zIndex: (theme) => theme.zIndex.modal + 2000,
+          "& .MuiDrawer-paper": { zIndex: "inherit" },
+        }}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, p: 2.5 } }}
+      >
+        <Stack spacing={2}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" fontWeight={700}>
+              Product Orders Help
+            </Typography>
+            <Button size="small" onClick={() => setHelpOpen(false)}>Close</Button>
+          </Stack>
+
+          <Typography variant="body2" color="text.secondary">
+            Use this page to monitor orders, process fulfillment safely, and keep inventory/payment records aligned.
+          </Typography>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>What each area does</Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2"><strong>Search + Filters:</strong> Narrow by customer, status, payment, and delivery method.</Typography>
+            <Typography variant="body2"><strong>Order list:</strong> Fast view of delivery, fulfillment, payment, total, and refunds.</Typography>
+            <Typography variant="body2"><strong>Order detail tabs:</strong> Summary, Items, Payments, Timeline, and Actions.</Typography>
+            <Typography variant="body2"><strong>Actions tab:</strong> Fulfillment updates, timeline notes, refund handling, and shipping settings.</Typography>
+          </Stack>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>Status quick guide</Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2"><strong>Fulfillment:</strong> pending → packed/ready_for_pickup → in_transit (shipping) → delivered.</Typography>
+            <Typography variant="body2"><strong>Payment:</strong> pending, paid, partially_refunded, refunded.</Typography>
+            <Typography variant="body2"><strong>Customer status chip:</strong> Simplified state derived from payment + fulfillment.</Typography>
+          </Stack>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>Safe operating sequence (example)</Typography>
+          <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
+            <Stack spacing={0.75}>
+              <Typography variant="body2"><strong>Shipping order:</strong></Typography>
+              <Typography variant="body2">1) Open order</Typography>
+              <Typography variant="body2">2) Next action: <code>Mark packed</code></Typography>
+              <Typography variant="body2">3) Enter tracking number + URL</Typography>
+              <Typography variant="body2">4) Next action: <code>Mark shipped</code></Typography>
+              <Typography variant="body2">5) Next action: <code>Mark delivered</code></Typography>
+              <Typography variant="body2"><strong>Pickup order:</strong></Typography>
+              <Typography variant="body2">1) Mark ready for pickup</Typography>
+              <Typography variant="body2">2) Mark picked up (delivered)</Typography>
+            </Stack>
+          </Paper>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>Exception and refund handling</Typography>
+          <Stack spacing={1}>
+            <Typography variant="body2">If inventory action is required, normal fulfillment is blocked until resolved.</Typography>
+            <Typography variant="body2">Use one of: <strong>Refund customer</strong>, <strong>Mark as backorder</strong>, or <strong>Retry after stock correction</strong>.</Typography>
+            <Typography variant="body2">Refund panel can restock tracked items; use advanced options only when needed.</Typography>
+          </Stack>
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={700}>Shipping settings (manual)</Typography>
+          <Typography variant="body2">
+            Configure allowed methods and origin details used by operations. Keep these accurate for support and fulfillment teams.
+          </Typography>
+        </Stack>
+      </Drawer>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
