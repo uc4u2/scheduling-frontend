@@ -47,17 +47,30 @@ const customerShippingStatusLabel = (value) => {
   if (!normalized) return "";
   const map = {
     pre_transit: "Label created",
+    label_created: "Label created",
     pending: "Preparing shipment",
     packed: "Preparing shipment",
     in_transit: "In transit",
     out_for_delivery: "Out for delivery",
     delivered: "Delivered",
     available_for_pickup: "Ready for pickup",
+    ready_for_pickup: "Ready for pickup",
     return_to_sender: "Returning to sender",
+    returning: "Returning to sender",
     failure: "Shipping issue",
+    issue: "Shipping issue",
     cancelled: "Shipment cancelled",
+    unknown: "Tracking pending",
   };
   return map[normalized] || toTitle(normalized);
+};
+
+const customerShippingStatusColor = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["delivered", "available_for_pickup", "ready_for_pickup"].includes(normalized)) return "success";
+  if (["in_transit", "out_for_delivery", "pre_transit", "label_created"].includes(normalized)) return "info";
+  if (["failure", "issue", "return_to_sender", "returning", "cancelled"].includes(normalized)) return "warning";
+  return "default";
 };
 
 export default function ClientBookings() {
@@ -662,7 +675,11 @@ export default function ClientBookings() {
                       <Stack spacing={1} sx={{ mt: 1 }}>
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                           {shippingStatus ? (
-                            <Chip label={`Status: ${shippingStatus}`} size="small" color="info" />
+                            <Chip
+                              label={`Status: ${shippingStatus}`}
+                              size="small"
+                              color={customerShippingStatusColor(selectedOrder.tracking_status || shipment?.status)}
+                            />
                           ) : null}
                           {carrier || service ? (
                             <Chip
@@ -689,6 +706,11 @@ export default function ClientBookings() {
                                 ? ` • Purchased ${new Date(shipment.purchased_at).toLocaleString()}`
                                 : ""}
                             </Typography>
+                            {(shipment?.updated_at || shipment?.created_at) ? (
+                              <Typography variant="caption" color="text.secondary">
+                                Last update: {new Date(shipment.updated_at || shipment.created_at).toLocaleString()}
+                              </Typography>
+                            ) : null}
                           </Box>
                         ) : null}
                         {trackingUrl ? (

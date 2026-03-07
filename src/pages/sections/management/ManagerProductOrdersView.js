@@ -131,6 +131,35 @@ const titleCase = (value) => {
     .join(" ");
 };
 
+const trackingStatusLabel = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "";
+  const labels = {
+    pre_transit: "Label created",
+    label_created: "Label created",
+    in_transit: "In transit",
+    out_for_delivery: "Out for delivery",
+    delivered: "Delivered",
+    available_for_pickup: "Ready for pickup",
+    ready_for_pickup: "Ready for pickup",
+    return_to_sender: "Return to sender",
+    returning: "Return in progress",
+    failure: "Shipping issue",
+    issue: "Shipping issue",
+    cancelled: "Cancelled",
+    unknown: "Unknown",
+  };
+  return labels[normalized] || titleCase(normalized);
+};
+
+const trackingStatusColor = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["delivered", "available_for_pickup", "ready_for_pickup"].includes(normalized)) return "success";
+  if (["in_transit", "out_for_delivery", "pre_transit", "label_created"].includes(normalized)) return "info";
+  if (["failure", "issue", "return_to_sender", "returning", "cancelled"].includes(normalized)) return "warning";
+  return "default";
+};
+
 const recommendedFulfillmentAction = (order = {}) => {
   const delivery = String(order?.delivery_method || "pickup").toLowerCase();
   const status = String(order?.fulfillment_status || "pending").toLowerCase();
@@ -165,7 +194,7 @@ const fulfillmentActionOptions = (order = {}) => {
 
 const isShippingAutomationEligible = (order = {}) => {
   const method = String(order?.delivery_method || "").toLowerCase();
-  return method === "shipping" || method === "local_delivery";
+  return method === "shipping";
 };
 
 const toLowerSafe = (value) => (value == null ? "" : String(value).toLowerCase());
@@ -1740,9 +1769,9 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                   {orderDetail.tracking_status && (
                     <Chip
                       size="small"
-                      color="info"
+                      color={trackingStatusColor(orderDetail.tracking_status)}
                       variant="outlined"
-                      label={`Tracking: ${titleCase(orderDetail.tracking_status)}`}
+                      label={`Tracking: ${trackingStatusLabel(orderDetail.tracking_status)}`}
                     />
                   )}
                   {orderDetail.tracking_url_public && (
@@ -2010,6 +2039,15 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                               <Typography variant="subtitle2" fontWeight={700}>
                                 Latest purchased shipment
                               </Typography>
+                              {(latestShipment.status || orderDetail?.tracking_status) ? (
+                                <Chip
+                                  size="small"
+                                  variant="outlined"
+                                  color={trackingStatusColor(latestShipment.status || orderDetail?.tracking_status)}
+                                  label={`Status: ${trackingStatusLabel(latestShipment.status || orderDetail?.tracking_status)}`}
+                                  sx={{ alignSelf: "flex-start" }}
+                                />
+                              ) : null}
                               <Typography variant="body2">
                                 {latestShipment.carrier || "Carrier"} {latestShipment.service || ""} •{" "}
                                 {latestShipment.rate_amount_cents != null
@@ -2021,6 +2059,11 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                               </Typography>
                               {latestShipment.tracking_code ? (
                                 <Typography variant="body2">Tracking #: {latestShipment.tracking_code}</Typography>
+                              ) : null}
+                              {(latestShipment.updated_at || latestShipment.purchased_at) ? (
+                                <Typography variant="caption" color="text.secondary">
+                                  Last update: {formatTimestamp(latestShipment.updated_at || latestShipment.purchased_at, orderDetail?.company?.timezone)}
+                                </Typography>
                               ) : null}
                               {latestShipment.label_url ? (
                                 <Stack direction="row" spacing={1}>
@@ -2042,6 +2085,22 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                   </Button>
                                 </Stack>
                               ) : null}
+                              {(latestShipment.tracking_url || orderDetail?.tracking_url_public) ? (
+                                <Button
+                                  size="small"
+                                  variant="text"
+                                  onClick={() =>
+                                    window.open(
+                                      latestShipment.tracking_url || orderDetail?.tracking_url_public,
+                                      "_blank",
+                                      "noopener,noreferrer"
+                                    )
+                                  }
+                                  sx={{ alignSelf: "flex-start", px: 0 }}
+                                >
+                                  Open tracking link
+                                </Button>
+                              ) : null}
                             </Stack>
                           </Paper>
                         ) : (
@@ -2053,7 +2112,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     </Paper>
                   ) : (
                     <Alert severity="info" sx={{ mb: 2 }}>
-                      EasyPost order automation applies only to Shipping or Local delivery orders. Manual tracking remains available in Actions.
+                      EasyPost order automation applies only to Shipping orders. Manual tracking remains available in Actions.
                     </Alert>
                   )}
                   <Typography variant="subtitle1" fontWeight={600} gutterBottom>Shipping settings & EasyPost</Typography>
