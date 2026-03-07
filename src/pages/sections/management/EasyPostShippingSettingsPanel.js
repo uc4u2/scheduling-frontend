@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -12,6 +12,8 @@ import {
   IconButton,
   Stack,
   Switch,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -60,6 +62,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const [clearApiKey, setClearApiKey] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [helpOpen, setHelpOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("delivery_methods");
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -74,6 +77,10 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
       setLoading(false);
     }
   }, [headers]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const updateField = useCallback((field, value) => {
     setSettings((prev) => ({ ...(prev || {}), [field]: value }));
@@ -162,7 +169,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         </Stack>
 
         <Typography variant="body2" color="text.secondary">
-          Manage EasyPost connection and origin settings here. Product Orders Actions tab remains unchanged.
+          Manage delivery policy and EasyPost automation settings here. Product Orders Actions tab remains unchanged.
         </Typography>
 
         {!settings && !loading && (
@@ -178,81 +185,104 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
 
         {settings && (
           <Stack spacing={2}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-              <Chip
-                size="small"
-                color={settings.easypost_connected ? "success" : "default"}
-                label={settings.easypost_connected ? "Connected" : "Not connected"}
-              />
-              {settings.easypost_has_api_key && (
-                <Chip size="small" variant="outlined" label={`Key ••••${settings.easypost_api_key_last4 || ""}`} />
-              )}
-            </Stack>
+            <Tabs
+              value={activeTab}
+              onChange={(_, value) => setActiveTab(value)}
+              variant="scrollable"
+              allowScrollButtonsMobile
+            >
+              <Tab value="delivery_methods" label="Delivery Methods" />
+              <Tab value="easypost" label="EasyPost Automation" />
+            </Tabs>
 
-            <Grid container spacing={1.5}>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel
-                  control={<Switch checked={Boolean(settings.enabled)} onChange={(e) => updateField("enabled", e.target.checked)} />}
-                  label="Shipping settings enabled"
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel
-                  control={<Switch checked={Boolean(settings.easypost_enabled)} onChange={(e) => updateField("easypost_enabled", e.target.checked)} />}
-                  label="Enable EasyPost"
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel
-                  control={<Switch checked={clearApiKey} onChange={(e) => setClearApiKey(e.target.checked)} />}
-                  label="Clear stored API key"
-                />
-              </Grid>
-            </Grid>
+            {activeTab === "delivery_methods" && (
+              <Stack spacing={2}>
+                <Alert severity="info">
+                  These controls decide checkout delivery choices for clients (pickup, shipping, local delivery), independent of EasyPost.
+                </Alert>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} md={4}>
+                    <FormControlLabel
+                      control={<Switch checked={Boolean(settings.enabled)} onChange={(e) => updateField("enabled", e.target.checked)} />}
+                      label="Shipping settings enabled"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_pickup)} onChange={(e) => updateField("allow_pickup", e.target.checked)} />} label="Allow pickup" />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_shipping)} onChange={(e) => updateField("allow_shipping", e.target.checked)} />} label="Allow shipping" />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_local_delivery)} onChange={(e) => updateField("allow_local_delivery", e.target.checked)} />} label="Allow local delivery" />
+                  </Grid>
+                </Grid>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Pickup label" value={settings.shipping_label_pickup} onChange={(e) => updateField("shipping_label_pickup", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Shipping label" value={settings.shipping_label_shipping} onChange={(e) => updateField("shipping_label_shipping", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Local delivery label" value={settings.shipping_label_local_delivery} onChange={(e) => updateField("shipping_label_local_delivery", e.target.value)} /></Grid>
+                </Grid>
+              </Stack>
+            )}
 
-            <Grid container spacing={1.5}>
-              <Grid item xs={12} md={8}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="EasyPost API key"
-                  placeholder={settings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key"}
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <Button fullWidth variant="outlined" onClick={testConnection} disabled={testing}>
-                  {testing ? <CircularProgress size={18} /> : "Test connection"}
-                </Button>
-              </Grid>
-            </Grid>
-
-            <Grid container spacing={1.5}>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel control={<Switch checked={Boolean(settings.allow_pickup)} onChange={(e) => updateField("allow_pickup", e.target.checked)} />} label="Allow pickup" />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel control={<Switch checked={Boolean(settings.allow_shipping)} onChange={(e) => updateField("allow_shipping", e.target.checked)} />} label="Allow shipping" />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <FormControlLabel control={<Switch checked={Boolean(settings.allow_local_delivery)} onChange={(e) => updateField("allow_local_delivery", e.target.checked)} />} label="Allow local delivery" />
-              </Grid>
-            </Grid>
-
-            <Grid container spacing={1.5}>
-              <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin name" value={settings.origin_name} onChange={(e) => updateField("origin_name", e.target.value)} /></Grid>
-              <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin phone" value={settings.origin_phone} onChange={(e) => updateField("origin_phone", e.target.value)} /></Grid>
-              <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 1" value={settings.origin_address1} onChange={(e) => updateField("origin_address1", e.target.value)} /></Grid>
-              <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 2" value={settings.origin_address2} onChange={(e) => updateField("origin_address2", e.target.value)} /></Grid>
-              <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin city" value={settings.origin_city} onChange={(e) => updateField("origin_city", e.target.value)} /></Grid>
-              <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin region" value={settings.origin_region} onChange={(e) => updateField("origin_region", e.target.value)} /></Grid>
-              <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin postal code" value={settings.origin_postal_code} onChange={(e) => updateField("origin_postal_code", e.target.value)} /></Grid>
-              <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin country" value={settings.origin_country} onChange={(e) => updateField("origin_country", e.target.value)} /></Grid>
-              <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Pickup label" value={settings.shipping_label_pickup} onChange={(e) => updateField("shipping_label_pickup", e.target.value)} /></Grid>
-              <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Shipping label" value={settings.shipping_label_shipping} onChange={(e) => updateField("shipping_label_shipping", e.target.value)} /></Grid>
-              <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Local delivery label" value={settings.shipping_label_local_delivery} onChange={(e) => updateField("shipping_label_local_delivery", e.target.value)} /></Grid>
-            </Grid>
+            {activeTab === "easypost" && (
+              <Stack spacing={2}>
+                <Alert severity="info">
+                  EasyPost automates shipping rates and label purchase only. It does not decide which delivery method choices appear at checkout.
+                </Alert>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Chip
+                    size="small"
+                    color={settings.easypost_connected ? "success" : "default"}
+                    label={settings.easypost_connected ? "Connected" : "Not connected"}
+                  />
+                  {settings.easypost_has_api_key && (
+                    <Chip size="small" variant="outlined" label={`Key ••••${settings.easypost_api_key_last4 || ""}`} />
+                  )}
+                </Stack>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} md={4}>
+                    <FormControlLabel
+                      control={<Switch checked={Boolean(settings.easypost_enabled)} onChange={(e) => updateField("easypost_enabled", e.target.checked)} />}
+                      label="Enable EasyPost"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <FormControlLabel
+                      control={<Switch checked={clearApiKey} onChange={(e) => setClearApiKey(e.target.checked)} />}
+                      label="Clear stored API key"
+                    />
+                  </Grid>
+                </Grid>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} md={8}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="EasyPost API key"
+                      placeholder={settings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key"}
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Button fullWidth variant="outlined" onClick={testConnection} disabled={testing}>
+                      {testing ? <CircularProgress size={18} /> : "Test connection"}
+                    </Button>
+                  </Grid>
+                </Grid>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin name" value={settings.origin_name} onChange={(e) => updateField("origin_name", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin phone" value={settings.origin_phone} onChange={(e) => updateField("origin_phone", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 1" value={settings.origin_address1} onChange={(e) => updateField("origin_address1", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 2" value={settings.origin_address2} onChange={(e) => updateField("origin_address2", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin city" value={settings.origin_city} onChange={(e) => updateField("origin_city", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin region" value={settings.origin_region} onChange={(e) => updateField("origin_region", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin postal code" value={settings.origin_postal_code} onChange={(e) => updateField("origin_postal_code", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin country" value={settings.origin_country} onChange={(e) => updateField("origin_country", e.target.value)} /></Grid>
+                </Grid>
+              </Stack>
+            )}
 
             <Stack direction="row" justifyContent="flex-end">
               <Button variant="contained" onClick={saveSettings} disabled={saving}>
@@ -288,10 +318,8 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
 
             <Box>
               <Typography variant="subtitle2" fontWeight={700}>1) Settings Panel (this page)</Typography>
-              <Typography variant="body2">- Enable EasyPost automation</Typography>
-              <Typography variant="body2">- Save/rotate API key</Typography>
-              <Typography variant="body2">- Test connection</Typography>
-              <Typography variant="body2">- Configure allowed delivery methods and origin address</Typography>
+              <Typography variant="body2">- Delivery Methods tab: controls checkout delivery choices and labels.</Typography>
+              <Typography variant="body2">- EasyPost Automation tab: connection and shipping automation config.</Typography>
             </Box>
 
             <Box>
