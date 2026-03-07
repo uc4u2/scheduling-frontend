@@ -59,7 +59,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
     setLoading(true);
     setMessage({ type: "", text: "" });
     try {
-      const res = await api.get("/company/shipping-settings", { headers });
+      const res = await api.get("/inventory/shipping-settings", { headers });
       setSettings(normalizeSettings(res?.data));
     } catch (error) {
       const text = error?.response?.data?.error || error?.message || "Unable to load shipping settings.";
@@ -100,7 +100,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
       if (key) payload.easypost_api_key = key;
       if (clearApiKey) payload.clear_easypost_api_key = true;
 
-      const res = await api.post("/company/shipping-settings", payload, { headers });
+      const res = await api.post("/inventory/shipping-settings", payload, { headers });
       setSettings(normalizeSettings(res?.data));
       setApiKeyInput("");
       setClearApiKey(false);
@@ -121,7 +121,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
       const payload = {};
       const key = apiKeyInput.trim();
       if (key) payload.easypost_api_key = key;
-      const res = await api.post("/integrations/easypost/test", payload, { headers });
+      const res = await api.post("/inventory/shipping-settings/test-connection", payload, { headers });
       const normalized = normalizeSettings(res?.data?.settings || settings);
       setSettings(normalized);
       setMessage({ type: "success", text: res?.data?.message || "EasyPost connection test completed." });
