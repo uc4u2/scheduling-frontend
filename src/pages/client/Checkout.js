@@ -680,6 +680,7 @@ function CheckoutFormCore({
   });
   const [deliveryMethodPolicy, setDeliveryMethodPolicy] = useState({
     loading: false,
+    source: "default",
     allowedMethods: ["pickup", "shipping", "local_delivery"],
   });
   const [cart, setCart] = useState([]);
@@ -962,6 +963,7 @@ function CheckoutFormCore({
     if (!slugLocal || productItems.length === 0) {
       setDeliveryMethodPolicy({
         loading: false,
+        source: "default",
         allowedMethods: ["pickup", "shipping", "local_delivery"],
       });
       return;
@@ -977,15 +979,15 @@ function CheckoutFormCore({
           : [];
         setDeliveryMethodPolicy({
           loading: false,
-          allowedMethods: allowedMethods.length
-            ? allowedMethods
-            : ["pickup", "shipping", "local_delivery"],
+          source: "api",
+          allowedMethods,
         });
       })
       .catch(() => {
         if (cancelled) return;
         setDeliveryMethodPolicy({
           loading: false,
+          source: "fallback",
           allowedMethods: ["pickup", "shipping", "local_delivery"],
         });
       });
@@ -1131,7 +1133,7 @@ function CheckoutFormCore({
       ? [...deliveryMethodPolicy.allowedMethods]
       : ["pickup", "shipping", "local_delivery"];
     allowed = allowed.filter((m) => ["pickup", "shipping", "local_delivery"].includes(m));
-    if (!allowed.length) {
+    if (!allowed.length && deliveryMethodPolicy.source !== "api") {
       allowed = ["pickup", "shipping", "local_delivery"];
     }
     for (const item of productItems) {
@@ -1143,7 +1145,7 @@ function CheckoutFormCore({
       allowed = allowed.filter((method) => itemAllowed.includes(method));
     }
     return Array.from(new Set(allowed));
-  }, [productItems, deliveryMethodPolicy.allowedMethods]);
+  }, [productItems, deliveryMethodPolicy.allowedMethods, deliveryMethodPolicy.source]);
   const deliveryMethodOptions = useMemo(
     () =>
       [

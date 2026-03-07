@@ -31,6 +31,7 @@ import {
   HelpOutline,
   Edit,
   Delete,
+  LocalShipping,
   PhotoCamera,
   CloudUpload,
   DeleteOutline,
@@ -38,6 +39,7 @@ import {
   History,
 } from "@mui/icons-material";
 import api from "../../../utils/api";
+import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 
 const emptyForm = {
   sku: "",
@@ -92,6 +94,12 @@ const ProductManagement = ({ token }) => {
   const [movementRows, setMovementRows] = useState([]);
   const [movementTarget, setMovementTarget] = useState(null);
   const [globalMovementOpen, setGlobalMovementOpen] = useState(false);
+  const [deliverySetupOpen, setDeliverySetupOpen] = useState(false);
+  const [globalDeliveryPolicy, setGlobalDeliveryPolicy] = useState({
+    allow_pickup: false,
+    allow_shipping: true,
+    allow_local_delivery: false,
+  });
   const [globalMovementLoading, setGlobalMovementLoading] = useState(false);
   const [globalMovementRows, setGlobalMovementRows] = useState([]);
   const [globalMovementPagination, setGlobalMovementPagination] = useState({ page: 1, per_page: 50, total: 0 });
@@ -113,6 +121,20 @@ const ProductManagement = ({ token }) => {
     try {
       const { data } = await api.get(`/inventory/products`, auth);
       setProducts(Array.isArray(data) ? data : []);
+      try {
+        const { data: shippingSettings } = await api.get(`/inventory/shipping-settings`, auth);
+        setGlobalDeliveryPolicy({
+          allow_pickup: Boolean(shippingSettings?.allow_pickup),
+          allow_shipping: shippingSettings?.allow_shipping !== false,
+          allow_local_delivery: Boolean(shippingSettings?.allow_local_delivery),
+        });
+      } catch {
+        setGlobalDeliveryPolicy({
+          allow_pickup: false,
+          allow_shipping: true,
+          allow_local_delivery: false,
+        });
+      }
       try {
         const { data: lowStock } = await api.get(`/inventory/products/low-stock?limit=10`, auth);
         setLowStockSummary(lowStock?.summary || { count: 0, out_of_stock_count: 0, low_stock_count: 0 });
@@ -184,12 +206,36 @@ const ProductManagement = ({ token }) => {
         field === "delivery_allow_local_delivery"
           ? event.target.checked
           : event.target.value;
-      setForm((prev) => ({ ...prev, [field]: value }));
+      setForm((prev) => {
+        if (field === "delivery_methods_override_enabled" && value) {
+          const hasAnyMethod =
+            Boolean(prev.delivery_allow_pickup) ||
+            Boolean(prev.delivery_allow_shipping) ||
+            Boolean(prev.delivery_allow_local_delivery);
+          // Safe default for override mode: shipping enabled if nothing is selected yet.
+          return {
+            ...prev,
+            [field]: value,
+            delivery_allow_shipping: hasAnyMethod ? prev.delivery_allow_shipping : true,
+          };
+        }
+        return { ...prev, [field]: value };
+      });
     },
     []
   );
 
   const persist = useCallback(async () => {
+    if (
+      form.delivery_methods_override_enabled &&
+      !form.delivery_allow_pickup &&
+      !form.delivery_allow_shipping &&
+      !form.delivery_allow_local_delivery
+    ) {
+      notify("Select at least one delivery method when product delivery override is enabled.");
+      return;
+    }
+
     const payload = {
       ...form,
       price: form.price === "" ? "0" : form.price,
@@ -452,6 +498,16 @@ const ProductManagement = ({ token }) => {
         <Button startIcon={<Add />} variant="contained" onClick={() => handleOpen()}>
           {t("manager.product.buttonAdd")}
         </Button>
+        <Tooltip title="Configure checkout delivery methods (manual policy) and EasyPost automation in one place." arrow>
+          <Button
+            startIcon={<LocalShipping />}
+            variant="outlined"
+            color="inherit"
+            onClick={() => setDeliverySetupOpen(true)}
+          >
+            Delivery setup
+          </Button>
+        </Tooltip>
         <Button
           startIcon={<History />}
           variant="outlined"
@@ -699,43 +755,72 @@ const ProductManagement = ({ token }) => {
                   />
                 )}
                 label={fieldLabelWithTooltip(
-                  "Override delivery methods",
-                  "If enabled, this product uses custom allowed delivery methods instead of workspace defaults."
+                  "Product delivery override (advanced)",
+                  "If enabled, this product can narrow delivery methods relative to Products -> Delivery setup."
                 )}
               />
               {form.delivery_methods_override_enabled && (
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                  <FormControlLabel
-                    control={(
-                      <Checkbox
-                        id="delivery_allow_pickup"
-                        checked={form.delivery_allow_pickup}
-                        onChange={handleChange("delivery_allow_pickup")}
-                      />
-                    )}
-                    label="Allow pickup"
-                  />
-                  <FormControlLabel
-                    control={(
-                      <Checkbox
-                        id="delivery_allow_shipping"
-                        checked={form.delivery_allow_shipping}
-                        onChange={handleChange("delivery_allow_shipping")}
-                      />
-                    )}
-                    label="Allow shipping"
-                  />
-                  <FormControlLabel
-                    control={(
-                      <Checkbox
-                        id="delivery_allow_local_delivery"
-                        checked={form.delivery_allow_local_delivery}
-                        onChange={handleChange("delivery_allow_local_delivery")}
-                      />
-                    )}
-                    label="Allow local delivery"
-                  />
-                </Stack>
+                <>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                    <Tooltip
+                      title={globalDeliveryPolicy.allow_pickup ? "" : "Enable pickup in Products -> Delivery setup first."}
+                      arrow
+                    >
+                      <span>
+                        <FormControlLabel
+                          control={(
+                            <Checkbox
+                              id="delivery_allow_pickup"
+                              checked={form.delivery_allow_pickup}
+                              onChange={handleChange("delivery_allow_pickup")}
+                              disabled={!globalDeliveryPolicy.allow_pickup}
+                            />
+                          )}
+                          label="Allow pickup"
+                        />
+                      </span>
+                    </Tooltip>
+                    <Tooltip
+                      title={globalDeliveryPolicy.allow_shipping ? "" : "Enable shipping in Products -> Delivery setup first."}
+                      arrow
+                    >
+                      <span>
+                        <FormControlLabel
+                          control={(
+                            <Checkbox
+                              id="delivery_allow_shipping"
+                              checked={form.delivery_allow_shipping}
+                              onChange={handleChange("delivery_allow_shipping")}
+                              disabled={!globalDeliveryPolicy.allow_shipping}
+                            />
+                          )}
+                          label="Allow shipping"
+                        />
+                      </span>
+                    </Tooltip>
+                    <Tooltip
+                      title={globalDeliveryPolicy.allow_local_delivery ? "" : "Enable local delivery in Products -> Delivery setup first."}
+                      arrow
+                    >
+                      <span>
+                        <FormControlLabel
+                          control={(
+                            <Checkbox
+                              id="delivery_allow_local_delivery"
+                              checked={form.delivery_allow_local_delivery}
+                              onChange={handleChange("delivery_allow_local_delivery")}
+                              disabled={!globalDeliveryPolicy.allow_local_delivery}
+                            />
+                          )}
+                          label="Allow local delivery"
+                        />
+                      </span>
+                    </Tooltip>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                    Uses Products -> Delivery setup as global policy. This override only narrows methods per product.
+                  </Typography>
+                </>
               )}
               <FormControlLabel
                 control={(
@@ -904,9 +989,34 @@ const ProductManagement = ({ token }) => {
           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Manager Tips</Typography>
           <Stack spacing={1}>
             <Typography variant="body2">Use the Images action to upload product photos after saving.</Typography>
+            <Typography variant="body2">Use <strong>Delivery setup</strong> to control checkout delivery methods and EasyPost automation policy.</Typography>
             <Typography variant="body2">For physical products, keep <strong>Track inventory</strong> enabled.</Typography>
             <Typography variant="body2">Set low-stock threshold early to avoid overselling.</Typography>
           </Stack>
+        </Stack>
+      </Drawer>
+
+      <Drawer
+        anchor="right"
+        open={deliverySetupOpen}
+        onClose={() => setDeliverySetupOpen(false)}
+        sx={{
+          zIndex: (theme) => theme.zIndex.modal + 2000,
+          "& .MuiDrawer-paper": { zIndex: "inherit" },
+        }}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 980 }, p: 2.5 } }}
+      >
+        <Stack spacing={2}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Delivery setup
+            </Typography>
+            <Button size="small" onClick={() => setDeliverySetupOpen(false)}>Close</Button>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Source of truth for checkout delivery policy in Products. Use the Delivery Methods tab for legacy/manual checkout options and EasyPost Automation tab for shipping automation only.
+          </Typography>
+          <EasyPostShippingSettingsPanel token={token} compact />
         </Stack>
       </Drawer>
 

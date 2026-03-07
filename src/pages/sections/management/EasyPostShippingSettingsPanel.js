@@ -31,7 +31,7 @@ const normalizeSettings = (data = {}) => ({
   easypost_last_tested_at: data?.easypost_last_tested_at || null,
   easypost_last_test_status: data?.easypost_last_test_status || "",
   easypost_last_test_message: data?.easypost_last_test_message || "",
-  allow_pickup: data?.allow_pickup !== false,
+  allow_pickup: Boolean(data?.allow_pickup),
   allow_shipping: data?.allow_shipping !== false,
   allow_local_delivery: Boolean(data?.allow_local_delivery),
   origin_name: data?.origin_name || "",
@@ -63,6 +63,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const [message, setMessage] = useState({ type: "", text: "" });
   const [helpOpen, setHelpOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("delivery_methods");
+  const isEasyPostMode = Boolean(settings?.easypost_enabled);
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -185,6 +186,31 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
 
         {settings && (
           <Stack spacing={2}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" fontWeight={700}>
+                Default shipping mode
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  size="small"
+                  variant={isEasyPostMode ? "outlined" : "contained"}
+                  onClick={() => updateField("easypost_enabled", false)}
+                >
+                  Manual shipping
+                </Button>
+                <Button
+                  size="small"
+                  variant={isEasyPostMode ? "contained" : "outlined"}
+                  onClick={() => updateField("easypost_enabled", true)}
+                >
+                  EasyPost automation
+                </Button>
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                The non-selected mode is read-only. Switch mode here anytime.
+              </Typography>
+            </Stack>
+
             <Tabs
               value={activeTab}
               onChange={(_, value) => setActiveTab(value)}
@@ -200,27 +226,38 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                 <Alert severity="info">
                   These controls decide checkout delivery choices for clients (pickup, shipping, local delivery), independent of EasyPost.
                 </Alert>
+                {isEasyPostMode && (
+                  <Alert severity="warning">
+                    Delivery Methods controls are read-only while EasyPost automation is selected as default mode.
+                  </Alert>
+                )}
                 <Grid container spacing={1.5}>
                   <Grid item xs={12} md={4}>
                     <FormControlLabel
-                      control={<Switch checked={Boolean(settings.enabled)} onChange={(e) => updateField("enabled", e.target.checked)} />}
+                      control={
+                        <Switch
+                          checked={Boolean(settings.enabled)}
+                          onChange={(e) => updateField("enabled", e.target.checked)}
+                          disabled={isEasyPostMode}
+                        />
+                      }
                       label="Shipping settings enabled"
                     />
                   </Grid>
                   <Grid item xs={12} md={4}>
-                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_pickup)} onChange={(e) => updateField("allow_pickup", e.target.checked)} />} label="Allow pickup" />
+                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_pickup)} onChange={(e) => updateField("allow_pickup", e.target.checked)} disabled={isEasyPostMode} />} label="Allow pickup" />
                   </Grid>
                   <Grid item xs={12} md={4}>
-                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_shipping)} onChange={(e) => updateField("allow_shipping", e.target.checked)} />} label="Allow shipping" />
+                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_shipping)} onChange={(e) => updateField("allow_shipping", e.target.checked)} disabled={isEasyPostMode} />} label="Allow shipping" />
                   </Grid>
                   <Grid item xs={12} md={4}>
-                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_local_delivery)} onChange={(e) => updateField("allow_local_delivery", e.target.checked)} />} label="Allow local delivery" />
+                    <FormControlLabel control={<Switch checked={Boolean(settings.allow_local_delivery)} onChange={(e) => updateField("allow_local_delivery", e.target.checked)} disabled={isEasyPostMode} />} label="Allow local delivery" />
                   </Grid>
                 </Grid>
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Pickup label" value={settings.shipping_label_pickup} onChange={(e) => updateField("shipping_label_pickup", e.target.value)} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Shipping label" value={settings.shipping_label_shipping} onChange={(e) => updateField("shipping_label_shipping", e.target.value)} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Local delivery label" value={settings.shipping_label_local_delivery} onChange={(e) => updateField("shipping_label_local_delivery", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Pickup label" value={settings.shipping_label_pickup} onChange={(e) => updateField("shipping_label_pickup", e.target.value)} disabled={isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Shipping label" value={settings.shipping_label_shipping} onChange={(e) => updateField("shipping_label_shipping", e.target.value)} disabled={isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Local delivery label" value={settings.shipping_label_local_delivery} onChange={(e) => updateField("shipping_label_local_delivery", e.target.value)} disabled={isEasyPostMode} /></Grid>
                 </Grid>
               </Stack>
             )}
@@ -230,6 +267,11 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                 <Alert severity="info">
                   EasyPost automates shipping rates and label purchase only. It does not decide which delivery method choices appear at checkout.
                 </Alert>
+                {!isEasyPostMode && (
+                  <Alert severity="warning">
+                    EasyPost controls are read-only while Manual shipping is selected as default mode.
+                  </Alert>
+                )}
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <Chip
                     size="small"
@@ -243,13 +285,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                 <Grid container spacing={1.5}>
                   <Grid item xs={12} md={4}>
                     <FormControlLabel
-                      control={<Switch checked={Boolean(settings.easypost_enabled)} onChange={(e) => updateField("easypost_enabled", e.target.checked)} />}
-                      label="Enable EasyPost"
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <FormControlLabel
-                      control={<Switch checked={clearApiKey} onChange={(e) => setClearApiKey(e.target.checked)} />}
+                      control={<Switch checked={clearApiKey} onChange={(e) => setClearApiKey(e.target.checked)} disabled={!isEasyPostMode} />}
                       label="Clear stored API key"
                     />
                   </Grid>
@@ -263,23 +299,24 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                       placeholder={settings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key"}
                       value={apiKeyInput}
                       onChange={(e) => setApiKeyInput(e.target.value)}
+                      disabled={!isEasyPostMode}
                     />
                   </Grid>
                   <Grid item xs={12} md={4}>
-                    <Button fullWidth variant="outlined" onClick={testConnection} disabled={testing}>
+                    <Button fullWidth variant="outlined" onClick={testConnection} disabled={testing || !isEasyPostMode}>
                       {testing ? <CircularProgress size={18} /> : "Test connection"}
                     </Button>
                   </Grid>
                 </Grid>
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin name" value={settings.origin_name} onChange={(e) => updateField("origin_name", e.target.value)} /></Grid>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin phone" value={settings.origin_phone} onChange={(e) => updateField("origin_phone", e.target.value)} /></Grid>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 1" value={settings.origin_address1} onChange={(e) => updateField("origin_address1", e.target.value)} /></Grid>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 2" value={settings.origin_address2} onChange={(e) => updateField("origin_address2", e.target.value)} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin city" value={settings.origin_city} onChange={(e) => updateField("origin_city", e.target.value)} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin region" value={settings.origin_region} onChange={(e) => updateField("origin_region", e.target.value)} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin postal code" value={settings.origin_postal_code} onChange={(e) => updateField("origin_postal_code", e.target.value)} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin country" value={settings.origin_country} onChange={(e) => updateField("origin_country", e.target.value)} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin name" value={settings.origin_name} onChange={(e) => updateField("origin_name", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin phone" value={settings.origin_phone} onChange={(e) => updateField("origin_phone", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 1" value={settings.origin_address1} onChange={(e) => updateField("origin_address1", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 2" value={settings.origin_address2} onChange={(e) => updateField("origin_address2", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin city" value={settings.origin_city} onChange={(e) => updateField("origin_city", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin region" value={settings.origin_region} onChange={(e) => updateField("origin_region", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin postal code" value={settings.origin_postal_code} onChange={(e) => updateField("origin_postal_code", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin country" value={settings.origin_country} onChange={(e) => updateField("origin_country", e.target.value)} disabled={!isEasyPostMode} /></Grid>
                 </Grid>
               </Stack>
             )}
