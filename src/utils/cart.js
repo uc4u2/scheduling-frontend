@@ -80,6 +80,15 @@ export function addProductToCart(product, quantity = 1) {
     price: Number(product.price || 0),
     quantity: qty,
     image: product.images && product.images.length ? product.images[0].url : null,
+    delivery_methods_override_enabled: Boolean(product.delivery_methods_override_enabled),
+    delivery_allow_pickup:
+      product.delivery_allow_pickup == null ? null : Boolean(product.delivery_allow_pickup),
+    delivery_allow_shipping:
+      product.delivery_allow_shipping == null ? null : Boolean(product.delivery_allow_shipping),
+    delivery_allow_local_delivery:
+      product.delivery_allow_local_delivery == null
+        ? null
+        : Boolean(product.delivery_allow_local_delivery),
   };
   let next;
   if (existing) {

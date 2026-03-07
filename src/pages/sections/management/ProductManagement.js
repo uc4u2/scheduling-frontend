@@ -53,6 +53,10 @@ const emptyForm = {
   low_stock_threshold: "",
   track_stock: true,
   is_digital: false,
+  delivery_methods_override_enabled: false,
+  delivery_allow_pickup: false,
+  delivery_allow_shipping: false,
+  delivery_allow_local_delivery: false,
   digital_asset_id: "",
   is_active: true,
   adjustment_note: "",
@@ -148,6 +152,10 @@ const ProductManagement = ({ token }) => {
         low_stock_threshold: row.low_stock_threshold ?? "",
         track_stock: !!row.track_stock,
         is_digital: !!row.is_digital,
+        delivery_methods_override_enabled: !!row.delivery_methods_override_enabled,
+        delivery_allow_pickup: !!row.delivery_allow_pickup,
+        delivery_allow_shipping: !!row.delivery_allow_shipping,
+        delivery_allow_local_delivery: !!row.delivery_allow_local_delivery,
         digital_asset_id: row.digital_asset_id != null ? String(row.digital_asset_id) : "",
         is_active: !!row.is_active,
         adjustment_note: "",
@@ -167,7 +175,13 @@ const ProductManagement = ({ token }) => {
   const handleChange = useCallback(
     (field) => (event) => {
       const value =
-        field === "track_stock" || field === "is_active" || field === "is_digital"
+        field === "track_stock" ||
+        field === "is_active" ||
+        field === "is_digital" ||
+        field === "delivery_methods_override_enabled" ||
+        field === "delivery_allow_pickup" ||
+        field === "delivery_allow_shipping" ||
+        field === "delivery_allow_local_delivery"
           ? event.target.checked
           : event.target.value;
       setForm((prev) => ({ ...prev, [field]: value }));
@@ -676,6 +690,53 @@ const ProductManagement = ({ token }) => {
                   "Marks item as digital; physical shipping can be skipped."
                 )}
               />
+              <FormControlLabel
+                control={(
+                  <Checkbox
+                    id="delivery_methods_override_enabled"
+                    checked={form.delivery_methods_override_enabled}
+                    onChange={handleChange("delivery_methods_override_enabled")}
+                  />
+                )}
+                label={fieldLabelWithTooltip(
+                  "Override delivery methods",
+                  "If enabled, this product uses custom allowed delivery methods instead of workspace defaults."
+                )}
+              />
+              {form.delivery_methods_override_enabled && (
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        id="delivery_allow_pickup"
+                        checked={form.delivery_allow_pickup}
+                        onChange={handleChange("delivery_allow_pickup")}
+                      />
+                    )}
+                    label="Allow pickup"
+                  />
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        id="delivery_allow_shipping"
+                        checked={form.delivery_allow_shipping}
+                        onChange={handleChange("delivery_allow_shipping")}
+                      />
+                    )}
+                    label="Allow shipping"
+                  />
+                  <FormControlLabel
+                    control={(
+                      <Checkbox
+                        id="delivery_allow_local_delivery"
+                        checked={form.delivery_allow_local_delivery}
+                        onChange={handleChange("delivery_allow_local_delivery")}
+                      />
+                    )}
+                    label="Allow local delivery"
+                  />
+                </Stack>
+              )}
               <FormControlLabel
                 control={(
                   <Checkbox

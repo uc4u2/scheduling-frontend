@@ -678,6 +678,10 @@ function CheckoutFormCore({
     rates: [],
     selectedRateId: "",
   });
+  const [deliveryMethodPolicy, setDeliveryMethodPolicy] = useState({
+    loading: false,
+    allowedMethods: ["pickup", "shipping", "local_delivery"],
+  });
   const [cart, setCart] = useState([]);
   const [clientPackages, setClientPackages] = useState([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
@@ -954,6 +958,41 @@ function CheckoutFormCore({
     );
     return selected || null;
   }, [shippingRates]);
+  useEffect(() => {
+    if (!slugLocal || productItems.length === 0) {
+      setDeliveryMethodPolicy({
+        loading: false,
+        allowedMethods: ["pickup", "shipping", "local_delivery"],
+      });
+      return;
+    }
+    let cancelled = false;
+    setDeliveryMethodPolicy((prev) => ({ ...prev, loading: true }));
+    apiClient
+      .get(`/public/${slugLocal}/delivery-methods`)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const allowedMethods = Array.isArray(data?.allowed_methods)
+          ? data.allowed_methods.filter((m) => ["pickup", "shipping", "local_delivery"].includes(String(m)))
+          : [];
+        setDeliveryMethodPolicy({
+          loading: false,
+          allowedMethods: allowedMethods.length
+            ? allowedMethods
+            : ["pickup", "shipping", "local_delivery"],
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDeliveryMethodPolicy({
+          loading: false,
+          allowedMethods: ["pickup", "shipping", "local_delivery"],
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slugLocal, productItems.length]);
 
   const serviceSubtotal = serviceItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
   const productSubtotal = productItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
@@ -1086,12 +1125,51 @@ function CheckoutFormCore({
 
   const guestOk =
     guest.name.trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guest.email.trim());
+  const allowedDeliveryMethods = useMemo(() => {
+    if (productItems.length === 0) return ["pickup", "shipping", "local_delivery"];
+    let allowed = Array.isArray(deliveryMethodPolicy.allowedMethods)
+      ? [...deliveryMethodPolicy.allowedMethods]
+      : ["pickup", "shipping", "local_delivery"];
+    allowed = allowed.filter((m) => ["pickup", "shipping", "local_delivery"].includes(m));
+    if (!allowed.length) {
+      allowed = ["pickup", "shipping", "local_delivery"];
+    }
+    for (const item of productItems) {
+      if (!item?.delivery_methods_override_enabled) continue;
+      const itemAllowed = [];
+      if (item.delivery_allow_pickup) itemAllowed.push("pickup");
+      if (item.delivery_allow_shipping) itemAllowed.push("shipping");
+      if (item.delivery_allow_local_delivery) itemAllowed.push("local_delivery");
+      allowed = allowed.filter((method) => itemAllowed.includes(method));
+    }
+    return Array.from(new Set(allowed));
+  }, [productItems, deliveryMethodPolicy.allowedMethods]);
+  const deliveryMethodOptions = useMemo(
+    () =>
+      [
+        ["pickup", "Pickup"],
+        ["shipping", "Shipping"],
+        ["local_delivery", "Local delivery"],
+      ].filter(([value]) => allowedDeliveryMethods.includes(value)),
+    [allowedDeliveryMethods]
+  );
+  useEffect(() => {
+    if (productItems.length === 0) return;
+    const current = String(productDelivery.delivery_method || "pickup").toLowerCase();
+    if (allowedDeliveryMethods.includes(current)) return;
+    const fallback = deliveryMethodOptions[0]?.[0] || "pickup";
+    setProductDelivery((prev) => ({ ...prev, delivery_method: fallback }));
+  }, [productItems.length, productDelivery.delivery_method, allowedDeliveryMethods, deliveryMethodOptions]);
   const requiresShippingAddress =
     productItems.length > 0 &&
     ["shipping", "local_delivery"].includes((productDelivery.delivery_method || "pickup").toLowerCase());
   const deliveryErrors = useMemo(() => {
     if (productItems.length === 0) return [];
     const errors = [];
+    if (!allowedDeliveryMethods.length) {
+      errors.push("No delivery methods are currently available for these products.");
+      return errors;
+    }
     const shipping = productDelivery.shipping || {};
     if (requiresShippingAddress) {
       const required = [
@@ -1116,7 +1194,7 @@ function CheckoutFormCore({
       }
     }
     return errors;
-  }, [productItems.length, productDelivery, requiresShippingAddress]);
+  }, [productItems.length, productDelivery, requiresShippingAddress, allowedDeliveryMethods]);
   const deliveryOk = deliveryErrors.length === 0;
 
   useEffect(() => {
@@ -1245,7 +1323,9 @@ function CheckoutFormCore({
     const value = String(event.target.value || "pickup").toLowerCase();
     setProductDelivery((prev) => ({
       ...prev,
-      delivery_method: ["pickup", "shipping", "local_delivery"].includes(value) ? value : "pickup",
+      delivery_method: allowedDeliveryMethods.includes(value)
+        ? value
+        : (deliveryMethodOptions[0]?.[0] || "pickup"),
     }));
     setShippingRates((prev) => ({ ...prev, selectedRateId: "", rates: [] }));
   };
@@ -2361,11 +2441,24 @@ function CheckoutFormCore({
             onChange={handleDeliveryMethod}
             SelectProps={{ MenuProps: CHECKOUT_SELECT_MENU_PROPS }}
             sx={{ mb: 2 }}
+            disabled={deliveryMethodPolicy.loading || deliveryMethodOptions.length === 0}
           >
-            <MenuItem value="pickup">Pickup</MenuItem>
-            <MenuItem value="shipping">Shipping</MenuItem>
-            <MenuItem value="local_delivery">Local delivery</MenuItem>
+            {deliveryMethodOptions.map(([value, label]) => (
+              <MenuItem key={value} value={value}>
+                {label}
+              </MenuItem>
+            ))}
           </TextField>
+          {deliveryMethodPolicy.loading && (
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: -1, mb: 1 }}>
+              Loading available delivery methods...
+            </Typography>
+          )}
+          {!deliveryMethodPolicy.loading && deliveryMethodOptions.length === 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              No delivery methods are currently available for these products.
+            </Alert>
+          )}
 
           {requiresShippingAddress ? (
             <Stack spacing={1.5}>
