@@ -42,6 +42,24 @@ const money = (amount, currency) => {
   }).format(Number.isFinite(numeric) ? numeric : 0);
 };
 
+const customerShippingStatusLabel = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "";
+  const map = {
+    pre_transit: "Label created",
+    pending: "Preparing shipment",
+    packed: "Preparing shipment",
+    in_transit: "In transit",
+    out_for_delivery: "Out for delivery",
+    delivered: "Delivered",
+    available_for_pickup: "Ready for pickup",
+    return_to_sender: "Returning to sender",
+    failure: "Shipping issue",
+    cancelled: "Shipment cancelled",
+  };
+  return map[normalized] || toTitle(normalized);
+};
+
 export default function ClientBookings() {
   const [activeSlice, setActiveSlice] = useState(0);
 
@@ -609,21 +627,83 @@ export default function ClientBookings() {
                 )}
               </Box>
 
-              {selectedOrder.can_track && selectedOrder.tracking_url_public ? (
+              {String(selectedOrder.delivery_method || "pickup").toLowerCase() !== "pickup" ? (
                 <Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Tracking</Typography>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
-                    {selectedOrder.tracking_status ? (
-                      <Chip label={`Tracking: ${toTitle(selectedOrder.tracking_status)}`} size="small" color="info" />
-                    ) : null}
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => window.open(selectedOrder.tracking_url_public, "_blank", "noopener,noreferrer")}
-                    >
-                      Track package
-                    </Button>
-                  </Stack>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Shipping</Typography>
+                  {(() => {
+                    const shipment = selectedOrder.latest_shipment || null;
+                    const carrier = String(shipment?.carrier || selectedOrder.tracking_company || "").trim();
+                    const service = String(shipment?.service || "").trim();
+                    const trackingCode = String(
+                      shipment?.tracking_code || selectedOrder.tracking_number || ""
+                    ).trim();
+                    const trackingUrl = String(
+                      selectedOrder.tracking_url_public ||
+                      shipment?.tracking_url ||
+                      selectedOrder.tracking_url ||
+                      ""
+                    ).trim();
+                    const shippingStatus = customerShippingStatusLabel(
+                      selectedOrder.tracking_status || shipment?.status
+                    );
+                    const hasShipmentSummary = Boolean(
+                      carrier || service || trackingCode || trackingUrl || shippingStatus
+                    );
+
+                    if (!hasShipmentSummary) {
+                      return (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Shipping details will appear here once your order is prepared.
+                        </Typography>
+                      );
+                    }
+
+                    return (
+                      <Stack spacing={1} sx={{ mt: 1 }}>
+                        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                          {shippingStatus ? (
+                            <Chip label={`Status: ${shippingStatus}`} size="small" color="info" />
+                          ) : null}
+                          {carrier || service ? (
+                            <Chip
+                              label={`Carrier: ${[carrier, service].filter(Boolean).join(" • ")}`}
+                              size="small"
+                              variant="outlined"
+                            />
+                          ) : null}
+                        </Stack>
+                        {trackingCode ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Tracking code: {trackingCode}
+                          </Typography>
+                        ) : null}
+                        {shipment ? (
+                          <Box sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                              Latest shipment update
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {carrier || "Carrier assigned"}
+                              {service ? ` • ${service}` : ""}
+                              {shipment?.purchased_at
+                                ? ` • Purchased ${new Date(shipment.purchased_at).toLocaleString()}`
+                                : ""}
+                            </Typography>
+                          </Box>
+                        ) : null}
+                        {trackingUrl ? (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => window.open(trackingUrl, "_blank", "noopener,noreferrer")}
+                            sx={{ alignSelf: "flex-start" }}
+                          >
+                            Track package
+                          </Button>
+                        ) : null}
+                      </Stack>
+                    );
+                  })()}
                 </Box>
               ) : null}
 
