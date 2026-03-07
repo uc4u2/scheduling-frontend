@@ -435,14 +435,36 @@ const ProductListBase = ({
                   </Box>
 
                   <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 1.5 }}>
-                    <Typography variant="h6" fontWeight={700} noWrap>
+                    <Typography
+                      variant="h6"
+                      fontWeight={700}
+                      sx={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        minHeight: "3.2em",
+                        lineHeight: 1.3,
+                      }}
+                    >
                       {product.name}
                     </Typography>
                     <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
                       {product.category && <Chip label={product.category} size="small" variant="outlined" />}
                       {product.is_digital && <Chip label="Digital" size="small" color="info" />}
                     </Stack>
-                    <Typography variant="body2" color="text.secondary" sx={{ minHeight: 60 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 7,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        minHeight: "10.2em",
+                        lineHeight: 1.45,
+                      }}
+                    >
                       {product.description || ""}
                     </Typography>
 
