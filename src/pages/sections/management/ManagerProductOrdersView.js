@@ -1561,53 +1561,6 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
             </Typography>
           ) : (
             <Stack spacing={3}>
-        {showConnectBanner ? (
-          connectLoading ? (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Checking Stripe Connect status...
-            </Alert>
-          ) : connectWarning ? (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Stripe onboarding incomplete - Stripe-managed payments are disabled until setup is complete.
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
-                {connectStart ? (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={connectStart}
-                    disabled={connectAction === "start"}
-                  >
-                    {connectAction === "start" ? "Opening..." : "Finish setup"}
-                  </Button>
-                ) : null}
-                {connectResume ? (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={connectResume}
-                    disabled={connectAction === "refresh"}
-                  >
-                    {connectAction === "refresh" ? "Refreshing..." : "Resume onboarding"}
-                  </Button>
-                ) : null}
-                {connectDashboard ? (
-                  <Button
-                    variant="text"
-                    size="small"
-                    onClick={connectDashboard}
-                    disabled={connectAction === "dashboard"}
-                  >
-                    {connectAction === "dashboard" ? "Opening..." : "Stripe dashboard"}
-                  </Button>
-                ) : null}
-              </Stack>
-            </Alert>
-          ) : (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              Stripe Connect ready - charges enabled{connectPayoutsEnabled ? " and payouts enabled." : "; payouts pending."}
-            </Alert>
-          )
-        ) : null}
               <Paper sx={{ p: 2 }}>
                 <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2}>
                   <Stack spacing={0.5}>
@@ -1856,53 +1809,6 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
               )}
               {detailTab === 4 && (
                 <Stack spacing={3}>
-        {showConnectBanner ? (
-          connectLoading ? (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Checking Stripe Connect status...
-            </Alert>
-          ) : connectWarning ? (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Stripe onboarding incomplete - Stripe-managed payments are disabled until setup is complete.
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
-                {connectStart ? (
-                  <Button
-                    variant="contained"
-                    size="small"
-                    onClick={connectStart}
-                    disabled={connectAction === "start"}
-                  >
-                    {connectAction === "start" ? "Opening..." : "Finish setup"}
-                  </Button>
-                ) : null}
-                {connectResume ? (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={connectResume}
-                    disabled={connectAction === "refresh"}
-                  >
-                    {connectAction === "refresh" ? "Refreshing..." : "Resume onboarding"}
-                  </Button>
-                ) : null}
-                {connectDashboard ? (
-                  <Button
-                    variant="text"
-                    size="small"
-                    onClick={connectDashboard}
-                    disabled={connectAction === "dashboard"}
-                  >
-                    {connectAction === "dashboard" ? "Opening..." : "Stripe dashboard"}
-                  </Button>
-                ) : null}
-              </Stack>
-            </Alert>
-          ) : (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              Stripe Connect ready - charges enabled{connectPayoutsEnabled ? " and payouts enabled." : "; payouts pending."}
-            </Alert>
-          )
-        ) : null}
                   {inventoryActionRequired ? (
                     <Paper sx={{ p: 2 }}>
                       <Stack spacing={2}>
