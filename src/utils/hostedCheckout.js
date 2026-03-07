@@ -65,6 +65,7 @@ export const buildHostedCheckoutPayload = ({
   clientEmail,
   clientPhone,
   productDelivery,
+  selectedShippingRateSnapshot,
   metadata,
 }) => {
   const itemsPayload = [];
@@ -215,6 +216,36 @@ export const buildHostedCheckoutPayload = ({
       if (Object.keys(shipping).length) {
         payload.shipping = shipping;
       }
+    }
+  }
+
+  if (productCount > 0 && selectedShippingRateSnapshot && typeof selectedShippingRateSnapshot === "object") {
+    const normalized = {
+      rate_id: selectedShippingRateSnapshot.rate_id || selectedShippingRateSnapshot.id || null,
+      carrier: selectedShippingRateSnapshot.carrier || null,
+      service: selectedShippingRateSnapshot.service || null,
+    };
+    const amountCents = coerceNumber(
+      selectedShippingRateSnapshot.amount_cents != null
+        ? selectedShippingRateSnapshot.amount_cents
+        : selectedShippingRateSnapshot.amount != null
+          ? Number(selectedShippingRateSnapshot.amount) * 100
+          : null
+    );
+    const currency = String(selectedShippingRateSnapshot.currency || "").trim().toUpperCase();
+    if (amountCents && amountCents > 0) {
+      payload.selected_shipping_rate_snapshot = {
+        rate_id: normalized.rate_id || undefined,
+        carrier: normalized.carrier || undefined,
+        service: normalized.service || undefined,
+        amount_cents: Math.round(amountCents),
+        amount: Number((Math.round(amountCents) / 100).toFixed(2)),
+        currency: currency || undefined,
+        delivery_days:
+          selectedShippingRateSnapshot.delivery_days != null
+            ? Number(selectedShippingRateSnapshot.delivery_days)
+            : undefined,
+      };
     }
   }
 

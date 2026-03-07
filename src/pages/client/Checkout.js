@@ -82,6 +82,19 @@ const DELIVERY_COUNTRY_OPTIONS = [
   { code: "US", label: "United States" },
 ];
 
+const CHECKOUT_SELECT_MENU_PROPS = {
+  PaperProps: {
+    sx: {
+      backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, #ffffff))",
+      backgroundImage: "none",
+      opacity: 1,
+      backdropFilter: "none",
+      boxShadow: "0 12px 30px rgba(15, 23, 42, 0.18)",
+      border: "1px solid var(--page-border, rgba(2, 6, 23, 0.08))",
+    },
+  },
+};
+
 const normalizeDeliveryCountryCode = (value) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -536,6 +549,9 @@ function CheckoutFormCore({
   const accentColor = "var(--page-btn-bg, var(--sched-primary))";
   const accentContrast = "var(--page-btn-color, #ffffff)";
   const borderColor = "var(--page-border-color, rgba(15,23,42,0.12))";
+  const checkoutTextColor = "var(--checkout-text-color, var(--page-content-color, #5f4a56))";
+  const checkoutHeadingColor = "var(--checkout-heading-color, #5f4a56)";
+  const checkoutSectionColor = "var(--checkout-section-color, #5f4a56)";
   const softBg = "var(--page-btn-bg-soft, rgba(15,23,42,0.12))";
   const buttonShadow = "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))";
   const buttonShadowHover = "var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))";
@@ -579,7 +595,7 @@ function CheckoutFormCore({
   };
   const infoAlertSx = {
     backgroundColor: softBg,
-    color: "var(--page-body-color, inherit)",
+    color: checkoutTextColor,
     border: `1px solid ${borderColor}`,
     "& .MuiAlert-icon": { color: accentColor },
   };
@@ -653,6 +669,14 @@ function CheckoutFormCore({
       country: "",
       instructions: "",
     },
+  });
+  const [shippingRates, setShippingRates] = useState({
+    loading: false,
+    available: false,
+    fallbackManual: false,
+    message: "",
+    rates: [],
+    selectedRateId: "",
   });
   const [cart, setCart] = useState([]);
   const [clientPackages, setClientPackages] = useState([]);
@@ -923,6 +947,13 @@ function CheckoutFormCore({
     () => cart.filter((item) => isPackage(item)),
     [cart]
   );
+  const selectedShippingRateSnapshot = useMemo(() => {
+    if (!shippingRates?.selectedRateId) return null;
+    const selected = (shippingRates?.rates || []).find(
+      (rate) => String(rate?.rate_id || rate?.id || "") === String(shippingRates.selectedRateId)
+    );
+    return selected || null;
+  }, [shippingRates]);
 
   const serviceSubtotal = serviceItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
   const productSubtotal = productItems.reduce((sum, item) => sum + lineSubtotal(item), 0);
@@ -932,9 +963,18 @@ function CheckoutFormCore({
   const totalTip = tipAllowedNow
     ? serviceItems.reduce((sum, item) => sum + Number(item.tip_amount || 0), 0)
     : 0;
+  const shippingRateTotal =
+    productItems.length > 0 && selectedShippingRateSnapshot?.amount != null
+      ? Number(selectedShippingRateSnapshot.amount || 0)
+      : 0;
 
   const totalBeforeDiscount = serviceSubtotal + productSubtotal + packageSubtotal;
-  const finalTotal = Math.max(0, serviceSubtotal - totalDiscount) + totalTip + productSubtotal + packageSubtotal;
+  const finalTotal =
+    Math.max(0, serviceSubtotal - totalDiscount) +
+    totalTip +
+    productSubtotal +
+    packageSubtotal +
+    shippingRateTotal;
   const hasPackageRedemptions = serviceItems.some((item) => Boolean(item.client_package_id));
   const packageOnlyTotal = hasPackageRedemptions && productItems.length === 0 && finalTotal <= 0;
   const hasPackagePurchase = packageItems.length > 0;
@@ -1079,6 +1119,94 @@ function CheckoutFormCore({
   }, [productItems.length, productDelivery, requiresShippingAddress]);
   const deliveryOk = deliveryErrors.length === 0;
 
+  useEffect(() => {
+    if (productItems.length === 0 || !requiresShippingAddress || !deliveryOk || !slugLocal) {
+      setShippingRates((prev) => ({
+        ...prev,
+        loading: false,
+        available: false,
+        fallbackManual: false,
+        message: "",
+        rates: [],
+        selectedRateId: "",
+      }));
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        setShippingRates((prev) => ({ ...prev, loading: true, message: "" }));
+        const payload = {
+          delivery_method: productDelivery.delivery_method || "shipping",
+          shipping: {
+            name: productDelivery.shipping?.name || "",
+            phone: productDelivery.shipping?.phone || "",
+            address1: productDelivery.shipping?.address1 || "",
+            address2: productDelivery.shipping?.address2 || "",
+            city: productDelivery.shipping?.city || "",
+            region: productDelivery.shipping?.region || "",
+            postal_code: productDelivery.shipping?.postal_code || "",
+            country: normalizeDeliveryCountryCode(productDelivery.shipping?.country || ""),
+            instructions: productDelivery.shipping?.instructions || "",
+          },
+          items: productItems.map((item) => ({
+            product_id: Number(item.product_id ?? String(item.id).replace(/^product-/, "")),
+            quantity: getQuantity(item),
+          })),
+        };
+        const { data } = await apiClient.post(`/public/${slugLocal}/shipping/rates`, payload);
+        if (cancelled) return;
+        const rates = Array.isArray(data?.rates) ? data.rates : [];
+        const defaultRateId =
+          data?.default_rate_id || (rates[0] && (rates[0].rate_id || rates[0].id)) || "";
+        setShippingRates((prev) => {
+          const priorSelected = prev?.selectedRateId || "";
+          const stillExists = rates.some((rate) => String(rate?.rate_id || rate?.id || "") === String(priorSelected));
+          return {
+            loading: false,
+            available: Boolean(data?.available) && rates.length > 0,
+            fallbackManual: Boolean(data?.fallback_manual),
+            message: data?.message || "",
+            rates,
+            selectedRateId: stillExists ? priorSelected : String(defaultRateId || ""),
+          };
+        });
+      } catch (error) {
+        if (cancelled) return;
+        const message = error?.response?.data?.message || error?.response?.data?.error || "Live rates unavailable. You can continue with manual shipping.";
+        setShippingRates({
+          loading: false,
+          available: false,
+          fallbackManual: true,
+          message,
+          rates: [],
+          selectedRateId: "",
+        });
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    productItems,
+    requiresShippingAddress,
+    deliveryOk,
+    slugLocal,
+    productDelivery.delivery_method,
+    productDelivery.shipping?.name,
+    productDelivery.shipping?.phone,
+    productDelivery.shipping?.address1,
+    productDelivery.shipping?.address2,
+    productDelivery.shipping?.city,
+    productDelivery.shipping?.region,
+    productDelivery.shipping?.postal_code,
+    productDelivery.shipping?.country,
+    productDelivery.shipping?.instructions,
+  ]);
+
   const persistDeliveryPrefill = () => {
     try {
       localStorage.setItem(
@@ -1100,6 +1228,16 @@ function CheckoutFormCore({
       setErr(deliveryErrors[0] || "Please complete delivery details.");
       return false;
     }
+    if (
+      requiresShippingAddress &&
+      shippingRates.available &&
+      Array.isArray(shippingRates.rates) &&
+      shippingRates.rates.length > 0 &&
+      !shippingRates.selectedRateId
+    ) {
+      setErr("Please select a shipping option.");
+      return false;
+    }
     return true;
   };
 
@@ -1109,6 +1247,7 @@ function CheckoutFormCore({
       ...prev,
       delivery_method: ["pickup", "shipping", "local_delivery"].includes(value) ? value : "pickup",
     }));
+    setShippingRates((prev) => ({ ...prev, selectedRateId: "", rates: [] }));
   };
 
   const handleShippingField = (field) => (event) => {
@@ -1122,6 +1261,7 @@ function CheckoutFormCore({
         [field]: value,
       },
     }));
+    setShippingRates((prev) => ({ ...prev, selectedRateId: "" }));
   };
 
   const handleGuest = (e) => setGuest({ ...guest, [e.target.name]: e.target.value });
@@ -1356,6 +1496,7 @@ function CheckoutFormCore({
       delivery_method: productDelivery.delivery_method || "pickup",
       pickup_instructions: productDelivery.pickup_instructions || "",
       shipping: shippingPayload,
+      selected_shipping_rate_snapshot: selectedShippingRateSnapshot || undefined,
     };
 
     try {
@@ -1493,6 +1634,7 @@ function CheckoutFormCore({
         clientEmail: client?.email || guest.email,
         clientPhone: client?.phone || productDelivery.shipping?.phone || "",
         productDelivery,
+        selectedShippingRateSnapshot,
         metadata: { source: "checkout", flow: policyMode },
       });
 
@@ -1557,6 +1699,7 @@ function CheckoutFormCore({
         clientEmail: client?.email || guest.email,
         clientPhone: client?.phone || productDelivery.shipping?.phone || "",
         productDelivery,
+        selectedShippingRateSnapshot,
         metadata: { source: "checkout", flow: "capture" },
       });
 
@@ -1810,12 +1953,17 @@ function CheckoutFormCore({
           border: `1px solid ${borderColor}`,
           backgroundColor: "var(--checkout-card-bg, var(--page-card-bg, var(--page-body-bg, #ffffff)))",
           backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%)",
-          color: "var(--page-body-color, inherit)",
+          color: checkoutTextColor,
           boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.12))",
         }}
       >
         <Stack spacing={3}>
-        <Typography variant={{ xs: "h5", md: "h4" }} gutterBottom fontWeight={800}>
+        <Typography
+          variant={{ xs: "h5", md: "h4" }}
+          gutterBottom
+          fontWeight={800}
+          sx={{ color: checkoutHeadingColor }}
+        >
           Checkout
         </Typography>
 
@@ -1841,6 +1989,10 @@ function CheckoutFormCore({
           borderColor: "divider",
           borderRadius: 3,
           overflow: "hidden",
+          color: checkoutSectionColor,
+          "& .MuiTypography-root": { color: checkoutSectionColor },
+          "& .MuiListItemText-primary": { color: checkoutSectionColor },
+          "& .MuiListItemText-secondary": { color: checkoutSectionColor },
         }}
       >
         {cart.map((it) => {
@@ -2179,6 +2331,11 @@ function CheckoutFormCore({
             <Typography variant="h6">Tip: +{formatCurrency(totalTip, currencyCode)}</Typography>
           </ListItem>
         )}
+        {shippingRateTotal > 0 && (
+          <ListItem>
+            <Typography variant="h6">Shipping: {formatCurrency(shippingRateTotal, currencyCode)}</Typography>
+          </ListItem>
+        )}
         {paymentsEnabled && (
           <ListItem>
             <Typography variant="body2" color="text.secondary">
@@ -2193,7 +2350,7 @@ function CheckoutFormCore({
 
       {productItems.length > 0 && (
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1, color: checkoutSectionColor }}>
             Delivery details
           </Typography>
           <TextField
@@ -2202,6 +2359,7 @@ function CheckoutFormCore({
             label="Delivery method"
             value={productDelivery.delivery_method || "pickup"}
             onChange={handleDeliveryMethod}
+            SelectProps={{ MenuProps: CHECKOUT_SELECT_MENU_PROPS }}
             sx={{ mb: 2 }}
           >
             <MenuItem value="pickup">Pickup</MenuItem>
@@ -2276,6 +2434,7 @@ function CheckoutFormCore({
                   label="Country"
                   value={normalizeDeliveryCountryCode(productDelivery.shipping?.country) || ""}
                   onChange={handleShippingField("country")}
+                  SelectProps={{ MenuProps: CHECKOUT_SELECT_MENU_PROPS }}
                 >
                   <MenuItem value="" disabled>
                     Select country
@@ -2287,6 +2446,38 @@ function CheckoutFormCore({
                   ))}
                 </TextField>
               </Stack>
+              {shippingRates.loading && (
+                <Alert severity="info">Fetching live shipping rates...</Alert>
+              )}
+              {shippingRates.available && shippingRates.rates.length > 0 && (
+                <FormControl fullWidth>
+                  <FormLabel shrink>Shipping option</FormLabel>
+                  <Select
+                    value={shippingRates.selectedRateId || ""}
+                    onChange={(event) =>
+                      setShippingRates((prev) => ({ ...prev, selectedRateId: String(event.target.value || "") }))
+                    }
+                    displayEmpty
+                    MenuProps={CHECKOUT_SELECT_MENU_PROPS}
+                  >
+                    <MenuItem value="" disabled>Select a shipping option</MenuItem>
+                    {shippingRates.rates.map((rate) => {
+                      const rateId = String(rate?.rate_id || rate?.id || "");
+                      const amount = Number(rate?.amount || 0);
+                      const currency = String(rate?.currency || currencyCode || "USD").toUpperCase();
+                      const eta = rate?.delivery_days != null ? ` · ${rate.delivery_days} day(s)` : "";
+                      return (
+                        <MenuItem key={rateId} value={rateId}>
+                          {(rate?.carrier || "Carrier")} {(rate?.service || "Service")} · {formatCurrency(amount, currency)}{eta}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+              )}
+              {shippingRates.fallbackManual && shippingRates.message && (
+                <Alert severity="info">{shippingRates.message}</Alert>
+              )}
               <TextField
                 fullWidth
                 label="Delivery instructions (optional)"
