@@ -5,13 +5,18 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Divider,
+  Drawer,
   FormControlLabel,
   Grid,
+  IconButton,
   Stack,
   Switch,
   TextField,
   Typography,
 } from "@mui/material";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import CloseIcon from "@mui/icons-material/Close";
 import { api } from "../../../utils/api";
 
 const normalizeSettings = (data = {}) => ({
@@ -54,6 +59,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [clearApiKey, setClearApiKey] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
@@ -140,9 +146,19 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
       <Stack spacing={2}>
         <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
           <Typography variant="h6" fontWeight={700}>EasyPost shipping automation</Typography>
-          <Button size="small" variant="text" onClick={loadSettings} disabled={loading}>
-            {loading ? <CircularProgress size={16} /> : "Refresh"}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<HelpOutlineIcon />}
+              onClick={() => setHelpOpen(true)}
+            >
+              Help
+            </Button>
+            <Button size="small" variant="text" onClick={loadSettings} disabled={loading}>
+              {loading ? <CircularProgress size={16} /> : "Refresh"}
+            </Button>
+          </Stack>
         </Stack>
 
         <Typography variant="body2" color="text.secondary">
@@ -250,6 +266,59 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
           <Alert severity={message.type === "error" ? "error" : "success"}>{message.text}</Alert>
         )}
       </Stack>
+
+      <Drawer
+        anchor="right"
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 460 }, p: 0 } }}
+      >
+        <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Typography variant="h6" fontWeight={700}>EasyPost Shipping Help</Typography>
+          <IconButton size="small" onClick={() => setHelpOpen(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+        <Divider />
+        <Box sx={{ p: 2, overflowY: "auto" }}>
+          <Stack spacing={2}>
+            <Typography variant="body2" color="text.secondary">
+              This panel controls EasyPost connection and shipping defaults. Manual shipping remains available if EasyPost is disabled or unavailable.
+            </Typography>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>1) Settings Panel (this page)</Typography>
+              <Typography variant="body2">- Enable EasyPost automation</Typography>
+              <Typography variant="body2">- Save/rotate API key</Typography>
+              <Typography variant="body2">- Test connection</Typography>
+              <Typography variant="body2">- Configure allowed delivery methods and origin address</Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>2) Advanced Management</Typography>
+              <Typography variant="body2">
+                Use Advanced Management as the control entry point. If there are no product orders yet, order-level EasyPost actions will not appear.
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>3) Product Orders (order-level actions)</Typography>
+              <Typography variant="body2">- Open order detail - Actions tab</Typography>
+              <Typography variant="body2">- Refresh rates</Typography>
+              <Typography variant="body2">- Select rate</Typography>
+              <Typography variant="body2">- Buy label</Typography>
+              <Typography variant="body2">- Open/print purchased label</Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>Troubleshooting</Typography>
+              <Typography variant="body2">- No rates: check EasyPost toggle, API key, origin address, and shipping destination completeness.</Typography>
+              <Typography variant="body2">- Stale rate: refresh rates and reselect.</Typography>
+              <Typography variant="body2">- Pickup/local delivery: manual flow can still be used.</Typography>
+            </Box>
+          </Stack>
+        </Box>
+      </Drawer>
     </Box>
   );
 };
