@@ -76,6 +76,7 @@ import InsightsIcon from "@mui/icons-material/Insights";
 import CampaignIcon from "@mui/icons-material/Campaign";
 
 import CloseIcon from "@mui/icons-material/Close";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 
 
 
@@ -85,6 +86,7 @@ import ServiceManagement from "./ServiceManagement";
 
 import ProductManagement from "./ProductManagement";
 import ManagerProductOrdersView from "./ManagerProductOrdersView";
+import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 
 
 import ServiceAssignment from "./ServiceAssignment";
@@ -465,6 +467,15 @@ const panels = useMemo(
       icon: <Inventory2Icon />,
 
       element: <ManagerProductOrdersView token={token} connect={connectContext} />,
+
+    },
+    {
+
+      label: t("manager.advanced.panels.easypostShipping", "EasyPost Shipping"),
+
+      icon: <LocalShippingIcon />,
+
+      element: <EasyPostShippingSettingsPanel token={token} compact />,
 
     },
 

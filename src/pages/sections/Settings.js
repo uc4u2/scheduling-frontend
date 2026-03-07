@@ -50,6 +50,7 @@ import IntegrationActivityCard from "./IntegrationActivityCard";
 import ProfessionSettings from "./ProfessionSetting";
 import SettingsTimeTracking from "./SettingsTimeTracking";
 import SettingsBookingReminders from "./SettingsBookingReminders";
+import EasyPostShippingSettingsPanel from "./management/EasyPostShippingSettingsPanel";
 
 import SectionCard from "../../components/ui/SectionCard";
 import { PROFESSION_OPTIONS } from "../../constants/professions";
@@ -98,6 +99,7 @@ const Settings = () => {
       xero: 7,
       quickbooks: 7,
       qb: 7,
+      easypost: 7,
       'integration-activity': 7,
       activity: 7,
     };
@@ -135,6 +137,7 @@ const Settings = () => {
     if (tabParam === "zapier") return "zapier";
     if (tabParam === "xero") return "xero";
     if (tabParam === "quickbooks" || tabParam === "qb") return "quickbooks";
+    if (tabParam === "easypost") return "easypost";
     return "activity";
   }, [tabParam]);
 
@@ -183,6 +186,7 @@ const Settings = () => {
           <Tab value="zapier" label={t("settings.tabs.zapier", "Zapier")} />
           <Tab value="xero" label={t("settings.tabs.xero", "Xero")} />
           <Tab value="quickbooks" label={t("settings.tabs.quickbooks", "QuickBooks")} />
+          <Tab value="easypost" label={t("settings.tabs.easypost", "EasyPost")} />
         </Tabs>
         <Divider sx={{ my: 1 }} />
         <Box sx={{ pt: 2 }}>
@@ -223,6 +227,16 @@ const Settings = () => {
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <SettingsQuickBooks />
+              </Box>
+            </>
+          )}
+          {integrationExpanded === "easypost" && (
+            <>
+              <Typography variant="caption" color="text.secondary">
+                {t("settings.integrations.easypostDescription", "Configure EasyPost shipping automation and origin settings.")}
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <EasyPostShippingSettingsPanel />
               </Box>
             </>
           )}
