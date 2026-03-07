@@ -47,6 +47,8 @@ import LocalMallIcon from "@mui/icons-material/LocalMall";
 import CloseIcon from "@mui/icons-material/Close";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import PrintIcon from "@mui/icons-material/Print";
 import { DataGrid } from "@mui/x-data-grid";
 import { formatCurrencyWithCode, formatCurrencyFromCents } from "../../../utils/formatters";
 import { setActiveCurrency, normalizeCurrency, resolveCurrencyForCountry, resolveActiveCurrencyFromCompany, getActiveCurrency } from "../../../utils/currency";
@@ -159,6 +161,11 @@ const fulfillmentActionOptions = (order = {}) => {
     { value: "deliver", label: "Mark delivered" },
     { value: "reset_to_pending", label: "Reset to pending" },
   ];
+};
+
+const isShippingAutomationEligible = (order = {}) => {
+  const method = String(order?.delivery_method || "").toLowerCase();
+  return method === "shipping" || method === "local_delivery";
 };
 
 const toLowerSafe = (value) => (value == null ? "" : String(value).toLowerCase());
@@ -415,6 +422,12 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const [shippingSettingsTesting, setShippingSettingsTesting] = useState(false);
   const [easypostApiKeyInput, setEasypostApiKeyInput] = useState("");
   const [clearEasypostApiKey, setClearEasypostApiKey] = useState(false);
+  const [orderShippingRatesLoading, setOrderShippingRatesLoading] = useState(false);
+  const [orderShippingBuyLoading, setOrderShippingBuyLoading] = useState(false);
+  const [orderShippingRates, setOrderShippingRates] = useState([]);
+  const [orderShippingShipmentId, setOrderShippingShipmentId] = useState("");
+  const [orderShippingSelectedRateId, setOrderShippingSelectedRateId] = useState("");
+  const [orderShippingWarning, setOrderShippingWarning] = useState("");
 
   const viewerTimezone = useMemo(() => getUserTimezone(), []);
   const formatTimestamp = useCallback((value, sourceTz, pattern = "MMM d, yyyy h:mm a") => {
@@ -515,6 +528,10 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const itemsTotal = useMemo(() => {
     if (!orderDetail?.items) return 0;
     return orderDetail.items.reduce((sum, item) => sum + Number(item.total_price || 0), 0);
+  }, [orderDetail]);
+  const latestShipment = useMemo(() => {
+    const shipment = orderDetail?.latest_shipment;
+    return shipment && typeof shipment === "object" ? shipment : null;
   }, [orderDetail]);
 
   const loadOrders = useCallback(async () => {
@@ -672,6 +689,10 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       setRefundSectionOpen(false);
       setShowRefundAdvanced(false);
       setShowInventoryFailureDetails(false);
+      setOrderShippingRates([]);
+      setOrderShippingShipmentId("");
+      setOrderShippingSelectedRateId("");
+      setOrderShippingWarning("");
     } catch (error) {
       const message = error?.response?.data?.error || error?.message || "Unable to load order details";
       showMessage(message, "error");
@@ -696,6 +717,10 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     setRefundSectionOpen(false);
     setShowRefundAdvanced(false);
     setShowInventoryFailureDetails(false);
+    setOrderShippingRates([]);
+    setOrderShippingShipmentId("");
+    setOrderShippingSelectedRateId("");
+    setOrderShippingWarning("");
   }, []);
   const handlePaginationChange = useCallback((model) => {
     setPagination((prev) => ({ ...prev, page: model.page, pageSize: model.pageSize }));
@@ -823,6 +848,107 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       fetchOrderDetail(selectedOrderId);
     }
   }, [loadOrders, detailOpen, selectedOrderId, fetchOrderDetail]);
+  const handleRefreshOrderShippingRates = useCallback(async () => {
+    if (!orderDetail || !isShippingAutomationEligible(orderDetail)) return;
+    setOrderShippingRatesLoading(true);
+    setOrderShippingWarning("");
+    try {
+      const { data } = await api.post(`/inventory/product-orders/${orderDetail.id}/shipping/rates`, {}, { headers });
+      const rates = Array.isArray(data?.rates) ? data.rates : [];
+      const defaultRateId = String(
+        data?.default_rate_id || rates[0]?.rate_id || rates[0]?.id || ""
+      );
+      setOrderShippingRates(rates);
+      setOrderShippingShipmentId(String(data?.shipment_id || ""));
+      setOrderShippingSelectedRateId(defaultRateId);
+      if (!rates.length) {
+        setOrderShippingWarning("No shipping rates were returned. Adjust address/settings and retry.");
+      }
+    } catch (error) {
+      const code = error?.response?.data?.error;
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Unable to load shipping rates.";
+      setOrderShippingRates([]);
+      setOrderShippingShipmentId("");
+      setOrderShippingSelectedRateId("");
+      setOrderShippingWarning(message);
+      if (code === "migration_required") {
+        showMessage("Shipping automation requires latest backend migration.", "warning");
+      } else {
+        showMessage(message, "error");
+      }
+    } finally {
+      setOrderShippingRatesLoading(false);
+    }
+  }, [orderDetail, headers, showMessage]);
+  const handleBuyOrderShippingLabel = useCallback(async () => {
+    if (!orderDetail || !isShippingAutomationEligible(orderDetail)) return;
+    if (!orderShippingSelectedRateId) {
+      setOrderShippingWarning("Select a shipping rate first.");
+      return;
+    }
+    setOrderShippingBuyLoading(true);
+    setOrderShippingWarning("");
+    try {
+      const payload = {
+        shipment_id: orderShippingShipmentId || undefined,
+        rate_id: orderShippingSelectedRateId,
+      };
+      const { data } = await api.post(
+        `/inventory/product-orders/${orderDetail.id}/shipping/buy`,
+        payload,
+        { headers }
+      );
+      const updatedOrder = normalizeProductOrderRecord(data?.order || orderDetail);
+      setOrderDetail(updatedOrder);
+      setFulfillmentForm((prev) => ({
+        ...prev,
+        tracking_company: updatedOrder?.tracking_company || prev.tracking_company,
+        tracking_number: updatedOrder?.tracking_number || prev.tracking_number,
+        tracking_url: updatedOrder?.tracking_url || prev.tracking_url,
+      }));
+      await loadOrders();
+      showMessage("Shipping label purchased successfully.", "success");
+    } catch (error) {
+      const code = error?.response?.data?.error;
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Unable to purchase label.";
+      if (code === "rate_not_available") {
+        setOrderShippingWarning("Selected rate is stale/unavailable. Refresh rates and choose again.");
+      } else {
+        setOrderShippingWarning(message);
+      }
+      showMessage(message, "error");
+    } finally {
+      setOrderShippingBuyLoading(false);
+    }
+  }, [
+    orderDetail,
+    orderShippingSelectedRateId,
+    orderShippingShipmentId,
+    headers,
+    loadOrders,
+    showMessage,
+  ]);
+  const openShipmentLabel = useCallback((url, shouldPrint = false) => {
+    const link = String(url || "").trim();
+    if (!link) return;
+    const win = window.open(link, "_blank", "noopener,noreferrer");
+    if (shouldPrint && win) {
+      try {
+        win.focus();
+        win.print();
+      } catch {
+        // no-op
+      }
+    }
+  }, []);
   const handleFulfillmentSubmit = useCallback(async () => {
     if (!orderDetail) return;
     const selectedAction = fulfillmentForm.status;
@@ -1640,6 +1766,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                 <Tab label="Items" />
                 <Tab label="Payments" />
                 <Tab label="Timeline" />
+                <Tab label="EasyPost" />
                 <Tab label="Actions" />
               </Tabs>
               <Stack direction="row" justifyContent="flex-end">
@@ -1808,6 +1935,399 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                 </Paper>
               )}
               {detailTab === 4 && (
+                <Paper sx={{ p: 2 }}>
+                  {isShippingAutomationEligible(orderDetail) ? (
+                    <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+                      <Stack spacing={1.5}>
+                        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                          <Typography variant="subtitle1" fontWeight={700}>
+                            Order shipping automation
+                          </Typography>
+                          <Stack direction="row" spacing={1}>
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<RefreshIcon />}
+                              onClick={handleRefreshOrderShippingRates}
+                              disabled={orderShippingRatesLoading || orderShippingBuyLoading}
+                            >
+                              {orderShippingRatesLoading ? <CircularProgress size={16} /> : "Refresh rates"}
+                            </Button>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={handleBuyOrderShippingLabel}
+                              disabled={
+                                orderShippingBuyLoading ||
+                                orderShippingRatesLoading ||
+                                !orderShippingSelectedRateId
+                              }
+                            >
+                              {orderShippingBuyLoading ? <CircularProgress size={16} /> : "Buy label"}
+                            </Button>
+                          </Stack>
+                        </Stack>
+                        {orderShippingWarning ? (
+                          <Alert severity="warning">{orderShippingWarning}</Alert>
+                        ) : null}
+                        {orderShippingRates.length > 0 ? (
+                          <FormControl fullWidth size="small">
+                            <FormLabel shrink>Rate options</FormLabel>
+                            <Select
+                              value={orderShippingSelectedRateId}
+                              onChange={(event) => setOrderShippingSelectedRateId(String(event.target.value || ""))}
+                              displayEmpty
+                            >
+                              <MenuItem value="" disabled>
+                                Select shipping rate
+                              </MenuItem>
+                              {orderShippingRates.map((rate) => {
+                                const rateId = String(rate?.rate_id || rate?.id || "");
+                                const amount = Number(rate?.amount || 0);
+                                const currency = (
+                                  normalizeCurrency(rate?.currency) ||
+                                  detailCurrency ||
+                                  "USD"
+                                ).toUpperCase();
+                                const eta =
+                                  rate?.delivery_days != null ? ` • ETA ${rate.delivery_days} day(s)` : "";
+                                return (
+                                  <MenuItem key={rateId} value={rateId}>
+                                    {(rate?.carrier || "Carrier")} {(rate?.service || "Service")} • {formatCurrencyWithCode(amount, currency)}{eta}
+                                  </MenuItem>
+                                );
+                              })}
+                            </Select>
+                          </FormControl>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No rates loaded yet. Click <strong>Refresh rates</strong> to fetch current EasyPost options.
+                          </Typography>
+                        )}
+                        {latestShipment ? (
+                          <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
+                            <Stack spacing={0.75}>
+                              <Typography variant="subtitle2" fontWeight={700}>
+                                Latest purchased shipment
+                              </Typography>
+                              <Typography variant="body2">
+                                {latestShipment.carrier || "Carrier"} {latestShipment.service || ""} •{" "}
+                                {latestShipment.rate_amount_cents != null
+                                  ? formatCurrencyFromCents(
+                                      latestShipment.rate_amount_cents,
+                                      (normalizeCurrency(latestShipment.rate_currency) || detailCurrency || "USD").toUpperCase()
+                                    )
+                                  : "Rate unavailable"}
+                              </Typography>
+                              {latestShipment.tracking_code ? (
+                                <Typography variant="body2">Tracking #: {latestShipment.tracking_code}</Typography>
+                              ) : null}
+                              {latestShipment.label_url ? (
+                                <Stack direction="row" spacing={1}>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={<OpenInNewIcon fontSize="small" />}
+                                    onClick={() => openShipmentLabel(latestShipment.label_url, false)}
+                                  >
+                                    Open label
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={<PrintIcon fontSize="small" />}
+                                    onClick={() => openShipmentLabel(latestShipment.label_url, true)}
+                                  >
+                                    Print label
+                                  </Button>
+                                </Stack>
+                              ) : null}
+                            </Stack>
+                          </Paper>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No EasyPost label has been purchased for this order yet.
+                          </Typography>
+                        )}
+                      </Stack>
+                    </Paper>
+                  ) : (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      EasyPost order automation applies only to Shipping or Local delivery orders. Manual tracking remains available in Actions.
+                    </Alert>
+                  )}
+                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>Shipping settings & EasyPost</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    Configure shipping methods, origin details, and optional EasyPost connectivity for this company.
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    {shippingSettingsLoading || !shippingSettings ? (
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <CircularProgress size={18} />
+                        <Typography variant="body2" color="text.secondary">Loading shipping settings...</Typography>
+                      </Stack>
+                    ) : (
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={3}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={Boolean(shippingSettings.enabled)}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, enabled: event.target.checked }))
+                                }
+                              />
+                            }
+                            label="Enabled"
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={9}>
+                          <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
+                            <Stack spacing={1.25}>
+                              <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} alignItems={{ xs: "flex-start", sm: "center" }}>
+                                <Typography variant="subtitle2" fontWeight={700}>
+                                  EasyPost automation (optional)
+                                </Typography>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <Chip
+                                    size="small"
+                                    color={shippingSettings.easypost_connected ? "success" : "default"}
+                                    label={shippingSettings.easypost_connected ? "Connected" : "Not connected"}
+                                  />
+                                  {shippingSettings.easypost_has_api_key && (
+                                    <Chip size="small" variant="outlined" label={`Key ••••${shippingSettings.easypost_api_key_last4 || ""}`} />
+                                  )}
+                                </Stack>
+                              </Stack>
+
+                              <FormControlLabel
+                                control={
+                                  <Switch
+                                    checked={Boolean(shippingSettings.easypost_enabled)}
+                                    onChange={(event) =>
+                                      setShippingSettings((prev) => ({ ...prev, easypost_enabled: event.target.checked }))
+                                    }
+                                  />
+                                }
+                                label="Enable EasyPost for automated shipping steps (manual flow remains available)"
+                              />
+
+                              <Grid container spacing={1.5}>
+                                <Grid item xs={12} md={7}>
+                                  <TextField
+                                    fullWidth
+                                    size="small"
+                                    type="password"
+                                    label="EasyPost API key"
+                                    placeholder={shippingSettings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key"}
+                                    value={easypostApiKeyInput}
+                                    onChange={(event) => setEasypostApiKeyInput(event.target.value)}
+                                  />
+                                </Grid>
+                                <Grid item xs={12} md={5}>
+                                  <Stack direction="row" spacing={1}>
+                                    <Button
+                                      variant="outlined"
+                                      onClick={handleTestEasyPostConnection}
+                                      disabled={shippingSettingsTesting}
+                                    >
+                                      {shippingSettingsTesting ? <CircularProgress size={18} /> : "Test connection"}
+                                    </Button>
+                                  </Stack>
+                                </Grid>
+                              </Grid>
+
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    checked={Boolean(clearEasypostApiKey)}
+                                    onChange={(event) => setClearEasypostApiKey(event.target.checked)}
+                                  />
+                                }
+                                label="Clear stored EasyPost API key on save"
+                              />
+
+                              {shippingSettings.easypost_last_test_message && (
+                                <Typography variant="caption" color={shippingSettings.easypost_last_test_status === "success" ? "success.main" : "warning.main"}>
+                                  {shippingSettings.easypost_last_test_message}
+                                </Typography>
+                              )}
+                            </Stack>
+                          </Paper>
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={Boolean(shippingSettings.allow_pickup)}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, allow_pickup: event.target.checked }))
+                                }
+                              />
+                            }
+                            label="Allow pickup"
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={Boolean(shippingSettings.allow_shipping)}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, allow_shipping: event.target.checked }))
+                                }
+                              />
+                            }
+                            label="Allow shipping"
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={Boolean(shippingSettings.allow_local_delivery)}
+                                onChange={(event) =>
+                                  setShippingSettings((prev) => ({ ...prev, allow_local_delivery: event.target.checked }))
+                                }
+                              />
+                            }
+                            label="Allow local delivery"
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Origin name"
+                            value={shippingSettings.origin_name}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, origin_name: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Origin phone"
+                            value={shippingSettings.origin_phone}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, origin_phone: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Country (ISO-2)"
+                            value={shippingSettings.origin_country}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, origin_country: event.target.value.toUpperCase() }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Address line 1"
+                            value={shippingSettings.origin_address1}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, origin_address1: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Address line 2"
+                            value={shippingSettings.origin_address2}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, origin_address2: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="City"
+                            value={shippingSettings.origin_city}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, origin_city: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Region"
+                            value={shippingSettings.origin_region}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, origin_region: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Postal code"
+                            value={shippingSettings.origin_postal_code}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, origin_postal_code: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Pickup label"
+                            value={shippingSettings.shipping_label_pickup}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, shipping_label_pickup: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Shipping label"
+                            value={shippingSettings.shipping_label_shipping}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, shipping_label_shipping: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Local delivery label"
+                            value={shippingSettings.shipping_label_local_delivery}
+                            onChange={(event) =>
+                              setShippingSettings((prev) => ({ ...prev, shipping_label_local_delivery: event.target.value }))
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Stack direction="row" justifyContent="flex-end">
+                            <Button variant="contained" onClick={handleSaveShippingSettings} disabled={shippingSettingsSaving}>
+                              {shippingSettingsSaving ? <CircularProgress size={20} /> : "Save shipping settings"}
+                            </Button>
+                          </Stack>
+                        </Grid>
+                      </Grid>
+                    )}
+                  </Paper>
+                </Paper>
+              )}
+              {detailTab === 5 && (
                 <Stack spacing={3}>
                   {inventoryActionRequired ? (
                     <Paper sx={{ p: 2 }}>
@@ -2253,278 +2773,6 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                   </Paper>
                     </AccordionDetails>
                   </Accordion>
-                  <Accordion disableGutters>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Typography variant="subtitle1" fontWeight={600}>Shipping settings</Typography>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Paper variant="outlined" sx={{ p: 2 }}>
-                        {shippingSettingsLoading || !shippingSettings ? (
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <CircularProgress size={18} />
-                            <Typography variant="body2" color="text.secondary">Loading shipping settings...</Typography>
-                          </Stack>
-                        ) : (
-                          <Grid container spacing={2}>
-                            <Grid item xs={12} md={3}>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={Boolean(shippingSettings.enabled)}
-                                    onChange={(event) =>
-                                      setShippingSettings((prev) => ({ ...prev, enabled: event.target.checked }))
-                                    }
-                                  />
-                                }
-                                label="Enabled"
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={9}>
-                              <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
-                                <Stack spacing={1.25}>
-                                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} alignItems={{ xs: "flex-start", sm: "center" }}>
-                                    <Typography variant="subtitle2" fontWeight={700}>
-                                      EasyPost automation (optional)
-                                    </Typography>
-                                    <Stack direction="row" spacing={1} alignItems="center">
-                                      <Chip
-                                        size="small"
-                                        color={shippingSettings.easypost_connected ? "success" : "default"}
-                                        label={shippingSettings.easypost_connected ? "Connected" : "Not connected"}
-                                      />
-                                      {shippingSettings.easypost_has_api_key && (
-                                        <Chip size="small" variant="outlined" label={`Key ••••${shippingSettings.easypost_api_key_last4 || ""}`} />
-                                      )}
-                                    </Stack>
-                                  </Stack>
-
-                                  <FormControlLabel
-                                    control={
-                                      <Switch
-                                        checked={Boolean(shippingSettings.easypost_enabled)}
-                                        onChange={(event) =>
-                                          setShippingSettings((prev) => ({ ...prev, easypost_enabled: event.target.checked }))
-                                        }
-                                      />
-                                    }
-                                    label="Enable EasyPost for automated shipping steps (manual flow remains available)"
-                                  />
-
-                                  <Grid container spacing={1.5}>
-                                    <Grid item xs={12} md={7}>
-                                      <TextField
-                                        fullWidth
-                                        size="small"
-                                        type="password"
-                                        label="EasyPost API key"
-                                        placeholder={shippingSettings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key"}
-                                        value={easypostApiKeyInput}
-                                        onChange={(event) => setEasypostApiKeyInput(event.target.value)}
-                                      />
-                                    </Grid>
-                                    <Grid item xs={12} md={5}>
-                                      <Stack direction="row" spacing={1}>
-                                        <Button
-                                          variant="outlined"
-                                          onClick={handleTestEasyPostConnection}
-                                          disabled={shippingSettingsTesting}
-                                        >
-                                          {shippingSettingsTesting ? <CircularProgress size={18} /> : "Test connection"}
-                                        </Button>
-                                      </Stack>
-                                    </Grid>
-                                  </Grid>
-
-                                  <FormControlLabel
-                                    control={
-                                      <Checkbox
-                                        checked={Boolean(clearEasypostApiKey)}
-                                        onChange={(event) => setClearEasypostApiKey(event.target.checked)}
-                                      />
-                                    }
-                                    label="Clear stored EasyPost API key on save"
-                                  />
-
-                                  {shippingSettings.easypost_last_test_message && (
-                                    <Typography variant="caption" color={shippingSettings.easypost_last_test_status === "success" ? "success.main" : "warning.main"}>
-                                      {shippingSettings.easypost_last_test_message}
-                                    </Typography>
-                                  )}
-                                </Stack>
-                              </Paper>
-                            </Grid>
-                            <Grid item xs={12} md={3}>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={Boolean(shippingSettings.allow_pickup)}
-                                    onChange={(event) =>
-                                      setShippingSettings((prev) => ({ ...prev, allow_pickup: event.target.checked }))
-                                    }
-                                  />
-                                }
-                                label="Allow pickup"
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={3}>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={Boolean(shippingSettings.allow_shipping)}
-                                    onChange={(event) =>
-                                      setShippingSettings((prev) => ({ ...prev, allow_shipping: event.target.checked }))
-                                    }
-                                  />
-                                }
-                                label="Allow shipping"
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={3}>
-                              <FormControlLabel
-                                control={
-                                  <Switch
-                                    checked={Boolean(shippingSettings.allow_local_delivery)}
-                                    onChange={(event) =>
-                                      setShippingSettings((prev) => ({ ...prev, allow_local_delivery: event.target.checked }))
-                                    }
-                                  />
-                                }
-                                label="Allow local delivery"
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Origin name"
-                                value={shippingSettings.origin_name}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, origin_name: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Origin phone"
-                                value={shippingSettings.origin_phone}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, origin_phone: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Country (ISO-2)"
-                                value={shippingSettings.origin_country}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, origin_country: event.target.value.toUpperCase() }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Address line 1"
-                                value={shippingSettings.origin_address1}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, origin_address1: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={6}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Address line 2"
-                                value={shippingSettings.origin_address2}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, origin_address2: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="City"
-                                value={shippingSettings.origin_city}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, origin_city: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Region"
-                                value={shippingSettings.origin_region}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, origin_region: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Postal code"
-                                value={shippingSettings.origin_postal_code}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, origin_postal_code: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Pickup label"
-                                value={shippingSettings.shipping_label_pickup}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, shipping_label_pickup: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Shipping label"
-                                value={shippingSettings.shipping_label_shipping}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, shipping_label_shipping: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12} md={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Local delivery label"
-                                value={shippingSettings.shipping_label_local_delivery}
-                                onChange={(event) =>
-                                  setShippingSettings((prev) => ({ ...prev, shipping_label_local_delivery: event.target.value }))
-                                }
-                              />
-                            </Grid>
-                            <Grid item xs={12}>
-                              <Stack direction="row" justifyContent="flex-end">
-                                <Button variant="contained" onClick={handleSaveShippingSettings} disabled={shippingSettingsSaving}>
-                                  {shippingSettingsSaving ? <CircularProgress size={20} /> : "Save shipping settings"}
-                                </Button>
-                              </Stack>
-                            </Grid>
-                          </Grid>
-                        )}
-                      </Paper>
-                    </AccordionDetails>
-                  </Accordion>
                   </>
                   )}
                 </Stack>
@@ -2583,7 +2831,8 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
             <Typography variant="body2"><strong>Items:</strong> exact line items, quantity, SKU, and price totals.</Typography>
             <Typography variant="body2"><strong>Payments:</strong> payment/refund transactions and provider status.</Typography>
             <Typography variant="body2"><strong>Timeline:</strong> immutable event history for operational/audit tracing.</Typography>
-            <Typography variant="body2"><strong>Actions:</strong> fulfillment, timeline notes, refunds, and shipping settings.</Typography>
+            <Typography variant="body2"><strong>EasyPost:</strong> shipping settings, origin details, and EasyPost connectivity.</Typography>
+            <Typography variant="body2"><strong>Actions:</strong> fulfillment, timeline notes, and refunds.</Typography>
           </Stack>
 
           <Divider />
@@ -2691,9 +2940,9 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
           </Stack>
 
           <Divider />
-          <Typography variant="subtitle2" fontWeight={700}>Shipping settings (manual)</Typography>
+          <Typography variant="subtitle2" fontWeight={700}>EasyPost tab</Typography>
           <Typography variant="body2">
-            Configure allowed methods and origin details used by operations. Keep these accurate for support and fulfillment teams.
+            Configure allowed methods, origin details, and optional EasyPost connectivity. Manual shipping remains available as fallback.
           </Typography>
         </Stack>
       </Drawer>
