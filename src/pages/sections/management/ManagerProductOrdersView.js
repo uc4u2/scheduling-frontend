@@ -412,6 +412,9 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
   const [shippingSettings, setShippingSettings] = useState(null);
   const [shippingSettingsLoading, setShippingSettingsLoading] = useState(false);
   const [shippingSettingsSaving, setShippingSettingsSaving] = useState(false);
+  const [shippingSettingsTesting, setShippingSettingsTesting] = useState(false);
+  const [easypostApiKeyInput, setEasypostApiKeyInput] = useState("");
+  const [clearEasypostApiKey, setClearEasypostApiKey] = useState(false);
 
   const viewerTimezone = useMemo(() => getUserTimezone(), []);
   const formatTimestamp = useCallback((value, sourceTz, pattern = "MMM d, yyyy h:mm a") => {
@@ -562,6 +565,14 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       setShippingSettings({
         mode: data?.mode || "manual",
         enabled: Boolean(data?.enabled),
+        easypost_enabled: Boolean(data?.easypost_enabled),
+        easypost_has_api_key: Boolean(data?.easypost_has_api_key),
+        easypost_api_key_last4: data?.easypost_api_key_last4 || "",
+        easypost_connected: Boolean(data?.easypost_connected),
+        easypost_connected_at: data?.easypost_connected_at || null,
+        easypost_last_tested_at: data?.easypost_last_tested_at || null,
+        easypost_last_test_status: data?.easypost_last_test_status || "",
+        easypost_last_test_message: data?.easypost_last_test_message || "",
         allow_pickup: data?.allow_pickup !== false,
         allow_shipping: data?.allow_shipping !== false,
         allow_local_delivery: Boolean(data?.allow_local_delivery),
@@ -577,6 +588,8 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         shipping_label_shipping: data?.shipping_label_shipping || "",
         shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
       });
+      setEasypostApiKeyInput("");
+      setClearEasypostApiKey(false);
     } catch (error) {
       const message = error?.response?.data?.error || error?.message || "Unable to load shipping settings";
       showMessage(message, "error");
@@ -887,6 +900,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       const payload = {
         mode: "manual",
         enabled: Boolean(shippingSettings.enabled),
+        easypost_enabled: Boolean(shippingSettings.easypost_enabled),
         allow_pickup: Boolean(shippingSettings.allow_pickup),
         allow_shipping: Boolean(shippingSettings.allow_shipping),
         allow_local_delivery: Boolean(shippingSettings.allow_local_delivery),
@@ -902,10 +916,25 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         shipping_label_shipping: shippingSettings.shipping_label_shipping || null,
         shipping_label_local_delivery: shippingSettings.shipping_label_local_delivery || null,
       };
+      const trimmedEasyPostKey = (easypostApiKeyInput || "").trim();
+      if (trimmedEasyPostKey) {
+        payload.easypost_api_key = trimmedEasyPostKey;
+      }
+      if (clearEasypostApiKey) {
+        payload.clear_easypost_api_key = true;
+      }
       const { data } = await api.patch("/inventory/shipping-settings", payload, { headers });
       setShippingSettings({
         mode: data?.mode || "manual",
         enabled: Boolean(data?.enabled),
+        easypost_enabled: Boolean(data?.easypost_enabled),
+        easypost_has_api_key: Boolean(data?.easypost_has_api_key),
+        easypost_api_key_last4: data?.easypost_api_key_last4 || "",
+        easypost_connected: Boolean(data?.easypost_connected),
+        easypost_connected_at: data?.easypost_connected_at || null,
+        easypost_last_tested_at: data?.easypost_last_tested_at || null,
+        easypost_last_test_status: data?.easypost_last_test_status || "",
+        easypost_last_test_message: data?.easypost_last_test_message || "",
         allow_pickup: data?.allow_pickup !== false,
         allow_shipping: data?.allow_shipping !== false,
         allow_local_delivery: Boolean(data?.allow_local_delivery),
@@ -921,6 +950,8 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
         shipping_label_shipping: data?.shipping_label_shipping || "",
         shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
       });
+      setEasypostApiKeyInput("");
+      setClearEasypostApiKey(false);
       showMessage("Shipping settings updated", "success");
     } catch (error) {
       const message = error?.response?.data?.error || error?.message || "Unable to save shipping settings";
@@ -928,7 +959,52 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     } finally {
       setShippingSettingsSaving(false);
     }
-  }, [shippingSettings, headers, showMessage]);
+  }, [shippingSettings, headers, showMessage, easypostApiKeyInput, clearEasypostApiKey]);
+
+  const handleTestEasyPostConnection = useCallback(async () => {
+    if (!shippingSettings) return;
+    setShippingSettingsTesting(true);
+    try {
+      const payload = {};
+      const trimmedEasyPostKey = (easypostApiKeyInput || "").trim();
+      if (trimmedEasyPostKey) payload.easypost_api_key = trimmedEasyPostKey;
+      const { data } = await api.post("/inventory/shipping-settings/test-connection", payload, { headers });
+      if (data?.settings) {
+        setShippingSettings({
+          mode: data?.settings?.mode || "manual",
+          enabled: Boolean(data?.settings?.enabled),
+          easypost_enabled: Boolean(data?.settings?.easypost_enabled),
+          easypost_has_api_key: Boolean(data?.settings?.easypost_has_api_key),
+          easypost_api_key_last4: data?.settings?.easypost_api_key_last4 || "",
+          easypost_connected: Boolean(data?.settings?.easypost_connected),
+          easypost_connected_at: data?.settings?.easypost_connected_at || null,
+          easypost_last_tested_at: data?.settings?.easypost_last_tested_at || null,
+          easypost_last_test_status: data?.settings?.easypost_last_test_status || "",
+          easypost_last_test_message: data?.settings?.easypost_last_test_message || "",
+          allow_pickup: data?.settings?.allow_pickup !== false,
+          allow_shipping: data?.settings?.allow_shipping !== false,
+          allow_local_delivery: Boolean(data?.settings?.allow_local_delivery),
+          origin_name: data?.settings?.origin_name || "",
+          origin_phone: data?.settings?.origin_phone || "",
+          origin_address1: data?.settings?.origin_address1 || "",
+          origin_address2: data?.settings?.origin_address2 || "",
+          origin_city: data?.settings?.origin_city || "",
+          origin_region: data?.settings?.origin_region || "",
+          origin_postal_code: data?.settings?.origin_postal_code || "",
+          origin_country: data?.settings?.origin_country || "",
+          shipping_label_pickup: data?.settings?.shipping_label_pickup || "",
+          shipping_label_shipping: data?.settings?.shipping_label_shipping || "",
+          shipping_label_local_delivery: data?.settings?.shipping_label_local_delivery || "",
+        });
+      }
+      showMessage(data?.message || "EasyPost connection successful", "success");
+    } catch (error) {
+      const message = error?.response?.data?.error || error?.response?.data?.message || error?.message || "EasyPost connection test failed";
+      showMessage(message, "error");
+    } finally {
+      setShippingSettingsTesting(false);
+    }
+  }, [shippingSettings, easypostApiKeyInput, headers, showMessage]);
   const handleRefundSubmit = useCallback(async () => {
     if (!orderDetail) return;
 
@@ -2273,7 +2349,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                   </Accordion>
                   <Accordion disableGutters>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Typography variant="subtitle1" fontWeight={600}>Shipping settings (manual)</Typography>
+                      <Typography variant="subtitle1" fontWeight={600}>Shipping settings</Typography>
                     </AccordionSummary>
                     <AccordionDetails>
                       <Paper variant="outlined" sx={{ p: 2 }}>
@@ -2296,6 +2372,80 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                                 }
                                 label="Enabled"
                               />
+                            </Grid>
+                            <Grid item xs={12} md={9}>
+                              <Paper variant="outlined" sx={{ p: 1.5, bgcolor: "background.default" }}>
+                                <Stack spacing={1.25}>
+                                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} alignItems={{ xs: "flex-start", sm: "center" }}>
+                                    <Typography variant="subtitle2" fontWeight={700}>
+                                      EasyPost automation (optional)
+                                    </Typography>
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                      <Chip
+                                        size="small"
+                                        color={shippingSettings.easypost_connected ? "success" : "default"}
+                                        label={shippingSettings.easypost_connected ? "Connected" : "Not connected"}
+                                      />
+                                      {shippingSettings.easypost_has_api_key && (
+                                        <Chip size="small" variant="outlined" label={`Key ••••${shippingSettings.easypost_api_key_last4 || ""}`} />
+                                      )}
+                                    </Stack>
+                                  </Stack>
+
+                                  <FormControlLabel
+                                    control={
+                                      <Switch
+                                        checked={Boolean(shippingSettings.easypost_enabled)}
+                                        onChange={(event) =>
+                                          setShippingSettings((prev) => ({ ...prev, easypost_enabled: event.target.checked }))
+                                        }
+                                      />
+                                    }
+                                    label="Enable EasyPost for automated shipping steps (manual flow remains available)"
+                                  />
+
+                                  <Grid container spacing={1.5}>
+                                    <Grid item xs={12} md={7}>
+                                      <TextField
+                                        fullWidth
+                                        size="small"
+                                        type="password"
+                                        label="EasyPost API key"
+                                        placeholder={shippingSettings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key"}
+                                        value={easypostApiKeyInput}
+                                        onChange={(event) => setEasypostApiKeyInput(event.target.value)}
+                                      />
+                                    </Grid>
+                                    <Grid item xs={12} md={5}>
+                                      <Stack direction="row" spacing={1}>
+                                        <Button
+                                          variant="outlined"
+                                          onClick={handleTestEasyPostConnection}
+                                          disabled={shippingSettingsTesting}
+                                        >
+                                          {shippingSettingsTesting ? <CircularProgress size={18} /> : "Test connection"}
+                                        </Button>
+                                      </Stack>
+                                    </Grid>
+                                  </Grid>
+
+                                  <FormControlLabel
+                                    control={
+                                      <Checkbox
+                                        checked={Boolean(clearEasypostApiKey)}
+                                        onChange={(event) => setClearEasypostApiKey(event.target.checked)}
+                                      />
+                                    }
+                                    label="Clear stored EasyPost API key on save"
+                                  />
+
+                                  {shippingSettings.easypost_last_test_message && (
+                                    <Typography variant="caption" color={shippingSettings.easypost_last_test_status === "success" ? "success.main" : "warning.main"}>
+                                      {shippingSettings.easypost_last_test_message}
+                                    </Typography>
+                                  )}
+                                </Stack>
+                              </Paper>
                             </Grid>
                             <Grid item xs={12} md={3}>
                               <FormControlLabel
