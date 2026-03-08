@@ -9,7 +9,7 @@ import { isMobileComplianceMode } from "../../utils/mobileCompliance";
 const PLAN_RANK = { starter: 0, pro: 1, business: 2 };
 
 const UpgradeNoticeBanner = ({ requiredPlan = "pro", message }) => {
-  if (isMobileComplianceMode()) return null;
+  const mobileComplianceMode = isMobileComplianceMode();
   const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const { status } = useBillingStatus();
   const { visible } = useBillingBanner();
@@ -18,6 +18,7 @@ const UpgradeNoticeBanner = ({ requiredPlan = "pro", message }) => {
     PLAN_RANK[planKey] < (PLAN_RANK[requiredPlan] ?? 0) ||
     (status?.status && !["active", "trialing"].includes(status.status));
 
+  if (mobileComplianceMode) return null;
   if (!needsUpgrade || visible) return null;
 
   return (

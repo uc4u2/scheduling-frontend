@@ -380,17 +380,7 @@ const timelineIcon = (eventType) => {
   return <NoteAddIcon fontSize="small" color="action" />;
 };
 const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
-  if (isMobileComplianceMode()) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <MobileWebOnlyNotice
-          title="Product order payments are web-only in mobile app mode"
-          webPath="/manager/dashboard?view=product-orders"
-        />
-      </Box>
-    );
-  }
-
+  const mobileComplianceMode = isMobileComplianceMode();
   const token = tokenProp || (typeof window !== "undefined" ? localStorage.getItem("token") : "");
   const headers = useMemo(() => {
     if (!token) return {};
@@ -503,6 +493,7 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       }
     }
   }, [viewerTimezone]);
+
   const formatCsvTimestamp = useCallback(() => {
     return DateTime.now().setZone(viewerTimezone || "UTC").toFormat("yyyyLLdd-HHmmss");
   }, [viewerTimezone]);
@@ -1556,6 +1547,17 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
     },
     [headers, loadOrders, showMessage, detailOpen, selectedOrderId, fetchOrderDetail]
   );
+  if (mobileComplianceMode) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <MobileWebOnlyNotice
+          title="Product order payments are web-only in mobile app mode"
+          webPath="/manager/dashboard?view=product-orders"
+        />
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <input

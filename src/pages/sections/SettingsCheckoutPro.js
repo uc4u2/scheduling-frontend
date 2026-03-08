@@ -133,23 +133,6 @@ export default function SettingsCheckoutPro() {
   // 👇 Help drawer state
   const [guideOpen, setGuideOpen] = useState(false);
 
-  if (mobileComplianceMode) {
-    return (
-      <Card variant="outlined">
-        <CardHeader
-          title={t("settings.tabs.checkout", "Checkout Pro & Payments")}
-          subheader={t("settings.checkout.subtitle", "Configure checkout and payment collection rules.")}
-        />
-        <CardContent>
-          <MobileWebOnlyNotice
-            title="Checkout Pro settings are web-only in mobile app mode"
-            webPath="/manager/dashboard?view=settings&tab=checkout"
-          />
-        </CardContent>
-      </Card>
-    );
-  }
-
   const enableStripe = paymentMode === "pay_now";
   const allowCardOnFile = paymentMode !== "offline";
   const isProdEnv = process.env.NODE_ENV === "production";
@@ -335,6 +318,23 @@ export default function SettingsCheckoutPro() {
       setMsgSeverity("error");
     }
   };
+
+  if (mobileComplianceMode) {
+    return (
+      <Card variant="outlined">
+        <CardHeader
+          title={t("settings.tabs.checkout", "Checkout Pro & Payments")}
+          subheader={t("settings.checkout.subtitle", "Configure checkout and payment collection rules.")}
+        />
+        <CardContent>
+          <MobileWebOnlyNotice
+            title="Checkout Pro settings are web-only in mobile app mode"
+            webPath="/manager/dashboard?view=settings&tab=checkout"
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   const alertMessage = enableStripe
     ? t("settings.checkout.alerts.payNow")

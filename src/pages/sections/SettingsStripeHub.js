@@ -88,20 +88,6 @@ export default function SettingsStripeHub() {
   const [seatInvoiceUrl, setSeatInvoiceUrl] = useState("");
   const mobileComplianceMode = isMobileComplianceMode();
 
-  if (mobileComplianceMode) {
-    return (
-      <SectionCard
-        title={t("settings.stripeHub.title", "Stripe Hub")}
-        subtitle={t("settings.stripeHub.subtitle", "Connect Stripe and manage payout readiness.")}
-      >
-        <MobileWebOnlyNotice
-          title="Stripe Connect is web-only in mobile app mode"
-          webPath="/manager/dashboard?view=settings&tab=stripe-hub"
-        />
-      </SectionCard>
-    );
-  }
-
   const loadProfile = useCallback(async () => {
     if (!token) return;
     setProfileLoading(true);
@@ -342,6 +328,20 @@ export default function SettingsStripeHub() {
       setBillingStatusLoading(false);
     }
   };
+
+  if (mobileComplianceMode) {
+    return (
+      <SectionCard
+        title={t("settings.stripeHub.title", "Stripe Hub")}
+        subtitle={t("settings.stripeHub.subtitle", "Connect Stripe and manage payout readiness.")}
+      >
+        <MobileWebOnlyNotice
+          title="Stripe Connect is web-only in mobile app mode"
+          webPath="/manager/dashboard?view=settings&tab=stripe-hub"
+        />
+      </SectionCard>
+    );
+  }
 
   if (!token) {
     return (

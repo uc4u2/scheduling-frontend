@@ -237,18 +237,8 @@ const paymentStatusChipColor = (status) => {
 };
 
 export default function ManagerPaymentsView({ connect }) {
-  if (isMobileComplianceMode()) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <MobileWebOnlyNotice
-          title="Payments manager is web-only in mobile app mode"
-          webPath="/manager/payments"
-        />
-      </Box>
-    );
-  }
-
   const location = useLocation();
+  const mobileComplianceMode = isMobileComplianceMode();
 
   const hasConnect = Boolean(connect && typeof connect === 'object');
   const connectStatus = hasConnect ? connect.status || {} : {};
@@ -1259,6 +1249,17 @@ export default function ManagerPaymentsView({ connect }) {
     ],
     [],
   );
+
+  if (mobileComplianceMode) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <MobileWebOnlyNotice
+          title="Payments manager is web-only in mobile app mode"
+          webPath="/manager/payments"
+        />
+      </Box>
+    );
+  }
 
   return (
     <>

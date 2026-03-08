@@ -25,20 +25,8 @@ const UpgradeBridgePage = () => {
   const returnTo = String(query.get("returnTo") || "").trim();
   const mobileComplianceMode = isMobileComplianceMode();
 
-  if (mobileComplianceMode) {
-    return (
-      <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center", px: 2 }}>
-        <Box sx={{ width: "100%", maxWidth: 720 }}>
-          <MobileWebOnlyNotice
-            title="Plan upgrades are web-only in mobile app mode"
-            webPath={`/manager/dashboard?view=settings&tab=billing${plan ? `&plan=${plan}` : ""}`}
-          />
-        </Box>
-      </Box>
-    );
-  }
-
   useEffect(() => {
+    if (mobileComplianceMode) return;
     let active = true;
 
     const run = async () => {
@@ -101,7 +89,20 @@ const UpgradeBridgePage = () => {
     return () => {
       active = false;
     };
-  }, [interval, plan, returnTo]);
+  }, [interval, mobileComplianceMode, plan, returnTo]);
+
+  if (mobileComplianceMode) {
+    return (
+      <Box sx={{ minHeight: "60vh", display: "grid", placeItems: "center", px: 2 }}>
+        <Box sx={{ width: "100%", maxWidth: 720 }}>
+          <MobileWebOnlyNotice
+            title="Plan upgrades are web-only in mobile app mode"
+            webPath={`/manager/dashboard?view=settings&tab=billing${plan ? `&plan=${plan}` : ""}`}
+          />
+        </Box>
+      </Box>
+    );
+  }
 
   if (state.loading) {
     return (

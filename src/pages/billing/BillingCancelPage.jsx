@@ -5,7 +5,19 @@ import { isMobileComplianceMode } from "../../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../../components/mobile/MobileWebOnlyNotice";
 
 const BillingCancelPage = () => {
-  if (isMobileComplianceMode()) {
+  const mobileComplianceMode = isMobileComplianceMode();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (mobileComplianceMode) return;
+    const token =
+      typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+    if (!token) {
+      navigate("/login", { replace: true });
+    }
+  }, [mobileComplianceMode, navigate]);
+
+  if (mobileComplianceMode) {
     return (
       <Box sx={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", px: 2 }}>
         <Box sx={{ width: "100%", maxWidth: 720 }}>
@@ -17,16 +29,6 @@ const BillingCancelPage = () => {
       </Box>
     );
   }
-
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const token =
-      typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
-    if (!token) {
-      navigate("/login", { replace: true });
-    }
-  }, [navigate]);
 
   return (
     <Box sx={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", px: 2 }}>

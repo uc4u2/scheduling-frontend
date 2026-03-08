@@ -13,7 +13,7 @@ const planLabel = (key) => {
 };
 
 const GlobalBillingBanner = () => {
-  if (isMobileComplianceMode()) return null;
+  const mobileComplianceMode = isMobileComplianceMode();
   const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
   const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const theme = useTheme();
@@ -66,6 +66,7 @@ const GlobalBillingBanner = () => {
     setVisible(Boolean(banner));
   }, [banner, setVisible]);
 
+  if (mobileComplianceMode) return null;
   if (!banner || hideOnSmallScreens) return null;
 
   const actions = (

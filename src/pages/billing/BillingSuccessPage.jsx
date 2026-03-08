@@ -42,19 +42,7 @@ const formatDate = (value) => {
 };
 
 const BillingSuccessPage = () => {
-  if (isMobileComplianceMode()) {
-    return (
-      <Box sx={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", px: 2 }}>
-        <Box sx={{ width: "100%", maxWidth: 720 }}>
-          <MobileWebOnlyNotice
-            title="Billing checkout confirmation is web-only in mobile app mode"
-            webPath="/manager/dashboard?view=settings&tab=billing"
-          />
-        </Box>
-      </Box>
-    );
-  }
-
+  const mobileComplianceMode = isMobileComplianceMode();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const sid = params.get("sid") || "";
@@ -79,12 +67,13 @@ const BillingSuccessPage = () => {
   }, [navigate, sid]);
 
   useEffect(() => {
+    if (mobileComplianceMode) return;
     if (!sid) {
       setError("Missing checkout session. Please return to pricing.");
       setPhase("timeout");
       return;
     }
-  }, [sid]);
+  }, [mobileComplianceMode, sid]);
 
   const pollCheckoutStatus = useCallback(async () => {
     if (!sid) return;
@@ -155,6 +144,7 @@ const BillingSuccessPage = () => {
   }, [navigate, redirectToLogin]);
 
   useEffect(() => {
+    if (mobileComplianceMode) return;
     if (checkoutComplete) return;
     if (!sid) return;
     if (checkoutAttempts >= 12) {
@@ -167,9 +157,10 @@ const BillingSuccessPage = () => {
     return () => {
       if (retryTimer.current) clearTimeout(retryTimer.current);
     };
-  }, [checkoutAttempts, checkoutComplete, pollCheckoutStatus, sid]);
+  }, [checkoutAttempts, checkoutComplete, mobileComplianceMode, pollCheckoutStatus, sid]);
 
   useEffect(() => {
+    if (mobileComplianceMode) return;
     if (!checkoutComplete) return;
     if (syncDoneRef.current) return;
     syncDoneRef.current = true;
@@ -183,9 +174,10 @@ const BillingSuccessPage = () => {
       .finally(() => {
         setBillingAttempts((prev) => prev + 1);
       });
-  }, [checkoutComplete, redirectToLogin]);
+  }, [checkoutComplete, mobileComplianceMode, redirectToLogin]);
 
   useEffect(() => {
+    if (mobileComplianceMode) return;
     if (!checkoutComplete) return;
     if (phase === "action" || phase === "timeout") return;
     if (billingAttempts >= 12) {
@@ -198,7 +190,7 @@ const BillingSuccessPage = () => {
     return () => {
       if (retryTimer.current) clearTimeout(retryTimer.current);
     };
-  }, [billingAttempts, checkoutComplete, phase, pollBillingStatus]);
+  }, [billingAttempts, checkoutComplete, mobileComplianceMode, phase, pollBillingStatus]);
 
   useEffect(() => {
     return () => {
@@ -246,6 +238,19 @@ const BillingSuccessPage = () => {
   const isActionRequired = phase === "action";
   const isTimeout = phase === "timeout";
   const isReady = phase === "ready";
+
+  if (mobileComplianceMode) {
+    return (
+      <Box sx={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", px: 2 }}>
+        <Box sx={{ width: "100%", maxWidth: 720 }}>
+          <MobileWebOnlyNotice
+            title="Billing checkout confirmation is web-only in mobile app mode"
+            webPath="/manager/dashboard?view=settings&tab=billing"
+          />
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ minHeight: "70vh", display: "flex", alignItems: "center", justifyContent: "center", px: 2 }}>

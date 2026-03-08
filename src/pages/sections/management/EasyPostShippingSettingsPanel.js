@@ -17,6 +17,7 @@ import {
   Tab,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -48,6 +49,15 @@ const normalizeSettings = (data = {}) => ({
   shipping_label_shipping: data?.shipping_label_shipping || "",
   shipping_label_local_delivery: data?.shipping_label_local_delivery || "",
 });
+
+const labelWithHint = (label, hint) => (
+  <Stack direction="row" spacing={0.5} alignItems="center">
+    <span>{label}</span>
+    <Tooltip title={hint} arrow placement="top">
+      <HelpOutlineIcon sx={{ fontSize: 14, color: "text.secondary", cursor: "help" }} />
+    </Tooltip>
+  </Stack>
+);
 
 const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false }) => {
   const token = tokenProp || localStorage.getItem("token") || "";
@@ -288,7 +298,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   <Grid item xs={12} md={4}>
                     <FormControlLabel
                       control={<Switch checked={clearApiKey} onChange={(e) => setClearApiKey(e.target.checked)} disabled={!isEasyPostMode} />}
-                      label="Clear stored API key"
+                      label={labelWithHint("Clear stored API key", "Enable this only when rotating/removing the saved EasyPost key for this company.")}
                     />
                   </Grid>
                 </Grid>
@@ -297,7 +307,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                     <TextField
                       fullWidth
                       size="small"
-                      label="EasyPost API key"
+                      label={labelWithHint("EasyPost API key", "Paste your EasyPost API key. It is stored encrypted. Enter a new key to rotate the existing one.")}
                       placeholder={settings.easypost_has_api_key ? "Stored key exists (enter new key to rotate)" : "Enter EasyPost API key"}
                       value={apiKeyInput}
                       onChange={(e) => setApiKeyInput(e.target.value)}
@@ -311,14 +321,14 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
                   </Grid>
                 </Grid>
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin name" value={settings.origin_name} onChange={(e) => updateField("origin_name", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin phone" value={settings.origin_phone} onChange={(e) => updateField("origin_phone", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 1" value={settings.origin_address1} onChange={(e) => updateField("origin_address1", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label="Origin address 2" value={settings.origin_address2} onChange={(e) => updateField("origin_address2", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin city" value={settings.origin_city} onChange={(e) => updateField("origin_city", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin region" value={settings.origin_region} onChange={(e) => updateField("origin_region", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin postal code" value={settings.origin_postal_code} onChange={(e) => updateField("origin_postal_code", e.target.value)} disabled={!isEasyPostMode} /></Grid>
-                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label="Origin country" value={settings.origin_country} onChange={(e) => updateField("origin_country", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label={labelWithHint("Origin name", "Sender/business name used as shipment origin. Example: your store name.")} value={settings.origin_name} onChange={(e) => updateField("origin_name", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label={labelWithHint("Origin phone", "Contact phone for origin/sender address. Include country code where possible.")} value={settings.origin_phone} onChange={(e) => updateField("origin_phone", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label={labelWithHint("Origin address 1", "Primary street address EasyPost uses as shipment origin.")} value={settings.origin_address1} onChange={(e) => updateField("origin_address1", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={6}><TextField fullWidth size="small" label={labelWithHint("Origin address 2", "Optional apartment/suite/unit line for origin address.")} value={settings.origin_address2} onChange={(e) => updateField("origin_address2", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label={labelWithHint("Origin city", "City of the shipment origin address.")} value={settings.origin_city} onChange={(e) => updateField("origin_city", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label={labelWithHint("Origin region", "State/Province/Region code. Example: ON, CA, NY.")} value={settings.origin_region} onChange={(e) => updateField("origin_region", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label={labelWithHint("Origin postal code", "ZIP/Postal code for origin address.")} value={settings.origin_postal_code} onChange={(e) => updateField("origin_postal_code", e.target.value)} disabled={!isEasyPostMode} /></Grid>
+                  <Grid item xs={12} md={4}><TextField fullWidth size="small" label={labelWithHint("Origin country", "2-letter country code (ISO-2). Example: US, CA.")} value={settings.origin_country} onChange={(e) => updateField("origin_country", e.target.value)} disabled={!isEasyPostMode} /></Grid>
                 </Grid>
               </Stack>
             )}
