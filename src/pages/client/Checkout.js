@@ -1169,6 +1169,7 @@ function CheckoutFormCore({
   }, [productItems.length, productDelivery.delivery_method, allowedDeliveryMethods, deliveryMethodOptions]);
   const requiresShippingAddress =
     productItems.length > 0 &&
+    allowedDeliveryMethods.length > 0 &&
     ["shipping", "local_delivery"].includes((productDelivery.delivery_method || "pickup").toLowerCase());
   const deliveryErrors = useMemo(() => {
     if (productItems.length === 0) return [];
