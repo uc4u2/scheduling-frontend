@@ -759,6 +759,11 @@ const ProductManagement = ({ token }) => {
                   "If enabled, this product can narrow delivery methods relative to Products -> Delivery setup."
                 )}
               />
+              {!form.delivery_methods_override_enabled && (
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                  Override is off. This product uses workspace defaults from Products -> Delivery setup.
+                </Typography>
+              )}
               {form.delivery_methods_override_enabled && (
                 <>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
@@ -818,7 +823,7 @@ const ProductManagement = ({ token }) => {
                     </Tooltip>
                   </Stack>
                   <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                    Uses Products -> Delivery setup as global policy. This override only narrows methods per product.
+                    Override is on. This product uses custom allowed delivery methods, narrowed from Products -> Delivery setup.
                   </Typography>
                 </>
               )}

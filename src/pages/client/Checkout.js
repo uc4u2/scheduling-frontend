@@ -1155,11 +1155,16 @@ function CheckoutFormCore({
       ].filter(([value]) => allowedDeliveryMethods.includes(value)),
     [allowedDeliveryMethods]
   );
+  const policyIsApiLoadedEmpty =
+    productItems.length > 0 &&
+    deliveryMethodPolicy.source === "api" &&
+    allowedDeliveryMethods.length === 0;
   useEffect(() => {
     if (productItems.length === 0) return;
+    if (allowedDeliveryMethods.length === 0) return;
     const current = String(productDelivery.delivery_method || "pickup").toLowerCase();
     if (allowedDeliveryMethods.includes(current)) return;
-    const fallback = deliveryMethodOptions[0]?.[0] || "pickup";
+    const fallback = deliveryMethodOptions[0]?.[0] || productDelivery.delivery_method || "pickup";
     setProductDelivery((prev) => ({ ...prev, delivery_method: fallback }));
   }, [productItems.length, productDelivery.delivery_method, allowedDeliveryMethods, deliveryMethodOptions]);
   const requiresShippingAddress =
@@ -2458,7 +2463,9 @@ function CheckoutFormCore({
           )}
           {!deliveryMethodPolicy.loading && deliveryMethodOptions.length === 0 && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              No delivery methods are currently available for these products.
+              {policyIsApiLoadedEmpty
+                ? "No delivery methods are currently available for these products."
+                : "Delivery methods are temporarily unavailable. Please try again."}
             </Alert>
           )}
 

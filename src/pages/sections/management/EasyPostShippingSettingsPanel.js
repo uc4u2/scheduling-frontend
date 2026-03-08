@@ -172,7 +172,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         </Stack>
 
         <Typography variant="body2" color="text.secondary">
-          Manage delivery policy and EasyPost automation settings here. Product Orders Actions tab remains unchanged.
+          Manage delivery policy and EasyPost automation settings here. This panel is opened from Products -> Delivery setup. Product Orders Actions tab remains unchanged.
         </Typography>
 
         {!settings && !loading && (
@@ -363,6 +363,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
 
             <Box>
               <Typography variant="subtitle2" fontWeight={700}>1) Settings Panel (this page)</Typography>
+              <Typography variant="body2">- Open from Products -> Delivery setup.</Typography>
               <Typography variant="body2">- Delivery Methods tab: controls checkout delivery choices and labels.</Typography>
               <Typography variant="body2">- EasyPost Automation tab: connection and shipping automation configuration.</Typography>
             </Box>
