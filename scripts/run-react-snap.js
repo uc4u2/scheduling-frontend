@@ -31,10 +31,40 @@ const runSnap = async () => {
     const text = String(err && (err.stack || err.message || err));
     return (
       text.includes("Execution context was destroyed") ||
-      text.includes("Failed to load Stripe.js")
+      text.includes("Failed to load Stripe.js") ||
+      text.includes("net::ERR_FAILED")
     );
   };
+  const exitWith = (code, err) => {
+    if (!server) {
+      if (code !== 0 && err) console.error(err);
+      process.exit(code);
+      return;
+    }
+    server.close(() => {
+      if (code !== 0 && err) console.error(err);
+      process.exit(code);
+    });
+  };
+  let handledFatal = false;
+  const handleGlobalFailure = (err) => {
+    if (handledFatal) return;
+    handledFatal = true;
+    if (isIgnorableSnapError(err)) {
+      console.warn("react-snap warning ignored:", String((err && err.message) || err));
+      exitWith(0);
+      return;
+    }
+    exitWith(1, err);
+  };
+  process.on("unhandledRejection", handleGlobalFailure);
+  process.on("uncaughtException", handleGlobalFailure);
   try {
+    if (String(process.env.SKIP_REACT_SNAP || "").trim() === "1") {
+      console.warn("react-snap skipped via SKIP_REACT_SNAP=1");
+      process.exit(0);
+      return;
+    }
     try {
       server = await startServer(port);
     } catch (err) {
@@ -50,29 +80,20 @@ const runSnap = async () => {
       port: actualPort,
       externalServer: true,
     });
-    server.close();
+    if (server) server.close();
+    process.removeListener("unhandledRejection", handleGlobalFailure);
+    process.removeListener("uncaughtException", handleGlobalFailure);
   } catch (err) {
     if (isIgnorableSnapError(err)) {
-      if (server) {
-        server.close(() => {
-          console.warn("react-snap warning ignored:", String(err.message || err));
-          process.exit(0);
-        });
-      } else {
-        console.warn("react-snap warning ignored:", String(err.message || err));
-        process.exit(0);
-      }
+      process.removeListener("unhandledRejection", handleGlobalFailure);
+      process.removeListener("uncaughtException", handleGlobalFailure);
+      console.warn("react-snap warning ignored:", String(err.message || err));
+      exitWith(0);
       return;
     }
-    if (server) {
-      server.close(() => {
-        console.error(err);
-        process.exit(1);
-      });
-    } else {
-      console.error(err);
-      process.exit(1);
-    }
+    process.removeListener("unhandledRejection", handleGlobalFailure);
+    process.removeListener("uncaughtException", handleGlobalFailure);
+    exitWith(1, err);
   }
 };
 
