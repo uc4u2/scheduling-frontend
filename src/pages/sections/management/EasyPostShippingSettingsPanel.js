@@ -6,7 +6,9 @@ import {
   Chip,
   CircularProgress,
   Divider,
-  Drawer,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   Grid,
   IconButton,
@@ -334,20 +336,26 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
         )}
       </Stack>
 
-      <Drawer
-        anchor="right"
+      <Dialog
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
-        PaperProps={{ sx: { width: { xs: "100%", sm: 460 }, p: 0 } }}
+        fullWidth
+        maxWidth="md"
+        scroll="paper"
+        sx={{ zIndex: (theme) => theme.zIndex.modal + 3000 }}
       >
-        <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <DialogTitle sx={{ pr: 7 }}>
           <Typography variant="h6" fontWeight={700}>EasyPost Shipping Help</Typography>
-          <IconButton size="small" onClick={() => setHelpOpen(false)}>
+          <IconButton
+            size="small"
+            onClick={() => setHelpOpen(false)}
+            sx={{ position: "absolute", right: 16, top: 14 }}
+          >
             <CloseIcon fontSize="small" />
           </IconButton>
-        </Box>
+        </DialogTitle>
         <Divider />
-        <Box sx={{ p: 2, overflowY: "auto" }}>
+        <DialogContent sx={{ p: 2.5 }}>
           <Stack spacing={2}>
             <Typography variant="body2" color="text.secondary">
               This panel controls EasyPost connection and shipping defaults. Manual shipping remains available if EasyPost is disabled or unavailable.
@@ -356,7 +364,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
             <Box>
               <Typography variant="subtitle2" fontWeight={700}>1) Settings Panel (this page)</Typography>
               <Typography variant="body2">- Delivery Methods tab: controls checkout delivery choices and labels.</Typography>
-              <Typography variant="body2">- EasyPost Automation tab: connection and shipping automation config.</Typography>
+              <Typography variant="body2">- EasyPost Automation tab: connection and shipping automation configuration.</Typography>
             </Box>
 
             <Box>
@@ -368,7 +376,7 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
 
             <Box>
               <Typography variant="subtitle2" fontWeight={700}>3) Product Orders (order-level actions)</Typography>
-              <Typography variant="body2">- Open order detail - Actions tab</Typography>
+              <Typography variant="body2">- Open order detail -> Actions tab</Typography>
               <Typography variant="body2">- Refresh rates</Typography>
               <Typography variant="body2">- Select rate</Typography>
               <Typography variant="body2">- Buy label</Typography>
@@ -382,8 +390,8 @@ const EasyPostShippingSettingsPanel = ({ token: tokenProp = "", compact = false 
               <Typography variant="body2">- Pickup/local delivery: manual flow can still be used.</Typography>
             </Box>
           </Stack>
-        </Box>
-      </Drawer>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
