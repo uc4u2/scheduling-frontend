@@ -109,15 +109,17 @@ export default function ClientBookings() {
   const userTimezone = getUserTimezone();
   const orderDialogPaperSx = useMemo(
     () => ({
-      backgroundColor: "var(--page-card-bg, var(--page-body-bg, #1f2347))",
-      backgroundImage: "none",
+      backgroundColor: "#ffffff !important",
+      backgroundImage:
+        "linear-gradient(var(--page-card-bg, rgba(255,255,255,0.92)), var(--page-card-bg, rgba(255,255,255,0.92))) !important",
       borderRadius: "var(--page-card-radius, 16px)",
       boxShadow: "var(--page-card-shadow, 0 24px 56px rgba(0,0,0,0.22))",
-      opacity: 1,
+      opacity: "1 !important",
       position: "relative",
       zIndex: (theme) => theme.zIndex.modal + 1,
-      color: "var(--page-body-color, #f3f4f8)",
-      border: "1px solid var(--page-border-color, rgba(243, 244, 248, 0.24))",
+      color: "#1f2937 !important",
+      border: "1px solid var(--page-border-color, rgba(15, 23, 42, 0.12))",
+      backdropFilter: "none !important",
     }),
     []
   );
@@ -667,9 +669,11 @@ export default function ClientBookings() {
           sx={{
             backgroundColor: "transparent",
             opacity: 1,
-            "& .MuiTypography-colorTextSecondary": {
-              color: "var(--page-muted-color, rgba(243, 244, 248, 0.78))",
-            },
+            color: "#1f2937 !important",
+            "& .MuiTypography-root": { color: "#1f2937 !important" },
+            "& .MuiTypography-colorTextSecondary": { color: "#4b5563 !important" },
+            "& .MuiChip-root": { fontWeight: 500 },
+            "& .MuiChip-label": { color: "#1f2937 !important" },
           }}
         >
           {orderLoading ? (
@@ -680,7 +684,10 @@ export default function ClientBookings() {
             <Alert severity="error">{selectedOrder.error}</Alert>
           ) : selectedOrder ? (
             <Stack spacing={2}>
-              <Typography variant="h6" sx={{ color: "inherit", fontWeight: 700 }}>
+              <Typography
+                variant="h6"
+                sx={{ color: "var(--page-heading-color, #1f2937) !important", fontWeight: 700 }}
+              >
                 Order {selectedOrder.display_number || `#${selectedOrder.id}`}
               </Typography>
 
@@ -705,7 +712,7 @@ export default function ClientBookings() {
                   <Stack spacing={0.75} sx={{ mt: 1 }}>
                     {(selectedOrder.items || []).map((item) => (
                       <Box key={item.id} sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
-                        <Typography sx={{ fontWeight: 600 }}>{item.name || "Item"}</Typography>
+                        <Typography sx={{ fontWeight: 700 }}>{item.name || "Item"}</Typography>
                         <Typography variant="body2" color="text.secondary">
                           Qty {item.quantity} • {money(item.unit_price, selectedOrder.currency)} each
                         </Typography>
@@ -792,7 +799,7 @@ export default function ClientBookings() {
                           </Typography>
                         ) : null}
                         {shipment ? (
-                          <Box sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
+                          <Box sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5, backgroundColor: "rgba(15, 23, 42, 0.02)" }}>
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
                               Latest shipment update
                             </Typography>
@@ -846,7 +853,7 @@ export default function ClientBookings() {
                         return (
                           <Box
                             key={entitlement.id}
-                            sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}
+                            sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5, backgroundColor: "rgba(15, 23, 42, 0.02)" }}
                           >
                             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 0.75 }}>
                               <Typography sx={{ fontWeight: 600 }}>
@@ -924,7 +931,7 @@ export default function ClientBookings() {
                   <Stack spacing={0.75} sx={{ mt: 1 }}>
                     {(selectedOrder.events || []).map((event) => (
                       <Box key={event.id} sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
-                        <Typography sx={{ fontWeight: 600 }}>{toTitle(event.event_type)}</Typography>
+                        <Typography sx={{ fontWeight: 700 }}>{toTitle(event.event_type)}</Typography>
                         <Typography variant="body2" color="text.secondary">
                           {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
                         </Typography>
