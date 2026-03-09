@@ -284,7 +284,7 @@ function ShellInner({
         let to = `${rootPath}?page=${encodeURIComponent(p.slug)}`;
         if (p.slug === "jobs") to = `${basePath}/jobs`;
         if (p.slug === "login") to = `/login?site=${encodeURIComponent(slug)}`;
-        if (p.slug === "my-bookings") to = `/dashboard?site=${encodeURIComponent(slug)}`;
+        if (p.slug === "my-bookings") to = `${rootPath}?page=my-bookings`;
         const isActive =
           activeKey === p.slug ||
           pathname === to ||
@@ -708,7 +708,7 @@ function ShellInner({
                     Manage Site
                   </Button>
                 )}
-                <Button className="nav-btn" component={RouterLink} to={`/dashboard?site=${encodeURIComponent(slug)}`}>
+                <Button className="nav-btn" component={RouterLink} to={`${rootPath}?page=my-bookings`}>
                   Dashboard
                 </Button>
                 <Button className="nav-btn" variant="outlined" onClick={handleLogout}>Logout</Button>

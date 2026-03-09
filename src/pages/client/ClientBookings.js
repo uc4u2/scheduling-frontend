@@ -88,6 +88,9 @@ export default function ClientBookings() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderOpen, setOrderOpen] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
+  const [orderDigitalAccess, setOrderDigitalAccess] = useState(null);
+  const [orderDigitalAccessLoading, setOrderDigitalAccessLoading] = useState(false);
+  const [orderDigitalAccessError, setOrderDigitalAccessError] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -104,6 +107,20 @@ export default function ClientBookings() {
   }, [routeSlug, location.search]);
 
   const userTimezone = getUserTimezone();
+  const orderDialogPaperSx = useMemo(
+    () => ({
+      backgroundColor: "var(--page-card-bg, var(--page-body-bg, #1f2347))",
+      backgroundImage: "none",
+      borderRadius: "var(--page-card-radius, 16px)",
+      boxShadow: "var(--page-card-shadow, 0 24px 56px rgba(0,0,0,0.22))",
+      opacity: 1,
+      position: "relative",
+      zIndex: (theme) => theme.zIndex.modal + 1,
+      color: "var(--page-body-color, #f3f4f8)",
+      border: "1px solid var(--page-border-color, rgba(243, 244, 248, 0.24))",
+    }),
+    []
+  );
 
   // Helper to preserve current query string (e.g. ?embed=1&primary=...)
   const go = (to) =>
@@ -208,6 +225,9 @@ export default function ClientBookings() {
     setOrderOpen(true);
     setOrderLoading(true);
     setSelectedOrder(null);
+    setOrderDigitalAccess(null);
+    setOrderDigitalAccessError("");
+    setOrderDigitalAccessLoading(true);
     api
       .get(`/api/client/product-orders/${row.id}`, {
         headers: authHeaders(),
@@ -219,6 +239,60 @@ export default function ClientBookings() {
         setSelectedOrder({ error: "Could not load order details." });
       })
       .finally(() => setOrderLoading(false));
+
+    api
+      .get(`/api/client/product-orders/${row.id}/digital-access`, {
+        headers: authHeaders(),
+        params: tenantSlug ? { slug: tenantSlug } : {},
+      })
+      .then((res) => setOrderDigitalAccess(res.data || null))
+      .catch((err) => {
+        const text =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Could not load digital access details.";
+        setOrderDigitalAccessError(text);
+      })
+      .finally(() => setOrderDigitalAccessLoading(false));
+  };
+
+  const refreshDigitalAccessLink = async (entitlementId) => {
+    if (!entitlementId || !selectedOrder?.id) return;
+    try {
+      const res = await api.post(
+        `/api/client/digital-access/${entitlementId}/refresh`,
+        {},
+        { headers: authHeaders() }
+      );
+      const nextUrl = String(res?.data?.public_access_url || "").trim();
+      const nextExpiry = String(res?.data?.access_url_expires_at || "").trim();
+      setOrderDigitalAccess((prev) => {
+        if (!prev || !Array.isArray(prev.entitlements)) return prev;
+        return {
+          ...prev,
+          entitlements: prev.entitlements.map((row) =>
+            row.id === entitlementId
+              ? {
+                  ...row,
+                  public_access_url: nextUrl || row.public_access_url || null,
+                  access_url_expires_at: nextExpiry || row.access_url_expires_at || null,
+                  can_open: Boolean(nextUrl || row.public_access_url),
+                  deny_reason: null,
+                  deny_message: null,
+                }
+              : row
+          ),
+        };
+      });
+      return nextUrl || "";
+    } catch (err) {
+      const text =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Could not refresh access link.";
+      setOrderDigitalAccessError(text);
+      return "";
+    }
   };
 
   const getStatusColor = (status) => {
@@ -575,8 +649,29 @@ export default function ClientBookings() {
         )}
       </Dialog>
 
-      <Dialog open={orderOpen} onClose={() => setOrderOpen(false)} maxWidth="md" fullWidth>
-        <DialogContent>
+      <Dialog
+        open={orderOpen}
+        onClose={() => setOrderOpen(false)}
+        maxWidth="md"
+        fullWidth
+        BackdropProps={{
+          sx: {
+            backgroundColor: "rgba(0, 0, 0, 0.58)",
+          },
+        }}
+        PaperProps={{
+          sx: orderDialogPaperSx,
+        }}
+      >
+        <DialogContent
+          sx={{
+            backgroundColor: "transparent",
+            opacity: 1,
+            "& .MuiTypography-colorTextSecondary": {
+              color: "var(--page-muted-color, rgba(243, 244, 248, 0.78))",
+            },
+          }}
+        >
           {orderLoading ? (
             <Box sx={{ py: 5, display: "flex", justifyContent: "center" }}>
               <CircularProgress size={28} />
@@ -585,7 +680,9 @@ export default function ClientBookings() {
             <Alert severity="error">{selectedOrder.error}</Alert>
           ) : selectedOrder ? (
             <Stack spacing={2}>
-              <Typography variant="h6">Order {selectedOrder.display_number || `#${selectedOrder.id}`}</Typography>
+              <Typography variant="h6" sx={{ color: "inherit", fontWeight: 700 }}>
+                Order {selectedOrder.display_number || `#${selectedOrder.id}`}
+              </Typography>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                 <Chip label={`Payment: ${selectedOrder.payment_status_label || toTitle(selectedOrder.payment_status)}`} color={paymentChipColor(selectedOrder.payment_status)} size="small" />
@@ -726,6 +823,98 @@ export default function ClientBookings() {
                       </Stack>
                     );
                   })()}
+                </Box>
+              ) : null}
+
+              {(orderDigitalAccessLoading || orderDigitalAccessError || orderDigitalAccess?.has_digital_access) ? (
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>Digital Access</Typography>
+                  {orderDigitalAccessLoading ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Loading digital access...
+                    </Typography>
+                  ) : orderDigitalAccessError ? (
+                    <Alert severity="error" sx={{ mt: 1 }}>{orderDigitalAccessError}</Alert>
+                  ) : (
+                    <Stack spacing={1} sx={{ mt: 1 }}>
+                      {(orderDigitalAccess?.entitlements || []).map((entitlement) => {
+                        const state = String(entitlement?.status || "").toLowerCase();
+                        const isActive = state === "active";
+                        const isPending = state === "pending_payment";
+                        const accessUrl = String(entitlement?.public_access_url || "").trim();
+                        const canOpen = Boolean(entitlement?.can_open && accessUrl);
+                        return (
+                          <Box
+                            key={entitlement.id}
+                            sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}
+                          >
+                            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 0.75 }}>
+                              <Typography sx={{ fontWeight: 600 }}>
+                                {entitlement.title || "Digital asset"}
+                              </Typography>
+                              <Chip
+                                size="small"
+                                label={entitlement.status_label || toTitle(state)}
+                                color={
+                                  isActive ? "success" : isPending ? "warning" : "default"
+                                }
+                              />
+                            </Stack>
+                            {entitlement.access_instructions ? (
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                                {entitlement.access_instructions}
+                              </Typography>
+                            ) : null}
+                            {entitlement.access_code ? (
+                              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                Access code: <b>{entitlement.access_code}</b>
+                              </Typography>
+                            ) : entitlement.access_code_hint ? (
+                              <Typography variant="body2" sx={{ mb: 0.5 }}>
+                                Access code hint: {entitlement.access_code_hint}
+                              </Typography>
+                            ) : null}
+                            <Typography variant="body2" color="text.secondary">
+                              Downloads: {Number(entitlement.download_count || 0)}
+                              {entitlement.max_downloads != null
+                                ? ` / ${Number(entitlement.max_downloads)}`
+                                : " (unlimited)"}
+                            </Typography>
+                            {entitlement.entitlement_expires_at ? (
+                              <Typography variant="caption" color="text.secondary">
+                                Access expires: {new Date(entitlement.entitlement_expires_at).toLocaleString()}
+                              </Typography>
+                            ) : null}
+                            {!isActive && entitlement?.deny_message ? (
+                              <Alert severity="info" sx={{ mt: 1 }}>{entitlement.deny_message}</Alert>
+                            ) : null}
+                            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                disabled={!entitlement?.can_open}
+                                onClick={async () => {
+                                  const freshUrl = await refreshDigitalAccessLink(entitlement.id);
+                                  if (freshUrl) {
+                                    window.open(freshUrl, "_blank", "noopener,noreferrer");
+                                  }
+                                }}
+                              >
+                                Open / Download
+                              </Button>
+                              <Button
+                                size="small"
+                                onClick={() => refreshDigitalAccessLink(entitlement.id)}
+                                disabled={isPending}
+                              >
+                                Refresh link
+                              </Button>
+                            </Stack>
+                          </Box>
+                        );
+                      })}
+                    </Stack>
+                  )}
                 </Box>
               ) : null}
 

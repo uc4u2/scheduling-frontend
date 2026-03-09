@@ -77,6 +77,7 @@ import CampaignIcon from "@mui/icons-material/Campaign";
 
 import CloseIcon from "@mui/icons-material/Close";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import AutoAwesomeMosaicIcon from "@mui/icons-material/AutoAwesomeMosaic";
 
 
 
@@ -87,6 +88,7 @@ import ServiceManagement from "./ServiceManagement";
 import ProductManagement from "./ProductManagement";
 import ManagerProductOrdersView from "./ManagerProductOrdersView";
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
+import DigitalProductsWorkspace from "./DigitalProductsWorkspace";
 
 
 import ServiceAssignment from "./ServiceAssignment";
@@ -467,6 +469,15 @@ const panels = useMemo(
       icon: <Inventory2Icon />,
 
       element: <ManagerProductOrdersView token={token} connect={connectContext} />,
+
+    },
+    {
+
+      label: t("manager.advanced.panels.digitalProducts", "Digital Products"),
+
+      icon: <AutoAwesomeMosaicIcon />,
+
+      element: <DigitalProductsWorkspace token={token} />,
 
     },
     {

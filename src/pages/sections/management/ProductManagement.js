@@ -705,16 +705,6 @@ const ProductManagement = ({ token }) => {
                 minRows={2}
               />
             )}
-            <TextField
-              label={fieldLabelWithTooltip(
-                "Digital asset ID (optional)",
-                "Optional media asset reference for downloadable products."
-              )}
-              type="number"
-              value={form.digital_asset_id}
-              onChange={handleChange("digital_asset_id")}
-              fullWidth
-            />
             <Divider />
             <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
               Product behavior
@@ -743,9 +733,14 @@ const ProductManagement = ({ token }) => {
                 )}
                 label={fieldLabelWithTooltip(
                   "Digital product",
-                  "Marks item as digital; physical shipping can be skipped."
+                  "Marks this item as digital. This does not change pickup/shipping/local-delivery checkboxes. Configure digital files/links, licensing, and customer access in Advanced Management -> Digital Products."
                 )}
               />
+              {form.is_digital && (
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                  Digital setup is managed in the Digital Products workspace (assets, access policy, licensing).
+                </Typography>
+              )}
               <FormControlLabel
                 control={(
                   <Checkbox
@@ -756,7 +751,7 @@ const ProductManagement = ({ token }) => {
                 )}
                 label={fieldLabelWithTooltip(
                   "Product delivery override (advanced)",
-                  "If enabled, this product can narrow delivery methods relative to Products -> Delivery setup."
+                  "Checkout-delivery control only. If enabled, this product can narrow pickup/shipping/local-delivery methods relative to Products -> Delivery setup. It does not configure digital file/link access."
                 )}
               />
               {!form.delivery_methods_override_enabled && (
@@ -823,9 +818,18 @@ const ProductManagement = ({ token }) => {
                     </Tooltip>
                   </Stack>
                   <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                    Override is on. This product uses custom allowed delivery methods, narrowed from Products -> Delivery setup.
+                    Override is on. This product uses custom checkout delivery methods, narrowed from Products -> Delivery setup.
                   </Typography>
                 </>
+              )}
+              {form.is_digital && form.delivery_methods_override_enabled && (
+                <Alert severity="info" sx={{ mt: 0.5 }}>
+                  You enabled both options. This is valid:
+                  <br />
+                  1. <strong>Digital product</strong> controls post-payment digital access in Digital Products workspace.
+                  <br />
+                  2. <strong>Delivery override</strong> controls checkout delivery choices for this product only.
+                </Alert>
               )}
               <FormControlLabel
                 control={(
@@ -967,9 +971,8 @@ const ProductManagement = ({ token }) => {
             <Typography variant="body2"><strong>Cost:</strong> Internal cost for margin tracking.</Typography>
             <Typography variant="body2"><strong>Quantity on hand:</strong> Current inventory count.</Typography>
             <Typography variant="body2"><strong>Low stock threshold:</strong> Warning level used in manager list.</Typography>
-            <Typography variant="body2"><strong>Digital asset ID:</strong> Optional link to a digital media/download record.</Typography>
             <Typography variant="body2"><strong>Track inventory:</strong> If on, sales decrement stock and stock checks apply.</Typography>
-            <Typography variant="body2"><strong>Digital product:</strong> Marks item as digital; physical delivery may be skipped.</Typography>
+            <Typography variant="body2"><strong>Digital product:</strong> Marks item as digital. Digital asset/library/access policy is managed in the <strong>Digital Products</strong> workspace.</Typography>
             <Typography variant="body2"><strong>Visible on site:</strong> If off, hidden from public catalog.</Typography>
           </Stack>
 
