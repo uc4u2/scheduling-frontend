@@ -791,7 +791,7 @@ export default function ManagerPaymentsView({ connect }) {
   // Open refund dialog
   const openRefund = async (booking) => {
     setChargeOpen(false);
-    setChargeOpen(false);
+    setMsg("");
     setRefundBooking(booking);
     setRefundAmount("");
     setRefundAuto(Boolean(connectChargesEnabled));
@@ -1172,13 +1172,17 @@ export default function ManagerPaymentsView({ connect }) {
           setActiveCurrency(normalized);
         }
       }
-      openCharge(booking, {
-        amount: presetAmt || "",
-        note: presetNote || "",
-        intent: presetIntent || "",
-        extra: presetExtra || "",
-        tip: presetTip || "",
-      });
+      if (presetIntent === "refund") {
+        openRefund(booking);
+      } else {
+        openCharge(booking, {
+          amount: presetAmt || "",
+          note: presetNote || "",
+          intent: presetIntent || "",
+          extra: presetExtra || "",
+          tip: presetTip || "",
+        });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, bookings, location.search]);
@@ -1833,7 +1837,9 @@ export default function ManagerPaymentsView({ connect }) {
               <CircularProgress size={24} />
             ) : paymentMethods.length === 0 ? (
               <Alert severity="warning">
-                No saved cards on file for this client.
+                No saved cards on file for this client. This only affects new
+                card-on-file charges. Refunding an existing Stripe payment does
+                not require a saved card.
               </Alert>
             ) : (
               <>
