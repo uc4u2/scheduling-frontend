@@ -879,12 +879,32 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const scheduledCount = scheduledRecruiterIds.size;
   const unscheduledCount = unscheduledRecruiters.length;
 
+  const shellCardSx = {
+    p: { xs: 2, md: 3 },
+    borderRadius: 4,
+  };
+
+  const subCardSx = {
+    p: 2,
+    borderRadius: 3,
+    border: "1px solid",
+    borderColor: "divider",
+    boxShadow: "0 4px 18px rgba(15,23,42,0.04)",
+    backgroundColor: "background.paper",
+  };
+
+  const subCardTitleSx = {
+    fontSize: "1.05rem",
+    fontWeight: 700,
+    mb: 0.5,
+  };
+
   return (
     <Stack spacing={2} sx={{ mb: 2 }}>
-      <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
+      <Paper sx={shellCardSx} variant="outlined">
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ gap: 1 }}>
           <Box>
-            <Typography variant="h6" fontWeight={700}>Smart Shift</Typography>
+            <Typography variant="h5" fontWeight={800}>Smart Shift</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               Generate shift suggestions from employee smart availability, then apply selected rows into real shifts.
             </Typography>
@@ -918,382 +938,549 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
-      <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Suggestion input</Typography>
+      <Paper sx={shellCardSx} variant="outlined">
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.25 }}>Suggestion input</Typography>
         <Alert severity="info" sx={{ mb: 1.5 }}>
           Set a start date, choose how many weeks to plan, then define coverage rows and click Generate Suggestions.
         </Alert>
 
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
-          <TextField
-            label="Start date"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            value={range.start_date}
-            onChange={(e) => setRange((p) => ({ ...p, start_date: e.target.value }))}
-          />
-          <TextField
-            label="End date"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            value={range.end_date}
-            onChange={(e) => setRange((p) => ({ ...p, end_date: e.target.value }))}
-          />
-          {showAdvanced ? (
-            <TextField
-              label="Timezone"
-              value={range.timezone}
-              onChange={(e) => setRange((p) => ({ ...p, timezone: e.target.value }))}
-              placeholder={autoTimezone}
-            />
-          ) : null}
-
-          <FormControl sx={{ minWidth: 220 }}>
-            <InputLabel>Department filter</InputLabel>
-            <Select
-              label="Department filter"
-              value={selectedDepartment}
-              onChange={(e) => handleChangeDepartment(e.target.value)}
+        <Stack spacing={2}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", xl: "0.95fr 1.05fr" },
+              gap: 2,
+              alignItems: "stretch",
+            }}
+          >
+          <Paper
+            variant="outlined"
+            sx={{
+              ...subCardSx,
+              display: "flex",
+              flexDirection: "column",
+              height: "100%",
+            }}
+          >
+            <Stack sx={{ minHeight: "100%" }} spacing={1.5}>
+            <Typography sx={subCardTitleSx}>Planning Range</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Define the planning window and how far Smart Shift should extend the schedule.
+            </Typography>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.25}
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ alignContent: "flex-start" }}
             >
-              <MenuItem value=""><em>All departments</em></MenuItem>
-              {departments.map((dept) => (
-                <MenuItem key={dept.id} value={dept.id}>{dept.name || `Department #${dept.id}`}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl sx={{ minWidth: 260 }}>
-            <InputLabel>Employees</InputLabel>
-            <Select
-              multiple
-              label="Employees"
-              value={includeRecruiterIds}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value.includes(ALL_EMPLOYEES_VALUE)) {
-                  setIncludeRecruiterIds(filteredRecruiters.map((r) => Number(r.id)));
-                  return;
-                }
-                setIncludeRecruiterIds(normalizeIdList(value));
-              }}
-              renderValue={(selected) =>
-                (selected.length ? selected : filteredRecruiters.map((r) => Number(r.id)))
-                  .map((id) => recruiterNameById.get(Number(id)) || `#${id}`)
-                  .join(", ")
-              }
-            >
-              <MenuItem value={ALL_EMPLOYEES_VALUE}><em>All employees</em></MenuItem>
-              {filteredRecruiters.map((r) => (
-                <MenuItem key={r.id} value={Number(r.id)}>
-                  {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Stack>
-
-        <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
-          <Button variant="outlined" size="small" onClick={handleSelectAllFilteredEmployees}>
-            Select all in {selectedDepartment ? "department" : "list"}
-          </Button>
-          <Button variant="outlined" size="small" onClick={handleSelectUnscheduledEmployees}>Select unscheduled</Button>
-          <Button variant="outlined" size="small" onClick={handleSelectBelowTargetEmployees}>Select below target</Button>
-          <Button variant="text" size="small" onClick={handleClearSelectedEmployees}>Clear selection</Button>
-          <Button variant="outlined" size="small" onClick={handleSeedDefaultAvailability} disabled={loading}>
-            Seed default availability
-          </Button>
-        </Stack>
-
-        <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
-          <Chip label={`Employees in dept: ${filteredRecruiters.length}`} />
-          <Chip label={`Selected: ${selectedInScopeCount}`} />
-          <Chip label={`Has shifts in range: ${scheduledCount}`} color={scheduledCount > 0 ? "success" : "default"} />
-          <Chip label={`Fully scheduled: ${fullScheduledCount}`} color={fullScheduledCount > 0 ? "success" : "default"} />
-          <Chip label={`Partial: ${partialScheduledCount}`} color={partialScheduledCount > 0 ? "warning" : "default"} />
-          <Chip
-            label={`Below target this range: ${belowTargetRecruiters.length}`}
-            color={belowTargetRecruiters.length > 0 ? "warning" : "success"}
-            variant={belowTargetRecruiters.length > 0 ? "filled" : "outlined"}
-          />
-          <Chip
-            label={`Unscheduled: ${unscheduledCount}`}
-            color={unscheduledCount > 0 ? "warning" : "success"}
-            variant={unscheduledCount > 0 ? "filled" : "outlined"}
-          />
-          <Button size="small" variant="outlined" onClick={() => setShowUnscheduled((v) => !v)}>
-            {showUnscheduled ? "Hide unscheduled" : "View unscheduled"}
-          </Button>
-        </Stack>
-
-        <Collapse in={showUnscheduled}>
-          <Paper sx={{ p: 1.25, mt: 1, borderRadius: 1.5 }} variant="outlined">
-            {availabilityLoading ? (
-              <Typography variant="body2" color="text.secondary">Loading availability status...</Typography>
-            ) : unscheduledRecruiters.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">All filtered employees have at least one shift in this range.</Typography>
-            ) : (
-              <Stack spacing={0.75}>
-                {unscheduledRecruiters.map((r) => (
-                  <Stack key={r.id} direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                    <Typography variant="body2">
-                      {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
-                    </Typography>
-                    <Chip
-                      size="small"
-                      color={availabilityPresence[Number(r.id)] ? "success" : "warning"}
-                      label={availabilityPresence[Number(r.id)] ? "Availability exists" : "No availability submitted"}
-                    />
-                  </Stack>
-                ))}
-              </Stack>
-            )}
-          </Paper>
-        </Collapse>
-
-        <Stack direction="row" spacing={1} sx={{ mt: 1.25 }} flexWrap="wrap" useFlexGap>
-          <TextField
-            size="small"
-            type="number"
-            label="Target shifts/week"
-            value={targetShiftsPerWeek}
-            onChange={(e) => setTargetShiftsPerWeek(Math.max(1, Number(e.target.value) || 1))}
-            sx={{ width: 160 }}
-          />
-          <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>Plan weeks</InputLabel>
-            <Select label="Plan weeks" value={weeksSpan} onChange={(e) => setWeeksSpan(Number(e.target.value))}>
-              <MenuItem value={1}>1 week</MenuItem>
-              <MenuItem value={4}>4 weeks</MenuItem>
-              <MenuItem value={12}>12 weeks</MenuItem>
-              <MenuItem value={52}>52 weeks</MenuItem>
-            </Select>
-          </FormControl>
-          <Button variant="outlined" onClick={() => applyRangeByWeeks()}>Set end date from weeks</Button>
-          <Button size="small" onClick={() => applyRangeByWeeks(1)}>1w</Button>
-          <Button size="small" onClick={() => applyRangeByWeeks(4)}>4w</Button>
-          <Button size="small" onClick={() => applyRangeByWeeks(12)}>12w</Button>
-          <Button size="small" onClick={() => applyRangeByWeeks(52)}>52w</Button>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={onlyWithAvailability}
-                onChange={(e) => setOnlyWithAvailability(e.target.checked)}
+              <TextField
+                fullWidth
+                label="Start date"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={range.start_date}
+                onChange={(e) => setRange((p) => ({ ...p, start_date: e.target.value }))}
+                sx={{ width: { xs: "100%", md: "auto" } }}
               />
-            }
-            label="Apply only employees with submitted availability"
-          />
-        </Stack>
-
-        <Stack spacing={1.5} sx={{ mt: 2 }}>
-          {coverage.map((c, idx) => (
-            <Paper key={`cov-${idx}`} sx={{ p: 1.5, borderRadius: 1.5 }} variant="outlined">
-              <Stack direction={{ xs: "column", md: "row" }} spacing={1.25}>
-                <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 210, flex: 1 }}>
-                  <TextField
-                    size="small"
-                    label="Coverage label"
-                    value={c.coverage_id}
-                    onChange={(e) =>
-                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, coverage_id: e.target.value } : it)))
-                    }
-                  />
-                  <Tooltip title="Internal name for this coverage row, such as Front Desk Day Shift.">
-                    <IconButton size="small" sx={{ mt: 0.25 }}>
-                      <HelpOutlineIcon fontSize="inherit" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-
-                <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 170, flex: 1 }}>
-                  <TextField
-                    size="small"
-                    label="Role (optional)"
-                    value={c.role_key}
-                    onChange={(e) =>
-                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, role_key: e.target.value } : it)))
-                    }
-                  />
-                  <Tooltip title="Optional tag for matching staff role, like cashier or frontdesk.">
-                    <IconButton size="small" sx={{ mt: 0.25 }}>
-                      <HelpOutlineIcon fontSize="inherit" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-
+              <TextField
+                fullWidth
+                label="End date"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={range.end_date}
+                onChange={(e) => setRange((p) => ({ ...p, end_date: e.target.value }))}
+                sx={{ width: { xs: "100%", md: "auto" } }}
+              />
+              <TextField
+                size="small"
+                type="number"
+                label="Target shifts/week"
+                value={targetShiftsPerWeek}
+                onChange={(e) => setTargetShiftsPerWeek(Math.max(1, Number(e.target.value) || 1))}
+                sx={{ width: { xs: "100%", md: 170 } }}
+              />
+              <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 150 }, width: { xs: "100%", md: "auto" } }}>
+                <InputLabel>Plan weeks</InputLabel>
+                <Select label="Plan weeks" value={weeksSpan} onChange={(e) => setWeeksSpan(Number(e.target.value))}>
+                  <MenuItem value={1}>1 week</MenuItem>
+                  <MenuItem value={4}>4 weeks</MenuItem>
+                  <MenuItem value={12}>12 weeks</MenuItem>
+                  <MenuItem value={52}>52 weeks</MenuItem>
+                </Select>
+              </FormControl>
+              {showAdvanced ? (
                 <TextField
-                  size="small"
-                  label="Start"
-                  type="time"
-                  InputLabelProps={{ shrink: true }}
-                  value={c.start_time}
-                  onChange={(e) =>
-                    setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, start_time: e.target.value } : it)))
-                  }
+                  fullWidth
+                  label="Timezone"
+                  value={range.timezone}
+                  onChange={(e) => setRange((p) => ({ ...p, timezone: e.target.value }))}
+                  placeholder={autoTimezone}
+                  sx={{ width: { xs: "100%", md: "auto" } }}
                 />
-                <TextField
-                  size="small"
-                  label="End"
-                  type="time"
-                  InputLabelProps={{ shrink: true }}
-                  value={c.end_time}
-                  onChange={(e) =>
-                    setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, end_time: e.target.value } : it)))
-                  }
-                />
-
-                <Stack direction="row" spacing={0.25} alignItems="center" sx={{ width: 140 }}>
-                  <TextField
-                    size="small"
-                    label="Headcount"
-                    type="number"
-                    value={c.headcount}
-                    onChange={(e) =>
-                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, headcount: e.target.value } : it)))
-                    }
-                    sx={{ width: 110 }}
+              ) : null}
+            </Stack>
+            <Box sx={{ flex: 1 }} />
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 0.5 }} flexWrap="wrap" useFlexGap>
+              <Button variant="outlined" fullWidth={false} sx={{ width: { xs: "100%", md: "auto" } }} onClick={() => applyRangeByWeeks()}>Set end date from weeks</Button>
+              <Button size="small" onClick={() => applyRangeByWeeks(1)}>1w</Button>
+              <Button size="small" onClick={() => applyRangeByWeeks(4)}>4w</Button>
+              <Button size="small" onClick={() => applyRangeByWeeks(12)}>12w</Button>
+              <Button size="small" onClick={() => applyRangeByWeeks(52)}>52w</Button>
+              <FormControlLabel
+                sx={{ ml: { xs: 0, md: 0.5 } }}
+                control={
+                  <Switch
+                    checked={onlyWithAvailability}
+                    onChange={(e) => setOnlyWithAvailability(e.target.checked)}
                   />
-                  <Tooltip title="How many employees are needed for this shift window.">
-                    <IconButton size="small" sx={{ mt: 0.25 }}>
-                      <HelpOutlineIcon fontSize="inherit" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
+                }
+                label="Apply only employees with submitted availability"
+              />
+            </Stack>
+            </Stack>
+          </Paper>
+
+          <Paper
+            variant="outlined"
+            sx={{
+              ...subCardSx,
+              display: "flex",
+              flexDirection: "column",
+              height: "100%",
+            }}
+          >
+            <Stack sx={{ minHeight: "100%" }} spacing={1.35}>
+            <Typography sx={subCardTitleSx}>Employees</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Filter the department, refine the employee pool, and use quick selection tools before generating suggestions.
+            </Typography>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.25}
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ alignContent: "flex-start" }}
+            >
+              <FormControl sx={{ minWidth: { xs: "100%", md: 220 }, width: { xs: "100%", md: "auto" } }}>
+                <InputLabel>Department filter</InputLabel>
+                <Select
+                  label="Department filter"
+                  value={selectedDepartment}
+                  onChange={(e) => handleChangeDepartment(e.target.value)}
+                >
+                  <MenuItem value=""><em>All departments</em></MenuItem>
+                  {departments.map((dept) => (
+                    <MenuItem key={dept.id} value={dept.id}>{dept.name || `Department #${dept.id}`}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl sx={{ minWidth: { xs: "100%", md: 260 }, width: { xs: "100%", md: "auto" }, flex: 1 }}>
+                <InputLabel>Employees</InputLabel>
+                <Select
+                  multiple
+                  label="Employees"
+                  value={includeRecruiterIds}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value.includes(ALL_EMPLOYEES_VALUE)) {
+                      setIncludeRecruiterIds(filteredRecruiters.map((r) => Number(r.id)));
+                      return;
+                    }
+                    setIncludeRecruiterIds(normalizeIdList(value));
+                  }}
+                  renderValue={(selected) =>
+                    (selected.length ? selected : filteredRecruiters.map((r) => Number(r.id)))
+                      .map((id) => recruiterNameById.get(Number(id)) || `#${id}`)
+                      .join(", ")
+                  }
+                >
+                  <MenuItem value={ALL_EMPLOYEES_VALUE}><em>All employees</em></MenuItem>
+                  {filteredRecruiters.map((r) => (
+                    <MenuItem key={r.id} value={Number(r.id)}>
+                      {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+
+            <Stack direction="row" spacing={0.9} sx={{ mt: 0.15 }} flexWrap="wrap" useFlexGap>
+              <Button variant="outlined" size="small" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={handleSelectAllFilteredEmployees}>
+                Select all in {selectedDepartment ? "department" : "list"}
+              </Button>
+              <Button variant="outlined" size="small" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={handleSelectUnscheduledEmployees}>Select unscheduled</Button>
+              <Button variant="outlined" size="small" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={handleSelectBelowTargetEmployees}>Select below target</Button>
+              <Button variant="text" size="small" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={handleClearSelectedEmployees}>Clear selection</Button>
+              <Button variant="outlined" size="small" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={handleSeedDefaultAvailability} disabled={loading}>
+                Seed default availability
+              </Button>
+            </Stack>
+
+            <Box sx={{ flex: 1 }} />
+            <Stack direction="row" spacing={0.85} sx={{ mt: 0.15 }} flexWrap="wrap" useFlexGap>
+              <Chip label={`Employees in dept: ${filteredRecruiters.length}`} variant="outlined" />
+              <Chip label={`Selected: ${selectedInScopeCount}`} variant="outlined" />
+              <Chip
+                label={`Has shifts in range: ${scheduledCount}`}
+                color={scheduledCount > 0 ? "success" : "default"}
+                variant={scheduledCount > 0 ? "filled" : "outlined"}
+              />
+              <Chip
+                label={`Fully scheduled: ${fullScheduledCount}`}
+                color={fullScheduledCount > 0 ? "success" : "default"}
+                variant={fullScheduledCount > 0 ? "filled" : "outlined"}
+              />
+              <Chip
+                label={`Partial: ${partialScheduledCount}`}
+                color={partialScheduledCount > 0 ? "warning" : "default"}
+                variant={partialScheduledCount > 0 ? "filled" : "outlined"}
+              />
+              <Chip
+                label={`Below target this range: ${belowTargetRecruiters.length}`}
+                color={belowTargetRecruiters.length > 0 ? "warning" : "default"}
+                variant={belowTargetRecruiters.length > 0 ? "filled" : "outlined"}
+              />
+              <Chip
+                label={`Unscheduled: ${unscheduledCount}`}
+                color={unscheduledCount > 0 ? "warning" : "default"}
+                variant={unscheduledCount > 0 ? "filled" : "outlined"}
+              />
+              <Button size="small" variant="outlined" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={() => setShowUnscheduled((v) => !v)}>
+                {showUnscheduled ? "Hide unscheduled" : "View unscheduled"}
+              </Button>
+            </Stack>
+
+            <Collapse in={showUnscheduled}>
+              <Paper sx={{ p: 1.25, mt: 1.1, borderRadius: 1.5 }} variant="outlined">
+                {availabilityLoading ? (
+                  <Typography variant="body2" color="text.secondary">Loading availability status...</Typography>
+                ) : unscheduledRecruiters.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">All filtered employees have at least one shift in this range.</Typography>
+                ) : (
+                  <Stack spacing={0.75}>
+                    {unscheduledRecruiters.map((r) => (
+                      <Stack key={r.id} direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                        <Typography variant="body2">
+                          {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          color={availabilityPresence[Number(r.id)] ? "success" : "warning"}
+                          label={availabilityPresence[Number(r.id)] ? "Availability exists" : "No availability submitted"}
+                        />
+                      </Stack>
+                    ))}
+                  </Stack>
+                )}
+              </Paper>
+            </Collapse>
+            </Stack>
+          </Paper>
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr" },
+              gap: 2,
+              alignItems: "start",
+            }}
+          >
+          <Paper variant="outlined" sx={subCardSx}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", md: "center" }}
+              spacing={1}
+              sx={{ mb: 1.5 }}
+            >
+              <Box>
+                <Typography sx={subCardTitleSx}>Coverage Rules</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Keep the same coverage logic, but organize rows in a cleaner planning surface.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ width: { xs: "100%", md: "auto" } }}>
+                <Button variant="outlined" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={applyCoveragePreset}>Load sample coverage</Button>
+                <Button
+                  variant="outlined"
+                  sx={{ width: { xs: "100%", sm: "auto" } }}
+                  onClick={() =>
+                    setCoverage((prev) => [...prev, { ...DEFAULT_COVERAGE, timezone: range.timezone || autoTimezone }])
+                  }
+                >
+                  Add coverage row
+                </Button>
               </Stack>
+            </Stack>
 
-              <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} sx={{ mt: 1.25 }}>
-                <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 260 }}>
-                  <FormControl size="small" sx={{ minWidth: 240 }}>
-                    <InputLabel>Days of week</InputLabel>
-                    <Select
-                      multiple
-                      label="Days of week"
-                      value={c.days_of_week}
+            <Stack spacing={1.1}>
+          {coverage.map((c, idx) => (
+            <Paper
+              key={`cov-${idx}`}
+              sx={{
+                p: 1.35,
+                borderRadius: 2.5,
+                border: "1px solid",
+                borderColor: "divider",
+                backgroundColor: "background.paper",
+                boxShadow: "0 2px 10px rgba(15,23,42,0.03)",
+              }}
+              variant="outlined"
+            >
+              <Stack spacing={1}>
+                <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25}>
+                  <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 210, flex: 1 }}>
+                    <TextField
+                      size="small"
+                      label="Coverage label"
+                      value={c.coverage_id}
                       onChange={(e) =>
-                        setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, days_of_week: e.target.value } : it)))
+                        setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, coverage_id: e.target.value } : it)))
                       }
-                      renderValue={(selected) =>
-                        selected
-                          .map((d) => DOW.find((x) => x.value === d)?.label || d)
-                          .join(", ")
+                    />
+                    <Tooltip title="Internal name for this coverage row, such as Front Desk Day Shift.">
+                      <IconButton size="small" sx={{ mt: 0.25 }}>
+                        <HelpOutlineIcon fontSize="inherit" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+
+                  <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 170, flex: 1 }}>
+                    <TextField
+                      size="small"
+                      label="Role (optional)"
+                      value={c.role_key}
+                      onChange={(e) =>
+                        setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, role_key: e.target.value } : it)))
+                      }
+                    />
+                    <Tooltip title="Optional tag for matching staff role, like cashier or frontdesk.">
+                      <IconButton size="small" sx={{ mt: 0.25 }}>
+                        <HelpOutlineIcon fontSize="inherit" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Stack>
+
+                <Stack
+                  direction={{ xs: "column", xl: "row" }}
+                  spacing={1.25}
+                  justifyContent="space-between"
+                  alignItems={{ xl: "flex-start" }}
+                >
+                  <Stack
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={1.25}
+                    sx={{ flex: 1, minWidth: 0 }}
+                    flexWrap="wrap"
+                    useFlexGap
+                  >
+                    <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 260 }}>
+                    <FormControl size="small" sx={{ minWidth: { xs: 0, md: 240 }, width: { xs: "100%", md: "auto" }, flex: { xs: 1, md: "none" } }}>
+                        <InputLabel>Days of week</InputLabel>
+                        <Select
+                          multiple
+                          label="Days of week"
+                          value={c.days_of_week}
+                          onChange={(e) =>
+                            setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, days_of_week: e.target.value } : it)))
+                          }
+                          renderValue={(selected) =>
+                            selected
+                              .map((d) => DOW.find((x) => x.value === d)?.label || d)
+                              .join(", ")
+                          }
+                        >
+                          {DOW.map((d) => (
+                            <MenuItem key={d.value} value={d.value}>{d.label}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <Tooltip title="Which weekdays this coverage row should repeat on inside the selected date range.">
+                        <IconButton size="small" sx={{ mt: 0.25 }}>
+                          <HelpOutlineIcon fontSize="inherit" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+
+                    <FormControl size="small" sx={{ minWidth: { xs: "100%", md: 160 }, width: { xs: "100%", md: "auto" } }}>
+                      <InputLabel>Break strategy</InputLabel>
+                      <Select
+                        label="Break strategy"
+                        value={c.break_strategy}
+                        onChange={(e) =>
+                          setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, break_strategy: e.target.value } : it)))
+                        }
+                      >
+                        <MenuItem value="fixed_time">Fixed time</MenuItem>
+                        <MenuItem value="window">Window</MenuItem>
+                        <MenuItem value="manual">Manual</MenuItem>
+                        <MenuItem value="auto_stagger">Auto stagger</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <TextField
+                      size="small"
+                      label="Break min"
+                      type="number"
+                      value={c.break_minutes}
+                      onChange={(e) =>
+                        setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, break_minutes: e.target.value } : it)))
+                      }
+                      sx={{ width: { xs: "100%", md: 120 } }}
+                    />
+
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
+                      <Checkbox
+                        checked={Boolean(c.break_paid)}
+                        onChange={(e) =>
+                          setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, break_paid: e.target.checked } : it)))
+                        }
+                      />
+                      <Typography variant="body2">Paid break</Typography>
+                    </Box>
+                  </Stack>
+
+                  <Stack
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={1.25}
+                    alignItems={{ xl: "flex-start" }}
+                    flexWrap="wrap"
+                    useFlexGap
+                  >
+                    <TextField
+                      size="small"
+                      label="Start"
+                      type="time"
+                      InputLabelProps={{ shrink: true }}
+                      value={c.start_time}
+                      onChange={(e) =>
+                        setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, start_time: e.target.value } : it)))
+                      }
+                    />
+                    <TextField
+                      size="small"
+                      label="End"
+                      type="time"
+                      InputLabelProps={{ shrink: true }}
+                      value={c.end_time}
+                      onChange={(e) =>
+                        setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, end_time: e.target.value } : it)))
+                      }
+                    />
+                    <Stack direction="row" spacing={0.25} alignItems="center" sx={{ width: { xs: "100%", md: 140 } }}>
+                      <TextField
+                        size="small"
+                        label="Headcount"
+                        type="number"
+                        value={c.headcount}
+                        onChange={(e) =>
+                          setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, headcount: e.target.value } : it)))
+                        }
+                        sx={{ width: { xs: "100%", md: 110 } }}
+                      />
+                      <Tooltip title="How many employees are needed for this shift window.">
+                        <IconButton size="small" sx={{ mt: 0.25 }}>
+                          <HelpOutlineIcon fontSize="inherit" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+
+                    <Button
+                      color="error"
+                      disabled={coverage.length <= 1}
+                      sx={{ alignSelf: { xs: "flex-start", md: "center" } }}
+                      onClick={() => setCoverage((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      Remove
+                    </Button>
+                  </Stack>
+                </Stack>
+
+                {showAdvanced ? (
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} flexWrap="wrap" useFlexGap>
+                    <TextField
+                      select
+                      size="small"
+                      label="Target department"
+                      value={c.location_id}
+                      onChange={(e) =>
+                        setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, location_id: e.target.value } : it)))
                       }
                     >
-                      {DOW.map((d) => (
-                        <MenuItem key={d.value} value={d.value}>{d.label}</MenuItem>
+                      <MenuItem value=""><em>Any department</em></MenuItem>
+                      {departments.map((dept) => (
+                        <MenuItem key={dept.id} value={dept.id}>{dept.name || `Department #${dept.id}`}</MenuItem>
                       ))}
-                    </Select>
-                  </FormControl>
-                  <Tooltip title="Which weekdays this coverage row should repeat on inside the selected date range.">
-                    <IconButton size="small" sx={{ mt: 0.25 }}>
-                      <HelpOutlineIcon fontSize="inherit" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-
-                {showAdvanced ? (
-                  <TextField
-                    select
-                    size="small"
-                    label="Target department"
-                    value={c.location_id}
-                    onChange={(e) =>
-                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, location_id: e.target.value } : it)))
-                    }
-                  >
-                    <MenuItem value=""><em>Any department</em></MenuItem>
-                    {departments.map((dept) => (
-                      <MenuItem key={dept.id} value={dept.id}>{dept.name || `Department #${dept.id}`}</MenuItem>
-                    ))}
-                  </TextField>
+                    </TextField>
+                    <TextField
+                      size="small"
+                      label="Coverage timezone"
+                      value={c.timezone}
+                      onChange={(e) =>
+                        setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, timezone: e.target.value } : it)))
+                      }
+                      placeholder={range.timezone || autoTimezone}
+                    />
+                  </Stack>
                 ) : null}
-
-                {showAdvanced ? (
-                  <TextField
-                    size="small"
-                    label="Coverage timezone"
-                    value={c.timezone}
-                    onChange={(e) =>
-                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, timezone: e.target.value } : it)))
-                    }
-                    placeholder={range.timezone || autoTimezone}
-                  />
-                ) : null}
-
-                <FormControl size="small" sx={{ minWidth: 160 }}>
-                  <InputLabel>Break strategy</InputLabel>
-                  <Select
-                    label="Break strategy"
-                    value={c.break_strategy}
-                    onChange={(e) =>
-                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, break_strategy: e.target.value } : it)))
-                    }
-                  >
-                    <MenuItem value="fixed_time">Fixed time</MenuItem>
-                    <MenuItem value="window">Window</MenuItem>
-                    <MenuItem value="manual">Manual</MenuItem>
-                    <MenuItem value="auto_stagger">Auto stagger</MenuItem>
-                  </Select>
-                </FormControl>
-
-                <TextField
-                  size="small"
-                  label="Break min"
-                  type="number"
-                  value={c.break_minutes}
-                  onChange={(e) =>
-                    setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, break_minutes: e.target.value } : it)))
-                  }
-                  sx={{ width: 120 }}
-                />
-
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <Checkbox
-                    checked={Boolean(c.break_paid)}
-                    onChange={(e) =>
-                      setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, break_paid: e.target.checked } : it)))
-                    }
-                  />
-                  <Typography variant="body2">Paid break</Typography>
-                </Box>
-
-                <Button
-                  color="error"
-                  disabled={coverage.length <= 1}
-                  onClick={() => setCoverage((prev) => prev.filter((_, i) => i !== idx))}
-                >
-                  Remove
-                </Button>
               </Stack>
             </Paper>
           ))}
-        </Stack>
+            </Stack>
+          </Paper>
+          </Box>
 
-        <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} flexWrap="wrap" useFlexGap>
-          <Button variant="outlined" onClick={applyCoveragePreset}>Load sample coverage</Button>
-          <Button
+          <Paper
             variant="outlined"
-            onClick={() =>
-              setCoverage((prev) => [...prev, { ...DEFAULT_COVERAGE, timezone: range.timezone || autoTimezone }])
-            }
+            sx={{
+              ...subCardSx,
+              py: 1.1,
+              px: 1.5,
+              backgroundColor: "rgba(248,250,252,0.78)",
+            }}
           >
-            Add coverage row
-          </Button>
-          <Button variant="text" onClick={() => setShowAdvanced((v) => !v)}>
-            {showAdvanced ? "Hide advanced" : "Show advanced"}
-          </Button>
-          <Button variant="contained" onClick={() => handleSuggest()} disabled={loading}>
-            Generate Suggestions
-          </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={() => handleSuggest({ onlyBelowTarget: true })}
-            disabled={loading || belowTargetRecruiters.length === 0}
-          >
-            Fill Gaps
-          </Button>
-          <Button variant="contained" color="success" onClick={handleApply} disabled={loading || !selectedSuggestionIds.length}>
-            Apply Selected
-          </Button>
+            <Stack
+              direction={{ xs: "column", lg: "row" }}
+              spacing={1}
+              justifyContent="space-between"
+              alignItems={{ xs: "stretch", lg: "center" }}
+            >
+              <Button
+                variant="text"
+                onClick={() => setShowAdvanced((v) => !v)}
+                sx={{ alignSelf: { xs: "flex-start", lg: "center" } }}
+              >
+                {showAdvanced ? "Hide advanced" : "Show advanced"}
+              </Button>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ width: { xs: "100%", lg: "auto" } }}>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  sx={{ width: { xs: "100%", sm: "auto" } }}
+                  onClick={() => handleSuggest({ onlyBelowTarget: true })}
+                  disabled={loading || belowTargetRecruiters.length === 0}
+                >
+                  Fill Gaps
+                </Button>
+                <Button variant="contained" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={() => handleSuggest()} disabled={loading}>
+                  Generate Suggestions
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  sx={{ width: { xs: "100%", sm: "auto" } }}
+                  onClick={handleApply}
+                  disabled={loading || !selectedSuggestionIds.length}
+                >
+                  Apply Selected
+                </Button>
+              </Stack>
+            </Stack>
+          </Paper>
         </Stack>
       </Paper>
 

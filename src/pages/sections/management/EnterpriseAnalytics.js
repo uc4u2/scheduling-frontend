@@ -77,6 +77,11 @@ export default function EnterpriseAnalytics() {
   );
   const [group, setGroup] = useState("day");
   const [selectedClientEA, setSelectedClientEA] = useState(null);
+  const [wfDepartmentId, setWfDepartmentId] = useState("");
+  const [wfEmployeeId, setWfEmployeeId] = useState("");
+  const [wfRecruiters, setWfRecruiters] = useState([]);
+  const [wfDepartments, setWfDepartments] = useState([]);
+  const [wfDirErr, setWfDirErr] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
@@ -86,10 +91,14 @@ export default function EnterpriseAnalytics() {
   // Advanced analytics
   const [advanced, setAdvanced] = useState(null);
   const [advErr, setAdvErr] = useState("");
+  const [wfLoading, setWfLoading] = useState(false);
+  const [workforce, setWorkforce] = useState(null);
+  const [wfErr, setWfErr] = useState("");
 
   // Helpers
   const fmtMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
   const pct = (n) => `${(Number(n || 0) * 100).toFixed(1)}%`;
+  const fmtHours = (n) => `${Number(n || 0).toFixed(1)} h`;
 
   const fetchData = async () => {
     setErr("");
@@ -136,11 +145,59 @@ export default function EnterpriseAnalytics() {
     }
   };
 
+  const fetchWorkforceDirectory = async () => {
+    setWfDirErr("");
+    try {
+      const [rec, dept] = await Promise.all([
+        api.get(`/manager/recruiters`, auth),
+        api.get(`/api/departments`, auth),
+      ]);
+      setWfRecruiters(rec?.data?.recruiters || []);
+      setWfDepartments(Array.isArray(dept?.data) ? dept.data : []);
+    } catch (e) {
+      setWfDirErr(
+        e?.response?.data?.error ||
+          "Failed to load departments and employees for workforce filters."
+      );
+      setWfRecruiters([]);
+      setWfDepartments([]);
+    }
+  };
+
+  const fetchWorkforce = async () => {
+    setWfErr("");
+    setWfLoading(true);
+    try {
+      const params = new URLSearchParams({
+        from,
+        to,
+        tz,
+        group,
+      });
+      if (wfDepartmentId) params.set("department_id", wfDepartmentId);
+      if (wfEmployeeId) params.set("recruiter_id", wfEmployeeId);
+      const { data } = await api.get(
+        `/api/manager/analytics/workforce?${params.toString()}`,
+        auth
+      );
+      setWorkforce(data || null);
+    } catch (e) {
+      setWorkforce(null);
+      setWfErr(
+        e?.response?.data?.error || "Failed to load workforce analytics"
+      );
+    } finally {
+      setWfLoading(false);
+    }
+  };
+
   // Initial load
   useEffect(() => {
     fetchData();
     fetchTips();
     fetchAdvanced();
+    fetchWorkforceDirectory();
+    fetchWorkforce();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -166,11 +223,40 @@ export default function EnterpriseAnalytics() {
   const rfm = adv?.rfm || [];
   const refundRate = adv?.refund_rate || {};
   const scheduleStability = adv?.schedule_stability || {};
+  const workforceKpis = workforce?.kpis || {};
+  const workforceSeries = workforce?.series || [];
+  const workforceEmployeeBreakdown = workforce?.employee_breakdown || [];
+  const workforceDepartmentBreakdown = workforce?.department_breakdown || [];
+  const workforceRisk = workforce?.overtime_risk || [];
+  const workforceReadiness = workforce?.payroll_readiness || {};
+  const workforceEmployees = useMemo(() => {
+    return (wfDepartmentId
+      ? wfRecruiters.filter(
+          (row) => String(row.department_id || "") === String(wfDepartmentId)
+        )
+      : wfRecruiters
+    ).map((row) => ({
+      ...row,
+      name:
+        row.name ||
+        [row.first_name, row.last_name].filter(Boolean).join(" ") ||
+        row.email ||
+        `Employee #${row.id}`,
+    }));
+  }, [wfDepartmentId, wfRecruiters]);
 
   // Presets
   const applyPreset = (key) => {
     const today = dayjs();
-    if (key === "MTD") {
+    if (key === "TODAY") {
+      setFrom(today.format("YYYY-MM-DD"));
+      setTo(today.format("YYYY-MM-DD"));
+      setGroup("day");
+    } else if (key === "WTD") {
+      setFrom(today.startOf("week").format("YYYY-MM-DD"));
+      setTo(today.format("YYYY-MM-DD"));
+      setGroup("day");
+    } else if (key === "MTD") {
       setFrom(today.startOf("month").format("YYYY-MM-DD"));
       setTo(today.format("YYYY-MM-DD"));
       setGroup("day");
@@ -241,6 +327,9 @@ export default function EnterpriseAnalytics() {
           <Stack direction="row" spacing={1} justifyContent="flex-end">
             <Button size="small" onClick={() => applyPreset("MTD")}>
               MTD
+            </Button>
+            <Button size="small" onClick={() => applyPreset("WTD")}>
+              WTD
             </Button>
             <Button size="small" onClick={() => applyPreset("30D")}>
               Last 30d
@@ -596,6 +685,465 @@ const ClientsTab = (
 <Box sx={{ mt: 2 }}>
   <SegmentsPanel />
 </Box>
+        </>
+      )}
+    </Box>
+  );
+
+  const WorkforceTab = (
+    <Box>
+      <SectionCard
+        title="Workforce Filters"
+        description="Track labor cost, overtime, and payroll readiness using the same date window with employee and department filters."
+        sx={{ mb: 2 }}
+      >
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={2}>
+            <TextField
+              label="From"
+              type="date"
+              fullWidth
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField
+              label="To"
+              type="date"
+              fullWidth
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField
+              select
+              label="Group"
+              fullWidth
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+            >
+              <MenuItem value="day">Daily</MenuItem>
+              <MenuItem value="week">Weekly</MenuItem>
+              <MenuItem value="month">Monthly</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              select
+              label="Department"
+              fullWidth
+              value={wfDepartmentId}
+              onChange={(e) => {
+                setWfDepartmentId(e.target.value);
+                setWfEmployeeId("");
+              }}
+            >
+              <MenuItem value="">All departments</MenuItem>
+              {wfDepartments.map((dept) => (
+                <MenuItem key={dept.id} value={String(dept.id)}>
+                  {dept.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              select
+              label="Employee"
+              fullWidth
+              value={wfEmployeeId}
+              onChange={(e) => setWfEmployeeId(e.target.value)}
+            >
+              <MenuItem value="">All employees</MenuItem>
+              {workforceEmployees.map((rec) => (
+                <MenuItem key={rec.id} value={String(rec.id)}>
+                  {rec.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              label="Timezone"
+              fullWidth
+              value={tz}
+              onChange={(e) => setTz(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={9}>
+            <Stack
+              direction="row"
+              spacing={1}
+              justifyContent="flex-end"
+              flexWrap="wrap"
+              useFlexGap
+            >
+              <Button size="small" onClick={() => applyPreset("TODAY")}>
+                Today
+              </Button>
+              <Button size="small" onClick={() => applyPreset("WTD")}>
+                WTD
+              </Button>
+              <Button size="small" onClick={() => applyPreset("MTD")}>
+                MTD
+              </Button>
+              <Button size="small" onClick={() => applyPreset("QTD")}>
+                QTD
+              </Button>
+              <Button size="small" onClick={() => applyPreset("YTD")}>
+                YTD
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  fetchWorkforceDirectory();
+                  fetchWorkforce();
+                }}
+              >
+                Refresh workforce
+              </Button>
+            </Stack>
+          </Grid>
+        </Grid>
+        {wfLoading && <LinearProgress sx={{ mt: 2 }} />}
+        {wfDirErr && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            {wfDirErr}
+          </Alert>
+        )}
+        {wfErr && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {wfErr}
+          </Alert>
+        )}
+      </SectionCard>
+
+      {workforce && (
+        <>
+          <SectionCard
+            title="Labor Cost Overview"
+            description="Actual worked hours, overtime cost, paid leave cost, and payroll readiness signals for the selected window."
+            sx={{ mb: 2 }}
+          >
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Estimated Labor Cost"
+                  value={fmtMoney(workforceKpis.estimated_labor_cost)}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Worked Hours"
+                  value={fmtHours(workforceKpis.worked_hours)}
+                  help={`${workforceKpis.worked_shifts || 0} shifts`}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Overtime Hours"
+                  value={fmtHours(workforceKpis.overtime_hours)}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Paid Leave Cost"
+                  value={fmtMoney(workforceKpis.paid_leave_cost)}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Employees Worked"
+                  value={workforceKpis.employees_worked || 0}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Pending Time Approvals"
+                  value={workforceReadiness.pending_time_approvals || 0}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Pending Leave Requests"
+                  value={workforceReadiness.pending_leave_requests || 0}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Anomalies"
+                  value={workforceReadiness.anomaly_count || 0}
+                />
+              </Grid>
+            </Grid>
+          </SectionCard>
+
+          <SectionCard
+            title="Labor Cost Trend"
+            description="Use daily, weekly, or monthly grouping to spot labor-cost spikes before payroll closes."
+            sx={{ mb: 2 }}
+          >
+            {workforceSeries.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No worked hours or approved paid leave in this range.
+              </Typography>
+            ) : (
+              <Grid container spacing={1.5}>
+                {workforceSeries.map((row) => (
+                  <Grid item xs={12} md={6} key={row.bucket_start}>
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 1.5,
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                      >
+                        <Typography variant="subtitle2">{row.bucket}</Typography>
+                        <Chip
+                          size="small"
+                          color="primary"
+                          label={fmtMoney(row.labor_cost)}
+                        />
+                      </Stack>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                        sx={{ mt: 1 }}
+                      >
+                        <Chip
+                          size="small"
+                          label={`Hours: ${fmtHours(row.worked_hours)}`}
+                        />
+                        <Chip
+                          size="small"
+                          label={`OT: ${fmtHours(row.overtime_hours)}`}
+                        />
+                        <Chip
+                          size="small"
+                          label={`Paid leave: ${fmtHours(row.paid_leave_hours)}`}
+                        />
+                        <Chip
+                          size="small"
+                          label={`Shifts: ${row.worked_shifts || 0}`}
+                        />
+                      </Stack>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </SectionCard>
+
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} md={6}>
+              <SectionCard
+                title="Overtime & Risk"
+                description="Employees already in overtime or approaching the weekly threshold."
+              >
+                {workforceRisk.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No overtime risk in the selected range.
+                  </Typography>
+                ) : (
+                  workforceRisk.map((row) => (
+                    <Box
+                      key={`${row.recruiter_id}-${row.week}`}
+                      sx={{
+                        mb: 1.25,
+                        p: 1.25,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 1.5,
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                      >
+                        <Typography variant="subtitle2">
+                          {row.employee}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          color={
+                            row.status === "overtime" ? "error" : "warning"
+                          }
+                          label={
+                            row.status === "overtime"
+                              ? "In overtime"
+                              : "Close to overtime"
+                          }
+                        />
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.department_name || "Unassigned"} · {row.week}
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={Math.min(
+                          100,
+                          Math.round((100 * Number(row.hours || 0)) / Math.max(1, Number(row.threshold || 0)))
+                        )}
+                        color={row.status === "overtime" ? "error" : "warning"}
+                        sx={{ mt: 1, height: 8, borderRadius: 999 }}
+                      />
+                      <Typography variant="body2" sx={{ mt: 1 }}>
+                        {fmtHours(row.hours)} against a {fmtHours(row.threshold)} threshold
+                      </Typography>
+                    </Box>
+                  ))
+                )}
+              </SectionCard>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <SectionCard
+                title="Payroll Readiness"
+                description="What still needs review before payroll can close cleanly."
+              >
+                <Stack spacing={1.25}>
+                  <Chip
+                    color={
+                      workforceReadiness.pending_time_approvals ? "warning" : "success"
+                    }
+                    label={`Pending time approvals: ${
+                      workforceReadiness.pending_time_approvals || 0
+                    }`}
+                  />
+                  <Chip
+                    color={
+                      workforceReadiness.pending_leave_requests ? "warning" : "success"
+                    }
+                    label={`Pending leave requests: ${
+                      workforceReadiness.pending_leave_requests || 0
+                    }`}
+                  />
+                  <Chip
+                    color={workforceReadiness.anomaly_count ? "warning" : "success"}
+                    label={`Time anomalies: ${workforceReadiness.anomaly_count || 0}`}
+                  />
+                  <Divider />
+                  <Typography variant="body2" color="text.secondary">
+                    Estimated regular pay: {fmtMoney(workforceKpis.regular_pay)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Estimated overtime pay: {fmtMoney(workforceKpis.overtime_pay)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Paid leave hours: {fmtHours(workforceKpis.paid_leave_hours)}
+                  </Typography>
+                </Stack>
+              </SectionCard>
+            </Grid>
+          </Grid>
+
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <SectionCard
+                title="Department Cost Breakdown"
+                description="Compare labor cost and overtime by department."
+              >
+                {workforceDepartmentBreakdown.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No department cost data in this range.
+                  </Typography>
+                ) : (
+                  workforceDepartmentBreakdown.map((row, idx) => (
+                    <Box key={`${row.department_id ?? "unassigned"}-${idx}`} sx={{ mb: 1.5 }}>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                      >
+                        <Typography variant="subtitle2">
+                          {row.department_name || "Unassigned"}
+                        </Typography>
+                        <Typography variant="subtitle2">
+                          {fmtMoney(row.total_cost)}
+                        </Typography>
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.employees || 0} employee(s) · {fmtHours(row.worked_hours)} · OT {fmtHours(row.overtime_hours)}
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={Math.min(
+                          100,
+                          Math.round(
+                            (100 * Number(row.total_cost || 0)) /
+                              Math.max(
+                                1,
+                                Number(workforceDepartmentBreakdown[0]?.total_cost || 0)
+                              )
+                          )
+                        )}
+                        sx={{ mt: 0.75, height: 7, borderRadius: 999 }}
+                      />
+                    </Box>
+                  ))
+                )}
+              </SectionCard>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <SectionCard
+                title="Employee Cost Breakdown"
+                description="See who is driving labor cost and overtime in the selected period."
+              >
+                {workforceEmployeeBreakdown.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No employee cost data in this range.
+                  </Typography>
+                ) : (
+                  workforceEmployeeBreakdown.slice(0, 10).map((row) => (
+                    <Box key={row.recruiter_id} sx={{ mb: 1.5 }}>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                      >
+                        <Typography variant="subtitle2">{row.employee}</Typography>
+                        <Typography variant="subtitle2">
+                          {fmtMoney(row.total_cost)}
+                        </Typography>
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.department_name || "Unassigned"} · {fmtHours(row.worked_hours)} · OT {fmtHours(row.overtime_hours)}
+                      </Typography>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                        sx={{ mt: 0.75 }}
+                      >
+                        <Chip size="small" label={`Rate ${fmtMoney(row.hourly_rate)}/h`} />
+                        <Chip size="small" label={`Regular ${fmtMoney(row.regular_pay)}`} />
+                        <Chip size="small" label={`OT ${fmtMoney(row.overtime_pay)}`} />
+                        {Number(row.paid_leave_cost || 0) > 0 && (
+                          <Chip
+                            size="small"
+                            color="success"
+                            variant="outlined"
+                            label={`Paid leave ${fmtMoney(row.paid_leave_cost)}`}
+                          />
+                        )}
+                      </Stack>
+                    </Box>
+                  ))
+                )}
+              </SectionCard>
+            </Grid>
+          </Grid>
         </>
       )}
     </Box>
@@ -1028,6 +1576,7 @@ const ClientsTab = (
   const tabs = [
     { label: "Overview", content: OverviewTab },
     { label: "Advanced", content: AdvancedTab },
+    { label: "Workforce Cost", content: WorkforceTab },
     { label: "Tips & Clients", content: TipsTab },
     { label: "Clients 360", content: ClientsTab },
 

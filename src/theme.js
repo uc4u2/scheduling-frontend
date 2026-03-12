@@ -44,7 +44,7 @@ const marketingTokens = {
 
 const commonSettings = {
   typography: {
-    fontFamily: '"Poppins", "Roboto", sans-serif',
+    fontFamily: '"Inter", "Plus Jakarta Sans", "Poppins", "Roboto", sans-serif',
     h1: {
       fontWeight: 800,
       fontSize: 'clamp(3rem, 2.4rem + 1.6vw, 3.5rem)',
@@ -73,12 +73,12 @@ const commonSettings = {
       fontWeight: 500,
     },
     body1: {
-      fontSize: '1.125rem',
-      lineHeight: 1.75,
+      fontSize: '1.0625rem',
+      lineHeight: 1.72,
     },
     body2: {
-      fontSize: '1rem',
-      lineHeight: 1.7,
+      fontSize: '0.95rem',
+      lineHeight: 1.65,
     },
     overline: {
       fontSize: '0.75rem',
@@ -104,7 +104,7 @@ const commonSettings = {
     },
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 16,
   },
   marketing: marketingTokens,
   customShadows: marketingTokens.shadows,
@@ -113,12 +113,13 @@ const commonSettings = {
       styleOverrides: {
         root: {
           borderRadius: 10,
-          paddingLeft: 20,
-          paddingRight: 20,
+          paddingLeft: 18,
+          paddingRight: 18,
+          minHeight: 40,
           transition: 'transform 0.1s ease, box-shadow 0.2s ease, background-color 0.2s',
           '&:hover': {
             transform: 'translateY(-1px)',
-            boxShadow: '0 8px 20px rgba(79,125,255,0.15)',
+            boxShadow: '0 10px 24px rgba(79,125,255,0.14)',
           },
           '&:focus-visible': {
             boxShadow: '0 0 0 3px rgba(79,125,255,0.25)',
@@ -130,8 +131,41 @@ const commonSettings = {
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          boxShadow: '0 6px 24px rgba(0,0,0,0.04)',
+          borderRadius: 16,
+          boxShadow: '0 4px 20px rgba(15,23,42,0.04)',
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 999,
+          fontWeight: 600,
+          border: '1px solid rgba(15, 23, 42, 0.06)',
+          backgroundColor: '#f8fafc',
+        },
+        label: {
+          paddingLeft: 10,
+          paddingRight: 10,
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          borderRadius: 14,
+        },
+        standardInfo: {
+          backgroundColor: 'rgba(59, 130, 246, 0.08)',
+        },
+        standardWarning: {
+          backgroundColor: 'rgba(245, 158, 11, 0.10)',
+        },
+        standardSuccess: {
+          backgroundColor: 'rgba(34, 197, 94, 0.10)',
+        },
+        standardError: {
+          backgroundColor: 'rgba(239, 68, 68, 0.10)',
         },
       },
     },
@@ -156,19 +190,20 @@ const commonSettings = {
         root: {
           borderRadius: 12,
           backgroundColor: 'white',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-          transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
+          boxShadow: '0 1px 2px rgba(15,23,42,0.02)',
+          transition: 'box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease',
           '&:hover .MuiOutlinedInput-notchedOutline': {
             borderColor: PRIMARY_COLOR,
-            boxShadow: '0 4px 12px rgba(79,125,255,0.2)',
+            boxShadow: 'none',
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
             borderColor: PRIMARY_COLOR,
-            boxShadow: '0 6px 20px rgba(79,125,255,0.3)',
+            borderWidth: 1,
           },
         },
         notchedOutline: {
-          borderColor: '#ccc',
+          borderColor: '#e5e7eb',
+          borderWidth: 1,
         },
       },
     },
@@ -188,13 +223,7 @@ const commonSettings = {
         outlined: {
           borderRadius: 12,
           backgroundColor: 'white',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-          '&:hover': {
-            boxShadow: '0 4px 12px rgba(79,125,255,0.2)',
-          },
-          '&.Mui-focused': {
-            boxShadow: '0 6px 20px rgba(79,125,255,0.3)',
-          },
+          boxShadow: '0 1px 2px rgba(15,23,42,0.02)',
         },
       },
     },
@@ -953,7 +982,6 @@ export const plumMistTheme = createTheme({
     },
   },
 });
-
 
 
 
