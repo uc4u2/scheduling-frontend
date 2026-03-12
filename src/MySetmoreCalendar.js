@@ -1047,28 +1047,6 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         <Snackbar open onClose={() => setMsg("")} autoHideDuration={3000} message={msg} />
       )}
 
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        alignItems={{ xs: "flex-start", md: "center" }}
-        justifyContent="space-between"
-        spacing={2}
-        sx={{ mb: 2 }}
-      >
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Employee Calendar
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Availability, bookings, meetings, and leave — all in one view.
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Button variant="outlined" onClick={fetchEvents} aria-label="Refresh calendar">
-            Refresh
-          </Button>
-        </Stack>
-      </Stack>
-
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <Paper
           sx={{

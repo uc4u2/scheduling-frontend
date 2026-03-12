@@ -211,7 +211,8 @@ const RecruiterDashboard = ({ token }) => {
       subtitle="Manage your availability, bookings, and invites."
       fullWidth
       sx={{ minHeight: "100vh", mt: { xs: 4, md: 0 }, px: { xs: 1, md: 2 } }}
-      contentSx={{ p: { xs: 1.5, md: 2.5 } }}
+      contentVariant={activeTab === "calendar" ? false : "outlined"}
+      contentSx={activeTab === "calendar" ? { p: 0, backgroundColor: "transparent" } : { p: { xs: 1.5, md: 2.5 } }}
     >
       <RecruiterTabs
         localTab={activeTab}
@@ -233,19 +234,14 @@ const RecruiterDashboard = ({ token }) => {
               }}
             >
               {authLoaded ? (
-                <Paper
-                  elevation={0}
+                <Box
                   sx={{
-                    p: { xs: 1.5, md: 2.5 },
-                    borderRadius: theme.shape.borderRadius * 1.5,
-                    border: `1px solid ${theme.palette.divider}`,
-                    background: theme.palette.background.paper,
                     flex: 1,
                     overflow: "visible",
                   }}
                 >
                   <MySetmoreCalendar token={token} />
-                </Paper>
+                </Box>
               ) : (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <CircularProgress size={20} />

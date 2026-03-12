@@ -16,7 +16,15 @@ export default function ManagementFrame({
   return (
     <Box sx={{ maxWidth: fullWidth ? "none" : maxWidth, mx: fullWidth ? 0 : "auto", width: "100%", ...sx }}>
       {(title || subtitle || headerActions) ? (
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
+        <Paper
+          variant="outlined"
+          sx={{
+            p: { xs: 2.5, sm: 3 },
+            borderRadius: 4,
+            mb: 3,
+            boxShadow: "0 2px 10px rgba(15, 23, 42, 0.05)",
+          }}
+        >
           <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
             <Box sx={{ minWidth: 0, overflow: "hidden" }}>
               {title && (
@@ -35,9 +43,21 @@ export default function ManagementFrame({
         </Paper>
       ) : null}
 
-      <Paper variant={contentVariant} sx={{ p: 2.5, borderRadius: 3, ...contentSx }}>
-        {children}
-      </Paper>
+      {contentVariant === false ? (
+        <Box sx={contentSx}>{children}</Box>
+      ) : (
+        <Paper
+          variant={contentVariant}
+          sx={{
+            p: { xs: 2.5, sm: 3 },
+            borderRadius: 4,
+            boxShadow: "0 2px 10px rgba(15, 23, 42, 0.05)",
+            ...contentSx,
+          }}
+        >
+          {children}
+        </Paper>
+      )}
     </Box>
   );
 }
