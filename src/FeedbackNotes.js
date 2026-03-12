@@ -84,26 +84,30 @@ const FeedbackNotes = ({ token }) => {
         <Typography variant="h6" gutterBottom>
           Feedback Logs
         </Typography>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Candidate ID</TableCell>
-              <TableCell>Feedback</TableCell>
-              <TableCell>Timestamp</TableCell>
-              <TableCell>Recruiter</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {feedbackList.map((fb) => (
-              <TableRow key={fb.id}>
-                <TableCell>{fb.candidate_id}</TableCell>
-                <TableCell>{fb.note}</TableCell>
-                <TableCell>{fb.timestamp}</TableCell>
-                <TableCell>{fb.recruiter}</TableCell>
+        {feedbackList.length === 0 ? (
+          <Alert severity="info">No feedback notes have been saved for this company yet.</Alert>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Candidate ID</TableCell>
+                <TableCell>Feedback</TableCell>
+                <TableCell>Timestamp</TableCell>
+                <TableCell>Recruiter</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {feedbackList.map((fb) => (
+                <TableRow key={fb.id}>
+                  <TableCell>{fb.candidate_id}</TableCell>
+                  <TableCell>{fb.note}</TableCell>
+                  <TableCell>{fb.timestamp || "—"}</TableCell>
+                  <TableCell>{fb.recruiter || "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </Paper>
     </Container>
   );
