@@ -117,10 +117,9 @@ export default function PublicTip({ slugOverride }) {
 
   const STRIPE_PK = process.env.REACT_APP_STRIPE_PUBLIC_KEY || "";
 
-  const stripePromise = useMemo(() => loadStripe(STRIPE_PK), [STRIPE_PK]);
-
   const [amt, setAmt] = useState(5); // dollars
   const [clientSecret, setClientSecret] = useState("");
+  const [stripeAccountId, setStripeAccountId] = useState("");
   const [error, setError] = useState("");
   const [resolved, setResolved] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -132,6 +131,15 @@ export default function PublicTip({ slugOverride }) {
 
   // NEW: external review URL from settings
   const [extUrl, setExtUrl] = useState("");
+
+  const stripePromise = useMemo(
+    () =>
+      loadStripe(
+        STRIPE_PK,
+        stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
+      ),
+    [STRIPE_PK, stripeAccountId]
+  );
 
   const labelFor = (url) => {
     try {
@@ -225,6 +233,7 @@ export default function PublicTip({ slugOverride }) {
         { noCompanyHeader: true, noAuth: true }
       );
       setClientSecret(data.client_secret);
+      setStripeAccountId((data.stripe_account_id || "").trim());
     } catch (e) {
       setError(e?.response?.data?.error || "Failed to create payment intent.");
     } finally {

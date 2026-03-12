@@ -1011,7 +1011,16 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
       }
       await loadOrders();
     } catch (error) {
-      const message = error?.response?.data?.error || error?.message || "Unable to update fulfillment";
+      const code = String(error?.response?.data?.error || "").trim().toLowerCase();
+      const backendMessage = error?.response?.data?.message || "";
+      let message = backendMessage || error?.response?.data?.error || error?.message || "Unable to update fulfillment";
+      if (code === "invalid_transition") {
+        if (selectedAction === "ship") {
+          message = "Cannot mark shipped yet. Shipping flow is: 1) Mark packed, 2) Mark shipped (with tracking number), 3) Mark delivered.";
+        } else if (selectedAction === "deliver") {
+          message = "Cannot mark delivered from the current status. Complete the prior fulfillment step first.";
+        }
+      }
       showMessage(message, "error");
     } finally {
       setFulfillmentSaving(false);
@@ -2183,10 +2192,27 @@ const ManagerProductOrdersView = ({ token: tokenProp, connect }) => {
                     <Typography variant="subtitle1" fontWeight={600} gutterBottom>
                       Update fulfillment
                     </Typography>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      {["shipping", "local_delivery"].includes(String(orderDetail?.delivery_method || "").toLowerCase())
+                        ? "Shipping/local delivery flow: 1) Mark packed, 2) Mark shipped (tracking number required), 3) Mark delivered."
+                        : "Pickup flow: 1) Mark ready for pickup, 2) Mark picked up (delivered)."}
+                    </Alert>
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={4}>
                         <FormControl fullWidth size="small">
-                          <FormLabel shrink>Next action</FormLabel>
+                          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5 }}>
+                            <FormLabel shrink>Next action</FormLabel>
+                            <Tooltip
+                              title={
+                                ["shipping", "local_delivery"].includes(String(orderDetail?.delivery_method || "").toLowerCase())
+                                  ? "Use sequence: packed -> shipped -> delivered. Trying to ship before packed will fail."
+                                  : "Use sequence: ready for pickup -> picked up."
+                              }
+                              arrow
+                            >
+                              <HelpOutlineIcon fontSize="inherit" sx={{ color: "text.secondary", cursor: "help" }} />
+                            </Tooltip>
+                          </Stack>
                           <Select
                             value={fulfillmentForm.status}
                             onChange={(event) => setFulfillmentForm((prev) => ({ ...prev, status: event.target.value }))}
