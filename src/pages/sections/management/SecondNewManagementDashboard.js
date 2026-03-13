@@ -76,6 +76,8 @@ import InsightsIcon from "@mui/icons-material/Insights";
 import CampaignIcon from "@mui/icons-material/Campaign";
 
 import CloseIcon from "@mui/icons-material/Close";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import AutoAwesomeMosaicIcon from "@mui/icons-material/AutoAwesomeMosaic";
 
@@ -159,6 +161,7 @@ const SecondNewManagementDashboard = ({ token }) => {
   // which modal is open: number (panel index) or "analytics"
 
   const [openIndex, setOpenIndex] = useState(null);
+  const [analyticsFullscreen, setAnalyticsFullscreen] = useState(false);
 
 
 
@@ -433,6 +436,7 @@ const startLinkLabel =
 const openAnalytics = useCallback(() => {
 
   setOpenIndex("analytics");
+  setAnalyticsFullscreen(false);
 
 }, []);
 
@@ -703,7 +707,10 @@ const panels = useMemo(
 
 
 
-  const handleClose = () => setOpenIndex(null);
+  const handleClose = () => {
+    setOpenIndex(null);
+    setAnalyticsFullscreen(false);
+  };
 
 
 
@@ -734,6 +741,11 @@ const panels = useMemo(
       ? panels[openIndex]?.label
 
       : "";
+
+
+  const analyticsImmersive =
+
+    openIndex === "analytics" && analyticsFullscreen && !fullScreen;
 
 
 
@@ -1101,7 +1113,7 @@ const panels = useMemo(
 
         onClose={handleClose}
 
-        fullScreen={fullScreen}
+        fullScreen={fullScreen || analyticsImmersive}
 
         fullWidth
 
@@ -1111,9 +1123,13 @@ const panels = useMemo(
 
           sx: {
 
-            borderRadius: fullScreen ? 0 : 2,
+            borderRadius: fullScreen || analyticsImmersive ? 0 : 2,
 
             overflow: "hidden",
+            width: analyticsImmersive ? "100vw" : undefined,
+            maxWidth: analyticsImmersive ? "100vw" : undefined,
+            height: analyticsImmersive ? "100vh" : undefined,
+            maxHeight: analyticsImmersive ? "100vh" : undefined,
 
           },
 
@@ -1125,9 +1141,9 @@ const panels = useMemo(
 
           sx={{
 
-            py: 1.5,
+            py: analyticsImmersive ? 1 : 1.5,
 
-            pr: 7,
+            pr: 14,
 
             position: "sticky",
 
@@ -1140,6 +1156,26 @@ const panels = useMemo(
             borderBottom: "1px solid",
 
             borderColor: "divider",
+            "& .analytics-dialog-controls": {
+              opacity: { xs: 1, md: 0.15 },
+              transform: "translateY(-2px)",
+              transition: "opacity 160ms ease, transform 160ms ease",
+            },
+            "& .analytics-dialog-control-label": {
+              maxWidth: { xs: 120, md: 0 },
+              opacity: { xs: 1, md: 0 },
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              transition: "max-width 160ms ease, opacity 160ms ease",
+            },
+            "&:hover .analytics-dialog-controls": {
+              opacity: 1,
+              transform: "translateY(0)",
+            },
+            "&:hover .analytics-dialog-control-label": {
+              maxWidth: 120,
+              opacity: 1,
+            },
 
           }}
 
@@ -1157,19 +1193,88 @@ const panels = useMemo(
 
           </Stack>
 
-          <IconButton
+          <Stack
 
-            aria-label="close"
+            className="analytics-dialog-controls"
 
-            onClick={handleClose}
+            direction="row"
 
-            sx={{ position: "absolute", right: 8, top: 8 }}
+            spacing={0.5}
+
+            sx={{
+
+              position: "absolute",
+
+              right: 8,
+
+              top: 8,
+
+              alignItems: "center",
+
+              bgcolor: "rgba(255,255,255,0.88)",
+
+              backdropFilter: "blur(10px)",
+
+              border: "1px solid",
+
+              borderColor: "divider",
+
+              borderRadius: 999,
+
+              p: 0.5,
+
+              boxShadow: "0 10px 26px rgba(15, 23, 42, 0.10)",
+
+            }}
 
           >
 
-            <CloseIcon />
+            {openIndex === "analytics" && !fullScreen ? (
+              <>
+                <IconButton
 
-          </IconButton>
+                  aria-label={analyticsImmersive ? "Exit full page" : "Open full page"}
+
+                  onClick={() => setAnalyticsFullscreen((prev) => !prev)}
+
+                  size="small"
+
+                  sx={{ color: "text.secondary" }}
+
+                >
+
+                  {analyticsImmersive ? <CloseFullscreenIcon fontSize="small" /> : <OpenInFullIcon fontSize="small" />}
+
+                </IconButton>
+
+                <Typography
+                  className="analytics-dialog-control-label"
+                  variant="caption"
+                  sx={{ color: "text.secondary", fontWeight: 600, mr: 0.25 }}
+                >
+                  {analyticsImmersive ? "Windowed" : "Full page"}
+                </Typography>
+              </>
+
+            ) : null}
+
+            <IconButton
+
+              aria-label="close"
+
+              onClick={handleClose}
+
+              size="small"
+
+              sx={{ color: "text.secondary" }}
+
+            >
+
+              <CloseIcon fontSize="small" />
+
+            </IconButton>
+
+          </Stack>
 
         </DialogTitle>
 
@@ -1183,11 +1288,20 @@ const panels = useMemo(
 
             p: { xs: 1.5, sm: 2.5, md: 3 },
 
-            maxHeight: "calc(100vh - 160px)",
+            maxHeight: analyticsImmersive ? "calc(100vh - 72px)" : "calc(100vh - 160px)",
 
             overflow: "auto",
 
             bgcolor: "background.default",
+            "&::-webkit-scrollbar": {
+              width: 10,
+            },
+            "&::-webkit-scrollbar-thumb": {
+              backgroundColor: "rgba(15, 23, 42, 0.16)",
+              borderRadius: 999,
+              border: "2px solid transparent",
+              backgroundClip: "padding-box",
+            },
 
           }}
 
@@ -1220,6 +1334,7 @@ const panels = useMemo(
             borderColor: "divider",
 
             bgcolor: "background.paper",
+            display: analyticsImmersive ? "none" : "flex",
 
           }}
 
