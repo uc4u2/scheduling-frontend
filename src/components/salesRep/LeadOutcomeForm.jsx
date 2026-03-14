@@ -25,10 +25,12 @@ const OUTCOMES = [
   "duplicate",
 ];
 
-const CALLBACK_OUTCOMES = new Set(["no_answer", "busy", "voicemail", "call_back_later"]);
+const CALLBACK_OUTCOMES = new Set(["no_answer", "busy", "voicemail", "call_back_later", "interested"]);
+const DEAL_REQUIRED_OUTCOMES = new Set(["booked_demo"]);
 
 export default function LeadOutcomeForm({ lead, form, onChange, onSubmit, submitting }) {
   const needsCallback = CALLBACK_OUTCOMES.has(form.outcome);
+  const needsDeal = DEAL_REQUIRED_OUTCOMES.has(form.outcome);
 
   return (
     <Paper sx={{ p: 3 }}>
@@ -36,7 +38,7 @@ export default function LeadOutcomeForm({ lead, form, onChange, onSubmit, submit
         <Stack spacing={0.5}>
           <Typography variant="h6">Submit Outcome</Typography>
           <Typography variant="body2" color="text.secondary">
-            Record the call result and optionally schedule the callback in UTC-safe form.
+            Record the call result and keep ownership protected by scheduling the follow-up or linking the deal before the lead is released.
           </Typography>
         </Stack>
         {!lead ? (
@@ -68,7 +70,7 @@ export default function LeadOutcomeForm({ lead, form, onChange, onSubmit, submit
         {needsCallback ? (
           <Stack spacing={1}>
             <Alert severity="warning" variant="outlined">
-              This outcome should schedule a callback. Choose the callback time before submitting.
+              This outcome should schedule a callback. Choose the callback time before submitting so the lead stays in your callback queue.
             </Alert>
             <TextField
               fullWidth
@@ -81,13 +83,18 @@ export default function LeadOutcomeForm({ lead, form, onChange, onSubmit, submit
             />
           </Stack>
         ) : null}
+        {form.outcome === "interested" ? (
+          <Alert severity="info" variant="outlined">
+            Interested leads must either get a callback time now or be linked to an existing deal so attribution stays with you.
+          </Alert>
+        ) : null}
         <FormControlLabel
           control={<Switch checked={form.registration_link_sent} onChange={(e) => onChange("registration_link_sent", e.target.checked)} disabled={!lead || submitting} />}
           label="Registration link already sent"
         />
         <TextField
           fullWidth
-          label="Existing deal ID (optional)"
+          label={needsDeal ? "Existing deal ID (required)" : "Existing deal ID (optional)"}
           value={form.deal_id}
           onChange={(e) => onChange("deal_id", e.target.value)}
           disabled={!lead || submitting}

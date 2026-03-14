@@ -101,6 +101,7 @@ export default function SalesCRMPage() {
   const [assignedRepId, setAssignedRepId] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
   const [flagFilter, setFlagFilter] = useState("");
+  const [outcomeFilter, setOutcomeFilter] = useState("");
   const [callbackState, setCallbackState] = useState("");
   const [sortBy, setSortBy] = useState("created_at");
   const [sortDir, setSortDir] = useState("desc");
@@ -157,6 +158,7 @@ export default function SalesCRMPage() {
           assigned_rep_id: assignedRepId || undefined,
           source: sourceFilter || undefined,
           flag: flagFilter || undefined,
+          outcome: outcomeFilter || undefined,
           callback_state: callbackState || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
@@ -175,7 +177,7 @@ export default function SalesCRMPage() {
     } finally {
       setLoading(false);
     }
-  }, [assignedRepId, callbackState, drawerLeadId, flagFilter, loadDrawerLead, page, perPage, query, showBanner, sortBy, sortDir, sourceFilter, status]);
+  }, [assignedRepId, callbackState, drawerLeadId, flagFilter, loadDrawerLead, outcomeFilter, page, perPage, query, showBanner, sortBy, sortDir, sourceFilter, status]);
 
   useEffect(() => {
     loadStatic();
@@ -210,10 +212,27 @@ export default function SalesCRMPage() {
     const values = new Set(leads.map((lead) => (lead.source || "").trim()).filter(Boolean));
     return Array.from(values).sort((a, b) => a.localeCompare(b));
   }, [leads]);
+  const outcomeOptions = useMemo(() => {
+    const values = new Set(leads.map((lead) => (lead.last_outcome || "").trim()).filter(Boolean));
+    [
+      "no_answer",
+      "busy",
+      "voicemail",
+      "wrong_number",
+      "interested",
+      "call_back_later",
+      "booked_demo",
+      "not_interested",
+      "do_not_call",
+      "already_subscribed",
+      "duplicate",
+    ].forEach((value) => values.add(value));
+    return Array.from(values);
+  }, [leads]);
 
   useEffect(() => {
     setPage(0);
-  }, [query, status, assignedRepId, sourceFilter, flagFilter, callbackState, perPage, sortBy, sortDir]);
+  }, [query, status, assignedRepId, sourceFilter, flagFilter, outcomeFilter, callbackState, perPage, sortBy, sortDir]);
 
   const openLeadWorkspace = useCallback(async (leadId, meta = {}) => {
     setDrawerLeadId(leadId);
@@ -544,6 +563,12 @@ export default function SalesCRMPage() {
               <MenuItem value="subscribed">Subscribed</MenuItem>
               <MenuItem value="duplicate">Duplicate</MenuItem>
               <MenuItem value="do_not_call">Do not call</MenuItem>
+            </TextField>
+            <TextField select label="Outcome" value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value)} sx={{ minWidth: 200 }}>
+              <MenuItem value="">All outcomes</MenuItem>
+              {outcomeOptions.map((option) => (
+                <MenuItem key={option} value={option}>{option}</MenuItem>
+              ))}
             </TextField>
             <TextField select label="Callback" value={callbackState} onChange={(e) => setCallbackState(e.target.value)} sx={{ minWidth: 180 }}>
               <MenuItem value="">Any callback state</MenuItem>

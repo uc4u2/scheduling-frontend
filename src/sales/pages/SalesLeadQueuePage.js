@@ -79,6 +79,18 @@ export default function SalesLeadQueuePage() {
 
   const handleSubmit = async () => {
     if (!lead || !form.outcome) return;
+    if (form.outcome === "call_back_later" && !form.callback_at) {
+      setBanner({ type: "warning", message: "Set a callback time before submitting call_back_later." });
+      return;
+    }
+    if (form.outcome === "interested" && !form.callback_at && !form.deal_id) {
+      setBanner({ type: "warning", message: "Interested leads need a callback time or an existing deal ID so ownership stays protected." });
+      return;
+    }
+    if (form.outcome === "booked_demo" && !form.deal_id) {
+      setBanner({ type: "warning", message: "Booked demo requires an existing deal ID so commission attribution stays linked to you." });
+      return;
+    }
     setSubmitting(true);
     try {
       await submitLeadOutcome(lead.id, {
