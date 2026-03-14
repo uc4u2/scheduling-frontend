@@ -169,7 +169,7 @@ export default function SalesLeadQueuePage() {
   }, [destroyDevice, deviceStatusSummary, lead?.lead_access_mode, softphoneVisible]);
 
   useEffect(() => {
-    if (!softphoneVisible || activeCallRef.current) return;
+    if (!softphoneVisible || activeCallRef.current || !deviceRef.current) return;
     const historyState = getHistoryStatus(history);
     if (!historyState) return;
     setSoftphoneState((prev) => {
