@@ -26,6 +26,8 @@ export default function SalesRepProfilePage() {
   const [payoutError, setPayoutError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ full_name: "", email: "", phone: "" });
   const [payoutForm, setPayoutForm] = useState({
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
@@ -35,6 +37,11 @@ export default function SalesRepProfilePage() {
   const load = useCallback(async () => {
     const { data } = await platformAdminApi.get(`/sales/reps/${repId}/profile`);
     setProfile(data || null);
+    setEditForm({
+      full_name: data?.rep?.full_name || "",
+      email: data?.rep?.email || "",
+      phone: data?.rep?.phone || "",
+    });
   }, [repId]);
 
   useEffect(() => {
@@ -54,6 +61,21 @@ export default function SalesRepProfilePage() {
       load();
     } catch {
       setActionNotice("Failed to update rep status.");
+    }
+  };
+
+  const saveProfile = async () => {
+    try {
+      await platformAdminApi.patch(`/sales/reps/${repId}`, {
+        full_name: editForm.full_name,
+        email: editForm.email,
+        phone: editForm.phone,
+      });
+      setActionNotice("Rep profile updated.");
+      setEditOpen(false);
+      load();
+    } catch (error) {
+      setActionNotice(error?.response?.data?.error || "Failed to update rep profile.");
     }
   };
 
@@ -87,6 +109,9 @@ export default function SalesRepProfilePage() {
       <Typography variant="h5" sx={{ mb: 2 }}>{profile.rep.full_name}</Typography>
       <Typography variant="body2">{profile.rep.email} • {profile.rep.phone || "—"}</Typography>
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+        <Button variant="contained" onClick={() => setEditOpen(true)}>
+          Edit profile
+        </Button>
         <Button variant="outlined" onClick={sendReset}>
           Send password reset
         </Button>
@@ -202,6 +227,35 @@ export default function SalesRepProfilePage() {
           >
             Deactivate
           </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Edit Sales Rep</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Full name"
+              value={editForm.full_name}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, full_name: e.target.value }))}
+              required
+            />
+            <TextField
+              label="Email"
+              value={editForm.email}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, email: e.target.value }))}
+              required
+            />
+            <TextField
+              label="Phone"
+              value={editForm.phone}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+              helperText="Use E.164 format like +16475551234. US/Canada 10-digit numbers are auto-normalized to +1."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={saveProfile}>Save</Button>
         </DialogActions>
       </Dialog>
       <Snackbar

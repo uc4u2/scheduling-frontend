@@ -213,6 +213,7 @@ export default function SalesRepsPage() {
               label="Phone"
               value={form.phone}
               onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+              helperText="Optional. Use E.164 format like +16475551234. US/Canada 10-digit numbers are auto-normalized to +1."
             />
           </Stack>
           {error && <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>}

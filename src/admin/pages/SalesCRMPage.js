@@ -887,13 +887,44 @@ export default function SalesCRMPage() {
             <Box>
               <Typography variant="h5" sx={{ fontWeight: 700 }}>Sales CRM Guide</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Use this workspace to control assignment, queue recovery, and conversion hygiene without leaving the admin console.
+                Use this workspace to control assignment, queue recovery, conversion hygiene, and calling policy without leaving the admin console.
               </Typography>
             </Box>
             <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Calling workflow modes</Typography>
+              <Stack spacing={1}>
+                <Typography variant="body2">
+                  <strong>Legacy direct-call mode:</strong> admins and reps both see full phone numbers, and reps call outside Schedulaa.
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Protected Twilio mode:</strong> admins still see full phone numbers, but reps only see masked numbers and must use the in-app Twilio call button.
+                </Typography>
+              </Stack>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>How to turn on Twilio-protected calling</Typography>
+              <Stack spacing={1}>
+                <Typography variant="body2">1. Confirm the Twilio status in the Calling Workflow card shows <strong>configured</strong>.</Typography>
+                <Typography variant="body2">2. Change <strong>Call mode</strong> to <strong>Protected Twilio mode</strong>.</Typography>
+                <Typography variant="body2">3. Click <strong>Save workflow</strong>.</Typography>
+                <Typography variant="body2">4. Reps will immediately switch from full phone visibility to masked-phone visibility.</Typography>
+              </Stack>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Practical example</Typography>
+              <Stack spacing={1}>
+                <Typography variant="body2">
+                  Example: Rep A opens a lead for <strong>Toronto Finest Cleaners</strong>. In legacy mode, the rep sees the full phone number and can call manually.
+                </Typography>
+                <Typography variant="body2">
+                  In protected Twilio mode, the rep sees only a masked number like <strong>***-***-6113</strong>, then clicks <strong>Call via Twilio</strong>. The backend starts the bridge call, and the rep still records the outcome inside CRM.
+                </Typography>
+              </Stack>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>What you can filter</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                {["Search", "Status", "Assigned rep", "Source", "Flags", "Callback state", "Sort"].map((label) => (
+                {["Search", "Status", "Assigned rep", "Source", "Flags", "Outcome", "Callback state", "Sort"].map((label) => (
                   <Chip key={label} size="small" label={label} variant="outlined" />
                 ))}
               </Stack>
@@ -921,6 +952,28 @@ export default function SalesCRMPage() {
               <Typography variant="body2" color="text.secondary">
                 The drawer shows current assignment, lock owner, lock age, callback timing, and conversion links so admins can recover stuck leads without breaking attribution.
               </Typography>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>What reps can and cannot do in protected mode</Typography>
+              <Stack spacing={1}>
+                <Typography variant="body2">Reps can only call their current locked lead through Twilio.</Typography>
+                <Typography variant="body2">Reps do not receive the raw phone number in API payloads, history, or callback lists.</Typography>
+                <Typography variant="body2">Only admins can reassign, unassign, unlock, suppress, restore, or delete leads.</Typography>
+              </Stack>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Troubleshooting examples</Typography>
+              <Stack spacing={1}>
+                <Typography variant="body2">
+                  If the rep sees <strong>Twilio not configured</strong>, check Render env vars and the Twilio status card first.
+                </Typography>
+                <Typography variant="body2">
+                  If the call button is disabled because of <strong>lead phone missing</strong>, update the lead record in the drawer before asking the rep to call.
+                </Typography>
+                <Typography variant="body2">
+                  If the rep cannot call because of <strong>locked lead required</strong>, they need to fetch or reopen their current lead instead of browsing another one.
+                </Typography>
+              </Stack>
             </Paper>
           </Stack>
         </Box>
