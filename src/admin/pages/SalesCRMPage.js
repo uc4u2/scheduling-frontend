@@ -35,6 +35,8 @@ import {
   getLead,
   getLeadActivityById,
   importLeads,
+  getSalesCallSettings,
+  getSalesTwilioStatus,
   getLeadSummary,
   listLeadImportBatches,
   listLeads,
@@ -46,6 +48,7 @@ import {
   unassignLead,
   unlockLead,
   updateLead,
+  saveSalesCallSettings,
 } from "../../api/platformAdminSales";
 
 const emptyForm = {
@@ -89,6 +92,13 @@ const emptyDrawerMeta = {
   editMode: false,
 };
 
+const defaultCallSettings = {
+  crm_call_mode: "legacy",
+  crm_phone_visibility: "full",
+  crm_call_provider: null,
+  crm_rep_call_flow: "manual",
+};
+
 export default function SalesCRMPage() {
   const topOffset = { xs: 56, sm: 64 };
   const [summary, setSummary] = useState({});
@@ -129,15 +139,33 @@ export default function SalesCRMPage() {
   const [actionState, setActionState] = useState(emptyActionState);
   const [confirmAction, setConfirmAction] = useState(emptyConfirmAction);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [callSettings, setCallSettings] = useState(defaultCallSettings);
+  const [twilioStatus, setTwilioStatus] = useState({ configured: false, provider: "twilio", missing_config_fields: [] });
+  const [loadingCallSettings, setLoadingCallSettings] = useState(true);
+  const [savingCallSettings, setSavingCallSettings] = useState(false);
 
   const showBanner = useCallback((type, message) => setBanner({ type, message }), []);
 
   const loadStatic = useCallback(async () => {
-    const [repRows, dealRows, batches] = await Promise.all([listSalesReps(), listSalesDeals(), listLeadImportBatches()]);
-    setReps(repRows);
-    setDeals(dealRows);
-    setImportBatches(batches);
-  }, []);
+    setLoadingCallSettings(true);
+    try {
+      const [repRows, dealRows, batches, callSettingsResp] = await Promise.all([
+        listSalesReps(),
+        listSalesDeals(),
+        listLeadImportBatches(),
+        getSalesCallSettings(),
+      ]);
+      setReps(repRows);
+      setDeals(dealRows);
+      setImportBatches(batches);
+      setCallSettings(callSettingsResp?.settings || defaultCallSettings);
+      setTwilioStatus(callSettingsResp?.twilio_status || { configured: false, provider: "twilio", missing_config_fields: [] });
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to load CRM settings.");
+    } finally {
+      setLoadingCallSettings(false);
+    }
+  }, [showBanner]);
 
   const loadDrawerLead = useCallback(async (leadId) => {
     const [detailResp, activityRows] = await Promise.all([getLead(leadId), getLeadActivityById(leadId)]);
@@ -308,6 +336,42 @@ export default function SalesCRMPage() {
       showBanner("error", error?.response?.data?.error || "Failed to import leads.");
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleCallModeChange = (mode) => {
+    if (mode === "protected_twilio") {
+      setCallSettings({
+        crm_call_mode: "protected_twilio",
+        crm_phone_visibility: "masked",
+        crm_call_provider: "twilio",
+        crm_rep_call_flow: "twilio_bridge",
+      });
+      return;
+    }
+    setCallSettings(defaultCallSettings);
+  };
+
+  const handleRefreshTwilioStatus = async () => {
+    try {
+      const statusResp = await getSalesTwilioStatus();
+      setTwilioStatus(statusResp || { configured: false, provider: "twilio", missing_config_fields: [] });
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to refresh Twilio status.");
+    }
+  };
+
+  const handleSaveCallSettings = async () => {
+    setSavingCallSettings(true);
+    try {
+      const resp = await saveSalesCallSettings(callSettings);
+      setCallSettings(resp?.settings || defaultCallSettings);
+      setTwilioStatus(resp?.twilio_status || { configured: false, provider: "twilio", missing_config_fields: [] });
+      showBanner("success", "Calling workflow updated.");
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to save calling workflow.");
+    } finally {
+      setSavingCallSettings(false);
     }
   };
 
@@ -523,6 +587,74 @@ export default function SalesCRMPage() {
 
       <Stack spacing={3}>
         <LeadSummaryCards summary={summary} />
+
+        <Paper sx={{ p: 2.5 }}>
+          <Stack spacing={2}>
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between">
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>Calling Workflow</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Control whether reps work in legacy direct-call mode or protected Twilio mode without changing admin lead visibility.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Chip
+                  size="small"
+                  color={twilioStatus?.configured ? "success" : "warning"}
+                  label={twilioStatus?.configured ? "Twilio configured" : "Twilio not configured"}
+                />
+                <Button variant="outlined" onClick={handleRefreshTwilioStatus}>Refresh status</Button>
+              </Stack>
+            </Stack>
+
+            <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
+              <TextField
+                select
+                label="Call mode"
+                value={callSettings.crm_call_mode || "legacy"}
+                onChange={(e) => handleCallModeChange(e.target.value)}
+                sx={{ minWidth: 220 }}
+                disabled={loadingCallSettings || savingCallSettings}
+              >
+                <MenuItem value="legacy">Legacy direct-call mode</MenuItem>
+                <MenuItem value="protected_twilio">Protected Twilio mode</MenuItem>
+              </TextField>
+              <TextField
+                label="Phone visibility"
+                value={callSettings.crm_phone_visibility || "full"}
+                InputProps={{ readOnly: true }}
+                sx={{ minWidth: 180 }}
+              />
+              <TextField
+                label="Provider"
+                value={callSettings.crm_call_provider || "manual"}
+                InputProps={{ readOnly: true }}
+                sx={{ minWidth: 160 }}
+              />
+              <TextField
+                label="Rep call flow"
+                value={callSettings.crm_rep_call_flow || "manual"}
+                InputProps={{ readOnly: true }}
+                sx={{ minWidth: 180 }}
+              />
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Button variant="contained" onClick={handleSaveCallSettings} disabled={loadingCallSettings || savingCallSettings}>
+                  {savingCallSettings ? "Saving…" : "Save workflow"}
+                </Button>
+              </Box>
+            </Stack>
+
+            <Alert severity={twilioStatus?.configured ? "info" : "warning"} variant="outlined">
+              {callSettings.crm_call_mode === "protected_twilio" ? (
+                twilioStatus?.configured
+                  ? "Protected mode is active. Admins keep full lead visibility while reps see masked numbers and place calls through Twilio."
+                  : `Protected mode is selected, but Twilio is not fully configured. Missing: ${(twilioStatus?.missing_config_fields || []).join(", ") || "configuration values"}.`
+              ) : (
+                "Legacy mode is active. Reps continue to see full phone numbers and call outside the system."
+              )}
+            </Alert>
+          </Stack>
+        </Paper>
 
         <LeadImportCard
           reps={reps}

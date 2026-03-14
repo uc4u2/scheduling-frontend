@@ -20,6 +20,11 @@ export const skipLead = async (leadId, payload = {}) => {
   return data?.lead || null;
 };
 
+export const triggerTwilioCall = async (leadId) => {
+  const { data } = await salesRepApi.post(`/leads/${leadId}/twilio-call`);
+  return data || { ok: false, call_status: "failed", provider: "twilio" };
+};
+
 export const getTodayCallbacks = async () => {
   const { data } = await salesRepApi.get("/leads/callbacks/today");
   return data?.callbacks || [];

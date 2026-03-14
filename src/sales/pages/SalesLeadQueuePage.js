@@ -13,6 +13,7 @@ import {
   getTodayCallbacks,
   skipLead,
   submitLeadOutcome,
+  triggerTwilioCall,
 } from "../../api/salesRepCRM";
 
 const emptyForm = {
@@ -38,6 +39,7 @@ export default function SalesLeadQueuePage() {
   const [form, setForm] = useState(emptyForm);
   const [loadingLead, setLoadingLead] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [calling, setCalling] = useState(false);
   const [banner, setBanner] = useState({ type: "success", message: "" });
 
   const loadPage = useCallback(async () => {
@@ -124,6 +126,23 @@ export default function SalesLeadQueuePage() {
     }
   };
 
+  const handleTwilioCall = async () => {
+    if (!lead?.id) return;
+    setCalling(true);
+    try {
+      const result = await triggerTwilioCall(lead.id);
+      setBanner({
+        type: "success",
+        message: result?.call_status === "initiated" ? "Twilio call started. Answer your phone to connect." : "Call request sent.",
+      });
+      await loadPage();
+    } catch (error) {
+      setBanner({ type: "error", message: error?.response?.data?.error || "Failed to start Twilio call." });
+    } finally {
+      setCalling(false);
+    }
+  };
+
   const statusSummary = useMemo(() => {
     const byStatus = progress?.by_status || {};
     const entries = Object.entries(byStatus);
@@ -148,7 +167,15 @@ export default function SalesLeadQueuePage() {
         <Grid container spacing={3}>
           <Grid item xs={12} lg={7}>
             <Stack spacing={3}>
-              <LeadCurrentCard lead={lead} loading={loadingLead} onNext={handleNextLead} onSkip={handleSkip} skipDisabled={!lead || submitting} />
+              <LeadCurrentCard
+                lead={lead}
+                loading={loadingLead}
+                onNext={handleNextLead}
+                onSkip={handleSkip}
+                skipDisabled={!lead || submitting || calling}
+                onCall={handleTwilioCall}
+                callLoading={calling}
+              />
               <LeadOutcomeForm
                 lead={lead}
                 form={form}

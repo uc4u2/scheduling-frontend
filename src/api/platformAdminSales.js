@@ -1,5 +1,20 @@
 import platformAdminApi from "./platformAdminApi";
 
+export const getSalesCallSettings = async () => {
+  const { data } = await platformAdminApi.get("/sales/call-settings");
+  return data || { settings: null, twilio_status: null };
+};
+
+export const saveSalesCallSettings = async (payload) => {
+  const { data } = await platformAdminApi.post("/sales/call-settings", payload);
+  return data || { settings: null, twilio_status: null };
+};
+
+export const getSalesTwilioStatus = async () => {
+  const { data } = await platformAdminApi.get("/sales/twilio-status");
+  return data || { configured: false, provider: "twilio", missing_config_fields: [] };
+};
+
 export const listSalesReps = async () => {
   const { data } = await platformAdminApi.get("/sales/reps");
   return data?.reps || [];
