@@ -78,6 +78,7 @@ import SalesCommissionRulesPage from "./admin/pages/SalesCommissionRulesPage";
 import AdminTeamPage from "./admin/pages/AdminTeamPage";
 import AdminTicketsPage from "./admin/pages/AdminTicketsPage";
 import AdminTicketDetailPage from "./admin/pages/AdminTicketDetailPage";
+import SalesCRMPage from "./admin/pages/SalesCRMPage";
 import SalesLogin from "./sales/SalesLogin";
 import SalesForgotPassword from "./sales/SalesForgotPassword";
 import SalesResetPassword from "./sales/SalesResetPassword";
@@ -88,6 +89,7 @@ import SalesRepDealsPage from "./sales/pages/SalesDealsPage";
 import SalesCustomersPage from "./sales/pages/SalesCustomersPage";
 import SalesRepLedgerPage from "./sales/pages/SalesLedgerPage";
 import SalesRepPayoutsPage from "./sales/pages/SalesPayoutsPage";
+import SalesLeadQueuePage from "./sales/pages/SalesLeadQueuePage";
 import SalesRepProfilePage from "./admin/pages/SalesRepProfilePage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
@@ -582,6 +584,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/admin" element={<PlatformAdminShell />}>
             <Route path="search" element={<SearchPage />} />
             <Route path="tenants/:companyId" element={<Tenant360Page />} />
+            <Route path="sales/crm" element={<SalesCRMPage />} />
             <Route path="sales/reps" element={<SalesRepsPage />} />
             <Route path="sales/reps/:repId" element={<SalesRepProfilePage />} />
             <Route path="sales/deals" element={<SalesDealsPage />} />
@@ -601,6 +604,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/sales/agreement" element={<SalesAgreementPage />} />
           <Route path="/sales" element={<SalesShell />}>
             <Route path="summary" element={<SalesSummaryPage />} />
+            <Route path="leads" element={<SalesLeadQueuePage />} />
             <Route path="deals" element={<SalesRepDealsPage />} />
             <Route path="customers" element={<SalesCustomersPage />} />
             <Route path="ledger" element={<SalesRepLedgerPage />} />
