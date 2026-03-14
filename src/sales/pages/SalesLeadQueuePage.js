@@ -1,16 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Divider, Grid, Snackbar, Stack, Typography } from "@mui/material";
 import LeadProgressCards from "../../components/salesRep/LeadProgressCards";
 import LeadCurrentCard from "../../components/salesRep/LeadCurrentCard";
 import LeadOutcomeForm from "../../components/salesRep/LeadOutcomeForm";
 import LeadCallbacksPanel from "../../components/salesRep/LeadCallbacksPanel";
 import LeadHistoryPanel from "../../components/salesRep/LeadHistoryPanel";
+import TwilioDevicePanel from "../../components/salesRep/TwilioDevicePanel";
 import {
   getCurrentLead,
   getLeadHistory,
   getLeadProgress,
   getNextLead,
   getTodayCallbacks,
+  getTwilioDeviceStatus,
+  getTwilioToken,
   skipLead,
   submitLeadOutcome,
   triggerTwilioCall,
@@ -24,11 +27,60 @@ const emptyForm = {
   deal_id: "",
 };
 
+const DEVICE_STATUS = {
+  NOT_INITIALIZED: "not_initialized",
+  INITIALIZING: "initializing",
+  READY: "ready",
+  MICROPHONE_DENIED: "microphone_denied",
+  DEVICE_ERROR: "device_error",
+  CONNECTING: "connecting",
+  RINGING: "ringing",
+  IN_CALL: "in_call",
+  COMPLETED: "completed",
+  BUSY: "busy",
+  NO_ANSWER: "no_answer",
+  FAILED: "failed",
+  DISCONNECTED: "disconnected",
+};
+
 function toUtcIso(value) {
   if (!value) return undefined;
   const dt = new Date(value);
   if (Number.isNaN(dt.getTime())) return undefined;
   return dt.toISOString();
+}
+
+function getDisabledReasonCopy(reason) {
+  const messages = {
+    twilio_browser_not_configured: "Browser softphone setup is incomplete. Contact a platform admin.",
+    twilio_not_configured: "Twilio is not configured yet. Contact a platform admin.",
+    lead_phone_missing: "This lead does not have a callable phone number.",
+    locked_lead_required: "Only your current locked lead can be called through Twilio.",
+    protected_twilio_mode_required: "Protected Twilio mode must be enabled before browser calling is available.",
+    sales_rep_phone_missing: "Bridge fallback still needs a rep phone number. Browser mode does not.",
+  };
+  return messages[reason] || "Calling is not available for this lead right now.";
+}
+
+function getHistoryStatus(history) {
+  const latestCallEvent = (history || []).find((item) => String(item.action_type || "").startsWith("twilio_call_"));
+  switch (latestCallEvent?.action_type) {
+    case "twilio_call_ringing":
+      return DEVICE_STATUS.RINGING;
+    case "twilio_call_answered":
+      return DEVICE_STATUS.IN_CALL;
+    case "twilio_call_completed":
+      return DEVICE_STATUS.COMPLETED;
+    case "twilio_call_busy":
+      return DEVICE_STATUS.BUSY;
+    case "twilio_call_no_answer":
+      return DEVICE_STATUS.NO_ANSWER;
+    case "twilio_call_failed":
+    case "twilio_call_canceled":
+      return DEVICE_STATUS.FAILED;
+    default:
+      return null;
+  }
 }
 
 export default function SalesLeadQueuePage() {
@@ -41,19 +93,42 @@ export default function SalesLeadQueuePage() {
   const [submitting, setSubmitting] = useState(false);
   const [calling, setCalling] = useState(false);
   const [banner, setBanner] = useState({ type: "success", message: "" });
+  const [deviceStatusSummary, setDeviceStatusSummary] = useState(null);
+  const [initializingDevice, setInitializingDevice] = useState(false);
+  const [softphoneState, setSoftphoneState] = useState({ status: DEVICE_STATUS.NOT_INITIALIZED, helperText: "" });
+
+  const deviceRef = useRef(null);
+  const activeCallRef = useRef(null);
+
+  const destroyDevice = useCallback(() => {
+    try {
+      activeCallRef.current?.disconnect?.();
+    } catch (error) {
+      // noop
+    }
+    activeCallRef.current = null;
+    try {
+      deviceRef.current?.destroy?.();
+    } catch (error) {
+      // noop
+    }
+    deviceRef.current = null;
+  }, []);
 
   const loadPage = useCallback(async () => {
     try {
-      const [progressResp, currentLead, callbacksResp, historyResp] = await Promise.all([
+      const [progressResp, currentLead, callbacksResp, historyResp, deviceResp] = await Promise.all([
         getLeadProgress(),
         getCurrentLead(),
         getTodayCallbacks(),
         getLeadHistory({ limit: 20 }),
+        getTwilioDeviceStatus().catch(() => null),
       ]);
       setProgress(progressResp || {});
       setLead(currentLead || null);
       setCallbacks(callbacksResp || []);
       setHistory(historyResp || []);
+      setDeviceStatusSummary(deviceResp);
     } catch (error) {
       setBanner({ type: "error", message: error?.response?.data?.error || "Failed to load lead queue." });
     }
@@ -62,6 +137,140 @@ export default function SalesLeadQueuePage() {
   useEffect(() => {
     loadPage();
   }, [loadPage]);
+
+  useEffect(() => () => destroyDevice(), [destroyDevice]);
+
+  const softphoneVisible = useMemo(
+    () => deviceStatusSummary?.call_mode === "protected_twilio" && deviceStatusSummary?.call_flow === "twilio_browser",
+    [deviceStatusSummary]
+  );
+
+  const callDisabledCopy = useMemo(() => getDisabledReasonCopy(lead?.call_disabled_reason), [lead?.call_disabled_reason]);
+
+  useEffect(() => {
+    if (!softphoneVisible) {
+      setSoftphoneState({ status: DEVICE_STATUS.NOT_INITIALIZED, helperText: "" });
+      destroyDevice();
+      return;
+    }
+    if (lead?.lead_access_mode !== "protected_twilio") {
+      setSoftphoneState({ status: DEVICE_STATUS.NOT_INITIALIZED, helperText: "Protected mode is active, but there is no current locked lead yet." });
+      return;
+    }
+    if (deviceRef.current) return;
+    if (!deviceStatusSummary?.can_initialize_device) {
+      setSoftphoneState({
+        status: DEVICE_STATUS.NOT_INITIALIZED,
+        helperText: getDisabledReasonCopy(deviceStatusSummary?.blocking_reason) || "Browser calling is not ready yet.",
+      });
+      return;
+    }
+    setSoftphoneState({ status: DEVICE_STATUS.NOT_INITIALIZED, helperText: "Enable calling when you are ready to connect your browser headset." });
+  }, [destroyDevice, deviceStatusSummary, lead?.lead_access_mode, softphoneVisible]);
+
+  useEffect(() => {
+    if (!softphoneVisible || activeCallRef.current) return;
+    const historyState = getHistoryStatus(history);
+    if (!historyState) return;
+    setSoftphoneState((prev) => {
+      if ([DEVICE_STATUS.CONNECTING, DEVICE_STATUS.RINGING, DEVICE_STATUS.IN_CALL].includes(prev.status)) {
+        return prev;
+      }
+      return { status: historyState, helperText: prev.helperText };
+    });
+  }, [history, softphoneVisible]);
+
+  const refreshAfterCall = useCallback(async () => {
+    await loadPage();
+  }, [loadPage]);
+
+  const attachCallListeners = useCallback((call) => {
+    if (!call) return;
+    call.on?.("ringing", () => {
+      setSoftphoneState({ status: DEVICE_STATUS.RINGING, helperText: "The lead is ringing through Twilio." });
+    });
+    call.on?.("accept", () => {
+      setSoftphoneState({ status: DEVICE_STATUS.IN_CALL, helperText: "Call connected. Use your headset and record the outcome when finished." });
+    });
+    call.on?.("disconnect", async () => {
+      activeCallRef.current = null;
+      setCalling(false);
+      setSoftphoneState({ status: DEVICE_STATUS.DISCONNECTED, helperText: "Call disconnected. Refreshing lead activity now." });
+      await refreshAfterCall();
+    });
+    call.on?.("cancel", async () => {
+      activeCallRef.current = null;
+      setCalling(false);
+      setSoftphoneState({ status: DEVICE_STATUS.NO_ANSWER, helperText: "The call was canceled before the lead connected." });
+      await refreshAfterCall();
+    });
+    call.on?.("reject", async () => {
+      activeCallRef.current = null;
+      setCalling(false);
+      setSoftphoneState({ status: DEVICE_STATUS.BUSY, helperText: "The lead rejected the call or the line was unavailable." });
+      await refreshAfterCall();
+    });
+    call.on?.("error", async (error) => {
+      activeCallRef.current = null;
+      setCalling(false);
+      setSoftphoneState({ status: DEVICE_STATUS.FAILED, helperText: error?.message || "The browser call failed." });
+      await refreshAfterCall();
+    });
+    call.on?.("warning", (warning) => {
+      setSoftphoneState((prev) => ({ ...prev, helperText: warning?.message || prev.helperText }));
+    });
+  }, [refreshAfterCall]);
+
+  const handleInitializeDevice = async () => {
+    if (!softphoneVisible) return;
+    setInitializingDevice(true);
+    setSoftphoneState({ status: DEVICE_STATUS.INITIALIZING, helperText: "Allow microphone access when your browser prompts you." });
+    try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error("This browser does not support microphone access for Twilio browser calling.");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+
+      const tokenPayload = await getTwilioToken();
+      const sdk = await import("@twilio/voice-sdk");
+      const Device = sdk?.Device;
+      if (!Device) throw new Error("Twilio Voice SDK failed to load.");
+
+      destroyDevice();
+      const device = new Device(tokenPayload.token, {
+        logLevel: 1,
+        closeProtection: true,
+      });
+      deviceRef.current = device;
+
+      device.on?.("registering", () => {
+        setSoftphoneState({ status: DEVICE_STATUS.INITIALIZING, helperText: "Registering the browser softphone with Twilio." });
+      });
+      device.on?.("registered", () => {
+        setSoftphoneState({ status: DEVICE_STATUS.READY, helperText: "Browser calling is ready for the current locked lead." });
+      });
+      device.on?.("unregistered", () => {
+        if (!activeCallRef.current) {
+          setSoftphoneState({ status: DEVICE_STATUS.DISCONNECTED, helperText: "The browser device was disconnected. Re-enable calling if needed." });
+        }
+      });
+      device.on?.("error", (error) => {
+        setSoftphoneState({ status: DEVICE_STATUS.DEVICE_ERROR, helperText: error?.message || "Twilio device error." });
+      });
+
+      await device.register();
+    } catch (error) {
+      const denied = error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError";
+      setSoftphoneState({
+        status: denied ? DEVICE_STATUS.MICROPHONE_DENIED : DEVICE_STATUS.DEVICE_ERROR,
+        helperText: error?.message || (denied ? "Microphone permission was denied." : "Failed to initialize browser calling."),
+      });
+      setBanner({ type: "error", message: error?.response?.data?.error || error?.message || "Failed to enable browser calling." });
+    } finally {
+      setInitializingDevice(false);
+    }
+  };
 
   const handleNextLead = async () => {
     setLoadingLead(true);
@@ -126,6 +335,21 @@ export default function SalesLeadQueuePage() {
     }
   };
 
+  const handleBrowserCall = async () => {
+    if (!lead?.id || !deviceRef.current) return;
+    setCalling(true);
+    setSoftphoneState({ status: DEVICE_STATUS.CONNECTING, helperText: "Starting the browser call for your current locked lead." });
+    try {
+      const call = await deviceRef.current.connect({ params: { lead_id: String(lead.id) } });
+      activeCallRef.current = call;
+      attachCallListeners(call);
+    } catch (error) {
+      setCalling(false);
+      setSoftphoneState({ status: DEVICE_STATUS.FAILED, helperText: error?.message || "Failed to connect the Twilio browser call." });
+      setBanner({ type: "error", message: error?.message || "Failed to start browser call." });
+    }
+  };
+
   const handleTwilioCall = async () => {
     if (!lead?.id) return;
     setCalling(true);
@@ -133,7 +357,7 @@ export default function SalesLeadQueuePage() {
       const result = await triggerTwilioCall(lead.id);
       setBanner({
         type: "success",
-        message: result?.call_status === "initiated" ? "Twilio call started. Answer your phone to connect." : "Call request sent.",
+        message: result?.call_status === "initiated" ? "Twilio bridge call started. Answer your phone to connect." : "Call request sent.",
       });
       await loadPage();
     } catch (error) {
@@ -143,12 +367,26 @@ export default function SalesLeadQueuePage() {
     }
   };
 
+  const handleHangup = async () => {
+    try {
+      activeCallRef.current?.disconnect?.();
+      deviceRef.current?.disconnectAll?.();
+    } catch (error) {
+      setBanner({ type: "error", message: "Failed to hang up the current call." });
+    }
+  };
+
   const statusSummary = useMemo(() => {
     const byStatus = progress?.by_status || {};
     const entries = Object.entries(byStatus);
     if (!entries.length) return "No assigned statuses yet.";
     return entries.map(([key, value]) => `${key}: ${value}`).join(" • ");
   }, [progress]);
+
+  const activeCallFlow = deviceStatusSummary?.call_flow || (softphoneVisible ? "twilio_browser" : "manual");
+  const canInitializeDevice = softphoneVisible && Boolean(deviceStatusSummary?.can_initialize_device) && !deviceRef.current;
+  const canCallInBrowser = softphoneVisible && Boolean(deviceRef.current) && Boolean(lead?.can_call_via_twilio) && !calling;
+  const softphoneHelper = softphoneState.helperText || (!lead?.can_call_via_twilio && lead?.lead_access_mode === "protected_twilio" ? callDisabledCopy : "");
 
   return (
     <Box>
@@ -167,6 +405,19 @@ export default function SalesLeadQueuePage() {
         <Grid container spacing={3}>
           <Grid item xs={12} lg={7}>
             <Stack spacing={3}>
+              <TwilioDevicePanel
+                visible={softphoneVisible}
+                status={softphoneState.status}
+                helperText={softphoneHelper}
+                loading={initializingDevice}
+                calling={calling}
+                canInitialize={canInitializeDevice}
+                onInitialize={handleInitializeDevice}
+                canCall={canCallInBrowser}
+                onCall={handleBrowserCall}
+                onHangup={handleHangup}
+                leadName={lead?.company_name || null}
+              />
               <LeadCurrentCard
                 lead={lead}
                 loading={loadingLead}
@@ -175,6 +426,7 @@ export default function SalesLeadQueuePage() {
                 skipDisabled={!lead || submitting || calling}
                 onCall={handleTwilioCall}
                 callLoading={calling}
+                callUiMode={activeCallFlow === "twilio_browser" ? "browser" : "bridge"}
               />
               <LeadOutcomeForm
                 lead={lead}

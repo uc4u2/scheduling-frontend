@@ -34,6 +34,7 @@
     "@tiptap/extension-underline": "^3.6.1",
     "@tiptap/react": "^3.6.1",
     "@tiptap/starter-kit": "^3.6.1",
+    "@twilio/voice-sdk": "^2.18.0",
     "ajv": "8.17.1",
     "ajv-formats": "2.1.1",
     "ajv-keywords": "5.1.0",

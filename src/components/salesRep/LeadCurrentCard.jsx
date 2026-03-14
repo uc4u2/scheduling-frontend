@@ -17,7 +17,16 @@ function Row({ label, value }) {
   );
 }
 
-export default function LeadCurrentCard({ lead, loading, onNext, onSkip, skipDisabled, onCall, callLoading }) {
+export default function LeadCurrentCard({
+  lead,
+  loading,
+  onNext,
+  onSkip,
+  skipDisabled,
+  onCall,
+  callLoading,
+  callUiMode = "bridge",
+}) {
   const protectedMode = lead?.lead_access_mode === "protected_twilio";
   const phoneValue = protectedMode ? lead?.phone_masked || "No phone available" : lead?.phone;
   const callReason = getCallDisabledReasonCopy(lead?.call_disabled_reason);
@@ -44,7 +53,7 @@ export default function LeadCurrentCard({ lead, loading, onNext, onSkip, skipDis
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }}>
                 <Chip size="small" color="primary" label="Twilio-protected" />
                 <Typography variant="body2">
-                  Phone number is protected. Use Twilio calling to reach this lead when the call button is available.
+                  Phone number is protected. Use the approved Twilio calling workflow for this lead when the call controls are available.
                 </Typography>
               </Stack>
             </Alert>
@@ -59,7 +68,7 @@ export default function LeadCurrentCard({ lead, loading, onNext, onSkip, skipDis
           <Row label="Last outcome" value={lead.last_outcome} />
           <Row label="Callback at" value={formatDateTime(lead.callback_at)} />
           <Row label="Linked sales deal" value={lead.sales_deal_id ? `Deal #${lead.sales_deal_id}` : null} />
-          {protectedMode ? (
+          {protectedMode && callUiMode === "bridge" ? (
             <Stack spacing={1}>
               <Button variant="contained" onClick={onCall} disabled={!lead.can_call_via_twilio || callLoading}>
                 {callLoading ? "Starting call…" : "Call via Twilio"}
@@ -89,6 +98,7 @@ function BoxTitle({ title, subtitle }) {
 function getCallDisabledReasonCopy(reason) {
   const messages = {
     protected_twilio_mode_required: "Protected Twilio mode must be enabled before you can call through the system.",
+    twilio_browser_not_configured: "Browser softphone setup is incomplete. Contact a platform admin.",
     twilio_not_configured: "Twilio is not configured yet. Contact a platform admin.",
     sales_rep_phone_missing: "Your rep phone number is missing. Ask an admin to update your profile.",
     lead_phone_missing: "This lead does not have a callable phone number.",

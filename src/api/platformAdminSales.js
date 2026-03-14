@@ -2,7 +2,17 @@ import platformAdminApi from "./platformAdminApi";
 
 export const getSalesCallSettings = async () => {
   const { data } = await platformAdminApi.get("/sales/call-settings");
-  return data || { settings: null, twilio_status: null };
+  return data || {
+    settings: null,
+    twilio_status: {
+      configured: false,
+      provider: "twilio",
+      missing_config_fields: [],
+      missing_browser_config_fields: [],
+      bridge_ready: false,
+      browser_softphone_ready: false,
+    },
+  };
 };
 
 export const saveSalesCallSettings = async (payload) => {
@@ -12,7 +22,17 @@ export const saveSalesCallSettings = async (payload) => {
 
 export const getSalesTwilioStatus = async () => {
   const { data } = await platformAdminApi.get("/sales/twilio-status");
-  return data || { configured: false, provider: "twilio", missing_config_fields: [] };
+  return data || {
+    configured: false,
+    provider: "twilio",
+    missing_config_fields: [],
+    missing_browser_config_fields: [],
+    bridge_ready: false,
+    browser_softphone_ready: false,
+    twiml_app_sid_present: false,
+    api_key_present: false,
+    api_secret_present: false,
+  };
 };
 
 export const listSalesReps = async () => {

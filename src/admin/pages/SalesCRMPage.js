@@ -345,11 +345,21 @@ export default function SalesCRMPage() {
         crm_call_mode: "protected_twilio",
         crm_phone_visibility: "masked",
         crm_call_provider: "twilio",
-        crm_rep_call_flow: "twilio_bridge",
+        crm_rep_call_flow: callSettings.crm_rep_call_flow === "twilio_bridge" ? "twilio_bridge" : "twilio_browser",
       });
       return;
     }
     setCallSettings(defaultCallSettings);
+  };
+
+  const handleCallFlowChange = (flow) => {
+    setCallSettings((prev) => ({
+      ...prev,
+      crm_rep_call_flow: flow,
+      crm_call_mode: flow === "manual" ? "legacy" : "protected_twilio",
+      crm_phone_visibility: flow === "manual" ? "full" : "masked",
+      crm_call_provider: flow === "manual" ? null : "twilio",
+    }));
   };
 
   const handleRefreshTwilioStatus = async () => {
@@ -600,8 +610,14 @@ export default function SalesCRMPage() {
               <Stack direction="row" spacing={1} alignItems="center">
                 <Chip
                   size="small"
-                  color={twilioStatus?.configured ? "success" : "warning"}
-                  label={twilioStatus?.configured ? "Twilio configured" : "Twilio not configured"}
+                  color={twilioStatus?.browser_softphone_ready ? "success" : twilioStatus?.configured ? "info" : "warning"}
+                  label={
+                    twilioStatus?.browser_softphone_ready
+                      ? "Browser softphone ready"
+                      : twilioStatus?.configured
+                        ? "Twilio partially ready"
+                        : "Twilio not configured"
+                  }
                 />
                 <Button variant="outlined" onClick={handleRefreshTwilioStatus}>Refresh status</Button>
               </Stack>
@@ -632,11 +648,17 @@ export default function SalesCRMPage() {
                 sx={{ minWidth: 160 }}
               />
               <TextField
+                select
                 label="Rep call flow"
                 value={callSettings.crm_rep_call_flow || "manual"}
-                InputProps={{ readOnly: true }}
-                sx={{ minWidth: 180 }}
-              />
+                onChange={(e) => handleCallFlowChange(e.target.value)}
+                sx={{ minWidth: 220 }}
+                disabled={loadingCallSettings || savingCallSettings || callSettings.crm_call_mode !== "protected_twilio"}
+              >
+                <MenuItem value="manual">Manual only</MenuItem>
+                <MenuItem value="twilio_browser">Twilio browser softphone</MenuItem>
+                <MenuItem value="twilio_bridge">Twilio bridge fallback only</MenuItem>
+              </TextField>
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Button variant="contained" onClick={handleSaveCallSettings} disabled={loadingCallSettings || savingCallSettings}>
                   {savingCallSettings ? "Saving…" : "Save workflow"}
@@ -644,11 +666,27 @@ export default function SalesCRMPage() {
               </Box>
             </Stack>
 
-            <Alert severity={twilioStatus?.configured ? "info" : "warning"} variant="outlined">
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} useFlexGap>
+              <Chip size="small" variant="outlined" label={`Phone visibility: ${callSettings.crm_phone_visibility || "full"}`} />
+              <Chip size="small" variant="outlined" label={`Provider: ${callSettings.crm_call_provider || "manual"}`} />
+              <Chip
+                size="small"
+                color={callSettings.crm_rep_call_flow === "twilio_browser" ? "primary" : "default"}
+                label={
+                  callSettings.crm_rep_call_flow === "twilio_browser"
+                    ? "Preferred protected flow: browser softphone"
+                    : callSettings.crm_rep_call_flow === "twilio_bridge"
+                      ? "Protected flow: bridge fallback"
+                      : "Legacy manual flow"
+                }
+              />
+            </Stack>
+
+            <Alert severity={twilioStatus?.browser_softphone_ready ? "success" : "warning"} variant="outlined">
               {callSettings.crm_call_mode === "protected_twilio" ? (
-                twilioStatus?.configured
-                  ? "Protected mode is active. Admins keep full lead visibility while reps see masked numbers and place calls through Twilio."
-                  : `Protected mode is selected, but Twilio is not fully configured. Missing: ${(twilioStatus?.missing_config_fields || []).join(", ") || "configuration values"}.`
+                twilioStatus?.browser_softphone_ready
+                  ? "Protected browser mode is active. Admins keep full lead visibility while reps see masked numbers and place calls through the browser softphone."
+                  : `Protected mode is selected, but browser softphone setup is incomplete. Missing: ${(twilioStatus?.missing_browser_config_fields || twilioStatus?.missing_config_fields || []).join(", ") || "configuration values"}.`
               ) : (
                 "Legacy mode is active. Reps continue to see full phone numbers and call outside the system."
               )}
@@ -897,17 +935,18 @@ export default function SalesCRMPage() {
                   <strong>Legacy direct-call mode:</strong> admins and reps both see full phone numbers, and reps call outside Schedulaa.
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Protected Twilio mode:</strong> admins still see full phone numbers, but reps only see masked numbers and must use the in-app Twilio call button.
+                  <strong>Protected Twilio mode:</strong> admins still see full phone numbers, but reps only see masked numbers and call through the browser softphone.
                 </Typography>
               </Stack>
             </Paper>
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>How to turn on Twilio-protected calling</Typography>
               <Stack spacing={1}>
-                <Typography variant="body2">1. Confirm the Twilio status in the Calling Workflow card shows <strong>configured</strong>.</Typography>
+                <Typography variant="body2">1. Confirm the Calling Workflow card shows <strong>Browser softphone ready</strong>.</Typography>
                 <Typography variant="body2">2. Change <strong>Call mode</strong> to <strong>Protected Twilio mode</strong>.</Typography>
-                <Typography variant="body2">3. Click <strong>Save workflow</strong>.</Typography>
-                <Typography variant="body2">4. Reps will immediately switch from full phone visibility to masked-phone visibility.</Typography>
+                <Typography variant="body2">3. Set <strong>Rep call flow</strong> to <strong>Twilio browser softphone</strong>.</Typography>
+                <Typography variant="body2">4. Click <strong>Save workflow</strong>.</Typography>
+                <Typography variant="body2">5. Reps will switch from full phone visibility to masked-phone visibility and can enable browser calling from the lead queue.</Typography>
               </Stack>
             </Paper>
             <Paper variant="outlined" sx={{ p: 2 }}>
@@ -917,7 +956,7 @@ export default function SalesCRMPage() {
                   Example: Rep A opens a lead for <strong>Toronto Finest Cleaners</strong>. In legacy mode, the rep sees the full phone number and can call manually.
                 </Typography>
                 <Typography variant="body2">
-                  In protected Twilio mode, the rep sees only a masked number like <strong>***-***-6113</strong>, then clicks <strong>Call via Twilio</strong>. The backend starts the bridge call, and the rep still records the outcome inside CRM.
+                  In protected browser mode, the rep sees only a masked number like <strong>***-***-6113</strong>, clicks <strong>Enable calling</strong>, then uses <strong>Call via Twilio</strong> from the browser softphone panel with a headset or earbuds.
                 </Typography>
               </Stack>
             </Paper>
@@ -958,6 +997,7 @@ export default function SalesCRMPage() {
               <Stack spacing={1}>
                 <Typography variant="body2">Reps can only call their current locked lead through Twilio.</Typography>
                 <Typography variant="body2">Reps do not receive the raw phone number in API payloads, history, or callback lists.</Typography>
+                <Typography variant="body2">Browser mode is the preferred protected flow. Bridge mode is fallback only.</Typography>
                 <Typography variant="body2">Only admins can reassign, unassign, unlock, suppress, restore, or delete leads.</Typography>
               </Stack>
             </Paper>
@@ -965,7 +1005,7 @@ export default function SalesCRMPage() {
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Troubleshooting examples</Typography>
               <Stack spacing={1}>
                 <Typography variant="body2">
-                  If the rep sees <strong>Twilio not configured</strong>, check Render env vars and the Twilio status card first.
+                  If the rep sees <strong>browser softphone not configured</strong>, check the Twilio API key, secret, TwiML App SID, and the Calling Workflow card first.
                 </Typography>
                 <Typography variant="body2">
                   If the call button is disabled because of <strong>lead phone missing</strong>, update the lead record in the drawer before asking the rep to call.
