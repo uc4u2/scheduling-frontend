@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Button,
+  Divider,
   List,
   ListItem,
   ListItemText,
@@ -69,6 +70,33 @@ export default function LeadImportCard({
           <Button variant="outlined" onClick={onImport} disabled={!value.file || importing} sx={{ minWidth: 160 }}>
             {importing ? "Importing..." : "Import leads"}
           </Button>
+        </Stack>
+
+        <Divider />
+
+        <Stack spacing={1}>
+          <Typography variant="subtitle2">Accepted CSV structure</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Use <strong>company_name</strong> as the required column. The importer also accepts friendly aliases like
+            <strong> company</strong>, <strong> business_name</strong>, <strong> contact</strong>, <strong> name</strong>,
+            <strong> phone_number</strong>, and <strong> domain</strong>.
+          </Typography>
+          <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: "grey.50", overflowX: "auto" }}>
+            <Typography
+              component="pre"
+              variant="caption"
+              sx={{ m: 0, fontFamily: "monospace", whiteSpace: "pre-wrap" }}
+            >
+{`company_name,contact_name,phone,email,website,industry,city,country,source,priority
+Photo Artisto Corp,Yousef Samak Jalali,+14165550123,contact@photoartisto.com,https://photoartisto.com,Photography,Toronto,Canada,import_march,2
+Brow Artisto,Sarah Lee,+14165550124,hello@browartisto.com,https://browartisto.com,Beauty,Toronto,Canada,import_march,1`}
+            </Typography>
+          </Paper>
+          <Typography variant="caption" color="text.secondary">
+            Optional columns: <strong>contact_name</strong>, <strong>phone</strong>, <strong>email</strong>, <strong>website</strong>,
+            <strong>industry</strong>, <strong>city</strong>, <strong>country</strong>, <strong>source</strong>, <strong>priority</strong>.
+            Rows without <strong>company_name</strong> are skipped.
+          </Typography>
         </Stack>
 
         {batches?.length ? (

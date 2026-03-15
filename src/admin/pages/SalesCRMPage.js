@@ -1287,6 +1287,23 @@ export default function SalesCRMPage() {
               </Typography>
             </Paper>
             <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>CSV import format</Typography>
+              <Stack spacing={1}>
+                <Typography variant="body2">
+                  The import tool expects a CSV with <strong>company_name</strong> as the required column.
+                </Typography>
+                <Typography variant="body2">
+                  Supported aliases include <strong>company</strong>, <strong>business_name</strong>, <strong>contact</strong>,
+                  <strong>name</strong>, <strong>phone_number</strong>, and <strong>domain</strong>.
+                </Typography>
+                <Typography variant="body2">
+                  Recommended columns: <strong>company_name</strong>, <strong>contact_name</strong>, <strong>phone</strong>,
+                  <strong>email</strong>, <strong>website</strong>, <strong>industry</strong>, <strong>city</strong>,
+                  <strong>country</strong>, <strong>source</strong>, <strong>priority</strong>.
+                </Typography>
+              </Stack>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Lock and queue safety</Typography>
               <Typography variant="body2" color="text.secondary">
                 The drawer shows current assignment, lock owner, lock age, callback timing, and conversion links so admins can recover stuck leads without breaking attribution.
