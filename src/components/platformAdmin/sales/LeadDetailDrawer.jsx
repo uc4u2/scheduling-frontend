@@ -23,6 +23,21 @@ function formatDateTime(value) {
   return dt.toLocaleString();
 }
 
+function formatAgeFromNow(value) {
+  if (!value) return "—";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return "—";
+  const diffMs = Date.now() - dt.getTime();
+  if (diffMs < 0) return "0h";
+  const totalMinutes = Math.floor(diffMs / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 function toLocalDateTimeValue(value) {
   if (!value) return "";
   const dt = new Date(value);
@@ -290,6 +305,64 @@ export default function LeadDetailDrawer({
                     <Grid item xs={12} md={4}><DetailRow label="Callback at" value={formatDateTime(lead.callback_at)} /></Grid>
                   </Grid>
                 )}
+
+                <Divider sx={{ my: 2 }} />
+
+                <Stack spacing={1}>
+                  <Box>
+                    <Typography variant="subtitle2">Attribution and dispute state</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      These timestamps and ownership fields are the dispute-safe reference points for first touch, first meaningful outcome, and the latest reassignment trail.
+                    </Typography>
+                  </Box>
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow
+                        label="First contact"
+                        value={
+                          lead.first_contact_at
+                            ? `${formatDateTime(lead.first_contact_at)} · ${repLabelById[String(lead.first_contact_rep_id)] || `Rep #${lead.first_contact_rep_id}`}`
+                            : null
+                        }
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow
+                        label="First meaningful contact"
+                        value={
+                          lead.first_meaningful_contact_at
+                            ? `${formatDateTime(lead.first_meaningful_contact_at)} · ${repLabelById[String(lead.first_meaningful_contact_rep_id)] || `Rep #${lead.first_meaningful_contact_rep_id}`}`
+                            : null
+                        }
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow
+                        label="Last attempt"
+                        value={
+                          lead.last_attempt_at
+                            ? `${formatDateTime(lead.last_attempt_at)} · ${repLabelById[String(lead.last_attempt_rep_id)] || `Rep #${lead.last_attempt_rep_id}`}${lead.last_attempt_outcome ? ` · ${lead.last_attempt_outcome}` : ""}`
+                            : null
+                        }
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow
+                        label="Current assignment age"
+                        value={lead.last_assignment_at || lead.assigned_at ? formatAgeFromNow(lead.last_assignment_at || lead.assigned_at) : null}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Last assignment" value={formatDateTime(lead.last_assignment_at || lead.assigned_at)} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Last reassignment" value={formatDateTime(lead.last_reassignment_at)} />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <DetailRow label="Last reassignment reason" value={lead.last_reassignment_reason} />
+                    </Grid>
+                  </Grid>
+                </Stack>
               </Paper>
             ) : null}
 
@@ -351,6 +424,11 @@ export default function LeadDetailDrawer({
                             <Typography variant="caption" color="text.secondary">
                               Assigned {formatDateTime(row.assigned_at)} · Released {formatDateTime(row.unassigned_at)}
                             </Typography>
+                            {row.assigned_by_admin_name || row.assigned_by_admin_id ? (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                Assigned by {row.assigned_by_admin_name || `Admin #${row.assigned_by_admin_id}`}
+                              </Typography>
+                            ) : null}
                             {row.reason ? (
                               <Typography variant="body2" sx={{ mt: 0.5 }}>{row.reason}</Typography>
                             ) : null}
@@ -455,7 +533,7 @@ export default function LeadDetailDrawer({
             {tab === "activity" ? (
               <Paper variant="outlined" sx={{ p: 2.25 }}>
                 <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Activity timeline</Typography>
-                <LeadActivityTimeline activity={activity} />
+                <LeadActivityTimeline activity={activity} reps={reps} />
               </Paper>
             ) : null}
 

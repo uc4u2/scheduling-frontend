@@ -8,7 +8,42 @@ function formatDateTime(value) {
   return dt.toLocaleString();
 }
 
-export default function LeadActivityTimeline({ activity = [] }) {
+function actorLabel(item, repNameById) {
+  if (item.sales_rep_name) return item.sales_rep_name;
+  if (item.sales_rep_id) return repNameById[String(item.sales_rep_id)] || `Rep #${item.sales_rep_id}`;
+  if (item.admin_name) return item.admin_name;
+  if (item.admin_id) return `Admin #${item.admin_id}`;
+  return null;
+}
+
+function metaLines(item, repNameById) {
+  const meta = item.meta || {};
+  const lines = [];
+  if (meta.attempt_number || meta.attempt_number_today) {
+    lines.push(`Attempts: total ${meta.attempt_number || 0} · today ${meta.attempt_number_today || 0}`);
+  }
+  if (meta.reassignment_reason) {
+    lines.push(`Reassignment reason: ${meta.reassignment_reason}`);
+  }
+  if (meta.previous_rep_id) {
+    lines.push(`Previous rep: ${repNameById[String(meta.previous_rep_id)] || `Rep #${meta.previous_rep_id}`}`);
+  }
+  if (meta.suggested_outcome) {
+    lines.push(`Suggested outcome: ${meta.suggested_outcome}`);
+  }
+  if (meta.stale_reason) {
+    lines.push(`Stale reason: ${meta.stale_reason}`);
+  }
+  if (meta.strategy_state) {
+    lines.push(`Strategy state: ${meta.strategy_state}`);
+  }
+  if (meta.throttle_until) {
+    lines.push(`Throttle until: ${formatDateTime(meta.throttle_until)}`);
+  }
+  return lines;
+}
+
+export default function LeadActivityTimeline({ activity = [], reps = [] }) {
   if (!activity.length) {
     return (
       <Typography variant="body2" color="text.secondary">
@@ -16,6 +51,11 @@ export default function LeadActivityTimeline({ activity = [] }) {
       </Typography>
     );
   }
+
+  const repNameById = {};
+  reps.forEach((rep) => {
+    repNameById[String(rep.id)] = rep.full_name;
+  });
 
   return (
     <Stack spacing={1.5}>
@@ -36,6 +76,11 @@ export default function LeadActivityTimeline({ activity = [] }) {
               {formatDateTime(item.created_at)}
             </Typography>
           </Stack>
+          {actorLabel(item, repNameById) ? (
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+              Actor: {actorLabel(item, repNameById)}
+            </Typography>
+          ) : null}
           {item.note ? (
             <Typography variant="body2" sx={{ mb: item.callback_at ? 0.5 : 0 }}>
               {item.note}
@@ -46,6 +91,11 @@ export default function LeadActivityTimeline({ activity = [] }) {
               Callback: {formatDateTime(item.callback_at)}
             </Typography>
           ) : null}
+          {metaLines(item, repNameById).map((line) => (
+            <Typography key={line} variant="caption" color="text.secondary" display="block">
+              {line}
+            </Typography>
+          ))}
         </Box>
       ))}
     </Stack>
