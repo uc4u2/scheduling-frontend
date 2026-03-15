@@ -43,6 +43,19 @@ const DEVICE_STATUS = {
   DISCONNECTED: "disconnected",
 };
 
+const emptyAudioDiagnostics = {
+  initialized: false,
+  inputDevices: [],
+  outputDevices: [],
+  selectedInputId: "",
+  selectedInputLabel: "",
+  selectedOutputId: "",
+  selectedOutputLabel: "",
+  supportsOutputSelection: false,
+  inputLevel: 0,
+  deviceChangeDetected: false,
+};
+
 function toUtcIso(value) {
   if (!value) return undefined;
   const dt = new Date(value);
@@ -58,6 +71,8 @@ function getDisabledReasonCopy(reason) {
     locked_lead_required: "Only your current locked lead can be called through Twilio.",
     protected_twilio_mode_required: "Protected Twilio mode must be enabled before browser calling is available.",
     sales_rep_phone_missing: "Bridge fallback still needs a rep phone number. Browser mode does not.",
+    lead_attempt_limit_reached: "This lead reached the daily call-attempt limit. Try again tomorrow or ask an admin to review the lead.",
+    lead_retry_cooldown_active: "This lead is in a retry cooldown window. Wait for the cooldown to expire before calling again.",
   };
   return messages[reason] || "Calling is not available for this lead right now.";
 }
@@ -83,6 +98,25 @@ function getHistoryStatus(history) {
   }
 }
 
+function labelAudioDevice(device, fallback) {
+  if (!device) return fallback;
+  if (device.label) return device.label;
+  if (device.deviceId === "default") return `${fallback} (Default)`;
+  return fallback;
+}
+
+function listMediaDevices(devicesMap, fallback) {
+  return Array.from(devicesMap?.values?.() || []).map((device, index) => ({
+    id: device.deviceId,
+    label: labelAudioDevice(device, `${fallback} ${index + 1}`),
+  }));
+}
+
+function getActiveOutputDevice(device) {
+  const active = Array.from(device?.audio?.speakerDevices?.get?.() || []);
+  return active[0] || null;
+}
+
 export default function SalesLeadQueuePage() {
   const [progress, setProgress] = useState({});
   const [lead, setLead] = useState(null);
@@ -96,11 +130,41 @@ export default function SalesLeadQueuePage() {
   const [deviceStatusSummary, setDeviceStatusSummary] = useState(null);
   const [initializingDevice, setInitializingDevice] = useState(false);
   const [softphoneState, setSoftphoneState] = useState({ status: DEVICE_STATUS.NOT_INITIALIZED, helperText: "" });
+  const [audioDiagnostics, setAudioDiagnostics] = useState(emptyAudioDiagnostics);
 
   const deviceRef = useRef(null);
   const activeCallRef = useRef(null);
+  const inputVolumeHandlerRef = useRef(null);
+  const mediaDeviceChangeHandlerRef = useRef(null);
+
+  const syncAudioDiagnostics = useCallback((device, options = {}) => {
+    const inputDevices = listMediaDevices(device?.audio?.availableInputDevices, "Microphone");
+    const outputDevices = listMediaDevices(device?.audio?.availableOutputDevices, "Speaker");
+    const selectedInput = device?.audio?.inputDevice || null;
+    const selectedOutput = getActiveOutputDevice(device);
+    setAudioDiagnostics((prev) => ({
+      initialized: Boolean(device),
+      inputDevices,
+      outputDevices,
+      selectedInputId: selectedInput?.deviceId || "",
+      selectedInputLabel: labelAudioDevice(selectedInput, "Default microphone"),
+      selectedOutputId: selectedOutput?.deviceId || "",
+      selectedOutputLabel: labelAudioDevice(selectedOutput, "Default speaker"),
+      supportsOutputSelection: Boolean(device?.audio?.isOutputSelectionSupported),
+      inputLevel: options.preserveInputLevel ? prev.inputLevel : 0,
+      deviceChangeDetected: options.deviceChangeDetected ? true : prev.deviceChangeDetected,
+    }));
+  }, []);
 
   const destroyDevice = useCallback(() => {
+    if (deviceRef.current && inputVolumeHandlerRef.current) {
+      deviceRef.current.audio?.off?.("inputVolume", inputVolumeHandlerRef.current);
+    }
+    if (mediaDeviceChangeHandlerRef.current && navigator?.mediaDevices?.removeEventListener) {
+      navigator.mediaDevices.removeEventListener("devicechange", mediaDeviceChangeHandlerRef.current);
+    }
+    inputVolumeHandlerRef.current = null;
+    mediaDeviceChangeHandlerRef.current = null;
     try {
       activeCallRef.current?.disconnect?.();
     } catch (error) {
@@ -113,6 +177,7 @@ export default function SalesLeadQueuePage() {
       // noop
     }
     deviceRef.current = null;
+    setAudioDiagnostics(emptyAudioDiagnostics);
   }, []);
 
   const loadPage = useCallback(async () => {
@@ -165,7 +230,7 @@ export default function SalesLeadQueuePage() {
       });
       return;
     }
-    setSoftphoneState({ status: DEVICE_STATUS.NOT_INITIALIZED, helperText: "Enable calling when you are ready to connect your browser headset." });
+      setSoftphoneState({ status: DEVICE_STATUS.NOT_INITIALIZED, helperText: "Enable calling when you are ready to connect your browser headset." });
   }, [destroyDevice, deviceStatusSummary, lead?.lead_access_mode, softphoneVisible]);
 
   useEffect(() => {
@@ -243,11 +308,29 @@ export default function SalesLeadQueuePage() {
         closeProtection: true,
       });
       deviceRef.current = device;
+      syncAudioDiagnostics(device);
+
+      inputVolumeHandlerRef.current = (inputLevel) => {
+        setAudioDiagnostics((prev) => ({ ...prev, inputLevel }));
+      };
+      device.audio?.on?.("inputVolume", inputVolumeHandlerRef.current);
+
+      mediaDeviceChangeHandlerRef.current = async () => {
+        syncAudioDiagnostics(device, { preserveInputLevel: true, deviceChangeDetected: true });
+        setSoftphoneState((prev) => ({
+          ...prev,
+          helperText: "Audio devices changed. Re-enable calling if you switched headset, earbuds, or microphone.",
+        }));
+      };
+      if (navigator?.mediaDevices?.addEventListener) {
+        navigator.mediaDevices.addEventListener("devicechange", mediaDeviceChangeHandlerRef.current);
+      }
 
       device.on?.("registering", () => {
         setSoftphoneState({ status: DEVICE_STATUS.INITIALIZING, helperText: "Registering the browser softphone with Twilio." });
       });
       device.on?.("registered", () => {
+        syncAudioDiagnostics(device, { preserveInputLevel: true });
         setSoftphoneState({ status: DEVICE_STATUS.READY, helperText: "Browser calling is ready for the current locked lead." });
       });
       device.on?.("unregistered", () => {
@@ -269,6 +352,37 @@ export default function SalesLeadQueuePage() {
       setBanner({ type: "error", message: error?.response?.data?.error || error?.message || "Failed to enable browser calling." });
     } finally {
       setInitializingDevice(false);
+    }
+  };
+
+  const handleSelectInputDevice = async (deviceId) => {
+    if (!deviceRef.current?.audio?.setInputDevice || !deviceId) return;
+    try {
+      await deviceRef.current.audio.setInputDevice(deviceId);
+      syncAudioDiagnostics(deviceRef.current, { preserveInputLevel: true });
+      setSoftphoneState((prev) => ({
+        ...prev,
+        helperText: "Microphone updated. Re-enable calling if you changed hardware after the device was already active.",
+      }));
+    } catch (error) {
+      setBanner({ type: "error", message: error?.message || "Failed to switch the microphone device." });
+    }
+  };
+
+  const handleSelectOutputDevice = async (deviceId) => {
+    if (!deviceRef.current?.audio?.speakerDevices?.set || !deviceId) return;
+    try {
+      await Promise.all([
+        deviceRef.current.audio.speakerDevices.set(deviceId),
+        deviceRef.current.audio.ringtoneDevices?.set?.(deviceId),
+      ]);
+      syncAudioDiagnostics(deviceRef.current, { preserveInputLevel: true });
+      setSoftphoneState((prev) => ({
+        ...prev,
+        helperText: "Speaker updated. Re-enable calling if you changed headsets after browser calling was already active.",
+      }));
+    } catch (error) {
+      setBanner({ type: "error", message: error?.message || "Failed to switch the output device." });
     }
   };
 
@@ -417,6 +531,9 @@ export default function SalesLeadQueuePage() {
                 onCall={handleBrowserCall}
                 onHangup={handleHangup}
                 leadName={lead?.company_name || null}
+                diagnostics={audioDiagnostics}
+                onSelectInputDevice={handleSelectInputDevice}
+                onSelectOutputDevice={handleSelectOutputDevice}
               />
               <LeadCurrentCard
                 lead={lead}
@@ -455,5 +572,3 @@ export default function SalesLeadQueuePage() {
     </Box>
   );
 }
-    lead_attempt_limit_reached: "This lead reached the daily call-attempt limit. Try again tomorrow or ask an admin to review the lead.",
-    lead_retry_cooldown_active: "This lead is in a retry cooldown window. Wait for the cooldown to expire before calling again.",
