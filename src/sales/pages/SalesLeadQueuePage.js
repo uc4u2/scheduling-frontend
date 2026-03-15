@@ -455,3 +455,5 @@ export default function SalesLeadQueuePage() {
     </Box>
   );
 }
+    lead_attempt_limit_reached: "This lead reached the daily call-attempt limit. Try again tomorrow or ask an admin to review the lead.",
+    lead_retry_cooldown_active: "This lead is in a retry cooldown window. Wait for the cooldown to expire before calling again.",

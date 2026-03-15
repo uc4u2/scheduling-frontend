@@ -733,6 +733,10 @@ export default function SalesCRMPage() {
               <MenuItem value="subscribed">Subscribed</MenuItem>
               <MenuItem value="duplicate">Duplicate</MenuItem>
               <MenuItem value="do_not_call">Do not call</MenuItem>
+              <MenuItem value="attempt_limit">Attempt limit</MenuItem>
+              <MenuItem value="retry_cooldown">Retry cooldown</MenuItem>
+              <MenuItem value="overdue_callback">Overdue callback</MenuItem>
+              <MenuItem value="stale_assigned">Stale assigned</MenuItem>
             </TextField>
             <TextField select label="Outcome" value={outcomeFilter} onChange={(e) => setOutcomeFilter(e.target.value)} sx={{ minWidth: 200 }}>
               <MenuItem value="">All outcomes</MenuItem>
