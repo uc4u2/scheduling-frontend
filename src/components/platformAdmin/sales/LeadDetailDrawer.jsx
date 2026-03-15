@@ -59,6 +59,11 @@ function DetailRow({ label, value }) {
   );
 }
 
+function formatRepLabel(repId, repLabelById) {
+  if (!repId) return "—";
+  return repLabelById[String(repId)] || `Rep #${repId}`;
+}
+
 const emptyEditForm = {
   company_name: "",
   contact_name: "",
@@ -93,6 +98,7 @@ export default function LeadDetailDrawer({
   actionState,
   onActionStateChange,
   onRunAction,
+  onUpdateQaReview,
   initialTab = "overview",
   initialEditMode = false,
 }) {
@@ -321,7 +327,7 @@ export default function LeadDetailDrawer({
                         label="First contact"
                         value={
                           lead.first_contact_at
-                            ? `${formatDateTime(lead.first_contact_at)} · ${repLabelById[String(lead.first_contact_rep_id)] || `Rep #${lead.first_contact_rep_id}`}`
+                            ? `${formatDateTime(lead.first_contact_at)} · ${formatRepLabel(lead.first_contact_rep_id, repLabelById)}`
                             : null
                         }
                       />
@@ -331,7 +337,7 @@ export default function LeadDetailDrawer({
                         label="First meaningful contact"
                         value={
                           lead.first_meaningful_contact_at
-                            ? `${formatDateTime(lead.first_meaningful_contact_at)} · ${repLabelById[String(lead.first_meaningful_contact_rep_id)] || `Rep #${lead.first_meaningful_contact_rep_id}`}`
+                            ? `${formatDateTime(lead.first_meaningful_contact_at)} · ${formatRepLabel(lead.first_meaningful_contact_rep_id, repLabelById)}`
                             : null
                         }
                       />
@@ -341,7 +347,7 @@ export default function LeadDetailDrawer({
                         label="Last attempt"
                         value={
                           lead.last_attempt_at
-                            ? `${formatDateTime(lead.last_attempt_at)} · ${repLabelById[String(lead.last_attempt_rep_id)] || `Rep #${lead.last_attempt_rep_id}`}${lead.last_attempt_outcome ? ` · ${lead.last_attempt_outcome}` : ""}`
+                            ? `${formatDateTime(lead.last_attempt_at)} · ${formatRepLabel(lead.last_attempt_rep_id, repLabelById)}${lead.last_attempt_outcome ? ` · ${lead.last_attempt_outcome}` : ""}`
                             : null
                         }
                       />
@@ -363,6 +369,83 @@ export default function LeadDetailDrawer({
                     </Grid>
                   </Grid>
                 </Stack>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Stack spacing={1}>
+                  <Box>
+                    <Typography variant="subtitle2">Call QA state</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Compare the latest Twilio result with the most recent rep-submitted outcome. This is advisory review only and does not auto-correct CRM outcomes.
+                    </Typography>
+                  </Box>
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow
+                        label="QA outcome check"
+                        value={
+                          lead.qa_outcome_match === true
+                            ? "Match"
+                            : lead.is_qa_outcome_mismatch
+                              ? "Mismatch"
+                              : "No automatic mismatch flag"
+                        }
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Twilio status" value={lead.qa_twilio_status} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Suggested outcome" value={lead.qa_suggested_outcome} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Rep outcome" value={lead.qa_rep_outcome} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Call duration" value={lead.qa_call_duration ? `${lead.qa_call_duration}s` : null} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Call SID" value={lead.qa_call_sid} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Review state" value={lead.qa_review_state} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Reviewed by" value={lead.qa_reviewed_by_admin_name || (lead.qa_reviewed_by_admin_id ? `Admin #${lead.qa_reviewed_by_admin_id}` : null)} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Reviewed at" value={formatDateTime(lead.qa_reviewed_at)} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Review note" value={lead.qa_review_note} />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="QA review note"
+                        value={actionState.qaReviewNote || ""}
+                        onChange={(e) => onActionStateChange("qaReviewNote", e.target.value)}
+                      />
+                    </Grid>
+                  </Grid>
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => onUpdateQaReview?.("acknowledged")}
+                      disabled={!lead.is_qa_outcome_mismatch}
+                    >
+                      Acknowledge
+                    </Button>
+                    <Button
+                      variant="contained"
+                      onClick={() => onUpdateQaReview?.("resolved")}
+                      disabled={!lead.is_qa_outcome_mismatch}
+                    >
+                      Resolve
+                    </Button>
+                  </Stack>
+                </Stack>
               </Paper>
             ) : null}
 
@@ -377,13 +460,29 @@ export default function LeadDetailDrawer({
                   </Box>
                   <Grid container spacing={1.5}>
                     <Grid item xs={12} md={6}>
-                      <DetailRow label="Assigned rep" value={lead.assigned_rep_id ? repLabelById[String(lead.assigned_rep_id)] || `Rep #${lead.assigned_rep_id}` : null} />
+                      <DetailRow label="Assigned rep" value={lead.assigned_rep_id ? formatRepLabel(lead.assigned_rep_id, repLabelById) : null} />
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <DetailRow label="Assigned at" value={formatDateTime(lead.assigned_at)} />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <DetailRow label="Current lock owner" value={lead.locked_by_rep_id ? repLabelById[String(lead.locked_by_rep_id)] || `Rep #${lead.locked_by_rep_id}` : null} />
+                      <DetailRow
+                        label="Assigned rep active load"
+                        value={
+                          lead.assigned_rep_workload
+                            ? `${lead.assigned_rep_workload.active_assigned_count ?? 0} / ${lead.assigned_rep_workload.soft_cap_active_assigned_leads ?? 25}`
+                            : null
+                        }
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow
+                        label="Assigned rep fairness state"
+                        value={lead.assigned_rep_workload?.fairness_state || null}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <DetailRow label="Current lock owner" value={lead.locked_by_rep_id ? formatRepLabel(lead.locked_by_rep_id, repLabelById) : null} />
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <DetailRow label="Locked at" value={formatDateTime(lead.locked_at)} />
@@ -419,7 +518,7 @@ export default function LeadDetailDrawer({
                         {assignments.map((row) => (
                           <Paper key={row.id} variant="outlined" sx={{ p: 1.5 }}>
                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                              {repLabelById[String(row.sales_rep_id)] || `Rep #${row.sales_rep_id}`}
+                              {formatRepLabel(row.sales_rep_id, repLabelById)}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               Assigned {formatDateTime(row.assigned_at)} · Released {formatDateTime(row.unassigned_at)}

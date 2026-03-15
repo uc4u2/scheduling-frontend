@@ -40,6 +40,27 @@ export const listSalesReps = async () => {
   return data?.reps || [];
 };
 
+export const getSalesRepProductivity = async () => {
+  const { data } = await platformAdminApi.get("/sales/reps/productivity");
+  return data || { rep_productivity: [], generated_at: null };
+};
+
+export const getSalesSupervisorQueue = async () => {
+  const { data } = await platformAdminApi.get("/sales/supervisor-queue");
+  return data || {
+    generated_at: null,
+    queue: {
+      overdue_callbacks: [],
+      stale_assigned: [],
+      attempt_limited: [],
+      retry_cooldown_blocked: [],
+      company_throttle_active: [],
+      qa_unresolved: [],
+      overloaded_rep_leads: [],
+    },
+  };
+};
+
 export const listSalesDeals = async () => {
   const { data } = await platformAdminApi.get("/sales/deals");
   return data?.deals || [];
@@ -118,6 +139,16 @@ export const markLeadDuplicate = async (leadId, payload = {}) => {
 export const convertLead = async (leadId, payload = {}) => {
   const { data } = await platformAdminApi.post(`/sales/leads/${leadId}/convert`, payload);
   return data?.lead || null;
+};
+
+export const updateLeadQaReview = async (leadId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/sales/leads/${leadId}/qa-review`, payload);
+  return data?.lead || null;
+};
+
+export const bulkUpdateLeadQaReview = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/sales/leads/qa-review/bulk", payload);
+  return data || { review_state: null, processed: [], blocked: [], updated_count: 0 };
 };
 
 export const getLeadActivity = async (params = {}) => {

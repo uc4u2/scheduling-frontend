@@ -40,6 +40,8 @@ import {
   getLeadSummary,
   listLeadImportBatches,
   listLeads,
+  getSalesRepProductivity,
+  getSalesSupervisorQueue,
   listSalesDeals,
   listSalesReps,
   markLeadDuplicate,
@@ -47,6 +49,8 @@ import {
   suppressLead,
   unassignLead,
   unlockLead,
+  bulkUpdateLeadQaReview,
+  updateLeadQaReview,
   updateLead,
   saveSalesCallSettings,
 } from "../../api/platformAdminSales";
@@ -71,6 +75,7 @@ const emptyActionState = {
   convertCompanyId: "",
   convertSalesDealId: "",
   convertNote: "",
+  qaReviewNote: "",
 };
 
 const emptyImportForm = {
@@ -102,6 +107,19 @@ const defaultCallSettings = {
 export default function SalesCRMPage() {
   const topOffset = { xs: 56, sm: 64 };
   const [summary, setSummary] = useState({});
+  const [repProductivitySummary, setRepProductivitySummary] = useState({ rep_productivity: [], generated_at: null });
+  const [supervisorQueueSummary, setSupervisorQueueSummary] = useState({
+    generated_at: null,
+    queue: {
+      overdue_callbacks: [],
+      stale_assigned: [],
+      attempt_limited: [],
+      retry_cooldown_blocked: [],
+      company_throttle_active: [],
+      qa_unresolved: [],
+      overloaded_rep_leads: [],
+    },
+  });
   const [reps, setReps] = useState([]);
   const [deals, setDeals] = useState([]);
   const [leads, setLeads] = useState([]);
@@ -143,6 +161,7 @@ export default function SalesCRMPage() {
   const [twilioStatus, setTwilioStatus] = useState({ configured: false, provider: "twilio", missing_config_fields: [] });
   const [loadingCallSettings, setLoadingCallSettings] = useState(true);
   const [savingCallSettings, setSavingCallSettings] = useState(false);
+  const [selectedSupervisorLeadIds, setSelectedSupervisorLeadIds] = useState([]);
 
   const showBanner = useCallback((type, message) => setBanner({ type, message }), []);
 
@@ -178,8 +197,10 @@ export default function SalesCRMPage() {
   const loadPage = useCallback(async () => {
     setLoading(true);
     try {
-      const [summaryResp, leadsResp] = await Promise.all([
+      const [summaryResp, productivityResp, supervisorQueueResp, leadsResp] = await Promise.all([
         getLeadSummary(),
+        getSalesRepProductivity(),
+        getSalesSupervisorQueue(),
         listLeads({
           q: query || undefined,
           status: status || undefined,
@@ -195,8 +216,24 @@ export default function SalesCRMPage() {
         }),
       ]);
       setSummary(summaryResp);
+      setRepProductivitySummary(productivityResp || { rep_productivity: [], generated_at: null });
+      setSupervisorQueueSummary(
+        supervisorQueueResp || {
+          generated_at: null,
+          queue: {
+            overdue_callbacks: [],
+            stale_assigned: [],
+            attempt_limited: [],
+            retry_cooldown_blocked: [],
+            company_throttle_active: [],
+            qa_unresolved: [],
+            overloaded_rep_leads: [],
+          },
+        }
+      );
       setLeads(leadsResp.leads || []);
       setTotal(leadsResp.total || 0);
+      setSelectedSupervisorLeadIds([]);
       if (drawerLeadId) {
         await loadDrawerLead(drawerLeadId);
       }
@@ -240,6 +277,24 @@ export default function SalesCRMPage() {
     const values = new Set(leads.map((lead) => (lead.source || "").trim()).filter(Boolean));
     return Array.from(values).sort((a, b) => a.localeCompare(b));
   }, [leads]);
+  const repProductivity = useMemo(() => {
+    const rows = Array.isArray(repProductivitySummary?.rep_productivity) ? repProductivitySummary.rep_productivity : [];
+    return rows;
+  }, [repProductivitySummary]);
+  const supervisorQueueBuckets = useMemo(
+    () => [
+      { key: "overdue_callbacks", label: "Overdue Callbacks" },
+      { key: "stale_assigned", label: "Stale Assigned" },
+      { key: "attempt_limited", label: "Attempt-Limited" },
+      { key: "retry_cooldown_blocked", label: "Retry Cooldown Blocked" },
+      { key: "company_throttle_active", label: "Company Throttle Active" },
+      { key: "qa_unresolved", label: "QA Unresolved" },
+      { key: "overloaded_rep_leads", label: "Overloaded Rep Leads" },
+    ],
+    []
+  );
+  const supervisorQueue = useMemo(() => supervisorQueueSummary?.queue || {}, [supervisorQueueSummary]);
+  const selectedSupervisorLeadIdSet = useMemo(() => new Set(selectedSupervisorLeadIds), [selectedSupervisorLeadIds]);
   const outcomeOptions = useMemo(() => {
     const values = new Set(leads.map((lead) => (lead.last_outcome || "").trim()).filter(Boolean));
     [
@@ -275,6 +330,39 @@ export default function SalesCRMPage() {
       showBanner("error", error?.response?.data?.error || "Failed to load lead details.");
     }
   }, [loadDrawerLead, showBanner]);
+
+  const toggleSupervisorLeadSelection = useCallback((leadId) => {
+    setSelectedSupervisorLeadIds((prev) => (
+      prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]
+    ));
+  }, []);
+
+  const handleBulkQaReview = useCallback(async (reviewState) => {
+    if (!selectedSupervisorLeadIds.length) return;
+    setSubmitting(true);
+    try {
+      const result = await bulkUpdateLeadQaReview({
+        review_state: reviewState,
+        lead_ids: selectedSupervisorLeadIds,
+        note: actionState.qaReviewNote || undefined,
+      });
+      const processedCount = result?.updated_count || 0;
+      const blockedCount = Array.isArray(result?.blocked) ? result.blocked.length : 0;
+      setSelectedSupervisorLeadIds([]);
+      if (processedCount && blockedCount) {
+        showBanner("warning", `${processedCount} lead(s) updated and ${blockedCount} blocked during bulk QA ${reviewState}.`);
+      } else if (processedCount) {
+        showBanner("success", `${processedCount} lead(s) updated for QA ${reviewState}.`);
+      } else {
+        showBanner("error", `No leads were updated for QA ${reviewState}.`);
+      }
+      await loadPage();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || `Bulk QA ${reviewState} failed.`);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [actionState.qaReviewNote, loadPage, selectedSupervisorLeadIds, showBanner]);
 
   const handleCreateLead = async () => {
     setSubmitting(true);
@@ -598,6 +686,193 @@ export default function SalesCRMPage() {
       <Stack spacing={3}>
         <LeadSummaryCards summary={summary} />
 
+        {repProductivity.length ? (
+          <Paper sx={{ p: 2.5 }}>
+            <Stack spacing={2}>
+              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>Rep Productivity</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Compact operating view for daily attempt volume, connected calls, callback pressure, and stale queues by rep.
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip size="small" variant="outlined" label={`Soft cap: ${summary?.soft_cap_active_assigned_leads ?? 25} active leads`} />
+                  {repProductivitySummary?.generated_at ? (
+                    <Chip size="small" variant="outlined" label={`Generated: ${new Date(repProductivitySummary.generated_at).toLocaleString()}`} />
+                  ) : null}
+                </Stack>
+              </Stack>
+
+              <Stack spacing={1}>
+                {repProductivity.map((row) => (
+                  <Stack
+                    key={row.rep_id}
+                    direction="column"
+                    spacing={1.5}
+                    sx={{
+                      p: 1.5,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: 1.5,
+                      backgroundColor: row.fairness_state === "overloaded" ? "rgba(239, 68, 68, 0.04)" : "background.paper",
+                    }}
+                  >
+                    <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} justifyContent="space-between">
+                      <Stack spacing={0.25}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                          {row.full_name || `Rep #${row.rep_id}`}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {row.email || "No email on file"}
+                        </Typography>
+                      </Stack>
+
+                      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }} useFlexGap>
+                        <Chip size="small" variant="outlined" label={`Active assigned: ${row.active_assigned_count ?? 0}`} />
+                        <Chip size="small" variant="outlined" label={`Attempts today: ${row.attempts_today ?? row.attempted_today ?? 0}`} />
+                        <Chip size="small" variant="outlined" label={`Connected: ${row.calls_connected ?? 0}`} />
+                        <Chip size="small" variant="outlined" label={`Callbacks due: ${row.callbacks_due ?? 0}`} />
+                        <Chip size="small" variant="outlined" label={`Stale assigned: ${row.stale_assigned ?? 0}`} />
+                        <Chip size="small" variant="outlined" label={`Score: ${row.productivity_score ?? 0}`} />
+                        <Chip
+                          size="small"
+                          color={row.fairness_state === "overloaded" ? "warning" : row.fairness_state === "underloaded" ? "info" : "success"}
+                          label={
+                            row.fairness_state === "overloaded"
+                              ? "Overloaded"
+                              : row.fairness_state === "underloaded"
+                                ? "Underloaded"
+                                : row.fairness_state === "inactive"
+                                  ? "Inactive"
+                                  : "Healthy"
+                          }
+                        />
+                      </Stack>
+                    </Stack>
+                  </Stack>
+                ))}
+              </Stack>
+            </Stack>
+          </Paper>
+        ) : null}
+
+        {supervisorQueueBuckets.some((bucket) => Array.isArray(supervisorQueue?.[bucket.key]) && supervisorQueue[bucket.key].length) ? (
+          <Paper sx={{ p: 2.5 }}>
+            <Stack spacing={2}>
+              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>Supervisor Queue</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Read-only operating buckets for immediate callback recovery, QA review, and rep queue pressure.
+                  </Typography>
+                </Box>
+                {supervisorQueueSummary?.generated_at ? (
+                  <Chip size="small" variant="outlined" label={`Generated: ${new Date(supervisorQueueSummary.generated_at).toLocaleString()}`} />
+                ) : null}
+              </Stack>
+
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
+                <Chip size="small" variant="outlined" label={`Selected: ${selectedSupervisorLeadIds.length}`} />
+                <TextField
+                  size="small"
+                  label="QA review note"
+                  value={actionState.qaReviewNote || ""}
+                  onChange={(e) => setActionState((prev) => ({ ...prev, qaReviewNote: e.target.value }))}
+                  sx={{ minWidth: { xs: "100%", md: 320 } }}
+                />
+                <Button
+                  variant="outlined"
+                  disabled={!selectedSupervisorLeadIds.length || submitting}
+                  onClick={() => handleBulkQaReview("acknowledged")}
+                >
+                  Acknowledge QA
+                </Button>
+                <Button
+                  variant="contained"
+                  disabled={!selectedSupervisorLeadIds.length || submitting}
+                  onClick={() => handleBulkQaReview("resolved")}
+                >
+                  Resolve QA
+                </Button>
+              </Stack>
+
+              <Stack spacing={1.5}>
+                {supervisorQueueBuckets.map((bucket) => {
+                  const items = Array.isArray(supervisorQueue?.[bucket.key]) ? supervisorQueue[bucket.key] : [];
+                  if (!items.length) {
+                    return null;
+                  }
+                  return (
+                    <Paper key={bucket.key} variant="outlined" sx={{ p: 1.5 }}>
+                      <Stack spacing={1}>
+                        <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            {bucket.label}
+                          </Typography>
+                          <Chip size="small" color="warning" variant="outlined" label={`${items.length} lead${items.length === 1 ? "" : "s"}`} />
+                        </Stack>
+                        <Stack spacing={0.75}>
+                          {items.slice(0, 4).map((item) => (
+                            <Stack
+                              key={`${bucket.key}-${item.lead_id}`}
+                              direction={{ xs: "column", lg: "row" }}
+                              justifyContent="space-between"
+                              spacing={1}
+                              sx={{ p: 1, border: "1px solid", borderColor: "divider", borderRadius: 1 }}
+                            >
+                              <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  {item.company_name || "Unnamed company"} {item.contact_name ? `· ${item.contact_name}` : ""}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Lead #{item.lead_id}
+                                  {item.assigned_rep_name ? ` · ${item.assigned_rep_name}` : ""}
+                                  {item.status ? ` · ${item.status}` : ""}
+                                </Typography>
+                                <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", rowGap: 0.5, mt: 0.75 }}>
+                                  {item.callback_at ? <Chip size="small" variant="outlined" label={`Callback: ${new Date(item.callback_at).toLocaleString()}`} /> : null}
+                                  {item.last_attempt_outcome ? <Chip size="small" variant="outlined" label={`Last outcome: ${item.last_attempt_outcome}`} /> : null}
+                                  {item.stale_escalation_reason ? <Chip size="small" variant="outlined" label={`Stale: ${item.stale_escalation_reason}`} /> : null}
+                                  {item.qa_review_state ? <Chip size="small" variant="outlined" label={`QA: ${item.qa_review_state}`} /> : null}
+                                  {item.assigned_rep_workload?.fairness_state ? (
+                                    <Chip size="small" variant="outlined" label={`Rep: ${item.assigned_rep_workload.fairness_state}`} />
+                                  ) : null}
+                                </Stack>
+                              </Box>
+                              <Stack direction="row" spacing={1} sx={{ display: "flex", alignItems: "center" }}>
+                                <Button
+                                  variant={selectedSupervisorLeadIdSet.has(item.lead_id) ? "contained" : "outlined"}
+                                  size="small"
+                                  onClick={() => toggleSupervisorLeadSelection(item.lead_id)}
+                                >
+                                  {selectedSupervisorLeadIdSet.has(item.lead_id) ? "Selected" : "Select"}
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => openLeadWorkspace(item.lead_id, { tab: "overview", editMode: false })}
+                                >
+                                  Open lead
+                                </Button>
+                              </Stack>
+                            </Stack>
+                          ))}
+                        </Stack>
+                        {items.length > 4 ? (
+                          <Typography variant="caption" color="text.secondary">
+                            Showing 4 of {items.length} leads in this bucket.
+                          </Typography>
+                        ) : null}
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+            </Stack>
+          </Paper>
+        ) : null}
+
         <Paper sx={{ p: 2.5 }}>
           <Stack spacing={2}>
             <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between">
@@ -736,6 +1011,10 @@ export default function SalesCRMPage() {
               <MenuItem value="attempt_limit">Attempt limit</MenuItem>
               <MenuItem value="retry_cooldown">Retry cooldown</MenuItem>
               <MenuItem value="company_throttle">Company throttle</MenuItem>
+              <MenuItem value="qa_mismatch">QA mismatch</MenuItem>
+              <MenuItem value="qa_unresolved">QA unresolved</MenuItem>
+              <MenuItem value="qa_acknowledged">QA acknowledged</MenuItem>
+              <MenuItem value="qa_resolved">QA resolved</MenuItem>
               <MenuItem value="overdue_callback">Overdue callback</MenuItem>
               <MenuItem value="stale_assigned">Stale assigned</MenuItem>
             </TextField>
@@ -880,6 +1159,22 @@ export default function SalesCRMPage() {
         actionState={actionState}
         onActionStateChange={(field, value) => setActionState((prev) => ({ ...prev, [field]: value }))}
         onRunAction={handleDrawerAction}
+        onUpdateQaReview={async (reviewState) => {
+          if (!drawerLeadId) return;
+          setSubmitting(true);
+          try {
+            await updateLeadQaReview(drawerLeadId, {
+              review_state: reviewState,
+              note: actionState.qaReviewNote || undefined,
+            });
+            showBanner("success", reviewState === "resolved" ? "QA mismatch resolved." : "QA mismatch acknowledged.");
+            await loadPage();
+          } catch (error) {
+            showBanner("error", error?.response?.data?.error || "Failed to update QA review state.");
+          } finally {
+            setSubmitting(false);
+          }
+        }}
         initialTab={drawerMeta.tab}
         initialEditMode={drawerMeta.editMode}
       />

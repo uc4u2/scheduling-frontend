@@ -17,7 +17,7 @@ function actorLabel(item, repNameById) {
 }
 
 function metaLines(item, repNameById) {
-  const meta = item.meta || {};
+  const meta = item.meta && typeof item.meta === "object" && !Array.isArray(item.meta) ? item.meta : {};
   const lines = [];
   if (meta.attempt_number || meta.attempt_number_today) {
     lines.push(`Attempts: total ${meta.attempt_number || 0} · today ${meta.attempt_number_today || 0}`);
@@ -30,6 +30,26 @@ function metaLines(item, repNameById) {
   }
   if (meta.suggested_outcome) {
     lines.push(`Suggested outcome: ${meta.suggested_outcome}`);
+  }
+  if (meta.twilio_status) {
+    lines.push(`Twilio result: ${meta.twilio_status}`);
+  }
+  if (meta.rep_outcome) {
+    lines.push(`Rep outcome: ${meta.rep_outcome}`);
+  }
+  if (meta.qa_outcome_match === true) {
+    lines.push("QA outcome check: match");
+  } else if (meta.qa_outcome_mismatch === true || meta.qa_outcome_match === false) {
+    lines.push("QA outcome check: mismatch");
+  }
+  if (meta.call_duration) {
+    lines.push(`Call duration: ${meta.call_duration}s`);
+  }
+  if (meta.call_sid) {
+    lines.push(`Call SID: ${meta.call_sid}`);
+  }
+  if (meta.previous_state || meta.qa_review_state) {
+    lines.push(`QA review state: ${meta.previous_state || "none"} -> ${meta.qa_review_state || "none"}`);
   }
   if (meta.stale_reason) {
     lines.push(`Stale reason: ${meta.stale_reason}`);

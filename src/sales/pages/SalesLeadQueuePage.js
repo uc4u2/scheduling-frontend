@@ -516,6 +516,11 @@ export default function SalesLeadQueuePage() {
         <LeadProgressCards progress={progress} />
 
         <Alert severity="info" variant="outlined">{statusSummary}</Alert>
+        {!lead && progress?.fresh_serving_restricted ? (
+          <Alert severity="info" variant="outlined">
+            New fresh leads are paused because your active assigned queue is already above the soft cap. Work callbacks or retries, or ask an admin to rebalance assignments.
+          </Alert>
+        ) : null}
 
         <Grid container spacing={3}>
           <Grid item xs={12} lg={7}>
