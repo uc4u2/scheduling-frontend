@@ -8,6 +8,7 @@ const cards = [
   { key: "stale_assigned", label: "Stale Assigned" },
   { key: "attempt_limited", label: "Attempt-Limited" },
   { key: "retry_cooldown_blocked", label: "Retry Cooldown Blocked" },
+  { key: "company_throttle_active", label: "Company Throttle Active" },
   { key: "converted", label: "Converted" },
   { key: "duplicate", label: "Duplicate" },
   { key: "suppressed", label: "Suppressed" },

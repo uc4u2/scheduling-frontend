@@ -103,6 +103,9 @@ function getCallDisabledReasonCopy(reason) {
     sales_rep_phone_missing: "Your rep phone number is missing. Ask an admin to update your profile.",
     lead_phone_missing: "This lead does not have a callable phone number.",
     locked_lead_required: "Only your current locked lead can be called through Twilio.",
+    lead_attempt_limit_reached: "This lead reached the daily call-attempt limit. Try again later or ask an admin to review it.",
+    lead_retry_cooldown_active: "This lead is currently in a retry cooldown window. Wait before calling again.",
+    company_contact_throttle_active: "Another related lead for this company was contacted recently. Wait for the throttle window to expire or ask an admin to review.",
   };
   return messages[reason] || "Calling is not available for this lead right now.";
 }

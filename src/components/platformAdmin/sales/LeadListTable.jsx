@@ -37,6 +37,7 @@ function FlagChips({ lead }) {
       {lead.is_do_not_call ? <Chip size="small" color="error" label="Do not call" variant="outlined" /> : null}
       {lead.is_attempt_limited ? <Chip size="small" color="error" label="Attempt limit" variant="outlined" /> : null}
       {lead.is_retry_cooldown_blocked ? <Chip size="small" color="warning" label="Retry cooldown" variant="outlined" /> : null}
+      {lead.is_company_contact_throttle_active ? <Chip size="small" color="warning" label="Company throttle" variant="outlined" /> : null}
       {lead.is_callback_overdue ? <Chip size="small" color="warning" label="Overdue callback" variant="outlined" /> : null}
       {lead.is_stale_assigned ? <Chip size="small" color="default" label="Stale assigned" variant="outlined" /> : null}
       {!lead.is_subscribed &&
@@ -44,6 +45,7 @@ function FlagChips({ lead }) {
       !lead.is_do_not_call &&
       !lead.is_attempt_limited &&
       !lead.is_retry_cooldown_blocked &&
+      !lead.is_company_contact_throttle_active &&
       !lead.is_callback_overdue &&
       !lead.is_stale_assigned ? <Typography variant="caption" color="text.secondary">—</Typography> : null}
     </Stack>

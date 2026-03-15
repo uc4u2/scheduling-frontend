@@ -73,6 +73,7 @@ function getDisabledReasonCopy(reason) {
     sales_rep_phone_missing: "Bridge fallback still needs a rep phone number. Browser mode does not.",
     lead_attempt_limit_reached: "This lead reached the daily call-attempt limit. Try again tomorrow or ask an admin to review the lead.",
     lead_retry_cooldown_active: "This lead is in a retry cooldown window. Wait for the cooldown to expire before calling again.",
+    company_contact_throttle_active: "Another related lead for this company was contacted recently. Wait for the throttle window to expire or ask an admin to review.",
   };
   return messages[reason] || "Calling is not available for this lead right now.";
 }
