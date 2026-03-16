@@ -121,6 +121,20 @@ export default function InboundCallDetailDrawer({ open, call, onClose, onOpenLea
                         <Typography variant="caption" color="text.secondary" display="block">
                           Status: {recording.status || "unknown"} · Duration: {recording.duration_seconds ?? "-"}s
                         </Typography>
+                        {recording.recording_url ? (
+                          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              component="a"
+                              href={recording.recording_url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Open recording
+                            </Button>
+                          </Stack>
+                        ) : null}
                       </Box>
                     ))}
                   </Stack>
