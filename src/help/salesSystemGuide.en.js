@@ -60,6 +60,61 @@ Mark paid
 Audit Logs
 - Records generate/approve/mark_paid/void actions
 
+AI SDR V1 — Admin operating model
+
+Purpose
+- AI SDR V1 is an admin-controlled outbound helper inside the existing Sales CRM
+- It is limited to qualification, follow-up, controlled link delivery, callback scheduling, and deterministic CRM updates
+- It is not a full autonomous closer, not a scheduler loop, and not a mixed human/AI ownership system
+
+How AI SDR ownership works
+1) Admin → Sales Reps → create a rep or edit a rep and set it as an AI rep
+2) Admin → Sales CRM → assign leads to that AI rep
+3) AI only works on leads owned by active AI reps
+4) Human-owned leads are intentionally excluded from AI SDR
+
+Primary admin controls
+- Run once: picks the oldest eligible AI-owned lead and starts one AI call
+- Pause AI: pauses an AI rep without deactivating the account
+- Exclude from AI: blocks one lead from AI SDR while keeping assignment intact
+- Start AI call: manually starts a call for one AI-owned lead from the lead drawer
+- Apply result: writes a deterministic CRM outcome after the AI call
+
+Operational stop / resume rules
+- Global stop: set AI_SDR_ENABLED=false
+- Per-AI-rep stop: use Pause AI on the AI rep
+- Per-lead stop: use Exclude from AI, set a future callback, or mark do-not-call
+- Resume: resume the AI rep or include the lead again, then use Run once or Start AI call
+
+Lead drawer AI SDR tab
+- Shows whether the assigned rep is AI or human
+- Shows whether the lead is AI-excluded
+- Shows whether the assigned AI rep is paused
+- Shows the current AI block reason when one exists
+- Shows AI call history, link-send flags, and recording link when present
+- Shows the deterministic result form
+
+Deterministic AI result policy
+- asked_not_to_call_again -> do_not_call
+- asked_for_info_by_email -> interested + demo link when appropriate
+- wants_account_or_registration -> interested + existing SalesDeal invite flow
+- unavailable_but_open_later -> callback required
+- no_answer / voicemail / busy / wrong_number / not_interested -> matching existing CRM outcomes
+- Important: sending a demo link does not mark booked_demo
+
+Safe operating sequence
+1) Create or mark the AI rep
+2) Keep the AI rep active and unpaused
+3) Assign the right leads to that AI rep
+4) Exclude any lead you do not want AI to touch
+5) Use Run once for controlled execution
+6) Review the lead drawer AI SDR tab and apply a deterministic result if needed
+
+Troubleshooting
+- If Run once returns no-op, check AI ownership, pause state, AI exclusion, callback timing, business hours, and do-not-call state
+- If Start AI call is disabled, the lead is blocked by the current AI safety rules
+- If you want AI to stop immediately, pause the AI rep or disable the subsystem with AI_SDR_ENABLED=false
+
 Plans & Pricing — How It Really Works (Important)
 
 This section explains how plans, pricing, Stripe, and commissions work together in Schedulaa.

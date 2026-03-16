@@ -45,6 +45,31 @@ export const getSalesRepProductivity = async () => {
   return data || { rep_productivity: [], generated_at: null };
 };
 
+export const getAiSdrLeadContext = async (leadId) => {
+  const { data } = await platformAdminApi.get(`/ai-sdr/leads/${leadId}/context`);
+  return data || { enabled: false, context: null, block_reason: null };
+};
+
+export const listAiSdrLeadCalls = async (leadId) => {
+  const { data } = await platformAdminApi.get(`/ai-sdr/leads/${leadId}/calls`);
+  return data || { calls: [] };
+};
+
+export const runAiSdrOnce = async (payload = {}) => {
+  const { data } = await platformAdminApi.post("/ai-sdr/run-once", payload);
+  return data || { started: false, noop: true, reason: "unknown", lead_id: null, sales_rep_id: null, call: null };
+};
+
+export const startAiSdrLeadCall = async (leadId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/ai-sdr/leads/${leadId}/call`, payload);
+  return data || { call: null };
+};
+
+export const applyAiSdrResult = async (callId, payload = {}) => {
+  const { data } = await platformAdminApi.post(`/ai-sdr/calls/${callId}/apply-result`, payload);
+  return data || { call: null, outcome: null, note: null, demo_link: null, invite_link: null };
+};
+
 export const getSalesSupervisorQueue = async () => {
   const { data } = await platformAdminApi.get("/sales/supervisor-queue");
   return data || {

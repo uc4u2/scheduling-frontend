@@ -47,10 +47,10 @@ import {
   listLeads,
   getSalesRepProductivity,
   getSalesSupervisorQueue,
-  listSalesDeals,
   listSalesReps,
   markLeadDuplicate,
   restoreLead,
+  runAiSdrOnce,
   suppressLead,
   unassignLead,
   unlockLead,
@@ -127,7 +127,6 @@ export default function SalesCRMPage() {
     },
   });
   const [reps, setReps] = useState([]);
-  const [deals, setDeals] = useState([]);
   const [leads, setLeads] = useState([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
@@ -163,26 +162,27 @@ export default function SalesCRMPage() {
   const [actionState, setActionState] = useState(emptyActionState);
   const [confirmAction, setConfirmAction] = useState(emptyConfirmAction);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [guideTab, setGuideTab] = useState("overview");
   const [callSettings, setCallSettings] = useState(defaultCallSettings);
   const [twilioStatus, setTwilioStatus] = useState({ configured: false, provider: "twilio", missing_config_fields: [] });
   const [loadingCallSettings, setLoadingCallSettings] = useState(true);
   const [savingCallSettings, setSavingCallSettings] = useState(false);
   const [selectedSupervisorLeadIds, setSelectedSupervisorLeadIds] = useState([]);
   const [workspaceTab, setWorkspaceTab] = useState("outbound");
+  const [aiRunOnceSubmitting, setAiRunOnceSubmitting] = useState(false);
+  const [aiRunOnceResult, setAiRunOnceResult] = useState(null);
 
   const showBanner = useCallback((type, message) => setBanner({ type, message }), []);
 
   const loadStatic = useCallback(async () => {
     setLoadingCallSettings(true);
     try {
-      const [repRows, dealRows, batches, callSettingsResp] = await Promise.all([
+      const [repRows, batches, callSettingsResp] = await Promise.all([
         listSalesReps(),
-        listSalesDeals(),
         listLeadImportBatches(),
         getSalesCallSettings(),
       ]);
       setReps(repRows);
-      setDeals(dealRows);
       setImportBatches(batches);
       setCallSettings(callSettingsResp?.settings || defaultCallSettings);
       setTwilioStatus(callSettingsResp?.twilio_status || { configured: false, provider: "twilio", missing_config_fields: [] });
@@ -480,6 +480,24 @@ export default function SalesCRMPage() {
     }
   };
 
+  const handleAiSdrRunOnce = useCallback(async () => {
+    setAiRunOnceSubmitting(true);
+    try {
+      const result = await runAiSdrOnce();
+      setAiRunOnceResult(result);
+      if (result?.started) {
+        showBanner("success", `AI SDR started a call for lead #${result.lead_id}.`);
+      } else {
+        showBanner("info", `AI SDR run-once did not start a call: ${result?.reason || "no eligible lead"}.`);
+      }
+      await loadPage();
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to run AI SDR once.");
+    } finally {
+      setAiRunOnceSubmitting(false);
+    }
+  }, [loadPage, showBanner]);
+
   const executeLeadAction = useCallback(async (type, { leadId = drawerLeadId, leadIds = [] } = {}) => {
     if (!leadId && !leadIds.length) return;
     setSubmitting(true);
@@ -684,7 +702,16 @@ export default function SalesCRMPage() {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
-          <Button variant="text" startIcon={<HelpOutlineOutlinedIcon />} onClick={() => setGuideOpen(true)}>Guide</Button>
+          <Button
+            variant="text"
+            startIcon={<HelpOutlineOutlinedIcon />}
+            onClick={() => {
+              setGuideTab("overview");
+              setGuideOpen(true);
+            }}
+          >
+            Guide
+          </Button>
           <Button variant="outlined" onClick={loadPage}>Refresh</Button>
           <Button variant="contained" onClick={() => setCreateOpen(true)}>Create Lead</Button>
         </Stack>
@@ -709,6 +736,37 @@ export default function SalesCRMPage() {
       ) : (
       <Stack spacing={3}>
         <LeadSummaryCards summary={summary} />
+
+        <Paper sx={{ p: 2.25 }}>
+          <Stack spacing={1.5}>
+            <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>AI SDR</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Minimal admin controls for the backend-only AI SDR V1 foundation. This does not change human rep workflow.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <Button variant="outlined" onClick={handleAiSdrRunOnce} disabled={aiRunOnceSubmitting}>
+                  {aiRunOnceSubmitting ? "Running…" : "Run once"}
+                </Button>
+              </Stack>
+            </Stack>
+
+            {aiRunOnceResult ? (
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
+                <Chip size="small" variant="outlined" color={aiRunOnceResult.started ? "success" : "default"} label={aiRunOnceResult.started ? "Started" : "No-op"} />
+                {aiRunOnceResult.reason ? <Chip size="small" variant="outlined" label={`Reason: ${aiRunOnceResult.reason}`} /> : null}
+                {aiRunOnceResult.lead_id ? <Chip size="small" variant="outlined" label={`Lead #${aiRunOnceResult.lead_id}`} /> : null}
+                {aiRunOnceResult.sales_rep_id ? <Chip size="small" variant="outlined" label={`Rep #${aiRunOnceResult.sales_rep_id}`} /> : null}
+              </Stack>
+            ) : (
+              <Alert severity="info" variant="outlined">
+                Use run-once to let the backend pick the oldest eligible AI-owned lead and start one isolated AI SDR call.
+              </Alert>
+            )}
+          </Stack>
+        </Paper>
 
         {repProductivity.length ? (
           <Paper sx={{ p: 2.5 }}>
@@ -1200,6 +1258,8 @@ export default function SalesCRMPage() {
             setSubmitting(false);
           }
         }}
+        onRefreshLead={loadPage}
+        showBanner={showBanner}
         initialTab={drawerMeta.tab}
         initialEditMode={drawerMeta.editMode}
       />
@@ -1253,6 +1313,15 @@ export default function SalesCRMPage() {
                 Use this workspace to control assignment, queue recovery, conversion hygiene, and calling policy without leaving the admin console.
               </Typography>
             </Box>
+            <Paper sx={{ p: 1 }}>
+              <Tabs value={guideTab} onChange={(_, value) => setGuideTab(value)} variant="scrollable" scrollButtons="auto">
+                <Tab value="overview" label="CRM Guide" />
+                <Tab value="ai_sdr" label="AI SDR" />
+              </Tabs>
+            </Paper>
+
+            {guideTab === "overview" ? (
+              <>
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Calling workflow modes</Typography>
               <Stack spacing={1}>
@@ -1264,7 +1333,7 @@ export default function SalesCRMPage() {
                 </Typography>
               </Stack>
             </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>How to turn on Twilio-protected calling</Typography>
               <Stack spacing={1}>
                 <Typography variant="body2">1. Confirm the Calling Workflow card shows <strong>Browser softphone ready</strong>.</Typography>
@@ -1274,7 +1343,7 @@ export default function SalesCRMPage() {
                 <Typography variant="body2">5. Reps will switch from full phone visibility to masked-phone visibility and can enable browser calling from the lead queue.</Typography>
               </Stack>
             </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Practical example</Typography>
               <Stack spacing={1}>
                 <Typography variant="body2">
@@ -1285,7 +1354,7 @@ export default function SalesCRMPage() {
                 </Typography>
               </Stack>
             </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>What you can filter</Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                 {["Search", "Status", "Assigned rep", "Source", "Flags", "Outcome", "Callback state", "Sort"].map((label) => (
@@ -1296,7 +1365,7 @@ export default function SalesCRMPage() {
                 Search supports company, contact, email, phone, website, source, city, country, and direct lead ID lookups.
               </Typography>
             </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Admin override actions</Typography>
               <Stack spacing={1}>
                 <Typography variant="body2">Assign or reassign ownership to the right rep.</Typography>
@@ -1305,13 +1374,13 @@ export default function SalesCRMPage() {
                 <Typography variant="body2">Suppress, restore, mark duplicate, convert, or delete when the record is safe.</Typography>
               </Stack>
             </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Bulk actions</Typography>
               <Typography variant="body2" color="text.secondary">
                 Bulk assign, unassign, suppress, or delete selected leads. Bulk delete automatically skips linked or subscribed records.
               </Typography>
             </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>CSV import format</Typography>
               <Stack spacing={1}>
                 <Typography variant="body2">
@@ -1328,13 +1397,13 @@ export default function SalesCRMPage() {
                 </Typography>
               </Stack>
             </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Lock and queue safety</Typography>
               <Typography variant="body2" color="text.secondary">
                 The drawer shows current assignment, lock owner, lock age, callback timing, and conversion links so admins can recover stuck leads without breaking attribution.
               </Typography>
             </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>What reps can and cannot do in protected mode</Typography>
               <Stack spacing={1}>
                 <Typography variant="body2">Reps can only call their current locked lead through Twilio.</Typography>
@@ -1343,7 +1412,7 @@ export default function SalesCRMPage() {
                 <Typography variant="body2">Only admins can reassign, unassign, unlock, suppress, restore, or delete leads.</Typography>
               </Stack>
             </Paper>
-            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Troubleshooting examples</Typography>
               <Stack spacing={1}>
                 <Typography variant="body2">
@@ -1357,6 +1426,86 @@ export default function SalesCRMPage() {
                 </Typography>
               </Stack>
             </Paper>
+              </>
+            ) : null}
+
+            {guideTab === "ai_sdr" ? (
+              <>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>What AI SDR V1 is</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">AI SDR V1 is an admin-controlled outbound helper inside the existing sales CRM.</Typography>
+                    <Typography variant="body2">It is limited to qualification, follow-up, controlled link delivery, callback scheduling, and deterministic CRM updates.</Typography>
+                    <Typography variant="body2">It is not a full autonomous closer, not a scheduler loop, and not a mixed human/AI ownership system.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>How AI SDR ownership works</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">1. Mark a sales rep as an <strong>AI rep</strong> in Sales Reps.</Typography>
+                    <Typography variant="body2">2. Assign leads to that AI rep from the normal Sales CRM assignment flow.</Typography>
+                    <Typography variant="body2">3. AI only works on leads owned by active AI reps.</Typography>
+                    <Typography variant="body2">4. Human-owned leads are intentionally excluded from AI SDR.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Primary admin controls</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2"><strong>Run once:</strong> picks the oldest eligible AI-owned lead and starts one call.</Typography>
+                    <Typography variant="body2"><strong>Pause AI:</strong> pauses an AI rep without deactivating the account.</Typography>
+                    <Typography variant="body2"><strong>Exclude from AI:</strong> blocks one lead from AI SDR while keeping assignment intact.</Typography>
+                    <Typography variant="body2"><strong>Start AI call:</strong> manually starts a call for one AI-owned lead from the lead drawer.</Typography>
+                    <Typography variant="body2"><strong>Apply result:</strong> writes a deterministic CRM outcome after the AI call.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Operational stop / resume rules</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2"><strong>Global stop:</strong> set <strong>AI_SDR_ENABLED=false</strong>.</Typography>
+                    <Typography variant="body2"><strong>Per-AI-rep stop:</strong> use <strong>Pause AI</strong> on the AI rep.</Typography>
+                    <Typography variant="body2"><strong>Per-lead stop:</strong> use <strong>Exclude from AI</strong>, set a future callback, or mark do-not-call.</Typography>
+                    <Typography variant="body2"><strong>Resume:</strong> resume the AI rep or include the lead again, then use <strong>Run once</strong> or <strong>Start AI call</strong>.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Lead drawer AI SDR tab</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">The AI SDR tab shows whether the assigned rep is AI or human, whether the lead is AI-excluded, whether the AI rep is paused, and the current AI block reason if one exists.</Typography>
+                    <Typography variant="body2">It also shows recent AI notes/context flags, AI call history, recording links when present, and the deterministic result form.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Deterministic AI result policy</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2"><strong>asked_not_to_call_again</strong> → do_not_call</Typography>
+                    <Typography variant="body2"><strong>asked_for_info_by_email</strong> → interested + demo link when appropriate</Typography>
+                    <Typography variant="body2"><strong>wants_account_or_registration</strong> → interested + existing SalesDeal invite flow</Typography>
+                    <Typography variant="body2"><strong>unavailable_but_open_later</strong> → callback required</Typography>
+                    <Typography variant="body2"><strong>no_answer / voicemail / busy / wrong_number / not_interested</strong> → matching existing CRM outcomes</Typography>
+                    <Typography variant="body2"><strong>Important:</strong> sending a demo link does not mark <strong>booked_demo</strong>.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Safe operating sequence</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">1. Create or mark the AI rep.</Typography>
+                    <Typography variant="body2">2. Keep the AI rep active and unpaused.</Typography>
+                    <Typography variant="body2">3. Assign the right leads to that AI rep.</Typography>
+                    <Typography variant="body2">4. Exclude any lead you do not want AI to touch.</Typography>
+                    <Typography variant="body2">5. Use <strong>Run once</strong> for controlled execution.</Typography>
+                    <Typography variant="body2">6. Review the lead drawer AI SDR tab and apply a deterministic result if needed.</Typography>
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Troubleshooting</Typography>
+                  <Stack spacing={1}>
+                    <Typography variant="body2">If Run once returns <strong>no-op</strong>, check AI ownership, pause state, AI exclusion, callback timing, business hours, and do-not-call state.</Typography>
+                    <Typography variant="body2">If Start AI call is disabled, the lead is blocked by the current AI safety rules.</Typography>
+                    <Typography variant="body2">If you want AI to stop immediately, pause the AI rep or disable the subsystem with <strong>AI_SDR_ENABLED=false</strong>.</Typography>
+                  </Stack>
+                </Paper>
+              </>
+            ) : null}
           </Stack>
         </Box>
       </Drawer>

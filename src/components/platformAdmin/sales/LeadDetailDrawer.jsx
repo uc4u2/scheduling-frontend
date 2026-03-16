@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import LeadActivityTimeline from "./LeadActivityTimeline";
+import LeadAiSdrPanel from "./LeadAiSdrPanel";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 
@@ -99,6 +100,8 @@ export default function LeadDetailDrawer({
   onActionStateChange,
   onRunAction,
   onUpdateQaReview,
+  onRefreshLead,
+  showBanner,
   initialTab = "overview",
   initialEditMode = false,
 }) {
@@ -200,6 +203,7 @@ export default function LeadDetailDrawer({
               <Tab value="assignment" label="Assignment" />
               <Tab value="queue" label="Queue / Conversion" />
               <Tab value="activity" label="Activity" />
+              <Tab value="ai_sdr" label="AI SDR" />
               <Tab value="danger" label="Danger Zone" />
             </Tabs>
 
@@ -634,6 +638,15 @@ export default function LeadDetailDrawer({
                 <Typography variant="subtitle2" sx={{ mb: 1.5 }}>Activity timeline</Typography>
                 <LeadActivityTimeline activity={activity} reps={reps} />
               </Paper>
+            ) : null}
+
+            {tab === "ai_sdr" ? (
+              <LeadAiSdrPanel
+                lead={lead}
+                reps={reps}
+                onRefresh={onRefreshLead}
+                showBanner={showBanner}
+              />
             ) : null}
 
             {tab === "danger" ? (

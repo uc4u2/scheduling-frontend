@@ -13,7 +13,6 @@ import {
   Switch,
   TextField,
   Typography,
-  Tooltip,
   Chip,
   Alert,
 } from "@mui/material";
@@ -25,7 +24,7 @@ export default function SalesRepsPage() {
   const [query, setQuery] = useState("");
   const [activeOnly, setActiveOnly] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", is_ai_agent: false });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [createdEmail, setCreatedEmail] = useState("");
@@ -69,12 +68,13 @@ export default function SalesRepsPage() {
       full_name: form.full_name,
       email: form.email,
       phone: form.phone || "",
+      is_ai_agent: Boolean(form.is_ai_agent),
     });
     const repId = data?.id;
     if (repId) {
       await platformAdminApi.post(`/sales/reps/${repId}/reset-password`);
     }
-    setForm({ full_name: "", email: "", phone: "" });
+    setForm({ full_name: "", email: "", phone: "", is_ai_agent: false });
     setSuccess("Rep created and invite email sent.");
     setCreatedEmail(form.email);
     setDialogOpen(false);
@@ -97,6 +97,22 @@ export default function SalesRepsPage() {
       load();
     } catch {
       setActionNotice("Failed to update rep status.");
+    }
+  };
+
+  const setAiPaused = async (rep, paused) => {
+    try {
+      await platformAdminApi.patch(`/sales/reps/${rep.id}`, {
+        full_name: rep.full_name,
+        email: rep.email,
+        phone: rep.phone || "",
+        is_ai_agent: Boolean(rep.is_ai_agent),
+        ai_sdr_paused: Boolean(paused),
+      });
+      setActionNotice(paused ? "AI SDR paused." : "AI SDR resumed.");
+      load();
+    } catch {
+      setActionNotice("Failed to update AI SDR state.");
     }
   };
 
@@ -165,6 +181,20 @@ export default function SalesRepsPage() {
               color={r.is_active === false ? "default" : "success"}
               variant="outlined"
             />
+            <Chip
+              size="small"
+              label={r.is_ai_agent ? "AI rep" : "Human rep"}
+              color={r.is_ai_agent ? "primary" : "default"}
+              variant="outlined"
+            />
+            {r.is_ai_agent ? (
+              <Chip
+                size="small"
+                label={r.ai_sdr_paused ? "AI paused" : "AI active"}
+                color={r.ai_sdr_paused ? "warning" : "success"}
+                variant="outlined"
+              />
+            ) : null}
           </Stack>
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             <Button size="small" component={Link} to={`/admin/sales/reps/${r.id}`}>
@@ -189,6 +219,16 @@ export default function SalesRepsPage() {
             >
               Activate
             </Button>
+            {r.is_ai_agent ? (
+              <Button
+                size="small"
+                variant="outlined"
+                color={r.ai_sdr_paused ? "success" : "warning"}
+                onClick={() => setAiPaused(r, !r.ai_sdr_paused)}
+              >
+                {r.ai_sdr_paused ? "Resume AI" : "Pause AI"}
+              </Button>
+            ) : null}
           </Stack>
         </Paper>
       ))}
@@ -214,6 +254,15 @@ export default function SalesRepsPage() {
               value={form.phone}
               onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
               helperText="Optional. Use E.164 format like +16475551234. US/Canada 10-digit numbers are auto-normalized to +1."
+            />
+            <FormControlLabel
+              control={(
+                <Switch
+                  checked={Boolean(form.is_ai_agent)}
+                  onChange={(e) => setForm((prev) => ({ ...prev, is_ai_agent: e.target.checked }))}
+                />
+              )}
+              label="AI SDR rep"
             />
           </Stack>
           {error && <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>}

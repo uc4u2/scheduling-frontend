@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -27,7 +28,7 @@ export default function SalesRepProfilePage() {
   const [actionNotice, setActionNotice] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ full_name: "", email: "", phone: "" });
+  const [editForm, setEditForm] = useState({ full_name: "", email: "", phone: "", is_ai_agent: false, ai_sdr_paused: false });
   const [payoutForm, setPayoutForm] = useState({
     year: new Date().getFullYear(),
     month: new Date().getMonth() + 1,
@@ -41,6 +42,8 @@ export default function SalesRepProfilePage() {
       full_name: data?.rep?.full_name || "",
       email: data?.rep?.email || "",
       phone: data?.rep?.phone || "",
+      is_ai_agent: Boolean(data?.rep?.is_ai_agent),
+      ai_sdr_paused: Boolean(data?.rep?.ai_sdr_paused),
     });
   }, [repId]);
 
@@ -70,6 +73,8 @@ export default function SalesRepProfilePage() {
         full_name: editForm.full_name,
         email: editForm.email,
         phone: editForm.phone,
+        is_ai_agent: Boolean(editForm.is_ai_agent),
+        ai_sdr_paused: Boolean(editForm.ai_sdr_paused),
       });
       setActionNotice("Rep profile updated.");
       setEditOpen(false);
@@ -104,10 +109,42 @@ export default function SalesRepProfilePage() {
     }
   };
 
+  const setAiPaused = async (paused) => {
+    try {
+      await platformAdminApi.patch(`/sales/reps/${repId}`, {
+        full_name: profile.rep.full_name,
+        email: profile.rep.email,
+        phone: profile.rep.phone || "",
+        is_ai_agent: Boolean(profile.rep.is_ai_agent),
+        ai_sdr_paused: Boolean(paused),
+      });
+      setActionNotice(paused ? "AI SDR paused." : "AI SDR resumed.");
+      load();
+    } catch (error) {
+      setActionNotice(error?.response?.data?.error || "Failed to update AI SDR state.");
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h5" sx={{ mb: 2 }}>{profile.rep.full_name}</Typography>
       <Typography variant="body2">{profile.rep.email} • {profile.rep.phone || "—"}</Typography>
+      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+        <Chip
+          size="small"
+          label={profile.rep.is_ai_agent ? "AI rep" : "Human rep"}
+          color={profile.rep.is_ai_agent ? "primary" : "default"}
+          variant="outlined"
+        />
+        {profile.rep.is_ai_agent ? (
+          <Chip
+            size="small"
+            label={profile.rep.ai_sdr_paused ? "AI paused" : "AI active"}
+            color={profile.rep.ai_sdr_paused ? "warning" : "success"}
+            variant="outlined"
+          />
+        ) : null}
+      </Stack>
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
         <Button variant="contained" onClick={() => setEditOpen(true)}>
           Edit profile
@@ -132,6 +169,15 @@ export default function SalesRepProfilePage() {
         >
           Activate
         </Button>
+        {profile.rep.is_ai_agent ? (
+          <Button
+            variant="outlined"
+            color={profile.rep.ai_sdr_paused ? "success" : "warning"}
+            onClick={() => setAiPaused(!profile.rep.ai_sdr_paused)}
+          >
+            {profile.rep.ai_sdr_paused ? "Resume AI" : "Pause AI"}
+          </Button>
+        ) : null}
         <Button variant="text" onClick={() => navigate(`/admin/sales/payouts?rep_id=${repId}`)}>
           Open payouts list
         </Button>
@@ -251,6 +297,25 @@ export default function SalesRepProfilePage() {
               onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
               helperText="Use E.164 format like +16475551234. US/Canada 10-digit numbers are auto-normalized to +1."
             />
+            <TextField
+              select
+              label="Rep type"
+              value={editForm.is_ai_agent ? "ai" : "human"}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, is_ai_agent: e.target.value === "ai" }))}
+            >
+              <MenuItem value="human">Human rep</MenuItem>
+              <MenuItem value="ai">AI rep</MenuItem>
+            </TextField>
+            <TextField
+              select
+              label="AI SDR state"
+              value={editForm.ai_sdr_paused ? "paused" : "active"}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, ai_sdr_paused: e.target.value === "paused" }))}
+              disabled={!editForm.is_ai_agent}
+            >
+              <MenuItem value="active">AI active</MenuItem>
+              <MenuItem value="paused">AI paused</MenuItem>
+            </TextField>
           </Stack>
         </DialogContent>
         <DialogActions>

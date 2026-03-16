@@ -35,6 +35,7 @@ function FlagChips({ lead }) {
       {lead.is_subscribed ? <Chip size="small" color="success" label="Subscribed" variant="outlined" /> : null}
       {lead.is_duplicate ? <Chip size="small" color="warning" label="Duplicate" variant="outlined" /> : null}
       {lead.is_do_not_call ? <Chip size="small" color="error" label="Do not call" variant="outlined" /> : null}
+      {lead.ai_sdr_excluded ? <Chip size="small" color="warning" label="AI excluded" variant="outlined" /> : null}
       {lead.is_attempt_limited ? <Chip size="small" color="error" label="Attempt limit" variant="outlined" /> : null}
       {lead.is_retry_cooldown_blocked ? <Chip size="small" color="warning" label="Retry cooldown" variant="outlined" /> : null}
       {lead.is_company_contact_throttle_active ? <Chip size="small" color="warning" label="Company throttle" variant="outlined" /> : null}
@@ -56,6 +57,7 @@ function FlagChips({ lead }) {
       {!lead.is_subscribed &&
       !lead.is_duplicate &&
       !lead.is_do_not_call &&
+      !lead.ai_sdr_excluded &&
       !lead.is_attempt_limited &&
       !lead.is_retry_cooldown_blocked &&
       !lead.is_company_contact_throttle_active &&
