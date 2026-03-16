@@ -57,3 +57,22 @@ export const getLeadHistory = async (params = {}) => {
   const { data } = await salesRepApi.get("/leads/history", { params });
   return data?.history || [];
 };
+
+export const getInboundWorkspace = async () => {
+  const { data } = await salesRepApi.get("/phone/workspace");
+  return data || { availability: null, departments: [], current_inbound_session: null };
+};
+
+export const updatePhoneAvailability = async (payload) => {
+  const { data } = await salesRepApi.post("/phone/availability", payload);
+  return data || {
+    sales_rep_id: null,
+    department_key: null,
+    status: "offline",
+    device_registered: false,
+    current_call_sid: null,
+    last_seen_at: null,
+    manual_pause_reason: null,
+    last_status_changed_at: null,
+  };
+};

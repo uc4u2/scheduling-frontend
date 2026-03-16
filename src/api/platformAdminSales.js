@@ -61,6 +61,32 @@ export const getSalesSupervisorQueue = async () => {
   };
 };
 
+export const getInboundOverview = async () => {
+  const { data } = await platformAdminApi.get("/inbound/overview");
+  return data || {
+    answered_today: 0,
+    missed_today: 0,
+    abandoned_today: 0,
+    voicemail_today: 0,
+    avg_wait_seconds_today: 0,
+  };
+};
+
+export const listInboundCalls = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/inbound/calls", { params });
+  return data || { calls: [], count: 0 };
+};
+
+export const getInboundCall = async (sessionId) => {
+  const { data } = await platformAdminApi.get(`/inbound/calls/${sessionId}`);
+  return data || { call: null };
+};
+
+export const getInboundLiveReps = async () => {
+  const { data } = await platformAdminApi.get("/inbound/reps/live");
+  return data || { rows: [] };
+};
+
 export const listSalesDeals = async () => {
   const { data } = await platformAdminApi.get("/sales/deals");
   return data?.deals || [];

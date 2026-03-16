@@ -14,6 +14,8 @@ import {
   Paper,
   Snackbar,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -25,6 +27,7 @@ import LeadCreateDialog from "../../components/platformAdmin/sales/LeadCreateDia
 import LeadAssignDialog from "../../components/platformAdmin/sales/LeadAssignDialog";
 import LeadBulkAssignBar from "../../components/platformAdmin/sales/LeadBulkAssignBar";
 import LeadImportCard from "../../components/platformAdmin/sales/LeadImportCard";
+import AdminInboundWorkspace from "../../components/platformAdmin/sales/AdminInboundWorkspace";
 import {
   assignLead,
   bulkAssignLeads,
@@ -162,6 +165,7 @@ export default function SalesCRMPage() {
   const [loadingCallSettings, setLoadingCallSettings] = useState(true);
   const [savingCallSettings, setSavingCallSettings] = useState(false);
   const [selectedSupervisorLeadIds, setSelectedSupervisorLeadIds] = useState([]);
+  const [workspaceTab, setWorkspaceTab] = useState("outbound");
 
   const showBanner = useCallback((type, message) => setBanner({ type, message }), []);
 
@@ -683,6 +687,23 @@ export default function SalesCRMPage() {
         </Stack>
       </Stack>
 
+      <Paper sx={{ p: 1, mb: 3 }}>
+        <Tabs value={workspaceTab} onChange={(_, value) => setWorkspaceTab(value)} variant="scrollable" scrollButtons="auto">
+          <Tab value="outbound" label="Outbound" />
+          <Tab value="inbound" label="Inbound" />
+        </Tabs>
+      </Paper>
+
+      {workspaceTab === "inbound" ? (
+        <AdminInboundWorkspace
+          reps={reps}
+          onOpenLead={(leadId) => {
+            setWorkspaceTab("outbound");
+            openLeadWorkspace(leadId, { tab: "overview", editMode: false });
+          }}
+          showBanner={showBanner}
+        />
+      ) : (
       <Stack spacing={3}>
         <LeadSummaryCards summary={summary} />
 
@@ -1086,6 +1107,7 @@ export default function SalesCRMPage() {
           }}
         />
       </Stack>
+      )}
 
       <LeadCreateDialog
         open={createOpen}

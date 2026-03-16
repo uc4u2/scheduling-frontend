@@ -90,6 +90,7 @@ import SalesCustomersPage from "./sales/pages/SalesCustomersPage";
 import SalesRepLedgerPage from "./sales/pages/SalesLedgerPage";
 import SalesRepPayoutsPage from "./sales/pages/SalesPayoutsPage";
 import SalesLeadQueuePage from "./sales/pages/SalesLeadQueuePage";
+import SalesInboundWorkspacePage from "./sales/pages/SalesInboundWorkspacePage";
 import SalesRepProfilePage from "./admin/pages/SalesRepProfilePage";
 import TermsPage from "./landing/pages/legal/TermsPage";
 import PrivacyPage from "./landing/pages/legal/PrivacyPage";
@@ -605,6 +606,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/sales" element={<SalesShell />}>
             <Route path="summary" element={<SalesSummaryPage />} />
             <Route path="leads" element={<SalesLeadQueuePage />} />
+            <Route path="inbound" element={<SalesInboundWorkspacePage />} />
             <Route path="deals" element={<SalesRepDealsPage />} />
             <Route path="customers" element={<SalesCustomersPage />} />
             <Route path="ledger" element={<SalesRepLedgerPage />} />
