@@ -27,6 +27,8 @@ import {
   getTwilioToken,
   updatePhoneAvailability,
 } from "../../api/salesRepCRM";
+import { formatDateTimeInTz } from "../../utils/datetime";
+import { getUserTimezone } from "../../utils/timezone";
 
 const DEVICE_STATUS = {
   NOT_INITIALIZED: "not_initialized",
@@ -73,12 +75,6 @@ function getActiveOutputDevice(device) {
   return active[0] || null;
 }
 
-function formatDateTime(value) {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? "-" : parsed.toLocaleString();
-}
-
 function getCallerLabel(call, session) {
   return call?.parameters?.From || session?.from_phone || session?.from_phone_normalized || "Unknown caller";
 }
@@ -93,6 +89,7 @@ function getDeviceBlockingCopy(reason) {
 }
 
 export default function SalesInboundWorkspacePage() {
+  const timezone = useMemo(() => getUserTimezone(), []);
   const [workspace, setWorkspace] = useState({ availability: null, departments: [], current_inbound_session: null });
   const [deviceStatusSummary, setDeviceStatusSummary] = useState(null);
   const [softphoneState, setSoftphoneState] = useState({ status: DEVICE_STATUS.NOT_INITIALIZED, helperText: "" });
@@ -212,6 +209,7 @@ export default function SalesInboundWorkspacePage() {
   const canInitialize = Boolean(deviceStatusSummary?.can_initialize_device) && !deviceRef.current;
   const currentSession = workspace?.current_inbound_session || null;
   const currentCaller = getCallerLabel(incomingCall, currentSession);
+  const formatDateTime = useCallback((value) => (value ? formatDateTimeInTz(value, timezone) || "-" : "-"), [timezone]);
 
   useEffect(() => () => destroyDevice(), [destroyDevice]);
 

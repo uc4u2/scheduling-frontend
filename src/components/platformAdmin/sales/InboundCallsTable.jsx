@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Button,
   Chip,
@@ -12,14 +12,13 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-
-function formatDateTime(value) {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? "-" : parsed.toLocaleString();
-}
+import { formatDateTimeInTz } from "../../../utils/datetime";
+import { getUserTimezone } from "../../../utils/timezone";
 
 export default function InboundCallsTable({ rows, loading, onOpen }) {
+  const timezone = useMemo(() => getUserTimezone(), []);
+  const formatDateTime = (value) => (value ? formatDateTimeInTz(value, timezone) || "-" : "-");
+
   return (
     <TableContainer component={Paper}>
       <Table size="small">

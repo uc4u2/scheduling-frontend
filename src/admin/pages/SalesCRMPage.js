@@ -28,6 +28,8 @@ import LeadAssignDialog from "../../components/platformAdmin/sales/LeadAssignDia
 import LeadBulkAssignBar from "../../components/platformAdmin/sales/LeadBulkAssignBar";
 import LeadImportCard from "../../components/platformAdmin/sales/LeadImportCard";
 import AdminInboundWorkspace from "../../components/platformAdmin/sales/AdminInboundWorkspace";
+import { formatDateTimeInTz } from "../../utils/datetime";
+import { getUserTimezone } from "../../utils/timezone";
 import {
   assignLead,
   bulkAssignLeads,
@@ -108,6 +110,7 @@ const defaultCallSettings = {
 };
 
 export default function SalesCRMPage() {
+  const timezone = useMemo(() => getUserTimezone(), []);
   const topOffset = { xs: 56, sm: 64 };
   const [summary, setSummary] = useState({});
   const [repProductivitySummary, setRepProductivitySummary] = useState({ rep_productivity: [], generated_at: null });
@@ -720,7 +723,7 @@ export default function SalesCRMPage() {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Chip size="small" variant="outlined" label={`Soft cap: ${summary?.soft_cap_active_assigned_leads ?? 25} active leads`} />
                   {repProductivitySummary?.generated_at ? (
-                    <Chip size="small" variant="outlined" label={`Generated: ${new Date(repProductivitySummary.generated_at).toLocaleString()}`} />
+                    <Chip size="small" variant="outlined" label={`Generated: ${formatDateTimeInTz(repProductivitySummary.generated_at, timezone)}`} />
                   ) : null}
                 </Stack>
               </Stack>
@@ -789,7 +792,7 @@ export default function SalesCRMPage() {
                   </Typography>
                 </Box>
                 {supervisorQueueSummary?.generated_at ? (
-                  <Chip size="small" variant="outlined" label={`Generated: ${new Date(supervisorQueueSummary.generated_at).toLocaleString()}`} />
+                  <Chip size="small" variant="outlined" label={`Generated: ${formatDateTimeInTz(supervisorQueueSummary.generated_at, timezone)}`} />
                 ) : null}
               </Stack>
 
@@ -852,7 +855,7 @@ export default function SalesCRMPage() {
                                   {item.status ? ` · ${item.status}` : ""}
                                 </Typography>
                                 <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", rowGap: 0.5, mt: 0.75 }}>
-                                  {item.callback_at ? <Chip size="small" variant="outlined" label={`Callback: ${new Date(item.callback_at).toLocaleString()}`} /> : null}
+                                  {item.callback_at ? <Chip size="small" variant="outlined" label={`Callback: ${formatDateTimeInTz(item.callback_at, timezone)}`} /> : null}
                                   {item.last_attempt_outcome ? <Chip size="small" variant="outlined" label={`Last outcome: ${item.last_attempt_outcome}`} /> : null}
                                   {item.stale_escalation_reason ? <Chip size="small" variant="outlined" label={`Stale: ${item.stale_escalation_reason}`} /> : null}
                                   {item.qa_review_state ? <Chip size="small" variant="outlined" label={`QA: ${item.qa_review_state}`} /> : null}

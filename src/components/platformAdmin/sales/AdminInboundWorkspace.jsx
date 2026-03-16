@@ -7,19 +7,29 @@ import {
   MenuItem,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
 import {
+  createInboundRepMapping,
+  deleteInboundRepMapping,
   getInboundCall,
   getInboundLiveReps,
   getInboundOverview,
   listInboundCalls,
+  listInboundDepartments,
+  listInboundRepMappings,
+  updateInboundDepartment,
+  updateInboundRepMapping,
 } from "../../../api/platformAdminSales";
 import InboundOverviewCards from "./InboundOverviewCards";
 import InboundCallsTable from "./InboundCallsTable";
 import InboundCallDetailDrawer from "./InboundCallDetailDrawer";
 import InboundLiveRepPanel from "./InboundLiveRepPanel";
+import InboundDepartmentSettings from "./InboundDepartmentSettings";
+import InboundRepMappingsPanel from "./InboundRepMappingsPanel";
 
 const emptyFilters = {
   date_from: "",
@@ -33,6 +43,7 @@ const emptyFilters = {
 };
 
 export default function AdminInboundWorkspace({ reps, onOpenLead, showBanner }) {
+  const [workspaceTab, setWorkspaceTab] = useState("operations");
   const [overview, setOverview] = useState(null);
   const [calls, setCalls] = useState([]);
   const [liveRows, setLiveRows] = useState([]);
@@ -41,8 +52,12 @@ export default function AdminInboundWorkspace({ reps, onOpenLead, showBanner }) 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedCallId, setSelectedCallId] = useState(null);
   const [selectedCall, setSelectedCall] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [mappings, setMappings] = useState([]);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState("");
 
-  const loadInbound = useCallback(async () => {
+  const loadOperations = useCallback(async () => {
     setLoading(true);
     try {
       const [overviewResp, callsResp, liveResp] = await Promise.all([
@@ -74,9 +89,29 @@ export default function AdminInboundWorkspace({ reps, onOpenLead, showBanner }) 
     }
   }, [filters, selectedCallId, showBanner]);
 
+  const loadSettings = useCallback(async () => {
+    setSettingsLoading(true);
+    try {
+      const [departmentResp, mappingResp] = await Promise.all([
+        listInboundDepartments(),
+        listInboundRepMappings(),
+      ]);
+      setDepartments(departmentResp?.departments || []);
+      setMappings(mappingResp?.mappings || []);
+    } catch (error) {
+      showBanner?.("error", error?.response?.data?.error || "Failed to load inbound settings.");
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [showBanner]);
+
   useEffect(() => {
-    loadInbound();
-  }, [loadInbound]);
+    loadOperations();
+  }, [loadOperations]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const openCall = useCallback(async (callId) => {
     setDrawerOpen(true);
@@ -94,6 +129,64 @@ export default function AdminInboundWorkspace({ reps, onOpenLead, showBanner }) 
     return Array.from(values).sort((a, b) => a.localeCompare(b));
   }, [calls]);
 
+  const handleDepartmentSave = useCallback(async (departmentId, payload) => {
+    setSavingKey(`department-${departmentId}`);
+    try {
+      await updateInboundDepartment(departmentId, payload);
+      showBanner?.("success", "Inbound department settings updated.");
+      await loadSettings();
+      await loadOperations();
+    } catch (error) {
+      showBanner?.("error", error?.response?.data?.error || "Failed to update inbound department.");
+    } finally {
+      setSavingKey("");
+    }
+  }, [loadOperations, loadSettings, showBanner]);
+
+  const handleCreateMapping = useCallback(async (payload) => {
+    setSavingKey(`new-${payload.department_key}`);
+    try {
+      await createInboundRepMapping(payload);
+      showBanner?.("success", "Inbound rep mapping created.");
+      await loadSettings();
+      await loadOperations();
+      return true;
+    } catch (error) {
+      showBanner?.("error", error?.response?.data?.error || "Failed to create inbound rep mapping.");
+      return false;
+    } finally {
+      setSavingKey("");
+    }
+  }, [loadOperations, loadSettings, showBanner]);
+
+  const handleUpdateMapping = useCallback(async (mappingId, payload) => {
+    setSavingKey(`mapping-${mappingId}`);
+    try {
+      await updateInboundRepMapping(mappingId, payload);
+      showBanner?.("success", "Inbound rep mapping updated.");
+      await loadSettings();
+      await loadOperations();
+    } catch (error) {
+      showBanner?.("error", error?.response?.data?.error || "Failed to update inbound rep mapping.");
+    } finally {
+      setSavingKey("");
+    }
+  }, [loadOperations, loadSettings, showBanner]);
+
+  const handleDisableMapping = useCallback(async (mappingId) => {
+    setSavingKey(`mapping-${mappingId}`);
+    try {
+      await deleteInboundRepMapping(mappingId);
+      showBanner?.("success", "Inbound rep mapping disabled.");
+      await loadSettings();
+      await loadOperations();
+    } catch (error) {
+      showBanner?.("error", error?.response?.data?.error || "Failed to disable inbound rep mapping.");
+    } finally {
+      setSavingKey("");
+    }
+  }, [loadOperations, loadSettings, showBanner]);
+
   return (
     <Stack spacing={3}>
       <Paper sx={{ p: 2.5 }}>
@@ -105,127 +198,105 @@ export default function AdminInboundWorkspace({ reps, onOpenLead, showBanner }) 
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} alignItems="center">
-            <Chip size="small" variant="outlined" label={`Calls loaded: ${calls.length}`} />
-            <Button variant="outlined" onClick={loadInbound}>Refresh</Button>
+            {workspaceTab === "operations" ? <Chip size="small" variant="outlined" label={`Calls loaded: ${calls.length}`} /> : null}
+            <Button variant="outlined" onClick={workspaceTab === "operations" ? loadOperations : loadSettings}>Refresh</Button>
           </Stack>
         </Stack>
       </Paper>
 
-      <InboundOverviewCards overview={overview} />
-
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={2}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>Inbound Calls</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Filter inbound sessions by caller, department, rep, and recording/voicemail flags.
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} useFlexGap sx={{ flexWrap: "wrap" }}>
-            <TextField
-              size="small"
-              type="datetime-local"
-              label="Date from"
-              value={filters.date_from}
-              onChange={(event) => setFilters((prev) => ({ ...prev, date_from: event.target.value }))}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              size="small"
-              type="datetime-local"
-              label="Date to"
-              value={filters.date_to}
-              onChange={(event) => setFilters((prev) => ({ ...prev, date_to: event.target.value }))}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              size="small"
-              select
-              label="Department"
-              value={filters.department_key}
-              onChange={(event) => setFilters((prev) => ({ ...prev, department_key: event.target.value }))}
-              sx={{ minWidth: 150 }}
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="sales">Sales</MenuItem>
-              <MenuItem value="support">Support</MenuItem>
-              <MenuItem value="billing">Billing</MenuItem>
-            </TextField>
-            <TextField
-              size="small"
-              select
-              label="Rep"
-              value={filters.rep_id}
-              onChange={(event) => setFilters((prev) => ({ ...prev, rep_id: event.target.value }))}
-              sx={{ minWidth: 180 }}
-            >
-              <MenuItem value="">All</MenuItem>
-              {(reps || []).map((rep) => (
-                <MenuItem key={rep.id} value={String(rep.id)}>{rep.full_name}</MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              size="small"
-              select
-              label="Status"
-              value={filters.status}
-              onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
-              sx={{ minWidth: 160 }}
-            >
-              <MenuItem value="">All</MenuItem>
-              {statusOptions.map((option) => (
-                <MenuItem key={option} value={option}>{option}</MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              size="small"
-              label="Caller"
-              value={filters.caller}
-              onChange={(event) => setFilters((prev) => ({ ...prev, caller: event.target.value }))}
-            />
-            <TextField
-              size="small"
-              select
-              label="Recording"
-              value={filters.has_recording ? "yes" : ""}
-              onChange={(event) => setFilters((prev) => ({ ...prev, has_recording: event.target.value === "yes" }))}
-              sx={{ minWidth: 140 }}
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="yes">Has recording</MenuItem>
-            </TextField>
-            <TextField
-              size="small"
-              select
-              label="Voicemail"
-              value={filters.voicemail_only ? "yes" : ""}
-              onChange={(event) => setFilters((prev) => ({ ...prev, voicemail_only: event.target.value === "yes" }))}
-              sx={{ minWidth: 140 }}
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="yes">Voicemail only</MenuItem>
-            </TextField>
-          </Stack>
-
-          <Alert severity="info" variant="outlined">
-            Inbound and outbound remain separate workspaces. This table is read-only and uses the inbound session backend only.
-          </Alert>
-
-          <InboundCallsTable rows={calls} loading={loading} onOpen={openCall} />
-        </Stack>
+      <Paper sx={{ p: 1 }}>
+        <Tabs value={workspaceTab} onChange={(_, value) => setWorkspaceTab(value)} variant="scrollable" scrollButtons="auto">
+          <Tab value="operations" label="Operations" />
+          <Tab value="settings" label="Settings" />
+        </Tabs>
       </Paper>
 
-      <InboundLiveRepPanel rows={liveRows} />
+      {workspaceTab === "operations" ? (
+        <>
+          <InboundOverviewCards overview={overview} />
 
-      <InboundCallDetailDrawer
-        open={drawerOpen}
-        call={selectedCall}
-        onClose={() => setDrawerOpen(false)}
-        onOpenLead={onOpenLead}
-      />
+          <Paper sx={{ p: 2.5 }}>
+            <Stack spacing={2}>
+              <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>Inbound Calls</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Filter inbound sessions by caller, department, rep, and recording/voicemail flags.
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} useFlexGap sx={{ flexWrap: "wrap" }}>
+                <TextField size="small" type="datetime-local" label="Date from" value={filters.date_from} onChange={(event) => setFilters((prev) => ({ ...prev, date_from: event.target.value }))} InputLabelProps={{ shrink: true }} />
+                <TextField size="small" type="datetime-local" label="Date to" value={filters.date_to} onChange={(event) => setFilters((prev) => ({ ...prev, date_to: event.target.value }))} InputLabelProps={{ shrink: true }} />
+                <TextField size="small" select label="Department" value={filters.department_key} onChange={(event) => setFilters((prev) => ({ ...prev, department_key: event.target.value }))} sx={{ minWidth: 150 }}>
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="sales">Sales</MenuItem>
+                  <MenuItem value="support">Support</MenuItem>
+                  <MenuItem value="billing">Billing</MenuItem>
+                </TextField>
+                <TextField size="small" select label="Rep" value={filters.rep_id} onChange={(event) => setFilters((prev) => ({ ...prev, rep_id: event.target.value }))} sx={{ minWidth: 180 }}>
+                  <MenuItem value="">All</MenuItem>
+                  {(reps || []).map((rep) => (
+                    <MenuItem key={rep.id} value={String(rep.id)}>{rep.full_name}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField size="small" select label="Status" value={filters.status} onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))} sx={{ minWidth: 160 }}>
+                  <MenuItem value="">All</MenuItem>
+                  {statusOptions.map((option) => (
+                    <MenuItem key={option} value={option}>{option}</MenuItem>
+                  ))}
+                </TextField>
+                <TextField size="small" label="Caller" value={filters.caller} onChange={(event) => setFilters((prev) => ({ ...prev, caller: event.target.value }))} />
+                <TextField size="small" select label="Recording" value={filters.has_recording ? "yes" : ""} onChange={(event) => setFilters((prev) => ({ ...prev, has_recording: event.target.value === "yes" }))} sx={{ minWidth: 140 }}>
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="yes">Has recording</MenuItem>
+                </TextField>
+                <TextField size="small" select label="Voicemail" value={filters.voicemail_only ? "yes" : ""} onChange={(event) => setFilters((prev) => ({ ...prev, voicemail_only: event.target.value === "yes" }))} sx={{ minWidth: 140 }}>
+                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="yes">Voicemail only</MenuItem>
+                </TextField>
+              </Stack>
+
+              <Alert severity="info" variant="outlined">
+                Inbound and outbound remain separate workspaces. This table is read-only and uses the inbound session backend only.
+              </Alert>
+
+              <InboundCallsTable rows={calls} loading={loading} onOpen={openCall} />
+            </Stack>
+          </Paper>
+
+          <InboundLiveRepPanel rows={liveRows} />
+
+          <InboundCallDetailDrawer
+            open={drawerOpen}
+            call={selectedCall}
+            onClose={() => setDrawerOpen(false)}
+            onOpenLead={onOpenLead}
+          />
+        </>
+      ) : (
+        <Stack spacing={3}>
+          {settingsLoading ? (
+            <Alert severity="info" variant="outlined">Loading inbound settings…</Alert>
+          ) : null}
+          <InboundDepartmentSettings
+            departments={departments}
+            reps={reps}
+            onSave={handleDepartmentSave}
+            savingDepartmentId={savingKey.startsWith("department-") ? Number(savingKey.replace("department-", "")) : null}
+          />
+          <InboundRepMappingsPanel
+            departments={departments}
+            mappings={mappings}
+            reps={reps}
+            onCreate={handleCreateMapping}
+            onUpdate={handleUpdateMapping}
+            onDisable={handleDisableMapping}
+            savingKey={savingKey}
+          />
+        </Stack>
+      )}
     </Stack>
   );
 }

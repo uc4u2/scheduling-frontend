@@ -87,6 +87,36 @@ export const getInboundLiveReps = async () => {
   return data || { rows: [] };
 };
 
+export const listInboundDepartments = async () => {
+  const { data } = await platformAdminApi.get("/inbound/departments");
+  return data || { departments: [] };
+};
+
+export const updateInboundDepartment = async (departmentId, payload) => {
+  const { data } = await platformAdminApi.patch(`/inbound/departments/${departmentId}`, payload);
+  return data || { department: null };
+};
+
+export const listInboundRepMappings = async (params = {}) => {
+  const { data } = await platformAdminApi.get("/inbound/rep-mappings", { params });
+  return data || { mappings: [] };
+};
+
+export const createInboundRepMapping = async (payload) => {
+  const { data } = await platformAdminApi.post("/inbound/rep-mappings", payload);
+  return data || { mapping: null };
+};
+
+export const updateInboundRepMapping = async (mappingId, payload) => {
+  const { data } = await platformAdminApi.patch(`/inbound/rep-mappings/${mappingId}`, payload);
+  return data || { mapping: null };
+};
+
+export const deleteInboundRepMapping = async (mappingId) => {
+  const { data } = await platformAdminApi.delete(`/inbound/rep-mappings/${mappingId}`);
+  return data || { mapping: null };
+};
+
 export const listSalesDeals = async () => {
   const { data } = await platformAdminApi.get("/sales/deals");
   return data?.deals || [];

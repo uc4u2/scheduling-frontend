@@ -1,11 +1,11 @@
 import React from "react";
 import { Box, Chip, Stack, Typography } from "@mui/material";
+import { formatDateTimeInTz } from "../../../utils/datetime";
+import { getUserTimezone } from "../../../utils/timezone";
 
 function formatDateTime(value) {
   if (!value) return "—";
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return value;
-  return dt.toLocaleString();
+  return formatDateTimeInTz(value, getUserTimezone()) || value;
 }
 
 function actorLabel(item, repNameById) {

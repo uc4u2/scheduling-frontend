@@ -1,11 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Chip, Paper, Stack, Typography } from "@mui/material";
-
-function formatDateTime(value) {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? "-" : parsed.toLocaleString();
-}
+import { formatDateTimeInTz } from "../../../utils/datetime";
+import { getUserTimezone } from "../../../utils/timezone";
 
 function statusColor(status) {
   if (status === "available") return "success";
@@ -16,6 +12,9 @@ function statusColor(status) {
 }
 
 export default function InboundLiveRepPanel({ rows }) {
+  const timezone = useMemo(() => getUserTimezone(), []);
+  const formatDateTime = (value) => (value ? formatDateTimeInTz(value, timezone) || "-" : "-");
+
   return (
     <Paper sx={{ p: 2.5 }}>
       <Stack spacing={1.5}>

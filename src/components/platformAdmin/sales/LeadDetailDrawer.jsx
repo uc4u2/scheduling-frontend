@@ -15,12 +15,12 @@ import {
   Typography,
 } from "@mui/material";
 import LeadActivityTimeline from "./LeadActivityTimeline";
+import { formatDateTimeInTz } from "../../../utils/datetime";
+import { getUserTimezone } from "../../../utils/timezone";
 
 function formatDateTime(value) {
   if (!value) return "—";
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return value;
-  return dt.toLocaleString();
+  return formatDateTimeInTz(value, getUserTimezone()) || value;
 }
 
 function formatAgeFromNow(value) {

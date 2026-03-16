@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Box,
   Chip,
@@ -11,12 +11,8 @@ import {
   Typography,
   Button,
 } from "@mui/material";
-
-function formatDateTime(value) {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? "-" : parsed.toLocaleString();
-}
+import { formatDateTimeInTz } from "../../../utils/datetime";
+import { getUserTimezone } from "../../../utils/timezone";
 
 function metaEntries(meta) {
   if (!meta || typeof meta !== "object") return [];
@@ -24,6 +20,9 @@ function metaEntries(meta) {
 }
 
 export default function InboundCallDetailDrawer({ open, call, onClose, onOpenLead }) {
+  const timezone = useMemo(() => getUserTimezone(), []);
+  const formatDateTime = (value) => (value ? formatDateTimeInTz(value, timezone) || "-" : "-");
+
   return (
     <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: "100%", md: 460 } } }}>
       <Box sx={{ p: 3 }}>

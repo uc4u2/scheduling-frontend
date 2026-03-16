@@ -29,6 +29,8 @@ import axios from "axios";
 import { API_BASE_URL } from "../../utils/api";
 import platformAdminApi from "../../api/platformAdminApi";
 import { APP_ORIGIN } from "../../config/origins";
+import { formatDateTimeInTz } from "../../utils/datetime";
+import { getUserTimezone } from "../../utils/timezone";
 
 const TELEMETRY_OK_KEY = "staff_telemetry_ping_ok_count";
 const TELEMETRY_FAIL_KEY = "staff_telemetry_ping_fail_count";
@@ -53,6 +55,7 @@ export default function Tenant360Page() {
   const [disableDialogError, setDisableDialogError] = useState("");
   const [disableTarget, setDisableTarget] = useState(null);
   const [telemetryHealth, setTelemetryHealth] = useState({ okCount: 0, failCount: 0 });
+  const viewerTimezone = useMemo(() => getUserTimezone(), []);
 
   const load = useCallback(async () => {
     const [tenantRes, usersRes, billingRes, eventsRes, notesRes] = await Promise.all([
@@ -305,6 +308,11 @@ export default function Tenant360Page() {
     if (diffHr < 24) return `${diffHr}h ago`;
     const diffDay = Math.floor(diffHr / 24);
     return `${diffDay}d ago`;
+  };
+  const formatViewerDateTime = (value) => {
+    if (!value || value === "—") return "—";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return value;
+    return formatDateTimeInTz(value, viewerTimezone) || value;
   };
 
   return (
@@ -581,7 +589,7 @@ export default function Tenant360Page() {
             sx={badgeSx}
           />
           <Chip
-            label={`Checked: ${diagCheckedAt || "—"}`}
+            label={`Checked: ${formatViewerDateTime(diagCheckedAt)}`}
             variant="outlined"
             sx={badgeSx}
           />
@@ -680,19 +688,19 @@ export default function Tenant360Page() {
                 <AccordionDetails>
                   <Stack spacing={0.6}>
                     <Typography variant="body2" color="text.secondary">
-                      {`Last login: ${loginTs} • Outcome: ${loginOutcome} • Source: ${loginSource} • IP: ${ipMasked}`}
+                      {`Last login: ${formatViewerDateTime(loginTs)} • Outcome: ${loginOutcome} • Source: ${loginSource} • IP: ${ipMasked}`}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {`Geo: ${geoCountry}, ${geoRegion}, ${geoCity} • Seen: ${geoSeenAt}`}
+                      {`Geo: ${geoCountry}, ${geoRegion}, ${geoCity} • Seen: ${formatViewerDateTime(geoSeenAt)}`}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {`Last seen: ${lastSeenAt} (${lastSeenAge}) • Source: ${lastSeenSource} • Page: ${lastSeenPage} • IP: ${lastSeenIp}`}
+                      {`Last seen: ${formatViewerDateTime(lastSeenAt)} (${lastSeenAge}) • Source: ${lastSeenSource} • Page: ${lastSeenPage} • IP: ${lastSeenIp}`}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {`Last seen geo: ${lastSeenCountry}, ${lastSeenRegion}, ${lastSeenCity}`}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {`Phone: ${u.phone || "—"} • Created: ${u.created_at || "—"} • Archived: ${u.archived_at || "—"}`}
+                      {`Phone: ${u.phone || "—"} • Created: ${formatViewerDateTime(u.created_at)} • Archived: ${formatViewerDateTime(u.archived_at)}`}
                     </Typography>
                     {u?.last_login?.user_agent ? (
                       <Typography variant="body2" color="text.secondary">
@@ -722,10 +730,10 @@ export default function Tenant360Page() {
                 <ListItemText primary="Subscription" secondary={ent.subscription_state || "none"} />
               </ListItem>
               <ListItem>
-                <ListItemText primary="Trial ends" secondary={ent.trial_end || "—"} />
+                <ListItemText primary="Trial ends" secondary={formatViewerDateTime(ent.trial_end)} />
               </ListItem>
               <ListItem>
-                <ListItemText primary="Next billing date" secondary={ent.next_billing_date || "—"} />
+                <ListItemText primary="Next billing date" secondary={formatViewerDateTime(ent.next_billing_date)} />
               </ListItem>
               <ListItem>
                 <ListItemText primary="Latest invoice" secondary={ent.latest_invoice_url || "—"} />
@@ -759,13 +767,13 @@ export default function Tenant360Page() {
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle1">Billing events</Typography>
-        <List>
-          {events.map((e) => (
-            <ListItem key={e.id}>
-              <ListItemText primary={e.type} secondary={e.processed_at} />
-            </ListItem>
-          ))}
-        </List>
+          <List>
+            {events.map((e) => (
+              <ListItem key={e.id}>
+                <ListItemText primary={e.type} secondary={formatViewerDateTime(e.processed_at)} />
+              </ListItem>
+            ))}
+          </List>
       </Paper>
 
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -778,7 +786,7 @@ export default function Tenant360Page() {
         <List>
           {notes.map((n) => (
             <ListItem key={n.id}>
-              <ListItemText primary={n.note} secondary={n.created_at} />
+              <ListItemText primary={n.note} secondary={formatViewerDateTime(n.created_at)} />
             </ListItem>
           ))}
         </List>
@@ -911,7 +919,7 @@ export default function Tenant360Page() {
                   <ListItem>
                     <ListItemText
                       primary="Last failure"
-                      secondary={paymentsDiag.last_failure_at || "—"}
+                      secondary={formatViewerDateTime(paymentsDiag.last_failure_at)}
                     />
                   </ListItem>
                   <ListItem>
@@ -937,7 +945,7 @@ export default function Tenant360Page() {
                   <ListItem key={evt.id}>
                     <ListItemText
                       primary={`${evt.event_type} • score ${evt.risk_score} • ${evt.risk_level}`}
-                      secondary={`${evt.created_at || "—"}${evt.reason ? ` • ${evt.reason}` : ""}`}
+                      secondary={`${formatViewerDateTime(evt.created_at)}${evt.reason ? ` • ${evt.reason}` : ""}`}
                     />
                   </ListItem>
                 ))
@@ -953,7 +961,7 @@ export default function Tenant360Page() {
                   <ListItem>
                     <ListItemText
                       primary="Latest billing attempt"
-                      secondary={riskTelemetry.latest_billing_attempt?.created_at || "—"}
+                      secondary={formatViewerDateTime(riskTelemetry.latest_billing_attempt?.created_at)}
                     />
                   </ListItem>
                   <ListItem>
@@ -1055,7 +1063,7 @@ export default function Tenant360Page() {
                 (riskTelemetry.recent_billing_attempts || []).map((row, idx) => (
                   <ListItem key={`risk-attempt-${idx}`}>
                     <ListItemText
-                      primary={`${row.created_at || "—"} • ${row.outcome || "—"} • ${row.ip_masked || "—"} • ${row.ip_country || "—"}`}
+                      primary={`${formatViewerDateTime(row.created_at)} • ${row.outcome || "—"} • ${row.ip_masked || "—"} • ${row.ip_country || "—"}`}
                       secondary={`${row.event_type || "—"}${row.reason ? ` • ${row.reason}` : ""}${row.billing_country ? ` • billing=${row.billing_country}` : ""}`}
                     />
                   </ListItem>
@@ -1075,7 +1083,7 @@ export default function Tenant360Page() {
                 (riskTelemetry.recent_client_telemetry || []).map((row, idx) => (
                   <ListItem key={`risk-client-telemetry-${idx}`}>
                     <ListItemText
-                      primary={`${row.event_at || "—"} • ${row.ip_masked || "—"} • ${row.country || "—"}, ${row.region || "—"}, ${row.city || "—"}`}
+                      primary={`${formatViewerDateTime(row.event_at)} • ${row.ip_masked || "—"} • ${row.country || "—"}, ${row.region || "—"}, ${row.city || "—"}`}
                       secondary={`${row.device || "—"} / ${row.browser || "—"}${row.page ? ` • ${row.page}` : ""}${row.source ? ` • ${row.source}` : ""}`}
                     />
                   </ListItem>
@@ -1095,7 +1103,7 @@ export default function Tenant360Page() {
                 (riskTelemetry.recent_login_audit || []).map((row, idx) => (
                   <ListItem key={`risk-login-${idx}`}>
                     <ListItemText
-                      primary={`${row.timestamp || "—"} • ${row.outcome || "—"} • ${row.ip_masked || "—"}`}
+                      primary={`${formatViewerDateTime(row.timestamp)} • ${row.outcome || "—"} • ${row.ip_masked || "—"}`}
                       secondary={`${row.user_agent || "—"}${row.user_id ? ` • user_id=${row.user_id}` : ""}`}
                     />
                   </ListItem>
