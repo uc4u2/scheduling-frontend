@@ -3,9 +3,13 @@ import { Box, Chip, Stack, Typography } from "@mui/material";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 
-function formatDateTime(value) {
+function resolveViewerTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || getUserTimezone();
+}
+
+function formatDateTime(value, timezone) {
   if (!value) return "—";
-  return formatDateTimeInTz(value, getUserTimezone()) || value;
+  return formatDateTimeInTz(value, timezone) || value;
 }
 
 function actorLabel(item, repNameById) {
@@ -16,7 +20,7 @@ function actorLabel(item, repNameById) {
   return null;
 }
 
-function metaLines(item, repNameById) {
+function metaLines(item, repNameById, timezone) {
   const meta = item.meta && typeof item.meta === "object" && !Array.isArray(item.meta) ? item.meta : {};
   const lines = [];
   if (meta.attempt_number || meta.attempt_number_today) {
@@ -58,7 +62,7 @@ function metaLines(item, repNameById) {
     lines.push(`Strategy state: ${meta.strategy_state}`);
   }
   if (meta.throttle_until) {
-    lines.push(`Throttle until: ${formatDateTime(meta.throttle_until)}`);
+    lines.push(`Throttle until: ${formatDateTime(meta.throttle_until, timezone)}`);
   }
   return lines;
 }
@@ -73,6 +77,7 @@ export default function LeadActivityTimeline({ activity = [], reps = [] }) {
   }
 
   const repNameById = {};
+  const viewerTimezone = resolveViewerTimezone();
   reps.forEach((rep) => {
     repNameById[String(rep.id)] = rep.full_name;
   });
@@ -93,7 +98,7 @@ export default function LeadActivityTimeline({ activity = [], reps = [] }) {
             <Chip size="small" label={item.action_type || "activity"} variant="outlined" />
             {item.outcome ? <Chip size="small" label={item.outcome} color="primary" variant="outlined" /> : null}
             <Typography variant="caption" color="text.secondary">
-              {formatDateTime(item.created_at)}
+              {formatDateTime(item.created_at, viewerTimezone)} ({viewerTimezone})
             </Typography>
           </Stack>
           {actorLabel(item, repNameById) ? (
@@ -108,10 +113,10 @@ export default function LeadActivityTimeline({ activity = [], reps = [] }) {
           ) : null}
           {item.callback_at ? (
             <Typography variant="caption" color="text.secondary">
-              Callback: {formatDateTime(item.callback_at)}
+              Callback: {formatDateTime(item.callback_at, viewerTimezone)} ({viewerTimezone})
             </Typography>
           ) : null}
-          {metaLines(item, repNameById).map((line) => (
+          {metaLines(item, repNameById, viewerTimezone).map((line) => (
             <Typography key={line} variant="caption" color="text.secondary" display="block">
               {line}
             </Typography>

@@ -37,9 +37,9 @@ const AI_RESULT_OPTIONS = [
   "not_interested",
 ];
 
-function formatDateTime(value) {
+function formatDateTime(value, timezone) {
   if (!value) return "—";
-  return formatDateTimeInTz(value, getUserTimezone()) || value;
+  return formatDateTimeInTz(value, timezone) || value;
 }
 
 function DetailRow({ label, value }) {
@@ -60,6 +60,10 @@ const initialFormState = {
 };
 
 export default function LeadAiSdrPanel({ lead, reps = [], onRefresh, showBanner }) {
+  const viewerTimezone = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || getUserTimezone(),
+    []
+  );
   const assignedRep = useMemo(
     () => reps.find((rep) => Number(rep.id) === Number(lead?.assigned_rep_id)) || null,
     [lead?.assigned_rep_id, reps]
@@ -234,7 +238,7 @@ export default function LeadAiSdrPanel({ lead, reps = [], onRefresh, showBanner 
             <DetailRow label="Last outcome" value={context?.last_outcome} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <DetailRow label="Callback at" value={formatDateTime(context?.callback_at)} />
+            <DetailRow label={`Callback at (${viewerTimezone})`} value={formatDateTime(context?.callback_at, viewerTimezone)} />
           </Grid>
           <Grid item xs={12} md={6}>
             <DetailRow label="Demo sent recently" value={context?.demo_link_sent_recently ? "Yes" : "No"} />
@@ -310,7 +314,7 @@ export default function LeadAiSdrPanel({ lead, reps = [], onRefresh, showBanner 
                             Call #{call.id}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            Started {formatDateTime(call.started_at)}
+                            Started {formatDateTime(call.started_at, viewerTimezone)} ({viewerTimezone})
                           </Typography>
                         </Box>
                         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>

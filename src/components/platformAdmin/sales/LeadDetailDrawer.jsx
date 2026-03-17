@@ -19,9 +19,9 @@ import LeadAiSdrPanel from "./LeadAiSdrPanel";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 
-function formatDateTime(value) {
+function formatDateTime(value, timezone) {
   if (!value) return "—";
-  return formatDateTimeInTz(value, getUserTimezone()) || value;
+  return formatDateTimeInTz(value, timezone) || value;
 }
 
 function formatAgeFromNow(value) {
@@ -109,6 +109,10 @@ export default function LeadDetailDrawer({
   const [tab, setTab] = useState(initialTab);
   const [editMode, setEditMode] = useState(initialEditMode);
   const [editForm, setEditForm] = useState(emptyEditForm);
+  const viewerTimezone = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || getUserTimezone(),
+    []
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -312,7 +316,7 @@ export default function LeadDetailDrawer({
                     <Grid item xs={12} md={6}><DetailRow label="City / Country" value={[lead.city, lead.country].filter(Boolean).join(", ")} /></Grid>
                     <Grid item xs={12} md={4}><DetailRow label="Source" value={lead.source} /></Grid>
                     <Grid item xs={12} md={4}><DetailRow label="Priority" value={String(lead.priority ?? 0)} /></Grid>
-                    <Grid item xs={12} md={4}><DetailRow label="Callback at" value={formatDateTime(lead.callback_at)} /></Grid>
+                    <Grid item xs={12} md={4}><DetailRow label={`Callback at (${viewerTimezone})`} value={formatDateTime(lead.callback_at, viewerTimezone)} /></Grid>
                   </Grid>
                 )}
 
@@ -331,7 +335,7 @@ export default function LeadDetailDrawer({
                         label="First contact"
                         value={
                           lead.first_contact_at
-                            ? `${formatDateTime(lead.first_contact_at)} · ${formatRepLabel(lead.first_contact_rep_id, repLabelById)}`
+                            ? `${formatDateTime(lead.first_contact_at, viewerTimezone)} · ${formatRepLabel(lead.first_contact_rep_id, repLabelById)}`
                             : null
                         }
                       />
@@ -341,7 +345,7 @@ export default function LeadDetailDrawer({
                         label="First meaningful contact"
                         value={
                           lead.first_meaningful_contact_at
-                            ? `${formatDateTime(lead.first_meaningful_contact_at)} · ${formatRepLabel(lead.first_meaningful_contact_rep_id, repLabelById)}`
+                            ? `${formatDateTime(lead.first_meaningful_contact_at, viewerTimezone)} · ${formatRepLabel(lead.first_meaningful_contact_rep_id, repLabelById)}`
                             : null
                         }
                       />
@@ -351,7 +355,7 @@ export default function LeadDetailDrawer({
                         label="Last attempt"
                         value={
                           lead.last_attempt_at
-                            ? `${formatDateTime(lead.last_attempt_at)} · ${formatRepLabel(lead.last_attempt_rep_id, repLabelById)}${lead.last_attempt_outcome ? ` · ${lead.last_attempt_outcome}` : ""}`
+                            ? `${formatDateTime(lead.last_attempt_at, viewerTimezone)} · ${formatRepLabel(lead.last_attempt_rep_id, repLabelById)}${lead.last_attempt_outcome ? ` · ${lead.last_attempt_outcome}` : ""}`
                             : null
                         }
                       />
@@ -363,10 +367,10 @@ export default function LeadDetailDrawer({
                       />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <DetailRow label="Last assignment" value={formatDateTime(lead.last_assignment_at || lead.assigned_at)} />
+                      <DetailRow label={`Last assignment (${viewerTimezone})`} value={formatDateTime(lead.last_assignment_at || lead.assigned_at, viewerTimezone)} />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <DetailRow label="Last reassignment" value={formatDateTime(lead.last_reassignment_at)} />
+                      <DetailRow label={`Last reassignment (${viewerTimezone})`} value={formatDateTime(lead.last_reassignment_at, viewerTimezone)} />
                     </Grid>
                     <Grid item xs={12}>
                       <DetailRow label="Last reassignment reason" value={lead.last_reassignment_reason} />
@@ -418,7 +422,7 @@ export default function LeadDetailDrawer({
                       <DetailRow label="Reviewed by" value={lead.qa_reviewed_by_admin_name || (lead.qa_reviewed_by_admin_id ? `Admin #${lead.qa_reviewed_by_admin_id}` : null)} />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <DetailRow label="Reviewed at" value={formatDateTime(lead.qa_reviewed_at)} />
+                      <DetailRow label={`Reviewed at (${viewerTimezone})`} value={formatDateTime(lead.qa_reviewed_at, viewerTimezone)} />
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <DetailRow label="Review note" value={lead.qa_review_note} />
@@ -467,7 +471,7 @@ export default function LeadDetailDrawer({
                       <DetailRow label="Assigned rep" value={lead.assigned_rep_id ? formatRepLabel(lead.assigned_rep_id, repLabelById) : null} />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <DetailRow label="Assigned at" value={formatDateTime(lead.assigned_at)} />
+                      <DetailRow label={`Assigned at (${viewerTimezone})`} value={formatDateTime(lead.assigned_at, viewerTimezone)} />
                     </Grid>
                     <Grid item xs={12} md={6}>
                       <DetailRow
@@ -489,7 +493,7 @@ export default function LeadDetailDrawer({
                       <DetailRow label="Current lock owner" value={lead.locked_by_rep_id ? formatRepLabel(lead.locked_by_rep_id, repLabelById) : null} />
                     </Grid>
                     <Grid item xs={12} md={6}>
-                      <DetailRow label="Locked at" value={formatDateTime(lead.locked_at)} />
+                      <DetailRow label={`Locked at (${viewerTimezone})`} value={formatDateTime(lead.locked_at, viewerTimezone)} />
                     </Grid>
                   </Grid>
 
@@ -525,7 +529,7 @@ export default function LeadDetailDrawer({
                               {formatRepLabel(row.sales_rep_id, repLabelById)}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              Assigned {formatDateTime(row.assigned_at)} · Released {formatDateTime(row.unassigned_at)}
+                              Assigned {formatDateTime(row.assigned_at, viewerTimezone)} · Released {formatDateTime(row.unassigned_at, viewerTimezone)}
                             </Typography>
                             {row.assigned_by_admin_name || row.assigned_by_admin_id ? (
                               <Typography variant="caption" display="block" color="text.secondary">
@@ -555,7 +559,7 @@ export default function LeadDetailDrawer({
                   </Box>
                   <Grid container spacing={1.5}>
                     <Grid item xs={12} md={6}><DetailRow label="Last outcome" value={lead.last_outcome} /></Grid>
-                    <Grid item xs={12} md={6}><DetailRow label="Callback at" value={formatDateTime(lead.callback_at)} /></Grid>
+                    <Grid item xs={12} md={6}><DetailRow label={`Callback at (${viewerTimezone})`} value={formatDateTime(lead.callback_at, viewerTimezone)} /></Grid>
                     <Grid item xs={12} md={6}><DetailRow label="Linked sales deal" value={lead.sales_deal_id ? `Deal #${lead.sales_deal_id}` : null} /></Grid>
                     <Grid item xs={12} md={6}><DetailRow label="Converted company" value={lead.converted_company_id ? `Company #${lead.converted_company_id}` : null} /></Grid>
                   </Grid>
