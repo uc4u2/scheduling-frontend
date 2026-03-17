@@ -22,7 +22,7 @@ import {
   startAiSdrLeadCall,
 } from "../../../api/platformAdminSales";
 import platformAdminApi from "../../../api/platformAdminApi";
-import { formatDateTimeInTz } from "../../../utils/datetime";
+import { formatDateTimeInTz, fromInputDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 
 const AI_RESULT_OPTIONS = [
@@ -147,7 +147,7 @@ export default function LeadAiSdrPanel({ lead, reps = [], onRefresh, showBanner 
     try {
       await applyAiSdrResult(callId, {
         result_key: form.result_key,
-        callback_at: form.callback_at ? new Date(form.callback_at).toISOString() : null,
+        callback_at: fromInputDateTimeInTz(form.callback_at, viewerTimezone),
         explicit_demo_resend: Boolean(form.explicit_demo_resend),
         explicit_invite_resend: Boolean(form.explicit_invite_resend),
         summary: form.summary || undefined,

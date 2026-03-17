@@ -55,3 +55,28 @@ export const formatDateTimeInTz = (isoString, tz, opts = DateTime.DATETIME_MED_W
     return new Date(isoString).toLocaleString();
   }
 };
+
+export const toInputDateTimeInTz = (value, tz) => {
+  if (!value) return "";
+  try {
+    const normalized = String(value).trim().replace(" ", "T");
+    const hasExplicitZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized);
+    const parsed = hasExplicitZone
+      ? DateTime.fromISO(normalized, { setZone: true })
+      : DateTime.fromISO(normalized, { zone: "utc" });
+    const zoned = parsed.setZone(tz || "UTC");
+    return zoned.isValid ? zoned.toFormat("yyyy-LL-dd'T'HH:mm") : "";
+  } catch {
+    return "";
+  }
+};
+
+export const fromInputDateTimeInTz = (value, tz) => {
+  if (!value) return null;
+  try {
+    const parsed = DateTime.fromFormat(String(value).trim(), "yyyy-LL-dd'T'HH:mm", { zone: tz || "UTC" });
+    return parsed.isValid ? parsed.toUTC().toISO() : null;
+  } catch {
+    return null;
+  }
+};

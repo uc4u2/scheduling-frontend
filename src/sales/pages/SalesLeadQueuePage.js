@@ -6,6 +6,8 @@ import LeadOutcomeForm from "../../components/salesRep/LeadOutcomeForm";
 import LeadCallbacksPanel from "../../components/salesRep/LeadCallbacksPanel";
 import LeadHistoryPanel from "../../components/salesRep/LeadHistoryPanel";
 import TwilioDevicePanel from "../../components/salesRep/TwilioDevicePanel";
+import { fromInputDateTimeInTz } from "../../utils/datetime";
+import { getUserTimezone } from "../../utils/timezone";
 import {
   getCurrentLead,
   getLeadHistory,
@@ -57,10 +59,7 @@ const emptyAudioDiagnostics = {
 };
 
 function toUtcIso(value) {
-  if (!value) return undefined;
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return undefined;
-  return dt.toISOString();
+  return fromInputDateTimeInTz(value, getUserTimezone()) || undefined;
 }
 
 function getDisabledReasonCopy(reason) {

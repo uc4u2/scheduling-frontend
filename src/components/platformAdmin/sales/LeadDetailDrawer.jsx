@@ -15,9 +15,8 @@ import {
   Typography,
 } from "@mui/material";
 import LeadActivityTimeline from "./LeadActivityTimeline";
-import { DateTime } from "luxon";
 import LeadAiSdrPanel from "./LeadAiSdrPanel";
-import { formatDateTimeInTz } from "../../../utils/datetime";
+import { formatDateTimeInTz, fromInputDateTimeInTz, toInputDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 
 function formatDateTime(value, timezone) {
@@ -38,17 +37,6 @@ function formatAgeFromNow(value) {
   if (days > 0) return `${days}d ${hours}h`;
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${minutes}m`;
-}
-
-function toLocalDateTimeValue(value, timezone) {
-  if (!value) return "";
-  const normalized = String(value).trim().replace(" ", "T");
-  const hasExplicitZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized);
-  const parsed = hasExplicitZone
-    ? DateTime.fromISO(normalized, { setZone: true })
-    : DateTime.fromISO(normalized, { zone: "utc" });
-  const zoned = parsed.setZone(timezone || getUserTimezone());
-  return zoned.isValid ? zoned.toFormat("yyyy-LL-dd'T'HH:mm") : "";
 }
 
 function DetailRow({ label, value }) {
@@ -133,7 +121,7 @@ export default function LeadDetailDrawer({
       country: lead.country || "",
       source: lead.source || "",
       priority: lead.priority ?? 0,
-      callback_at: toLocalDateTimeValue(lead.callback_at, viewerTimezone),
+      callback_at: toInputDateTimeInTz(lead.callback_at, viewerTimezone),
     });
   }, [lead, viewerTimezone]);
 
@@ -235,7 +223,7 @@ export default function LeadDetailDrawer({
                               country: lead.country || "",
                               source: lead.source || "",
                               priority: lead.priority ?? 0,
-                              callback_at: toLocalDateTimeValue(lead.callback_at),
+                              callback_at: toInputDateTimeInTz(lead.callback_at, viewerTimezone),
                             });
                           }}
                         >
@@ -247,7 +235,7 @@ export default function LeadDetailDrawer({
                             onSaveEdit?.({
                               ...editForm,
                               priority: Number(editForm.priority || 0),
-                              callback_at: editForm.callback_at ? new Date(editForm.callback_at).toISOString() : null,
+                              callback_at: fromInputDateTimeInTz(editForm.callback_at, viewerTimezone),
                             })
                           }
                         >
