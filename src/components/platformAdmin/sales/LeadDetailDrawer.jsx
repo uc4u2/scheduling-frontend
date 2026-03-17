@@ -15,6 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import LeadActivityTimeline from "./LeadActivityTimeline";
+import { DateTime } from "luxon";
 import LeadAiSdrPanel from "./LeadAiSdrPanel";
 import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
@@ -39,16 +40,15 @@ function formatAgeFromNow(value) {
   return `${minutes}m`;
 }
 
-function toLocalDateTimeValue(value) {
+function toLocalDateTimeValue(value, timezone) {
   if (!value) return "";
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return "";
-  const year = dt.getFullYear();
-  const month = String(dt.getMonth() + 1).padStart(2, "0");
-  const day = String(dt.getDate()).padStart(2, "0");
-  const hours = String(dt.getHours()).padStart(2, "0");
-  const minutes = String(dt.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  const normalized = String(value).trim().replace(" ", "T");
+  const hasExplicitZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized);
+  const parsed = hasExplicitZone
+    ? DateTime.fromISO(normalized, { setZone: true })
+    : DateTime.fromISO(normalized, { zone: "utc" });
+  const zoned = parsed.setZone(timezone || getUserTimezone());
+  return zoned.isValid ? zoned.toFormat("yyyy-LL-dd'T'HH:mm") : "";
 }
 
 function DetailRow({ label, value }) {
@@ -109,10 +109,7 @@ export default function LeadDetailDrawer({
   const [tab, setTab] = useState(initialTab);
   const [editMode, setEditMode] = useState(initialEditMode);
   const [editForm, setEditForm] = useState(emptyEditForm);
-  const viewerTimezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || getUserTimezone(),
-    []
-  );
+  const viewerTimezone = useMemo(() => getUserTimezone(), []);
 
   useEffect(() => {
     if (!open) return;
@@ -136,9 +133,9 @@ export default function LeadDetailDrawer({
       country: lead.country || "",
       source: lead.source || "",
       priority: lead.priority ?? 0,
-      callback_at: toLocalDateTimeValue(lead.callback_at),
+      callback_at: toLocalDateTimeValue(lead.callback_at, viewerTimezone),
     });
-  }, [lead]);
+  }, [lead, viewerTimezone]);
 
   const repLabelById = useMemo(() => {
     const map = {};

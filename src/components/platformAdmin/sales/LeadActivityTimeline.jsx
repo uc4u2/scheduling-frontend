@@ -4,7 +4,7 @@ import { formatDateTimeInTz } from "../../../utils/datetime";
 import { getUserTimezone } from "../../../utils/timezone";
 
 function resolveViewerTimezone() {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || getUserTimezone();
+  return getUserTimezone();
 }
 
 function formatDateTime(value, timezone) {

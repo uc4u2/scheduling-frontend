@@ -60,10 +60,7 @@ const initialFormState = {
 };
 
 export default function LeadAiSdrPanel({ lead, reps = [], onRefresh, showBanner }) {
-  const viewerTimezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone || getUserTimezone(),
-    []
-  );
+  const viewerTimezone = useMemo(() => getUserTimezone(), []);
   const assignedRep = useMemo(
     () => reps.find((rep) => Number(rep.id) === Number(lead?.assigned_rep_id)) || null,
     [lead?.assigned_rep_id, reps]
