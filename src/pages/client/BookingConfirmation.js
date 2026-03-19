@@ -932,6 +932,8 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
   } else if (canRenderProductOnly) {
     const receiptEmail =
       stripeSession?.customer_details?.email ||
+      stripeSession?.customer_email ||
+      productOrder?.client_email ||
       productOrder?.customer_email ||
       productOrder?.email ||
       "your inbox";
