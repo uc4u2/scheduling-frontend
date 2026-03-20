@@ -1483,6 +1483,7 @@ function CheckoutFormCore({
       const next = {
         ...i,
         client_package_id: normalizedId,
+        package_auto_opt_out: normalizedId ? false : true,
         couponApplied: normalizedId ? false : i.couponApplied,
         coupon: normalizedId ? null : i.coupon,
       };
@@ -1490,6 +1491,66 @@ function CheckoutFormCore({
     });
     persist(updated);
   };
+
+  useEffect(() => {
+    if (!client || serviceItems.length === 0 || clientPackages.length === 0) return;
+
+    const remainingByPackage = new Map();
+    clientPackages.forEach((pkg) => {
+      const pkgId = Number(pkg?.id || 0);
+      const remaining = Number(pkg?.remaining ?? 0);
+      if (pkgId > 0 && remaining > 0) remainingByPackage.set(pkgId, remaining);
+    });
+
+    let changed = false;
+    const updated = cart.map((item) => {
+      if (isProduct(item) || isPackage(item) || !item?.allow_packages) return item;
+
+      const eligible = packagesForService(item.service_id).filter((pkg) => {
+        const pkgId = Number(pkg?.id || 0);
+        return pkgId > 0 && Number(remainingByPackage.get(pkgId) || 0) > 0;
+      });
+
+      if (eligible.length === 0) {
+        if (item.client_package_id) {
+          changed = true;
+          return { ...item, client_package_id: null };
+        }
+        return item;
+      }
+
+      const selectedId = Number(item.client_package_id || 0);
+      if (selectedId > 0 && Number(remainingByPackage.get(selectedId) || 0) > 0) {
+        remainingByPackage.set(selectedId, Number(remainingByPackage.get(selectedId) || 0) - 1);
+        return item;
+      }
+
+      if (item.package_auto_opt_out) {
+        return { ...item, client_package_id: null };
+      }
+
+      const autoPkg = eligible[0];
+      const autoPkgId = Number(autoPkg?.id || 0);
+      if (autoPkgId > 0) {
+        remainingByPackage.set(autoPkgId, Number(remainingByPackage.get(autoPkgId) || 0) - 1);
+        changed = true;
+        const next = {
+          ...item,
+          client_package_id: autoPkgId,
+          package_auto_opt_out: false,
+          couponApplied: false,
+          coupon: null,
+        };
+        return next.tip_mode === "percent" ? recomputeTip(next) : next;
+      }
+
+      return item;
+    });
+
+    if (changed) {
+      persist(updated);
+    }
+  }, [cart, client, clientPackages]);
 
   // UPDATED: accept optional setupIntentId too
   const bookServiceLines = async (
