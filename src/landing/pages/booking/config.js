@@ -104,6 +104,24 @@ const bookingHubConfig = {
       link: "/booking/tutor",
       linkLabel: "See payment options",
     },
+    {
+      icon: "payment",
+      label: "Packages",
+      title: "Prepaid packages and session credits",
+      description:
+        "Sell multi-session packages in advance, let clients redeem credits during booking, and track remaining package balance in the client portal.",
+      link: LIVE_SERVICE_DEMO,
+      linkLabel: "Preview a live service page",
+    },
+    {
+      icon: "team",
+      label: "Group booking",
+      title: "Group classes with seat limits",
+      description:
+        "Run one-to-one services or shared-capacity classes from the same booking flow. Show seats left live and stop overbooking automatically.",
+      link: "/booking",
+      linkLabel: "Explore booking features",
+    },
   ],
   highlights: [
     {
@@ -150,6 +168,38 @@ const bookingHubConfig = {
       image: {
         src: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1200&auto=format&fit=crop",
         alt: "Schedulaa team calendar overview",
+      },
+    },
+    {
+      overline: "Prepaid booking",
+      title: "Let clients buy packages and book without paying twice",
+      body:
+        "Schedulaa supports prepaid service packages with remaining-credit tracking, booking windows, and zero-total package-covered checkout. Clients can see their credits and redeem them directly during booking.",
+      points: [
+        "Sell 4-session, 8-session, or monthly-style packages in advance.",
+        "Auto-apply eligible package credits at checkout.",
+        "Client portal shows credits left and package status clearly.",
+      ],
+      links: [{ label: "See live availability", href: LIVE_SERVICE_DEMO }],
+      image: {
+        src: "https://images.unsplash.com/photo-1556740749-887f6717d7e4?q=80&w=1200&auto=format&fit=crop",
+        alt: "Schedulaa prepaid package and booking flow",
+      },
+    },
+    {
+      overline: "Classes and capacity",
+      title: "Book group sessions without losing control of capacity",
+      body:
+        "Schedulaa supports one-to-one and group booking modes, capacity-aware availability, and live seats-left logic so classes and shared sessions stay bookable without overbooking.",
+      points: [
+        "Set default capacity per service or class offering.",
+        "Show seats left in live availability.",
+        "Protect booked spots with transactional capacity checks.",
+      ],
+      links: [{ label: "Review team availability tools", href: "/booking/salon" }],
+      image: {
+        src: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop",
+        alt: "Schedulaa group class scheduling and capacity management",
       },
     },
   ],
@@ -239,6 +289,16 @@ const bookingHubConfig = {
       question: "Do you support deposits or saving a card?",
       answer:
         "Absolutely. Companies choose pay-now, deposit, or card-on-file capture policies. Stripe processes payments securely either way.",
+    },
+    {
+      question: "Do you support prepaid packages?",
+      answer:
+        "Yes. Businesses can sell service packages in advance, track the remaining credits for each client, and let eligible bookings use package credits during checkout.",
+    },
+    {
+      question: "Can I run group classes or shared-capacity sessions?",
+      answer:
+        "Yes. Schedulaa supports one-to-one and group booking modes, capacity-aware availability, and live seats-left handling to help teams avoid overbooking.",
     },
   ],
   cta: sharedCta,
