@@ -22,6 +22,7 @@ import TimezoneSelect from "./components/TimezoneSelect";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
 import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
 import { buildMarketingUrl } from "./config/origins";
+import { getUserTimezone, formatTimezoneLabel } from "./utils/timezone";
 
 const ROLE_OPTIONS = [
   {
@@ -50,9 +51,8 @@ const Register = () => {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone || ""
-  );
+  const [timezone, setTimezone] = useState(getUserTimezone());
+  const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
   const [role, setRole] = useState("owner");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -292,13 +292,35 @@ const Register = () => {
               />
 
 
-              <TimezoneSelect
-                label="Timezone"
-                value={timezone}
-                onChange={setTimezone}
-                textFieldSx={authInputSx}
-                required
-              />
+              {role === "customer" ? (
+                <Stack spacing={1}>
+                  <Alert severity="info">
+                    Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
+                  </Alert>
+                  <Box>
+                    <Button size="small" onClick={() => setShowTimezoneSelect((prev) => !prev)}>
+                      {showTimezoneSelect ? "Hide timezone change" : "Change timezone"}
+                    </Button>
+                  </Box>
+                  {showTimezoneSelect ? (
+                    <TimezoneSelect
+                      label="Timezone"
+                      value={timezone}
+                      onChange={setTimezone}
+                      textFieldSx={authInputSx}
+                      required
+                    />
+                  ) : null}
+                </Stack>
+              ) : (
+                <TimezoneSelect
+                  label="Timezone"
+                  value={timezone}
+                  onChange={setTimezone}
+                  textFieldSx={authInputSx}
+                  required
+                />
+              )}
 
               <TextField
                 select

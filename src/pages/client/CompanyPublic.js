@@ -65,6 +65,7 @@ import Meta from "../../components/Meta";
 import JsonLd from "../../components/seo/JsonLd";
 import { getTenantHostMode } from "../../utils/tenant";
 import TimezoneSelect from "../../components/TimezoneSelect";
+import { getUserTimezone, formatTimezoneLabel } from "../../utils/timezone";
 
 const LEGAL_FALLBACK_CONTENT = {
   privacy: {
@@ -467,6 +468,21 @@ const AUTH_DIALOG_SX = {
   },
 };
 
+
+
+const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
+  <Stack spacing={1} sx={{ mt: 1 }}>
+    <Alert severity="info" sx={{ mb: showManual ? 1 : 0 }}>
+      Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
+    </Alert>
+    <Box>
+      <Button size="small" onClick={onToggle}>
+        {showManual ? "Hide timezone change" : "Change timezone"}
+      </Button>
+    </Box>
+  </Stack>
+);
+
 function ClientLoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
   const dialogPaperSx = {
     backgroundColor: AUTH_DIALOG_SURFACE,
@@ -478,9 +494,8 @@ function ClientLoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  );
+  const [timezone, setTimezone] = useState(getUserTimezone());
+  const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -544,7 +559,10 @@ function ClientLoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
               required
               margin="normal"
             />
-            <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
+            {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((prev) => !prev))}
+            {showTimezoneSelect ? (
+              <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
+            ) : null}
           </form>
           <Box sx={{ mt: 1 }}>
             <Link component="button" variant="body2" onClick={() => setForgotOpen(true)}>
@@ -647,9 +665,8 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  );
+  const [timezone, setTimezone] = useState(getUserTimezone());
+  const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
   const [error, setError] = useState("");
   const [accountExists, setAccountExists] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -808,7 +825,10 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
             }
             sx={{ mt: 1 }}
           />
-          <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
+          {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((prev) => !prev))}
+          {showTimezoneSelect ? (
+            <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
+          ) : null}
         </form>
       </DialogContent>
       <DialogActions>

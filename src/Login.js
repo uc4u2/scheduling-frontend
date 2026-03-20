@@ -21,6 +21,7 @@ import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/Auth
 import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
 import { buildMarketingUrl } from "./config/origins";
 import { isMobileAppMode, isNativeRuntime } from "./utils/runtime";
+import { getUserTimezone, formatTimezoneLabel } from "./utils/timezone";
 
 const ROLE_OPTIONS = [
   {
@@ -43,10 +44,7 @@ const ROLE_OPTIONS = [
   },
 ];
 
-const detectedTz =
-  (typeof Intl !== "undefined" &&
-    Intl.DateTimeFormat().resolvedOptions().timeZone) ||
-  "America/New_York";
+const detectedTz = getUserTimezone();
 
 // Helper: append query params to a URL safely
 function appendQuery(url, paramsObj = {}) {
@@ -94,6 +92,7 @@ const Login = ({ setToken }) => {
   const [selectedRole, setSelectedRole] = useState("employee");
   const [timezone, setTimezone] = useState(detectedTz);
   const [forceChange, setForceChange] = useState(false);
+  const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const resendTimerRef = useRef(null);
@@ -501,13 +500,34 @@ const Login = ({ setToken }) => {
                   ))}
                 </TextField>
 
-                <TimezoneSelect
-                  label="Timezone"
-                  value={timezone}
-                  onChange={setTimezone}
-                  textFieldSx={authInputSx}
-                  helperText="We store an IANA timezone (e.g., America/New_York). Type to search."
-                />
+                {selectedRole === "customer" ? (
+                  <Stack spacing={1}>
+                    <Alert severity="info">
+                      Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
+                    </Alert>
+                    <Box>
+                      <Button size="small" onClick={() => setShowTimezoneSelect((prev) => !prev)}>
+                        {showTimezoneSelect ? "Hide timezone change" : "Change timezone"}
+                      </Button>
+                    </Box>
+                    {showTimezoneSelect ? (
+                      <TimezoneSelect
+                        label="Timezone"
+                        value={timezone}
+                        onChange={setTimezone}
+                        textFieldSx={authInputSx}
+                      />
+                    ) : null}
+                  </Stack>
+                ) : (
+                  <TimezoneSelect
+                    label="Timezone"
+                    value={timezone}
+                    onChange={setTimezone}
+                    textFieldSx={authInputSx}
+                    helperText="Detected automatically when possible. You can still search any IANA timezone if needed."
+                  />
+                )}
 
                 <Button type="submit" variant="contained" fullWidth sx={authButtonSx}>
                   Sign In

@@ -3,19 +3,7 @@ import React, { useMemo } from "react";
 import { Autocomplete, TextField, Stack, Button } from "@mui/material";
 import RoomIcon from "@mui/icons-material/Room";
 import { TOP_TIMEZONES, ALL_TIMEZONES } from "../constants/timezones";
-
-const detectTimezone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-  } catch {
-    return "";
-  }
-};
-
-const formatOption = (tz) => {
-  if (!tz) return "";
-  return tz.replace("_", " ");
-};
+import { detectBrowserTimezone, formatTimezoneLabel } from "../utils/timezone";
 
 const TimezoneSelect = ({
   label = "Timezone",
@@ -27,7 +15,7 @@ const TimezoneSelect = ({
   fullWidth = true,
   textFieldSx,
 }) => {
-  const detected = useMemo(detectTimezone, []);
+  const detected = useMemo(detectBrowserTimezone, []);
 
   const options = useMemo(() => {
     const set = new Set(TOP_TIMEZONES);
@@ -62,11 +50,11 @@ const TimezoneSelect = ({
             required={required}
             disabled={disabled}
             sx={textFieldSx}
-            helperText={helperText || "IANA timezone (e.g., America/New_York). Type to search."}
+            helperText={helperText || "Detected automatically when possible. You can still search any IANA timezone if needed."}
             fullWidth={fullWidth}
           />
         )}
-        getOptionLabel={(option) => formatOption(option) || ""}
+        getOptionLabel={(option) => formatTimezoneLabel(option) || ""}
       />
       <Stack direction="row" spacing={1}>
         <Button

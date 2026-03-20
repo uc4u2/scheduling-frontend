@@ -45,6 +45,7 @@ import PublicBookingUnavailableDialog from "../../components/billing/PublicBooki
 import SiteFrame from "../../components/website/SiteFrame";
 import { publicSite } from "../../utils/api";
 import TimezoneSelect from "../../components/TimezoneSelect";
+import { getUserTimezone, formatTimezoneLabel } from "../../utils/timezone";
 
 const stashProductOrder = (order, sessionId) => {
   if (!order) return;
@@ -108,6 +109,21 @@ const normalizeDeliveryCountryCode = (value) => {
   return "";
 };
 
+
+const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
+  <Stack spacing={1} sx={{ mt: 1 }}>
+    <Alert severity="info" sx={{ mb: showManual ? 1 : 0 }}>
+      Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
+    </Alert>
+    <Box>
+      <Button size="small" onClick={onToggle}>
+        {showManual ? "Hide timezone change" : "Change timezone"}
+      </Button>
+    </Box>
+  </Stack>
+);
+
+
 /* ------------------------------------------------------------------ */
 /* LoginDialog component (unchanged) */
 function LoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
@@ -118,28 +134,13 @@ function LoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
     color: "var(--page-body-color, #111827)",
   };
 
-  const timezones = [
-    "America/New_York",
-    "America/Chicago",
-    "America/Denver",
-    "America/Los_Angeles",
-    "Europe/London",
-    "Europe/Berlin",
-    "Europe/Paris",
-    "Asia/Kolkata",
-    "Asia/Tokyo",
-    "Asia/Dubai",
-    "Australia/Sydney",
-  ];
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const selectedRole = "client";
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  );
+  const [timezone, setTimezone] = useState(getUserTimezone());
+  const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -217,11 +218,14 @@ function LoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
               margin="normal"
             />
 
-            <TimezoneSelect
-              label="Timezone"
-              value={timezone}
-              onChange={setTimezone}
-            />
+            {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((prev) => !prev))}
+            {showTimezoneSelect ? (
+              <TimezoneSelect
+                label="Timezone"
+                value={timezone}
+                onChange={setTimezone}
+              />
+            ) : null}
           </form>
           <Box sx={{ mt: 1 }}>
             <Link component="button" variant="body2" onClick={() => setForgotOpen(true)}>
@@ -332,9 +336,8 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
   const [phone, setPhone] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [agreedToTerms, setAgreedToTerms] = React.useState(false);
-  const [timezone, setTimezone] = React.useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone
-  );
+  const [timezone, setTimezone] = React.useState(getUserTimezone());
+  const [showTimezoneSelect, setShowTimezoneSelect] = React.useState(false);
   const [error, setError] = React.useState("");
   const [accountExists, setAccountExists] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
@@ -468,11 +471,14 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
             required
             margin="normal"
           />
-          <TimezoneSelect
-            label="Timezone"
-            value={timezone}
-            onChange={setTimezone}
-          />
+          {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((prev) => !prev))}
+          {showTimezoneSelect ? (
+            <TimezoneSelect
+              label="Timezone"
+              value={timezone}
+              onChange={setTimezone}
+            />
+          ) : null}
           <FormControlLabel
             control={
               <Checkbox
