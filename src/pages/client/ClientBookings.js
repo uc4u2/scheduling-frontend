@@ -569,7 +569,7 @@ export default function ClientBookings() {
               </Typography>
               {String(selected.payment_status || "").toLowerCase() === "package" ? (
                 <Typography>
-                  <b>Covered by package credits:</b> {money(selected.service_amount, selected.currency)}
+                  <b>Covered by package:</b> Yes
                 </Typography>
               ) : (
                 <Typography>
