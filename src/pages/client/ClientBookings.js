@@ -79,6 +79,7 @@ export default function ClientBookings() {
   const [bookings, setBookings] = useState([]);
   const [selected, setSelected] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [note, setNote] = useState("");
   const [noteMsg, setNoteMsg] = useState("");
 
@@ -221,6 +222,18 @@ export default function ClientBookings() {
     setSelected(row);
     setDetailOpen(true);
     setNoteMsg("");
+    setDetailLoading(true);
+    api
+      .get(`/api/client/bookings/${row.id}`, {
+        headers: authHeaders(),
+      })
+      .then((res) => {
+        setSelected((prev) => ({ ...(prev || row), ...(res.data || {}) }));
+      })
+      .catch((err) => {
+        console.error("Failed to load booking detail:", err);
+      })
+      .finally(() => setDetailLoading(false));
   }
 
   const openOrderDetail = (row) => {
@@ -313,6 +326,7 @@ export default function ClientBookings() {
   const paymentChipColor = (status) => {
     const v = String(status || "").toLowerCase();
     if (v === "paid") return "success";
+    if (v === "package") return "info";
     if (v === "refunded") return "warning";
     if (v === "failed") return "error";
     return "default";
@@ -500,7 +514,11 @@ export default function ClientBookings() {
 
       <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="sm" fullWidth>
         <DialogContent>
-          {selected && (
+          {detailLoading ? (
+            <Box sx={{ py: 5, display: "flex", justifyContent: "center" }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : selected && (
             <Box>
               <Typography variant="h6" gutterBottom>
                 Booking Details
@@ -541,6 +559,26 @@ export default function ClientBookings() {
                   size="small"
                 />
               </Typography>
+              <Typography sx={{ mt: 1 }}>
+                <b>Payment:</b>{" "}
+                <Chip
+                  label={selected.payment_status_label || toTitle(selected.payment_status)}
+                  color={paymentChipColor(selected.payment_status)}
+                  size="small"
+                />
+              </Typography>
+              <Typography>
+                <b>Amount paid:</b> {money(selected.amount_paid, selected.currency)}
+              </Typography>
+              <Typography>
+                <b>Amount due:</b> {money(selected.amount_due, selected.currency)}
+              </Typography>
+              {Number(selected.service_amount || 0) > 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  Service value: {money(selected.service_amount, selected.currency)}
+                  {Number(selected.tip_amount || 0) > 0 ? ` • Tip: ${money(selected.tip_amount, selected.currency)}` : ""}
+                </Typography>
+              )}
               {selected.meeting_link && (
                 <Typography sx={{ mt: 1 }}>
                   <b>Video:</b>{" "}
