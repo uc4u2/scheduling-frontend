@@ -149,10 +149,12 @@ export function addPackageToCart(pkg) {
     expires_in: pkg.expires_in ?? null,
     quantity: 1,
   };
-  const next = [
-    ...items.filter((item) => item.id !== id),
-    payload,
-  ];
+  const existing = items.find((item) => item.id === id);
+  const next = existing
+    ? items.map((item) =>
+        item.id === id ? { ...item, quantity: Math.max(1, Number(item.quantity || 1) + 1) } : item
+      )
+    : [...items, payload];
   saveCart(next);
   return next;
 }

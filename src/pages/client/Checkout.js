@@ -39,6 +39,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import { useTheme } from "@mui/material/styles";
 import api from "../../utils/api";
 import PublicBookingUnavailableDialog from "../../components/billing/PublicBookingUnavailableDialog";
@@ -1134,6 +1135,14 @@ function CheckoutFormCore({
     persist(newCart);
   };
 
+  const updatePackageQuantity = (id, nextQuantity) => {
+    const quantity = Math.max(1, Number(nextQuantity || 1));
+    const newCart = cart.map((item) =>
+      item.id === id && isPackage(item) ? { ...item, quantity } : item
+    );
+    persist(newCart);
+  };
+
   const guestOk =
     guest.name.trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guest.email.trim());
   const allowedDeliveryMethods = useMemo(() => {
@@ -2166,6 +2175,27 @@ function CheckoutFormCore({
                           {sessions} sessions
                         </Typography>
                       )}
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                        <Typography variant="body2">Quantity</Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => updatePackageQuantity(it.id, quantity - 1)}
+                          disabled={quantity <= 1}
+                          aria-label="Decrease package quantity"
+                        >
+                          <RemoveIcon fontSize="small" />
+                        </IconButton>
+                        <Typography variant="body2" sx={{ minWidth: 20, textAlign: "center" }}>
+                          {quantity}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => updatePackageQuantity(it.id, quantity + 1)}
+                          aria-label="Increase package quantity"
+                        >
+                          <AddIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
                       <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 600 }}>
                         Line total {formatCurrency(subtotal, currencyCode)}
                       </Typography>
