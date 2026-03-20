@@ -1759,7 +1759,13 @@ function CheckoutFormCore({
       serviceResults,
       productOrder,
     });
-    onSuccess?.(serviceResults[0] || null);
+    const primaryResult =
+      serviceResults.length === 1 && serviceResults[0]?.success
+        ? serviceResults[0]
+        : null;
+    if (primaryResult) {
+      onSuccess?.(primaryResult);
+    }
   };
   const bookWithoutPayment = async (e) => {
     e?.preventDefault?.();
