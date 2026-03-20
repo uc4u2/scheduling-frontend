@@ -541,6 +541,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
 function CheckoutFormCore({
   companySlug,
   slugOverride,
+  onRequestAddService,
   service,
   artist,
   slot,
@@ -2708,7 +2709,11 @@ function CheckoutFormCore({
       )}
 
       {/* Card   show when either pay-now or card-on-file is enabled */}
-      {effectivePaymentMode !== "off" ? (
+      {packageOnlyTotal ? (
+        <Alert severity="success" sx={{ mb: 2, ...infoAlertSx }}>
+          This booking is fully covered by your package credits. No Stripe payment is required.
+        </Alert>
+      ) : effectivePaymentMode !== "off" ? (
         <Alert severity="info" sx={{ mb: 2, ...infoAlertSx }}>
           {hasPackagePurchase && !paymentsEnabled
             ? "Online payments are disabled for this company. Package purchases require online payment."
@@ -2889,6 +2894,7 @@ function CheckoutFormCore({
           variant="outlined"
           startIcon={<AddIcon />}
           onClick={() => {
+            onRequestAddService?.();
             const target = slugLocal || companySlug;
             if (!target) return;
             const params = new URLSearchParams();

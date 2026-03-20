@@ -76,6 +76,12 @@ const getAppointmentPayload = (raw) =>
 
 const normalizeSingleService = (appt, tzFallback) => {
   const svc = appt?.service || {};
+  const paymentStatus = String(appt?.payment_status || "").toLowerCase();
+  const paidViaPackage =
+    PACKAGE_STATUS_SET.has(paymentStatus) ||
+    String(appt?.paid_via || "").toLowerCase() === "package";
+  const rawLineSubtotal = Number(appt?.line_subtotal ?? 0);
+  const rawLineTotal = Number(appt?.line_total ?? appt?.total_with_tip ?? 0);
 
   return {
     appointment_id: appt?.id,
@@ -95,13 +101,21 @@ const normalizeSingleService = (appt, tzFallback) => {
 
     local_time: svc.local_time || appt?.local_time,
 
-    base_price: Number(svc.base_price ?? svc.price ?? 0),
+    base_price: paidViaPackage
+      ? rawLineSubtotal
+      : Number(svc.base_price ?? svc.price ?? 0),
 
     coupon_code: appt?.coupon?.code || null,
 
     discount_amount: Number(appt?.discount_amount || 0),
 
     tip_amount: Number(appt?.tip_amount || 0),
+
+    line_total: paidViaPackage ? rawLineTotal : null,
+
+    payment_status: paymentStatus,
+
+    paid_via_package: paidViaPackage,
 
     addons: (svc.addons || []).map((ad) => ({
       id: ad.id,
@@ -135,6 +149,11 @@ const PAID_STATUS_SET = new Set([
   "complete",
   "captured",
   "settled",
+]);
+
+const PACKAGE_STATUS_SET = new Set([
+  "package",
+  "covered_by_package",
 ]);
 
 const CARD_ON_FILE_STATUS_SET = new Set([
@@ -951,6 +970,7 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
 
     const isFinalizing = awaitingStripe;
     const isPaid = PAID_STATUS_SET.has(normalizedPaymentStatus);
+    const isPackage = PACKAGE_STATUS_SET.has(normalizedPaymentStatus);
     const isCardOnFile = CARD_ON_FILE_STATUS_SET.has(normalizedPaymentStatus);
     const customerStatus = String(
       stripeSession?.customer_status ||
@@ -960,7 +980,8 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
     const paymentReceived =
       Boolean(stripeSession?.payment_received) ||
       Boolean(productOrder?.payment_received) ||
-      isPaid;
+      isPaid ||
+      isPackage;
     const underReview =
       customerStatus === "under_review" ||
       Boolean(productOrder?.inventory_action_required);
@@ -995,8 +1016,12 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
         )
       : money(fallbackAmount ?? 0, fallbackCurrency);
 
-    const amountDisplay = isPaid ? amountPaidDisplay : money(fallbackAmount ?? 0, fallbackCurrency);
-    const amountLabel = isPaid ? "Amount paid" : "Amount due";
+    const amountDisplay = isPackage
+      ? money(0, fallbackCurrency)
+      : isPaid
+        ? amountPaidDisplay
+        : money(fallbackAmount ?? 0, fallbackCurrency);
+    const amountLabel = isPackage ? "Covered by package" : isPaid ? "Amount paid" : "Amount due";
     const displayPaymentStatus = isFinalizing
       ? "Pending confirmation"
       : paymentStatus || (isCardOnFile ? "CARD_ON_FILE" : isPaid ? "PAID" : "UNPAID");
@@ -1004,6 +1029,8 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
       ? ""
       : isCardOnFile
         ? "A card has been stored securely with Stripe. The business may charge it later."
+        : isPackage
+          ? "This booking was covered by your package credits."
         : !isPaid
           ? "No online payment was collected. Please pay at the appointment."
           : "";
@@ -1143,8 +1170,9 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
       ).toUpperCase();
       const orderNormalizedStatus = orderPaymentStatus.toLowerCase();
       const orderPaid = PAID_STATUS_SET.has(orderNormalizedStatus);
+      const orderIsPackage = PACKAGE_STATUS_SET.has(orderNormalizedStatus);
       const orderCardOnFile = CARD_ON_FILE_STATUS_SET.has(orderNormalizedStatus);
-      const orderAmountLabel = orderPaid ? "Amount paid" : "Amount due";
+      const orderAmountLabel = orderIsPackage ? "Covered by package" : orderPaid ? "Amount paid" : "Amount due";
       const orderStatusLabel = awaitingStripe
         ? "Pending confirmation"
         : orderPaymentStatus || (orderCardOnFile ? "CARD_ON_FILE" : orderPaid ? "PAID" : "UNPAID");
@@ -1152,6 +1180,8 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
         ? ""
         : orderCardOnFile
           ? "A card has been stored securely with Stripe. The business may charge it later."
+          : orderIsPackage
+            ? "These bookings were covered by package credits."
           : !orderPaid
             ? "No online payment was collected. Please pay at the appointment."
             : "";
@@ -1194,17 +1224,25 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
               {order.services.map((s) => {
                 const dt = { date: s.date, time: s.time, tz: s.tz };
 
-                const subtotal = Number(s.pricing?.subtotal ?? s.subtotal ?? 0);
+                const lineStatus = String(
+                  s.payment_status || s.paid_via || order.payment_status || "",
+                ).toLowerCase();
+                const lineIsPackage = PACKAGE_STATUS_SET.has(lineStatus) || lineStatus === "package";
+                const subtotal = lineIsPackage
+                  ? 0
+                  : Number(s.pricing?.subtotal ?? s.subtotal ?? 0);
 
                 const discount = Number(s.pricing?.discount ?? s.discount ?? 0);
 
                 const tip = Number(s.tip_amount ?? 0);
 
-                const lineTotal = Number(
-                  s.pricing?.total ??
-                    s.total ??
-                    Math.max(0, subtotal - discount) + tip,
-                );
+                const lineTotal = lineIsPackage
+                  ? tip
+                  : Number(
+                      s.pricing?.total ??
+                        s.total ??
+                        Math.max(0, subtotal - discount) + tip,
+                    );
 
                 return (
                   <React.Fragment
@@ -1281,7 +1319,7 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
                   <Typography variant="h6" sx={{ mt: 0.5 }}>
                     {awaitingStripe
                       ? "Amount pending"
-                      : `${orderAmountLabel} ${money(order.total)}`}
+                      : `${orderAmountLabel} ${money(orderIsPackage ? 0 : order.total)}`}
                   </Typography>
 
                   <Typography variant="body2" color="text.secondary">
@@ -1313,9 +1351,11 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
       const singleTip =
         svc.tip_amount ?? deriveSingleLineTipFromPayments(payments);
 
-      const lineTotal =
-        Math.max(0, svc.base_price - (svc.discount_amount || 0)) +
-        (singleTip || 0);
+      const singleIsPackage = Boolean(svc.paid_via_package);
+      const lineTotal = singleIsPackage
+        ? Number(svc.line_total ?? singleTip ?? 0)
+        : Math.max(0, svc.base_price - (svc.discount_amount || 0)) +
+          (singleTip || 0);
 
       const when = buildDisplayDateTime(svc, userTz);
 
@@ -1364,7 +1404,7 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
               Charges
             </Typography>
 
-            <Typography>Service: {money(svc.base_price)}</Typography>
+            <Typography>Service: {money(singleIsPackage ? 0 : svc.base_price)}</Typography>
 
             {svc.discount_amount > 0 && (
               <Typography>Discount: -{money(svc.discount_amount)}</Typography>
@@ -1373,8 +1413,14 @@ export default function BookingConfirmation({ slugOverride: slugProp }) {
             {singleTip > 0 && <Typography>Tip: {money(singleTip)}</Typography>}
 
             <Typography variant="h5" sx={{ mt: 1, fontWeight: 700 }}>
-              Total Paid: {money(lineTotal)}
+              {singleIsPackage ? "Covered by package" : "Total Paid"}: {money(singleIsPackage ? 0 : lineTotal)}
             </Typography>
+
+            {singleIsPackage && (
+              <Typography color="text.secondary" sx={{ mt: 1 }}>
+                This appointment was covered by your package credits.
+              </Typography>
+            )}
 
             {renderProductSummary()}
 

@@ -726,7 +726,11 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
             backgroundImage: "var(--checkout-modal-bg-image, none)",
           }}
         >
-          <Checkout disableShell companySlug={slug} />
+          <Checkout
+            disableShell
+            companySlug={slug}
+            onRequestAddService={() => setCheckoutOpen(false)}
+          />
         </DialogContent>
       </Dialog>
       </Container>
