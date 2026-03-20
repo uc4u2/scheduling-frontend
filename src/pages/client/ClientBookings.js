@@ -567,9 +567,15 @@ export default function ClientBookings() {
                   size="small"
                 />
               </Typography>
-              <Typography>
-                <b>Amount paid:</b> {money(selected.amount_paid, selected.currency)}
-              </Typography>
+              {String(selected.payment_status || "").toLowerCase() === "package" ? (
+                <Typography>
+                  <b>Covered by package credits:</b> {money(selected.service_amount, selected.currency)}
+                </Typography>
+              ) : (
+                <Typography>
+                  <b>Amount paid:</b> {money(selected.amount_paid, selected.currency)}
+                </Typography>
+              )}
               <Typography>
                 <b>Amount due:</b> {money(selected.amount_due, selected.currency)}
               </Typography>
