@@ -1561,6 +1561,8 @@ function CheckoutFormCore({
   ) => {
     if (serviceItems.length === 0) return [];
 
+    const useBatchBooking = serviceItems.length > 1;
+
     const compactCart = serviceItems.map(
       ({ service_id, artist_id, date, start_time, addon_ids, client_package_id }) => ({
         service_id,
@@ -1575,6 +1577,64 @@ function CheckoutFormCore({
     const headers = {
       "Idempotency-Key": window.crypto?.randomUUID?.() ?? String(Date.now()),
     };
+
+    if (useBatchBooking) {
+      const payload = {
+        client_name: client?.full_name || guest.name,
+        client_email: client?.email || guest.email,
+        ...(paymentIntentId ? { payment_intent_id: paymentIntentId } : {}),
+        ...(setupIntentId ? { setup_intent_id: setupIntentId } : {}),
+        ...(finalTotal <= 0 ? { allow_unpaid: true } : {}),
+        send_email: true,
+        items: serviceItems.map((it) => ({
+          artist_id: it.artist_id,
+          service_id: it.service_id,
+          date: it.date,
+          start_time: it.start_time,
+          addon_ids: getAddonIds(it),
+          ...(it.client_package_id ? { client_package_id: it.client_package_id } : {}),
+          ...(it.couponApplied && it.coupon ? { coupon_code: it.coupon.code } : {}),
+          tip_amount: tipAllowedNow ? Number((it.tip_amount || 0).toFixed(2)) : 0,
+        })),
+      };
+
+      try {
+        const { data: res } = await apiClient.post(
+          `/public/${slugLocal}/book-batch`,
+          payload,
+          { headers }
+        );
+        const appointmentIds = Array.isArray(res?.appointment_ids) ? res.appointment_ids : [];
+        return serviceItems.map((it, idx) => ({
+          appointment_id: appointmentIds[idx] || null,
+          service_name: it.service_name || it.name || "Service",
+          artist_name: it.artist_name || "Provider",
+          date: it.date,
+          start_time: it.start_time,
+          tip_amount: tipAllowedNow ? Number((it.tip_amount || 0).toFixed(2)) : 0,
+          payment_status: res?.payment_status || null,
+          paid_via: it.client_package_id ? "package" : null,
+        }));
+      } catch (err) {
+        const data = err?.response?.data;
+        if (err?.response?.status === 409 && data) {
+          const conflicts = Array.isArray(data.conflicts)
+            ? data.conflicts
+                .map((c) => `  ${c.source || "busy"}: ${c.busy_start_local} ? ${c.busy_end_local}`)
+                .join("\n")
+            : "";
+          const parts = [
+            data.error || "Selected time is no longer available.",
+            conflicts ? `Conflicts:\n${conflicts}` : null,
+          ].filter(Boolean);
+          setErr(parts.join("\n\n"));
+        } else {
+          setErr(data?.error || err.message || "Booking failed");
+        }
+        if (shouldRethrow) throw err;
+        return [];
+      }
+    }
 
     const results = [];
     for (const it of serviceItems) {
