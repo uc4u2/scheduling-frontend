@@ -1759,6 +1759,9 @@ function CheckoutFormCore({
       serviceResults,
       productOrder,
     });
+    try {
+      window.dispatchEvent(new Event("booking:changed"));
+    } catch {}
     const primaryResult =
       serviceResults.length === 1 && serviceResults[0]?.success
         ? serviceResults[0]
@@ -2237,6 +2240,13 @@ function CheckoutFormCore({
             const remaining = Number(pkg?.remaining ?? 0);
             return sum + (Number.isFinite(remaining) ? remaining : 0);
           }, 0);
+          const selectedPackageId = Number(it.client_package_id || 0);
+          const selectedPackage = packageOptions.find(
+            (pkg) => Number(pkg?.id || 0) === selectedPackageId
+          );
+          const selectedPackageLabel = selectedPackage
+            ? `${selectedPackage?.template?.name || selectedPackage?.name || "Package"} (${Number(selectedPackage?.remaining ?? 0)} left)`
+            : "Pay normally";
 
           if (isProduct(it)) {
             const quantity = getQuantity(it);
@@ -2421,6 +2431,15 @@ function CheckoutFormCore({
                               value={it.client_package_id ?? ""}
                               onChange={(e) => setPackageForItem(it.id, e.target.value)}
                               sx={{ minWidth: { xs: "100%", sm: 260 } }}
+                              SelectProps={{
+                                displayEmpty: true,
+                                renderValue: (value) => {
+                                  if (value === "" || value === null || value === undefined) {
+                                    return "Pay normally";
+                                  }
+                                  return selectedPackageLabel;
+                                },
+                              }}
                             >
                               <MenuItem value="">Pay normally</MenuItem>
                               {packageOptions.map((pkg) => {
