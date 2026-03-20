@@ -65,6 +65,24 @@ const emptyPackageForm = {
   session_qty: 5,
   price: 0,
   expires_in: "",
+  booking_window_start: "",
+  booking_window_end: "",
+};
+
+const detectBrowserTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  } catch {
+    return "";
+  }
+};
+
+const toDateTimeLocalInput = (value) => {
+  if (!value) return "";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return "";
+  const pad = (num) => String(num).padStart(2, "0");
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 };
 
 const ServiceManagement = ({ token }) => {
@@ -256,6 +274,8 @@ const ServiceManagement = ({ token }) => {
       session_qty: Number(pkg.session_qty || 1),
       price: Number(pkg.price || 0),
       expires_in: pkg.expires_in ?? "",
+      booking_window_start: toDateTimeLocalInput(pkg.booking_window_start),
+      booking_window_end: toDateTimeLocalInput(pkg.booking_window_end),
     });
   };
 
@@ -264,6 +284,8 @@ const ServiceManagement = ({ token }) => {
     const price = Number(packageForm.price) || 0;
     const expiresIn =
       packageForm.expires_in === "" ? null : Number(packageForm.expires_in);
+    const bookingWindowStart = packageForm.booking_window_start || null;
+    const bookingWindowEnd = packageForm.booking_window_end || null;
     if (!packageForm.service_id) {
       setSnk({ open: true, key: "Select a service for this package." });
       return;
@@ -276,6 +298,10 @@ const ServiceManagement = ({ token }) => {
       setSnk({ open: true, key: "Expiry must be 1 day or more." });
       return;
     }
+    if (bookingWindowStart && bookingWindowEnd && bookingWindowEnd <= bookingWindowStart) {
+      setSnk({ open: true, key: "Booking window end must be after the start." });
+      return;
+    }
     const payload = {
       name:
         packageForm.name ||
@@ -284,6 +310,9 @@ const ServiceManagement = ({ token }) => {
       session_qty: sessionQty,
       price,
       expires_in: Number.isFinite(expiresIn) ? expiresIn : null,
+      booking_window_start: bookingWindowStart,
+      booking_window_end: bookingWindowEnd,
+      booking_window_timezone: detectBrowserTimezone() || undefined,
     };
     try {
       if (editingPackage?.id) {
@@ -717,6 +746,42 @@ const ServiceManagement = ({ token }) => {
                 }
                 helperText={t("manager.service.packages.expiryHelp", "Leave blank for no expiration.")}
               />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <TextField
+                  label={t("manager.service.packages.bookingWindowStart", "Booking window starts")}
+                  type="datetime-local"
+                  fullWidth
+                  margin="dense"
+                  value={packageForm.booking_window_start}
+                  onChange={(event) =>
+                    setPackageForm({
+                      ...packageForm,
+                      booking_window_start: event.target.value,
+                    })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  label={t("manager.service.packages.bookingWindowEnd", "Booking window ends")}
+                  type="datetime-local"
+                  fullWidth
+                  margin="dense"
+                  value={packageForm.booking_window_end}
+                  onChange={(event) =>
+                    setPackageForm({
+                      ...packageForm,
+                      booking_window_end: event.target.value,
+                    })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                {t(
+                  "manager.service.packages.bookingWindowHelp",
+                  "Optional. Clients can buy the package anytime, but credits can only be redeemed for bookings inside this window. Times use your current timezone when editing."
+                )}
+              </Typography>
             </Stack>
 
             <Button variant="contained" onClick={savePackage}>
@@ -741,6 +806,7 @@ const ServiceManagement = ({ token }) => {
                     <TableCell>{t("manager.service.packages.table.sessions", "Sessions")}</TableCell>
                     <TableCell>{t("manager.service.packages.table.price", "Price")}</TableCell>
                     <TableCell>{t("manager.service.packages.table.expires", "Expires")}</TableCell>
+                    <TableCell>{t("manager.service.packages.table.bookingWindow", "Booking window")}</TableCell>
                     <TableCell align="right">{t("manager.service.packages.table.actions", "Actions")}</TableCell>
                   </TableRow>
                 </TableHead>
@@ -752,6 +818,11 @@ const ServiceManagement = ({ token }) => {
                       <TableCell>{pkg.session_qty}</TableCell>
                       <TableCell>{Number(pkg.price || 0).toFixed(2)}</TableCell>
                       <TableCell>{pkg.expires_in ? `${pkg.expires_in} days` : "No expiry"}</TableCell>
+                      <TableCell>
+                        {pkg.booking_window_start || pkg.booking_window_end
+                          ? `${toDateTimeLocalInput(pkg.booking_window_start) || "Any time"} -> ${toDateTimeLocalInput(pkg.booking_window_end) || "Open-ended"}`
+                          : "Any booking date"}
+                      </TableCell>
                       <TableCell align="right">
                         <IconButton onClick={() => editPackage(pkg)}>
                           <Edit />
@@ -764,7 +835,7 @@ const ServiceManagement = ({ token }) => {
                   ))}
                   {packages.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6}>
+                      <TableCell colSpan={7}>
                         <Typography variant="body2" color="text.secondary" align="center">
                           {t("manager.service.packages.empty", "No packages yet.")}
                         </Typography>
