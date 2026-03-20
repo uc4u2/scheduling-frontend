@@ -33,6 +33,7 @@ import {
   RadioGroup,
   Checkbox,
   MenuItem,
+  Drawer,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import {
@@ -103,6 +104,7 @@ const ServiceManagement = ({ token }) => {
   const [imageTarget, setImageTarget] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [packageHelpOpen, setPackageHelpOpen] = useState(false);
 
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -637,7 +639,19 @@ const ServiceManagement = ({ token }) => {
       </Dialog>
 
       <Dialog open={packagesOpen} onClose={closePackages} maxWidth="md" fullWidth>
-        <DialogTitle>{t("manager.service.packages.title", "Package templates")}</DialogTitle>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+            <span>{t("manager.service.packages.title", "Package templates")}</span>
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => setPackageHelpOpen(true)}
+              sx={{ textTransform: "none", fontWeight: 600 }}
+            >
+              {t("manager.service.packages.helpButton", "How this works")}
+            </Button>
+          </Stack>
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2}>
             <Typography variant="body2" color="text.secondary">
@@ -853,6 +867,121 @@ const ServiceManagement = ({ token }) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Drawer
+        anchor="right"
+        open={packageHelpOpen}
+        onClose={() => setPackageHelpOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 420 },
+            maxWidth: "100%",
+            p: 3,
+          },
+        }}
+      >
+        <Stack spacing={2.5}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+            <Typography variant="h6" fontWeight={800}>
+              {t("manager.service.packages.helpTitle", "Package help")}
+            </Typography>
+            <Button onClick={() => setPackageHelpOpen(false)}>
+              {t("common.close", "Close")}
+            </Button>
+          </Stack>
+
+          <Typography variant="body2" color="text.secondary">
+            {t(
+              "manager.service.packages.helpIntro",
+              "Use packages when a client pays in advance and then books future appointments from that prepaid balance."
+            )}
+          </Typography>
+
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {t("manager.service.packages.helpExampleTitle", "Live example")}
+              </Typography>
+              <Typography variant="body2">
+                {t(
+                  "manager.service.packages.helpExampleBody",
+                  "An instructor runs 4-hour sessions and wants one student to reserve 8 sessions in April."
+                )}
+              </Typography>
+              <Typography variant="body2">
+                {t(
+                  "manager.service.packages.helpExampleDuration",
+                  "Service duration: 240 minutes"
+                )}
+              </Typography>
+              <Typography variant="body2">
+                {t(
+                  "manager.service.packages.helpExampleSessions",
+                  "Sessions in package: 8"
+                )}
+              </Typography>
+              <Typography variant="body2">
+                {t(
+                  "manager.service.packages.helpExampleWindow",
+                  "Booking window: April 1 to April 30"
+                )}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t(
+                  "manager.service.packages.helpExampleResult",
+                  "After purchase, the client can book up to 8 separate 4-hour appointments inside that window. Each booking uses 1 credit."
+                )}
+              </Typography>
+            </Stack>
+          </Paper>
+
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {t("manager.service.packages.helpGroupTitle", "If 5 students each need a spot")}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t(
+                  "manager.service.packages.helpGroupBody",
+                  "Packages are tracked per client. If 5 different students each need their own prepaid balance, each student needs their own package purchase or manager grant."
+                )}
+              </Typography>
+            </Stack>
+          </Paper>
+
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle1" fontWeight={700}>
+                {t("manager.service.packages.helpRulesTitle", "Important rules")}
+              </Typography>
+              <Typography variant="body2">
+                {t(
+                  "manager.service.packages.helpRule1",
+                  "Package price is the full prepaid amount, not the price per session."
+                )}
+              </Typography>
+              <Typography variant="body2">
+                {t(
+                  "manager.service.packages.helpRule2",
+                  "Each future appointment consumes 1 session credit."
+                )}
+              </Typography>
+              <Typography variant="body2">
+                {t(
+                  "manager.service.packages.helpRule3",
+                  "Booking window limits when the credits can be used, not when the package can be bought."
+                )}
+              </Typography>
+              <Typography variant="body2">
+                {t(
+                  "manager.service.packages.helpRule4",
+                  "Expires in days is separate from the booking window. You can leave expiry blank if the booking window is enough."
+                )}
+              </Typography>
+            </Stack>
+          </Paper>
+        </Stack>
+      </Drawer>
 
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{t("manager.service.help.title", "Service setup help")}</DialogTitle>
