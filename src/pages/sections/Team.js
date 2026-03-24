@@ -45,6 +45,7 @@ import {
   useTheme,
   useMediaQuery,
   Avatar,
+  CircularProgress,
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowUp, InfoOutlined } from "@mui/icons-material";
 import * as XLSX from "xlsx";
@@ -1770,10 +1771,166 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       viewType.startsWith("timeGridDay") ||
       viewType.startsWith("timeGridWeek") ||
       viewType === "dayGridMonth";
+    const isWeekView = viewType.startsWith("timeGridWeek");
+    const isDayView = viewType.startsWith("timeGridDay");
     const startTime = arg.timeText || "";
     const endTime = arg.event.end
       ? format(arg.event.end, timeFmt12h ? "hh:mmaaa" : "HH:mm")
       : "";
+    const issueCount =
+      (xp.late_minutes > 0 ? 1 : 0) +
+      (xp.break_missing_minutes > 0 ? 1 : 0) +
+      (xp.break_non_compliant ? 1 : 0) +
+      (xp.missed_clock_in ? 1 : 0);
+    const compactIssueLabel =
+      xp.break_missing_minutes > 0
+        ? `Break missing ${xp.break_missing_minutes}m`
+        : xp.break_non_compliant
+        ? "Break non-compliant"
+        : xp.missed_clock_in
+        ? "Missed clock-in"
+        : xp.late_minutes > 0
+        ? `Late +${xp.late_minutes}m`
+        : "";
+
+    if (isWeekView) {
+      return (
+        <div
+          style={{
+            padding: "3px 4px",
+            borderLeft: `3px solid ${accent}`,
+            lineHeight: 1.15,
+            background: alpha(accent, 0.1),
+            borderRadius: 8,
+            height: "100%",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 2, minWidth: 0 }}>
+            <span
+              style={{
+                fontSize: 9,
+                textTransform: "uppercase",
+                letterSpacing: 0.25,
+                padding: "1px 4px",
+                borderRadius: 7,
+                background: statusUi.bg,
+                border: `1px solid ${statusUi.border}`,
+                color: statusUi.text,
+                flexShrink: 0,
+              }}
+            >
+              {status}
+            </span>
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: 10,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                color: theme.palette.text.primary,
+                minWidth: 0,
+              }}
+            >
+              {emp}
+            </span>
+          </div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: theme.palette.text.primary, marginBottom: 2 }}>
+            {startTime}
+            {endTime ? ` - ${endTime}` : ""}
+          </div>
+          {compactIssueLabel ? (
+            <div
+              style={{
+                fontSize: 9,
+                color: theme.palette.error.dark,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {compactIssueLabel}
+            </div>
+          ) : null}
+          {issueCount > 1 ? (
+            <div style={{ fontSize: 9, color: theme.palette.text.secondary }}>
+              +{issueCount - 1} more issue{issueCount - 1 === 1 ? "" : "s"}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
+    if (isDayView) {
+      return (
+        <div
+          style={{
+            padding: "4px 6px",
+            borderLeft: `4px solid ${accent}`,
+            lineHeight: 1.18,
+            background: alpha(accent, 0.12),
+            borderRadius: 10,
+            height: "100%",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, minWidth: 0 }}>
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                letterSpacing: 0.3,
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: statusUi.bg,
+                border: `1px solid ${statusUi.border}`,
+                color: statusUi.text,
+                flexShrink: 0,
+              }}
+            >
+              {status}
+            </span>
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: 11,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                color: theme.palette.text.primary,
+                minWidth: 0,
+              }}
+            >
+              {emp}
+            </span>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: theme.palette.text.primary, marginBottom: 3 }}>
+            {startTime}
+            {endTime ? ` – ${endTime}` : ""}
+          </div>
+          {compactIssueLabel ? (
+            <div
+              style={{
+                fontSize: 10,
+                color: theme.palette.error.dark,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                marginBottom: 2,
+              }}
+            >
+              {compactIssueLabel}
+            </div>
+          ) : null}
+          {xp.location ? (
+            <div style={{ fontSize: 10, color: theme.palette.text.secondary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {xp.location}
+            </div>
+          ) : null}
+        </div>
+      );
+    }
 
     return (
       <div
@@ -1964,10 +2121,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const note = xp.note ? `\nNote: ${xp.note}` : "";
     info.el.setAttribute("title", `${emp}\n${start}–${end}${loc}${note}`);
     const accent = xp._empColor || theme.palette.primary.main;
+    const viewType = info.view?.type || "";
+    const isTimeGrid = viewType.startsWith("timeGrid");
     info.el.style.borderRadius = "12px";
-    info.el.style.boxShadow = theme.shadows[2];
+    info.el.style.boxShadow = isTimeGrid ? "none" : theme.shadows[2];
     info.el.style.borderLeft = `4px solid ${accent}`;
-    info.el.style.background = alpha(accent, 0.16);
+    info.el.style.background = alpha(accent, isTimeGrid ? 0.12 : 0.16);
+    info.el.style.overflow = "hidden";
   };
 
   // shared props for Week/Day calendars
@@ -1981,6 +2141,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     stickyHeaderDates: true,
     displayEventEnd: true,
     expandRows: true,
+    slotEventOverlap: false,
+    eventMinHeight: innerCalView === "timeGridDay" ? 72 : innerCalView === "timeGridWeek" ? 54 : 36,
+    eventShortHeight: 28,
     scrollTime: "08:00:00",
     slotDuration: granularity,
     slotLabelInterval: "01:00",
@@ -2552,6 +2715,7 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
       >
         <Box
           sx={{
+            position: "relative",
             p: { xs: 2.5, sm: 4 },
             bgcolor: "background.paper",
             width: { xs: "calc(100% - 24px)", sm: 520 },
@@ -2565,6 +2729,47 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
             flexDirection: "column",
           }}
         >
+          {isSubmitting ? (
+            <Box
+              sx={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 3,
+                borderRadius: 2,
+                backgroundColor: "rgba(255,255,255,0.82)",
+                backdropFilter: "blur(2px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                p: 3,
+              }}
+            >
+              <Paper
+                elevation={0}
+                sx={{
+                  width: "100%",
+                  maxWidth: 360,
+                  p: 2.5,
+                  borderRadius: 3,
+                  border: "1px solid",
+                  borderColor: "primary.light",
+                  boxShadow: "0 18px 40px rgba(37,99,235,0.12)",
+                }}
+              >
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <CircularProgress size={26} thickness={4.5} />
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700}>
+                      Assigning shifts
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      This can take a little longer when Schedulaa creates shifts for multiple employees and recurring dates.
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Paper>
+            </Box>
+          ) : null}
           <Box sx={{ overflowY: "auto", pr: { xs: 0, sm: 1 } }}>
             <Typography variant="h6" gutterBottom>
               {editingShift ? "Edit Shift" : "Add New Shift"}

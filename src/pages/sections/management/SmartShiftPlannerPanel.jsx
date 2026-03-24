@@ -25,6 +25,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  Pagination,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -116,6 +117,13 @@ const rangeSpanDays = (startDate, endDate) => {
   return Math.floor(end.startOf("day").diff(start.startOf("day"), "days").days) + 1;
 };
 
+const toPlannerWeekday = (dt) => {
+  if (!dt?.isValid) return null;
+  return (Number(dt.weekday) + 6) % 7;
+};
+
+const toCoverageRowKey = (row, idx) => row?.coverage_id || `coverage-${idx + 1}`;
+
 const buildWeekLabel = (weekKey) => {
   const [yearPart, weekPart] = String(weekKey || "").split("-W");
   const year = Number(yearPart);
@@ -155,14 +163,18 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [runsLoading, setRunsLoading] = useState(false);
   const [runsStatusFilter, setRunsStatusFilter] = useState("all");
   const [runsSearch, setRunsSearch] = useState("");
-  const [runsOffset, setRunsOffset] = useState(0);
   const [runsTotal, setRunsTotal] = useState(0);
+  const [runsPage, setRunsPage] = useState(1);
+  const [runsPageSize, setRunsPageSize] = useState(RUNS_PAGE_SIZE);
+  const [runsExpanded, setRunsExpanded] = useState(false);
+  const [selectedRunIds, setSelectedRunIds] = useState([]);
 
   const [includeRecruiterIds, setIncludeRecruiterIds] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [weeksSpan, setWeeksSpan] = useState(4);
   const [targetShiftsPerWeek, setTargetShiftsPerWeek] = useState(1);
   const [onlyWithAvailability, setOnlyWithAvailability] = useState(false);
+  const [includeManagers, setIncludeManagers] = useState(false);
 
   const [showUnscheduled, setShowUnscheduled] = useState(false);
   const [availabilityPresence, setAvailabilityPresence] = useState({});
@@ -172,9 +184,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [weekFocus, setWeekFocus] = useState("current");
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [warningsOnly, setWarningsOnly] = useState(false);
+  const [hideManagerSuggestions, setHideManagerSuggestions] = useState(false);
   const [suggestionEmployeeFilter, setSuggestionEmployeeFilter] = useState("");
   const [visibleSuggestionCount, setVisibleSuggestionCount] = useState(DEFAULT_VISIBLE_SUGGESTIONS);
   const [expandedGroups, setExpandedGroups] = useState({});
+  const [managerOnlyBlockInfo, setManagerOnlyBlockInfo] = useState(null);
   const [guideOpen, setGuideOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
@@ -196,11 +210,22 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     });
     return map;
   }, [recruiters]);
+  const recruiterById = useMemo(() => {
+    const map = new Map();
+    recruiters.forEach((r) => {
+      map.set(Number(r.id), r);
+    });
+    return map;
+  }, [recruiters]);
 
   const filteredRecruiters = useMemo(() => {
     if (!selectedDepartment) return recruiters;
     return recruiters.filter((r) => String(r.department_id || "") === String(selectedDepartment));
   }, [recruiters, selectedDepartment]);
+  const selectableRecruiters = useMemo(
+    () => filteredRecruiters.filter((r) => includeManagers || !Boolean(r.is_manager)),
+    [filteredRecruiters, includeManagers]
+  );
 
   const weekKeysInRange = useMemo(
     () => buildWeekKeysInRange(range.start_date, range.end_date),
@@ -208,16 +233,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   );
 
   const scopeRecruiterIds = useMemo(
-    () => new Set(filteredRecruiters.map((r) => Number(r.id))),
-    [filteredRecruiters]
+    () => new Set(selectableRecruiters.map((r) => Number(r.id))),
+    [selectableRecruiters]
   );
 
   const effectiveRecruiterIds = useMemo(
     () =>
       includeRecruiterIds.length
         ? normalizeIdList(includeRecruiterIds)
-        : filteredRecruiters.map((r) => Number(r.id)),
-    [includeRecruiterIds, filteredRecruiters]
+        : selectableRecruiters.map((r) => Number(r.id)),
+    [includeRecruiterIds, selectableRecruiters]
   );
 
   const selectedInScopeCount = useMemo(() => {
@@ -340,8 +365,21 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   }, [loadManagerPolicy]);
 
   const availabilityFilteredRecruiterIds = useMemo(
-    () => filteredRecruiters.filter((r) => availabilityPresence[Number(r.id)]).map((r) => Number(r.id)),
-    [filteredRecruiters, availabilityPresence]
+    () => selectableRecruiters.filter((r) => availabilityPresence[Number(r.id)]).map((r) => Number(r.id)),
+    [selectableRecruiters, availabilityPresence]
+  );
+  const selectedEmployeeDisplayIds = useMemo(
+    () =>
+      includeRecruiterIds.length
+        ? normalizeIdList(includeRecruiterIds)
+        : selectableRecruiters.map((r) => Number(r.id)),
+    [includeRecruiterIds, selectableRecruiters]
+  );
+  const allFilteredSelected = useMemo(
+    () =>
+      selectableRecruiters.length > 0 &&
+      selectableRecruiters.every((r) => selectedEmployeeDisplayIds.includes(Number(r.id))),
+    [selectableRecruiters, selectedEmployeeDisplayIds]
   );
 
   const effectiveSuggestRecruiterIds = useMemo(() => {
@@ -422,20 +460,19 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   };
 
   const fetchRuns = useCallback(
-    async ({ reset = false, offsetOverride = 0 } = {}) => {
+    async ({ page = runsPage, limit = runsPageSize } = {}) => {
       setRunsLoading(true);
       try {
-        const nextOffset = reset ? 0 : offsetOverride;
+        const nextOffset = Math.max(0, (Number(page) - 1) * Number(limit));
         const { data } = await smartShifts.manager.listRuns({
-          limit: RUNS_PAGE_SIZE,
+          limit,
           offset: nextOffset,
           status: runsStatusFilter,
           q: runsSearch,
         });
         const items = Array.isArray(data?.items) ? data.items : [];
         const total = Number(data?.paging?.total || 0);
-        setRuns((prev) => (reset ? items : [...prev, ...items]));
-        setRunsOffset(nextOffset + items.length);
+        setRuns(items);
         setRunsTotal(total);
       } catch (e) {
         setError(e?.response?.data?.error || "Failed to load runs.");
@@ -443,18 +480,27 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         setRunsLoading(false);
       }
     },
-    [runsSearch, runsStatusFilter]
+    [runsPage, runsPageSize, runsSearch, runsStatusFilter]
   );
 
   useEffect(() => {
-    fetchRuns({ reset: true });
+    fetchRuns({ page: runsPage, limit: runsPageSize });
   }, [fetchRuns]);
+
+  useEffect(() => {
+    setRunsPage(1);
+  }, [runsSearch, runsStatusFilter, runsPageSize]);
+
+  useEffect(() => {
+    setSelectedRunIds((prev) => prev.filter((runId) => runs.some((r) => r.run_id === runId)));
+  }, [runs]);
 
   const handleSuggest = async ({ onlyBelowTarget = false } = {}) => {
     setLoading(true);
     setError("");
     setSuccess("");
     setSuggestWarning("");
+    setManagerOnlyBlockInfo(null);
     try {
       const payload = buildPayload();
       const spanDays = rangeSpanDays(payload.range.start_date, payload.range.end_date);
@@ -478,22 +524,61 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       const maxSuggestionsReached = apiWarnings.some((w) =>
         String(w?.message || "").toLowerCase().includes("max_suggestions reached")
       );
+      const recruiterSuggestionCounts = list.reduce((acc, item) => {
+        const rid = Number(item?.recruiter_id);
+        if (!Number.isFinite(rid)) return acc;
+        acc.set(rid, (acc.get(rid) || 0) + 1);
+        return acc;
+      }, new Map());
+      const dominantRecruiterEntry = Array.from(recruiterSuggestionCounts.entries()).sort((a, b) => b[1] - a[1])[0] || null;
+      const requestedSeats = plannerDemandSummary.requestedSeats;
+      const warningMessages = [];
       setLatestRun(data?.run || null);
       setSuggestions(list);
       setSelectedSuggestionIds(list.map((s) => s.suggestion_id));
       setVisibleSuggestionCount(DEFAULT_VISIBLE_SUGGESTIONS);
       setSuccess(`Generated ${list.length} suggestions.`);
       if (maxSuggestionsReached) {
-        setSuggestWarning(
+        warningMessages.push(
           `Preview limited to the first ${payload.options.max_suggestions} suggestions for this run. Narrow the planning range, employee filter, or coverage rows for a more focused result.`
         );
       } else if (isLongPlanningRange) {
-        setSuggestWarning(
+        warningMessages.push(
           "Long planning ranges run in preview mode first. If the result is broader than expected, tighten the date window or department filter before applying shifts."
         );
       }
+      if (requestedSeats > 0 && list.length < requestedSeats) {
+        const selectedEmployeeCount = payload.filters.include_recruiter_ids?.length || 0;
+        const underfillReasons = [
+          `Requested ${requestedSeats} seat${requestedSeats === 1 ? "" : "s"} across ${plannerDemandSummary.matchingSlots} matching slot${plannerDemandSummary.matchingSlots === 1 ? "" : "s"}, but Smart Shift generated ${list.length}.`,
+          "Headcount is a per-slot seat target, not a duplicate assignment count. Smart Shift fills each seat only when a selected employee passes availability, overlap, leave, and weekly-hours checks.",
+        ];
+        if (plannerDemandSummary.maxHeadcount > 0 && selectedEmployeeCount < plannerDemandSummary.maxHeadcount) {
+          underfillReasons.push(
+            `Largest slot headcount is ${plannerDemandSummary.maxHeadcount}, but only ${selectedEmployeeCount} employee${selectedEmployeeCount === 1 ? "" : "s"} are in the current planner filter.`
+          );
+        }
+        if (selectedEmployeesWithoutAvailability > 0) {
+          underfillReasons.push(
+            `${selectedEmployeesWithoutAvailability} selected employee${selectedEmployeesWithoutAvailability === 1 ? "" : "s"} do not have Smart Shift availability rules or exceptions on file.`
+          );
+        } else if (selectedEmployeesWithAvailability > 0) {
+          underfillReasons.push(
+            `${selectedEmployeesWithAvailability} selected employee${selectedEmployeesWithAvailability === 1 ? "" : "s"} currently have Smart Shift availability on file.`
+          );
+        }
+        warningMessages.push(underfillReasons.join(" "));
+      }
+      if (dominantRecruiterEntry && dominantRecruiterEntry[1] === list.length && list.length > 0) {
+        const [dominantRecruiterId] = dominantRecruiterEntry;
+        const dominantRecruiterName = recruiterNameById.get(Number(dominantRecruiterId)) || `#${dominantRecruiterId}`;
+        warningMessages.push(
+          `All generated suggestions currently belong to ${dominantRecruiterName}. No other selected employees qualified for this run. If that was not intended, leave managers excluded and verify Smart Shift availability for the rest of the team.`
+        );
+      }
+      setSuggestWarning(warningMessages.join(" "));
 
-      await fetchRuns({ reset: true });
+      await fetchRuns({ page: 1, limit: runsPageSize });
     } catch (e) {
       setError(e?.response?.data?.error || e?.message || "Failed to generate smart shift suggestions.");
     } finally {
@@ -508,6 +593,31 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     }
     if (!selectedSuggestionIds.length) {
       setError("Select at least one suggestion.");
+      return;
+    }
+    const selectedSuggestions = suggestions.filter((s) => selectedSuggestionIds.includes(s.suggestion_id));
+    const selectedRecruiterIds = Array.from(
+      new Set(
+        selectedSuggestions
+          .map((s) => Number(s?.recruiter_id))
+          .filter((rid) => Number.isFinite(rid))
+      )
+    );
+    const managerOnlySelection =
+      !includeManagers &&
+      selectedRecruiterIds.length > 0 &&
+      selectedRecruiterIds.every((rid) => Boolean(recruiterById.get(Number(rid))?.is_manager));
+    if (managerOnlySelection) {
+      const managerNames = selectedRecruiterIds
+        .map((rid) => recruiterNameById.get(Number(rid)) || `#${rid}`)
+        .join(", ");
+      setError(
+        `Blocked apply: all selected suggestions belong to manager candidate${selectedRecruiterIds.length === 1 ? "" : "s"} (${managerNames}) while manager inclusion is turned off. Re-generate suggestions with non-manager employees only or explicitly enable managers.`
+      );
+      setSuggestWarning(
+        `Apply stopped because 100% of the selected suggestions belong to ${managerNames}. Smart Shift should not apply a manager-only run unless you explicitly allow managers in the candidate pool.`
+      );
+      setManagerOnlyBlockInfo({ managerNames });
       return;
     }
 
@@ -529,7 +639,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       setSuccess(`Applied ${data?.run?.applied_count || 0} shift(s), failed ${data?.run?.failed_count || 0}.`);
       if (onApplied) onApplied();
 
-      await fetchRuns({ reset: true });
+      await fetchRuns({ page: 1, limit: runsPageSize });
       if (latestRun?.run_id) {
         const detail = await smartShifts.manager.getRun(latestRun.run_id);
         setRunDetail(detail?.data || null);
@@ -634,10 +744,19 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     setIncludeRecruiterIds((prev) => prev.filter((id) => allowed.has(Number(id))));
   };
 
-  const handleSelectAllFilteredEmployees = () => setIncludeRecruiterIds(filteredRecruiters.map((r) => Number(r.id)));
+  const handleSelectAllFilteredEmployees = () => setIncludeRecruiterIds(selectableRecruiters.map((r) => Number(r.id)));
   const handleClearSelectedEmployees = () => setIncludeRecruiterIds([]);
   const handleSelectUnscheduledEmployees = () => setIncludeRecruiterIds(unscheduledRecruiters.map((r) => Number(r.id)));
   const handleSelectBelowTargetEmployees = () => setIncludeRecruiterIds(belowTargetRecruiters.map((r) => Number(r.id)));
+  const handleSelectNonManagerEmployees = () =>
+    setIncludeRecruiterIds(filteredRecruiters.filter((r) => !Boolean(r.is_manager)).map((r) => Number(r.id)));
+  const handleRegenerateUsingNonManagers = () => {
+    setIncludeManagers(false);
+    setIncludeRecruiterIds(filteredRecruiters.filter((r) => !Boolean(r.is_manager)).map((r) => Number(r.id)));
+    setHideManagerSuggestions(true);
+    setManagerOnlyBlockInfo(null);
+    handleSuggest();
+  };
 
   const suggestionsWithMeta = useMemo(() => {
     return suggestions.map((s) => {
@@ -679,6 +798,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     if (suggestionEmployeeFilter) {
       list = list.filter((s) => String(s.recruiter_id) === String(suggestionEmployeeFilter));
     }
+    if (hideManagerSuggestions) {
+      list = list.filter((s) => !Boolean(recruiterById.get(Number(s.recruiter_id))?.is_manager));
+    }
     if (groupMode === "week" && focusedWeekKey !== "all") {
       list = list.filter((s) => s._weekKey === focusedWeekKey);
     }
@@ -689,8 +811,10 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     selectedSuggestionIds,
     warningsOnly,
     suggestionEmployeeFilter,
+    hideManagerSuggestions,
     groupMode,
     focusedWeekKey,
+    recruiterById,
   ]);
 
   const visibleSuggestionRows = useMemo(
@@ -758,9 +882,40 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         setSuggestions([]);
         setSelectedSuggestionIds([]);
       }
-      await fetchRuns({ reset: true });
+      await fetchRuns({ page: 1, limit: runsPageSize });
     } catch (e) {
       setError(e?.response?.data?.error || "Failed to delete run.");
+    }
+  };
+
+  const handleBulkDeleteRuns = async () => {
+    if (!selectedRunIds.length) {
+      setError("Select at least one run to delete.");
+      return;
+    }
+    if (!window.confirm(`Delete ${selectedRunIds.length} run${selectedRunIds.length === 1 ? "" : "s"}? This removes suggestion history only. Real shifts will not be deleted.`)) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      await Promise.all(selectedRunIds.map((runId) => smartShifts.manager.deleteRun(runId)));
+      setSelectedRunIds([]);
+      if (runDetail?.run?.run_id && selectedRunIds.includes(runDetail.run.run_id)) {
+        setRunDetail(null);
+      }
+      if (latestRun?.run_id && selectedRunIds.includes(latestRun.run_id)) {
+        setLatestRun(null);
+        setSuggestions([]);
+        setSelectedSuggestionIds([]);
+      }
+      setSuccess(`Deleted ${selectedRunIds.length} run${selectedRunIds.length === 1 ? "" : "s"}.`);
+      await fetchRuns({ page: runsPage, limit: runsPageSize });
+    } catch (e) {
+      setError(e?.response?.data?.error || "Failed to delete selected runs.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -914,6 +1069,87 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     [range.start_date, range.end_date]
   );
   const isLongPlanningRange = Number(planningRangeDays || 0) > 31;
+  const plannerDemandSummary = useMemo(() => {
+    const start = DateTime.fromISO(range.start_date || "").startOf("day");
+    const end = DateTime.fromISO(range.end_date || "").startOf("day");
+    if (!start.isValid || !end.isValid || end < start) {
+      return { matchingSlots: 0, requestedSeats: 0, maxHeadcount: 0 };
+    }
+
+    let matchingSlots = 0;
+    let requestedSeats = 0;
+    let maxHeadcount = 0;
+    let cursor = start;
+
+    while (cursor <= end) {
+      const weekday = toPlannerWeekday(cursor);
+      coverage.forEach((row) => {
+        const rowHeadcount = Math.max(0, Number(row?.headcount || 0));
+        if (!row?.start_time || !row?.end_time || rowHeadcount <= 0) return;
+        if (!Array.isArray(row?.days_of_week) || !row.days_of_week.includes(weekday)) return;
+        matchingSlots += 1;
+        requestedSeats += rowHeadcount;
+        if (rowHeadcount > maxHeadcount) maxHeadcount = rowHeadcount;
+      });
+      cursor = cursor.plus({ days: 1 });
+    }
+
+    return { matchingSlots, requestedSeats, maxHeadcount };
+  }, [coverage, range.end_date, range.start_date]);
+  const coverageDemandSummaryByKey = useMemo(() => {
+    const start = DateTime.fromISO(range.start_date || "").startOf("day");
+    const end = DateTime.fromISO(range.end_date || "").startOf("day");
+    const generatedByKey = new Map();
+    suggestions.forEach((item) => {
+      const key = String(item?.coverage_id || "");
+      if (!key) return;
+      generatedByKey.set(key, (generatedByKey.get(key) || 0) + 1);
+    });
+
+    return coverage.reduce((acc, row, idx) => {
+      const key = toCoverageRowKey(row, idx);
+      const rowHeadcount = Math.max(0, Number(row?.headcount || 0));
+      if (!start.isValid || !end.isValid || end < start || rowHeadcount <= 0) {
+        acc[key] = {
+          key,
+          matchingDays: 0,
+          requestedSeats: 0,
+          generatedSeats: generatedByKey.get(key) || 0,
+          missingSeats: 0,
+        };
+        return acc;
+      }
+
+      let matchingDays = 0;
+      let cursor = start;
+      while (cursor <= end) {
+        const weekday = toPlannerWeekday(cursor);
+        if (Array.isArray(row?.days_of_week) && row.days_of_week.includes(weekday)) {
+          matchingDays += 1;
+        }
+        cursor = cursor.plus({ days: 1 });
+      }
+
+      const requestedSeats = matchingDays * rowHeadcount;
+      const generatedSeats = generatedByKey.get(key) || 0;
+      acc[key] = {
+        key,
+        matchingDays,
+        requestedSeats,
+        generatedSeats,
+        missingSeats: Math.max(0, requestedSeats - generatedSeats),
+      };
+      return acc;
+    }, {});
+  }, [coverage, range.end_date, range.start_date, suggestions]);
+  const selectedEmployeesWithAvailability = useMemo(
+    () => effectiveSuggestRecruiterIds.filter((id) => availabilityPresence[Number(id)]).length,
+    [availabilityPresence, effectiveSuggestRecruiterIds]
+  );
+  const selectedEmployeesWithoutAvailability = Math.max(
+    0,
+    effectiveSuggestRecruiterIds.length - selectedEmployeesWithAvailability
+  );
 
   const shellCardSx = {
     p: { xs: 2, md: 3 },
@@ -974,6 +1210,18 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
       {suggestWarning ? <Alert severity="warning">{suggestWarning}</Alert> : null}
+      {managerOnlyBlockInfo ? (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={handleRegenerateUsingNonManagers}>
+              Regenerate non-managers only
+            </Button>
+          }
+        >
+          Manager-only run blocked for {managerOnlyBlockInfo.managerNames}. Re-generate with non-manager employees only.
+        </Alert>
+      ) : null}
 
       <Paper sx={shellCardSx} variant="outlined">
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.25 }}>Suggestion input</Typography>
@@ -1079,6 +1327,27 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                 }
                 label="Apply only employees with submitted availability"
               />
+              <FormControlLabel
+                sx={{ ml: { xs: 0, md: 0.5 } }}
+                control={
+                  <Switch
+                    checked={includeManagers}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setIncludeManagers(checked);
+                      if (!checked) {
+                        setIncludeRecruiterIds((prev) =>
+                          normalizeIdList(prev).filter((id) => {
+                            const recruiter = recruiters.find((r) => Number(r.id) === Number(id));
+                            return recruiter ? !Boolean(recruiter.is_manager) : true;
+                          })
+                        );
+                      }
+                    }}
+                  />
+                }
+                label="Include managers in candidate pool"
+              />
             </Stack>
             </Stack>
           </Paper>
@@ -1127,30 +1396,50 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value.includes(ALL_EMPLOYEES_VALUE)) {
-                      setIncludeRecruiterIds(filteredRecruiters.map((r) => Number(r.id)));
+                      setIncludeRecruiterIds(selectableRecruiters.map((r) => Number(r.id)));
                       return;
                     }
                     setIncludeRecruiterIds(normalizeIdList(value));
                   }}
                   renderValue={(selected) =>
-                    (selected.length ? selected : filteredRecruiters.map((r) => Number(r.id)))
-                      .map((id) => recruiterNameById.get(Number(id)) || `#${id}`)
-                      .join(", ")
+                    allFilteredSelected
+                      ? `All visible employees (${selectableRecruiters.length})`
+                      : `${selectedEmployeeDisplayIds.length} selected: ${selectedEmployeeDisplayIds
+                          .slice(0, 3)
+                          .map((id) => recruiterNameById.get(Number(id)) || `#${id}`)
+                          .join(", ")}${selectedEmployeeDisplayIds.length > 3 ? ", ..." : ""}`
                   }
                 >
-                  <MenuItem value={ALL_EMPLOYEES_VALUE}><em>All employees</em></MenuItem>
-                  {filteredRecruiters.map((r) => (
+                  <MenuItem value={ALL_EMPLOYEES_VALUE}>
+                    <Checkbox checked={allFilteredSelected} />
+                    <Typography variant="body2"><em>All employees in current view</em></Typography>
+                  </MenuItem>
+                  {selectableRecruiters.map((r) => (
                     <MenuItem key={r.id} value={Number(r.id)}>
-                      {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
+                      <Checkbox checked={selectedEmployeeDisplayIds.includes(Number(r.id))} />
+                      <Stack direction="column" spacing={0.15}>
+                        <Typography variant="body2">
+                          {r.name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || `#${r.id}`}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {availabilityPresence[Number(r.id)] ? "Smart Shift availability on file" : "No Smart Shift availability yet"}
+                        </Typography>
+                      </Stack>
                     </MenuItem>
                   ))}
                 </Select>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.6, px: 0.25 }}>
+                  Visible employees: {selectableRecruiters.length}. Selected for this run: {selectedEmployeeDisplayIds.length}.
+                </Typography>
               </FormControl>
             </Stack>
 
             <Stack direction="row" spacing={0.9} sx={{ mt: 0.15 }} flexWrap="wrap" useFlexGap>
               <Button variant="outlined" size="small" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={handleSelectAllFilteredEmployees}>
                 Select all in {selectedDepartment ? "department" : "list"}
+              </Button>
+              <Button variant="outlined" size="small" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={handleSelectNonManagerEmployees}>
+                Select non-managers only
               </Button>
               <Button variant="outlined" size="small" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={handleSelectUnscheduledEmployees}>Select unscheduled</Button>
               <Button variant="outlined" size="small" sx={{ width: { xs: "100%", sm: "auto" } }} onClick={handleSelectBelowTargetEmployees}>Select below target</Button>
@@ -1163,6 +1452,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
             <Box sx={{ flex: 1 }} />
             <Stack direction="row" spacing={0.85} sx={{ mt: 0.15 }} flexWrap="wrap" useFlexGap>
               <Chip label={`Employees in dept: ${filteredRecruiters.length}`} variant="outlined" />
+              <Chip
+                label={`Smart Shift candidates: ${selectableRecruiters.length}`}
+                color={includeManagers ? "secondary" : "primary"}
+                variant="outlined"
+              />
               <Chip label={`Selected: ${selectedInScopeCount}`} variant="outlined" />
               <Chip
                 label={`Has shifts in range: ${scheduledCount}`}
@@ -1272,6 +1566,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               }}
               variant="outlined"
             >
+              {(() => {
+                const coverageKey = toCoverageRowKey(c, idx);
+                const coverageSummary = coverageDemandSummaryByKey[coverageKey];
+                const showCoverageSummary = Boolean(latestRun?.run_id || suggestions.length);
+                return (
               <Stack spacing={1}>
                 <Stack direction={{ xs: "column", lg: "row" }} spacing={1.25}>
                   <Stack direction="row" spacing={0.25} alignItems="center" sx={{ minWidth: 210, flex: 1 }}>
@@ -1442,6 +1741,20 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                   </Stack>
                 </Stack>
 
+                {showCoverageSummary && coverageSummary ? (
+                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                    <Chip size="small" variant="outlined" label={`Matching days: ${coverageSummary.matchingDays}`} />
+                    <Chip size="small" variant="outlined" label={`Requested seats: ${coverageSummary.requestedSeats}`} />
+                    <Chip size="small" color="success" variant={coverageSummary.generatedSeats > 0 ? "filled" : "outlined"} label={`Generated: ${coverageSummary.generatedSeats}`} />
+                    <Chip
+                      size="small"
+                      color={coverageSummary.missingSeats > 0 ? "warning" : "default"}
+                      variant={coverageSummary.missingSeats > 0 ? "filled" : "outlined"}
+                      label={`Missing seats: ${coverageSummary.missingSeats}`}
+                    />
+                  </Stack>
+                ) : null}
+
                 {showAdvanced ? (
                   <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} flexWrap="wrap" useFlexGap>
                     <TextField
@@ -1470,6 +1783,8 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                   </Stack>
                 ) : null}
               </Stack>
+                );
+              })()}
             </Paper>
           ))}
             </Stack>
@@ -1588,6 +1903,10 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
             control={<Switch checked={warningsOnly} onChange={(e) => setWarningsOnly(e.target.checked)} />}
             label="Warnings only"
           />
+          <FormControlLabel
+            control={<Switch checked={hideManagerSuggestions} onChange={(e) => setHideManagerSuggestions(e.target.checked)} />}
+            label="Hide manager suggestions"
+          />
           <Button size="small" variant="outlined" onClick={handleSelectAllVisibleSuggestions}>
             Select all visible
           </Button>
@@ -1682,82 +2001,142 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         )}
       </Paper>
 
-      <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Runs history</Typography>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              label="Status"
-              value={runsStatusFilter}
-              onChange={(e) => setRunsStatusFilter(e.target.value)}
-            >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="preview">Preview</MenuItem>
-              <MenuItem value="applied">Applied</MenuItem>
-              <MenuItem value="failed">Failed</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField
-            size="small"
-            label="Search run"
-            value={runsSearch}
-            onChange={(e) => setRunsSearch(e.target.value)}
-            placeholder="run id, status, timezone"
-          />
-          <Button
-            variant="outlined"
-            onClick={() => fetchRuns({ reset: true })}
-            disabled={runsLoading}
+      <Accordion
+        disableGutters
+        expanded={runsExpanded}
+        onChange={(_, expanded) => setRunsExpanded(expanded)}
+        sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, overflow: "hidden" }}
+      >
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            justifyContent="space-between"
+            sx={{ width: "100%" }}
           >
-            Refresh Runs
-          </Button>
-          <Chip size="small" label={`Showing ${runs.length} of ${runsTotal}`} />
-        </Stack>
-
-        <Stack spacing={1}>
-          {runs.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">No runs yet.</Typography>
-          ) : (
-            runs.map((r) => (
-              <Stack
-                key={r.run_id}
-                direction={{ xs: "column", md: "row" }}
-                justifyContent="space-between"
-                alignItems={{ xs: "flex-start", md: "center" }}
-                sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}
+            <Typography variant="subtitle1" fontWeight={700}>Runs history</Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip size="small" label={`${runsTotal} total run${runsTotal === 1 ? "" : "s"}`} />
+              <Chip size="small" label={`Page ${runsPage}`} />
+              {runDetail?.run ? <Chip size="small" color="primary" label="Active run loaded" /> : null}
+            </Stack>
+          </Stack>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                label="Status"
+                value={runsStatusFilter}
+                onChange={(e) => setRunsStatusFilter(e.target.value)}
               >
-                <Typography variant="body2">
-                  {String(r.run_id).slice(0, 10)}... • {r.status} • {r.range_start_date} to {r.range_end_date} ({r.timezone || "UTC"})
-                </Typography>
-                <Stack direction="row" spacing={1}>
-                  <Button size="small" onClick={() => loadRunDetail(r.run_id)}>Open</Button>
-                  <Button size="small" color="error" onClick={() => handleDeleteRun(r.run_id)}>Delete</Button>
-                </Stack>
-              </Stack>
-            ))
-          )}
-        </Stack>
-        {runs.length < runsTotal ? (
-          <Button
-            variant="outlined"
-            sx={{ mt: 1.25 }}
-            onClick={() => fetchRuns({ reset: false, offsetOverride: runsOffset })}
-            disabled={runsLoading}
-          >
-            Load more runs
-          </Button>
-        ) : null}
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="preview">Preview</MenuItem>
+                <MenuItem value="applied">Applied</MenuItem>
+                <MenuItem value="failed">Failed</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              size="small"
+              label="Search run"
+              value={runsSearch}
+              onChange={(e) => setRunsSearch(e.target.value)}
+              placeholder="run id, status, timezone"
+            />
+            <FormControl size="small" sx={{ minWidth: 130 }}>
+              <InputLabel>Rows</InputLabel>
+              <Select
+                label="Rows"
+                value={runsPageSize}
+                onChange={(e) => setRunsPageSize(Number(e.target.value))}
+              >
+                <MenuItem value={10}>10</MenuItem>
+                <MenuItem value={20}>20</MenuItem>
+                <MenuItem value={50}>50</MenuItem>
+              </Select>
+            </FormControl>
+            <Button
+              variant="outlined"
+              onClick={() => fetchRuns({ page: runsPage, limit: runsPageSize })}
+              disabled={runsLoading}
+            >
+              Refresh Runs
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={handleBulkDeleteRuns}
+              disabled={loading || selectedRunIds.length === 0}
+            >
+              Delete selected runs
+            </Button>
+            <Chip size="small" label={`Showing ${runs.length} of ${runsTotal}`} />
+            <Chip size="small" color={selectedRunIds.length > 0 ? "warning" : "default"} label={`Selected: ${selectedRunIds.length}`} />
+          </Stack>
 
-        {runDetail?.run ? (
-          <Box sx={{ mt: 1.5, p: 1.25, border: "1px dashed", borderColor: "divider", borderRadius: 1.5 }}>
-            <Typography variant="body2" fontWeight={700}>Active run: {runDetail.run.run_id}</Typography>
-            <Typography variant="caption" color="text.secondary">
-              suggested {runDetail.run.suggested_count} • applied {runDetail.run.applied_count} • failed {runDetail.run.failed_count}
-            </Typography>
-          </Box>
-        ) : null}
-      </Paper>
+          <Stack spacing={1}>
+            {runs.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No runs yet.</Typography>
+            ) : (
+              runs.map((r) => (
+                <Stack
+                  key={r.run_id}
+                  direction={{ xs: "column", md: "row" }}
+                  justifyContent="space-between"
+                  alignItems={{ xs: "flex-start", md: "center" }}
+                  sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+                    <Checkbox
+                      checked={selectedRunIds.includes(r.run_id)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setSelectedRunIds((prev) =>
+                          checked ? Array.from(new Set([...prev, r.run_id])) : prev.filter((id) => id !== r.run_id)
+                        );
+                      }}
+                    />
+                    <Typography variant="body2">
+                      {String(r.run_id).slice(0, 10)}... • {r.status} • {r.range_start_date} to {r.range_end_date} ({r.timezone || "UTC"})
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" spacing={1}>
+                    <Button size="small" onClick={() => loadRunDetail(r.run_id)}>Open</Button>
+                    <Button size="small" color="error" onClick={() => handleDeleteRun(r.run_id)}>Delete</Button>
+                  </Stack>
+                </Stack>
+              ))
+            )}
+          </Stack>
+
+          {runsTotal > runsPageSize ? (
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }} sx={{ mt: 1.5 }}>
+              <Pagination
+                page={runsPage}
+                count={Math.max(1, Math.ceil(runsTotal / runsPageSize))}
+                onChange={(_, page) => setRunsPage(page)}
+                color="primary"
+                shape="rounded"
+                size="small"
+              />
+              <Typography variant="caption" color="text.secondary">
+                Closed by default to keep the planner focused. Open this section when you need past preview/apply runs.
+              </Typography>
+            </Stack>
+          ) : null}
+
+          {runDetail?.run ? (
+            <Box sx={{ mt: 1.5, p: 1.25, border: "1px dashed", borderColor: "divider", borderRadius: 1.5 }}>
+              <Typography variant="body2" fontWeight={700}>Active run: {runDetail.run.run_id}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                suggested {runDetail.run.suggested_count} • applied {runDetail.run.applied_count} • failed {runDetail.run.failed_count}
+              </Typography>
+            </Box>
+          ) : null}
+        </AccordionDetails>
+      </Accordion>
 
       <Drawer
         anchor="right"
