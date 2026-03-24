@@ -7,19 +7,30 @@ export const detectBrowserTimezone = () => {
   }
 };
 
+export const normalizeTimezoneValue = (tz) => {
+  const raw = String(tz || "").trim();
+  if (!raw) return "";
+
+  // Recover the canonical IANA value from labels like "Toronto (America/Toronto)".
+  const parenMatch = raw.match(/\(([^()]+\/[^()]+)\)\s*$/);
+  if (parenMatch?.[1]) return parenMatch[1].trim();
+
+  return raw;
+};
+
 const getStoredTimezone = () => {
   try {
-    return localStorage.getItem("timezone") || "";
+    return normalizeTimezoneValue(localStorage.getItem("timezone") || "");
   } catch {
     return "";
   }
 };
 
 export const getUserTimezone = (explicit = "") =>
-  explicit || detectBrowserTimezone() || getStoredTimezone() || "UTC";
+  normalizeTimezoneValue(explicit) || normalizeTimezoneValue(detectBrowserTimezone()) || getStoredTimezone() || "UTC";
 
 export const formatTimezoneLabel = (tz) => {
-  const value = String(tz || "").trim();
+  const value = normalizeTimezoneValue(tz);
   if (!value) return "";
   const parts = value.split('/');
   const city = parts[parts.length - 1]?.replace(/_/g, ' ') || value;

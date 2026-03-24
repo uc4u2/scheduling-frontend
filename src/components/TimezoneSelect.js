@@ -3,7 +3,7 @@ import React, { useMemo } from "react";
 import { Autocomplete, TextField, Stack, Button } from "@mui/material";
 import RoomIcon from "@mui/icons-material/Room";
 import { TOP_TIMEZONES, ALL_TIMEZONES } from "../constants/timezones";
-import { detectBrowserTimezone, formatTimezoneLabel } from "../utils/timezone";
+import { detectBrowserTimezone, formatTimezoneLabel, normalizeTimezoneValue } from "../utils/timezone";
 
 const TimezoneSelect = ({
   label = "Timezone",
@@ -25,7 +25,7 @@ const TimezoneSelect = ({
   }, [detected]);
 
   const handleSelect = (_, newValue) => {
-    if (onChange) onChange(newValue || "");
+    if (onChange) onChange(normalizeTimezoneValue(newValue || ""));
   };
 
   return (
@@ -33,11 +33,15 @@ const TimezoneSelect = ({
       <Autocomplete
         freeSolo
         options={options}
-        value={value || ""}
+        value={normalizeTimezoneValue(value || "")}
         onChange={handleSelect}
-        onInputChange={(_, newInput) => onChange && onChange(newInput || "")}
+        onInputChange={(_, newInput, reason) => {
+          if (!onChange) return;
+          if (reason === "input") onChange(normalizeTimezoneValue(newInput || ""));
+          if (reason === "clear") onChange("");
+        }}
         filterOptions={(opts, state) => {
-          const input = (state.inputValue || "").toLowerCase();
+          const input = normalizeTimezoneValue(state.inputValue || "").toLowerCase();
           if (!input) return opts;
           const matched = ALL_TIMEZONES.filter((tz) => tz.toLowerCase().includes(input));
           const merged = Array.from(new Set([...(matched.length ? matched : opts)]));
