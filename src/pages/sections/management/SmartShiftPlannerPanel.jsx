@@ -136,6 +136,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [suggestWarning, setSuggestWarning] = useState("");
 
   const [range, setRange] = useState({
     start_date: toDefaultRangeStart(),
@@ -453,6 +454,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     setLoading(true);
     setError("");
     setSuccess("");
+    setSuggestWarning("");
     try {
       const payload = buildPayload();
       const spanDays = rangeSpanDays(payload.range.start_date, payload.range.end_date);
@@ -472,11 +474,24 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
       const { data } = await smartShifts.manager.suggest(payload);
       const list = Array.isArray(data?.suggestions) ? data.suggestions : [];
+      const apiWarnings = Array.isArray(data?.warnings) ? data.warnings : [];
+      const maxSuggestionsReached = apiWarnings.some((w) =>
+        String(w?.message || "").toLowerCase().includes("max_suggestions reached")
+      );
       setLatestRun(data?.run || null);
       setSuggestions(list);
       setSelectedSuggestionIds(list.map((s) => s.suggestion_id));
       setVisibleSuggestionCount(DEFAULT_VISIBLE_SUGGESTIONS);
       setSuccess(`Generated ${list.length} suggestions.`);
+      if (maxSuggestionsReached) {
+        setSuggestWarning(
+          `Preview limited to the first ${payload.options.max_suggestions} suggestions for this run. Narrow the planning range, employee filter, or coverage rows for a more focused result.`
+        );
+      } else if (isLongPlanningRange) {
+        setSuggestWarning(
+          "Long planning ranges run in preview mode first. If the result is broader than expected, tighten the date window or department filter before applying shifts."
+        );
+      }
 
       await fetchRuns({ reset: true });
     } catch (e) {
@@ -894,6 +909,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
   const scheduledCount = scheduledRecruiterIds.size;
   const unscheduledCount = unscheduledRecruiters.length;
+  const planningRangeDays = useMemo(
+    () => rangeSpanDays(range.start_date, range.end_date),
+    [range.start_date, range.end_date]
+  );
+  const isLongPlanningRange = Number(planningRangeDays || 0) > 31;
 
   const shellCardSx = {
     p: { xs: 2, md: 3 },
@@ -953,12 +973,18 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
+      {suggestWarning ? <Alert severity="warning">{suggestWarning}</Alert> : null}
 
       <Paper sx={shellCardSx} variant="outlined">
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.25 }}>Suggestion input</Typography>
         <Alert severity="info" sx={{ mb: 1.5 }}>
           Set a start date, plan up to 52 weeks, then define coverage rows and click Generate Suggestions.
         </Alert>
+        {isLongPlanningRange ? (
+          <Alert severity="warning" sx={{ mb: 1.5 }}>
+            Long planning ranges generate preview-limited suggestions. For faster and more targeted runs, start with about one month or one department at a time, then expand.
+          </Alert>
+        ) : null}
 
         <Stack spacing={2}>
           <Box
