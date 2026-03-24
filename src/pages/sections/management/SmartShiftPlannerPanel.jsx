@@ -35,6 +35,8 @@ import { isoFromParts } from "../../../utils/datetime";
 const ALL_EMPLOYEES_VALUE = "__ALL_EMPLOYEES__";
 const DEFAULT_VISIBLE_SUGGESTIONS = 50;
 const RUNS_PAGE_SIZE = 20;
+const MAX_SUGGEST_RANGE_DAYS = 366;
+const MAX_SUGGEST_RANGE_WEEKS = 52;
 
 const DEFAULT_COVERAGE = {
   coverage_id: "",
@@ -105,6 +107,13 @@ const buildWeekKeysInRange = (startDate, endDate) => {
     cursor = cursor.plus({ days: 1 });
   }
   return Array.from(out).sort();
+};
+
+const rangeSpanDays = (startDate, endDate) => {
+  const start = DateTime.fromISO(startDate || "");
+  const end = DateTime.fromISO(endDate || "");
+  if (!start.isValid || !end.isValid) return null;
+  return Math.floor(end.startOf("day").diff(start.startOf("day"), "days").days) + 1;
 };
 
 const buildWeekLabel = (weekKey) => {
@@ -403,7 +412,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   };
 
   const applyRangeByWeeks = (weeksInput = weeksSpan) => {
-    const weeks = Math.max(1, Math.min(52, Number(weeksInput) || 1));
+    const weeks = Math.max(1, Math.min(MAX_SUGGEST_RANGE_WEEKS, Number(weeksInput) || 1));
     const start = DateTime.fromISO(range.start_date);
     if (!start.isValid) return;
     const end = start.plus({ weeks }).minus({ days: 1 }).toFormat("yyyy-MM-dd");
@@ -446,6 +455,13 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     setSuccess("");
     try {
       const payload = buildPayload();
+      const spanDays = rangeSpanDays(payload.range.start_date, payload.range.end_date);
+      if (spanDays === null) {
+        throw new Error("Choose a valid planning range.");
+      }
+      if (spanDays > MAX_SUGGEST_RANGE_DAYS) {
+        throw new Error(`Planning range cannot exceed ${MAX_SUGGEST_RANGE_DAYS} days.`);
+      }
       if (onlyBelowTarget) {
         payload.filters.include_recruiter_ids = belowTargetRecruiters.map((r) => Number(r.id));
       }
@@ -941,7 +957,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       <Paper sx={shellCardSx} variant="outlined">
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.25 }}>Suggestion input</Typography>
         <Alert severity="info" sx={{ mb: 1.5 }}>
-          Set a start date, choose how many weeks to plan, then define coverage rows and click Generate Suggestions.
+          Set a start date, plan up to 52 weeks, then define coverage rows and click Generate Suggestions.
         </Alert>
 
         <Stack spacing={2}>
