@@ -856,6 +856,10 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
     () => visibleSuggestionRows.map((s) => s.suggestion_id).filter(Boolean),
     [visibleSuggestionRows]
   );
+  const allVisibleRunsSelected =
+    runs.length > 0 && runs.every((r) => selectedRunIds.includes(r.run_id));
+  const someVisibleRunsSelected =
+    runs.some((r) => selectedRunIds.includes(r.run_id)) && !allVisibleRunsSelected;
   const handleSelectAllVisibleSuggestions = () => {
     setSelectedSuggestionIds((prev) => {
       const merged = new Set(prev);
@@ -866,6 +870,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
   const handleClearVisibleSuggestions = () => {
     const visible = new Set(visibleSuggestionIds);
     setSelectedSuggestionIds((prev) => prev.filter((id) => !visible.has(id)));
+  };
+  const handleToggleAllVisibleRuns = (checked) => {
+    const visibleRunIds = runs.map((r) => r.run_id);
+    setSelectedRunIds((prev) => {
+      if (checked) {
+        return Array.from(new Set([...prev, ...visibleRunIds]));
+      }
+      const visible = new Set(visibleRunIds);
+      return prev.filter((id) => !visible.has(id));
+    });
   };
 
   const handleDeleteRun = async (runId) => {
@@ -2072,6 +2086,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
             >
               Delete selected runs
             </Button>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={allVisibleRunsSelected}
+                  indeterminate={someVisibleRunsSelected}
+                  onChange={(e) => handleToggleAllVisibleRuns(e.target.checked)}
+                />
+              }
+              label="Select all visible"
+            />
             <Chip size="small" label={`Showing ${runs.length} of ${runsTotal}`} />
             <Chip size="small" color={selectedRunIds.length > 0 ? "warning" : "default"} label={`Selected: ${selectedRunIds.length}`} />
           </Stack>
