@@ -185,6 +185,16 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     end: "17:00",
     tz: null,       // which tz these times are in
   });
+  const [bookingCatalog, setBookingCatalog] = useState([]);
+  const [bookedSlotOpen, setBookedSlotOpen] = useState(false);
+  const [bookedSlotLoading, setBookedSlotLoading] = useState(false);
+  const [selectedBookedSlot, setSelectedBookedSlot] = useState(null);
+  const [bookingRescheduleOpen, setBookingRescheduleOpen] = useState(false);
+  const [bookingRescheduleForm, setBookingRescheduleForm] = useState({
+    date: "",
+    start: "",
+    end: "",
+  });
 
   /* ------------------------- data-fetch helpers ------------------------ */
   const fetchDepartments = async () => {
@@ -213,6 +223,21 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     } catch {
       setError("Failed to fetch employees");
       setRecruiters([]);
+    }
+  };
+
+  const fetchBookingCatalog = async () => {
+    if (!token || isRecruiter) {
+      setBookingCatalog([]);
+      return;
+    }
+    try {
+      const { data } = await api.get(`/api/manager/bookings`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setBookingCatalog(Array.isArray(data) ? data : []);
+    } catch {
+      setBookingCatalog([]);
     }
   };
 
@@ -253,6 +278,10 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     }
   };
 
+  const refreshAll = async () => {
+    await Promise.all([fetchEvents(), fetchBookingCatalog()]);
+  };
+
   /*  saving/direct-booking (as in your current file) */
   const { handleRecruiterSaveMeeting, handleRecruiterDirectBooking } =
     useRecruiterMeetingHandler(
@@ -270,12 +299,13 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     if (!token) return;
     fetchDepartments();
     fetchEvents();
+    fetchBookingCatalog();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // listen for global refresh events fired by ManagerBookings (one-time)
   useEffect(() => {
-    const onRefresh = () => fetchEvents();
+    const onRefresh = () => refreshAll();
     window.addEventListener("slots:refresh", onRefresh);
     return () => window.removeEventListener("slots:refresh", onRefresh);
   }, []);
@@ -330,6 +360,89 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     "UTC";
   const userTz = tzLabel;
 
+  const bookingCatalogById = useMemo(() => {
+    const map = new Map();
+    bookingCatalog.forEach((item) => map.set(String(item.id), item));
+    return map;
+  }, [bookingCatalog]);
+
+  const getSlotKind = (raw) => {
+    if (!raw.booked) return "available";
+    if (Array.isArray(raw.appointment_ids) && raw.appointment_ids.length) return "client_booking";
+    if (Array.isArray(raw.booking_ids) && raw.booking_ids.length) return "candidate_booking";
+    return "meeting";
+  };
+
+  const getSlotKindLabel = (slot) => {
+    switch (slot.slotKind) {
+      case "client_booking":
+        return "Client Booking";
+      case "candidate_booking":
+        return "Candidate Booking";
+      case "meeting":
+        return "Meeting";
+      default:
+        return "Available";
+    }
+  };
+
+  const getSlotChipColor = (slot) => {
+    return getSlotVisuals(slot).chipColor;
+  };
+
+  const buildBulkFeedbackMessage = ({ changedLabel = "Availability updated", deleted = 0, skipped = 0, employeeCount = 0 }) => {
+    const parts = [`${changedLabel}: ${deleted} free slot(s) changed`];
+    if (skipped > 0) parts.push(`${skipped} booked slot(s) kept`);
+    if (employeeCount > 0) parts.push(`across ${employeeCount} employee(s)`);
+    return `${parts.join(", ")}.`;
+  };
+
+  const formatMoney = (amount, currency = "CAD") => {
+    const numeric = Number(amount || 0);
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: String(currency || "CAD").toUpperCase(),
+        maximumFractionDigits: 2,
+      }).format(numeric);
+    } catch {
+      return `${numeric.toFixed(2)} ${currency || "CAD"}`;
+    }
+  };
+
+  const getSlotVisuals = (slotLike) => {
+    switch (getSlotKind(slotLike)) {
+      case "client_booking":
+        return {
+          label: "Client Booking",
+          bg: alpha(theme.palette.info.main, 0.18),
+          border: alpha(theme.palette.info.main, 0.9),
+          chipColor: "info",
+        };
+      case "candidate_booking":
+        return {
+          label: "Candidate Booking",
+          bg: alpha(theme.palette.warning.main, 0.18),
+          border: alpha(theme.palette.warning.main, 0.9),
+          chipColor: "warning",
+        };
+      case "meeting":
+        return {
+          label: "Meeting",
+          bg: alpha(theme.palette.secondary.main, 0.16),
+          border: alpha(theme.palette.secondary.main, 0.85),
+          chipColor: "secondary",
+        };
+      default:
+        return {
+          label: "Available",
+          bg: ui.available.bg,
+          border: ui.available.border,
+          chipColor: "success",
+        };
+    }
+  };
+
   // Convert a raw event to a timezone-stable UI slot
   // SHOW in viewer TZ (from start/end), but for writes keep provider-local strings if present
   const toUiSlot = (raw) => {
@@ -348,6 +461,14 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     const localDate = raw.date || uiDate;
     const startHH   = raw.start_time || startLabelHH;
     const endHH     = raw.end_time   || endLabelHH;
+    const slotKind = getSlotKind(raw);
+    const primaryAppointmentId =
+      Array.isArray(raw.appointment_ids) && raw.appointment_ids.length
+        ? raw.appointment_ids[0]
+        : null;
+    const bookingMeta = primaryAppointmentId
+      ? bookingCatalogById.get(String(primaryAppointmentId)) || null
+      : null;
 
     return {
       ...raw,
@@ -357,6 +478,9 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       localDate,
       startHH,
       endHH,
+      slotKind,
+      primaryAppointmentId,
+      bookingMeta,
     };
   };
 
@@ -366,8 +490,14 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
       const day = (e.start || "").slice(0, 10); // viewer TZ date
       return day === selectedDate;
     });
-    return allEventsForSelectedDay.map(toUiSlot);
-  }, [filteredEvents, selectedDate]);
+    return allEventsForSelectedDay
+      .map(toUiSlot)
+      .sort((a, b) => {
+        const st = a.startISO.localeCompare(b.startISO);
+        if (st !== 0) return st;
+        return String(a.recruiter_id || "").localeCompare(String(b.recruiter_id || ""));
+      });
+  }, [filteredEvents, selectedDate, bookingCatalogById]);
 
   const resetForm = () => {
     setForm({
@@ -387,6 +517,110 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     setEditingEvent(null);
   };
 
+  const closeBookedSlotDialog = () => {
+    setBookedSlotOpen(false);
+    setSelectedBookedSlot(null);
+  };
+
+  const hydrateBookedSlotDetails = async (slot) => {
+    const apptId = slot?.primaryAppointmentId;
+    if (!apptId || slot?.bookingMeta?.meeting_link || slot?.meeting_link) return slot;
+    try {
+      const { data } = await api.get(`/api/appointments/${apptId}/details`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return {
+        ...slot,
+        meeting_link: data?.meeting_link || slot?.meeting_link || "",
+        bookingMeta: {
+          ...(slot?.bookingMeta || {}),
+          ...data,
+          client: data?.client || slot?.bookingMeta?.client || null,
+          recruiter: data?.recruiter || slot?.bookingMeta?.recruiter || null,
+          service: data?.service || slot?.bookingMeta?.service || null,
+          payments: Array.isArray(data?.payments) ? data.payments : (slot?.bookingMeta?.payments || []),
+        },
+      };
+    } catch {
+      return slot;
+    }
+  };
+
+  const openBookingRescheduleDialog = () => {
+    if (!selectedBookedSlot) return;
+    setBookingRescheduleForm({
+      date: selectedBookedSlot.bookingMeta?.local_date || selectedBookedSlot.localDate || selectedDate,
+      start: selectedBookedSlot.bookingMeta?.local_start_time || selectedBookedSlot.startHH,
+      end: selectedBookedSlot.bookingMeta?.local_end_time || selectedBookedSlot.endHH,
+    });
+    setBookingRescheduleOpen(true);
+  };
+
+  const handleCancelBookedSlot = async () => {
+    const apptId = selectedBookedSlot?.primaryAppointmentId;
+    if (!apptId) return;
+    setBookedSlotLoading(true);
+    try {
+      await api.post(
+        `/api/manager/bookings/${apptId}/cancel`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      closeBookedSlotDialog();
+      setSuccessMessage("Booking cancelled. The slot is now free to reuse. Refunds, if needed, must be handled separately.");
+      window.dispatchEvent(new Event("slots:refresh"));
+      await Promise.all([fetchEvents(), fetchBookingCatalog()]);
+    } catch (e) {
+      setError(e?.response?.data?.error || "Failed to cancel booking.");
+    } finally {
+      setBookedSlotLoading(false);
+    }
+  };
+
+  const handleRescheduleBookedSlot = async () => {
+    const apptId = selectedBookedSlot?.primaryAppointmentId;
+    if (!apptId) return;
+    setBookedSlotLoading(true);
+    try {
+      await api.patch(
+        `/api/manager/bookings/${apptId}`,
+        {
+          date: bookingRescheduleForm.date,
+          start_time: bookingRescheduleForm.start,
+          end_time: bookingRescheduleForm.end,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setBookingRescheduleOpen(false);
+      closeBookedSlotDialog();
+      setSuccessMessage("Booking rescheduled. The client booking was kept and the calendar has been refreshed.");
+      window.dispatchEvent(new Event("slots:refresh"));
+      await Promise.all([fetchEvents(), fetchBookingCatalog()]);
+    } catch (e) {
+      setError(e?.response?.data?.error || "Failed to reschedule booking.");
+    } finally {
+      setBookedSlotLoading(false);
+    }
+  };
+
+  const openRefundHub = () => {
+    if (!selectedBookedSlot?.primaryAppointmentId) return;
+    const params = new URLSearchParams({
+      appointmentId: String(selectedBookedSlot.primaryAppointmentId),
+      clientId: String(selectedBookedSlot.bookingMeta?.client?.id || ""),
+      email: selectedBookedSlot.bookingMeta?.client?.email || "",
+      company: window.location.hostname || "",
+      intent: "refund",
+    });
+    window.location.href = `/manager/payments?${params.toString()}`;
+  };
+
+  const openMeetingLink = () => {
+    const link = selectedBookedSlot?.bookingMeta?.meeting_link || selectedBookedSlot?.meeting_link || "";
+    if (!link) return;
+    window.open(link, "_blank", "noopener,noreferrer");
+  };
+
   const handleDateClick = (arg) => {
     // pick a day in the grid → update the rail and center the view there
     setSelectedDate(arg.dateStr);
@@ -399,24 +633,13 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     if (dt) setSelectedDate(moment(dt).format("YYYY-MM-DD"));
   };
 
-  const handleChipClick = (slot) => {
-    // booked fragments open the edit modal; free fragments open “Add meeting” prefilled
+  const handleChipClick = async (slot) => {
     if (slot.booked) {
-      setEditingEvent({
-        id: slot.appointment_ids?.[0] || slot.booking_ids?.[0] || slot.id,
-        ...slot,
-      });
-      setForm((p) => ({
-        ...p,
-        title: slot.title?.replace(/^Booked:?\s*/i, "") || "Booked",
-        date: selectedDate,
-        start: slot.startHH,
-        end: slot.endHH,
-        recruiter_id: slot.recruiter_id,
-        candidate_name: "",
-        candidate_email: "",
-      }));
-      setOpenModal(true);
+      setBookedSlotLoading(true);
+      const hydrated = await hydrateBookedSlotDetails(slot);
+      setSelectedBookedSlot(hydrated);
+      setBookedSlotOpen(true);
+      setBookedSlotLoading(false);
     } else {
       setEditingEvent(null);
       setForm((p) => ({
@@ -456,7 +679,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     setOpenModal(false);
     resetForm();
     window.dispatchEvent(new Event("slots:refresh"));
-    fetchEvents();
+    refreshAll();
   } catch {
     setError("❌ Failed to delete meeting");
   }
@@ -509,7 +732,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
     setOpenModal(false);
     resetForm();
     window.dispatchEvent(new Event("slots:refresh"));
-    await fetchEvents();
+    await refreshAll();
   } catch (e) {
     setError(e?.response?.data?.error || "❌ Failed to save");
   } finally {
@@ -611,23 +834,43 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   // bulk manager day endpoints (optional; UI falls back to per-slot deletes if missing)
   const tryCloseAfterBulk = async ({ recruiter_id, date, from_time }) => {
     const urls = [`/manager/availability/close-after`, `/api/manager/availability/close-after`];
-    for (const url of urls) { try { await api.post(url, { recruiter_id, date, from_time }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
-    return false;
+    for (const url of urls) {
+      try {
+        const { data } = await api.post(url, { recruiter_id, date, from_time }, { headers: { Authorization: `Bearer ${token}` } });
+        return data || {};
+      } catch {}
+    }
+    return null;
   };
   const tryCloseBeforeBulk = async ({ recruiter_id, date, until_time }) => {
     const urls = [`/manager/availability/close-before`, `/api/manager/availability/close-before`];
-    for (const url of urls) { try { await api.post(url, { recruiter_id, date, until_time }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
-    return false;
+    for (const url of urls) {
+      try {
+        const { data } = await api.post(url, { recruiter_id, date, until_time }, { headers: { Authorization: `Bearer ${token}` } });
+        return data || {};
+      } catch {}
+    }
+    return null;
   };
   const tryCloseDayBulk = async ({ recruiter_id, date }) => {
     const urls = [`/manager/availability/close-day`, `/api/manager/availability/close-day`];
-    for (const url of urls) { try { await api.post(url, { recruiter_id, date }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
-    return false;
+    for (const url of urls) {
+      try {
+        const { data } = await api.post(url, { recruiter_id, date }, { headers: { Authorization: `Bearer ${token}` } });
+        return data || {};
+      } catch {}
+    }
+    return null;
   };
   const tryKeepRangeBulk = async ({ recruiter_id, date, start_time, end_time }) => {
     const urls = [`/manager/availability/keep-range`, `/api/manager/availability/keep-range`];
-    for (const url of urls) { try { await api.post(url, { recruiter_id, date, start_time, end_time }, { headers: { Authorization: `Bearer ${token}` } }); return true; } catch {} }
-    return false;
+    for (const url of urls) {
+      try {
+        const { data } = await api.post(url, { recruiter_id, date, start_time, end_time }, { headers: { Authorization: `Bearer ${token}` } });
+        return data || {};
+      } catch {}
+    }
+    return null;
   };
 
   /* --------------------------- event rendering --------------------------- */
@@ -650,8 +893,10 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   // Pro, readable cells in Week/Day
   const renderEventContent = (arg) => {
     const xp = arg.event.extendedProps || {};
-    const status = xp.status === "booked" ? "Booked" : "Available";
+    const visuals = getSlotVisuals(xp);
+    const status = visuals.label;
     const emp = xp.recruiter_name || xp.recruiter || `Emp ${xp.recruiter_id || ""}`;
+    const client = xp.bookingMeta?.client?.full_name || xp.candidate_name || "";
     const svc = xp.service_name || "";
     const accent = getEmpAccent(xp.recruiter_id || 0);
 
@@ -672,8 +917,8 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               letterSpacing: 0.3,
               padding: "2px 6px",
               borderRadius: 8,
-              background: xp.status === "booked" ? ui.booked.bg : ui.available.bg,
-              border: `1px solid ${xp.status === "booked" ? ui.booked.border : ui.available.border}`,
+              background: visuals.bg,
+              border: `1px solid ${visuals.border}`,
               color: theme.palette.text.primary,
             }}
           >
@@ -688,6 +933,11 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             {svc}
           </div>
         ) : null}
+        {client ? (
+          <div style={{ fontSize: 11, opacity: 0.85, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {client}
+          </div>
+        ) : null}
       </div>
     );
   };
@@ -695,28 +945,28 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const eventDidMount = (info) => {
     const xp = info.event.extendedProps || {};
     const emp = xp.recruiter_name || xp.recruiter || `Emp ${xp.recruiter_id || ""}`;
-    const status = xp.status || "";
+    const status = getSlotVisuals(xp).label;
     const start = info.event.start ? moment(info.event.start).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
     const end = info.event.end ? moment(info.event.end).format(timeFmt12h ? "h:mma" : "HH:mm") : "";
     const svc = xp.service_name ? `\nService: ${xp.service_name}` : "";
-    info.el.setAttribute("title", `${status.toUpperCase()} — ${emp}\n${start}–${end}${svc}`);
+    const client = xp.bookingMeta?.client?.full_name || xp.candidate_name ? `\nClient: ${xp.bookingMeta?.client?.full_name || xp.candidate_name}` : "";
+    info.el.setAttribute("title", `${status.toUpperCase()} — ${emp}\n${start}–${end}${svc}${client}`);
   };
 
   // Calendar events with improved status & employee color accents
   const calendarEvents = filteredEvents.map((e) => {
     const empColor = getEmpAccent(e.recruiter_id);
-    const bg = e.booked ? ui.booked.bg : ui.available.bg;
-    const border = e.booked ? ui.booked.border : ui.available.border;
+    const visuals = getSlotVisuals(e);
     return {
       id: e.id,
-      title: e.booked ? "Booked" : "Available",
+      title: visuals.label,
       start: e.start,
       end: e.end,
-      backgroundColor: bg,
-      borderColor: border,
+      backgroundColor: visuals.bg,
+      borderColor: visuals.border,
       textColor: theme.palette.text.primary,
-      classNames: [e.booked ? "slot-booked" : "slot-available"],
-      extendedProps: { ...e, status: e.__status, _empColor: empColor },
+      classNames: [e.booked ? "slot-booked" : "slot-available", `slot-${getSlotKind(e)}`],
+      extendedProps: { ...e, status: e.__status, _empColor: empColor, slotKind: getSlotKind(e), bookingMeta: e.appointment_ids?.length ? bookingCatalogById.get(String(e.appointment_ids[0])) || null : null },
     };
   });
 
@@ -880,7 +1130,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           >
             Add
           </Button>
-          <Button variant="outlined" onClick={() => fetchEvents()}>
+          <Button variant="outlined" onClick={() => refreshAll()}>
             Refresh
           </Button>
           <Tooltip title="Export CSV/XLSX">
@@ -1070,11 +1320,17 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                     : Object.keys(groups);
 
                 let anyBulk = false;
+                let deletedTotal = 0;
+                let skippedTotal = 0;
                 for (const rid of targetIds) {
                   const slots = groups[rid] || [];
                   const localDate = slots[0]?.localDate || selectedDate; // employee's local date if present
-                  const ok = await tryCloseDayBulk({ recruiter_id: rid, date: localDate });
-                  anyBulk = anyBulk || ok;
+                  const result = await tryCloseDayBulk({ recruiter_id: rid, date: localDate });
+                  if (result) {
+                    anyBulk = true;
+                    deletedTotal += Number(result.deleted || 0);
+                    skippedTotal += Number(result.skipped_booked || 0);
+                  }
                 }
 
                 // Fallback: delete each free slot (per employee)
@@ -1083,21 +1339,31 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                     for (const s of (groups[rid] || [])) {
                       if (!s.booked) {
                         const id = availabilityIdFromEvent(s);
-                        if (id) await tryDeleteAvailability(id);
+                        if (id) {
+                          await tryDeleteAvailability(id);
+                          deletedTotal += 1;
+                        }
                       }
                     }
                   }
                 }
 
-                setSuccessMessage(`Day closed for ${targetIds.length} employee(s) ✔`);
-                fetchEvents();
+                setSuccessMessage(
+                  buildBulkFeedbackMessage({
+                    changedLabel: "Close day applied",
+                    deleted: deletedTotal,
+                    skipped: skippedTotal,
+                    employeeCount: targetIds.length,
+                  })
+                );
+                refreshAll();
               }}
               >
                 Close day
               </Button>
             )}
 
-            <Button size="small" onClick={() => fetchEvents()} sx={{ minWidth: 120 }} fullWidth>
+            <Button size="small" onClick={() => refreshAll()} sx={{ minWidth: 120 }} fullWidth>
               Refresh
             </Button>
           </Stack>
@@ -1111,11 +1377,21 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               <Box key={`${s.startISO}-${s.recruiter_id}`} sx={{ display: "inline-flex", alignItems: "center" }}>
                 <Chip
                   clickable
-                  onClick={() => handleChipClick(s)}   // keeps Add Meeting flow
-                  color={s.booked ? "error" : "success"}
+                  onClick={() => handleChipClick(s)}
+                  color={getSlotChipColor(s)}
                   variant={s.booked ? "filled" : "outlined"}
-                  label={`${s.startHH}–${s.endHH}${selectedRecruiter === "all" ? ` • ${s.recruiter_label || s.recruiter_id}` : ""}${s.service_name ? ` • ${s.service_name}` : ""}${s.mode === "group" && Number.isFinite(s.capacity) ? ` • ${Number(s.booked_count || 0)}/${s.capacity} booked • ${Number.isFinite(s.seats_left) ? s.seats_left : 0} left` : ""}`}
-                  sx={{ borderLeft: `4px solid ${getEmpAccent(s.recruiter_id)}` }}
+                  label={`${getSlotKindLabel(s)} • ${s.startHH}–${s.endHH}${selectedRecruiter === "all" ? ` • ${s.recruiter_label || s.recruiter_id}` : ""}${s.bookingMeta?.client?.full_name ? ` • ${s.bookingMeta.client.full_name}` : ""}${s.candidate_name ? ` • ${s.candidate_name}` : ""}${s.service_name ? ` • ${s.service_name}` : ""}${s.mode === "group" && Number.isFinite(s.capacity) ? ` • ${Number(s.booked_count || 0)}/${s.capacity} booked • ${Number.isFinite(s.seats_left) ? s.seats_left : 0} left` : ""}`}
+                  sx={{
+                    borderLeft: `4px solid ${getEmpAccent(s.recruiter_id)}`,
+                    ...(s.booked
+                      ? {
+                          bgcolor: getSlotVisuals(s).bg,
+                          borderColor: getSlotVisuals(s).border,
+                          color: theme.palette.text.primary,
+                          "& .MuiChip-label": { color: theme.palette.text.primary, fontWeight: 600 },
+                        }
+                      : {}),
+                  }}
                   {...(!s.booked && canEditAvailability
                     ? { onDelete: async () => {
                         try {
@@ -1123,7 +1399,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                           if (!id) throw new Error("No availability id");
                           await tryDeleteAvailability(id);
                           setSuccessMessage("Availability deleted ✔");
-                          fetchEvents();
+                          refreshAll();
                         } catch { setError("Failed to delete slot."); }
                       } }
                     : {})}
@@ -1207,6 +1483,136 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         </Box>
       </Modal>
 
+      <Dialog open={bookedSlotOpen} onClose={closeBookedSlotDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>{selectedBookedSlot ? getSlotKindLabel(selectedBookedSlot) : "Booked Slot"}</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            {selectedBookedSlot && (
+              <>
+                <Alert severity="info">
+                  {selectedBookedSlot.startHH}–{selectedBookedSlot.endHH} on {selectedBookedSlot.localDate}
+                  {selectedBookedSlot.bookingMeta?.appointment_timezone ? ` • ${selectedBookedSlot.bookingMeta.appointment_timezone}` : ""}
+                </Alert>
+                <Stack spacing={1}>
+                  {selectedBookedSlot.primaryAppointmentId ? (
+                    <Typography variant="body2"><strong>Booking ID:</strong> {selectedBookedSlot.primaryAppointmentId}</Typography>
+                  ) : null}
+                  <Typography variant="body2"><strong>Employee:</strong> {selectedBookedSlot.recruiter_label || selectedBookedSlot.recruiter_name || selectedBookedSlot.recruiter_id}</Typography>
+                  <Typography variant="body2"><strong>Service:</strong> {selectedBookedSlot.service_name || selectedBookedSlot.bookingMeta?.service?.name || "—"}</Typography>
+                  <Typography variant="body2"><strong>Client:</strong> {selectedBookedSlot.bookingMeta?.client?.full_name || selectedBookedSlot.candidate_name || "—"}</Typography>
+                  {selectedBookedSlot.bookingMeta?.client?.email ? (
+                    <Typography variant="body2"><strong>Email:</strong> {selectedBookedSlot.bookingMeta.client.email}</Typography>
+                  ) : null}
+                  {selectedBookedSlot.bookingMeta?.client?.phone ? (
+                    <Typography variant="body2"><strong>Phone:</strong> {selectedBookedSlot.bookingMeta.client.phone}</Typography>
+                  ) : null}
+                  <Typography variant="body2"><strong>Status:</strong> {selectedBookedSlot.bookingMeta?.status || "booked"}</Typography>
+                  {selectedBookedSlot.primaryAppointmentId ? (
+                    <Typography variant="body2"><strong>Payment:</strong> {selectedBookedSlot.bookingMeta?.payment_status || "unpaid"}</Typography>
+                  ) : null}
+                  {Array.isArray(selectedBookedSlot.bookingMeta?.payments) && selectedBookedSlot.bookingMeta.payments.length ? (
+                    <Typography variant="body2">
+                      <strong>Payments:</strong> {selectedBookedSlot.bookingMeta.payments.map((p) => `${p.status || p.type || "txn"} ${p.amount != null ? formatMoney(p.amount, p.currency || selectedBookedSlot.bookingMeta?.currency || "CAD") : ""}`.trim()).join(" • ")}
+                    </Typography>
+                  ) : null}
+                  {selectedBookedSlot.bookingMeta?.manager_note ? (
+                    <Typography variant="body2"><strong>Manager note:</strong> {selectedBookedSlot.bookingMeta.manager_note}</Typography>
+                  ) : null}
+                  {(selectedBookedSlot.bookingMeta?.meeting_link || selectedBookedSlot.meeting_link) ? (
+                    <Typography variant="body2" sx={{ wordBreak: "break-all" }}>
+                      <strong>Meeting link:</strong> {selectedBookedSlot.bookingMeta?.meeting_link || selectedBookedSlot.meeting_link}
+                    </Typography>
+                  ) : null}
+                </Stack>
+                {selectedBookedSlot.primaryAppointmentId ? (
+                  <Alert severity="warning">
+                    If this booking was paid, canceling will free the slot but refund must be handled separately from the refund/payment page.
+                  </Alert>
+                ) : (
+                  <Alert severity="info">
+                    This booked time is preserved by Close day. Availability can be closed around it, but the booking itself must be managed separately.
+                  </Alert>
+                )}
+              </>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeBookedSlotDialog}>Close</Button>
+          <Button
+            variant="outlined"
+            onClick={openMeetingLink}
+            disabled={!(selectedBookedSlot?.bookingMeta?.meeting_link || selectedBookedSlot?.meeting_link)}
+          >
+            Join meeting
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={openRefundHub}
+            disabled={!selectedBookedSlot?.primaryAppointmentId}
+          >
+            Payments / refund
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={openBookingRescheduleDialog}
+            disabled={!selectedBookedSlot?.primaryAppointmentId || bookedSlotLoading}
+          >
+            Reschedule
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleCancelBookedSlot}
+            disabled={!selectedBookedSlot?.primaryAppointmentId || bookedSlotLoading}
+          >
+            Cancel booking
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={bookingRescheduleOpen} onClose={() => setBookingRescheduleOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Reschedule booking</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <TextField
+              label="Date"
+              type="date"
+              value={bookingRescheduleForm.date}
+              onChange={(e) => setBookingRescheduleForm((p) => ({ ...p, date: e.target.value }))}
+              fullWidth
+            />
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="Start"
+                type="time"
+                value={bookingRescheduleForm.start}
+                onChange={(e) => setBookingRescheduleForm((p) => ({ ...p, start: e.target.value }))}
+                fullWidth
+                inputProps={{ step: 300 }}
+              />
+              <TextField
+                label="End"
+                type="time"
+                value={bookingRescheduleForm.end}
+                onChange={(e) => setBookingRescheduleForm((p) => ({ ...p, end: e.target.value }))}
+                fullWidth
+                inputProps={{ step: 300 }}
+              />
+            </Stack>
+            <Alert severity="info">
+              Rescheduling keeps the booking active and updates the occupied slot. Paid bookings are not refunded automatically.
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBookingRescheduleOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleRescheduleBookedSlot} disabled={bookedSlotLoading}>
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Slot chip menu & Edit availability dialog */}
       <Menu anchorEl={chipMenuAnchor} open={Boolean(chipMenuAnchor)} onClose={() => setChipMenuAnchor(null)}>
         <MenuItem
@@ -1260,7 +1666,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                 await tryUpdateAvailability(id, { date: slotEditForm.date, start_time: slotEditForm.start, end_time: slotEditForm.end });
                 setSlotEditOpen(false);
                 setSuccessMessage("Availability updated ✔");
-                fetchEvents();
+                refreshAll();
               } catch { setError("Failed to update slot."); }
             }}
           >
@@ -1314,19 +1720,25 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
               try {
                 let anyBulk = false;
+                let deletedTotal = 0;
+                let skippedTotal = 0;
 
                 for (const rid of targetRids) {
-                  let ok = false;
+                  let result = null;
                   if (dayMode === "close-day") {
-                    ok = await tryCloseDayBulk({ recruiter_id: rid, date: selectedDate });
+                    result = await tryCloseDayBulk({ recruiter_id: rid, date: selectedDate });
                   } else if (dayMode === "close-after") {
-                    ok = await tryCloseAfterBulk({ recruiter_id: rid, date: selectedDate, from_time: dayTimeA });
+                    result = await tryCloseAfterBulk({ recruiter_id: rid, date: selectedDate, from_time: dayTimeA });
                   } else if (dayMode === "close-before") {
-                    ok = await tryCloseBeforeBulk({ recruiter_id: rid, date: selectedDate, until_time: dayTimeA });
+                    result = await tryCloseBeforeBulk({ recruiter_id: rid, date: selectedDate, until_time: dayTimeA });
                   } else if (dayMode === "keep-range") {
-                    ok = await tryKeepRangeBulk({ recruiter_id: rid, date: selectedDate, start_time: dayTimeA, end_time: dayTimeB });
+                    result = await tryKeepRangeBulk({ recruiter_id: rid, date: selectedDate, start_time: dayTimeA, end_time: dayTimeB });
                   }
-                  if (ok) anyBulk = true;
+                  if (result) {
+                    anyBulk = true;
+                    deletedTotal += Number(result.deleted || 0);
+                    skippedTotal += Number(result.skipped_booked || 0);
+                  }
                 }
 
                 if (!anyBulk) {
@@ -1347,15 +1759,25 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
                       if (shouldDelete) {
                         const id = availabilityIdFromEvent(s);
-                        if (id) await tryDeleteAvailability(id);
+                        if (id) {
+                          await tryDeleteAvailability(id);
+                          deletedTotal += 1;
+                        }
                       }
                     }
                   }
                 }
 
                 setDayDialogOpen(false);
-                setSuccessMessage(`Availability updated for ${targetRids.length} employee(s) ✔`);
-                fetchEvents();
+                setSuccessMessage(
+                  buildBulkFeedbackMessage({
+                    changedLabel: "Day availability updated",
+                    deleted: deletedTotal,
+                    skipped: skippedTotal,
+                    employeeCount: targetRids.length,
+                  })
+                );
+                refreshAll();
               } catch {
                 setError("Failed to update day availability.");
               }
@@ -1438,16 +1860,22 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
                 // 2) Try bulk keep-range per employee (with that employee's local date)
                 let anyBulk = false;
+                let deletedTotal = 0;
+                let skippedTotal = 0;
                 for (const rid of targetIds) {
                   const slots = groups[rid] || [];
                   const localDate = slots[0]?.localDate || selectedDate; // employee local date if available
-                  const ok = await tryKeepRangeBulk({
+                  const result = await tryKeepRangeBulk({
                     recruiter_id: rid,
                     date: localDate,
                     start_time: start,   // local "HH:MM"
                     end_time: end,       // local "HH:MM"
                   });
-                  anyBulk = anyBulk || ok;
+                  if (result) {
+                    anyBulk = true;
+                    deletedTotal += Number(result.deleted || 0);
+                    skippedTotal += Number(result.skipped_booked || 0);
+                  }
                 }
 
                 // 3) Fallback: delete outside-range free slots using LOCAL HH:MM
@@ -1459,15 +1887,25 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
                       const keep = (st >= start && st < end);
                       if (!keep) {
                         const id = availabilityIdFromEvent(s);
-                        if (id) await tryDeleteAvailability(id);
+                        if (id) {
+                          await tryDeleteAvailability(id);
+                          deletedTotal += 1;
+                        }
                       }
                     }
                   }
                 }
 
                 setDayWindowOpen(false);
-                setSuccessMessage(`Available window updated for ${targetIds.length} employee(s) ✔`);
-                fetchEvents();
+                setSuccessMessage(
+                  buildBulkFeedbackMessage({
+                    changedLabel: "Available window updated",
+                    deleted: deletedTotal,
+                    skipped: skippedTotal,
+                    employeeCount: targetIds.length,
+                  })
+                );
+                refreshAll();
               } catch (e) {
                 const msg = e?.response?.data?.error || "Failed to update available window.";
                 setError(msg);

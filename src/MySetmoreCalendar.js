@@ -75,6 +75,16 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const [detail, setDetail] = useState(null);
   const [weekAnchor, setWeekAnchor] = useState(moment().startOf("week"));
 
+  const hydrateAppointmentDetail = async (appointmentId) => {
+    if (!appointmentId) return null;
+    try {
+      const { data } = await api.get(`/api/appointments/${appointmentId}/details`);
+      return data || null;
+    } catch {
+      return null;
+    }
+  };
+
   const viewerTz =
     localStorage.getItem("timezone") ||
     Intl.DateTimeFormat().resolvedOptions().timeZone ||
@@ -217,6 +227,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           classNames: ["overlay-appointment"],
           extendedProps: {
             __kind: "appointment",
+            appointment_id: a.id,
             candidate_name: a.candidate_name,
             candidate_email: a.candidate_email,
             meeting_link: a.meeting_link,
@@ -308,11 +319,12 @@ export default function MySetmoreCalendar({ token, initialDate }) {
   const onEventClick = (info) => {
     const xp = info.event.extendedProps || {};
     if (xp.__kind && xp.__kind !== "availability") {
-      setDetail({
+      const nextDetail = {
         kind: xp.__kind,
         title: info.event.title,
         start: info.event.start,
         end: info.event.end,
+        appointment_id: xp.appointment_id || null,
         candidate_name: xp.candidate_name,
         candidate_email: xp.candidate_email,
         candidate_position: xp.candidate_position,
@@ -324,8 +336,27 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         paid_amount: xp.paid_amount,
         meeting_link: xp.meeting_link,
         notes: xp.notes,
-      });
+      };
+      setDetail(nextDetail);
       setDetailOpen(true);
+      if (xp.__kind === "appointment" && xp.appointment_id && !xp.meeting_link) {
+        hydrateAppointmentDetail(xp.appointment_id).then((data) => {
+          if (!data) return;
+          setDetail((prev) => {
+            if (!prev || prev.appointment_id !== xp.appointment_id) return prev;
+            return {
+              ...prev,
+              candidate_name: data?.client?.full_name || prev.candidate_name,
+              candidate_email: data?.client?.email || prev.candidate_email,
+              candidate_phone: data?.client?.phone || prev.candidate_phone,
+              service_name: data?.service?.name || prev.service_name,
+              payment_status: data?.payment_status || prev.payment_status,
+              meeting_link: data?.meeting_link || prev.meeting_link,
+              notes: data?.manager_note || prev.notes,
+            };
+          });
+        });
+      }
       return;
     }
     const d = moment(info.event.start).format("YYYY-MM-DD");
@@ -782,13 +813,23 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             {timeLabel}
           </Typography>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Chip size="small" label={kindLabel} color="primary" />
+            <Chip
+              size="small"
+              label={kindLabel}
+              sx={{
+                bgcolor: detail.kind === "appointment" ? ui.appointment.bg : detail.kind === "candidate" ? ui.candidate.bg : ui.leave.bg,
+                color: theme.palette.text.primary,
+                border: `1px solid ${detail.kind === "appointment" ? ui.appointment.border : detail.kind === "candidate" ? ui.candidate.border : ui.leave.border}`,
+                "& .MuiChip-label": { fontWeight: 700, color: theme.palette.text.primary },
+              }}
+            />
             {detail.payment_status && (
               <Chip
                 size="small"
                 label={String(detail.payment_status).toUpperCase()}
                 color={String(detail.payment_status).toLowerCase() === "paid" ? "success" : "warning"}
                 variant="outlined"
+                sx={{ "& .MuiChip-label": { fontWeight: 700 } }}
               />
             )}
           </Box>
@@ -809,7 +850,6 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           {row("Price", detail.service_price != null ? `$${Number(detail.service_price).toFixed(2)}` : null)}
           {row("Payment", detail.payment_status)}
           {row("Paid", detail.paid_amount != null ? `$${Number(detail.paid_amount).toFixed(2)}` : null)}
-          {row("Meeting link", detail.meeting_link)}
         </Box>
         {(detail.candidate_email || detail.meeting_link) && (
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
@@ -829,6 +869,17 @@ export default function MySetmoreCalendar({ token, initialDate }) {
                 onClick={() => handleCopy(detail.meeting_link, "Meeting link")}
               >
                 Copy Meeting Link
+              </Button>
+            )}
+            {detail.meeting_link && (
+              <Button
+                size="small"
+                variant="contained"
+                href={detail.meeting_link}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Join Meeting
               </Button>
             )}
           </Stack>
