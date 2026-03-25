@@ -458,10 +458,10 @@ const ProductListBase = ({
                       color="text.secondary"
                       sx={{
                         display: "-webkit-box",
-                        WebkitLineClamp: 7,
+                        WebkitLineClamp: 4,
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
-                        minHeight: "10.2em",
+                        minHeight: "5.8em",
                         lineHeight: 1.45,
                       }}
                     >
