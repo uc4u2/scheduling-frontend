@@ -484,7 +484,8 @@ const ProductListBase = ({
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
-                        minHeight: "3.2em",
+                        minHeight: "2.6em",
+                        maxHeight: "2.6em",
                         lineHeight: 1.3,
                       }}
                     >
