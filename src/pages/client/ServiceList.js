@@ -613,6 +613,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                             width: "100%",
                             height: "100%",
                             objectFit: "cover",
+                            objectPosition: "center 56%",
                             borderTopLeftRadius: "var(--page-card-radius, 18px)",
                             borderTopRightRadius: "var(--page-card-radius, 18px)",
                           }}

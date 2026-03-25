@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   CardContent,
-  CardMedia,
   Chip,
   CircularProgress,
   Container,
@@ -383,37 +382,78 @@ const ProductListBase = ({
 
             return (
               <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={product.id}>
-                <Card sx={{ height: "100%", display: "flex", flexDirection: "column", borderRadius: 3 }}>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    borderRadius: "var(--page-card-radius, 18px)",
+                    backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.95))",
+                    boxShadow: "var(--page-card-shadow, 0 12px 32px rgba(15,23,42,0.08))",
+                    border: "1px solid rgba(148,163,184,0.18)",
+                    color: "var(--page-body-color)",
+                  }}
+                >
                   <Box sx={{ position: "relative" }}>
                     {product.images && product.images.length > 0 ? (
-                      <CardMedia
-                        component="img"
-                        height="220"
-                        image={product.images[0].url}
-                        alt={product.name}
+                      <Box
                         sx={{
-                          objectFit: "cover",
+                          position: "relative",
+                          pt: "56.25%",
+                          overflow: "hidden",
                           cursor: "zoom-in",
-                          transition: "transform 0.35s ease",
-                          "&:hover": {
+                          "& img": {
+                            transition: "transform 0.35s ease",
+                            transform: "scale(1)",
+                          },
+                          "&:hover img": {
                             transform: "scale(1.12)",
                           },
                         }}
                         onClick={() => openImagePreview(product.images[0].url, product.name)}
-                      />
+                      >
+                        <Box
+                          component="img"
+                          src={product.images[0].url}
+                          alt={product.name}
+                          loading="lazy"
+                          sx={{
+                            position: "absolute",
+                            inset: 0,
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            objectPosition: "center 56%",
+                            borderTopLeftRadius: "var(--page-card-radius, 18px)",
+                            borderTopRightRadius: "var(--page-card-radius, 18px)",
+                          }}
+                        />
+                      </Box>
                     ) : (
                       <Box
                         sx={{
-                          height: 220,
+                          pt: "56.25%",
+                          position: "relative",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           bgcolor: "action.hover",
                         }}
                       >
-                        <Typography variant="overline" color="text.secondary">
-                          No image
-                        </Typography>
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            inset: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Typography variant="overline" color="text.secondary">
+                            No image
+                          </Typography>
+                        </Box>
                       </Box>
                     )}
 
@@ -434,11 +474,12 @@ const ProductListBase = ({
                     )}
                   </Box>
 
-                  <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column", gap: 1.5 }}>
+                  <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
                     <Typography
                       variant="h6"
                       fontWeight={700}
                       sx={{
+                        color: "var(--page-heading-color, inherit)",
                         display: "-webkit-box",
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: "vertical",
@@ -449,19 +490,20 @@ const ProductListBase = ({
                     >
                       {product.name}
                     </Typography>
-                    <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
+                    <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap", rowGap: 0.75, mt: 0.75 }}>
                       {product.category && <Chip label={product.category} size="small" variant="outlined" />}
                       {product.is_digital && <Chip label="Digital" size="small" color="info" />}
                     </Stack>
                     <Typography
                       variant="body2"
-                      color="text.secondary"
                       sx={{
+                        mt: 1.2,
+                        minHeight: 78,
+                        color: "var(--page-body-color, inherit)",
                         display: "-webkit-box",
                         WebkitLineClamp: 4,
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
-                        minHeight: "5.8em",
                         lineHeight: 1.45,
                       }}
                     >
@@ -469,7 +511,7 @@ const ProductListBase = ({
                     </Typography>
 
                     {Array.isArray(product.tags) && product.tags.length > 0 && (
-                      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
+                      <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap", rowGap: 0.75, mt: 1 }}>
                         {product.tags.slice(0, 4).map((tag, index) => (
                           <Chip key={`${product.id}-tag-${index}`} label={tag} size="small" variant="outlined" />
                         ))}
@@ -477,7 +519,14 @@ const ProductListBase = ({
                     )}
 
                     <Box sx={{ mt: "auto" }}>
-                      <Typography variant="subtitle1" fontWeight={700}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          mt: 1.5,
+                          color: "var(--page-link-color, inherit)",
+                          fontWeight: 700,
+                        }}
+                      >
                         {money(product.price)}
                       </Typography>
                       {product.track_stock && (
@@ -506,7 +555,12 @@ const ProductListBase = ({
                         startIcon={<ShoppingCartCheckoutIcon />}
                         onClick={() => handleAdd(product)}
                         disabled={soldOut}
-                        sx={primaryButtonSx}
+                        sx={{
+                          ...primaryButtonSx,
+                          fontWeight: 600,
+                          textTransform: "none",
+                          py: 1.1,
+                        }}
                       >
                         Add
                       </Button>
