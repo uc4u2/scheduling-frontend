@@ -274,17 +274,21 @@ const ProductListBase = ({
       sx={{
         py: { xs: 4, md: 6 },
         px: { xs: 2, md: 4, xl: 6 },
-        maxWidth: 1600,
-        mx: "auto",
         ...pageStyleBackground,
       }}
       style={pageStyleCssVars}
     >
+      <Box
+        sx={{
+          maxWidth: 1240,
+          mx: "auto",
+        }}
+      >
       <Box sx={{ mb: 4, textAlign: "center" }}>
         <Typography variant="h3" fontWeight={800} gutterBottom>
           {productsHeading}
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 760, mx: "auto" }}>
           {productsSubheading}
         </Typography>
         {hasCartItems && (
@@ -300,11 +304,18 @@ const ProductListBase = ({
       </Box>
 
       <Stack
-        direction={{ xs: "column", md: "row" }}
+        direction={{ xs: "column", lg: "row" }}
         spacing={2}
-        justifyContent={{ xs: "flex-start", md: "space-between" }}
-        alignItems={{ xs: "stretch", md: "center" }}
-        sx={{ mb: 3 }}
+        justifyContent={{ xs: "flex-start", lg: "space-between" }}
+        alignItems={{ xs: "stretch", lg: "center" }}
+        sx={{
+          mb: 4,
+          p: { xs: 2, md: 2.5 },
+          borderRadius: 4,
+          backgroundColor: "rgba(255,255,255,0.72)",
+          backdropFilter: "blur(12px)",
+          boxShadow: "0 18px 48px rgba(15,23,42,0.08)",
+        }}
       >
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ width: "100%" }}>
           <TextField
@@ -313,7 +324,7 @@ const ProductListBase = ({
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
             placeholder="Search by name or SKU"
-            sx={{ minWidth: { xs: "100%", sm: 220 } }}
+            sx={{ minWidth: { xs: "100%", sm: 240 } }}
           />
           <TextField
             select
@@ -321,7 +332,7 @@ const ProductListBase = ({
             size="small"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
-            sx={{ minWidth: { xs: "100%", sm: 180 } }}
+            sx={{ minWidth: { xs: "100%", sm: 190 } }}
           >
             <MenuItem value="all">All categories</MenuItem>
             {categoryOptions.map((category) => (
@@ -336,7 +347,7 @@ const ProductListBase = ({
             size="small"
             value={sortKey}
             onChange={(event) => setSortKey(event.target.value)}
-            sx={{ minWidth: { xs: "100%", sm: 180 } }}
+            sx={{ minWidth: { xs: "100%", sm: 190 } }}
           >
             <MenuItem value="featured">Featured</MenuItem>
             <MenuItem value="newest">Newest</MenuItem>
@@ -355,7 +366,7 @@ const ProductListBase = ({
             />
           }
           label="Hide out-of-stock"
-          sx={{ mr: 0 }}
+          sx={{ mr: 0, whiteSpace: "nowrap" }}
         />
       </Stack>
 
@@ -374,7 +385,7 @@ const ProductListBase = ({
             : "No products found for the selected filters."}
         </Typography>
       ) : (
-        <Grid container spacing={3} justifyContent="center">
+        <Grid container spacing={{ xs: 2.5, md: 3.25 }} justifyContent="center">
           {visibleProducts.map((product) => {
             const quantity = Number(product.qty_on_hand || 0);
             const soldOut = Boolean(product.track_stock) && quantity <= 0;
@@ -382,13 +393,25 @@ const ProductListBase = ({
             const lowStock = Boolean(product.track_stock) && quantity > 0 && ((threshold > 0 && quantity <= threshold) || (threshold <= 0 && quantity <= 3));
 
             return (
-              <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={product.id}>
-                <Card sx={{ height: "100%", display: "flex", flexDirection: "column", borderRadius: 3 }}>
+              <Grid item xs={12} sm={6} md={4} lg={4} xl={3} key={product.id}>
+                <Card
+                  sx={{
+                    height: "100%",
+                    maxWidth: 320,
+                    mx: "auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    backgroundColor: "rgba(255,255,255,0.94)",
+                    boxShadow: "0 22px 50px rgba(15,23,42,0.12)",
+                  }}
+                >
                   <Box sx={{ position: "relative" }}>
                     {product.images && product.images.length > 0 ? (
                       <CardMedia
                         component="img"
-                        height="220"
+                        height="210"
                         image={product.images[0].url}
                         alt={product.name}
                         sx={{
@@ -443,7 +466,7 @@ const ProductListBase = ({
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
-                        minHeight: "3.2em",
+                        minHeight: "3.1em",
                         lineHeight: 1.3,
                       }}
                     >
@@ -458,10 +481,10 @@ const ProductListBase = ({
                       color="text.secondary"
                       sx={{
                         display: "-webkit-box",
-                        WebkitLineClamp: 7,
+                        WebkitLineClamp: 5,
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
-                        minHeight: "10.2em",
+                        minHeight: "7.4em",
                         lineHeight: 1.45,
                       }}
                     >
@@ -570,6 +593,7 @@ const ProductListBase = ({
           </DialogContent>
         </Dialog>
       )}
+      </Box>
     </Container>
   );
 
