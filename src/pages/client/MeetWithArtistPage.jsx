@@ -200,7 +200,14 @@ function normalizeSlots(raw, fallbackTz) {
 
 /* ---------- main content (rendered inside SiteFrame) ---------- */
 
-const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) => {
+const MeetWithArtistPageContent = ({
+  slug,
+  artistKey,
+  pageKey,
+  siteContext,
+  schedulerOnly = false,
+  hideIntroVideo = false,
+}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -662,7 +669,8 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
           ) : (
             <Grid container spacing={4}>
               {/* Left: Artist info */}
-              <Grid item xs={12} md={4}>
+            {!schedulerOnly && (
+            <Grid item xs={12} md={4}>
                 {(() => {
                   const resolvedVideo =
                     toYouTubeEmbedUrl(artist?.public_video_url) ||
@@ -824,7 +832,7 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                   </Stack>
                   </CardContent>
                 </Card>
-                {resolvedVideo ? (
+                {resolvedVideo && !hideIntroVideo ? (
                   <Card
                     sx={{ ...leftCardSx, mt: 3 }}
                   >
@@ -861,10 +869,11 @@ const MeetWithArtistPageContent = ({ slug, artistKey, pageKey, siteContext }) =>
                     </>
                   );
                 })()}
-              </Grid>
+            </Grid>
+            )}
 
               {/* Right: calendar + booking form */}
-              <Grid item xs={12} md={8}>
+              <Grid item xs={12} md={schedulerOnly ? 12 : 8}>
                 <Stack spacing={3}>
                   {/* Calendar + times */}
                   <Card
@@ -1153,6 +1162,26 @@ const MeetWithArtistPage = ({ slugOverride }) => {
   const pageKey = useMemo(() => {
     return searchParams.get("page") || "meet";
   }, [searchParams]);
+  const schedulerOnly = useMemo(() => {
+    const raw = String(
+      searchParams.get("scheduler_only") ||
+      searchParams.get("schedulerOnly") ||
+      searchParams.get("focus") ||
+      ""
+    ).toLowerCase();
+    return raw === "1" || raw === "true" || raw === "scheduler";
+  }, [searchParams]);
+  const hideIntroVideo = useMemo(() => {
+    const explicit = String(
+      searchParams.get("hide_video") ||
+      searchParams.get("hideVideo") ||
+      ""
+    ).toLowerCase();
+    if (explicit === "1" || explicit === "true") return true;
+    const embed = String(searchParams.get("embed") || "").toLowerCase();
+    const dialog = String(searchParams.get("dialog") || "").toLowerCase();
+    return embed === "1" || embed === "true" || dialog === "1" || dialog === "true" || schedulerOnly;
+  }, [searchParams, schedulerOnly]);
 
   useEffect(() => {
     const oldHeader = document.getElementById("public-booking-header");
@@ -1238,6 +1267,8 @@ const MeetWithArtistPage = ({ slugOverride }) => {
         artistKey={artistParam}
         pageKey={pageKey}
         siteContext={siteContext}
+        schedulerOnly={schedulerOnly}
+        hideIntroVideo={hideIntroVideo}
       />
     </SiteFrame>
   );
