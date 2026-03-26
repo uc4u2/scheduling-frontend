@@ -2980,6 +2980,16 @@ const FreeText = ({
   );
 };
 
+const toEmbedUrl = (url = "") => {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  const shortMatch = value.match(/youtu\.be\/([^?&/]+)/i);
+  if (shortMatch?.[1]) return `https://www.youtube.com/embed/${shortMatch[1]}`;
+  const watchMatch = value.match(/[?&]v=([^?&/]+)/i);
+  if (watchMatch?.[1]) return `https://www.youtube.com/embed/${watchMatch[1]}`;
+  return value;
+};
+
 const Video = ({ title, description, url, poster, titleAlign, maxWidth }) => (
   <Container maxWidth={toContainerMax(maxWidth)}>
     {title && (
@@ -2993,10 +3003,10 @@ const Video = ({ title, description, url, poster, titleAlign, maxWidth }) => (
       </HtmlTypo>
     )}
     <Box sx={{ borderRadius: 3, overflow: "hidden", boxShadow: 2, lineHeight: 0 }}>
-      {url?.includes("youtube.com") || url?.includes("youtu.be") || url?.includes("vimeo.com") ? (
+      {toEmbedUrl(url)?.includes("youtube.com") || toEmbedUrl(url)?.includes("youtu.be") || toEmbedUrl(url)?.includes("vimeo.com") ? (
         <Box sx={{ position: "relative", pt: "56.25%" }}>
           <iframe
-            src={url}
+            src={toEmbedUrl(url)}
             title={toPlain(title) || "video"}
             loading="lazy"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -3016,6 +3026,171 @@ const Video = ({ title, description, url, poster, titleAlign, maxWidth }) => (
     </Box>
   </Container>
 );
+
+const VideoStorySplit = ({
+  eyebrow,
+  title,
+  body,
+  ctaText,
+  ctaLink,
+  videoUrl,
+  poster,
+  videoPosition = "left",
+  mediaAspectRatio = "16 / 9",
+  contentBackground = "#3b3b3b",
+  contentColor = "#f8fafc",
+  titleColor = "#f8fafc",
+  contentPadding = 48,
+  maxWidth = "full",
+  borderRadius = 4,
+}) => {
+  const resolvedUrl = toEmbedUrl(videoUrl);
+  const isEmbed =
+    resolvedUrl?.includes("youtube.com") ||
+    resolvedUrl?.includes("youtu.be") ||
+    resolvedUrl?.includes("vimeo.com");
+  const videoFirst = String(videoPosition || "left").toLowerCase() !== "right";
+  const resolvedMax = toContainerMax(maxWidth);
+  const paddingValue = typeof contentPadding === "number" ? `${contentPadding}px` : contentPadding;
+  const radiusValue = typeof borderRadius === "number" ? borderRadius : 4;
+
+  return (
+    <Container maxWidth={resolvedMax} disableGutters={resolvedMax === false} sx={{ px: resolvedMax === false ? 0 : undefined }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1.02fr) minmax(0, 0.98fr)" },
+          alignItems: "stretch",
+          width: "100%",
+          overflow: "hidden",
+          borderRadius: radiusValue,
+          border: "1px solid rgba(255,255,255,0.14)",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.22)",
+          backgroundColor: "#121212",
+        }}
+      >
+        <Box
+          sx={{
+            order: { xs: 1, md: videoFirst ? 1 : 2 },
+            minHeight: { xs: 320, md: 560 },
+            backgroundColor: "#050505",
+            lineHeight: 0,
+          }}
+        >
+          {isEmbed ? (
+            <Box sx={{ position: "relative", width: "100%", height: "100%", minHeight: { xs: 320, md: 560 } }}>
+              <iframe
+                src={resolvedUrl}
+                title={toPlain(title) || "video story"}
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+              />
+            </Box>
+          ) : (
+            <video
+              src={resolvedUrl}
+              controls
+              preload="metadata"
+              poster={poster}
+              style={{
+                width: "100%",
+                height: "100%",
+                minHeight: "100%",
+                display: "block",
+                objectFit: "cover",
+                aspectRatio: mediaAspectRatio || "16 / 9",
+              }}
+            />
+          )}
+        </Box>
+
+        <Box
+          sx={{
+            order: { xs: 2, md: videoFirst ? 2 : 1 },
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: contentBackground,
+            color: contentColor,
+            minHeight: { xs: "auto", md: 560 },
+          }}
+        >
+          <Stack
+            spacing={3}
+            sx={{
+              width: "100%",
+              maxWidth: 620,
+              px: { xs: 3, md: paddingValue },
+              py: { xs: 4, md: 5 },
+              textAlign: "center",
+            }}
+          >
+            {eyebrow && (
+              <HtmlTypo
+                variant="overline"
+                sx={{
+                  letterSpacing: ".2em",
+                  textTransform: "uppercase",
+                  fontWeight: 600,
+                  color: contentColor,
+                  opacity: 0.86,
+                }}
+              >
+                {eyebrow}
+              </HtmlTypo>
+            )}
+            {title && (
+              <HtmlTypo
+                variant="h3"
+                sx={{
+                  fontWeight: 300,
+                  letterSpacing: "-0.01em",
+                  color: titleColor,
+                  fontSize: { xs: "2rem", md: "3rem" },
+                }}
+              >
+                {title}
+              </HtmlTypo>
+            )}
+            {body && (
+              <HtmlTypo
+                variant="body1"
+                sx={{
+                  color: contentColor,
+                  opacity: 0.92,
+                  lineHeight: 1.8,
+                  maxWidth: 560,
+                  mx: "auto",
+                }}
+              >
+                {body}
+              </HtmlTypo>
+            )}
+            {ctaText && (
+              <Box>
+                <Button
+                  variant="contained"
+                  href={ctaLink || "#"}
+                  sx={{
+                    px: 3.25,
+                    py: 1.3,
+                    textTransform: "uppercase",
+                    letterSpacing: ".18em",
+                    fontWeight: 700,
+                  }}
+                >
+                  {toPlain(ctaText)}
+                </Button>
+              </Box>
+            )}
+          </Stack>
+        </Box>
+      </Box>
+    </Container>
+  );
+};
 
 const normalizeLogoItem = (item) => {
   if (!item) return null;
@@ -5449,6 +5624,7 @@ const registry = {
   collectionShowcase: CollectionShowcase,
   serviceGridSmart: SmartServiceGrid,
   gallery: Gallery,
+  videoStorySplit: VideoStorySplit,
   videoGallery: VideoGallery,
   galleryCarousel: GalleryCarousel,
   testimonials: Testimonials,

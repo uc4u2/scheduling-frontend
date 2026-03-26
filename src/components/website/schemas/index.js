@@ -14,6 +14,27 @@ export const SCHEMA_REGISTRY = {
     note: "Tip: keep overlay between 0.2 and 0.5 for readability.",
   },
 
+  videoStorySplit: {
+    fields: [
+      { name: "eyebrow", type: "string", label: "Eyebrow" },
+      { name: "title", type: "string", label: "Title" },
+      { name: "body", type: "text", label: "Body", minRows: 4 },
+      { name: "ctaText", type: "string", label: "CTA text" },
+      { name: "ctaLink", type: "string", label: "CTA link" },
+      { name: "videoUrl", type: "string", label: "Video URL" },
+      { name: "poster", type: "image", label: "Poster image" },
+      { name: "videoPosition", type: "select", label: "Video position", options: ["left", "right"], default: "left" },
+      { name: "mediaAspectRatio", type: "string", label: "Video aspect ratio" },
+      { name: "contentBackground", type: "string", label: "Story panel background" },
+      { name: "contentColor", type: "string", label: "Story text color" },
+      { name: "titleColor", type: "string", label: "Story title color" },
+      { name: "contentPadding", type: "number", label: "Story panel padding (px)", default: 48 },
+      { name: "maxWidth", type: "string", label: "Max width", default: "full" },
+      { name: "bleedLeft", type: "boolean", label: "Bleed left", default: true },
+      { name: "bleedRight", type: "boolean", label: "Bleed right", default: true }
+    ]
+  },
+
   // Added a small enhancement so this block is nicely mapped in the simple inspector
   logoCloud: {
     fields: [

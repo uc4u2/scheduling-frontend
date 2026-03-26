@@ -131,6 +131,27 @@ export const NEW_BLOCKS = {
       maxWidth: "lg",
     },
   }),
+  videoStorySplit: () => ({
+    type: "videoStorySplit",
+    props: {
+      eyebrow: "Watch the platform story",
+      title: "See how Schedulaa runs in real life",
+      body:
+        "Use this section for a founder story, studio intro, or product walkthrough. Pair a YouTube video with supporting copy and one focused CTA without leaving the visual builder.",
+      ctaText: "Learn more",
+      ctaLink: "?page=about",
+      videoUrl: "https://www.youtube.com/embed/y7kygIhnZm8",
+      videoPosition: "left",
+      mediaAspectRatio: "16 / 9",
+      contentBackground: "#3b3b3b",
+      contentColor: "#f8fafc",
+      titleColor: "#f8fafc",
+      contentPadding: 48,
+      maxWidth: "full",
+      bleedLeft: true,
+      bleedRight: true,
+    },
+  }),
   collectionShowcase: () => ({
     type: "collectionShowcase",
     props: {

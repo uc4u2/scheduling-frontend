@@ -1162,6 +1162,7 @@
         "add": {
           "hero": "Add hero",
           "heroSplit": "Add hero split",
+          "videoStorySplit": "Add video story split",
           "text": "Add text",
           "gallery": "Add gallery",
           "photoGallery": "Add photo gallery",
@@ -1210,6 +1211,7 @@
           "testimonials": "\u7528\u6237\u8bc4\u4ef7",
           "heroCarousel": "Hero carousel",
           "heroSplit": "Hero split",
+          "videoStorySplit": "Video story split",
           "featureZigzagModern": "Feature zigzag",
           "logoCloud": "Logo cloud",
           "richText": "Rich text",

@@ -687,6 +687,29 @@ export const SCHEMA_REGISTRY = {
     ]
   },
 
+  videoStorySplit: {
+    title: "Video Story Split",
+    fields: [
+      { name: "eyebrow", type: "richinline", label: "Eyebrow" },
+      { name: "title", type: "richinline", label: "Title" },
+      { name: "body", type: "richtext", label: "Body", minRows: 4 },
+      { name: "ctaText", type: "richinline", label: "CTA text" },
+      { name: "ctaLink", type: "string", label: "CTA link (URL)" },
+      { name: "videoUrl", type: "string", label: "Video URL (YouTube/Vimeo/embed)" },
+      { name: "poster", type: "image", label: "Poster image (optional)" },
+      { name: "videoPosition", type: "select", label: "Video position", options: ["left", "right"], default: "left" },
+      { name: "mediaAspectRatio", type: "string", label: "Video aspect ratio", placeholder: "16 / 9" },
+      { name: "contentBackground", type: "color", label: "Story panel background" },
+      { name: "contentColor", type: "color", label: "Story text color" },
+      { name: "titleColor", type: "color", label: "Story title color" },
+      { name: "contentPadding", type: "number", label: "Story panel padding (px)", min: 0, max: 120, step: 2, default: 48 },
+      { name: "maxWidth", type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"], default: "full" },
+      { name: "gutterX", type: "number", label: "Inner gutter (px)", labelKey: "manager.visualBuilder.schemas.shared.innerGutter", min: 0, max: 120, step: 2 },
+      { name: "bleedLeft", type: "boolean", label: "Bleed left" },
+      { name: "bleedRight", type: "boolean", label: "Bleed right" }
+    ]
+  },
+
   /* --------------------------- GALLERY ---------------------- */
   gallery: {
     title: "Gallery",
