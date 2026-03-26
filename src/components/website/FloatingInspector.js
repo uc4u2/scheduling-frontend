@@ -196,6 +196,9 @@ function PanelInner({
   const { isFloatingActive, mode, panelOffset, setPanelOffset } = fi;
   const dragStateRef = React.useRef(null);
   const paperRef = React.useRef(null);
+  const bodyRef = React.useRef(null);
+  const bodyScrollTopRef = React.useRef(0);
+  const lastSelectedIndexRef = React.useRef(selectedIndex);
 
   const handleDragMove = React.useCallback((event) => {
     if (!dragStateRef.current) return;
@@ -233,6 +236,20 @@ function PanelInner({
   }, [panelOffset?.x, panelOffset?.y, handleDragMove, stopDrag]);
 
   React.useEffect(() => () => stopDrag(), [stopDrag]);
+
+  React.useEffect(() => {
+    if (lastSelectedIndexRef.current !== selectedIndex) {
+      lastSelectedIndexRef.current = selectedIndex;
+      bodyScrollTopRef.current = 0;
+      if (bodyRef.current) bodyRef.current.scrollTop = 0;
+    }
+  }, [selectedIndex]);
+
+  React.useLayoutEffect(() => {
+    const node = bodyRef.current;
+    if (!node) return;
+    node.scrollTop = bodyScrollTopRef.current;
+  }, [selectedBlockObj?.props, schemaForBlock, selectedIndex]);
 
   // Keep the floating panel reachable even if a saved offset pushes it off-screen.
   React.useEffect(() => {
@@ -326,6 +343,7 @@ function PanelInner({
           </Box>
 
           <Box
+            ref={bodyRef}
             sx={{
               p: 2,
               overflowY: "auto",
@@ -333,6 +351,9 @@ function PanelInner({
               minHeight: 0,
               flex: 1,
               overscrollBehavior: "contain",
+            }}
+            onScroll={(event) => {
+              bodyScrollTopRef.current = event.currentTarget.scrollTop;
             }}
           >
             {mode === "simple" && schemaForBlock ? (

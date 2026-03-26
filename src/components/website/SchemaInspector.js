@@ -1207,6 +1207,21 @@ const FieldObjectArray = ({ label, value, onCommit, fields = [], companyId }) =>
                 );
               }
 
+              if (
+                sub.type === "select" ||
+                (sub.type === "string" && (sub.enum?.length || sub.options?.length))
+              ) {
+                return (
+                  <FieldSelect
+                    key={rk}
+                    label={sub.label || rk}
+                    value={subVal ?? sub.default ?? ""}
+                    options={sub.options || sub.enum || []}
+                    onCommit={(nv) => updateRow(nv)}
+                  />
+                );
+              }
+
               if (sub.type === "image") {
                 return (
                   <ImageField
@@ -1215,6 +1230,19 @@ const FieldObjectArray = ({ label, value, onCommit, fields = [], companyId }) =>
                     value={subVal || ""}
                     onChange={(url) => updateRow(url)}
                     companyId={companyId}
+                  />
+                );
+              }
+
+              if (sub.type === "multiline" || typeof sub.minRows === "number") {
+                return (
+                  <FieldMultiline
+                    key={rk}
+                    label={sub.label || rk}
+                    value={subVal ?? ""}
+                    onCommit={(nv) => updateRow(nv)}
+                    minRows={sub.minRows || 3}
+                    help={sub.help}
                   />
                 );
               }
@@ -1243,15 +1271,12 @@ const FieldObjectArray = ({ label, value, onCommit, fields = [], companyId }) =>
               }
 
               return (
-                <TextField
+                <FieldString
                   key={rk}
-                  size="small"
-                  type="text"
                   label={sub.label || rk}
                   value={subVal ?? ""}
-                  onChange={(e) => updateRow(e.target.value)}
-                  fullWidth
-                  onKeyDown={stopBubble}
+                  onCommit={(nv) => updateRow(nv)}
+                  help={sub.help}
                 />
               );
             })}
