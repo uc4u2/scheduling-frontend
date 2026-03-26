@@ -1181,6 +1181,48 @@ export default function WebsiteBrandingCard({
             }
             label="Sticky header"
           />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(header.overlay_hero)}
+                onChange={(_, v) => updateHeader({ overlay_hero: v })}
+              />
+            }
+            label="Overlay header on hero"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(header.transparent_on_top)}
+                onChange={(_, v) => updateHeader({ transparent_on_top: v })}
+                disabled={!header.overlay_hero}
+              />
+            }
+            label="Transparent header at top"
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(header.scrolled_shadow)}
+                onChange={(_, v) => updateHeader({ scrolled_shadow: v })}
+              />
+            }
+            label="Show shadow after scroll"
+          />
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Header scroll threshold</Typography>
+            <Slider
+              size="small"
+              min={0}
+              max={240}
+              value={header.scroll_threshold ?? 64}
+              valueLabelDisplay="auto"
+              onChange={(_, val) =>
+                typeof val === "number" &&
+                updateHeader({ scroll_threshold: clampValue(val, 0, 240) })
+              }
+            />
+          </Stack>
           <LogoPicker
             label="Header logo"
             asset={header.logo_asset}
@@ -1200,6 +1242,24 @@ export default function WebsiteBrandingCard({
             label="Header text color"
             value={header.text_color || themeOverrides.header?.text}
             onChange={(val) => updateHeader({ text_color: val })}
+          />
+          <ColorTokenInput
+            label="Transparent top background"
+            value={header.transparent_bg || ""}
+            onChange={(val) => updateHeader({ transparent_bg: val })}
+            helperText="Used only while the page is at the top when transparent mode is enabled."
+          />
+          <ColorTokenInput
+            label="Scrolled header background"
+            value={header.scrolled_bg || ""}
+            onChange={(val) => updateHeader({ scrolled_bg: val })}
+            helperText="Leave empty to reuse the main header background."
+          />
+          <ColorTokenInput
+            label="Scrolled header text color"
+            value={header.scrolled_text_color || ""}
+            onChange={(val) => updateHeader({ scrolled_text_color: val })}
+            helperText="Leave empty to reuse the main header text color."
           />
           <TextField
             label="Header text"
@@ -1238,6 +1298,52 @@ export default function WebsiteBrandingCard({
             >
               Clear text
             </Button>
+          </Stack>
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Scroll CTA</Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={Boolean(header.scroll_cta_enabled)}
+                  onChange={(_, checked) =>
+                    updateHeader({ scroll_cta_enabled: checked })
+                  }
+                />
+              }
+              label="Show sticky CTA after scrolling"
+            />
+            <TextField
+              size="small"
+              label="CTA label"
+              value={header.scroll_cta_label || ""}
+              onChange={(e) => updateHeader({ scroll_cta_label: e.target.value })}
+              disabled={!header.scroll_cta_enabled}
+            />
+            <TextField
+              size="small"
+              label="CTA link"
+              value={header.scroll_cta_href || ""}
+              onChange={(e) => updateHeader({ scroll_cta_href: e.target.value })}
+              placeholder="?page=booking"
+              disabled={!header.scroll_cta_enabled}
+            />
+            <Stack spacing={1}>
+              <Typography variant="caption" color="text.secondary">
+                CTA appears after this many pixels of scrolling
+              </Typography>
+              <Slider
+                size="small"
+                min={0}
+                max={400}
+                value={header.scroll_cta_after ?? 120}
+                valueLabelDisplay="auto"
+                disabled={!header.scroll_cta_enabled}
+                onChange={(_, val) =>
+                  typeof val === "number" &&
+                  updateHeader({ scroll_cta_after: clampValue(val, 0, 400) })
+                }
+              />
+            </Stack>
           </Stack>
           <Stack spacing={1}>
             <Typography variant="subtitle2">Navigation source</Typography>

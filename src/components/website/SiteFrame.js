@@ -99,6 +99,7 @@ export default function SiteFrame({
   const nav = useMemo(() => site?.nav_overrides || {}, [site]);
   const menuSource = nav?.menu_source || "pages";
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const headerConfig = useMemo(
@@ -184,6 +185,13 @@ export default function SiteFrame({
       cancelled = true;
     };
   }, [slug, initialSite, disableFetch]);
+
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY || window.pageYOffset || 0);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const pages = useMemo(() => {
     const list = Array.isArray(site?.pages)
@@ -330,6 +338,34 @@ export default function SiteFrame({
       )
     : null;
   const headerFullWidth = headerConfig?.full_width !== false;
+  const overlayHero = Boolean(headerConfig?.overlay_hero);
+  const transparentOnTop = Boolean(headerConfig?.transparent_on_top);
+  const scrollThreshold = clampNumber(headerConfig?.scroll_threshold ?? 64, 0, 400, 64);
+  const scrollCtaAfter = clampNumber(headerConfig?.scroll_cta_after ?? 120, 0, 600, 120);
+  const scrolledPastHeader = scrollY > scrollThreshold;
+  const showScrollCta = Boolean(
+    headerConfig?.scroll_cta_enabled &&
+      headerConfig?.scroll_cta_label &&
+      headerConfig?.scroll_cta_href &&
+      scrollY > scrollCtaAfter
+  );
+  const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
+  const resolvedHeaderBg = useTransparentTopState
+    ? (headerConfig?.transparent_bg || "rgba(255,255,255,0.18)")
+    : (headerConfig?.scrolled_bg || headerBg || theme.palette.background.paper);
+  const resolvedHeaderTextColor = useTransparentTopState
+    ? (headerConfig?.text_color || headerTextColor)
+    : (headerConfig?.scrolled_text_color || headerConfig?.text_color || headerTextColor);
+  const headerApproxHeight = clampNumber(
+    (headerPadding * 2) + (isCenterLayout ? 112 : 76),
+    72,
+    240,
+    104
+  );
+  const contentOffsetTop = overlayHero ? -headerApproxHeight : 0;
+  const stickyCtaLinkProps = showScrollCta
+    ? resolveLinkProps(headerConfig?.scroll_cta_href || "")
+    : null;
   const headerGridColumns = isCenterLayout
     ? "1fr"
     : isSplitLayout
@@ -740,9 +776,18 @@ export default function SiteFrame({
         position: headerConfig.sticky === false ? "relative" : "sticky",
         top: 0,
         zIndex: 30,
-        borderBottom: (theme) => `1px solid ${alpha(theme.palette.divider, 0.4)}`,
-        backgroundColor: headerConfig.bg || theme.palette.background.paper,
-        color: headerConfig.text_color || theme.palette.text.primary,
+        borderBottom: useTransparentTopState
+          ? "1px solid rgba(255,255,255,0.16)"
+          : (theme) => `1px solid ${alpha(theme.palette.divider, 0.4)}`,
+        background: resolvedHeaderBg,
+        color: resolvedHeaderTextColor,
+        boxShadow:
+          scrolledPastHeader && headerConfig?.scrolled_shadow !== false
+            ? "0 18px 48px rgba(15,23,42,0.14)"
+            : "none",
+        backdropFilter: useTransparentTopState ? "blur(10px)" : "none",
+        transition:
+          "background-color 180ms ease, background 180ms ease, color 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
       }}
     >
       <Container
@@ -810,6 +855,28 @@ export default function SiteFrame({
                   inline: true,
                   placement: socialInlinePlacement || "after",
                 })}
+              {showScrollCta && stickyCtaLinkProps && (
+                <Button
+                  {...stickyCtaLinkProps}
+                  variant="contained"
+                  size="medium"
+                  sx={{
+                    ml: 1,
+                    borderRadius: 999,
+                    px: 2.5,
+                    fontWeight: 700,
+                    backgroundColor: "var(--page-link-color, var(--sched-primary))",
+                    color: "#fff",
+                    boxShadow: "0 12px 26px rgba(37,99,235,0.26)",
+                    "&:hover": {
+                      backgroundColor: "var(--page-link-color, var(--sched-primary))",
+                      filter: "brightness(0.95)",
+                    },
+                  }}
+                >
+                  {headerConfig.scroll_cta_label}
+                </Button>
+              )}
             </Stack>
           </Box>
           {navFullWidthCenter && (
@@ -1255,12 +1322,31 @@ export default function SiteFrame({
             </IconButton>
           </Box>
           {mobileNavButtons}
+          {showScrollCta && stickyCtaLinkProps && (
+            <Button
+              {...stickyCtaLinkProps}
+              variant="contained"
+              fullWidth
+              sx={{
+                mt: 2,
+                borderRadius: 999,
+                backgroundColor: "var(--page-link-color, var(--sched-primary))",
+                color: "#fff",
+              }}
+            >
+              {headerConfig.scroll_cta_label}
+            </Button>
+          )}
         </Drawer>
       )}
       {wrapChildrenInContainer ? (
-        <Container sx={{ py: { xs: 3, md: 5 } }}>{children}</Container>
+        <Container sx={{ py: { xs: 3, md: 5 }, mt: contentOffsetTop ? `${contentOffsetTop}px` : 0 }}>
+          {children}
+        </Container>
       ) : (
-        children
+        <Box sx={{ mt: contentOffsetTop ? `${contentOffsetTop}px` : 0 }}>
+          {children}
+        </Box>
       )}
       {!hideFooter && footerNode}
     </ThemeRuntimeProvider>

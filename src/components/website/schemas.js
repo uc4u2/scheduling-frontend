@@ -21,6 +21,7 @@ export const SCHEMA_REGISTRY = {
   /* -------------------------- HERO -------------------------- */
   hero: {
     title: "Hero",
+    note: "Use Hero (Carousel) when you need multiple hero images with autoplay and slide timing.",
     fields: [
       { name: "eyebrow",     type: "richinline", label: "Eyebrow (small label)" },
       { name: "heading",     type: "richinline", label: "Heading" },
@@ -48,9 +49,6 @@ export const SCHEMA_REGISTRY = {
       { name: "backgroundVideo",    type: "video",  label: "Background video (mp4/webm)" },
       { name: "backgroundPosition", type: "select", label: "Background position", options: ["center","top","bottom","left","right"], default: "center" },
       { name: "backgroundPositionY", type: "slider", label: "Background vertical focus", min: 0, max: 100, step: 1, default: 50, help: "0 = top of image, 50 = centered, 100 = bottom" },
-      { name: "sideImage",          type: "image",  label: "Extra hero image" },
-      { name: "sideImageAlt",       type: "string", label: "Extra hero image alt text" },
-      { name: "sideImagePosition",  type: "select", label: "Extra hero image position", options: ["left","right"], default: "right" },
 
       // Overlay (slider as requested)
       {

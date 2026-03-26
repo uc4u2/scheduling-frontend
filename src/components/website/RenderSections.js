@@ -413,9 +413,6 @@ const Hero = ({
   overlayColor = "#000000",  // NEW: allow white or any tint
   backgroundPosition = "center",
   backgroundPositionY,
-  sideImage,
-  sideImageAlt,
-  sideImagePosition = "right",
   align = "center",
   heroHeight = 0,
   safeTop = true,
@@ -441,56 +438,18 @@ const Hero = ({
     typeof heroHeight === "number" && heroHeight > 0
       ? `${heroHeight}vh`
       : undefined;
-  const hasSideImage = Boolean(sideImage);
-  const showLeftImage = hasSideImage && String(sideImagePosition || "right").toLowerCase() === "left";
 
   const heroContent = (
-    <Stack
-      direction={{ xs: "column", md: hasSideImage ? (showLeftImage ? "row-reverse" : "row") : "column" }}
-      spacing={{ xs: 3, md: hasSideImage ? 5 : 0 }}
-      alignItems="center"
-    >
-      <Box sx={{ flex: hasSideImage ? "1 1 0%" : "1 1 auto", width: "100%" }}>
-        <HeroInner
-          textAlign={textAlign}
-          eyebrow={eyebrow}
-          heading={heading}
-          subheading={subheading}
-          ctaText={ctaText}
-          ctaLink={ctaLink}
-          secondaryCtaText={secondaryCtaText}
-          secondaryCtaLink={secondaryCtaLink}
-        />
-      </Box>
-
-      {hasSideImage && (
-        <Box
-          sx={{
-            flex: "0 1 420px",
-            width: "100%",
-            maxWidth: { xs: 420, md: 440 },
-            mx: { xs: "auto", md: 0 },
-          }}
-        >
-          <Box
-            component="img"
-            src={sideImage}
-            alt={toPlain(sideImageAlt) || ""}
-            loading="lazy"
-            sx={{
-              width: "100%",
-              display: "block",
-              aspectRatio: { xs: "4 / 3", md: "5 / 6" },
-              objectFit: "cover",
-              objectPosition: "center center",
-              borderRadius: 4,
-              border: "1px solid rgba(255,255,255,0.22)",
-              boxShadow: "0 24px 60px rgba(15,23,42,0.24)",
-            }}
-          />
-        </Box>
-      )}
-    </Stack>
+    <HeroInner
+      textAlign={textAlign}
+      eyebrow={eyebrow}
+      heading={heading}
+      subheading={subheading}
+      ctaText={ctaText}
+      ctaLink={ctaLink}
+      secondaryCtaText={secondaryCtaText}
+      secondaryCtaLink={secondaryCtaLink}
+    />
   );
 
   const innerMax =

@@ -90,6 +90,17 @@ export const defaultHeaderConfig = () => ({
   logo_asset: null,
   layout: "simple",
   sticky: true,
+  overlay_hero: false,
+  transparent_on_top: false,
+  transparent_bg: "",
+  scrolled_bg: "",
+  scrolled_text_color: "",
+  scrolled_shadow: true,
+  scroll_threshold: 64,
+  scroll_cta_enabled: false,
+  scroll_cta_label: "",
+  scroll_cta_href: "",
+  scroll_cta_after: 120,
   full_width: true,
   bg: "",
   text_color: "",
@@ -130,6 +141,40 @@ export const normalizeHeaderConfig = (value, { preserveAssets = true } = {}) => 
     logo_asset: preserveAssets ? value.logo_asset || null : null,
     layout: value.layout || base.layout,
     sticky: value.sticky !== undefined ? Boolean(value.sticky) : base.sticky,
+    overlay_hero:
+      value.overlay_hero === undefined
+        ? base.overlay_hero
+        : Boolean(value.overlay_hero),
+    transparent_on_top:
+      value.transparent_on_top === undefined
+        ? base.transparent_on_top
+        : Boolean(value.transparent_on_top),
+    transparent_bg:
+      typeof value.transparent_bg === "string" ? value.transparent_bg : base.transparent_bg,
+    scrolled_bg:
+      typeof value.scrolled_bg === "string" ? value.scrolled_bg : base.scrolled_bg,
+    scrolled_text_color:
+      typeof value.scrolled_text_color === "string"
+        ? value.scrolled_text_color
+        : base.scrolled_text_color,
+    scrolled_shadow:
+      value.scrolled_shadow === undefined
+        ? base.scrolled_shadow
+        : Boolean(value.scrolled_shadow),
+    scroll_threshold: clampNumber(value.scroll_threshold, 0, 400, base.scroll_threshold),
+    scroll_cta_enabled:
+      value.scroll_cta_enabled === undefined
+        ? base.scroll_cta_enabled
+        : Boolean(value.scroll_cta_enabled),
+    scroll_cta_label:
+      typeof value.scroll_cta_label === "string"
+        ? value.scroll_cta_label
+        : base.scroll_cta_label,
+    scroll_cta_href:
+      typeof value.scroll_cta_href === "string"
+        ? normalizeLegacyHref(value.scroll_cta_href)
+        : base.scroll_cta_href,
+    scroll_cta_after: clampNumber(value.scroll_cta_after, 0, 600, base.scroll_cta_after),
     bg: value.bg ?? base.bg,
     text_color: value.text_color ?? base.text_color,
     text: value.text ?? base.text,
