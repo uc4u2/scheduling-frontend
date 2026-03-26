@@ -362,7 +362,7 @@ export default function SiteFrame({
     240,
     104
   );
-  const contentOffsetTop = overlayHero ? -headerApproxHeight : 0;
+  const headerOverlap = overlayHero ? headerApproxHeight : 0;
   const stickyCtaLinkProps = showScrollCta
     ? resolveLinkProps(headerConfig?.scroll_cta_href || "")
     : null;
@@ -776,10 +776,12 @@ export default function SiteFrame({
         position: headerConfig.sticky === false ? "relative" : "sticky",
         top: 0,
         zIndex: 30,
+        mb: headerOverlap ? `-${headerOverlap}px` : 0,
         borderBottom: useTransparentTopState
           ? "1px solid rgba(255,255,255,0.16)"
           : (theme) => `1px solid ${alpha(theme.palette.divider, 0.4)}`,
         background: resolvedHeaderBg,
+        backgroundColor: resolvedHeaderBg,
         color: resolvedHeaderTextColor,
         boxShadow:
           scrolledPastHeader && headerConfig?.scrolled_shadow !== false
@@ -1297,6 +1299,7 @@ export default function SiteFrame({
 
   return (
     <ThemeRuntimeProvider themeOverrides={site?.theme_overrides || {}}>
+      <Box sx={{ "--site-header-overlap": `${headerOverlap}px` }}>
       {!hideHeader && headerNode}
       {!hideHeader && (
         <Drawer
@@ -1340,15 +1343,16 @@ export default function SiteFrame({
         </Drawer>
       )}
       {wrapChildrenInContainer ? (
-        <Container sx={{ py: { xs: 3, md: 5 }, mt: contentOffsetTop ? `${contentOffsetTop}px` : 0 }}>
+        <Container sx={{ py: { xs: 3, md: 5 } }}>
           {children}
         </Container>
       ) : (
-        <Box sx={{ mt: contentOffsetTop ? `${contentOffsetTop}px` : 0 }}>
+        <Box>
           {children}
         </Box>
       )}
       {!hideFooter && footerNode}
+      </Box>
     </ThemeRuntimeProvider>
   );
 }

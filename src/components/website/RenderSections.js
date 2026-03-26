@@ -471,7 +471,9 @@ const Hero = ({
         justifyContent: "center",
         color:
           "var(--page-hero-text-color, var(--page-body-color, inherit))",
-        pt: safeTop ? "env(safe-area-inset-top)" : 0,
+        pt: safeTop
+          ? "calc(env(safe-area-inset-top) + var(--site-header-overlap, 0px))"
+          : 0,
       }}
     >
       {!!bgUrl && (
@@ -662,7 +664,18 @@ const HeroCarousel = ({
 
   const current = list[index] || {};
   return (
-    <Box sx={{ position: "relative", borderRadius: { xs: 0, md: 3 }, overflow: "hidden", minHeight: minH || { xs: 380, md: 560 }, color: "var(--page-hero-text-color, var(--page-body-color, inherit))", pt: safeTop ? "env(safe-area-inset-top)" : 0 }}>
+    <Box
+      sx={{
+        position: "relative",
+        borderRadius: { xs: 0, md: 3 },
+        overflow: "hidden",
+        minHeight: minH || { xs: 380, md: 560 },
+        color: "var(--page-hero-text-color, var(--page-body-color, inherit))",
+        pt: safeTop
+          ? "calc(env(safe-area-inset-top) + var(--site-header-overlap, 0px))"
+          : 0,
+      }}
+    >
       {list.map((s, i) => (
         <Box key={i} aria-hidden={i !== index} sx={{ position: "absolute", inset: 0, opacity: i === index ? 1 : 0, transition: "opacity .6s ease", willChange: "opacity", backfaceVisibility: "hidden", transform: "translateZ(0)" }}>
           {!!s.image && (
