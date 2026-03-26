@@ -412,6 +412,10 @@ const Hero = ({
   overlayGradient,
   overlayColor = "#000000",  // NEW: allow white or any tint
   backgroundPosition = "center",
+  backgroundPositionY,
+  sideImage,
+  sideImageAlt,
+  sideImagePosition = "right",
   align = "center",
   heroHeight = 0,
   safeTop = true,
@@ -422,11 +426,72 @@ const Hero = ({
   const bgUrl = backgroundUrl || image;
   const textAlign =
     align === "right" ? "right" : align === "left" ? "left" : "center";
+  const normalizedFocusY = Number.isFinite(Number(backgroundPositionY))
+    ? Math.max(0, Math.min(100, Number(backgroundPositionY)))
+    : null;
+  const resolvedBackgroundPosition = (() => {
+    if (normalizedFocusY == null) return backgroundPosition;
+    const raw = String(backgroundPosition || "center").toLowerCase();
+    const horizontal =
+      raw === "left" || raw === "right" ? raw : "center";
+    return `${horizontal} ${normalizedFocusY}%`;
+  })();
 
   const minH =
     typeof heroHeight === "number" && heroHeight > 0
       ? `${heroHeight}vh`
       : undefined;
+  const hasSideImage = Boolean(sideImage);
+  const showLeftImage = hasSideImage && String(sideImagePosition || "right").toLowerCase() === "left";
+
+  const heroContent = (
+    <Stack
+      direction={{ xs: "column", md: hasSideImage ? (showLeftImage ? "row-reverse" : "row") : "column" }}
+      spacing={{ xs: 3, md: hasSideImage ? 5 : 0 }}
+      alignItems="center"
+    >
+      <Box sx={{ flex: hasSideImage ? "1 1 0%" : "1 1 auto", width: "100%" }}>
+        <HeroInner
+          textAlign={textAlign}
+          eyebrow={eyebrow}
+          heading={heading}
+          subheading={subheading}
+          ctaText={ctaText}
+          ctaLink={ctaLink}
+          secondaryCtaText={secondaryCtaText}
+          secondaryCtaLink={secondaryCtaLink}
+        />
+      </Box>
+
+      {hasSideImage && (
+        <Box
+          sx={{
+            flex: "0 1 420px",
+            width: "100%",
+            maxWidth: { xs: 420, md: 440 },
+            mx: { xs: "auto", md: 0 },
+          }}
+        >
+          <Box
+            component="img"
+            src={sideImage}
+            alt={toPlain(sideImageAlt) || ""}
+            loading="lazy"
+            sx={{
+              width: "100%",
+              display: "block",
+              aspectRatio: { xs: "4 / 3", md: "5 / 6" },
+              objectFit: "cover",
+              objectPosition: "center center",
+              borderRadius: 4,
+              border: "1px solid rgba(255,255,255,0.22)",
+              boxShadow: "0 24px 60px rgba(15,23,42,0.24)",
+            }}
+          />
+        </Box>
+      )}
+    </Stack>
+  );
 
   const innerMax =
     typeof contentMaxWidth === "number"
@@ -458,7 +523,7 @@ const Hero = ({
             inset: 0,
             backgroundImage: `url(${bgUrl})`,
             backgroundSize: "cover",
-            backgroundPosition,
+            backgroundPosition: resolvedBackgroundPosition,
             // REMOVED the hidden darkening; use explicit brightness instead
             ...(brightness && brightness !== 1
               ? { filter: `brightness(${brightness})` }
@@ -504,30 +569,12 @@ const Hero = ({
 
       {innerMax === false ? (
         <Box sx={{ position: "relative", zIndex: 2, width: "100%", px: gutterX != null ? `${gutterX}px` : 2 }}>
-          <HeroInner
-            textAlign={textAlign}
-            eyebrow={eyebrow}
-            heading={heading}
-            subheading={subheading}
-            ctaText={ctaText}
-            ctaLink={ctaLink}
-            secondaryCtaText={secondaryCtaText}
-            secondaryCtaLink={secondaryCtaLink}
-          />
+          {heroContent}
         </Box>
       ) : (
         <Container maxWidth={innerMax} sx={{ position: "relative", zIndex: 2 }}>
           <Box sx={{ px: gutterX != null ? `${gutterX}px` : 0 }}>
-            <HeroInner
-              textAlign={textAlign}
-              eyebrow={eyebrow}
-              heading={heading}
-              subheading={subheading}
-              ctaText={ctaText}
-              ctaLink={ctaLink}
-              secondaryCtaText={secondaryCtaText}
-              secondaryCtaLink={secondaryCtaLink}
-            />
+            {heroContent}
           </Box>
         </Container>
       )}
