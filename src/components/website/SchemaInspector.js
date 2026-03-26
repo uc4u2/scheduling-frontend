@@ -46,6 +46,17 @@ const stopBubble = (e) => {
   e.stopPropagation?.();
 };
 
+const normalizeStringArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n|,/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
 const clampNum = (n, f) => {
   if (typeof n !== "number" || Number.isNaN(n)) return n;
   if (typeof f?.min === "number") n = Math.max(f.min, n);
@@ -1100,7 +1111,7 @@ const FieldRich = ({ label, value, onCommit, inline, align }) => {
 
 const FieldArrayOfStrings = ({ label, value, onCommit }) => {
   const { t } = useTranslation();
-  const arr = Array.isArray(value) ? value : [];
+  const arr = normalizeStringArray(value);
   return (
     <Stack spacing={1}>
       <Typography variant="caption">{label}</Typography>
@@ -1204,6 +1215,17 @@ const FieldObjectArray = ({ label, value, onCommit, fields = [], companyId }) =>
                     value={subVal || ""}
                     onChange={(url) => updateRow(url)}
                     companyId={companyId}
+                  />
+                );
+              }
+
+              if (sub.type === "arrayOfStrings") {
+                return (
+                  <FieldArrayOfStrings
+                    key={rk}
+                    label={sub.label || rk}
+                    value={subVal}
+                    onCommit={(nv) => updateRow(nv)}
                   />
                 );
               }
