@@ -24,6 +24,16 @@ import {
 } from "@stripe/react-stripe-js";
 import { api } from "../../utils/api";
 
+const isPrerenderBrowser = () => {
+  if (typeof window === "undefined") return false;
+  const ua = String(window.navigator?.userAgent || "");
+  return (
+    Boolean(window.__PRERENDER_INJECTED) ||
+    /ReactSnap/i.test(ua) ||
+    /HeadlessChrome/i.test(ua)
+  );
+};
+
 /* ----------------------------- Tip Form ----------------------------- */
 const TipForm = ({ onRecorded }) => {
   const stripe = useStripe();
@@ -114,6 +124,7 @@ export default function PublicTip({ slugOverride }) {
   const navigate = useNavigate();
   const basePath = slugOverride ? "" : `/${slug}`;
   const rootPath = basePath || "/";
+  const prerenderMode = isPrerenderBrowser();
 
   const STRIPE_PK = process.env.REACT_APP_STRIPE_PUBLIC_KEY || "";
 
@@ -134,11 +145,13 @@ export default function PublicTip({ slugOverride }) {
 
   const stripePromise = useMemo(
     () =>
-      loadStripe(
-        STRIPE_PK,
-        stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
-      ),
-    [STRIPE_PK, stripeAccountId]
+      prerenderMode
+        ? null
+        : loadStripe(
+            STRIPE_PK,
+            stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
+          ),
+    [STRIPE_PK, stripeAccountId, prerenderMode]
   );
 
   const labelFor = (url) => {
@@ -255,7 +268,7 @@ export default function PublicTip({ slugOverride }) {
   };
 
   /* ----------------------------- Render ----------------------------- */
-  if (!STRIPE_PK) {
+  if (!STRIPE_PK && !prerenderMode) {
     return (
       <Container maxWidth="sm" sx={{ mt: 8 }}>
         <Alert severity="error">
@@ -375,9 +388,15 @@ export default function PublicTip({ slugOverride }) {
             )}
 
             {clientSecret && (
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <TipForm onRecorded={callRecord} />
-              </Elements>
+              prerenderMode ? (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Payment form is available in the live app.
+                </Alert>
+              ) : (
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <TipForm onRecorded={callRecord} />
+                </Elements>
+              )
             )}
           </>
         )}

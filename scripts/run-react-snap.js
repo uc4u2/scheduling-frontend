@@ -13,6 +13,35 @@ const reactSnapConfig = packageJson.reactSnap || {};
 const port = reactSnapConfig.port || 45678;
 const host = "127.0.0.1";
 const sourceDir = path.join(__dirname, "..", reactSnapConfig.source || "build");
+const noisyLogPatterns = [
+  "Failed to load Stripe.js",
+  "Failed to load resource: net::ERR_FAILED",
+  "chrome-error://chromewebdata",
+  "in browser redirect (chrome-error://chromewebdata)",
+];
+
+const installLogFilter = () => {
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  const shouldDrop = (chunk) => {
+    const text = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk || "");
+    return noisyLogPatterns.some((pattern) => text.includes(pattern));
+  };
+  process.stdout.write = (chunk, encoding, cb) => {
+    if (shouldDrop(chunk)) {
+      if (typeof cb === "function") cb();
+      return true;
+    }
+    return originalStdoutWrite(chunk, encoding, cb);
+  };
+  process.stderr.write = (chunk, encoding, cb) => {
+    if (shouldDrop(chunk)) {
+      if (typeof cb === "function") cb();
+      return true;
+    }
+    return originalStderrWrite(chunk, encoding, cb);
+  };
+};
 
 const app = express()
   .use(reactSnapConfig.publicPath || "/", serveStatic(sourceDir))
@@ -26,6 +55,7 @@ const startServer = (preferredPort) =>
   });
 
 const runSnap = async () => {
+  installLogFilter();
   let server;
   const isIgnorableSnapError = (err) => {
     const text = String(err && (err.stack || err.message || err));
