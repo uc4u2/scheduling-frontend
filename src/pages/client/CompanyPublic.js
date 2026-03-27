@@ -1791,6 +1791,13 @@ const siteTitle = useMemo(() => {
   const transparentOnTop = Boolean(headerConfig?.transparent_on_top);
   const scrollThreshold = clampNumber(headerConfig?.scroll_threshold ?? 64, 0, 400, 64);
   const scrolledPastHeader = scrollY > scrollThreshold;
+  const scrollCtaAfter = clampNumber(headerConfig?.scroll_cta_after ?? 120, 0, 600, 120);
+  const showScrollCta = Boolean(
+    headerConfig?.scroll_cta_enabled &&
+      headerConfig?.scroll_cta_label &&
+      headerConfig?.scroll_cta_href &&
+      scrollY > scrollCtaAfter
+  );
   const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
   const resolvedHeaderBg = useTransparentTopState
     ? (headerConfig?.transparent_bg || "rgba(255,255,255,0.18)")
@@ -1798,6 +1805,8 @@ const siteTitle = useMemo(() => {
   const resolvedHeaderTextColor = useTransparentTopState
     ? (headerConfig?.text_color || headerTextColor)
     : (headerConfig?.scrolled_text_color || headerConfig?.text_color || headerTextColor);
+  const stickyCtaHref = (headerConfig?.scroll_cta_href || "").trim();
+  const stickyCtaIsExternal = isExternalHref(stickyCtaHref);
   const navButtonStyling = useMemo(() => {
     const useReadableText = ["ghost", "underline", "overline", "doubleline", "sideline", "sideline-all", "link", "text"].includes(navStyle?.variant);
     const fallbackText = pickTextColorForBg(resolvedHeaderBg);
@@ -2108,7 +2117,7 @@ const siteTitle = useMemo(() => {
               display: "inline-flex",
               alignItems: "center",
               textDecoration: "none",
-              color: headerTextColor,
+              color: resolvedHeaderTextColor,
               pointerEvents: disableLink ? "none" : undefined,
             }}
           >
@@ -2129,7 +2138,7 @@ const siteTitle = useMemo(() => {
           <Typography
             variant="h6"
             sx={{
-              color: headerTextColor,
+              color: resolvedHeaderTextColor,
               fontWeight: navStyle.font_weight ?? 600,
               textTransform: navStyle.text_transform ?? "none",
               fontFamily: "var(--nav-brand-font-family, inherit)",
@@ -2145,7 +2154,7 @@ const siteTitle = useMemo(() => {
       headerLogoUrl,
       headerLogoWidth,
       headerLogoHeight,
-      headerTextColor,
+      resolvedHeaderTextColor,
       showBrandText,
       navStyle,
       navBrandName,
@@ -2189,7 +2198,7 @@ const siteTitle = useMemo(() => {
                 rel={isExternal ? "noreferrer noopener" : undefined}
                 size="small"
                 sx={{
-                  color: headerTextColor,
+                  color: resolvedHeaderTextColor,
                   border: "1px solid rgba(255,255,255,0.25)",
                 }}
               >
@@ -2203,7 +2212,7 @@ const siteTitle = useMemo(() => {
     [
       headerSocialLinks,
       headerSocialAlign,
-      headerTextColor,
+      resolvedHeaderTextColor,
       normalizeHref,
       navStyle?.item_spacing,
     ]
@@ -2221,7 +2230,7 @@ const siteTitle = useMemo(() => {
               variant="text"
               sx={{
                 justifyContent: "flex-start",
-                color: headerTextColor,
+                color: resolvedHeaderTextColor,
               }}
               onClick={() => {
                 item.onClick();
@@ -2244,11 +2253,11 @@ const siteTitle = useMemo(() => {
             variant="text"
             sx={{
               justifyContent: "flex-start",
-              color: headerTextColor,
+              color: resolvedHeaderTextColor,
             }}
             {...commonProps}
-            onClick={handleMobileClose}
-          >
+              onClick={handleMobileClose}
+            >
             {item.label}
           </Button>
         );
@@ -2700,6 +2709,27 @@ const siteTitle = useMemo(() => {
                     inline: true,
                     placement: headerSocialInlinePlacement || "after",
                   })}
+                {showScrollCta && stickyCtaHref && (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    component={stickyCtaIsExternal ? "a" : RouterLink}
+                    to={stickyCtaIsExternal ? undefined : stickyCtaHref}
+                    href={stickyCtaIsExternal ? stickyCtaHref : undefined}
+                    target={stickyCtaIsExternal ? "_blank" : undefined}
+                    rel={stickyCtaIsExternal ? "noreferrer noopener" : undefined}
+                    sx={{
+                      ml: 1,
+                      borderRadius: 999,
+                      backgroundColor: "var(--page-link-color, var(--sched-primary))",
+                      color: "#fff",
+                      whiteSpace: "nowrap",
+                      boxShadow: "0 10px 24px rgba(15,23,42,0.14)",
+                    }}
+                  >
+                    {headerConfig.scroll_cta_label}
+                  </Button>
+                )}
               </Stack>
             </Box>
             {headerNavFullWidthCenter && (
@@ -2746,6 +2776,25 @@ const siteTitle = useMemo(() => {
           </IconButton>
         </Box>
         {renderMobileNavButtons()}
+        {showScrollCta && stickyCtaHref && (
+          <Button
+            component={stickyCtaIsExternal ? "a" : RouterLink}
+            to={stickyCtaIsExternal ? undefined : stickyCtaHref}
+            href={stickyCtaIsExternal ? stickyCtaHref : undefined}
+            target={stickyCtaIsExternal ? "_blank" : undefined}
+            rel={stickyCtaIsExternal ? "noreferrer noopener" : undefined}
+            variant="contained"
+            fullWidth
+            sx={{
+              mt: 2,
+              borderRadius: 999,
+              backgroundColor: "var(--page-link-color, var(--sched-primary))",
+              color: "#fff",
+            }}
+          >
+            {headerConfig.scroll_cta_label}
+          </Button>
+        )}
         {headerSocialPosition !== "above" && headerSocialPosition !== "below" && headerSocialLinks.length > 0 && (
           <Box sx={{ mt: 2 }}>
             {renderHeaderSocialIcons({ inline: true, placement: "after" })}
