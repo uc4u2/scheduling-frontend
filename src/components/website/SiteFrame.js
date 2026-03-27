@@ -81,6 +81,14 @@ const edgePlacement = (value) => {
   return {};
 };
 
+const isTranslucentCssColor = (value) => {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return false;
+  if (raw === "transparent") return true;
+  if (raw.startsWith("rgba(") || raw.startsWith("hsla(")) return true;
+  return /^#([0-9a-f]{8})$/.test(raw) && raw.slice(-2) !== "ff";
+};
+
 export default function SiteFrame({
   slug,
   activeKey,
@@ -376,7 +384,9 @@ export default function SiteFrame({
   const compactScrolledHeader = showScrollCta && scrolledPastHeader;
   const activeHeaderPadding = compactScrolledHeader
     ? Math.max(8, Math.round(headerPadding * 0.45))
-    : headerPadding;
+    : overlayHero
+      ? Math.max(10, Math.round(headerPadding * 0.62))
+      : headerPadding;
   const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
   const resolvedHeaderBg = useTransparentTopState
     ? (headerConfig?.transparent_bg || "rgba(255,255,255,0.18)")
@@ -384,6 +394,7 @@ export default function SiteFrame({
   const resolvedHeaderTextColor = useTransparentTopState
     ? (headerConfig?.text_color || headerTextColor)
     : (headerConfig?.scrolled_text_color || headerConfig?.text_color || headerTextColor);
+  const useGlassHeader = useTransparentTopState || isTranslucentCssColor(resolvedHeaderBg);
   const headerApproxHeight = clampNumber(
     (activeHeaderPadding * 2) + (isCenterLayout ? 112 : 76),
     72,
@@ -805,7 +816,7 @@ export default function SiteFrame({
         top: 0,
         zIndex: 30,
         mb: headerOverlap ? `-${headerOverlap}px` : 0,
-        borderBottom: useTransparentTopState
+        borderBottom: useGlassHeader
           ? "1px solid rgba(255,255,255,0.16)"
           : (theme) => `1px solid ${alpha(theme.palette.divider, 0.4)}`,
         background: resolvedHeaderBg,
@@ -815,7 +826,7 @@ export default function SiteFrame({
           scrolledPastHeader && headerConfig?.scrolled_shadow !== false
             ? "0 18px 48px rgba(15,23,42,0.14)"
             : "none",
-        backdropFilter: useTransparentTopState ? "blur(10px)" : "none",
+        backdropFilter: useGlassHeader ? "blur(12px)" : "none",
         transition:
           "background-color 180ms ease, background 180ms ease, color 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
       }}
@@ -894,13 +905,13 @@ export default function SiteFrame({
                   size="small"
                   disableElevation
                   sx={{
-                    ...navButtonStyling(false),
+                    ...navButtonStyling(true),
                     ml: 1,
                     fontWeight: 700,
                     boxShadow: "0 8px 18px rgba(15,23,42,0.12)",
                     backdropFilter: "blur(8px)",
                     "&:hover": {
-                      ...(navButtonStyling(false)["&:hover"] || {}),
+                      ...(navButtonStyling(true)["&:hover"] || {}),
                       boxShadow: "0 10px 22px rgba(15,23,42,0.16)",
                     },
                   }}

@@ -386,9 +386,14 @@ const parseCssColor = (css, fallbackOpacity = 1) => {
     } else if (raw.length === 8) {
       alpha = parseInt(raw.slice(6, 8), 16) / 255;
     }
-    return { hex: normalizeHexColor(str), opacity: clamp01(alpha) };
+  return { hex: normalizeHexColor(str), opacity: clamp01(alpha) };
   }
   return base;
+};
+
+const isTranslucentCssColor = (css) => {
+  if (!css || typeof css !== "string") return false;
+  return parseCssColor(css, 1).opacity < 1;
 };
 const cssColorWithOpacity = (color, overrideOpacity) => {
   const str = typeof color === 'string' ? color.trim() : '';
@@ -2106,8 +2111,11 @@ const siteTitle = useMemo(() => {
   const headerApproxHeight = clampNumber((headerPadding * 2) + 76, 72, 240, 104);
   const activeHeaderPadding = compactScrolledHeader
     ? Math.max(8, Math.round(headerPadding * 0.45))
-    : headerPadding;
+    : overlayHero
+      ? Math.max(10, Math.round(headerPadding * 0.62))
+      : headerPadding;
   const adjustedHeaderApproxHeight = clampNumber((activeHeaderPadding * 2) + 76, 72, 240, 104);
+  const useGlassHeader = useTransparentTopState || isTranslucentCssColor(resolvedHeaderBg);
   const headerOverlap = overlayHero ? adjustedHeaderApproxHeight : 0;
 
   const renderHeaderBrandContent = useCallback(
@@ -2576,14 +2584,14 @@ const siteTitle = useMemo(() => {
           top: isManagerForCompany ? 64 : 0,
           zIndex: 30,
           mb: headerOverlap ? `-${headerOverlap}px` : 0,
-          borderBottom: useTransparentTopState
+          borderBottom: useGlassHeader
             ? "1px solid rgba(255,255,255,0.16)"
             : "1px solid rgba(0,0,0,0.08)",
           boxShadow:
             scrolledPastHeader && headerConfig?.scrolled_shadow !== false
               ? "0 18px 48px rgba(15,23,42,0.14)"
               : "none",
-          backdropFilter: useTransparentTopState ? "blur(10px)" : "none",
+          backdropFilter: useGlassHeader ? "blur(12px)" : "none",
           transition:
             "background-color 180ms ease, background 180ms ease, color 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
         }}
@@ -2726,14 +2734,14 @@ const siteTitle = useMemo(() => {
                     target={stickyCtaIsExternal ? "_blank" : undefined}
                     rel={stickyCtaIsExternal ? "noreferrer noopener" : undefined}
                     sx={{
-                      ...navButtonStyling(false),
+                      ...navButtonStyling(true),
                       ml: 1,
                       whiteSpace: "nowrap",
                       fontWeight: 700,
                       boxShadow: "0 8px 18px rgba(15,23,42,0.12)",
                       backdropFilter: "blur(8px)",
                       "&:hover": {
-                        ...(navButtonStyling(false)["&:hover"] || {}),
+                        ...(navButtonStyling(true)["&:hover"] || {}),
                         boxShadow: "0 10px 22px rgba(15,23,42,0.16)",
                       },
                     }}
