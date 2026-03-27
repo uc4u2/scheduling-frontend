@@ -2049,9 +2049,9 @@ const siteTitle = useMemo(() => {
   const headerLogoHeight = headerConfig?.logo_height
     ? clampNumber(headerConfig.logo_height, 24, 200, null)
     : null;
-  const compactHeaderLogoWidth = clampNumber(Math.round(headerLogoWidth * 0.62), 40, 140, 84);
+  const compactHeaderLogoWidth = clampNumber(Math.round(headerLogoWidth * 0.52), 36, 120, 72);
   const compactHeaderLogoHeight = headerLogoHeight
-    ? clampNumber(Math.round(headerLogoHeight * 0.62), 24, 96, null)
+    ? clampNumber(Math.round(headerLogoHeight * 0.52), 20, 72, null)
     : null;
   const headerLayoutKey = (headerConfig?.layout || "simple").toLowerCase();
   const headerIsCenterLayout = headerLayoutKey === "center";
@@ -2114,7 +2114,7 @@ const siteTitle = useMemo(() => {
     : null;
   const headerApproxHeight = clampNumber((headerPadding * 2) + 76, 72, 240, 104);
   const activeHeaderPadding = compactScrolledHeader
-    ? Math.max(8, Math.round(headerPadding * 0.45))
+    ? Math.max(5, Math.round(headerPadding * 0.32))
     : overlayHero
       ? Math.max(10, Math.round(headerPadding * 0.62))
       : headerPadding;
@@ -2749,8 +2749,8 @@ const siteTitle = useMemo(() => {
                     sx={{
                       ml: 1,
                       px: 2.5,
-                      py: 1,
-                      minHeight: 40,
+                      py: 0.75,
+                      minHeight: 36,
                       borderRadius: 0.25,
                       whiteSpace: "nowrap",
                       fontWeight: 700,
