@@ -89,6 +89,7 @@ const ProductListBase = ({
   }, [slug, searchParams, isCustomDomain]);
 
   const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [siteLoading, setSiteLoading] = useState(false);
   const [sitePayload, setSitePayload] = useState(null);
@@ -178,6 +179,27 @@ const ProductListBase = ({
   }, [slug, searchText, categoryFilter, sortKey, inStockOnly]);
 
   useEffect(() => {
+    if (!slug) return;
+    let alive = true;
+    api
+      .get(`/public/${slug}/products`, {
+        noCompanyHeader: true,
+        params: { stock: "all", sort: "name-asc" },
+      })
+      .then(({ data }) => {
+        if (!alive) return;
+        setAllProducts(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setAllProducts([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [slug]);
+
+  useEffect(() => {
     if (!slug || disableShell) return;
     let mounted = true;
     setSiteLoading(true);
@@ -201,11 +223,12 @@ const ProductListBase = ({
   }, [slug, disableShell]);
 
   const categoryOptions = useMemo(() => {
-    const raw = (Array.isArray(products) ? products : [])
+    const source = Array.isArray(allProducts) && allProducts.length ? allProducts : products;
+    const raw = (Array.isArray(source) ? source : [])
       .map((item) => String(item?.category || "").trim())
       .filter(Boolean);
     return Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b));
-  }, [products]);
+  }, [allProducts, products]);
 
   const visibleProducts = useMemo(() => {
     return Array.isArray(products) ? products : [];
