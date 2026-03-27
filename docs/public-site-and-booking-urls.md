@@ -13,12 +13,12 @@ Manager Portal → Website & Pages → Website Manager → Public URL
 
 ## Common public URLs
 
-- Public site: `https://www.schedulaa.com/{slug}`
-- Services: `https://www.schedulaa.com/{slug}/services`
-- Products: `https://www.schedulaa.com/{slug}/products`
-- Reviews: `https://www.schedulaa.com/{slug}/reviews`
-- Booking: `https://www.schedulaa.com/{slug}/book`
-- Basket / Checkout: `https://www.schedulaa.com/{slug}/basket`
+- Public site: `https://app.schedulaa.com/{slug}`
+- Services: `https://app.schedulaa.com/{slug}?page=services-classic`
+- Products: `https://app.schedulaa.com/{slug}?page=products`
+- Reviews: `https://app.schedulaa.com/{slug}?page=reviews`
+- Booking: `https://app.schedulaa.com/{slug}?page=services-classic`
+- Basket / Checkout: `https://app.schedulaa.com/{slug}?page=basket`
 
 If a user asks “Where do clients book?” send them to the Booking URL.
 

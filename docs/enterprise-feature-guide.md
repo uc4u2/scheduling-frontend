@@ -215,9 +215,9 @@ All tabs are in the Employee Portal navigation:
 
 Replace `{slug}` with the company slug:
 
-- https://www.schedulaa.com/{slug}
-- https://www.schedulaa.com/{slug}/services
-- https://www.schedulaa.com/{slug}/products
-- https://www.schedulaa.com/{slug}/reviews
-- https://www.schedulaa.com/{slug}/book
-- https://www.schedulaa.com/{slug}/basket
+- https://app.schedulaa.com/{slug}
+- https://app.schedulaa.com/{slug}?page=services-classic
+- https://app.schedulaa.com/{slug}?page=products
+- https://app.schedulaa.com/{slug}?page=reviews
+- https://app.schedulaa.com/{slug}?page=services-classic
+- https://app.schedulaa.com/{slug}?page=basket

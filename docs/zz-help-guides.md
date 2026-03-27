@@ -483,7 +483,7 @@ W-2 reporting
 ## GoDaddy Domain Forwarding Guide (public help page)
 Locate your Schedulaa slug
 - Open Manager -> Website -> Public Site. Copy the Company slug shown there.
-- Your live URL always follows https://www.schedulaa.com/{slug}.
+- Your live URL always follows https://app.schedulaa.com/{slug}.
 
 Open GoDaddy domain forwarding
 - In GoDaddy go to Domains -> Manage DNS -> Forwarding -> Add Domain Forwarding.
@@ -501,4 +501,4 @@ Save and test
 FAQ
 - Why can't I point DNS records directly to Schedulaa? Schedulaa routes public sites strictly by slug and does not currently issue SSL certificates per external domain. Forwarding keeps traffic secure on Schedulaa's certificates while showing your domain.
 - Do I need TXT, A, or CNAME records? No. Forwarding with masking is the supported approach today. DNS changes would fail because Schedulaa does not terminate SSL for custom hosts yet.
-- Can I use registrars other than GoDaddy? Yes - choose the equivalent forwarding + masking option your registrar provides and point it to https://www.schedulaa.com/{slug}.
+- Can I use registrars other than GoDaddy? Yes - choose the equivalent forwarding + masking option your registrar provides and point it to https://app.schedulaa.com/{slug}.

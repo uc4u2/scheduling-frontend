@@ -24,7 +24,7 @@ const STEPS = [
   {
     title: "Locate your Schedulaa slug",
     description:
-      "Open Manager → Website → Public Site. Copy the Company slug shown there. Your live URL always follows https://www.schedulaa.com/{slug}.",
+      "Open Manager → Website → Public Site. Copy the Company slug shown there. Your live URL always follows https://app.schedulaa.com/{slug}.",
   },
   {
     title: "Open GoDaddy domain forwarding",
@@ -57,7 +57,7 @@ const DOMAIN_FAQ = [
   {
     question: "Can I use registrars other than GoDaddy?",
     answer:
-      "Yes—choose the equivalent forwarding + masking option your registrar provides and point it to https://www.schedulaa.com/{slug}.",
+      "Yes—choose the equivalent forwarding + masking option your registrar provides and point it to https://app.schedulaa.com/{slug}.",
   },
 ];
 
@@ -109,7 +109,7 @@ const DomainHelpPage = () => {
     og: {
       title: "GoDaddy Domain Forwarding Guide | Schedulaa",
       description:
-        "Schedulaa public sites are routed by slug. Forward your GoDaddy domain with masking to https://www.schedulaa.com/{slug} for instant setup.",
+        "Schedulaa public sites are routed by slug. Forward your GoDaddy domain with masking to https://app.schedulaa.com/{slug} for instant setup.",
       image: "https://www.schedulaa.com/og/domains-help.jpg",
     },
   };
@@ -122,7 +122,7 @@ const DomainHelpPage = () => {
       description: meta.description,
       totalTime: "PT10M",
       supply: [
-        { "@type": "HowToSupply", name: "Schedulaa company slug (https://www.schedulaa.com/{slug})" },
+        { "@type": "HowToSupply", name: "Schedulaa company slug (https://app.schedulaa.com/{slug})" },
         { "@type": "HowToSupply", name: "GoDaddy domain" },
       ],
       step: STEPS.map((step, index) => ({
@@ -152,7 +152,7 @@ const DomainHelpPage = () => {
             Connect Your GoDaddy Domain to Schedulaa
           </Typography>
           <Typography variant="h6" color="text.secondary" maxWidth={720}>
-            Schedulaa hosts every public site at https://schedulaa.com/&lbrace;slug&rbrace;. Use GoDaddy forwarding with masking to point any domain to your
+            Schedulaa hosts every public site at https://app.schedulaa.com/&lbrace;slug&rbrace;. Use GoDaddy forwarding with masking to point any domain to your
             business page without DNS records.
           </Typography>
           <Button
@@ -191,7 +191,7 @@ const DomainHelpPage = () => {
                     fontFamily: "monospace",
                   }}
                 >
-                  https://www.schedulaa.com/&lt;your-slug&gt;
+                  https://app.schedulaa.com/&lt;your-slug&gt;
                 </Box>
               </Typography>
             </Card>
