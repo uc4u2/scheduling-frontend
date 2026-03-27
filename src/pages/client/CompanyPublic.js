@@ -2104,7 +2104,11 @@ const siteTitle = useMemo(() => {
       )
     : null;
   const headerApproxHeight = clampNumber((headerPadding * 2) + 76, 72, 240, 104);
-  const headerOverlap = overlayHero ? headerApproxHeight : 0;
+  const activeHeaderPadding = compactScrolledHeader
+    ? Math.max(8, Math.round(headerPadding * 0.45))
+    : headerPadding;
+  const adjustedHeaderApproxHeight = clampNumber((activeHeaderPadding * 2) + 76, 72, 240, 104);
+  const headerOverlap = overlayHero ? adjustedHeaderApproxHeight : 0;
 
   const renderHeaderBrandContent = useCallback(
     ({ disableLink = false } = {}) => (
@@ -2564,7 +2568,7 @@ const siteTitle = useMemo(() => {
       <Box
         className="site-nav"
         sx={{
-          py: `${headerPadding}px`,
+          py: `${activeHeaderPadding}px`,
           background: resolvedHeaderBg,
           backgroundColor: resolvedHeaderBg,
           color: resolvedHeaderTextColor,
@@ -2714,7 +2718,7 @@ const siteTitle = useMemo(() => {
                 {showScrollCta && stickyCtaHref && (
                   <Button
                     size="small"
-                    variant="contained"
+                    variant="outlined"
                     component={stickyCtaIsExternal ? "a" : RouterLink}
                     to={stickyCtaIsExternal ? undefined : stickyCtaHref}
                     href={stickyCtaIsExternal ? stickyCtaHref : undefined}
@@ -2723,10 +2727,21 @@ const siteTitle = useMemo(() => {
                     sx={{
                       ml: 1,
                       borderRadius: 999,
-                      backgroundColor: "var(--page-link-color, var(--sched-primary))",
-                      color: "#fff",
+                      px: 1.75,
+                      py: 0.5,
+                      textTransform: "none",
+                      borderColor: "currentColor",
+                      backgroundColor: "transparent",
+                      color: resolvedHeaderTextColor,
                       whiteSpace: "nowrap",
-                      boxShadow: "0 10px 24px rgba(15,23,42,0.14)",
+                      boxShadow: "none",
+                      "&:hover": {
+                        borderColor: "currentColor",
+                        backgroundColor:
+                          resolvedHeaderTextColor === "#fff"
+                            ? "rgba(255,255,255,0.08)"
+                            : "rgba(15,23,42,0.06)",
+                      },
                     }}
                   >
                     {headerConfig.scroll_cta_label}
