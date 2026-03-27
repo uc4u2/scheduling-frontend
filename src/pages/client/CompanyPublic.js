@@ -2718,29 +2718,23 @@ const siteTitle = useMemo(() => {
                 {showScrollCta && stickyCtaHref && (
                   <Button
                     size="small"
-                    variant="outlined"
+                    variant="text"
+                    disableElevation
                     component={stickyCtaIsExternal ? "a" : RouterLink}
                     to={stickyCtaIsExternal ? undefined : stickyCtaHref}
                     href={stickyCtaIsExternal ? stickyCtaHref : undefined}
                     target={stickyCtaIsExternal ? "_blank" : undefined}
                     rel={stickyCtaIsExternal ? "noreferrer noopener" : undefined}
                     sx={{
+                      ...navButtonStyling(false),
                       ml: 1,
-                      borderRadius: 999,
-                      px: 1.75,
-                      py: 0.5,
-                      textTransform: "none",
-                      borderColor: "currentColor",
-                      backgroundColor: "transparent",
-                      color: resolvedHeaderTextColor,
                       whiteSpace: "nowrap",
-                      boxShadow: "none",
+                      fontWeight: 700,
+                      boxShadow: "0 8px 18px rgba(15,23,42,0.12)",
+                      backdropFilter: "blur(8px)",
                       "&:hover": {
-                        borderColor: "currentColor",
-                        backgroundColor:
-                          resolvedHeaderTextColor === "#fff"
-                            ? "rgba(255,255,255,0.08)"
-                            : "rgba(15,23,42,0.06)",
+                        ...(navButtonStyling(false)["&:hover"] || {}),
+                        boxShadow: "0 10px 22px rgba(15,23,42,0.16)",
                       },
                     }}
                   >

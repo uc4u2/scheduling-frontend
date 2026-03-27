@@ -374,6 +374,9 @@ export default function SiteFrame({
       scrollY > scrollCtaAfter
   );
   const compactScrolledHeader = showScrollCta && scrolledPastHeader;
+  const activeHeaderPadding = compactScrolledHeader
+    ? Math.max(8, Math.round(headerPadding * 0.45))
+    : headerPadding;
   const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
   const resolvedHeaderBg = useTransparentTopState
     ? (headerConfig?.transparent_bg || "rgba(255,255,255,0.18)")
@@ -382,7 +385,7 @@ export default function SiteFrame({
     ? (headerConfig?.text_color || headerTextColor)
     : (headerConfig?.scrolled_text_color || headerConfig?.text_color || headerTextColor);
   const headerApproxHeight = clampNumber(
-    (headerPadding * 2) + (isCenterLayout ? 112 : 76),
+    (activeHeaderPadding * 2) + (isCenterLayout ? 112 : 76),
     72,
     240,
     104
@@ -818,7 +821,7 @@ export default function SiteFrame({
       }}
     >
       <Container
-        sx={{ py: `${headerPadding}px` }}
+        sx={{ py: `${activeHeaderPadding}px` }}
         maxWidth={headerFullWidth ? false : "lg"}
         disableGutters={headerFullWidth}
       >
@@ -887,19 +890,18 @@ export default function SiteFrame({
               {showScrollCta && stickyCtaLinkProps && (
                 <Button
                   {...stickyCtaLinkProps}
-                  variant="contained"
-                  size="medium"
+                  variant="text"
+                  size="small"
+                  disableElevation
                   sx={{
+                    ...navButtonStyling(false),
                     ml: 1,
-                    borderRadius: 999,
-                    px: 2.5,
                     fontWeight: 700,
-                    backgroundColor: "var(--page-link-color, var(--sched-primary))",
-                    color: "#fff",
-                    boxShadow: "0 12px 26px rgba(37,99,235,0.26)",
+                    boxShadow: "0 8px 18px rgba(15,23,42,0.12)",
+                    backdropFilter: "blur(8px)",
                     "&:hover": {
-                      backgroundColor: "var(--page-link-color, var(--sched-primary))",
-                      filter: "brightness(0.95)",
+                      ...(navButtonStyling(false)["&:hover"] || {}),
+                      boxShadow: "0 10px 22px rgba(15,23,42,0.16)",
                     },
                   }}
                 >
