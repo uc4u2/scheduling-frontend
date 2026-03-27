@@ -1417,7 +1417,8 @@ const CollectionShowcase = ({
   showArrows = true,
   showDots = false,
   autoplay = true,
-  intervalMs = 4200
+  intervalMs = 4200,
+  imageMaxWidth = 260
 }) => {
   const entries = toArray(items)
     .map((item) => ({
@@ -1453,6 +1454,7 @@ const CollectionShowcase = ({
   const smUp = useMediaQuery(theme.breakpoints.up("sm"));
 
   const perDesktop = clamp(Number(perView?.desktop) || 3, 1, 4);
+  const imageWidth = clamp(Number(imageMaxWidth) || 260, 180, 420);
   const perTablet = clamp(Number(perView?.tablet) || 2, 1, perDesktop);
   const perMobile = clamp(Number(perView?.mobile) || 1, 1, perTablet);
   const cardsPerView = mdUp ? perDesktop : smUp ? perTablet : perMobile;
@@ -1574,7 +1576,7 @@ const CollectionShowcase = ({
                               loading="lazy"
                               sx={{
                                 width: "100%",
-                                maxWidth: 260,
+                                maxWidth: imageWidth,
                                 aspectRatio: "1 / 1",
                                 objectFit: "cover",
                                 borderRadius: 3,

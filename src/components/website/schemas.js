@@ -191,6 +191,7 @@ export const SCHEMA_REGISTRY = {
           { name: "mobile", type: "number", label: "Mobile" },
         ],
       },
+      { name: "imageMaxWidth", type: "number", label: "Image width (px)", min: 180, max: 420, step: 4, default: 260 },
       { name: "showArrows", type: "boolean", label: "Show arrows", default: true },
       { name: "showDots", type: "boolean", label: "Show dots", default: false },
       { name: "autoplay", type: "boolean", label: "Autoplay", default: true },
