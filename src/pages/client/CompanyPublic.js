@@ -1797,6 +1797,7 @@ const siteTitle = useMemo(() => {
       headerConfig?.scroll_cta_href &&
       scrolledPastHeader
   );
+  const compactScrolledHeader = showScrollCta && scrolledPastHeader;
   const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
   const resolvedHeaderBg = useTransparentTopState
     ? (headerConfig?.transparent_bg || "rgba(255,255,255,0.18)")
@@ -2587,12 +2588,14 @@ const siteTitle = useMemo(() => {
           maxWidth={headerFullWidth ? false : "lg"}
           disableGutters={headerFullWidth}
         >
-          {headerSocialPosition === "above" && renderHeaderSocialIcons()}
+          {headerSocialPosition === "above" && !compactScrolledHeader && renderHeaderSocialIcons()}
         <Box
           sx={{
             display: "grid",
             gap: { xs: 1.5, md: 3 },
-            gridTemplateColumns: headerGridColumns,
+            gridTemplateColumns: compactScrolledHeader
+              ? { xs: "1fr", md: "auto auto" }
+              : headerGridColumns,
             alignItems: "center",
             width: "100%",
           }}
@@ -2623,7 +2626,7 @@ const siteTitle = useMemo(() => {
             direction="row"
             spacing={1.25}
             alignItems="center"
-            justifyContent={{ xs: "space-between", md: headerLogoAlign }}
+              justifyContent={{ xs: "space-between", md: headerLogoAlign }}
             sx={{
               display: { xs: "none", md: "flex" },
               width: "100%",
@@ -2646,11 +2649,11 @@ const siteTitle = useMemo(() => {
                 <MenuIcon />
               </IconButton>
             </Stack>
-            <Box
-              sx={{
-                flex: 1,
+          <Box
+            sx={{
+                flex: compactScrolledHeader ? 0 : 1,
                 width: "100%",
-                display: "flex",
+                display: compactScrolledHeader ? { xs: "none", md: "flex" } : "flex",
                 justifySelf: { xs: "stretch", md: navSelf },
                 gridColumn: headerNavGridColumn,
                 ...navEdgePlacement,
@@ -2668,9 +2671,9 @@ const siteTitle = useMemo(() => {
                   display: { xs: "none", md: "flex" },
                 }}
               >
-                {headerSocialInline && headerSocialInlinePlacement === "before" &&
+                {!compactScrolledHeader && headerSocialInline && headerSocialInlinePlacement === "before" &&
                   renderHeaderSocialIcons({ inline: true, placement: "before" })}
-                {navItemsToRender.map((item) => {
+                {!compactScrolledHeader && navItemsToRender.map((item) => {
                   if (item.onClick) {
                     return (
                       <Button
@@ -2703,7 +2706,7 @@ const siteTitle = useMemo(() => {
                     </Button>
                   );
                 })}
-                {headerSocialInline && headerSocialInlinePlacement !== "before" &&
+                {!compactScrolledHeader && headerSocialInline && headerSocialInlinePlacement !== "before" &&
                   renderHeaderSocialIcons({
                     inline: true,
                     placement: headerSocialInlinePlacement || "after",
@@ -2748,7 +2751,7 @@ const siteTitle = useMemo(() => {
               </Stack>
             )}
           </Box>
-          {headerSocialPosition === "below" && renderHeaderSocialIcons()}
+          {headerSocialPosition === "below" && !compactScrolledHeader && renderHeaderSocialIcons()}
         </Container>
       </Box>
       <Drawer

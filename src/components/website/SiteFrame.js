@@ -373,6 +373,7 @@ export default function SiteFrame({
       headerConfig?.scroll_cta_href &&
       scrollY > scrollCtaAfter
   );
+  const compactScrolledHeader = showScrollCta && scrolledPastHeader;
   const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
   const resolvedHeaderBg = useTransparentTopState
     ? (headerConfig?.transparent_bg || "rgba(255,255,255,0.18)")
@@ -821,12 +822,14 @@ export default function SiteFrame({
         maxWidth={headerFullWidth ? false : "lg"}
         disableGutters={headerFullWidth}
       >
-        {socialPosition === "above" && renderSocialIcons()}
+        {socialPosition === "above" && !compactScrolledHeader && renderSocialIcons()}
         <Box
           sx={{
             display: "grid",
             gap: { xs: 1.5, md: 3 },
-            gridTemplateColumns: headerGridColumns,
+            gridTemplateColumns: compactScrolledHeader
+              ? { xs: "1fr", md: "auto auto" }
+              : headerGridColumns,
             alignItems: "center",
           }}
         >
@@ -858,9 +861,9 @@ export default function SiteFrame({
           </Stack>
           <Box
             sx={{
-              flex: 1,
+              flex: compactScrolledHeader ? 0 : 1,
               width: "100%",
-              display: "flex",
+              display: compactScrolledHeader ? { xs: "none", md: "flex" } : "flex",
               justifySelf: { xs: "stretch", md: navSelf },
               gridColumn: navGridColumn,
               ...navEdgePlacement,
@@ -873,10 +876,10 @@ export default function SiteFrame({
               justifyContent={navAlign}
               sx={{ flex: 1, display: { xs: "none", md: "flex" } }}
             >
-              {socialInline && socialInlinePlacement === "before" &&
+              {!compactScrolledHeader && socialInline && socialInlinePlacement === "before" &&
                 renderSocialIcons({ inline: true, placement: "before" })}
-              {navButtons}
-              {socialInline && socialInlinePlacement !== "before" &&
+              {!compactScrolledHeader && navButtons}
+              {!compactScrolledHeader && socialInline && socialInlinePlacement !== "before" &&
                 renderSocialIcons({
                   inline: true,
                   placement: socialInlinePlacement || "after",
@@ -922,7 +925,7 @@ export default function SiteFrame({
             </Stack>
           )}
         </Box>
-        {socialPosition === "below" && renderSocialIcons()}
+        {socialPosition === "below" && !compactScrolledHeader && renderSocialIcons()}
       </Container>
     </Box>
   ) : (
