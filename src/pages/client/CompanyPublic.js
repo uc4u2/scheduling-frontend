@@ -2049,6 +2049,10 @@ const siteTitle = useMemo(() => {
   const headerLogoHeight = headerConfig?.logo_height
     ? clampNumber(headerConfig.logo_height, 24, 200, null)
     : null;
+  const compactHeaderLogoWidth = clampNumber(Math.round(headerLogoWidth * 0.62), 40, 140, 84);
+  const compactHeaderLogoHeight = headerLogoHeight
+    ? clampNumber(Math.round(headerLogoHeight * 0.62), 24, 96, null)
+    : null;
   const headerLayoutKey = (headerConfig?.layout || "simple").toLowerCase();
   const headerIsCenterLayout = headerLayoutKey === "center";
   const headerIsSplitLayout = headerLayoutKey === "split";
@@ -2138,8 +2142,15 @@ const siteTitle = useMemo(() => {
               src={headerLogoUrl}
               alt={navBrandName}
               sx={{
-                width: `${headerLogoWidth}px`,
-                height: headerLogoHeight ? `${headerLogoHeight}px` : "auto",
+                width: `${compactScrolledHeader ? compactHeaderLogoWidth : headerLogoWidth}px`,
+                height:
+                  compactScrolledHeader
+                    ? compactHeaderLogoHeight
+                      ? `${compactHeaderLogoHeight}px`
+                      : "auto"
+                    : headerLogoHeight
+                      ? `${headerLogoHeight}px`
+                      : "auto",
                 maxWidth: "100%",
                 objectFit: "contain",
               }}
@@ -2606,7 +2617,7 @@ const siteTitle = useMemo(() => {
             display: "grid",
             gap: { xs: 1.5, md: 3 },
             gridTemplateColumns: compactScrolledHeader
-              ? { xs: "1fr", md: "auto auto" }
+              ? { xs: "1fr", md: "auto 1fr auto" }
               : headerGridColumns,
             alignItems: "center",
             width: "100%",
@@ -2643,11 +2654,13 @@ const siteTitle = useMemo(() => {
               display: { xs: "none", md: "flex" },
               width: "100%",
               maxWidth:
-                headerConfig.layout === "split" && !headerFullWidth
+                compactScrolledHeader
+                  ? { md: compactHeaderLogoWidth + 24 }
+                  : headerConfig.layout === "split" && !headerFullWidth
                   ? { md: 420 }
                   : "100%",
               justifySelf: { xs: "stretch", md: logoSelf },
-              gridColumn: headerBrandGridColumn,
+              gridColumn: compactScrolledHeader ? { xs: "1 / -1", md: "1 / 2" } : headerBrandGridColumn,
               ...logoEdgePlacement,
             }}
           >
@@ -2664,10 +2677,10 @@ const siteTitle = useMemo(() => {
           <Box
             sx={{
                 flex: compactScrolledHeader ? 0 : 1,
-                width: "100%",
+                width: compactScrolledHeader ? "auto" : "100%",
                 display: compactScrolledHeader ? { xs: "none", md: "flex" } : "flex",
-                justifySelf: { xs: "stretch", md: navSelf },
-                gridColumn: headerNavGridColumn,
+                justifySelf: compactScrolledHeader ? { xs: "stretch", md: "end" } : { xs: "stretch", md: navSelf },
+                gridColumn: compactScrolledHeader ? { xs: "1 / -1", md: "3 / 4" } : headerNavGridColumn,
                 ...navEdgePlacement,
               }}
             >
@@ -2726,7 +2739,7 @@ const siteTitle = useMemo(() => {
                 {showScrollCta && stickyCtaHref && (
                   <Button
                     size="small"
-                    variant="text"
+                    variant="contained"
                     disableElevation
                     component={stickyCtaIsExternal ? "a" : RouterLink}
                     to={stickyCtaIsExternal ? undefined : stickyCtaHref}
@@ -2734,15 +2747,22 @@ const siteTitle = useMemo(() => {
                     target={stickyCtaIsExternal ? "_blank" : undefined}
                     rel={stickyCtaIsExternal ? "noreferrer noopener" : undefined}
                     sx={{
-                      ...navButtonStyling(true),
                       ml: 1,
+                      px: 2.5,
+                      py: 1,
+                      minHeight: 40,
+                      borderRadius: 1.5,
                       whiteSpace: "nowrap",
                       fontWeight: 700,
-                      boxShadow: "0 8px 18px rgba(15,23,42,0.12)",
-                      backdropFilter: "blur(8px)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      backgroundColor: "var(--page-link-color, var(--sched-primary))",
+                      color: "#fff",
+                      boxShadow: "0 10px 24px rgba(15,23,42,0.16)",
                       "&:hover": {
-                        ...(navButtonStyling(true)["&:hover"] || {}),
-                        boxShadow: "0 10px 22px rgba(15,23,42,0.16)",
+                        backgroundColor: "var(--page-link-color, var(--sched-primary))",
+                        filter: "brightness(0.96)",
+                        boxShadow: "0 12px 28px rgba(15,23,42,0.20)",
                       },
                     }}
                   >

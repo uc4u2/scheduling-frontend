@@ -348,6 +348,10 @@ export default function SiteFrame({
   const logoHeight = headerConfig?.logo_height
     ? clampNumber(headerConfig.logo_height, 24, 200, null)
     : null;
+  const compactLogoWidth = clampNumber(Math.round(logoWidth * 0.62), 40, 140, 84);
+  const compactLogoHeight = logoHeight
+    ? clampNumber(Math.round(logoHeight * 0.62), 24, 96, null)
+    : null;
   const logoAlign = alignToFlex(headerConfig?.logo_alignment, "flex-start");
   const layoutKey = (headerConfig?.layout || "simple").toLowerCase();
   const isCenterLayout = layoutKey === "center";
@@ -462,8 +466,15 @@ export default function SiteFrame({
             src={headerLogo}
             alt={brandName}
             sx={{
-              width: `${logoWidth}px`,
-              height: logoHeight ? `${logoHeight}px` : "auto",
+              width: `${compactScrolledHeader ? compactLogoWidth : logoWidth}px`,
+              height:
+                compactScrolledHeader
+                  ? compactLogoHeight
+                    ? `${compactLogoHeight}px`
+                    : "auto"
+                  : logoHeight
+                    ? `${logoHeight}px`
+                    : "auto",
               objectFit: "contain",
             }}
           />
@@ -842,7 +853,7 @@ export default function SiteFrame({
             display: "grid",
             gap: { xs: 1.5, md: 3 },
             gridTemplateColumns: compactScrolledHeader
-              ? { xs: "1fr", md: "auto auto" }
+              ? { xs: "1fr", md: "auto 1fr auto" }
               : headerGridColumns,
             alignItems: "center",
           }}
@@ -855,11 +866,13 @@ export default function SiteFrame({
             sx={{
               width: "100%",
               maxWidth:
-                headerConfig.layout === "split" && !headerFullWidth
+                compactScrolledHeader
+                  ? { md: compactLogoWidth + 24 }
+                  : headerConfig.layout === "split" && !headerFullWidth
                   ? { md: 420 }
                   : "100%",
               justifySelf: { xs: "stretch", md: logoSelf },
-              gridColumn: brandGridColumn,
+              gridColumn: compactScrolledHeader ? { xs: "1 / -1", md: "1 / 2" } : brandGridColumn,
               ...logoEdgePlacement,
             }}
           >
@@ -876,10 +889,10 @@ export default function SiteFrame({
           <Box
             sx={{
               flex: compactScrolledHeader ? 0 : 1,
-              width: "100%",
+              width: compactScrolledHeader ? "auto" : "100%",
               display: compactScrolledHeader ? { xs: "none", md: "flex" } : "flex",
-              justifySelf: { xs: "stretch", md: navSelf },
-              gridColumn: navGridColumn,
+              justifySelf: compactScrolledHeader ? { xs: "stretch", md: "end" } : { xs: "stretch", md: navSelf },
+              gridColumn: compactScrolledHeader ? { xs: "1 / -1", md: "3 / 4" } : navGridColumn,
               ...navEdgePlacement,
             }}
           >
@@ -901,18 +914,26 @@ export default function SiteFrame({
               {showScrollCta && stickyCtaLinkProps && (
                 <Button
                   {...stickyCtaLinkProps}
-                  variant="text"
+                  variant="contained"
                   size="small"
                   disableElevation
                   sx={{
-                    ...navButtonStyling(true),
                     ml: 1,
+                    px: 2.5,
+                    py: 1,
+                    minHeight: 40,
+                    borderRadius: 1.5,
                     fontWeight: 700,
-                    boxShadow: "0 8px 18px rgba(15,23,42,0.12)",
-                    backdropFilter: "blur(8px)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                    whiteSpace: "nowrap",
+                    backgroundColor: "var(--page-link-color, var(--sched-primary))",
+                    color: "#fff",
+                    boxShadow: "0 10px 24px rgba(15,23,42,0.16)",
                     "&:hover": {
-                      ...(navButtonStyling(true)["&:hover"] || {}),
-                      boxShadow: "0 10px 22px rgba(15,23,42,0.16)",
+                      backgroundColor: "var(--page-link-color, var(--sched-primary))",
+                      filter: "brightness(0.96)",
+                      boxShadow: "0 12px 28px rgba(15,23,42,0.20)",
                     },
                   }}
                 >
