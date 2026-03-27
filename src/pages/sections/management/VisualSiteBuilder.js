@@ -4686,37 +4686,41 @@ const CanvasColumn = (
       </Stack>
     }
   >
-    <SiteFrame
-      slug={previewSite.slug}
-      activeKey={editing?.slug}
-      initialSite={previewSite}
-      disableFetch
-      wrapChildrenInContainer={fullPreview}
-      onTogglePageMenu={(pageId) => {
-        applyPageActionPatch(pageId, { show_in_menu: false });
-      }}
-      onRemoveFooterItem={handleFooterItemRemove}
-      onRemoveHeaderItem={handleHeaderItemRemove}
-    >
-      <Box
-        sx={{
-          maxHeight:
-            fullPreview || canvasMaxHeight === "none" ? "none" : canvasMaxHeight,
-          overflow:
-            fullPreview || canvasMaxHeight === "none" ? "visible" : "auto",
-          transition: "max-height 0.2s ease",
-          borderRadius: 1,
-          border: "1px solid",
-          borderColor: "divider",
+    <Box id="visual-builder-canvas">
+      <NavStyleHydrator
+        website={previewSite}
+        scopeSelector="#visual-builder-canvas .site-nav"
+      />
+      <SiteFrame
+        slug={previewSite.slug}
+        activeKey={editing?.slug}
+        initialSite={previewSite}
+        disableFetch
+        wrapChildrenInContainer={fullPreview}
+        onTogglePageMenu={(pageId) => {
+          applyPageActionPatch(pageId, { show_in_menu: false });
         }}
-        ref={canvasScrollRef}
+        onRemoveFooterItem={handleFooterItemRemove}
+        onRemoveHeaderItem={handleHeaderItemRemove}
       >
-        <NavStyleHydrator website={siteSettings} scopeSelector=".page-scope .site-nav" />
-
         <Box
-          className="page-scope"
-          style={pageVars}
           sx={{
+            maxHeight:
+              fullPreview || canvasMaxHeight === "none" ? "none" : canvasMaxHeight,
+            overflow:
+              fullPreview || canvasMaxHeight === "none" ? "visible" : "auto",
+            transition: "max-height 0.2s ease",
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+          ref={canvasScrollRef}
+        >
+
+          <Box
+            className="page-scope"
+            style={pageVars}
+            sx={{
             position: "relative",
             backgroundColor: bgColor,
             backgroundImage: bgImage
@@ -4988,9 +4992,10 @@ const CanvasColumn = (
               </Button>
             </SectionCard>
           )}
+          </Box>
         </Box>
-      </Box>
-    </SiteFrame>
+      </SiteFrame>
+    </Box>
   </SectionCard>
 );
 
