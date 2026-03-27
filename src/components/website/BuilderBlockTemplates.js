@@ -216,6 +216,13 @@ export const NEW_BLOCKS = {
       ctaSubtitle: "Reach out now and we will help you plan the next step.",
       ctaButtonText: "Contact us now",
       ctaButtonLink: "?page=contact",
+      perView: {
+        desktop: 4,
+        tablet: 2,
+        mobile: 1,
+      },
+      imageMaxWidth: 280,
+      maxWidth: "xl",
     },
   }),
   richText: () => ({
