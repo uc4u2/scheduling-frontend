@@ -60,6 +60,10 @@ import {
   cloneLegalLinks,
   formatCopyrightText,
 } from "../../utils/footerDefaults";
+import {
+  normalizeHeaderConfig,
+  normalizeFooterConfig,
+} from "../../utils/headerFooter";
 import { SOCIAL_ICON_MAP, DEFAULT_SOCIAL_ICON } from "../../utils/socialIcons";
 import Meta from "../../components/Meta";
 import JsonLd from "../../components/seo/JsonLd";
@@ -987,17 +991,42 @@ export default function CompanyPublic({ slugOverride }) {
   const [themeAnchor, setThemeAnchor] = useState(null);
   const [themes, setThemes] = useState([]);
   const [settings, setSettings] = useState(null);
+  const [scrollY, setScrollY] = useState(0);
 
   const headerConfig = useMemo(() => {
-    if (settings?.header) return settings.header;
-    if (sitePayload?.settings?.header) return sitePayload.settings.header;
-    return sitePayload?.header || null;
+    const topLevelHeader = [
+      settings?.header,
+      sitePayload?.header,
+    ].find((value) => value && typeof value === "object") || {};
+    const settingsHeader = [
+      settings?.settings?.header,
+      sitePayload?.settings?.header,
+    ].find((value) => value && typeof value === "object") || {};
+    if (!Object.keys(topLevelHeader).length && !Object.keys(settingsHeader).length) {
+      return null;
+    }
+    return normalizeHeaderConfig({
+      ...topLevelHeader,
+      ...settingsHeader,
+    });
   }, [settings, sitePayload]);
 
   const footerConfig = useMemo(() => {
-    if (settings?.footer) return settings.footer;
-    if (sitePayload?.settings?.footer) return sitePayload.settings.footer;
-    return sitePayload?.footer || null;
+    const topLevelFooter = [
+      settings?.footer,
+      sitePayload?.footer,
+    ].find((value) => value && typeof value === "object") || {};
+    const settingsFooter = [
+      settings?.settings?.footer,
+      sitePayload?.settings?.footer,
+    ].find((value) => value && typeof value === "object") || {};
+    if (!Object.keys(topLevelFooter).length && !Object.keys(settingsFooter).length) {
+      return null;
+    }
+    return normalizeFooterConfig({
+      ...topLevelFooter,
+      ...settingsFooter,
+    });
   }, [settings, sitePayload]);
 
   const themeOverrides = useMemo(() => {
@@ -1386,6 +1415,13 @@ export default function CompanyPublic({ slugOverride }) {
   }, [navItems, currentPage]);
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrollY(window.scrollY || 0);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   const handleMobileOpen = () => setMobileNavOpen(true);
   const handleMobileClose = () => setMobileNavOpen(false);
 
@@ -1751,11 +1787,22 @@ const siteTitle = useMemo(() => {
 
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
   const headerTextColor = headerConfig?.text_color || themeOverrides?.header?.text || "inherit";
+  const overlayHero = Boolean(headerConfig?.overlay_hero);
+  const transparentOnTop = Boolean(headerConfig?.transparent_on_top);
+  const scrollThreshold = clampNumber(headerConfig?.scroll_threshold ?? 64, 0, 400, 64);
+  const scrolledPastHeader = scrollY > scrollThreshold;
+  const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
+  const resolvedHeaderBg = useTransparentTopState
+    ? (headerConfig?.transparent_bg || "rgba(255,255,255,0.18)")
+    : (headerConfig?.scrolled_bg || headerBg || "#ffffff");
+  const resolvedHeaderTextColor = useTransparentTopState
+    ? (headerConfig?.text_color || headerTextColor)
+    : (headerConfig?.scrolled_text_color || headerConfig?.text_color || headerTextColor);
   const navButtonStyling = useMemo(() => {
     const useReadableText = ["ghost", "underline", "overline", "doubleline", "sideline", "sideline-all", "link", "text"].includes(navStyle?.variant);
-    const fallbackText = pickTextColorForBg(headerBg);
+    const fallbackText = pickTextColorForBg(resolvedHeaderBg);
     const preferred = navStyle?.text || fallbackText;
-    const bgLum = getLuminance(headerBg);
+    const bgLum = getLuminance(resolvedHeaderBg);
     const prefLum = getLuminance(preferred);
     const readableText =
       bgLum != null && prefLum != null && Math.abs(bgLum - prefLum) < 0.45
@@ -1778,7 +1825,7 @@ const siteTitle = useMemo(() => {
       }
       return { ...base, color: preferred || fallbackText };
     };
-  }, [navButtonSx, headerBg, navStyle?.variant, navStyle?.text]);
+  }, [navButtonSx, resolvedHeaderBg, navStyle?.variant, navStyle?.text]);
 
   const showBrandText = headerConfig?.show_brand_text !== false;
   const navBrandName = useMemo(() => {
@@ -2047,6 +2094,8 @@ const siteTitle = useMemo(() => {
         headerSocialPosition === "after" ? "after" : null
       )
     : null;
+  const headerApproxHeight = clampNumber((headerPadding * 2) + 76, 72, 240, 104);
+  const headerOverlap = overlayHero ? headerApproxHeight : 0;
 
   const renderHeaderBrandContent = useCallback(
     ({ disableLink = false } = {}) => (
@@ -2503,7 +2552,29 @@ const siteTitle = useMemo(() => {
       )}
 
       {/* PUBLIC NAV */}
-      <Box className="site-nav" sx={{ py: `${headerPadding}px`, background: headerBg, color: headerTextColor }}>
+      <Box
+        className="site-nav"
+        sx={{
+          py: `${headerPadding}px`,
+          background: resolvedHeaderBg,
+          backgroundColor: resolvedHeaderBg,
+          color: resolvedHeaderTextColor,
+          position: headerConfig?.sticky === false ? "relative" : "sticky",
+          top: isManagerForCompany ? 64 : 0,
+          zIndex: 30,
+          mb: headerOverlap ? `-${headerOverlap}px` : 0,
+          borderBottom: useTransparentTopState
+            ? "1px solid rgba(255,255,255,0.16)"
+            : "1px solid rgba(0,0,0,0.08)",
+          boxShadow:
+            scrolledPastHeader && headerConfig?.scrolled_shadow !== false
+              ? "0 18px 48px rgba(15,23,42,0.14)"
+              : "none",
+          backdropFilter: useTransparentTopState ? "blur(10px)" : "none",
+          transition:
+            "background-color 180ms ease, background 180ms ease, color 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
+        }}
+      >
         <Container
           maxWidth={headerFullWidth ? false : "lg"}
           disableGutters={headerFullWidth}
@@ -2528,7 +2599,7 @@ const siteTitle = useMemo(() => {
               ...logoEdgePlacement,
             }}
           >
-            <IconButton onClick={handleMobileOpen} sx={{ color: headerTextColor }}>
+            <IconButton onClick={handleMobileOpen} sx={{ color: resolvedHeaderTextColor }}>
               <MenuIcon />
             </IconButton>
             <Box sx={{ flex: 1, display: "flex", justifyContent: "center" }}>
@@ -2562,7 +2633,7 @@ const siteTitle = useMemo(() => {
               </Stack>
               <IconButton
                 onClick={handleMobileOpen}
-                sx={{ display: { xs: "inline-flex", md: "none" }, color: headerTextColor }}
+                sx={{ display: { xs: "inline-flex", md: "none" }, color: resolvedHeaderTextColor }}
               >
                 <MenuIcon />
               </IconButton>
@@ -2661,8 +2732,8 @@ const siteTitle = useMemo(() => {
             pt: 2,
             pb: 3,
             px: 2.5,
-            backgroundColor: headerBg || "#ffffff",
-            color: headerTextColor,
+            backgroundColor: resolvedHeaderBg || "#ffffff",
+            color: resolvedHeaderTextColor,
           },
         }}
       >
@@ -2670,7 +2741,7 @@ const siteTitle = useMemo(() => {
           <Typography variant="subtitle1" fontWeight={700}>
             {navBrandName}
           </Typography>
-          <IconButton onClick={handleMobileClose} sx={{ color: headerTextColor }}>
+          <IconButton onClick={handleMobileClose} sx={{ color: resolvedHeaderTextColor }}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -2683,6 +2754,7 @@ const siteTitle = useMemo(() => {
       </Drawer>
 
       {/* PAGE CONTENT */}
+      <Box sx={{ "--site-header-overlap": `${headerOverlap}px` }}>
       <Box
         sx={{
           pt: shouldRenderPublicReviews ? 0 : { xs: 1, md: 1.25 },
@@ -2896,6 +2968,7 @@ const siteTitle = useMemo(() => {
           </Container>
         </Box>
       )}
+      </Box>
       <Snackbar
         open={Boolean(publishSnack)}
         autoHideDuration={4000}
