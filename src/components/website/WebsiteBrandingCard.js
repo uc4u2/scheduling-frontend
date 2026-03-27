@@ -136,6 +136,69 @@ const clampValue = (val, min, max) => {
   return Math.min(max, Math.max(min, num));
 };
 
+const clamp01 = (val) => {
+  const num = Number(val);
+  if (!Number.isFinite(num)) return 0;
+  return Math.min(1, Math.max(0, num));
+};
+
+const normalizeHexColor = (hex) => {
+  if (typeof hex !== "string") return "";
+  const raw = hex.trim();
+  if (!raw) return "";
+  if (!raw.startsWith("#")) return raw;
+  let body = raw.slice(1);
+  if (body.length === 3 || body.length === 4) {
+    body = body
+      .slice(0, 3)
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  } else if (body.length === 8) {
+    body = body.slice(0, 6);
+  }
+  if (body.length < 6) body = body.padEnd(6, "0");
+  return `#${body.toLowerCase()}`;
+};
+
+const parseCssColor = (css, fallback = { hex: "#ffffff", opacity: 1 }) => {
+  if (!css || typeof css !== "string") return fallback;
+  const str = css.trim();
+  if (!str) return fallback;
+  if (str.toLowerCase() === "transparent") {
+    return { hex: "#ffffff", opacity: 0 };
+  }
+  const rgba = /^rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([0-9.]+))?\)$/i.exec(str);
+  if (rgba) {
+    const r = Number(rgba[1]).toString(16).padStart(2, "0");
+    const g = Number(rgba[2]).toString(16).padStart(2, "0");
+    const b = Number(rgba[3]).toString(16).padStart(2, "0");
+    return {
+      hex: `#${r}${g}${b}`,
+      opacity: clamp01(rgba[4] != null ? parseFloat(rgba[4]) : 1),
+    };
+  }
+  if (str.startsWith("#")) {
+    const normalized = normalizeHexColor(str);
+    const raw = str.slice(1);
+    let opacity = 1;
+    if (raw.length === 4) opacity = parseInt(raw[3] + raw[3], 16) / 255;
+    if (raw.length === 8) opacity = parseInt(raw.slice(6, 8), 16) / 255;
+    return { hex: normalized || fallback.hex, opacity: clamp01(opacity) };
+  }
+  return { hex: colorToPickerValue(str), opacity: 1 };
+};
+
+const hexToRgba = (hex, opacity = 1) => {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized.startsWith("#")) return normalized;
+  const raw = normalized.slice(1);
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${clamp01(opacity)})`;
+};
+
 const MAX_NAV_ITEMS = 10;
 const MAX_LEGAL_LINKS = 6;
 const isValidHref = (href = "") => {
@@ -252,6 +315,66 @@ function ColorTokenInput({
             sx={{ color: "inherit" }}
           />
         ))}
+      </Stack>
+    </Stack>
+  );
+}
+
+function ColorOpacityInput({
+  label,
+  value,
+  onChange,
+  helperText,
+  defaultOpacity = 0.18,
+  emptyActionLabel = "",
+  onEmptyAction,
+}) {
+  const parsed = useMemo(
+    () => parseCssColor(value, { hex: "#ffffff", opacity: defaultOpacity }),
+    [value, defaultOpacity]
+  );
+  return (
+    <Stack spacing={0.75}>
+      <Typography variant="subtitle2">{label}</Typography>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <TextField
+          size="small"
+          fullWidth
+          label="Color"
+          value={parsed.hex}
+          onChange={(e) => onChange?.(hexToRgba(e.target.value || "#ffffff", parsed.opacity))}
+          helperText={helperText}
+        />
+        <input
+          type="color"
+          value={colorToPickerValue(parsed.hex)}
+          onChange={(e) => onChange?.(hexToRgba(e.target.value || "#ffffff", parsed.opacity))}
+          style={{ width: 36, height: 36, border: "none", background: "transparent" }}
+        />
+      </Stack>
+      <Stack direction="row" spacing={1.5} alignItems="center">
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="caption" color="text.secondary">
+            Transparency
+          </Typography>
+          <Slider
+            min={0}
+            max={100}
+            step={1}
+            value={Math.round(parsed.opacity * 100)}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(v) => `${v}%`}
+            onChange={(_, val) =>
+              typeof val === "number" &&
+              onChange?.(hexToRgba(parsed.hex || "#ffffff", val / 100))
+            }
+          />
+        </Box>
+        {emptyActionLabel && onEmptyAction ? (
+          <Button size="small" onClick={onEmptyAction}>
+            {emptyActionLabel}
+          </Button>
+        ) : null}
       </Stack>
     </Stack>
   );
@@ -1243,17 +1366,21 @@ export default function WebsiteBrandingCard({
             value={header.text_color || themeOverrides.header?.text}
             onChange={(val) => updateHeader({ text_color: val })}
           />
-          <ColorTokenInput
+          <ColorOpacityInput
             label="Transparent top background"
-            value={header.transparent_bg || ""}
+            value={header.transparent_bg || "rgba(255,255,255,0.18)"}
             onChange={(val) => updateHeader({ transparent_bg: val })}
-            helperText="Used only while the page is at the top when transparent mode is enabled."
+            helperText="Pick a normal color, then use the transparency slider. Used only when transparent top mode is enabled."
+            defaultOpacity={0.18}
           />
-          <ColorTokenInput
+          <ColorOpacityInput
             label="Scrolled header background"
             value={header.scrolled_bg || ""}
             onChange={(val) => updateHeader({ scrolled_bg: val })}
-            helperText="Leave empty to reuse the main header background."
+            helperText="Pick the scrolled header color and use the transparency slider. Reset to reuse the main header background."
+            defaultOpacity={0.72}
+            emptyActionLabel="Use main header"
+            onEmptyAction={() => updateHeader({ scrolled_bg: "" })}
           />
           <ColorTokenInput
             label="Scrolled header text color"
