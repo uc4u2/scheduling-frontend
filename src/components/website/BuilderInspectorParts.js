@@ -323,9 +323,9 @@ export function VideoField({ label, value, onChange, companyId }) {
 
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return;
-    const MAX_BYTES = 30 * 1024 * 1024; // 30MB guard
+    const MAX_BYTES = 12 * 1024 * 1024; // 12MB guard
     if (files[0].size > MAX_BYTES) {
-      alert("Video is too large. Max size 30MB. Please upload a smaller MP4/WebM.");
+      alert("Video is too large. Max size 12MB. Please upload a smaller MP4/WebM.");
       return;
     }
     try {
@@ -341,7 +341,7 @@ export function VideoField({ label, value, onChange, companyId }) {
     } catch (e) {
       console.error("upload failed", e);
       if (e?.response?.status === 413) {
-        alert("Video is too large. Max size 30MB. Please upload a smaller MP4/WebM.");
+        alert("Video is too large. Max size 12MB. Please upload a smaller MP4/WebM.");
       } else {
         alert(t("manager.visualBuilder.inspector.imageField.uploadFailed"));
       }
@@ -369,7 +369,7 @@ export function VideoField({ label, value, onChange, companyId }) {
     >
       <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.75 }}>
         <Typography variant="caption">{label}</Typography>
-        <Tooltip title="Videos: MP4/WebM, max 30MB.">
+        <Tooltip title="Videos: MP4/WebM, max 12MB.">
           <IconButton size="small" sx={{ p: 0.25 }}>
             <InfoOutlined fontSize="inherit" />
           </IconButton>
