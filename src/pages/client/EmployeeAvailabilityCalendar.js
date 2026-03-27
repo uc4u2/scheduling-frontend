@@ -542,6 +542,7 @@ export default function EmployeeAvailabilityCalendar({
         flexWrap: "wrap",
         gap: 1,
         mb: variant === "inline" ? 3 : 0,
+        justifyContent: variant === "inline" ? "center" : "flex-start",
       }}
     >
       {slots.map((s, idx) => {
@@ -607,23 +608,25 @@ export default function EmployeeAvailabilityCalendar({
 
   /* ------------ JSX ------------ */
   return (
-    <Box p={{ xs: 2, md: 3 }} maxWidth="820px" mx="auto">
+    <Box p={{ xs: 2, md: 3 }} sx={{ width: "100%" }}>
       <Paper
         elevation={0}
         sx={{
           p: { xs: 2, md: 3 },
-          borderRadius: 3,
+          borderRadius: 4,
           border: `1px solid ${borderColor}`,
-          backgroundColor: surfaceColor,
-          boxShadow: "var(--page-card-shadow, 0 18px 45px rgba(15,23,42,0.08))",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,246,248,0.98) 100%)",
+          boxShadow: "var(--page-card-shadow, 0 20px 48px rgba(124,72,92,0.08))",
+          maxWidth: 860,
+          mx: "auto",
         }}
       >
         <Stack
-          direction={{ xs: "column", sm: "row" }}
-          alignItems={{ xs: "center", sm: "center" }}
-          justifyContent={{ xs: "center", sm: "space-between" }}
+          direction="column"
+          alignItems="center"
+          justifyContent="center"
           spacing={1.5}
-          sx={{ mb: 1.5, textAlign: { xs: "center", sm: "left" } }}
+          sx={{ mb: 2, textAlign: "center" }}
         >
           <Box>
             <Typography variant="h5" fontWeight={800} gutterBottom>
@@ -633,7 +636,7 @@ export default function EmployeeAvailabilityCalendar({
               direction="row"
               spacing={1}
               alignItems="center"
-              justifyContent={{ xs: "center", sm: "flex-start" }}
+              justifyContent="center"
               flexWrap="wrap"
             >
               <Chip
@@ -685,7 +688,6 @@ export default function EmployeeAvailabilityCalendar({
             </Stack>
           </Box>
 
-          <Box sx={{ display: { xs: "none", sm: "block" } }} />
         </Stack>
 
       {/* ── Month navigation & grid ─────────────────────────── */}
@@ -718,7 +720,7 @@ export default function EmployeeAvailabilityCalendar({
           </IconButton>
         </Box>
 
-        <Grid container spacing={0.75} sx={{ mt: 1 }}>
+        <Grid container spacing={0.75} sx={{ mt: 1, maxWidth: 680, mx: "auto" }}>
           {["S", "M", "T", "W", "T", "F", "S"].map((d, idx) => (
             <Grid item xs={12 / 7} key={`${d}-${idx}`} sx={{ textAlign: "center" }}>
               <Typography variant="caption" color="text.secondary">
@@ -742,18 +744,18 @@ export default function EmployeeAvailabilityCalendar({
       </Paper>
 
       {/* ── time slots ─────────────────────────── */}
-      <Typography variant="subtitle1" gutterBottom>
+      <Typography variant="subtitle1" gutterBottom sx={{ textAlign: "center", fontWeight: 700 }}>
         {disp.date !== "—" ? `Available times for ${disp.date}` : "Select a date above"}
       </Typography>
 
       {slots.length === 0 && (
-        <Alert severity="info" sx={{ mb: 2, ...infoAlertSx }}>
+        <Alert severity="info" sx={{ mb: 2, ...infoAlertSx, maxWidth: 520, mx: "auto" }}>
           No free slots for this day.
         </Alert>
       )}
 
-      <Box ref={timesRef}>
-        {renderTimeButtons()}
+      <Box ref={timesRef} sx={{ display: "flex", justifyContent: "center" }}>
+        <Box sx={{ maxWidth: 680 }}>{renderTimeButtons()}</Box>
       </Box>
 
       <Box
@@ -831,7 +833,7 @@ export default function EmployeeAvailabilityCalendar({
           </Box>
         </SwipeableDrawer>
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center">
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems="center" justifyContent="center">
           <Button
             variant="contained"
             disabled={saving || !selectedTime}
