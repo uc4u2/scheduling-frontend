@@ -1791,12 +1791,11 @@ const siteTitle = useMemo(() => {
   const transparentOnTop = Boolean(headerConfig?.transparent_on_top);
   const scrollThreshold = clampNumber(headerConfig?.scroll_threshold ?? 64, 0, 400, 64);
   const scrolledPastHeader = scrollY > scrollThreshold;
-  const scrollCtaAfter = clampNumber(headerConfig?.scroll_cta_after ?? 120, 0, 600, 120);
   const showScrollCta = Boolean(
     headerConfig?.scroll_cta_enabled &&
       headerConfig?.scroll_cta_label &&
       headerConfig?.scroll_cta_href &&
-      scrollY > scrollCtaAfter
+      scrolledPastHeader
   );
   const useTransparentTopState = overlayHero && transparentOnTop && !scrolledPastHeader;
   const resolvedHeaderBg = useTransparentTopState
