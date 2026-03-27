@@ -922,7 +922,7 @@ export default function SiteFrame({
                     px: 2.5,
                     py: 1,
                     minHeight: 40,
-                    borderRadius: 1.5,
+                    borderRadius: 0.25,
                     fontWeight: 700,
                     textTransform: "uppercase",
                     letterSpacing: "0.04em",

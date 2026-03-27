@@ -2751,7 +2751,7 @@ const siteTitle = useMemo(() => {
                       px: 2.5,
                       py: 1,
                       minHeight: 40,
-                      borderRadius: 1.5,
+                      borderRadius: 0.25,
                       whiteSpace: "nowrap",
                       fontWeight: 700,
                       textTransform: "uppercase",
