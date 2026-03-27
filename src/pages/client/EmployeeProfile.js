@@ -6,13 +6,14 @@ import {
   Typography,
   Box,
   CircularProgress,
-  List,
-  ListItem,
-  ListItemText,
   Alert,
   TextField,
   Stack,
   IconButton,
+  Paper,
+  Button,
+  Divider,
+  Chip,
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import EmployeeAvailabilityCalendar from "./EmployeeAvailabilityCalendar";
@@ -147,120 +148,236 @@ const EmployeeProfile = ({ slugOverride }) => {
       </Alert>
     );
   } else {
+    const providerName = profile.full_name || profile.name;
+    const bookingUrl = `${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || "<slug>"}/meet/${profile?.public_meet_token || profile?.id}`;
+
     body = (
-      <Box>
+      <Stack spacing={3.5}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error">
             {error}
           </Alert>
         )}
 
-        <Stack
-          spacing={2}
-          alignItems={{ xs: "center", md: "flex-start" }}
-          textAlign={{ xs: "center", md: "left" }}
-          sx={{ mb: 3 }}
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2.25, md: 3 },
+            borderRadius: 4,
+            border: "1px solid rgba(200,93,124,0.14)",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(251,240,243,0.98) 100%)",
+            boxShadow: "0 20px 48px rgba(124,72,92,0.08)",
+          }}
         >
-          <Typography variant="h4">
-            {profile.full_name || profile.name}
-          </Typography>
-
-          {profile.profile_image_url && (
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={{ xs: 2.5, md: 3 }}
+            alignItems={{ xs: "center", md: "flex-start" }}
+          >
             <Box
-              component="img"
-              src={profile.profile_image_url}
-              alt={profile.full_name || profile.name}
               sx={{
-                width: 140,
-                height: 140,
+                width: 156,
+                height: 156,
                 borderRadius: "50%",
-                objectFit: "cover",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                overflow: "hidden",
+                border: "6px solid rgba(255,255,255,0.92)",
+                boxShadow: "0 16px 34px rgba(124,72,92,0.14)",
+                bgcolor: "rgba(200,93,124,0.10)",
+                flexShrink: 0,
               }}
-            />
-          )}
+            >
+              {profile.profile_image_url ? (
+                <Box
+                  component="img"
+                  src={profile.profile_image_url}
+                  alt={providerName}
+                  sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : null}
+            </Box>
 
-          <Typography sx={{ maxWidth: 520 }}>
-            {profile.bio || "No bio available."}
-          </Typography>
-        </Stack>
+            <Stack spacing={1.25} sx={{ flex: 1, minWidth: 0, textAlign: { xs: "center", md: "left" } }}>
+              <Stack spacing={0.75}>
+                <Chip
+                  label="Provider profile"
+                  sx={{
+                    alignSelf: { xs: "center", md: "flex-start" },
+                    bgcolor: "rgba(200,93,124,0.12)",
+                    color: "#7a3550",
+                    fontWeight: 700,
+                    letterSpacing: ".04em",
+                  }}
+                />
+                <Typography variant="h3" sx={{ fontWeight: 800, color: "#4a2331", lineHeight: 1.05 }}>
+                  {providerName}
+                </Typography>
+              </Stack>
+
+              <Typography sx={{ maxWidth: 700, color: "rgba(74,35,49,0.80)", lineHeight: 1.75 }}>
+                {profile.bio || "No bio available."}
+              </Typography>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ pt: 0.5 }}>
+                <Button
+                  variant="contained"
+                  href={serviceId ? undefined : '#services-offered'}
+                  onClick={serviceId ? undefined : (e) => {
+                    e.preventDefault();
+                    const el = document.getElementById('services-offered');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  sx={{
+                    borderRadius: 999,
+                    px: 2.25,
+                    py: 1,
+                    bgcolor: "#c85d7c",
+                    color: "#fffafc",
+                    boxShadow: "0 14px 28px rgba(124,72,92,0.12)",
+                  }}
+                >
+                  {serviceId ? "Viewing availability" : "View services"}
+                </Button>
+                {profile?.allow_public_booking ? (
+                  <Button
+                    variant="outlined"
+                    onClick={() => navigator.clipboard.writeText(bookingUrl)}
+                    sx={{ borderRadius: 999, px: 2.25, py: 1 }}
+                  >
+                    Copy booking link
+                  </Button>
+                ) : null}
+              </Stack>
+            </Stack>
+          </Stack>
+        </Paper>
 
         {!serviceId ? (
-          <Box>
-            <Typography variant="h6" gutterBottom>
-              Services Offered
-            </Typography>
-            {loadingServices ? (
-              <CircularProgress />
-            ) : services.length === 0 ? (
-              <Typography>
-                No services available{departmentId ? " in this department" : ""}.
-              </Typography>
-            ) : (
-              <List dense>
-                {services.map((svc) => (
-                  <ListItem
-                    button
-                    key={svc.id}
-                    onClick={() => handleServiceSelect(svc.id)}
-                    sx={{
-                      borderRadius: 2,
-                      mb: 1,
-                      "&:hover": { backgroundColor: "rgba(25,118,210,0.1)" },
-                    }}
-                  >
-                    <ListItemText
-                      primary={svc.name}
-                      secondary={svc.description}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </Box>
+          <Paper
+            id="services-offered"
+            elevation={0}
+            sx={{
+              p: { xs: 2.25, md: 3 },
+              borderRadius: 4,
+              border: "1px solid rgba(200,93,124,0.12)",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,246,248,0.98) 100%)",
+              boxShadow: "0 18px 42px rgba(124,72,92,0.06)",
+            }}
+          >
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: "#4a2331" }}>
+                  Services Offered
+                </Typography>
+                <Typography sx={{ mt: 0.75, color: "rgba(74,35,49,0.72)", maxWidth: 720 }}>
+                  Choose a treatment to view availability and continue to booking.
+                </Typography>
+              </Box>
+              {loadingServices ? (
+                <CircularProgress />
+              ) : services.length === 0 ? (
+                <Typography>
+                  No services available{departmentId ? " in this department" : ""}.
+                </Typography>
+              ) : (
+                <Stack spacing={1.25}>
+                  {services.map((svc) => (
+                    <Paper
+                      key={svc.id}
+                      elevation={0}
+                      onClick={() => handleServiceSelect(svc.id)}
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        border: "1px solid rgba(200,93,124,0.14)",
+                        background: "rgba(255,255,255,0.94)",
+                        cursor: "pointer",
+                        transition: "transform .16s ease, box-shadow .16s ease, border-color .16s ease",
+                        '&:hover': {
+                          transform: 'translateY(-1px)',
+                          borderColor: 'rgba(200,93,124,0.30)',
+                          boxShadow: '0 16px 32px rgba(124,72,92,0.08)'
+                        }
+                      }}
+                    >
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography sx={{ fontWeight: 800, color: '#4a2331' }}>{svc.name}</Typography>
+                          <Typography sx={{ mt: 0.5, color: 'rgba(74,35,49,0.72)' }}>
+                            {svc.description || 'Select this service to continue to available appointment times.'}
+                          </Typography>
+                        </Box>
+                        <Button variant="outlined" sx={{ borderRadius: 999, flexShrink: 0 }}>
+                          View & Book
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </Paper>
         ) : (
-          <Box>
-            <Typography variant="h6" gutterBottom sx={{ textAlign: { xs: "center", md: "left" } }}>
-              Availability Calendar
-            </Typography>
-            <EmployeeAvailabilityCalendar
-              companySlug={effectiveSlug}
-              artistId={employeeId}
-              serviceId={serviceId}
-              departmentId={departmentId}
-              onSlotSelect={handleSlotSelected}
-            />
-          </Box>
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2.25, md: 3 },
+              borderRadius: 4,
+              border: "1px solid rgba(200,93,124,0.12)",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,246,248,0.98) 100%)",
+              boxShadow: "0 18px 42px rgba(124,72,92,0.06)",
+            }}
+          >
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: "#4a2331", textAlign: { xs: 'center', md: 'left' } }}>
+                  Availability Calendar
+                </Typography>
+                <Typography sx={{ mt: 0.75, color: "rgba(74,35,49,0.72)", textAlign: { xs: 'center', md: 'left' } }}>
+                  Select a time to continue your booking with {providerName}.
+                </Typography>
+              </Box>
+              <Divider />
+              <EmployeeAvailabilityCalendar
+                companySlug={effectiveSlug}
+                artistId={employeeId}
+                serviceId={serviceId}
+                departmentId={departmentId}
+                onSlotSelect={handleSlotSelected}
+              />
+            </Stack>
+          </Paper>
         )}
-        <Box sx={{ mt: 3 }}>
-          {profile?.allow_public_booking ? (
-            <>
-              <Typography variant="h6" gutterBottom>
-                Public booking link
-              </Typography>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={`${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || "<slug>"}/meet/${profile?.public_meet_token || profile?.id}`}
-                  InputProps={{ readOnly: true }}
-                />
-                <IconButton
-                  onClick={() =>
-                    navigator.clipboard.writeText(
-                      `${(typeof window !== "undefined" && window.location.origin) || (process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000")}/${companySlug || ""}/meet/${profile?.public_meet_token || profile?.id}`
-                    )
-                  }
-                  title="Copy link"
-                  size="small"
-                >
-                  <ContentCopyIcon fontSize="small" />
-                </IconButton>
-              </Stack>
-            </>
-          ) : null}
-        </Box>
-      </Box>
+        {profile?.allow_public_booking ? (
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              borderRadius: 3,
+              border: "1px solid rgba(200,93,124,0.12)",
+              background: "rgba(255,255,255,0.92)",
+            }}
+          >
+            <Typography variant="h6" gutterBottom sx={{ color: '#4a2331', fontWeight: 700 }}>
+              Public booking link
+            </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
+              <TextField
+                fullWidth
+                size="small"
+                value={bookingUrl}
+                InputProps={{ readOnly: true }}
+              />
+              <IconButton
+                onClick={() => navigator.clipboard.writeText(bookingUrl)}
+                title="Copy link"
+                size="small"
+              >
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          </Paper>
+        ) : null}
+      </Stack>
     );
   }
 
