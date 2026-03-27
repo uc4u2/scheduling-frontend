@@ -348,9 +348,9 @@ export default function SiteFrame({
   const logoHeight = headerConfig?.logo_height
     ? clampNumber(headerConfig.logo_height, 24, 200, null)
     : null;
-  const compactLogoWidth = clampNumber(Math.round(logoWidth * 0.52), 36, 120, 72);
+  const compactLogoWidth = clampNumber(Math.round(logoWidth * 0.44), 32, 96, 56);
   const compactLogoHeight = logoHeight
-    ? clampNumber(Math.round(logoHeight * 0.52), 20, 72, null)
+    ? clampNumber(Math.round(logoHeight * 0.44), 18, 56, null)
     : null;
   const logoAlign = alignToFlex(headerConfig?.logo_alignment, "flex-start");
   const layoutKey = (headerConfig?.layout || "simple").toLowerCase();
@@ -387,7 +387,7 @@ export default function SiteFrame({
   );
   const compactScrolledHeader = showScrollCta && scrolledPastHeader;
   const activeHeaderPadding = compactScrolledHeader
-    ? Math.max(5, Math.round(headerPadding * 0.32))
+    ? clampNumber(Math.round(headerPadding * 0.22), 4, 6, 5)
     : overlayHero
       ? Math.max(10, Math.round(headerPadding * 0.62))
       : headerPadding;
@@ -919,9 +919,9 @@ export default function SiteFrame({
                   disableElevation
                   sx={{
                     ml: 1,
-                    px: 2.5,
-                    py: 0.75,
-                    minHeight: 36,
+                    px: 2.25,
+                    py: 0.625,
+                    minHeight: 34,
                     borderRadius: 0.25,
                     fontWeight: 700,
                     textTransform: "uppercase",

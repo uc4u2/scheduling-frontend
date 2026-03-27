@@ -2049,9 +2049,9 @@ const siteTitle = useMemo(() => {
   const headerLogoHeight = headerConfig?.logo_height
     ? clampNumber(headerConfig.logo_height, 24, 200, null)
     : null;
-  const compactHeaderLogoWidth = clampNumber(Math.round(headerLogoWidth * 0.52), 36, 120, 72);
+  const compactHeaderLogoWidth = clampNumber(Math.round(headerLogoWidth * 0.44), 32, 96, 56);
   const compactHeaderLogoHeight = headerLogoHeight
-    ? clampNumber(Math.round(headerLogoHeight * 0.52), 20, 72, null)
+    ? clampNumber(Math.round(headerLogoHeight * 0.44), 18, 56, null)
     : null;
   const headerLayoutKey = (headerConfig?.layout || "simple").toLowerCase();
   const headerIsCenterLayout = headerLayoutKey === "center";
@@ -2114,7 +2114,7 @@ const siteTitle = useMemo(() => {
     : null;
   const headerApproxHeight = clampNumber((headerPadding * 2) + 76, 72, 240, 104);
   const activeHeaderPadding = compactScrolledHeader
-    ? Math.max(5, Math.round(headerPadding * 0.32))
+    ? clampNumber(Math.round(headerPadding * 0.22), 4, 6, 5)
     : overlayHero
       ? Math.max(10, Math.round(headerPadding * 0.62))
       : headerPadding;
@@ -2748,9 +2748,9 @@ const siteTitle = useMemo(() => {
                     rel={stickyCtaIsExternal ? "noreferrer noopener" : undefined}
                     sx={{
                       ml: 1,
-                      px: 2.5,
-                      py: 0.75,
-                      minHeight: 36,
+                      px: 2.25,
+                      py: 0.625,
+                      minHeight: 34,
                       borderRadius: 0.25,
                       whiteSpace: "nowrap",
                       fontWeight: 700,
