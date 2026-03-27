@@ -27,6 +27,10 @@ import {
   cloneLegalLinks,
   formatCopyrightText,
 } from "../../utils/footerDefaults";
+import {
+  normalizeHeaderConfig,
+  normalizeFooterConfig,
+} from "../../utils/headerFooter";
 import { api, publicSite } from "../../utils/api";
 import { createNavButtonStyles, normalizeNavStyle } from "../../utils/navStyle";
 import { getLuminance, pickTextColorForBg } from "../../utils/color";
@@ -102,14 +106,34 @@ export default function SiteFrame({
   const [scrollY, setScrollY] = useState(0);
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const headerConfig = useMemo(
-    () => site?.header || site?.settings?.header || null,
-    [site]
-  );
-  const footerConfig = useMemo(
-    () => site?.footer || site?.settings?.footer || null,
-    [site]
-  );
+  const headerConfig = useMemo(() => {
+    const topLevelHeader = site?.header && typeof site.header === "object" ? site.header : {};
+    const settingsHeader =
+      site?.settings?.header && typeof site.settings.header === "object"
+        ? site.settings.header
+        : {};
+    if (!Object.keys(topLevelHeader).length && !Object.keys(settingsHeader).length) {
+      return null;
+    }
+    return normalizeHeaderConfig({
+      ...topLevelHeader,
+      ...settingsHeader,
+    });
+  }, [site]);
+  const footerConfig = useMemo(() => {
+    const topLevelFooter = site?.footer && typeof site.footer === "object" ? site.footer : {};
+    const settingsFooter =
+      site?.settings?.footer && typeof site.settings.footer === "object"
+        ? site.settings.footer
+        : {};
+    if (!Object.keys(topLevelFooter).length && !Object.keys(settingsFooter).length) {
+      return null;
+    }
+    return normalizeFooterConfig({
+      ...topLevelFooter,
+      ...settingsFooter,
+    });
+  }, [site]);
   const linkColor =
     headerConfig?.link_color ||
     footerConfig?.link_color ||
