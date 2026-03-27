@@ -295,6 +295,7 @@ const clamp01 = (n) => {
   if (!Number.isFinite(num)) return 0;
   return Math.max(0, Math.min(1, num));
 };
+const HERO_SECTION_TYPES = new Set(["hero", "herocarousel", "herosplit"]);
 const clampNumber = (value, min, max, fallback) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return fallback;
@@ -1684,6 +1685,14 @@ export default function CompanyPublic({ slugOverride }) {
 
     return { bodySections: body, postReviewSections: post, footerSections: tail };
   }, [patchedSections]);
+  const pageStartsWithHero = useMemo(() => {
+    const firstRenderable = (bodySections || []).find(
+      (sec) => sec && String(sec.type || "").toLowerCase() !== "pagestyle"
+    );
+    if (!firstRenderable) return false;
+    const type = String(firstRenderable.type || "").replace(/[\s_-]+/g, "").toLowerCase();
+    return HERO_SECTION_TYPES.has(type);
+  }, [bodySections]);
 
   const activePageStyle = useMemo(() => {
     return specialPageStyle || extractPageStyleProps(currentPage) || siteDefaultPageStyle || null;
@@ -1792,7 +1801,7 @@ const siteTitle = useMemo(() => {
 
   const headerBg = headerConfig?.bg || themeOverrides?.header?.background || "transparent";
   const headerTextColor = headerConfig?.text_color || themeOverrides?.header?.text || "inherit";
-  const overlayHero = Boolean(headerConfig?.overlay_hero);
+  const overlayHero = Boolean(headerConfig?.overlay_hero && pageStartsWithHero);
   const transparentOnTop = Boolean(headerConfig?.transparent_on_top);
   const scrollThreshold = clampNumber(headerConfig?.scroll_threshold ?? 64, 0, 400, 64);
   const scrolledPastHeader = scrollY > scrollThreshold;
