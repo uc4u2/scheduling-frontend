@@ -1806,7 +1806,6 @@ const siteTitle = useMemo(() => {
     ? (headerConfig?.text_color || headerTextColor)
     : (headerConfig?.scrolled_text_color || headerConfig?.text_color || headerTextColor);
   const stickyCtaHref = (headerConfig?.scroll_cta_href || "").trim();
-  const stickyCtaIsExternal = isExternalHref(stickyCtaHref);
   const navButtonStyling = useMemo(() => {
     const useReadableText = ["ghost", "underline", "overline", "doubleline", "sideline", "sideline-all", "link", "text"].includes(navStyle?.variant);
     const fallbackText = pickTextColorForBg(resolvedHeaderBg);
@@ -1984,6 +1983,7 @@ const siteTitle = useMemo(() => {
     const trimmed = (href || "").trim();
     return /^https?:/i.test(trimmed) || trimmed.startsWith("mailto:") || trimmed.startsWith("tel:");
   };
+  const stickyCtaIsExternal = isExternalHref(stickyCtaHref);
 
   const normalizeHref = useCallback(
     (href) => {
