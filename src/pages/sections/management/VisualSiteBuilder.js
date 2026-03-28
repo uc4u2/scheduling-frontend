@@ -80,7 +80,7 @@ import { useTranslation, Trans } from "react-i18next";
 import { useTheme } from "@mui/material/styles";
 
 import { api, wb, navSettings, publicSite } from "../../../utils/api";
-import { normalizeNavStyle } from "../../../utils/navStyle";
+import { NAV_STYLE_DEFAULT, normalizeNavStyle } from "../../../utils/navStyle";
 import { RenderSections } from "../../../components/website/RenderSections";
 import SiteFrame from "../../../components/website/SiteFrame";
 import useCompanyId from "../../../hooks/useCompanyId";
@@ -358,6 +358,385 @@ const mergeNavIntoSettings = (current, draft) => {
   };
 };
 
+const THEME_PRESET_LIBRARY = [
+  {
+    key: "blush-spa",
+    label: "Blush Spa",
+    description: "Ivory, blush, and rose for medspa, salon, and beauty brands.",
+    accent: "#c85d7c",
+    pageStyle: {
+      backgroundColor: "#fff7f8",
+      secondaryBackground:
+        "linear-gradient(135deg, #fff4f6 0%, #f7d7df 52%, #e9b7c6 100%)",
+      overlayColor: "#f0e6e9",
+      overlayOpacity: 0.8,
+      headingColor: "#4a2331",
+      bodyColor: "rgba(74,35,49,0.78)",
+      linkColor: "#c85d7c",
+      cardColor: "#ffffff",
+      cardOpacity: 0.84,
+      cardBg: "rgba(255,255,255,0.84)",
+      cardRadius: 22,
+      cardBlur: 0,
+      cardShadow: "0 24px 60px rgba(124,72,92,0.14)",
+      btnBg: "#c85d7c",
+      btnColor: "#fffafc",
+      btnRadius: 8,
+      heroHeadingShadow: "0 18px 48px rgba(118,73,93,0.14)",
+    },
+    header: {
+      bg: "#f7d7df",
+      text_color: "#4a2331",
+      transparent_bg: "rgba(255, 244, 246, 0.36)",
+      scrolled_bg: "rgba(255, 244, 246, 0.82)",
+      scrolled_text_color: "#4a2331",
+    },
+    footer: {
+      bg: "#5a2b39",
+      text_color: "#fff7f8",
+      link_color: "#f7d7df",
+    },
+    navStyle: {
+      bg: "#c85d7c",
+      bg_hover: "#b74b6c",
+      text: "#fffafc",
+      text_hover: "#fffafc",
+      active_bg: "rgba(255,255,255,0.42)",
+      active_text: "#8f4058",
+      shadow: "0 18px 34px rgba(200,93,124,0.24)",
+    },
+  },
+  {
+    key: "champagne-luxe",
+    label: "Champagne Luxe",
+    description: "Warm ivory and champagne with a premium neutral accent.",
+    accent: "#b98a50",
+    pageStyle: {
+      backgroundColor: "#fffaf2",
+      secondaryBackground:
+        "linear-gradient(135deg, #fffdf8 0%, #f5e7d2 50%, #ecd0ab 100%)",
+      overlayColor: "#f3eadf",
+      overlayOpacity: 0.7,
+      headingColor: "#4f3422",
+      bodyColor: "rgba(79,52,34,0.76)",
+      linkColor: "#b98a50",
+      cardColor: "#ffffff",
+      cardOpacity: 0.9,
+      cardBg: "rgba(255,255,255,0.9)",
+      cardRadius: 18,
+      cardBlur: 0,
+      cardShadow: "0 20px 54px rgba(121,93,58,0.14)",
+      btnBg: "#b98a50",
+      btnColor: "#fffaf2",
+      btnRadius: 6,
+      heroHeadingShadow: "0 14px 42px rgba(115,86,54,0.12)",
+    },
+    header: {
+      bg: "#f5e7d2",
+      text_color: "#4f3422",
+      transparent_bg: "rgba(255, 250, 242, 0.35)",
+      scrolled_bg: "rgba(245, 231, 210, 0.84)",
+      scrolled_text_color: "#4f3422",
+    },
+    footer: {
+      bg: "#4f3422",
+      text_color: "#fff7ed",
+      link_color: "#ecd0ab",
+    },
+    navStyle: {
+      bg: "#b98a50",
+      bg_hover: "#a17643",
+      text: "#fffaf2",
+      text_hover: "#fffaf2",
+      active_bg: "rgba(255,255,255,0.42)",
+      active_text: "#8f693d",
+      shadow: "0 18px 34px rgba(185,138,80,0.22)",
+    },
+  },
+  {
+    key: "forest-calm",
+    label: "Forest Calm",
+    description: "Sage and moss for wellness, massage, and holistic brands.",
+    accent: "#4f8b72",
+    pageStyle: {
+      backgroundColor: "#f5fbf7",
+      secondaryBackground:
+        "linear-gradient(135deg, #f4faf5 0%, #dbeade 52%, #bfd7c4 100%)",
+      overlayColor: "#e7f1ea",
+      overlayOpacity: 0.72,
+      headingColor: "#234437",
+      bodyColor: "rgba(35,68,55,0.76)",
+      linkColor: "#4f8b72",
+      cardColor: "#ffffff",
+      cardOpacity: 0.88,
+      cardBg: "rgba(255,255,255,0.88)",
+      cardRadius: 18,
+      cardBlur: 0,
+      cardShadow: "0 20px 52px rgba(63,101,83,0.14)",
+      btnBg: "#4f8b72",
+      btnColor: "#f7fdf9",
+      btnRadius: 8,
+      heroHeadingShadow: "0 14px 40px rgba(58,95,79,0.14)",
+    },
+    header: {
+      bg: "#dbeade",
+      text_color: "#234437",
+      transparent_bg: "rgba(245, 251, 247, 0.34)",
+      scrolled_bg: "rgba(219, 234, 222, 0.82)",
+      scrolled_text_color: "#234437",
+    },
+    footer: {
+      bg: "#234437",
+      text_color: "#f4faf5",
+      link_color: "#bfd7c4",
+    },
+    navStyle: {
+      bg: "#4f8b72",
+      bg_hover: "#44785f",
+      text: "#f7fdf9",
+      text_hover: "#f7fdf9",
+      active_bg: "rgba(255,255,255,0.38)",
+      active_text: "#315b49",
+      shadow: "0 16px 30px rgba(79,139,114,0.22)",
+    },
+  },
+  {
+    key: "ocean-clean",
+    label: "Ocean Clean",
+    description: "Soft white, mist blue, and teal for clean medical aesthetics.",
+    accent: "#2e8ca6",
+    pageStyle: {
+      backgroundColor: "#f7fbfd",
+      secondaryBackground:
+        "linear-gradient(135deg, #f9fcff 0%, #dfeef7 50%, #c7e3f1 100%)",
+      overlayColor: "#edf5fa",
+      overlayOpacity: 0.7,
+      headingColor: "#1f4254",
+      bodyColor: "rgba(31,66,84,0.75)",
+      linkColor: "#2e8ca6",
+      cardColor: "#ffffff",
+      cardOpacity: 0.9,
+      cardBg: "rgba(255,255,255,0.9)",
+      cardRadius: 16,
+      cardBlur: 0,
+      cardShadow: "0 18px 48px rgba(68,118,144,0.14)",
+      btnBg: "#2e8ca6",
+      btnColor: "#f7fbfd",
+      btnRadius: 8,
+      heroHeadingShadow: "0 14px 40px rgba(54,96,118,0.13)",
+    },
+    header: {
+      bg: "#dfeef7",
+      text_color: "#1f4254",
+      transparent_bg: "rgba(247, 251, 253, 0.34)",
+      scrolled_bg: "rgba(223, 238, 247, 0.82)",
+      scrolled_text_color: "#1f4254",
+    },
+    footer: {
+      bg: "#1f4254",
+      text_color: "#f7fbfd",
+      link_color: "#c7e3f1",
+    },
+    navStyle: {
+      bg: "#2e8ca6",
+      bg_hover: "#24758b",
+      text: "#f7fbfd",
+      text_hover: "#f7fbfd",
+      active_bg: "rgba(255,255,255,0.38)",
+      active_text: "#215f73",
+      shadow: "0 16px 30px rgba(46,140,166,0.22)",
+    },
+  },
+  {
+    key: "modern-noir",
+    label: "Modern Noir",
+    description: "Charcoal and warm gold for luxury and premium brands.",
+    accent: "#d1a257",
+    pageStyle: {
+      backgroundColor: "#111113",
+      secondaryBackground:
+        "linear-gradient(135deg, #151619 0%, #25282d 55%, #2f343c 100%)",
+      overlayColor: "#0f1012",
+      overlayOpacity: 0.55,
+      headingColor: "#f5efe3",
+      bodyColor: "rgba(245,239,227,0.8)",
+      linkColor: "#d1a257",
+      cardColor: "#1a1b20",
+      cardOpacity: 0.92,
+      cardBg: "rgba(26,27,32,0.92)",
+      cardRadius: 12,
+      cardBlur: 0,
+      cardShadow: "0 24px 60px rgba(0,0,0,0.32)",
+      btnBg: "#d1a257",
+      btnColor: "#18171a",
+      btnRadius: 4,
+      heroHeadingShadow: "0 20px 50px rgba(0,0,0,0.35)",
+    },
+    header: {
+      bg: "#151619",
+      text_color: "#f5efe3",
+      transparent_bg: "rgba(21, 22, 25, 0.42)",
+      scrolled_bg: "rgba(21, 22, 25, 0.86)",
+      scrolled_text_color: "#f5efe3",
+    },
+    footer: {
+      bg: "#0b0c0f",
+      text_color: "#f5efe3",
+      link_color: "#d1a257",
+    },
+    navStyle: {
+      bg: "#d1a257",
+      bg_hover: "#bc914c",
+      text: "#18171a",
+      text_hover: "#18171a",
+      active_bg: "rgba(255,255,255,0.22)",
+      active_text: "#f5efe3",
+      shadow: "0 16px 28px rgba(0,0,0,0.34)",
+    },
+  },
+  {
+    key: "soft-minimal",
+    label: "Soft Minimal",
+    description: "Neutral whites and stone for clean corporate presentation.",
+    accent: "#475569",
+    pageStyle: {
+      backgroundColor: "#ffffff",
+      secondaryBackground:
+        "linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #eef2f7 100%)",
+      overlayColor: "#f8fafc",
+      overlayOpacity: 0.62,
+      headingColor: "#1f2937",
+      bodyColor: "rgba(31,41,55,0.76)",
+      linkColor: "#475569",
+      cardColor: "#ffffff",
+      cardOpacity: 0.94,
+      cardBg: "rgba(255,255,255,0.94)",
+      cardRadius: 12,
+      cardBlur: 0,
+      cardShadow: "0 14px 36px rgba(15,23,42,0.10)",
+      btnBg: "#475569",
+      btnColor: "#ffffff",
+      btnRadius: 6,
+      heroHeadingShadow: "0 10px 28px rgba(15,23,42,0.12)",
+    },
+    header: {
+      bg: "#ffffff",
+      text_color: "#1f2937",
+      transparent_bg: "rgba(255, 255, 255, 0.34)",
+      scrolled_bg: "rgba(255, 255, 255, 0.88)",
+      scrolled_text_color: "#1f2937",
+    },
+    footer: {
+      bg: "#f8fafc",
+      text_color: "#1f2937",
+      link_color: "#475569",
+    },
+    navStyle: {
+      bg: "#475569",
+      bg_hover: "#334155",
+      text: "#ffffff",
+      text_hover: "#ffffff",
+      active_bg: "rgba(71,85,105,0.12)",
+      active_text: "#334155",
+      shadow: "0 12px 26px rgba(15,23,42,0.12)",
+    },
+  },
+  {
+    key: "berry-editorial",
+    label: "Berry Editorial",
+    description: "Berry, blush, and plum for boutique beauty and lifestyle.",
+    accent: "#b83b6a",
+    pageStyle: {
+      backgroundColor: "#fff6fa",
+      secondaryBackground:
+        "linear-gradient(135deg, #fff3f8 0%, #f6d7e5 48%, #dfb0c7 100%)",
+      overlayColor: "#f7e8ef",
+      overlayOpacity: 0.76,
+      headingColor: "#4d2132",
+      bodyColor: "rgba(77,33,50,0.78)",
+      linkColor: "#b83b6a",
+      cardColor: "#ffffff",
+      cardOpacity: 0.88,
+      cardBg: "rgba(255,255,255,0.88)",
+      cardRadius: 20,
+      cardBlur: 0,
+      cardShadow: "0 22px 52px rgba(120,58,88,0.16)",
+      btnBg: "#b83b6a",
+      btnColor: "#fff7fb",
+      btnRadius: 8,
+      heroHeadingShadow: "0 18px 42px rgba(114,52,82,0.14)",
+    },
+    header: {
+      bg: "#f6d7e5",
+      text_color: "#4d2132",
+      transparent_bg: "rgba(255, 243, 248, 0.36)",
+      scrolled_bg: "rgba(246, 215, 229, 0.82)",
+      scrolled_text_color: "#4d2132",
+    },
+    footer: {
+      bg: "#4d2132",
+      text_color: "#fff6fa",
+      link_color: "#f6d7e5",
+    },
+    navStyle: {
+      bg: "#b83b6a",
+      bg_hover: "#9f2f59",
+      text: "#fff7fb",
+      text_hover: "#fff7fb",
+      active_bg: "rgba(255,255,255,0.38)",
+      active_text: "#8d2e52",
+      shadow: "0 18px 34px rgba(184,59,106,0.22)",
+    },
+  },
+  {
+    key: "sunset-glow",
+    label: "Sunset Glow",
+    description: "Peach, sand, and coral for lifestyle and service brands.",
+    accent: "#dd6b4d",
+    pageStyle: {
+      backgroundColor: "#fff9f4",
+      secondaryBackground:
+        "linear-gradient(135deg, #fff7ef 0%, #ffd8c2 52%, #f7b284 100%)",
+      overlayColor: "#fdf0e4",
+      overlayOpacity: 0.72,
+      headingColor: "#5d2f24",
+      bodyColor: "rgba(93,47,36,0.76)",
+      linkColor: "#dd6b4d",
+      cardColor: "#ffffff",
+      cardOpacity: 0.9,
+      cardBg: "rgba(255,255,255,0.9)",
+      cardRadius: 18,
+      cardBlur: 0,
+      cardShadow: "0 20px 52px rgba(161,91,62,0.15)",
+      btnBg: "#dd6b4d",
+      btnColor: "#fffaf5",
+      btnRadius: 8,
+      heroHeadingShadow: "0 16px 42px rgba(144,82,56,0.14)",
+    },
+    header: {
+      bg: "#ffd8c2",
+      text_color: "#5d2f24",
+      transparent_bg: "rgba(255, 247, 239, 0.36)",
+      scrolled_bg: "rgba(255, 216, 194, 0.82)",
+      scrolled_text_color: "#5d2f24",
+    },
+    footer: {
+      bg: "#5d2f24",
+      text_color: "#fff9f4",
+      link_color: "#ffd8c2",
+    },
+    navStyle: {
+      bg: "#dd6b4d",
+      bg_hover: "#c85c3f",
+      text: "#fffaf5",
+      text_hover: "#fffaf5",
+      active_bg: "rgba(255,255,255,0.38)",
+      active_text: "#a64b33",
+      shadow: "0 18px 34px rgba(221,107,77,0.22)",
+    },
+  },
+];
+
 /* ---------- CSS VARS helper for page-level style (NEW) ---------- */
 /* ---------- CSS VARS helper for page-level style (final) ---------- */
 function styleToCssVars(style = {}) {
@@ -425,6 +804,7 @@ function PageStyleCard({
   applyToAll,
   onToggleApplyToAll,
   onApplyNow,
+  onApplyThemePreset,
   onOpenAdvanced,
   companyId,
 }) {
@@ -698,6 +1078,10 @@ function PageStyleCard({
     const next = { ...heroShadowValues, ...patch };
     set({ heroHeadingShadow: buildTextShadow(next) });
   };
+  const applyPreset = (preset) => {
+    if (!preset) return;
+    onApplyThemePreset?.(preset, { applyToAll: !!applyToAll });
+  };
 
   return (
     <Stack id="page-style-card" spacing={1.5}>
@@ -780,6 +1164,59 @@ function PageStyleCard({
 
       {pageStyleTab === "style" && (
         <Stack spacing={1.25}>
+          <Typography variant="subtitle2">Theme presets</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Apply a curated theme across the current page and sync the matching header, footer, and menu colors.
+          </Typography>
+          <Grid container spacing={1}>
+            {THEME_PRESET_LIBRARY.map((preset) => (
+              <Grid item xs={12} sm={6} key={preset.key}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 1.25,
+                    borderRadius: 2,
+                    borderColor: "divider",
+                    background:
+                      preset.pageStyle.secondaryBackground || preset.pageStyle.backgroundColor,
+                  }}
+                >
+                  <Stack spacing={1}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        {preset.label}
+                      </Typography>
+                      <Stack direction="row" spacing={0.5}>
+                        {[preset.pageStyle.backgroundColor, preset.pageStyle.linkColor, preset.pageStyle.btnBg]
+                          .filter(Boolean)
+                          .slice(0, 3)
+                          .map((swatch, idx) => (
+                            <Box
+                              key={`${preset.key}-${idx}`}
+                              sx={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: "50%",
+                                border: "1px solid rgba(0,0,0,0.08)",
+                                background: swatch,
+                              }}
+                            />
+                          ))}
+                      </Stack>
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary">
+                      {preset.description}
+                    </Typography>
+                    <Button size="small" variant="outlined" onClick={() => applyPreset(preset)}>
+                      Apply preset
+                    </Button>
+                  </Stack>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+
+          <Divider />
           <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.background.heading")}</Typography>
           {colorField({
             label: t("manager.visualBuilder.pageStyle.background.color"),
@@ -1900,6 +2337,66 @@ const handleNavOverridesChange = useCallback(
   [setSiteSettings]
 );
 
+const applyThemePreset = useCallback(
+  async (preset, { applyToAll = false } = {}) => {
+    if (!preset) return;
+
+    const currentPageStyle =
+      readPageStyleProps(editing) ||
+      editing?.content?.meta?.pageStyle ||
+      editing?.content?.style ||
+      {};
+    const nextPageStyle = {
+      ...currentPageStyle,
+      ...(preset.pageStyle || {}),
+      themePresetKey: preset.key,
+    };
+
+    setEditing((cur) => {
+      const content = { ...(cur.content || {}) };
+      content.meta = { ...(content.meta || {}), pageStyle: nextPageStyle };
+      content.style = { ...(content.style || {}), ...nextPageStyle };
+      let updated = { ...cur, content };
+      updated = writePageStyleProps(updated, nextPageStyle);
+      return withLiftedLayout(updated);
+    });
+
+    const nextHeader = normalizeHeaderConfig({
+      ...(headerDraft || defaultHeaderConfig()),
+      ...(preset.header || {}),
+    });
+    const nextFooter = normalizeFooterConfig({
+      ...(footerDraft || defaultFooterConfig()),
+      ...(preset.footer || {}),
+    });
+    const nextNav = normalizeNavStyle({
+      ...(navStyleState || NAV_STYLE_DEFAULT),
+      ...(preset.navStyle || {}),
+    });
+
+    handleHeaderDraftChange(nextHeader);
+    handleFooterDraftChange(nextFooter);
+    handleNavDraftChange({ nav_style: nextNav });
+
+    if (applyToAll) {
+      await applyStyleToAllPagesNow(nextPageStyle);
+    }
+
+    setMsg(`Applied theme preset: ${preset.label}`);
+    setErr("");
+  },
+  [
+    applyStyleToAllPagesNow,
+    editing,
+    footerDraft,
+    handleFooterDraftChange,
+    handleHeaderDraftChange,
+    handleNavDraftChange,
+    headerDraft,
+    navStyleState,
+  ]
+);
+
 const saveNavSettings = useCallback(
   async (draft) => {
     if (!companyId) {
@@ -2117,10 +2614,11 @@ const [applyPageStyleToAll, setApplyPageStyleToAll] = useState(false);
 /** Apply current page's PageStyle to every other page */
 // Replace BOTH earlier applyStyleToAllPagesNow() definitions with this one:
 // Apply the current page's Page Style (SECTION) to all other pages
-const applyStyleToAllPagesNow = useCallback(async () => {
+const applyStyleToAllPagesNow = useCallback(async (overrideStyle = null) => {
   if (!companyId) return;
 
   const srcProps =
+    overrideStyle ||
     editing?.content?.meta?.pageStyle ||
     readPageStyleProps(editing) ||
     null;
@@ -5336,6 +5834,7 @@ function InspectorColumn() {
         applyToAll={applyPageStyleToAll}
         onToggleApplyToAll={setApplyPageStyleToAll}
         onApplyNow={applyStyleToAllPagesNow}
+        onApplyThemePreset={applyThemePreset}
         companyId={companyId}
         onOpenAdvanced={() => {
           addSection("pageStyle");
