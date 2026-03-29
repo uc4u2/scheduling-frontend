@@ -103,6 +103,7 @@ export const SCHEMA_REGISTRY = {
   serviceGrid: {
     title: "Service Grid",
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "title",     type: "richinline", label: "Section title" },
       { name: "subtitle",  type: "richtext",   label: "Subtitle" },
       {
@@ -287,6 +288,7 @@ export const SCHEMA_REGISTRY = {
   logoCarousel: {
     title: "Logo Carousel",
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "title",      type: "richinline", label: "Title", labelKey: "manager.visualBuilder.schemas.testimonials.fields.title" },
       { name: "caption",    type: "richinline", label: "Caption" },
       {
@@ -540,6 +542,7 @@ export const SCHEMA_REGISTRY = {
     title: "Stats",
     fields: [
       { name: "title",       type: "richinline", label: "Title", labelKey: "manager.visualBuilder.schemas.testimonials.fields.title" },
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       {
         name: "items",
         type: "objectArray",
@@ -691,6 +694,7 @@ export const SCHEMA_REGISTRY = {
   videoStorySplit: {
     title: "Video Story Split",
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "eyebrow", type: "richinline", label: "Eyebrow" },
       { name: "title", type: "richinline", label: "Title" },
       { name: "body", type: "richtext", label: "Body", minRows: 4 },

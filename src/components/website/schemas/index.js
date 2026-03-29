@@ -16,6 +16,7 @@ export const SCHEMA_REGISTRY = {
 
   videoStorySplit: {
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "eyebrow", type: "string", label: "Eyebrow" },
       { name: "title", type: "string", label: "Title" },
       { name: "body", type: "text", label: "Body", minRows: 4 },
@@ -74,6 +75,7 @@ export const SCHEMA_REGISTRY = {
 
   logoCarousel: {
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "title", type: "string", label: "Title" },
       { name: "caption", type: "string", label: "Caption" },
       {
@@ -285,6 +287,7 @@ featureStories: {
   stats: {
     fields: [
       { name: "title", type: "string", label: "Title" },
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       {
         name: "items", type: "objectArray", label: "Stats", fields: [
           { name: "value", type: "string", label: "Value (e.g., 99.95%)" },
@@ -393,6 +396,7 @@ featureStories: {
 
   serviceGrid: {
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "title", type: "string", label: "Title" },
       {
         name: "items", type: "objectArray", label: "Services", fields: [

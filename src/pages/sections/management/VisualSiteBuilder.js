@@ -2490,6 +2490,24 @@ const handleFooterDraftChange = useCallback(
   [setSiteSettings]
 );
 
+const handleThemeOverridesDraftChange = useCallback(
+  (draft) => {
+    if (!draft) return;
+    setThemeOverridesDraft(draft);
+    setBrandingMsg("");
+    setBrandingErr("");
+    setSiteSettings((prev) => ({
+      ...(prev || {}),
+      theme_overrides: draft,
+      settings: {
+        ...(prev?.settings || {}),
+        theme_overrides: draft,
+      },
+    }));
+  },
+  [setSiteSettings]
+);
+
 const handleFooterItemRemove = useCallback(
   (payload) => {
     if (!payload) return;
@@ -2590,10 +2608,41 @@ const applyThemePreset = useCallback(
       ...(navStyleState || NAV_STYLE_DEFAULT),
       ...(preset.navStyle || {}),
     });
+    const nextThemeOverrides = {
+      ...(themeOverridesDraft || defaultThemeOverrides),
+      brandColor:
+        preset.accent ||
+        preset.pageStyle?.linkColor ||
+        preset.pageStyle?.btnBg ||
+        themeOverridesDraft?.brandColor ||
+        defaultThemeOverrides.brandColor,
+      surface: preset.pageStyle?.backgroundColor === "#111113" ? "dark" : "light",
+      header: {
+        ...((themeOverridesDraft || defaultThemeOverrides).header || {}),
+        background: preset.header?.bg || (themeOverridesDraft || defaultThemeOverrides).header?.background,
+        text: preset.header?.text_color || (themeOverridesDraft || defaultThemeOverrides).header?.text,
+      },
+      footer: {
+        ...((themeOverridesDraft || defaultThemeOverrides).footer || {}),
+        background: preset.footer?.bg || (themeOverridesDraft || defaultThemeOverrides).footer?.background,
+        text: preset.footer?.text_color || (themeOverridesDraft || defaultThemeOverrides).footer?.text,
+      },
+      radius:
+        preset.pageStyle?.cardRadius ??
+        (themeOverridesDraft || defaultThemeOverrides).radius,
+      shadow:
+        preset.pageStyle?.cardShadow?.includes("60px")
+          ? "lg"
+          : preset.pageStyle?.cardShadow?.includes("36px")
+            ? "sm"
+            : "md",
+    };
 
     handleHeaderDraftChange(nextHeader);
     handleFooterDraftChange(nextFooter);
+    handleThemeOverridesDraftChange(nextThemeOverrides);
     handleNavDraftChange({ nav_style: nextNav });
+    setBrandingPanelOpen(true);
 
     if (applyToAll) {
       await applyStyleToAllPagesNow(nextPageStyle);
@@ -2606,11 +2655,15 @@ const applyThemePreset = useCallback(
     applyStyleToAllPagesNow,
     editing,
     footerDraft,
+    defaultThemeOverrides,
     handleFooterDraftChange,
     handleHeaderDraftChange,
+    handleThemeOverridesDraftChange,
     handleNavDraftChange,
     headerDraft,
     navStyleState,
+    setBrandingPanelOpen,
+    themeOverridesDraft,
   ]
 );
 
@@ -2655,10 +2708,11 @@ const applyHeaderModePreset = useCallback(
       ...(preset.values || {}),
     });
     handleHeaderDraftChange(nextHeader);
+    setBrandingPanelOpen(true);
     setMsg(`Applied header mode: ${preset.label}`);
     setErr("");
   },
-  [handleHeaderDraftChange, headerDraft]
+  [handleHeaderDraftChange, headerDraft, setBrandingPanelOpen]
 );
 
 const applyIndustryStarterPack = useCallback(
@@ -2705,10 +2759,41 @@ const applyIndustryStarterPack = useCallback(
       ...(navStyleState || NAV_STYLE_DEFAULT),
       ...(themePreset.navStyle || {}),
     });
+    const nextThemeOverrides = {
+      ...(themeOverridesDraft || defaultThemeOverrides),
+      brandColor:
+        themePreset.accent ||
+        themePreset.pageStyle?.linkColor ||
+        themePreset.pageStyle?.btnBg ||
+        themeOverridesDraft?.brandColor ||
+        defaultThemeOverrides.brandColor,
+      surface: themePreset.pageStyle?.backgroundColor === "#111113" ? "dark" : "light",
+      header: {
+        ...((themeOverridesDraft || defaultThemeOverrides).header || {}),
+        background: themePreset.header?.bg || (themeOverridesDraft || defaultThemeOverrides).header?.background,
+        text: themePreset.header?.text_color || (themeOverridesDraft || defaultThemeOverrides).header?.text,
+      },
+      footer: {
+        ...((themeOverridesDraft || defaultThemeOverrides).footer || {}),
+        background: themePreset.footer?.bg || (themeOverridesDraft || defaultThemeOverrides).footer?.background,
+        text: themePreset.footer?.text_color || (themeOverridesDraft || defaultThemeOverrides).footer?.text,
+      },
+      radius:
+        themePreset.pageStyle?.cardRadius ??
+        (themeOverridesDraft || defaultThemeOverrides).radius,
+      shadow:
+        themePreset.pageStyle?.cardShadow?.includes("60px")
+          ? "lg"
+          : themePreset.pageStyle?.cardShadow?.includes("36px")
+            ? "sm"
+            : "md",
+    };
 
     handleHeaderDraftChange(nextHeader);
     handleFooterDraftChange(nextFooter);
+    handleThemeOverridesDraftChange(nextThemeOverrides);
     handleNavDraftChange({ nav_style: nextNav });
+    setBrandingPanelOpen(true);
 
     if (applyToAll) {
       await applyStyleToAllPagesNow(nextPageStyle);
@@ -2721,11 +2806,15 @@ const applyIndustryStarterPack = useCallback(
     applyStyleToAllPagesNow,
     editing,
     footerDraft,
+    defaultThemeOverrides,
     handleFooterDraftChange,
     handleHeaderDraftChange,
+    handleThemeOverridesDraftChange,
     handleNavDraftChange,
     headerDraft,
     navStyleState,
+    setBrandingPanelOpen,
+    themeOverridesDraft,
   ]
 );
 
@@ -5300,7 +5389,7 @@ const autoProvisionIfEmpty = useCallback(
           defaultThemeOverrides={defaultThemeOverrides}
           onChangeHeader={handleHeaderDraftChange}
           onChangeFooter={handleFooterDraftChange}
-          onChangeThemeOverrides={setThemeOverridesDraft}
+          onChangeThemeOverrides={handleThemeOverridesDraftChange}
           onSave={saveBrandingSettings}
           saving={brandingSaving}
           message={brandingMsg}

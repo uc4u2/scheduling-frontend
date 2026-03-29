@@ -1114,9 +1114,17 @@ const ServiceGrid = ({
   subtitleColor,
   hoverLift,
   imageHoverScale,
-  lightboxEnabled = true
+  lightboxEnabled = true,
+  followSiteTheme = true,
 }) => {
   const align = titleAlign || "center";
+  const themeDriven = followSiteTheme !== false;
+  const resolvedTitleColor = themeDriven
+    ? "var(--page-heading-color, currentColor)"
+    : titleColor;
+  const resolvedSubtitleColor = themeDriven
+    ? "var(--page-body-color, text.secondary)"
+    : subtitleColor;
   const list = toArray(items);
   const imageItems = [];
   const imageIndexMap = {};
@@ -1164,7 +1172,7 @@ const ServiceGrid = ({
             mb: 2,
             fontWeight: 800,
             textAlign: align,
-            ...(titleColor ? { color: titleColor } : {}),
+            ...(resolvedTitleColor ? { color: resolvedTitleColor } : {}),
           }}
         >
           {title}
@@ -1175,7 +1183,7 @@ const ServiceGrid = ({
           variant="body1"
           sx={{
             mb: 2,
-            color: subtitleColor ? subtitleColor : "text.secondary",
+            color: resolvedSubtitleColor || "text.secondary",
             textAlign: align,
           }}
         >
@@ -3043,6 +3051,7 @@ const Video = ({ title, description, url, poster, titleAlign, maxWidth }) => (
 );
 
 const VideoStorySplit = ({
+  followSiteTheme = true,
   eyebrow,
   title,
   body,
@@ -3059,6 +3068,7 @@ const VideoStorySplit = ({
   maxWidth = "full",
   borderRadius = 4,
 }) => {
+  const themeDriven = followSiteTheme !== false;
   const resolvedUrl = toEmbedUrl(videoUrl);
   const isEmbed =
     resolvedUrl?.includes("youtube.com") ||
@@ -3068,6 +3078,15 @@ const VideoStorySplit = ({
   const resolvedMax = toContainerMax(maxWidth);
   const paddingValue = typeof contentPadding === "number" ? `${contentPadding}px` : contentPadding;
   const radiusValue = typeof borderRadius === "number" ? borderRadius : 4;
+  const resolvedContentBackground = themeDriven
+    ? "var(--page-secondary-bg, var(--page-card-bg, rgba(255,255,255,0.92)))"
+    : contentBackground;
+  const resolvedContentColor = themeDriven
+    ? "var(--page-body-color, inherit)"
+    : contentColor;
+  const resolvedTitleColor = themeDriven
+    ? "var(--page-heading-color, currentColor)"
+    : titleColor;
 
   return (
     <Container maxWidth={resolvedMax} disableGutters={resolvedMax === false} sx={{ px: resolvedMax === false ? 0 : undefined }}>
@@ -3127,8 +3146,8 @@ const VideoStorySplit = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: contentBackground,
-            color: contentColor,
+            background: resolvedContentBackground,
+            color: resolvedContentColor,
             minHeight: { xs: "auto", md: 560 },
           }}
         >
@@ -3149,7 +3168,7 @@ const VideoStorySplit = ({
                   letterSpacing: ".2em",
                   textTransform: "uppercase",
                   fontWeight: 600,
-                  color: contentColor,
+                  color: resolvedContentColor,
                   opacity: 0.86,
                 }}
               >
@@ -3162,7 +3181,7 @@ const VideoStorySplit = ({
                 sx={{
                   fontWeight: 300,
                   letterSpacing: "-0.01em",
-                  color: titleColor,
+                  color: resolvedTitleColor,
                   fontSize: { xs: "2rem", md: "3rem" },
                 }}
               >
@@ -3173,7 +3192,7 @@ const VideoStorySplit = ({
               <HtmlTypo
                 variant="body1"
                 sx={{
-                  color: contentColor,
+                  color: resolvedContentColor,
                   opacity: 0.92,
                   lineHeight: 1.8,
                   maxWidth: 560,
@@ -3653,7 +3672,9 @@ const LogoCarousel = ({
   titleAlign,
   intervalMs = 4000,
   showDots = true,
+  followSiteTheme = true,
 }) => {
+  const themeDriven = followSiteTheme !== false;
   const entries = toArray(logos)
     .map(normalizeLogoItem)
     .filter((it) => it && (it.src || it.label));
@@ -3684,6 +3705,7 @@ const LogoCarousel = ({
             textTransform: "uppercase",
             letterSpacing: ".06em",
             textAlign: titleAlign || "center",
+            color: themeDriven ? "var(--page-heading-color, currentColor)" : undefined,
           }}
         >
           {title}
@@ -3694,7 +3716,7 @@ const LogoCarousel = ({
           variant="body2"
           sx={{
             mb: 2,
-            color: "text.secondary",
+            color: themeDriven ? "var(--page-body-color, text.secondary)" : "text.secondary",
             textAlign: titleAlign || "center",
           }}
         >
@@ -3715,10 +3737,17 @@ const LogoCarousel = ({
             minWidth: { xs: "100%", sm: 280 },
             maxWidth: 320,
             textAlign: "center",
-            borderRadius: 4,
-            backdropFilter: "blur(12px)",
-            backgroundColor: "rgba(255,255,255,0.28)",
-            border: "1px solid rgba(178,64,24,0.35)",
+            borderRadius: "var(--page-card-radius, 16px)",
+            backdropFilter: themeDriven ? "var(--page-card-blur, none)" : "blur(12px)",
+            backgroundColor: themeDriven
+              ? "var(--page-card-bg, rgba(255,255,255,0.92))"
+              : "rgba(255,255,255,0.28)",
+            border: themeDriven
+              ? "1px solid color-mix(in srgb, var(--page-heading-color, rgba(0,0,0,0.18)) 10%, rgba(255,255,255,0.15))"
+              : "1px solid rgba(178,64,24,0.35)",
+            boxShadow: themeDriven
+              ? "var(--page-card-shadow, 0 8px 30px rgba(0,0,0,0.08))"
+              : undefined,
           }}
         >
           {active.src ? (
@@ -3736,14 +3765,21 @@ const LogoCarousel = ({
               }}
             />
           ) : (
-            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: ".04em" }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: ".04em",
+                color: themeDriven ? "var(--page-heading-color, currentColor)" : undefined,
+              }}
+            >
               {label}
             </Typography>
           )}
           {active.src && label && (
             <Typography
               variant="subtitle2"
-              color="text.secondary"
+              color={themeDriven ? "var(--page-body-color, text.secondary)" : "text.secondary"}
               sx={{ mt: 1, textTransform: "uppercase", letterSpacing: ".12em" }}
             >
               {label}
@@ -4790,7 +4826,9 @@ const Stats = ({
   disclaimer,
   titleColor,
   subtitleColor,
+  followSiteTheme = true,
 }) => {
+  const themeDriven = followSiteTheme !== false;
   const list = toArray(items);
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
@@ -4801,9 +4839,11 @@ const Stats = ({
             mb: subtitle ? 1 : 2,
             fontWeight: 800,
             textAlign: titleAlign || "left",
-            ...(titleColor
-              ? { color: titleColor }
-              : { color: "var(--page-heading-color, currentColor)" }),
+            ...((themeDriven
+              ? "var(--page-heading-color, currentColor)"
+              : titleColor)
+              ? { color: themeDriven ? "var(--page-heading-color, currentColor)" : titleColor }
+              : {}),
           }}
         >
           {title}
@@ -4814,9 +4854,11 @@ const Stats = ({
           variant="body1"
           sx={{
             mb: 3,
-            color: subtitleColor
-              ? subtitleColor
-              : "var(--page-body-color, text.secondary)",
+            color: themeDriven
+              ? "var(--page-body-color, text.secondary)"
+              : subtitleColor
+                ? subtitleColor
+                : "var(--page-body-color, text.secondary)",
             textAlign: titleAlign || "left",
           }}
         >

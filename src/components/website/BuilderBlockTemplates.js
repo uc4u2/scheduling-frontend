@@ -134,6 +134,7 @@ export const NEW_BLOCKS = {
   videoStorySplit: () => ({
     type: "videoStorySplit",
     props: {
+      followSiteTheme: true,
       eyebrow: "Watch the platform story",
       title: "See how Schedulaa runs in real life",
       body:
@@ -462,6 +463,7 @@ export const NEW_BLOCKS = {
   logoCarousel: () => ({
     type: "logoCarousel",
     props: {
+      followSiteTheme: true,
       title: "Trusted by teams like",
       logos: [
         { label: "Photo Artisto" },
@@ -713,6 +715,7 @@ featureStories: () => ({
   serviceGrid: () => ({
     type: "serviceGrid",
     props: {
+      followSiteTheme: true,
       title: "Popular services",
       titleAlign: "center",
       subtitle: "Transparent pricing, expert care.",
