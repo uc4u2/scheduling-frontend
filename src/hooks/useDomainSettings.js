@@ -24,6 +24,13 @@ const INITIAL_STATE = {
   nextRetrySeconds: null,
   domainConnectSession: null,
   connectAuthorizationUrl: null,
+  rootRedirectOk: null,
+  rootRedirectCheckedAt: null,
+  rootRedirectStatusCode: null,
+  rootRedirectExpectedTarget: null,
+  rootRedirectObservedLocation: null,
+  rootRedirectError: null,
+  rootRedirectCheckedScheme: null,
 };
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -176,6 +183,38 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "authorization_url")) {
         next.connectAuthorizationUrl = payload.authorization_url || null;
+      }
+
+      if (hasOwn(payload, "root_redirect_ok")) {
+        next.rootRedirectOk =
+          typeof payload.root_redirect_ok === "boolean" ? payload.root_redirect_ok : null;
+      }
+
+      if (hasOwn(payload, "root_redirect_checked_at")) {
+        next.rootRedirectCheckedAt = toDate(payload.root_redirect_checked_at);
+      }
+
+      if (hasOwn(payload, "root_redirect_status_code")) {
+        next.rootRedirectStatusCode =
+          typeof payload.root_redirect_status_code === "number"
+            ? payload.root_redirect_status_code
+            : null;
+      }
+
+      if (hasOwn(payload, "root_redirect_expected_target")) {
+        next.rootRedirectExpectedTarget = payload.root_redirect_expected_target || null;
+      }
+
+      if (hasOwn(payload, "root_redirect_observed_location")) {
+        next.rootRedirectObservedLocation = payload.root_redirect_observed_location || null;
+      }
+
+      if (hasOwn(payload, "root_redirect_error")) {
+        next.rootRedirectError = payload.root_redirect_error || null;
+      }
+
+      if (hasOwn(payload, "root_redirect_checked_scheme")) {
+        next.rootRedirectCheckedScheme = payload.root_redirect_checked_scheme || null;
       }
 
       return next;

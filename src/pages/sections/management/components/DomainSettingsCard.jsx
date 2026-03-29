@@ -166,6 +166,32 @@ const formatDuration = (seconds) => {
   return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
 };
 
+const normalizeRedirectTarget = (value) => {
+  if (!value) return "";
+  try {
+    const url = new URL(value);
+    const pathname = url.pathname === "/" ? "" : url.pathname;
+    return `${url.protocol}//${url.host.toLowerCase()}${pathname}`;
+  } catch {
+    return String(value || "").trim();
+  }
+};
+
+const buildRootRedirectMeta = ({ ok, expectedTarget, observedLocation, error }) => {
+  const expected = normalizeRedirectTarget(expectedTarget);
+  const observed = normalizeRedirectTarget(observedLocation);
+  if (ok || (observed && expected && observed === expected)) {
+    return { state: "detected", severity: "success" };
+  }
+  if (observed) {
+    return { state: "wrong_target", severity: "warning" };
+  }
+  if (error) {
+    return { state: "could_not_check", severity: "info" };
+  }
+  return { state: "missing", severity: "info" };
+};
+
 async function copyToClipboard(value) {
   try {
     if (navigator?.clipboard?.writeText) {
@@ -234,6 +260,13 @@ const DomainSettingsCard = ({
     fetchDomainConnectSession,
     diagnoseDomain,
     retrySsl,
+    rootRedirectOk,
+    rootRedirectCheckedAt,
+    rootRedirectStatusCode,
+    rootRedirectExpectedTarget,
+    rootRedirectObservedLocation,
+    rootRedirectError,
+    rootRedirectCheckedScheme,
   } = useDomainSettings(companyId);
 
   const statusMetaMap = useMemo(() => buildStatusMeta(t), [t]);
@@ -326,6 +359,26 @@ const DomainSettingsCard = ({
     Boolean(domain) &&
     Boolean(verifiedAt) &&
     (sslStatus === "error" || status === "ssl_failed" || Boolean(sslError));
+  const rootRedirectMeta = buildRootRedirectMeta({
+    ok: rootRedirectOk,
+    expectedTarget: rootRedirectExpectedTarget,
+    observedLocation: rootRedirectObservedLocation,
+    error: rootRedirectError,
+  });
+  const rootRedirectLabelMap = {
+    detected: t("management.domainSettings.rootRedirect.detected", {
+      defaultValue: "Detected",
+    }),
+    missing: t("management.domainSettings.rootRedirect.missing", {
+      defaultValue: "Not configured yet",
+    }),
+    wrong_target: t("management.domainSettings.rootRedirect.wrongTarget", {
+      defaultValue: "Points somewhere else",
+    }),
+    could_not_check: t("management.domainSettings.rootRedirect.couldNotCheck", {
+      defaultValue: "Could not check",
+    }),
+  };
 
   const refreshStatus = async () => {
     try {
@@ -798,6 +851,14 @@ const DomainSettingsCard = ({
                     })}
                   />
                 )}
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  color={rootRedirectMeta.severity}
+                  label={t("management.domainSettings.labels.rootRedirect", {
+                    defaultValue: "Root redirect",
+                  })}
+                />
               </Stack>
               <Stack direction="row" spacing={1}>
                 <Button
@@ -827,6 +888,60 @@ const DomainSettingsCard = ({
                 )}
               </Stack>
             </Stack>
+            <Alert severity={rootRedirectMeta.severity} sx={{ mt: 1.5 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                {t("management.domainSettings.rootRedirect.title", {
+                  defaultValue: "Root redirect",
+                })}: {rootRedirectLabelMap[rootRedirectMeta.state]}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {t("management.domainSettings.rootRedirect.advisory", {
+                  defaultValue:
+                    "Recommended only. Missing apex redirect does not block verification.",
+                })}
+              </Typography>
+              {rootRedirectExpectedTarget && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {t("management.domainSettings.rootRedirect.expected", {
+                    defaultValue: "Expected target: {{target}}",
+                    target: rootRedirectExpectedTarget,
+                  })}
+                </Typography>
+              )}
+              {rootRedirectObservedLocation && (
+                <Typography variant="body2" color="text.secondary">
+                  {t("management.domainSettings.rootRedirect.observed", {
+                    defaultValue: "Observed location: {{target}}",
+                    target: rootRedirectObservedLocation,
+                  })}
+                </Typography>
+              )}
+              {rootRedirectStatusCode && (
+                <Typography variant="body2" color="text.secondary">
+                  {t("management.domainSettings.rootRedirect.statusCode", {
+                    defaultValue: "Status code: {{code}}",
+                    code: rootRedirectStatusCode,
+                  })}
+                </Typography>
+              )}
+              {(rootRedirectCheckedScheme || rootRedirectCheckedAt) && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                  {t("management.domainSettings.rootRedirect.checked", {
+                    defaultValue: "Checked {{time}}{{scheme}}",
+                    time: formatDateTime(rootRedirectCheckedAt, t),
+                    scheme: rootRedirectCheckedScheme ? ` via ${rootRedirectCheckedScheme.toUpperCase()}` : "",
+                  })}
+                </Typography>
+              )}
+              {rootRedirectError && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {t("management.domainSettings.rootRedirect.error", {
+                    defaultValue: "Check detail: {{error}}",
+                    error: rootRedirectError,
+                  })}
+                </Typography>
+              )}
+            </Alert>
           </Box>
 
           <Box>
@@ -893,6 +1008,9 @@ const DomainSettingsCard = ({
                     cnameTarget={cnameTarget}
                     cdnProvider={cdnProvider}
                     verifiedAt={verifiedAt}
+                    rootRedirectMeta={rootRedirectMeta}
+                    rootRedirectExpectedTarget={rootRedirectExpectedTarget}
+                    rootRedirectObservedLocation={rootRedirectObservedLocation}
                   />
                 )}
                 {activeTab === CONNECT_TAB && (
@@ -940,6 +1058,9 @@ const DomainSettingsCard = ({
                 cnameTarget={cnameTarget}
                 cdnProvider={cdnProvider}
                 verifiedAt={verifiedAt}
+                rootRedirectMeta={rootRedirectMeta}
+                rootRedirectExpectedTarget={rootRedirectExpectedTarget}
+                rootRedirectObservedLocation={rootRedirectObservedLocation}
               />
             )}
           </Stack>
@@ -1020,6 +1141,9 @@ const ManualPanel = ({
   cnameTarget,
   cdnProvider,
   verifiedAt,
+  rootRedirectMeta,
+  rootRedirectExpectedTarget,
+  rootRedirectObservedLocation,
 }) => {
   const { t } = useTranslation();
   const isLive = ["verified", "ssl_active"].includes(status);
@@ -1104,6 +1228,38 @@ const ManualPanel = ({
       {cnameWarning && (
         <Alert severity="warning">
           {cnameWarning} {cnameTarget ? `(${cnameTarget})` : ""}
+        </Alert>
+      )}
+
+      {rootRedirectMeta?.state !== "detected" && (
+        <Alert severity={rootRedirectMeta?.severity || "info"}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            {t("management.domainSettings.rootRedirect.title", {
+              defaultValue: "Root redirect",
+            })}
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 0.5 }}>
+            {t("management.domainSettings.rootRedirect.manualHint", {
+              defaultValue:
+                "Your root domain should redirect to the live website host, but this is only recommended and does not block launch.",
+            })}
+          </Typography>
+          {rootRedirectExpectedTarget && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {t("management.domainSettings.rootRedirect.expected", {
+                defaultValue: "Expected target: {{target}}",
+                target: rootRedirectExpectedTarget,
+              })}
+            </Typography>
+          )}
+          {rootRedirectObservedLocation && (
+            <Typography variant="body2" color="text.secondary">
+              {t("management.domainSettings.rootRedirect.observed", {
+                defaultValue: "Observed location: {{target}}",
+                target: rootRedirectObservedLocation,
+              })}
+            </Typography>
+          )}
         </Alert>
       )}
 
