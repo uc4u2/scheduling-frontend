@@ -32,6 +32,12 @@ const INITIAL_STATE = {
   rootRedirectError: null,
   rootRedirectCheckedScheme: null,
   rootRedirectState: null,
+  workerRouteState: null,
+  workerRouteRequiredPattern: null,
+  workerRouteWorkerName: null,
+  workerRouteError: null,
+  workerRouteCheckedAt: null,
+  workerRouteDetectionMode: null,
   requestedDomain: null,
   canonicalDomain: null,
   cloudflareHostnameId: null,
@@ -41,6 +47,7 @@ const INITIAL_STATE = {
   dnsDetails: null,
   cloudflareDetails: null,
   bootstrapDetails: null,
+  workerRouteDetails: null,
 };
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -242,6 +249,30 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
         next.rootRedirectState = payload.root_redirect_state || null;
       }
 
+      if (hasOwn(payload, "worker_route_state")) {
+        next.workerRouteState = payload.worker_route_state || null;
+      }
+
+      if (hasOwn(payload, "worker_route_required_pattern")) {
+        next.workerRouteRequiredPattern = payload.worker_route_required_pattern || null;
+      }
+
+      if (hasOwn(payload, "worker_route_worker_name")) {
+        next.workerRouteWorkerName = payload.worker_route_worker_name || null;
+      }
+
+      if (hasOwn(payload, "worker_route_error")) {
+        next.workerRouteError = payload.worker_route_error || null;
+      }
+
+      if (hasOwn(payload, "worker_route_checked_at")) {
+        next.workerRouteCheckedAt = toDate(payload.worker_route_checked_at);
+      }
+
+      if (hasOwn(payload, "worker_route_detection_mode")) {
+        next.workerRouteDetectionMode = payload.worker_route_detection_mode || null;
+      }
+
       if (hasOwn(payload, "requested_domain")) {
         next.requestedDomain = payload.requested_domain || null;
       }
@@ -276,6 +307,20 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "bootstrap")) {
         next.bootstrapDetails = payload.bootstrap || null;
+      }
+
+      if (hasOwn(payload, "worker_route")) {
+        next.workerRouteDetails = payload.worker_route || null;
+        next.workerRouteState = payload.worker_route?.state || next.workerRouteState || null;
+        next.workerRouteRequiredPattern =
+          payload.worker_route?.required_pattern || next.workerRouteRequiredPattern || null;
+        next.workerRouteWorkerName =
+          payload.worker_route?.worker_name || next.workerRouteWorkerName || null;
+        next.workerRouteError = payload.worker_route?.error || next.workerRouteError || null;
+        next.workerRouteCheckedAt =
+          toDate(payload.worker_route?.checked_at) || next.workerRouteCheckedAt || null;
+        next.workerRouteDetectionMode =
+          payload.worker_route?.detection_mode || next.workerRouteDetectionMode || null;
       }
 
       return next;

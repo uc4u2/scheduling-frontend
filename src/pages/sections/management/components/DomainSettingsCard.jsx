@@ -218,6 +218,25 @@ const buildRootRedirectMeta = ({ state, ok, expectedTarget, observedLocation, er
   return { state: "missing", severity: "info" };
 };
 
+const buildWorkerRouteMeta = ({ state, error }) => {
+  if (state === "detected") {
+    return { state, severity: "success" };
+  }
+  if (state === "missing") {
+    return { state, severity: "warning" };
+  }
+  if (state === "could_not_check") {
+    return { state, severity: "info" };
+  }
+  if (state === "manual_required") {
+    return { state, severity: "info" };
+  }
+  if (error) {
+    return { state: "could_not_check", severity: "info" };
+  }
+  return { state: "manual_required", severity: "info" };
+};
+
 const buildConnectionSummaryMeta = (summary, t) => {
   if (!summary) {
     return {
@@ -333,6 +352,12 @@ const DomainSettingsCard = ({
     rootRedirectError,
     rootRedirectCheckedScheme,
     rootRedirectState,
+    workerRouteState,
+    workerRouteRequiredPattern,
+    workerRouteWorkerName,
+    workerRouteError,
+    workerRouteCheckedAt,
+    workerRouteDetectionMode,
     requestedDomain,
     canonicalDomain,
     cloudflareHostnameId,
@@ -422,6 +447,8 @@ const DomainSettingsCard = ({
   const canonicalDomainValue = canonicalDomain || domainDetails?.canonical || normalizeDomain(domain || "");
   const fallbackLiveHost = canonicalDomainValue || "www.example.com";
   const expectedRootRedirectTarget = rootRedirectExpectedTarget || (canonicalDomainValue ? `https://${canonicalDomainValue}` : "—");
+  const workerRoutePattern = workerRouteRequiredPattern || (canonicalDomainValue ? `${canonicalDomainValue}/*` : "www.example.com/*");
+  const workerName = workerRouteWorkerName || "schedulaa-edge-router";
 
   const statusMeta = statusMetaMap[status] || statusMetaMap.none;
   const sslMeta = sslStatus ? sslMetaMap[sslStatus] : null;
@@ -444,6 +471,10 @@ const DomainSettingsCard = ({
     expectedTarget: rootRedirectExpectedTarget,
     observedLocation: rootRedirectObservedLocation,
     error: rootRedirectError,
+  });
+  const workerRouteMeta = buildWorkerRouteMeta({
+    state: workerRouteState,
+    error: workerRouteError,
   });
   const summaryMeta = buildConnectionSummaryMeta(connectionSummary, t);
   const rootRedirectLabelMap = {
@@ -473,6 +504,20 @@ const DomainSettingsCard = ({
       : t("management.domainSettings.bootstrap.pendingDetail", {
           defaultValue: "The live host will be confirmed after verification and propagation complete.",
         }),
+  };
+  const workerRouteLabelMap = {
+    detected: t("management.domainSettings.workerRoute.detected", {
+      defaultValue: "Detected",
+    }),
+    missing: t("management.domainSettings.workerRoute.missing", {
+      defaultValue: "Missing",
+    }),
+    could_not_check: t("management.domainSettings.workerRoute.couldNotCheck", {
+      defaultValue: "Could not check",
+    }),
+    manual_required: t("management.domainSettings.workerRoute.manualRequired", {
+      defaultValue: "Manual step required",
+    }),
   };
   const progressSteps = [
     {
@@ -530,6 +575,22 @@ const DomainSettingsCard = ({
       title: t("management.domainSettings.progress.websiteBootstrap", { defaultValue: "Website bootstrap" }),
       state: bootstrapMeta.state,
       detail: bootstrapMeta.detail,
+    },
+    {
+      key: "worker_route",
+      title: t("management.domainSettings.progress.workerRoute", { defaultValue: "Edge routing" }),
+      state:
+        workerRouteMeta.state === "detected"
+          ? "done"
+          : workerRouteMeta.state === "missing"
+            ? "warning"
+            : "pending",
+      detail: t("management.domainSettings.progress.workerRouteDetail", {
+        defaultValue: "Required route: {{pattern}} -> {{worker}}",
+        pattern: workerRoutePattern,
+        worker: workerName,
+      }),
+      advisory: true,
     },
     {
       key: "root",
@@ -731,6 +792,9 @@ const DomainSettingsCard = ({
       `SSL status: ${sslStatus || "—"}`,
       `Bootstrap: ${bootstrapDetails?.ok ? "ok" : "not_ok"}`,
       `Bootstrap slug: ${bootstrapDetails?.slug || "—"}`,
+      `Worker route: ${workerRouteState || "—"}`,
+      `Worker route pattern: ${workerRoutePattern || "—"}`,
+      `Worker name: ${workerName || "—"}`,
       `Root redirect: ${rootRedirectState || "—"}`,
       `Next step: ${guidance?.next_step || "—"}`,
       `Next step detail: ${guidance?.next_step_detail || "—"}`,
@@ -1215,6 +1279,14 @@ const DomainSettingsCard = ({
                     defaultValue: "Root redirect",
                   })}
                 />
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  color={workerRouteMeta.severity}
+                  label={t("management.domainSettings.labels.workerRoute", {
+                    defaultValue: "Edge routing",
+                  })}
+                />
               </Stack>
               <Stack direction="row" spacing={1}>
                 <Button
@@ -1443,6 +1515,109 @@ const DomainSettingsCard = ({
 
           <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2.25 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+              {t("management.domainSettings.cards.workerRouteTitle", {
+                defaultValue: "Edge routing",
+              })}
+            </Typography>
+            <Alert severity={workerRouteMeta.severity} sx={{ mb: 1.5 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                {t("management.domainSettings.workerRoute.title", {
+                  defaultValue: "Worker route",
+                })}: {workerRouteLabelMap[workerRouteMeta.state]}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {t("management.domainSettings.workerRoute.advisory", {
+                  defaultValue:
+                    "This route is currently added manually in Cloudflare Workers Routes.",
+                })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {t("management.domainSettings.workerRoute.required", {
+                  defaultValue: "Required route: {{pattern}} -> {{worker}}",
+                  pattern: workerRoutePattern,
+                  worker: workerName,
+                })}
+              </Typography>
+              {workerRouteError && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {t("management.domainSettings.workerRoute.error", {
+                    defaultValue: "Check detail: {{error}}",
+                    error: workerRouteError,
+                  })}
+                </Typography>
+              )}
+              {(workerRouteCheckedAt || workerRouteDetectionMode) && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                  {t("management.domainSettings.workerRoute.checked", {
+                    defaultValue: "Checked {{time}}{{mode}}",
+                    time: workerRouteCheckedAt ? formatDateTime(workerRouteCheckedAt, t) : "—",
+                    mode: workerRouteDetectionMode ? ` via ${workerRouteDetectionMode}` : "",
+                  })}
+                </Typography>
+              )}
+            </Alert>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap">
+              <Button
+                variant="outlined"
+                startIcon={<ContentCopyIcon fontSize="small" />}
+                onClick={() => handleCopy(workerRoutePattern, "management.domainSettings.labels.workerRoute")}
+                disabled={!workerRoutePattern}
+              >
+                {t("management.domainSettings.buttons.copyRoutePattern", {
+                  defaultValue: "Copy route pattern",
+                })}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<ContentCopyIcon fontSize="small" />}
+                onClick={() => handleCopy(workerName, "management.domainSettings.workerRoute.title")}
+                disabled={!workerName}
+              >
+                {t("management.domainSettings.buttons.copyWorkerName", {
+                  defaultValue: "Copy worker name",
+                })}
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={processing && action === "diagnose" ? <CircularProgress size={16} /> : <RefreshIcon fontSize="small" />}
+                onClick={handleDiagnose}
+                disabled={processing || !companyId}
+              >
+                {t("management.domainSettings.buttons.recheckRoute", {
+                  defaultValue: "Recheck route",
+                })}
+              </Button>
+              <Button
+                variant="text"
+                endIcon={<LaunchIcon fontSize="small" />}
+                href="https://dash.cloudflare.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("management.domainSettings.buttons.openCloudflare", {
+                  defaultValue: "Open Cloudflare",
+                })}
+              </Button>
+              <Button
+                variant="text"
+                startIcon={<ContentCopyIcon fontSize="small" />}
+                onClick={() =>
+                  handleCopy(
+                    `${workerRoutePattern} -> ${workerName}`,
+                    "management.domainSettings.workerRoute.title"
+                  )
+                }
+                disabled={!workerRoutePattern || !workerName}
+              >
+                {t("management.domainSettings.buttons.copyFullInstruction", {
+                  defaultValue: "Copy full instruction",
+                })}
+              </Button>
+            </Stack>
+          </Box>
+
+          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2.25 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
               {t("management.domainSettings.cards.liveTitle", {
                 defaultValue: "Live website",
               })}
@@ -1546,6 +1721,10 @@ const DomainSettingsCard = ({
                 <Typography variant="body2"><strong>Cloudflare hostname ID:</strong> {cloudflareHostnameId || "—"}</Typography>
                 <Typography variant="body2"><strong>Bootstrap:</strong> {bootstrapDetails?.ok ? "ok" : "not_ok"}</Typography>
                 <Typography variant="body2"><strong>Bootstrap slug:</strong> {bootstrapDetails?.slug || "—"}</Typography>
+                <Typography variant="body2"><strong>Worker route state:</strong> {workerRouteState || "—"}</Typography>
+                <Typography variant="body2"><strong>Worker route pattern:</strong> {workerRoutePattern || "—"}</Typography>
+                <Typography variant="body2"><strong>Worker name:</strong> {workerName || "—"}</Typography>
+                <Typography variant="body2"><strong>Worker route checked:</strong> {workerRouteCheckedAt ? formatDateTime(workerRouteCheckedAt, t) : "—"}</Typography>
                 <Typography variant="body2"><strong>Root redirect state:</strong> {rootRedirectState || "—"}</Typography>
                 <Typography variant="body2"><strong>Root redirect checked:</strong> {rootRedirectCheckedAt ? formatDateTime(rootRedirectCheckedAt, t) : "—"}</Typography>
                 <Typography variant="body2"><strong>Next step:</strong> {guidance?.next_step || "—"}</Typography>
