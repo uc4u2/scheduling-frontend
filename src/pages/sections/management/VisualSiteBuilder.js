@@ -1294,8 +1294,70 @@ function PageStyleCard({
   };
   const renderIndustryPackPreview = (pack) => {
     const preset = THEME_PRESET_LIBRARY.find((item) => item.key === pack.themePresetKey);
+    const headerMode = HEADER_MODE_PRESET_LIBRARY.find((item) => item.key === pack.headerModeKey);
+    const buttonStyle = BUTTON_STYLE_PRESET_LIBRARY.find((item) => item.key === pack.buttonStyleKey);
     if (!preset) return null;
-    return renderThemePresetPreview(preset);
+    const headerTone = preset.header?.bg || preset.pageStyle?.backgroundColor || "#ffffff";
+    const headerText = preset.header?.text_color || preset.pageStyle?.headingColor || "#111827";
+    const footerTone = preset.footer?.bg || preset.pageStyle?.backgroundColor || "#111827";
+    const footerText = preset.footer?.text_color || preset.pageStyle?.btnColor || "#ffffff";
+    const buttonTone = preset.pageStyle?.btnBg || preset.navStyle?.bg || preset.accent || "#6366f1";
+    const buttonText = preset.pageStyle?.btnColor || preset.navStyle?.text || "#ffffff";
+    return (
+      <Stack spacing={0.75}>
+        {renderThemePresetPreview(preset)}
+        <Box
+          sx={{
+            borderRadius: 2,
+            overflow: "hidden",
+            border: "1px solid rgba(15,23,42,0.08)",
+            boxShadow: "0 6px 18px rgba(15,23,42,0.08)",
+            background: "#fff",
+          }}
+        >
+          <Box
+            sx={{
+              height: 18,
+              px: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: headerTone,
+            }}
+          >
+            <Box sx={{ width: 18, height: 6, borderRadius: 999, bgcolor: headerText, opacity: 0.72 }} />
+            <Box sx={{ width: 34, height: 10, borderRadius: "6px", bgcolor: buttonTone, color: buttonText, opacity: 0.92 }} />
+          </Box>
+          <Box sx={{ px: 1, py: 0.85, bgcolor: preset.pageStyle?.backgroundColor || "#fff" }}>
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+              {headerMode ? (
+                <Chip size="small" variant="outlined" label={`Header: ${headerMode.label}`} />
+              ) : null}
+              {buttonStyle ? (
+                <Chip size="small" variant="outlined" label={`Buttons: ${buttonStyle.label}`} />
+              ) : null}
+            </Stack>
+          </Box>
+          <Box
+            sx={{
+              height: 14,
+              px: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: footerTone,
+            }}
+          >
+            <Box sx={{ width: 22, height: 4, borderRadius: 999, bgcolor: footerText, opacity: 0.65 }} />
+            <Stack direction="row" spacing={0.4}>
+              {[0, 1, 2].map((idx) => (
+                <Box key={idx} sx={{ width: 8, height: 4, borderRadius: 999, bgcolor: footerText, opacity: 0.45 }} />
+              ))}
+            </Stack>
+          </Box>
+        </Box>
+      </Stack>
+    );
   };
   const reapplyThemeToChrome = () => {
     onReapplyThemeToChrome?.();
@@ -1398,9 +1460,18 @@ function PageStyleCard({
                     <Typography variant="caption" color="text.secondary">
                       {pack.description}
                     </Typography>
-                    <Button size="small" variant="outlined" onClick={() => applyIndustryPack(pack)}>
-                      Apply starter pack
-                    </Button>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={0.75}>
+                      <Button size="small" variant="outlined" onClick={() => applyIndustryPack(pack)}>
+                        Apply starter pack
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => applyIndustryPack(pack, { applyToAll: true })}
+                      >
+                        Apply to all pages
+                      </Button>
+                    </Stack>
                   </Stack>
                 </Paper>
               </Grid>
