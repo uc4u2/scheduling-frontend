@@ -2757,10 +2757,12 @@ const applyThemePreset = useCallback(
     applyStyleToAllPagesNow,
     editing,
     defaultThemeOverrides,
-    applyThemePresetToFooterDraft,
-    applyThemePresetToHeaderDraft,
+    footerDraft,
+    handleFooterDraftChange,
+    handleHeaderDraftChange,
     handleThemeOverridesDraftChange,
     handleNavDraftChange,
+    headerDraft,
     navStyleState,
     setBrandingPanelOpen,
     themeOverridesDraft,
@@ -2800,38 +2802,32 @@ const applyButtonStylePreset = useCallback(
   [applyStyleToAllPagesNow, editing]
 );
 
-const applyThemePresetToHeaderDraft = useCallback(
-  (preset, headerModeValues = null) => {
-    const baseHeader = normalizeHeaderConfig(headerDraft || defaultHeaderConfig());
-    const nextHeader = normalizeHeaderConfig({
-      ...baseHeader,
-      bg: preset?.header?.bg ?? "",
-      text_color: preset?.header?.text_color ?? "",
-      transparent_bg: preset?.header?.transparent_bg ?? "",
-      scrolled_bg: preset?.header?.scrolled_bg ?? "",
-      scrolled_text_color: preset?.header?.scrolled_text_color ?? "",
-      ...(headerModeValues || {}),
-    });
-    handleHeaderDraftChange(nextHeader);
-    return nextHeader;
-  },
-  [handleHeaderDraftChange, headerDraft]
-);
+function applyThemePresetToHeaderDraft(preset, headerModeValues = null) {
+  const baseHeader = normalizeHeaderConfig(headerDraft || defaultHeaderConfig());
+  const nextHeader = normalizeHeaderConfig({
+    ...baseHeader,
+    bg: preset?.header?.bg ?? "",
+    text_color: preset?.header?.text_color ?? "",
+    transparent_bg: preset?.header?.transparent_bg ?? "",
+    scrolled_bg: preset?.header?.scrolled_bg ?? "",
+    scrolled_text_color: preset?.header?.scrolled_text_color ?? "",
+    ...(headerModeValues || {}),
+  });
+  handleHeaderDraftChange(nextHeader);
+  return nextHeader;
+}
 
-const applyThemePresetToFooterDraft = useCallback(
-  (preset) => {
-    const baseFooter = normalizeFooterConfig(footerDraft || defaultFooterConfig());
-    const nextFooter = normalizeFooterConfig({
-      ...baseFooter,
-      bg: preset?.footer?.bg ?? "",
-      text_color: preset?.footer?.text_color ?? "",
-      link_color: preset?.footer?.link_color ?? "",
-    });
-    handleFooterDraftChange(nextFooter);
-    return nextFooter;
-  },
-  [footerDraft, handleFooterDraftChange]
-);
+function applyThemePresetToFooterDraft(preset) {
+  const baseFooter = normalizeFooterConfig(footerDraft || defaultFooterConfig());
+  const nextFooter = normalizeFooterConfig({
+    ...baseFooter,
+    bg: preset?.footer?.bg ?? "",
+    text_color: preset?.footer?.text_color ?? "",
+    link_color: preset?.footer?.link_color ?? "",
+  });
+  handleFooterDraftChange(nextFooter);
+  return nextFooter;
+}
 
 const applyHeaderModePreset = useCallback(
   (preset) => {
@@ -2906,10 +2902,12 @@ const applyIndustryStarterPack = useCallback(
     applyStyleToAllPagesNow,
     editing,
     defaultThemeOverrides,
-    applyThemePresetToFooterDraft,
-    applyThemePresetToHeaderDraft,
+    footerDraft,
+    handleFooterDraftChange,
+    handleHeaderDraftChange,
     handleThemeOverridesDraftChange,
     handleNavDraftChange,
+    headerDraft,
     navStyleState,
     setBrandingPanelOpen,
     themeOverridesDraft,
@@ -2985,10 +2983,12 @@ const reapplyThemeToChrome = useCallback(() => {
 }, [
   defaultThemeOverrides,
   editing,
-  applyThemePresetToFooterDraft,
-  applyThemePresetToHeaderDraft,
+  footerDraft,
+  handleFooterDraftChange,
+  handleHeaderDraftChange,
   handleNavDraftChange,
   handleThemeOverridesDraftChange,
+  headerDraft,
   navStyleState,
   setBrandingPanelOpen,
   siteSettings?.pageStyleDefault?.themePresetKey,
@@ -6353,7 +6353,7 @@ function InspectorColumn() {
           ]);
           break;
         case "featureStories":
-          props.stories = toArray(props.stories).map((story) => {
+          props.stories = (Array.isArray(props.stories) ? props.stories : []).map((story) => {
             const nextStory = { ...(story || {}) };
             delete nextStory.background;
             return nextStory;
