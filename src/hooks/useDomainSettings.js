@@ -32,6 +32,15 @@ const INITIAL_STATE = {
   rootRedirectError: null,
   rootRedirectCheckedScheme: null,
   rootRedirectState: null,
+  requestedDomain: null,
+  canonicalDomain: null,
+  cloudflareHostnameId: null,
+  connectionSummary: null,
+  guidance: null,
+  domainDetails: null,
+  dnsDetails: null,
+  cloudflareDetails: null,
+  bootstrapDetails: null,
 };
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -158,8 +167,19 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "dns")) {
         const dns = payload.dns || {};
-        next.dnsTxtOk = typeof dns.txt === "boolean" ? dns.txt : null;
-        next.dnsCnameOk = typeof dns.cname === "boolean" ? dns.cname : null;
+        next.dnsTxtOk =
+          typeof dns.txt === "boolean"
+            ? dns.txt
+            : typeof dns.txt_ok === "boolean"
+              ? dns.txt_ok
+              : null;
+        next.dnsCnameOk =
+          typeof dns.cname === "boolean"
+            ? dns.cname
+            : typeof dns.cname_ok === "boolean"
+              ? dns.cname_ok
+              : null;
+        next.dnsDetails = dns || null;
       }
 
       if (hasOwn(payload, "next_retry_seconds")) {
@@ -220,6 +240,42 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "root_redirect_state")) {
         next.rootRedirectState = payload.root_redirect_state || null;
+      }
+
+      if (hasOwn(payload, "requested_domain")) {
+        next.requestedDomain = payload.requested_domain || null;
+      }
+
+      if (hasOwn(payload, "canonical_domain")) {
+        next.canonicalDomain = payload.canonical_domain || null;
+      }
+
+      if (hasOwn(payload, "cloudflare_hostname_id")) {
+        next.cloudflareHostnameId = payload.cloudflare_hostname_id || null;
+      }
+
+      if (hasOwn(payload, "connection_summary")) {
+        next.connectionSummary = payload.connection_summary || null;
+      }
+
+      if (hasOwn(payload, "guidance")) {
+        next.guidance = payload.guidance || null;
+      }
+
+      if (hasOwn(payload, "domain_details")) {
+        next.domainDetails = payload.domain_details || null;
+        next.requestedDomain = payload.domain_details?.requested || next.requestedDomain || null;
+        next.canonicalDomain = payload.domain_details?.canonical || next.canonicalDomain || null;
+        next.cloudflareHostnameId =
+          payload.domain_details?.cloudflare_hostname_id || next.cloudflareHostnameId || null;
+      }
+
+      if (hasOwn(payload, "cloudflare")) {
+        next.cloudflareDetails = payload.cloudflare || null;
+      }
+
+      if (hasOwn(payload, "bootstrap")) {
+        next.bootstrapDetails = payload.bootstrap || null;
       }
 
       return next;
