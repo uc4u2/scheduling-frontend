@@ -276,6 +276,50 @@ const progressChipColor = (state) => {
   }
 };
 
+const progressChipSx = (state, advisory = false) => (theme) => {
+  if (advisory) {
+    return {
+      bgcolor: theme.palette.grey[50],
+      color: theme.palette.text.primary,
+      borderColor: theme.palette.grey[300],
+      fontWeight: 600,
+    };
+  }
+  if (state === "done") {
+    return {
+      bgcolor: theme.palette.success.light,
+      color: theme.palette.success.dark,
+      fontWeight: 700,
+      "& .MuiChip-label": { color: theme.palette.success.dark },
+    };
+  }
+  if (state === "warning") {
+    return {
+      bgcolor: "#fff3cd",
+      color: "#8a4b00",
+      borderColor: "#f3c46b",
+      fontWeight: 700,
+      "& .MuiChip-label": { color: "#8a4b00" },
+    };
+  }
+  if (state === "error") {
+    return {
+      bgcolor: theme.palette.error.light,
+      color: theme.palette.error.dark,
+      borderColor: theme.palette.error.main,
+      fontWeight: 700,
+      "& .MuiChip-label": { color: theme.palette.error.dark },
+    };
+  }
+  return {
+    bgcolor: theme.palette.grey[100],
+    color: theme.palette.text.primary,
+    borderColor: theme.palette.grey[300],
+    fontWeight: 600,
+    "& .MuiChip-label": { color: theme.palette.text.primary },
+  };
+};
+
 async function copyToClipboard(value) {
   try {
     if (navigator?.clipboard?.writeText) {
@@ -1196,6 +1240,7 @@ const DomainSettingsCard = ({
                       size="small"
                       variant={step.advisory ? "outlined" : "filled"}
                       color={progressChipColor(step.state)}
+                      sx={progressChipSx(step.state, false)}
                       label={
                         step.state === "done"
                           ? t("management.domainSettings.progress.done", { defaultValue: "Done" })
@@ -1210,6 +1255,7 @@ const DomainSettingsCard = ({
                       <Chip
                         size="small"
                         variant="outlined"
+                        sx={progressChipSx("pending", true)}
                         label={t("management.domainSettings.progress.advisory", { defaultValue: "Advisory" })}
                       />
                     )}
