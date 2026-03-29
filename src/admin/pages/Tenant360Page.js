@@ -55,6 +55,9 @@ export default function Tenant360Page() {
   const [disableDialogError, setDisableDialogError] = useState("");
   const [disableTarget, setDisableTarget] = useState(null);
   const [telemetryHealth, setTelemetryHealth] = useState({ okCount: 0, failCount: 0 });
+  const [riskResetBusy, setRiskResetBusy] = useState(false);
+  const [riskResetEmail, setRiskResetEmail] = useState("");
+  const [riskResetMessage, setRiskResetMessage] = useState("");
   const viewerTimezone = useMemo(() => getUserTimezone(), []);
 
   const load = useCallback(async () => {
@@ -72,6 +75,11 @@ export default function Tenant360Page() {
     setRiskEvents(eventsRes.data?.risk_events || []);
     setNotes(notesRes.data?.notes || []);
   }, [companyId]);
+
+  useEffect(() => {
+    const latestEmail = tenant?.risk_telemetry?.latest_billing_attempt?.email || "";
+    setRiskResetEmail(latestEmail);
+  }, [tenant]);
 
   useEffect(() => {
     load();
@@ -197,6 +205,30 @@ export default function Tenant360Page() {
     await platformAdminApi.post(`/tenants/${companyId}/notes`, { note: noteDraft });
     setNoteDraft("");
     load();
+  };
+
+  const resetBillingAttemptWindow = async ({ email = "", clearCompanyWindow = false } = {}) => {
+    setRiskResetBusy(true);
+    setRiskResetMessage("");
+    try {
+      const payload = clearCompanyWindow
+        ? { clear_company_window: true, minutes: 30 }
+        : { email: (email || "").trim().toLowerCase(), minutes: 30, global_scope: true };
+      const { data } = await platformAdminApi.post(
+        `/tenants/${companyId}/billing/risk/attempts/reset`,
+        payload
+      );
+      setRiskResetMessage(`Reset complete. Deleted ${data?.deleted_count ?? 0} recent attempt row(s).`);
+      await load();
+    } catch (err) {
+      setRiskResetMessage(
+        err?.response?.data?.error === "email_or_ip_required"
+          ? "Enter an email or choose the tenant window reset."
+          : "Reset failed."
+      );
+    } finally {
+      setRiskResetBusy(false);
+    }
   };
 
   const adminToken = useMemo(() => {
@@ -955,6 +987,39 @@ export default function Tenant360Page() {
 
           <Paper sx={{ p: 2, mb: 2 }}>
             <Typography variant="subtitle1">Risk telemetry</Typography>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1.5}
+              sx={{ mt: 1, mb: 2, alignItems: { md: "center" } }}
+            >
+              <TextField
+                size="small"
+                label="Reset attempt-limited email"
+                value={riskResetEmail}
+                onChange={(e) => setRiskResetEmail(e.target.value)}
+                sx={{ minWidth: { xs: "100%", md: 320 } }}
+              />
+              <Button
+                variant="outlined"
+                disabled={riskResetBusy || !riskResetEmail.trim()}
+                onClick={() => resetBillingAttemptWindow({ email: riskResetEmail })}
+              >
+                Reset email attempts
+              </Button>
+              <Button
+                variant="outlined"
+                color="warning"
+                disabled={riskResetBusy}
+                onClick={() => resetBillingAttemptWindow({ clearCompanyWindow: true })}
+              >
+                Reset tenant 30m window
+              </Button>
+            </Stack>
+            {riskResetMessage ? (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                {riskResetMessage}
+              </Alert>
+            ) : null}
             <Grid container spacing={2} sx={{ mt: 0.5 }}>
               <Grid item xs={12} md={6}>
                 <List dense>
