@@ -2659,14 +2659,6 @@ const applyThemePreset = useCallback(
       return withLiftedLayout(updated);
     });
 
-    const nextHeader = normalizeHeaderConfig({
-      ...(headerDraft || defaultHeaderConfig()),
-      ...(preset.header || {}),
-    });
-    const nextFooter = normalizeFooterConfig({
-      ...(footerDraft || defaultFooterConfig()),
-      ...(preset.footer || {}),
-    });
     const nextNav = normalizeNavStyle({
       ...(navStyleState || NAV_STYLE_DEFAULT),
       ...(preset.navStyle || {}),
@@ -2677,8 +2669,8 @@ const applyThemePreset = useCallback(
       defaultThemeOverrides
     );
 
-    handleHeaderDraftChange(nextHeader);
-    handleFooterDraftChange(nextFooter);
+    applyThemePresetToHeaderDraft(preset);
+    applyThemePresetToFooterDraft(preset);
     handleThemeOverridesDraftChange(nextThemeOverrides);
     handleNavDraftChange({ nav_style: nextNav });
     setBrandingPanelOpen(true);
@@ -2693,13 +2685,11 @@ const applyThemePreset = useCallback(
   [
     applyStyleToAllPagesNow,
     editing,
-    footerDraft,
     defaultThemeOverrides,
-    handleFooterDraftChange,
-    handleHeaderDraftChange,
+    applyThemePresetToFooterDraft,
+    applyThemePresetToHeaderDraft,
     handleThemeOverridesDraftChange,
     handleNavDraftChange,
-    headerDraft,
     navStyleState,
     setBrandingPanelOpen,
     themeOverridesDraft,
@@ -2737,6 +2727,39 @@ const applyButtonStylePreset = useCallback(
     setErr("");
   },
   [applyStyleToAllPagesNow, editing]
+);
+
+const applyThemePresetToHeaderDraft = useCallback(
+  (preset, headerModeValues = null) => {
+    const baseHeader = normalizeHeaderConfig(headerDraft || defaultHeaderConfig());
+    const nextHeader = normalizeHeaderConfig({
+      ...baseHeader,
+      bg: preset?.header?.bg ?? "",
+      text_color: preset?.header?.text_color ?? "",
+      transparent_bg: preset?.header?.transparent_bg ?? "",
+      scrolled_bg: preset?.header?.scrolled_bg ?? "",
+      scrolled_text_color: preset?.header?.scrolled_text_color ?? "",
+      ...(headerModeValues || {}),
+    });
+    handleHeaderDraftChange(nextHeader);
+    return nextHeader;
+  },
+  [handleHeaderDraftChange, headerDraft]
+);
+
+const applyThemePresetToFooterDraft = useCallback(
+  (preset) => {
+    const baseFooter = normalizeFooterConfig(footerDraft || defaultFooterConfig());
+    const nextFooter = normalizeFooterConfig({
+      ...baseFooter,
+      bg: preset?.footer?.bg ?? "",
+      text_color: preset?.footer?.text_color ?? "",
+      link_color: preset?.footer?.link_color ?? "",
+    });
+    handleFooterDraftChange(nextFooter);
+    return nextFooter;
+  },
+  [footerDraft, handleFooterDraftChange]
 );
 
 const applyHeaderModePreset = useCallback(
@@ -2785,15 +2808,6 @@ const applyIndustryStarterPack = useCallback(
       return withLiftedLayout(updated);
     });
 
-    const nextHeader = normalizeHeaderConfig({
-      ...(headerDraft || defaultHeaderConfig()),
-      ...(themePreset.header || {}),
-      ...(headerPreset?.values || {}),
-    });
-    const nextFooter = normalizeFooterConfig({
-      ...(footerDraft || defaultFooterConfig()),
-      ...(themePreset.footer || {}),
-    });
     const nextNav = normalizeNavStyle({
       ...(navStyleState || NAV_STYLE_DEFAULT),
       ...(themePreset.navStyle || {}),
@@ -2804,8 +2818,8 @@ const applyIndustryStarterPack = useCallback(
       defaultThemeOverrides
     );
 
-    handleHeaderDraftChange(nextHeader);
-    handleFooterDraftChange(nextFooter);
+    applyThemePresetToHeaderDraft(themePreset, headerPreset?.values || null);
+    applyThemePresetToFooterDraft(themePreset);
     handleThemeOverridesDraftChange(nextThemeOverrides);
     handleNavDraftChange({ nav_style: nextNav });
     setBrandingPanelOpen(true);
@@ -2820,13 +2834,11 @@ const applyIndustryStarterPack = useCallback(
   [
     applyStyleToAllPagesNow,
     editing,
-    footerDraft,
     defaultThemeOverrides,
-    handleFooterDraftChange,
-    handleHeaderDraftChange,
+    applyThemePresetToFooterDraft,
+    applyThemePresetToHeaderDraft,
     handleThemeOverridesDraftChange,
     handleNavDraftChange,
-    headerDraft,
     navStyleState,
     setBrandingPanelOpen,
     themeOverridesDraft,
@@ -2883,14 +2895,6 @@ const reapplyThemeToChrome = useCallback(() => {
     setErr("The saved theme preset could not be found.");
     return;
   }
-  const nextHeader = normalizeHeaderConfig({
-    ...(headerDraft || defaultHeaderConfig()),
-    ...(preset.header || {}),
-  });
-  const nextFooter = normalizeFooterConfig({
-    ...(footerDraft || defaultFooterConfig()),
-    ...(preset.footer || {}),
-  });
   const nextNav = normalizeNavStyle({
     ...(navStyleState || NAV_STYLE_DEFAULT),
     ...(preset.navStyle || {}),
@@ -2900,8 +2904,8 @@ const reapplyThemeToChrome = useCallback(() => {
     themeOverridesDraft,
     defaultThemeOverrides
   );
-  handleHeaderDraftChange(nextHeader);
-  handleFooterDraftChange(nextFooter);
+  applyThemePresetToHeaderDraft(preset);
+  applyThemePresetToFooterDraft(preset);
   handleThemeOverridesDraftChange(nextThemeOverrides);
   handleNavDraftChange({ nav_style: nextNav });
   setBrandingPanelOpen(true);
@@ -2910,12 +2914,10 @@ const reapplyThemeToChrome = useCallback(() => {
 }, [
   defaultThemeOverrides,
   editing,
-  footerDraft,
-  handleFooterDraftChange,
-  handleHeaderDraftChange,
+  applyThemePresetToFooterDraft,
+  applyThemePresetToHeaderDraft,
   handleNavDraftChange,
   handleThemeOverridesDraftChange,
-  headerDraft,
   navStyleState,
   setBrandingPanelOpen,
   siteSettings?.pageStyleDefault?.themePresetKey,
