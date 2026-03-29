@@ -2968,9 +2968,7 @@ const canvasMaxHeight = useMemo(() => {
 const [applyPageStyleToAll, setApplyPageStyleToAll] = useState(false);
 
 /** Apply current page's PageStyle to every other page */
-// Replace BOTH earlier applyStyleToAllPagesNow() definitions with this one:
-// Apply the current page's Page Style (SECTION) to all other pages
-const applyStyleToAllPagesNow = useCallback(async (overrideStyle = null) => {
+async function applyStyleToAllPagesNow(overrideStyle = null) {
   if (!companyId) return;
 
   const srcProps =
@@ -3015,7 +3013,7 @@ const applyStyleToAllPagesNow = useCallback(async (overrideStyle = null) => {
   } finally {
     setBusy(false);
   }
-}, [companyId, editing, t]);
+}
 
 
 
