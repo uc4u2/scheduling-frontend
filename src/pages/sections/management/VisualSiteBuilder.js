@@ -358,6 +358,45 @@ const mergeNavIntoSettings = (current, draft) => {
   };
 };
 
+const defaultSiteThemeSettings = () => ({
+  syncChrome: true,
+  themePresetKey: "",
+  industryStarterPackKey: "",
+  headerModeKey: "",
+  buttonStylePresetKey: "",
+});
+
+const readSiteThemeSettings = (settingsObj) => {
+  const source =
+    settingsObj?.site_theme ||
+    settingsObj?.settings?.site_theme ||
+    {};
+  return {
+    ...defaultSiteThemeSettings(),
+    ...(source || {}),
+    syncChrome:
+      source?.syncChrome === undefined
+        ? true
+        : Boolean(source.syncChrome),
+  };
+};
+
+const mergeSiteThemeIntoSettings = (current, patch) => {
+  const base = current ? { ...current } : {};
+  const nextSiteTheme = {
+    ...readSiteThemeSettings(base),
+    ...(patch || {}),
+  };
+  return {
+    ...base,
+    site_theme: nextSiteTheme,
+    settings: {
+      ...(base.settings || {}),
+      site_theme: nextSiteTheme,
+    },
+  };
+};
+
 const THEME_PRESET_LIBRARY = [
   {
     key: "blush-spa",
@@ -959,6 +998,8 @@ function PageStyleCard({
   onApplyIndustryStarterPack,
   onReapplyThemeToChrome,
   onResetToSiteTheme,
+  siteThemeSettings,
+  onToggleSyncChrome,
   canResetToSiteTheme,
   onOpenAdvanced,
   companyId,
@@ -1245,6 +1286,9 @@ function PageStyleCard({
     if (!pack) return;
     onApplyIndustryStarterPack?.(pack, { applyToAll: !!applyToAll });
   };
+  const syncChrome = siteThemeSettings?.syncChrome !== false;
+  const activeStarterPackKey = siteThemeSettings?.industryStarterPackKey || "";
+  const activeThemePresetKey = siteThemeSettings?.themePresetKey || "";
   const renderThemePresetPreview = (preset) => {
     const bg = preset.pageStyle.backgroundColor || "#ffffff";
     const secondary = preset.pageStyle.secondaryBackground || bg;
@@ -1444,9 +1488,65 @@ function PageStyleCard({
 
       {pageStyleTab === "style" && (
         <Stack spacing={1.25}>
+          <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+            <Stack spacing={1}>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                justifyContent="space-between"
+              >
+                <Box>
+                  <Typography variant="subtitle2">Site theme behavior</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Keep header, footer, and menu synced with the active site theme pack.
+                  </Typography>
+                </Box>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={syncChrome}
+                      onChange={(_, checked) => onToggleSyncChrome?.(checked)}
+                    />
+                  }
+                  label="Keep header/footer/menu synced"
+                />
+              </Stack>
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                {activeStarterPackKey ? (
+                  <Chip
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    label={`Active pack: ${
+                      INDUSTRY_STARTER_PACKS.find((pack) => pack.key === activeStarterPackKey)?.label ||
+                      activeStarterPackKey
+                    }`}
+                  />
+                ) : null}
+                {!activeStarterPackKey && activeThemePresetKey ? (
+                  <Chip
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    label={`Active theme: ${
+                      THEME_PRESET_LIBRARY.find((preset) => preset.key === activeThemePresetKey)?.label ||
+                      activeThemePresetKey
+                    }`}
+                  />
+                ) : null}
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={syncChrome ? "Chrome sync on" : "Chrome sync off"}
+                />
+              </Stack>
+            </Stack>
+          </Paper>
+
           <Typography variant="subtitle2">Industry starter packs</Typography>
           <Typography variant="caption" color="text.secondary">
-            One-click combinations that apply a curated color theme, header mode, and button style.
+            Full-site theme packs that apply a curated color theme, header mode, footer palette, menu styling, and button style together.
           </Typography>
           <Grid container spacing={1}>
             {INDUSTRY_STARTER_PACKS.map((pack) => (
@@ -2296,8 +2396,12 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [headerDraft, setHeaderDraft] = useState(() => defaultHeaderConfig());
   const [footerDraft, setFooterDraft] = useState(() => defaultFooterConfig());
   const [brandingSaving, setBrandingSaving] = useState(false);
-  const [brandingMsg, setBrandingMsg] = useState("");
+const [brandingMsg, setBrandingMsg] = useState("");
 const [brandingErr, setBrandingErr] = useState("");
+  const siteThemeSettings = useMemo(
+    () => readSiteThemeSettings(siteSettings),
+    [siteSettings]
+  );
 
   const loadCheckpoints = useCallback(async (cid) => {
     if (!cid) return;
@@ -2706,6 +2810,13 @@ const handleNavOverridesChange = useCallback(
   [setSiteSettings]
 );
 
+const handleSiteThemeSettingsChange = useCallback(
+  (patch) => {
+    setSiteSettings((prev) => mergeSiteThemeIntoSettings(prev, patch));
+  },
+  [setSiteSettings]
+);
+
 const applyThemePreset = useCallback(
   async (preset, { applyToAll = false } = {}) => {
     if (!preset) return;
@@ -2739,11 +2850,19 @@ const applyThemePreset = useCallback(
       themeOverridesDraft,
       defaultThemeOverrides
     );
-
-    applyThemePresetToHeaderDraft(preset);
-    applyThemePresetToFooterDraft(preset);
+    const syncChrome = readSiteThemeSettings(siteSettings).syncChrome !== false;
+    if (syncChrome) {
+      applyThemePresetToHeaderDraft(preset);
+      applyThemePresetToFooterDraft(preset);
+    }
     handleThemeOverridesDraftChange(nextThemeOverrides);
-    handleNavDraftChange({ nav_style: nextNav });
+    if (syncChrome) {
+      handleNavDraftChange({ nav_style: nextNav });
+    }
+    handleSiteThemeSettingsChange({
+      themePresetKey: preset.key,
+      industryStarterPackKey: "",
+    });
     setBrandingPanelOpen(true);
 
     if (applyToAll) {
@@ -2760,11 +2879,13 @@ const applyThemePreset = useCallback(
     footerDraft,
     handleFooterDraftChange,
     handleHeaderDraftChange,
+    handleSiteThemeSettingsChange,
     handleThemeOverridesDraftChange,
     handleNavDraftChange,
     headerDraft,
     navStyleState,
     setBrandingPanelOpen,
+    siteSettings,
     themeOverridesDraft,
   ]
 );
@@ -2884,11 +3005,21 @@ const applyIndustryStarterPack = useCallback(
       themeOverridesDraft,
       defaultThemeOverrides
     );
-
-    applyThemePresetToHeaderDraft(themePreset, headerPreset?.values || null);
-    applyThemePresetToFooterDraft(themePreset);
+    const syncChrome = readSiteThemeSettings(siteSettings).syncChrome !== false;
+    if (syncChrome) {
+      applyThemePresetToHeaderDraft(themePreset, headerPreset?.values || null);
+      applyThemePresetToFooterDraft(themePreset);
+    }
     handleThemeOverridesDraftChange(nextThemeOverrides);
-    handleNavDraftChange({ nav_style: nextNav });
+    if (syncChrome) {
+      handleNavDraftChange({ nav_style: nextNav });
+    }
+    handleSiteThemeSettingsChange({
+      themePresetKey: themePreset.key,
+      industryStarterPackKey: pack.key,
+      headerModeKey: headerPreset?.key || "",
+      buttonStylePresetKey: buttonPreset?.key || "",
+    });
     setBrandingPanelOpen(true);
 
     if (applyToAll) {
@@ -2905,11 +3036,13 @@ const applyIndustryStarterPack = useCallback(
     footerDraft,
     handleFooterDraftChange,
     handleHeaderDraftChange,
+    handleSiteThemeSettingsChange,
     handleThemeOverridesDraftChange,
     handleNavDraftChange,
     headerDraft,
     navStyleState,
     setBrandingPanelOpen,
+    siteSettings,
     themeOverridesDraft,
   ]
 );
@@ -2946,12 +3079,19 @@ function buildThemeOverridesFromPreset(preset, currentThemeOverrides, defaultThe
 }
 
 const reapplyThemeToChrome = useCallback(() => {
+  const activeTheme = readSiteThemeSettings(siteSettings);
+  const activePack =
+    activeTheme?.industryStarterPackKey
+      ? INDUSTRY_STARTER_PACKS.find((item) => item.key === activeTheme.industryStarterPackKey)
+      : null;
   const currentPageStyle =
     readPageStyleProps(editing) ||
     editing?.content?.meta?.pageStyle ||
     editing?.content?.style ||
     {};
   const presetKey =
+    activePack?.themePresetKey ||
+    activeTheme?.themePresetKey ||
     currentPageStyle?.themePresetKey ||
     siteSettings?.pageStyleDefault?.themePresetKey ||
     null;
@@ -2964,6 +3104,12 @@ const reapplyThemeToChrome = useCallback(() => {
     setErr("The saved theme preset could not be found.");
     return;
   }
+  const activeHeaderPreset =
+    activePack?.headerModeKey || activeTheme?.headerModeKey
+      ? HEADER_MODE_PRESET_LIBRARY.find(
+          (item) => item.key === (activePack?.headerModeKey || activeTheme?.headerModeKey)
+        )
+      : null;
   const nextNav = normalizeNavStyle({
     ...(navStyleState || NAV_STYLE_DEFAULT),
     ...(preset.navStyle || {}),
@@ -2973,7 +3119,7 @@ const reapplyThemeToChrome = useCallback(() => {
     themeOverridesDraft,
     defaultThemeOverrides
   );
-  applyThemePresetToHeaderDraft(preset);
+  applyThemePresetToHeaderDraft(preset, activeHeaderPreset?.values || null);
   applyThemePresetToFooterDraft(preset);
   handleThemeOverridesDraftChange(nextThemeOverrides);
   handleNavDraftChange({ nav_style: nextNav });
@@ -2991,6 +3137,7 @@ const reapplyThemeToChrome = useCallback(() => {
   headerDraft,
   navStyleState,
   setBrandingPanelOpen,
+  siteThemeSettings,
   siteSettings?.pageStyleDefault?.themePresetKey,
   themeOverridesDraft,
 ]);
@@ -3066,6 +3213,7 @@ const saveNavSettings = useCallback(
     );
     const themePayload = payload?.theme_overrides || themeOverridesDraft || defaultThemeOverrides;
     const navOverridesPayload = payload?.nav_overrides || navOverridesWithDefault || {};
+    const siteThemePayload = payload?.site_theme || readSiteThemeSettings(siteSettings);
     setBrandingSaving(true);
     setBrandingMsg("");
     setBrandingErr("");
@@ -3077,6 +3225,7 @@ const saveNavSettings = useCallback(
           footer: footerPayload,
           theme_overrides: themePayload,
           nav_overrides: navOverridesPayload,
+          site_theme: siteThemePayload,
         },
         { publish: false }
       );
@@ -3110,6 +3259,7 @@ const saveNavSettings = useCallback(
     t,
     applyBrandingFromServer,
     navOverridesWithDefault,
+    siteSettings,
   ]
 );
 
@@ -6571,6 +6721,13 @@ function InspectorColumn() {
         onApplyIndustryStarterPack={applyIndustryStarterPack}
         onReapplyThemeToChrome={reapplyThemeToChrome}
         onResetToSiteTheme={resetCurrentPageToSiteTheme}
+        siteThemeSettings={siteThemeSettings}
+        onToggleSyncChrome={(checked) => {
+          handleSiteThemeSettingsChange({ syncChrome: Boolean(checked) });
+          if (checked) {
+            reapplyThemeToChrome();
+          }
+        }}
         canResetToSiteTheme
         companyId={companyId}
         onOpenAdvanced={() => {
