@@ -186,6 +186,49 @@ const HEADER_MODE_PRESETS = [
   },
 ];
 
+const FOOTER_STYLE_PRESETS = [
+  {
+    key: "soft-medspa",
+    label: "Soft Medspa",
+    description: "Airy blush footer with soft typography.",
+    values: {
+      bg: "#fff4f7",
+      text_color: "#4a2331",
+      link_color: "#c85d7c",
+    },
+  },
+  {
+    key: "minimal-light",
+    label: "Minimal Light",
+    description: "Clean light footer for modern brands.",
+    values: {
+      bg: "#f8fafc",
+      text_color: "#1f2937",
+      link_color: "#475569",
+    },
+  },
+  {
+    key: "editorial-dark",
+    label: "Editorial Dark",
+    description: "High-contrast footer for premium/editorial sites.",
+    values: {
+      bg: "#17141b",
+      text_color: "#f7eff4",
+      link_color: "#d88ba5",
+    },
+  },
+  {
+    key: "corporate-dense",
+    label: "Corporate Dense",
+    description: "Structured dark footer with restrained contrast.",
+    values: {
+      bg: "#1f2b37",
+      text_color: "#f8fafc",
+      link_color: "#93c5fd",
+    },
+  },
+];
+
 const HeaderModePreview = ({ preset }) => {
   const values = preset?.values || {};
   const topTone = values.overlay_hero
@@ -230,6 +273,51 @@ const HeaderModePreview = ({ preset }) => {
       </Box>
       <Box sx={{ height: 26, px: 1, display: "flex", alignItems: "center", justifyContent: "center", background: bottomTone }}>
         <Box sx={{ width: "100%", height: 12, borderRadius: 1.5, bgcolor: "rgba(255,255,255,0.72)" }} />
+      </Box>
+    </Box>
+  );
+};
+
+const FooterStylePreview = ({ preset }) => {
+  const values = preset?.values || {};
+  return (
+    <Box
+      sx={{
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: "divider",
+        overflow: "hidden",
+        background: "#fff",
+      }}
+    >
+      <Box
+        sx={{
+          minHeight: 44,
+          px: 1.25,
+          py: 1,
+          background: values.bg || "#0f172a",
+          color: values.text_color || "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+        }}
+      >
+        <Box sx={{ width: 36, height: 7, borderRadius: 999, bgcolor: "currentColor", opacity: 0.9 }} />
+        <Stack direction="row" spacing={0.5}>
+          {[0, 1, 2].map((idx) => (
+            <Box
+              key={idx}
+              sx={{
+                width: 18,
+                height: 5,
+                borderRadius: 999,
+                bgcolor: values.link_color || "currentColor",
+                opacity: 0.85,
+              }}
+            />
+          ))}
+        </Stack>
       </Box>
     </Box>
   );
@@ -1186,7 +1274,6 @@ export default function WebsiteBrandingCard({
     },
     [updateHeader]
   );
-
   const handleClearManualNav = useCallback(() => {
     if (!manualNavCount) return;
     onChangeHeader?.(
@@ -1247,10 +1334,18 @@ export default function WebsiteBrandingCard({
 
   useEffect(() => () => stopLogoDrag(), [stopLogoDrag]);
 
-  const updateFooter = (patch) => {
+  const updateFooter = useCallback((patch) => {
     const next = normalizeFooterConfig({ ...footer, ...patch });
     onChangeFooter?.(next);
-  };
+  }, [footer, onChangeFooter]);
+
+  const applyFooterStylePreset = useCallback(
+    (preset) => {
+      if (!preset) return;
+      updateFooter(preset.values || {});
+    },
+    [updateFooter]
+  );
 
   const updateThemeOverrides = (patch) => {
     const next = {
@@ -1435,6 +1530,32 @@ export default function WebsiteBrandingCard({
                       </Typography>
                       <Button size="small" variant="outlined" onClick={() => applyHeaderModePreset(preset)}>
                         Apply header mode
+                      </Button>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          </Stack>
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Footer style presets</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Apply a ready-made footer palette that matches the current theme direction.
+            </Typography>
+            <Grid container spacing={1}>
+              {FOOTER_STYLE_PRESETS.map((preset) => (
+                <Grid item xs={12} sm={6} key={preset.key}>
+                  <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+                    <Stack spacing={1}>
+                      <FooterStylePreview preset={preset} />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        {preset.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {preset.description}
+                      </Typography>
+                      <Button size="small" variant="outlined" onClick={() => applyFooterStylePreset(preset)}>
+                        Apply footer style
                       </Button>
                     </Stack>
                   </Paper>

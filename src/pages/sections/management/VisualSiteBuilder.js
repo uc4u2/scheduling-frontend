@@ -957,6 +957,7 @@ function PageStyleCard({
   onApplyThemePreset,
   onApplyButtonStylePreset,
   onApplyIndustryStarterPack,
+  onReapplyThemeToChrome,
   onResetToSiteTheme,
   canResetToSiteTheme,
   onOpenAdvanced,
@@ -1244,6 +1245,56 @@ function PageStyleCard({
     if (!pack) return;
     onApplyIndustryStarterPack?.(pack, { applyToAll: !!applyToAll });
   };
+  const reapplyThemeToChrome = () => {
+    onReapplyThemeToChrome?.();
+  };
+  const renderThemePresetPreview = (preset) => {
+    const bg = preset.pageStyle.backgroundColor || "#ffffff";
+    const secondary = preset.pageStyle.secondaryBackground || bg;
+    const headerBg = preset.header?.bg || bg;
+    const footerBg = preset.footer?.bg || bg;
+    const buttonBg =
+      preset.pageStyle.btnBg ||
+      preset.pageStyle.linkColor ||
+      preset.accent ||
+      "#2563eb";
+    const textTone = preset.pageStyle.headingColor || "#111827";
+    return (
+      <Box
+        sx={{
+          borderRadius: 2,
+          overflow: "hidden",
+          border: "1px solid rgba(15,23,42,0.08)",
+          boxShadow: "0 6px 18px rgba(15,23,42,0.08)",
+          background: bg,
+        }}
+      >
+        <Box
+          sx={{
+            height: 22,
+            px: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: headerBg,
+          }}
+        >
+          <Box sx={{ width: 18, height: 7, borderRadius: 999, bgcolor: textTone, opacity: 0.7 }} />
+          <Stack direction="row" spacing={0.5}>
+            {[0, 1, 2].map((idx) => (
+              <Box key={idx} sx={{ width: 12, height: 4, borderRadius: 999, bgcolor: textTone, opacity: 0.45 }} />
+            ))}
+          </Stack>
+        </Box>
+        <Box sx={{ p: 1.25, background: secondary }}>
+          <Box sx={{ width: "68%", height: 8, borderRadius: 999, bgcolor: textTone, opacity: 0.75, mb: 0.75 }} />
+          <Box sx={{ width: "86%", height: 6, borderRadius: 999, bgcolor: textTone, opacity: 0.25, mb: 1.25 }} />
+          <Box sx={{ width: 44, height: 18, borderRadius: "var(--page-btn-radius, 10px)", bgcolor: buttonBg }} />
+        </Box>
+        <Box sx={{ height: 14, background: footerBg }} />
+      </Box>
+    );
+  };
 
   return (
     <Stack id="page-style-card" spacing={1.5}>
@@ -1355,6 +1406,11 @@ function PageStyleCard({
           <Typography variant="caption" color="text.secondary">
             Apply a curated theme across the current page and sync the matching header, footer, and menu colors.
           </Typography>
+          <Stack direction="row" justifyContent="flex-end">
+            <Button size="small" variant="text" onClick={reapplyThemeToChrome}>
+              Reapply theme to header/footer/menu
+            </Button>
+          </Stack>
           <Grid container spacing={1}>
             {THEME_PRESET_LIBRARY.map((preset) => (
               <Grid item xs={12} sm={6} key={preset.key}>
@@ -1369,6 +1425,7 @@ function PageStyleCard({
                   }}
                 >
                   <Stack spacing={1}>
+                    {renderThemePresetPreview(preset)}
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                         {preset.label}
@@ -2608,35 +2665,11 @@ const applyThemePreset = useCallback(
       ...(navStyleState || NAV_STYLE_DEFAULT),
       ...(preset.navStyle || {}),
     });
-    const nextThemeOverrides = {
-      ...(themeOverridesDraft || defaultThemeOverrides),
-      brandColor:
-        preset.accent ||
-        preset.pageStyle?.linkColor ||
-        preset.pageStyle?.btnBg ||
-        themeOverridesDraft?.brandColor ||
-        defaultThemeOverrides.brandColor,
-      surface: preset.pageStyle?.backgroundColor === "#111113" ? "dark" : "light",
-      header: {
-        ...((themeOverridesDraft || defaultThemeOverrides).header || {}),
-        background: preset.header?.bg || (themeOverridesDraft || defaultThemeOverrides).header?.background,
-        text: preset.header?.text_color || (themeOverridesDraft || defaultThemeOverrides).header?.text,
-      },
-      footer: {
-        ...((themeOverridesDraft || defaultThemeOverrides).footer || {}),
-        background: preset.footer?.bg || (themeOverridesDraft || defaultThemeOverrides).footer?.background,
-        text: preset.footer?.text_color || (themeOverridesDraft || defaultThemeOverrides).footer?.text,
-      },
-      radius:
-        preset.pageStyle?.cardRadius ??
-        (themeOverridesDraft || defaultThemeOverrides).radius,
-      shadow:
-        preset.pageStyle?.cardShadow?.includes("60px")
-          ? "lg"
-          : preset.pageStyle?.cardShadow?.includes("36px")
-            ? "sm"
-            : "md",
-    };
+    const nextThemeOverrides = buildThemeOverridesFromPreset(
+      preset,
+      themeOverridesDraft,
+      defaultThemeOverrides
+    );
 
     handleHeaderDraftChange(nextHeader);
     handleFooterDraftChange(nextFooter);
@@ -2759,35 +2792,11 @@ const applyIndustryStarterPack = useCallback(
       ...(navStyleState || NAV_STYLE_DEFAULT),
       ...(themePreset.navStyle || {}),
     });
-    const nextThemeOverrides = {
-      ...(themeOverridesDraft || defaultThemeOverrides),
-      brandColor:
-        themePreset.accent ||
-        themePreset.pageStyle?.linkColor ||
-        themePreset.pageStyle?.btnBg ||
-        themeOverridesDraft?.brandColor ||
-        defaultThemeOverrides.brandColor,
-      surface: themePreset.pageStyle?.backgroundColor === "#111113" ? "dark" : "light",
-      header: {
-        ...((themeOverridesDraft || defaultThemeOverrides).header || {}),
-        background: themePreset.header?.bg || (themeOverridesDraft || defaultThemeOverrides).header?.background,
-        text: themePreset.header?.text_color || (themeOverridesDraft || defaultThemeOverrides).header?.text,
-      },
-      footer: {
-        ...((themeOverridesDraft || defaultThemeOverrides).footer || {}),
-        background: themePreset.footer?.bg || (themeOverridesDraft || defaultThemeOverrides).footer?.background,
-        text: themePreset.footer?.text_color || (themeOverridesDraft || defaultThemeOverrides).footer?.text,
-      },
-      radius:
-        themePreset.pageStyle?.cardRadius ??
-        (themeOverridesDraft || defaultThemeOverrides).radius,
-      shadow:
-        themePreset.pageStyle?.cardShadow?.includes("60px")
-          ? "lg"
-          : themePreset.pageStyle?.cardShadow?.includes("36px")
-            ? "sm"
-            : "md",
-    };
+    const nextThemeOverrides = buildThemeOverridesFromPreset(
+      themePreset,
+      themeOverridesDraft,
+      defaultThemeOverrides
+    );
 
     handleHeaderDraftChange(nextHeader);
     handleFooterDraftChange(nextFooter);
@@ -2817,6 +2826,95 @@ const applyIndustryStarterPack = useCallback(
     themeOverridesDraft,
   ]
 );
+
+function buildThemeOverridesFromPreset(preset, currentThemeOverrides, defaultThemeOverrides) {
+  const base = currentThemeOverrides || defaultThemeOverrides;
+  return {
+    ...base,
+    brandColor:
+      preset?.accent ||
+      preset?.pageStyle?.linkColor ||
+      preset?.pageStyle?.btnBg ||
+      base?.brandColor ||
+      defaultThemeOverrides.brandColor,
+    surface: preset?.pageStyle?.backgroundColor === "#111113" ? "dark" : "light",
+    header: {
+      ...(base?.header || {}),
+      background: preset?.header?.bg || base?.header?.background,
+      text: preset?.header?.text_color || base?.header?.text,
+    },
+    footer: {
+      ...(base?.footer || {}),
+      background: preset?.footer?.bg || base?.footer?.background,
+      text: preset?.footer?.text_color || base?.footer?.text,
+    },
+    radius: preset?.pageStyle?.cardRadius ?? base?.radius,
+    shadow:
+      preset?.pageStyle?.cardShadow?.includes("60px")
+        ? "lg"
+        : preset?.pageStyle?.cardShadow?.includes("36px")
+          ? "sm"
+          : "md",
+  };
+}
+
+const reapplyThemeToChrome = useCallback(() => {
+  const currentPageStyle =
+    readPageStyleProps(editing) ||
+    editing?.content?.meta?.pageStyle ||
+    editing?.content?.style ||
+    {};
+  const presetKey =
+    currentPageStyle?.themePresetKey ||
+    siteSettings?.pageStyleDefault?.themePresetKey ||
+    null;
+  if (!presetKey) {
+    setErr("No theme preset is active on this page.");
+    return;
+  }
+  const preset = THEME_PRESET_LIBRARY.find((item) => item.key === presetKey);
+  if (!preset) {
+    setErr("The saved theme preset could not be found.");
+    return;
+  }
+  const nextHeader = normalizeHeaderConfig({
+    ...(headerDraft || defaultHeaderConfig()),
+    ...(preset.header || {}),
+  });
+  const nextFooter = normalizeFooterConfig({
+    ...(footerDraft || defaultFooterConfig()),
+    ...(preset.footer || {}),
+  });
+  const nextNav = normalizeNavStyle({
+    ...(navStyleState || NAV_STYLE_DEFAULT),
+    ...(preset.navStyle || {}),
+  });
+  const nextThemeOverrides = buildThemeOverridesFromPreset(
+    preset,
+    themeOverridesDraft,
+    defaultThemeOverrides
+  );
+  handleHeaderDraftChange(nextHeader);
+  handleFooterDraftChange(nextFooter);
+  handleThemeOverridesDraftChange(nextThemeOverrides);
+  handleNavDraftChange({ nav_style: nextNav });
+  setBrandingPanelOpen(true);
+  setMsg(`Reapplied theme to header, footer, and menu: ${preset.label}`);
+  setErr("");
+}, [
+  defaultThemeOverrides,
+  editing,
+  footerDraft,
+  handleFooterDraftChange,
+  handleHeaderDraftChange,
+  handleNavDraftChange,
+  handleThemeOverridesDraftChange,
+  headerDraft,
+  navStyleState,
+  setBrandingPanelOpen,
+  siteSettings?.pageStyleDefault?.themePresetKey,
+  themeOverridesDraft,
+]);
 
 const resetCurrentPageToSiteTheme = useCallback(() => {
   const nextPageStyle =
@@ -6280,6 +6378,7 @@ function InspectorColumn() {
         onApplyThemePreset={applyThemePreset}
         onApplyButtonStylePreset={applyButtonStylePreset}
         onApplyIndustryStarterPack={applyIndustryStarterPack}
+        onReapplyThemeToChrome={reapplyThemeToChrome}
         onResetToSiteTheme={resetCurrentPageToSiteTheme}
         canResetToSiteTheme
         companyId={companyId}
