@@ -177,9 +177,21 @@ const normalizeRedirectTarget = (value) => {
   }
 };
 
-const buildRootRedirectMeta = ({ ok, expectedTarget, observedLocation, error }) => {
+const buildRootRedirectMeta = ({ state, ok, expectedTarget, observedLocation, error }) => {
   const expected = normalizeRedirectTarget(expectedTarget);
   const observed = normalizeRedirectTarget(observedLocation);
+  if (state === "detected") {
+    return { state, severity: "success" };
+  }
+  if (state === "wrong_target") {
+    return { state, severity: "warning" };
+  }
+  if (state === "could_not_check") {
+    return { state, severity: "info" };
+  }
+  if (state === "missing") {
+    return { state, severity: "info" };
+  }
   if (ok || (observed && expected && observed === expected)) {
     return { state: "detected", severity: "success" };
   }
@@ -267,6 +279,7 @@ const DomainSettingsCard = ({
     rootRedirectObservedLocation,
     rootRedirectError,
     rootRedirectCheckedScheme,
+    rootRedirectState,
   } = useDomainSettings(companyId);
 
   const statusMetaMap = useMemo(() => buildStatusMeta(t), [t]);
@@ -360,6 +373,7 @@ const DomainSettingsCard = ({
     Boolean(verifiedAt) &&
     (sslStatus === "error" || status === "ssl_failed" || Boolean(sslError));
   const rootRedirectMeta = buildRootRedirectMeta({
+    state: rootRedirectState,
     ok: rootRedirectOk,
     expectedTarget: rootRedirectExpectedTarget,
     observedLocation: rootRedirectObservedLocation,

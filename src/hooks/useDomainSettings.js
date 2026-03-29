@@ -31,6 +31,7 @@ const INITIAL_STATE = {
   rootRedirectObservedLocation: null,
   rootRedirectError: null,
   rootRedirectCheckedScheme: null,
+  rootRedirectState: null,
 };
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -215,6 +216,10 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "root_redirect_checked_scheme")) {
         next.rootRedirectCheckedScheme = payload.root_redirect_checked_scheme || null;
+      }
+
+      if (hasOwn(payload, "root_redirect_state")) {
+        next.rootRedirectState = payload.root_redirect_state || null;
       }
 
       return next;
