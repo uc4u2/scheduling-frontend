@@ -2594,22 +2594,22 @@
         "title": "Quick summary",
         "items": [
           "Your site will live at www.yourdomain.com.",
-          "You will add 2 DNS records (1 TXT, 1 CNAME).",
+          "Add the DNS records shown in Schedulaa. This usually includes one TXT verification record and one www CNAME.",
           "SSL is automatic — no certificates to manage.",
-          "Your root domain (yourdomain.com) should redirect to www after launch."
+          "Your root domain (yourdomain.com) should redirect to www after launch, but your website can still go live on www first."
         ]
       },
       "dnsInstructions": {
         "title": "What \"DNS instructions generated\" means",
         "items": [
           "When you see this message, Schedulaa has already produced the DNS records you need to finish setup.",
-          "You will also see the DNS Instructions box appear below the button with both records ready to copy.",
+          "You will also see the DNS Instructions box appear below the button with the current records ready to copy.",
           "Schedulaa uses the www version of your domain as the live website. The root/apex domain is ownership and redirect-only.",
-          "Add these two DNS records only:",
-          "1) Verification (TXT)\n- Type: TXT\n- Host / Name: exactly as shown in Schedulaa (usually _schedulaa or _schedulaa.www)\n- Value: the verification token shown in Schedulaa\n- Do NOT include yourdomain.com in the Host field",
-          "2) Website (CNAME)\n- Type: CNAME\n- Host / Name: www\n- Points to: the CNAME target shown in Schedulaa (for example custom-hostnames.schedulaa.com)",
+          "Add the DNS records shown in Schedulaa. This usually includes one TXT verification record and one www CNAME, and in some Cloudflare custom-hostname flows you may also see additional TXT records.",
+          "Verification (TXT)\n- Type: TXT\n- Host / Name: exactly as shown in Schedulaa (usually _schedulaa or _schedulaa.www)\n- Value: the verification token shown in Schedulaa\n- Do NOT include yourdomain.com in the Host field unless your registrar specifically requires it",
+          "Website (CNAME)\n- Type: CNAME\n- Host / Name: www\n- Points to: the CNAME target shown in Schedulaa (for example custom-hostnames.schedulaa.com)",
           "Save your changes and wait 5-30 minutes for DNS to update, then return to Schedulaa and click Verify DNS.",
-          "If you are using Cloudflare custom hostnames, your worker route must proxy /public/*, /api/*, /__og, /robots.txt, and /sitemap.xml to the backend."
+          "Schedulaa will handle SSL automatically after verification succeeds."
         ]
       },
       "dnsEntryClarification": {
@@ -2666,20 +2666,30 @@
           "title": "Generate DNS instructions",
           "bullets": [
             "Enter the domain inside Schedulaa and click Generate DNS Instructions.",
-            "Schedulaa issues a TXT record for ownership and a CNAME to route traffic.",
+            "Schedulaa will show the current records you need to add at your registrar.",
+            "This usually includes one TXT record for ownership and one www CNAME for website traffic, and some providers may require additional TXT records.",
             "Leave the instructions open so you can copy the exact host/value pairs into your DNS portal."
           ]
         },
         {
           "title": "Add DNS records at your registrar",
           "bullets": [
-            "Add these two DNS records only:",
-            "1) Verification (TXT)\n- Type: TXT\n- Host / Name: exactly as shown in Schedulaa (usually _schedulaa or _schedulaa.www)\n- Value: the verification token shown in Schedulaa\n- Do NOT include yourdomain.com in the Host field",
-            "2) Website (CNAME)\n- Type: CNAME\n- Host / Name: www\n- Points to: the CNAME target shown in Schedulaa (for example custom-hostnames.schedulaa.com)",
+            "Add the DNS records shown in Schedulaa.",
+            "This usually includes one verification TXT record and one website CNAME for www.",
+            "If Schedulaa shows extra TXT records for your provider or Cloudflare custom-hostname flow, add those too.",
             "Save changes and give DNS a few minutes to propagate before you verify.",
             "Do not use A records or IPs for www unless Schedulaa support explicitly tells you to."
           ],
           "tip": "Tip: DNS instructions generated means Schedulaa already created your verification records. Add them to your registrar, save, and click Verify DNS to finish."
+        },
+        {
+          "title": "What you will see in Website & Domain",
+          "bullets": [
+            "A summary banner that shows whether setup is connected, almost done, or needs attention.",
+            "A Custom Domain Setup overview card with your requested domain and live website host.",
+            "A Setup Progress card that tracks domain saved, DNS records, Cloudflare hostname, SSL, website bootstrap, edge routing, and root redirect.",
+            "A DNS Instructions card, a Live Website card, a Root Redirect card, and an Advanced Diagnostics section for support details."
+          ]
         },
         {
           "title": "DNS details (optional)",
@@ -2688,10 +2698,11 @@
           ]
         },
         {
-          "title": "Root domain (optional)",
+          "title": "Live host and root domain",
           "bullets": [
             "Your site lives at www.yourdomain.com.",
-            "You should redirect yourdomain.com → www.yourdomain.com after launch.",
+            "After successful verification, Schedulaa saves www.yourdomain.com as the live host even if you originally entered yourdomain.com.",
+            "Your root domain (yourdomain.com) is used for ownership checks and can later redirect to https://www.yourdomain.com.",
             "Root/apex is not the canonical tenant host in Schedulaa.",
             "Some DNS providers may temporarily show NXDOMAIN for the root domain. This is normal and does not affect your website."
           ]
@@ -2718,9 +2729,16 @@
           "title": "Post-launch checklist",
           "bullets": [
             "Visit the new domain in an incognito window to ensure redirects and branding look right.",
-            "Confirm /public/tenant resolves for the custom host and public website/chatbot endpoints return custom-domain CORS headers.",
             "Update Stripe, email templates, and QR codes—they already use tenantBaseUrl but double-check your saved copy.",
             "Enable the email notification toggle in Schedulaa so managers know when SSL or DNS changes occur."
+          ]
+        },
+        {
+          "title": "Edge routing (Cloudflare advisory)",
+          "bullets": [
+            "In the current Cloudflare setup, the live host may still need a manual Worker route in Cloudflare.",
+            "The required pattern is usually www.yourdomain.com/* -> schedulaa-edge-router.",
+            "Schedulaa now checks this as an advisory diagnostic and will show whether edge routing is detected, not detected, could not check, or still a manual step."
           ]
         }
       ],
@@ -2794,11 +2812,13 @@
         ]
       },
       "advanced": {
-        "title": "Advanced options (later)",
+        "title": "Advanced diagnostics / support",
         "items": [
           "Automatic setup (GoDaddy Domain Connect): When available, click Connect Automatically and skip manual DNS entries.",
-          "Cloudflare proxy: Turn the orange cloud off during verification, then back on once SSL is active.",
-          "Apex forwarding: After www is live, add a forward from yourdomain.com to www.yourdomain.com inside your registrar dashboard."
+          "Cloudflare proxy: Turn the orange cloud off during verification, then back on once SSL is active if your setup requires it.",
+          "Apex forwarding: After www is live, add a forward from yourdomain.com to https://www.yourdomain.com inside your registrar dashboard.",
+          "The Advanced Diagnostics section in Website & Domain shows the current canonical host, verification time, bootstrap status, root redirect status, and edge-routing status.",
+          "Support may ask you for screenshots from Website & Domain or use checks like /public/tenant and other endpoint tests when debugging edge cases."
         ]
       },
       "ownership": {
@@ -2827,9 +2847,10 @@
         "title": "In summary",
         "items": [
           "Use www.yourdomain.com.",
-          "Add one TXT and one CNAME.",
+          "Add the DNS records shown in Schedulaa.",
           "SSL is automatic.",
-          "Root domain redirect is optional.",
+          "Root domain redirect is recommended.",
+          "Edge routing may still require a manual Cloudflare Worker route in the current setup.",
           "Schedulaa never owns your domain."
         ]
       }
