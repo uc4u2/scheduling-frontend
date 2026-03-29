@@ -957,6 +957,8 @@ function PageStyleCard({
   onApplyThemePreset,
   onApplyButtonStylePreset,
   onApplyIndustryStarterPack,
+  onResetToSiteTheme,
+  canResetToSiteTheme,
   onOpenAdvanced,
   companyId,
 }) {
@@ -2032,6 +2034,14 @@ function PageStyleCard({
           <Button
             size="small"
             variant="outlined"
+            onClick={onResetToSiteTheme}
+            disabled={!onResetToSiteTheme || !canResetToSiteTheme}
+          >
+            Reset this page to site theme
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
             onClick={() => onChange?.(initialStyleRef.current || {})}
             disabled={!isDirty}
           >
@@ -2718,6 +2728,30 @@ const applyIndustryStarterPack = useCallback(
     navStyleState,
   ]
 );
+
+const resetCurrentPageToSiteTheme = useCallback(() => {
+  const nextPageStyle =
+    siteSettings?.pageStyleDefault &&
+    typeof siteSettings.pageStyleDefault === "object"
+      ? { ...siteSettings.pageStyleDefault }
+      : {};
+
+  setEditing((cur) => {
+    const content = { ...(cur.content || {}) };
+    content.meta = { ...(content.meta || {}), pageStyle: nextPageStyle };
+    content.style = { ...(content.style || {}), ...nextPageStyle };
+    let updated = { ...cur, content };
+    updated = writePageStyleProps(updated, nextPageStyle);
+    return withLiftedLayout(updated);
+  });
+
+  setMsg(
+    Object.keys(nextPageStyle).length
+      ? "Reset this page to the saved site theme."
+      : "Cleared page-specific style overrides."
+  );
+  setErr("");
+}, [setEditing, siteSettings]);
 
 const saveNavSettings = useCallback(
   async (draft) => {
@@ -6159,6 +6193,8 @@ function InspectorColumn() {
         onApplyThemePreset={applyThemePreset}
         onApplyButtonStylePreset={applyButtonStylePreset}
         onApplyIndustryStarterPack={applyIndustryStarterPack}
+        onResetToSiteTheme={resetCurrentPageToSiteTheme}
+        canResetToSiteTheme
         companyId={companyId}
         onOpenAdvanced={() => {
           addSection("pageStyle");

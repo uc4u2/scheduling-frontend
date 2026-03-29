@@ -186,6 +186,55 @@ const HEADER_MODE_PRESETS = [
   },
 ];
 
+const HeaderModePreview = ({ preset }) => {
+  const values = preset?.values || {};
+  const topTone = values.overlay_hero
+    ? values.transparent_on_top
+      ? "rgba(255,255,255,0.18)"
+      : "#f5f5f5"
+    : "#f5f5f5";
+  const bottomTone = values.scrolled_shadow ? "rgba(15,23,42,0.08)" : "rgba(148,163,184,0.08)";
+  const showCompact = Boolean(values.scroll_cta_enabled);
+  return (
+    <Box
+      sx={{
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: "divider",
+        overflow: "hidden",
+        background: "linear-gradient(180deg, #eef2f7 0%, #ffffff 100%)",
+      }}
+    >
+      <Box
+        sx={{
+          height: 22,
+          px: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: showCompact ? "space-between" : "center",
+          background: topTone,
+          backdropFilter: values.transparent_on_top ? "blur(8px)" : "none",
+          borderBottom: "1px solid rgba(255,255,255,0.24)",
+        }}
+      >
+        <Box sx={{ width: 16, height: 10, borderRadius: 0.75, bgcolor: "rgba(0,0,0,0.45)" }} />
+        {showCompact ? (
+          <Box sx={{ width: 34, height: 10, borderRadius: 1, bgcolor: "rgba(0,0,0,0.22)" }} />
+        ) : (
+          <Stack direction="row" spacing={0.5}>
+            {[1, 2, 3].map((idx) => (
+              <Box key={idx} sx={{ width: 16, height: 5, borderRadius: 1, bgcolor: "rgba(0,0,0,0.14)" }} />
+            ))}
+          </Stack>
+        )}
+      </Box>
+      <Box sx={{ height: 26, px: 1, display: "flex", alignItems: "center", justifyContent: "center", background: bottomTone }}>
+        <Box sx={{ width: "100%", height: 12, borderRadius: 1.5, bgcolor: "rgba(255,255,255,0.72)" }} />
+      </Box>
+    </Box>
+  );
+};
+
 const clampValue = (val, min, max) => {
   const num = Number(val);
   if (!Number.isFinite(num)) return min;
@@ -1377,6 +1426,7 @@ export default function WebsiteBrandingCard({
                 <Grid item xs={12} sm={6} key={preset.key}>
                   <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
                     <Stack spacing={1}>
+                      <HeaderModePreview preset={preset} />
                       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                         {preset.label}
                       </Typography>

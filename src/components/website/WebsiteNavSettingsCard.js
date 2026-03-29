@@ -54,6 +54,100 @@ const TEXT_TRANSFORM_OPTIONS = [
 const NAV_BUTTON_LABELS = ["Home", "Services", "Reviews"];
 const NAV_KEYS = Object.keys(NAV_STYLE_DEFAULT);
 
+const INDUSTRY_NAV_PRESETS = [
+  {
+    id: "medspa-blush",
+    name: "Medspa Blush",
+    style: {
+      ...NAV_STYLE_DEFAULT,
+      variant: "underline",
+      text_transform: "uppercase",
+      bg: "#c85d7c",
+      bg_hover: "#b74b6c",
+      text: "#4a2331",
+      text_hover: "#4a2331",
+      active_bg: "rgba(255,255,255,0.26)",
+      active_text: "#8f4058",
+      shadow: "0 14px 28px rgba(200,93,124,0.18)",
+    },
+  },
+  {
+    id: "champagne-luxe",
+    name: "Champagne Luxe",
+    style: {
+      ...NAV_STYLE_DEFAULT,
+      variant: "ghost",
+      bg: "#b98a50",
+      bg_hover: "#a17643",
+      text: "#4f3422",
+      text_hover: "#4f3422",
+      active_bg: "rgba(255,255,255,0.28)",
+      active_text: "#8f693d",
+      shadow: "0 12px 24px rgba(185,138,80,0.18)",
+    },
+  },
+  {
+    id: "forest-calm",
+    name: "Forest Calm",
+    style: {
+      ...NAV_STYLE_DEFAULT,
+      variant: "pill",
+      bg: "#4f8b72",
+      bg_hover: "#44785f",
+      text: "#f7fdf9",
+      text_hover: "#f7fdf9",
+      active_bg: "rgba(255,255,255,0.32)",
+      active_text: "#315b49",
+      shadow: "0 12px 24px rgba(79,139,114,0.18)",
+    },
+  },
+  {
+    id: "ocean-clean",
+    name: "Ocean Clean",
+    style: {
+      ...NAV_STYLE_DEFAULT,
+      variant: "pill",
+      bg: "#2e8ca6",
+      bg_hover: "#24758b",
+      text: "#f7fbfd",
+      text_hover: "#f7fbfd",
+      active_bg: "rgba(255,255,255,0.32)",
+      active_text: "#215f73",
+      shadow: "0 12px 24px rgba(46,140,166,0.18)",
+    },
+  },
+  {
+    id: "modern-noir",
+    name: "Modern Noir",
+    style: {
+      ...NAV_STYLE_DEFAULT,
+      variant: "button",
+      bg: "#d1a257",
+      bg_hover: "#bc914c",
+      text: "#18171a",
+      text_hover: "#18171a",
+      active_bg: "rgba(255,255,255,0.18)",
+      active_text: "#f5efe3",
+      shadow: "0 14px 28px rgba(0,0,0,0.26)",
+    },
+  },
+  {
+    id: "minimal-corporate",
+    name: "Minimal Corporate",
+    style: {
+      ...NAV_STYLE_DEFAULT,
+      variant: "link",
+      bg: "#475569",
+      bg_hover: "#334155",
+      text: "#1f2937",
+      text_hover: "#111827",
+      active_bg: "rgba(71,85,105,0.12)",
+      active_text: "#334155",
+      shadow: "none",
+    },
+  },
+];
+
 const BRAND_FONT_OPTIONS = [
   { value: "inherit", label: "Theme default" },
   { value: "'Helvetica Neue', Arial, sans-serif", label: "Helvetica / Arial" },
@@ -236,6 +330,13 @@ export default function WebsiteNavSettingsCard({
     emitChange(style);
   };
 
+  const applyIndustryNavPreset = (preset) => {
+    if (!preset) return;
+    const style = normalizeNavStyle(preset.style || NAV_STYLE_DEFAULT);
+    setNavStyle(style);
+    emitChange(style);
+  };
+
   const applyColorPreset = (preset) => {
     const style = normalizeNavStyle({ ...navStyle, ...(preset?.colors || {}) });
     setNavStyle(style);
@@ -409,6 +510,33 @@ const handleSave = () => {
                 );
               })}
             </Stack>
+          </Stack>
+
+          <Divider />
+
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Industry nav presets</Typography>
+            <Grid container spacing={1}>
+              {INDUSTRY_NAV_PRESETS.map((preset) => (
+                <Grid item xs={12} sm={6} key={preset.id}>
+                  <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                    <CardContent sx={{ p: 1.25, "&:last-child": { pb: 1.25 } }}>
+                      <Stack spacing={1}>
+                        <NavPreview tokens={normalizeNavStyle(preset.style)} highlightActive={false} />
+                        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                            {preset.name}
+                          </Typography>
+                          <Button size="small" variant="outlined" onClick={() => applyIndustryNavPreset(preset)}>
+                            Apply
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
           </Stack>
 
           <Divider />
