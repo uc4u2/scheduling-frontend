@@ -2,6 +2,23 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { api } from "../utils/api";
 
+const stableSerialize = (value) => {
+  if (value == null) return "";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerialize(item)).join(",")}]`;
+  }
+  if (Object.prototype.toString.call(value) === "[object Object]") {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${key}:${stableSerialize(value[key])}`)
+      .join(",")}}`;
+  }
+  return "";
+};
+
 /**
  * def = {
  *   url: "/public/services",
@@ -23,6 +40,8 @@ export function useDataSource(def = {}, { ttlMs = 60000 } = {}) {
     return parts[0] || "";
   }, []);
 
+  const paramsKey = useMemo(() => stableSerialize(def?.params || {}), [def?.params]);
+
   const stable = useMemo(() => {
     const rawUrl = def.url || "";
     const url = rawUrl.includes("{{slug}}") && resolvedSlug
@@ -30,20 +49,20 @@ export function useDataSource(def = {}, { ttlMs = 60000 } = {}) {
       : rawUrl;
     return {
       url,
-    params: def.params || {},
-    pick: def.pick || "",
-    map: def.map || null,
-    noCompanyHeader: Boolean(def.noCompanyHeader),
+      params: def.params || {},
+      pick: def.pick || "",
+      map: def.map || null,
+      noCompanyHeader: Boolean(def.noCompanyHeader),
     };
-  }, [JSON.stringify(def), resolvedSlug]);
+  }, [def?.url, def?.pick, def?.map, def?.noCompanyHeader, paramsKey, resolvedSlug]);
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(!!stable.url);
   const [error, setError] = useState(null);
 
   const cacheKey = useMemo(
-    () => `ds:${stable.url}:${JSON.stringify(stable.params)}:${stable.pick}`,
-    [stable.url, JSON.stringify(stable.params), stable.pick]
+    () => `ds:${stable.url}:${stableSerialize(stable.params)}:${stable.pick}`,
+    [stable.url, stable.params, stable.pick]
   );
 
   const load = useCallback(async () => {

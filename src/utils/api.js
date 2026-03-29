@@ -70,6 +70,61 @@ const inferBase = () => {
 
 export const API_BASE_URL = envBase || inferBase();
 
+const isPlainObject = (value) =>
+  Object.prototype.toString.call(value) === "[object Object]";
+
+const isUnsafeJsonValue = (value) => {
+  if (!value || typeof value !== "object") return false;
+  if (typeof window !== "undefined") {
+    if (value === window || value === window.document) return true;
+    if (typeof Element !== "undefined" && value instanceof Element) return true;
+    if (typeof Node !== "undefined" && value instanceof Node) return true;
+    if (typeof Event !== "undefined" && value instanceof Event) return true;
+  }
+  const tag = Object.prototype.toString.call(value);
+  if (
+    tag === "[object Window]" ||
+    tag === "[object DOMWindow]" ||
+    tag === "[object HTMLDocument]" ||
+    tag === "[object Document]" ||
+    tag === "[object Event]"
+  ) {
+    return true;
+  }
+  return false;
+};
+
+const sanitizeJsonPayload = (value, seen = new WeakSet()) => {
+  if (value == null) return value;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "function" || typeof value === "symbol") {
+    return undefined;
+  }
+  if (typeof value !== "object") return value;
+  if (isUnsafeJsonValue(value)) return undefined;
+  if (seen.has(value)) return undefined;
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeJsonPayload(item, seen))
+      .filter((item) => item !== undefined);
+  }
+
+  if (!isPlainObject(value)) {
+    return undefined;
+  }
+
+  const out = {};
+  Object.entries(value).forEach(([key, nested]) => {
+    const cleaned = sanitizeJsonPayload(nested, seen);
+    if (cleaned !== undefined) out[key] = cleaned;
+  });
+  return out;
+};
+
 const getSupportSessionId = () => {
   if (typeof window === "undefined") return null;
   try {
@@ -1197,12 +1252,13 @@ export const wb = {
       _draft_only: Boolean(draftOnly),
       ...(schemaVersion != null ? { _schema_version: schemaVersion } : {}),
     };
+    const safeRequestPayload = sanitizeJsonPayload(requestPayload);
 
     try {
-      return await api.put("/admin/website/settings", requestPayload, { headers });
+      return await api.put("/admin/website/settings", safeRequestPayload, { headers });
     } catch (e) {
       if (e?.response?.status === 404 || e?.response?.status === 405) {
-        return await api.put("/api/website/settings", requestPayload, { headers });
+        return await api.put("/api/website/settings", safeRequestPayload, { headers });
       }
       throw e;
     }
