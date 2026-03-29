@@ -3052,9 +3052,9 @@ const VideoStorySplit = ({
   poster,
   videoPosition = "left",
   mediaAspectRatio = "16 / 9",
-  contentBackground = "#3b3b3b",
-  contentColor = "#f8fafc",
-  titleColor = "#f8fafc",
+  contentBackground = "var(--page-secondary-bg, var(--page-card-bg, rgba(255,255,255,0.92)))",
+  contentColor = "var(--page-body-color, inherit)",
+  titleColor = "var(--page-heading-color, currentColor)",
   contentPadding = 48,
   maxWidth = "full",
   borderRadius = 4,
@@ -3079,16 +3079,16 @@ const VideoStorySplit = ({
           width: "100%",
           overflow: "hidden",
           borderRadius: radiusValue,
-          border: "1px solid rgba(255,255,255,0.14)",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.22)",
-          backgroundColor: "#121212",
+          border: "1px solid color-mix(in srgb, var(--page-heading-color, rgba(0,0,0,0.16)) 12%, rgba(255,255,255,0.12))",
+          boxShadow: "var(--page-card-shadow, 0 24px 64px rgba(0,0,0,0.18))",
+          backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.92))",
         }}
       >
         <Box
           sx={{
             order: { xs: 1, md: videoFirst ? 1 : 2 },
             minHeight: { xs: 320, md: 560 },
-            backgroundColor: "#050505",
+            backgroundColor: "color-mix(in srgb, var(--page-secondary-bg, #f7d7df) 68%, rgba(255,255,255,0.22))",
             lineHeight: 0,
           }}
         >
