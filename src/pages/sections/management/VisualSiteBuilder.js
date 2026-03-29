@@ -1245,9 +1245,6 @@ function PageStyleCard({
     if (!pack) return;
     onApplyIndustryStarterPack?.(pack, { applyToAll: !!applyToAll });
   };
-  const reapplyThemeToChrome = () => {
-    onReapplyThemeToChrome?.();
-  };
   const renderThemePresetPreview = (preset) => {
     const bg = preset.pageStyle.backgroundColor || "#ffffff";
     const secondary = preset.pageStyle.secondaryBackground || bg;
@@ -1294,6 +1291,14 @@ function PageStyleCard({
         <Box sx={{ height: 14, background: footerBg }} />
       </Box>
     );
+  };
+  const renderIndustryPackPreview = (pack) => {
+    const preset = THEME_PRESET_LIBRARY.find((item) => item.key === pack.themePresetKey);
+    if (!preset) return null;
+    return renderThemePresetPreview(preset);
+  };
+  const reapplyThemeToChrome = () => {
+    onReapplyThemeToChrome?.();
   };
 
   return (
@@ -1386,6 +1391,7 @@ function PageStyleCard({
               <Grid item xs={12} sm={6} key={pack.key}>
                 <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
                   <Stack spacing={1}>
+                    {renderIndustryPackPreview(pack)}
                     <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                       {pack.label}
                     </Typography>
@@ -6211,6 +6217,118 @@ function InspectorColumn() {
 
   const selectedBlockObj = safeSections(editing)[selectedBlock] || {};
   const selectedProps = selectedBlockObj?.props || {};
+  const themeResettableTypes = useMemo(
+    () =>
+      new Set([
+        "videoStorySplit",
+        "stats",
+        "logoCarousel",
+        "serviceGrid",
+        "featurePillars",
+        "featureStories",
+        "testimonialTiles",
+      ]),
+    []
+  );
+  const canResetSelectedBlockTheme =
+    selectedBlock >= 0 && themeResettableTypes.has(selectedBlockObj?.type);
+  const resetSelectedBlockToSiteTheme = useCallback(() => {
+    if (selectedBlock < 0) return;
+    const clearCardFields = (card = {}, keys = []) => {
+      const next = { ...(card || {}) };
+      keys.forEach((key) => delete next[key]);
+      return next;
+    };
+    setEditing((cur) => {
+      const sections = [...safeSections(cur)];
+      const block = sections[selectedBlock];
+      if (!block) return cur;
+      const props = { ...(block.props || {}) };
+      props.followSiteTheme = true;
+      switch (block.type) {
+        case "videoStorySplit":
+          delete props.contentBackground;
+          delete props.contentColor;
+          delete props.titleColor;
+          break;
+        case "stats":
+        case "serviceGrid":
+          delete props.titleColor;
+          delete props.subtitleColor;
+          break;
+        case "logoCarousel":
+          break;
+        case "featurePillars":
+          delete props.background;
+          props.card = clearCardFields(props.card, [
+            "sectionBackground",
+            "surface",
+            "hoverSurface",
+            "shadow",
+            "ringColor",
+            "badgeBg",
+            "badgeColor",
+            "badgeSurface",
+            "badgeText",
+            "iconBg",
+            "iconColor",
+            "chipBg",
+            "chipColor",
+            "chipBorder",
+            "headingColor",
+            "bodyColor",
+          ]);
+          break;
+        case "featureStories":
+          props.stories = toArray(props.stories).map((story) => {
+            const nextStory = { ...(story || {}) };
+            delete nextStory.background;
+            return nextStory;
+          });
+          props.card = clearCardFields(props.card, [
+            "sectionBackground",
+            "surface",
+            "borderColor",
+            "shadow",
+            "shadowHover",
+            "headingColor",
+            "bodyColor",
+            "badgeBg",
+            "badgeColor",
+            "chipBg",
+            "chipColor",
+            "chipBorder",
+            "legendBg",
+            "legendColor",
+            "metricBg",
+            "metricColor",
+            "ctaColor",
+            "statColor",
+          ]);
+          break;
+        case "testimonialTiles":
+          props.card = clearCardFields(props.card, [
+            "surface",
+            "shadow",
+            "borderColor",
+            "headingColor",
+            "bodyColor",
+            "badgeBg",
+            "badgeColor",
+          ]);
+          break;
+        default:
+          break;
+      }
+      sections[selectedBlock] = { ...block, props };
+      return withLiftedLayout({
+        ...cur,
+        content: { ...(cur.content || {}), sections },
+      });
+    });
+    setMsg("Reset block colors to follow the active site theme.");
+    setErr("");
+  }, [selectedBlock, setEditing]);
   const filteredSchemaForBlock = useMemo(() => {
     if (!schemaForBlock || !schemaForBlock.fields) return schemaForBlock;
     const filteredFields = schemaForBlock.fields.filter(
@@ -6469,6 +6587,13 @@ function InspectorColumn() {
                 <Typography variant="subtitle2" sx={{ opacity: 0.7 }}>
                   {t("manager.visualBuilder.inspector.sizeSpacing")}
                 </Typography>
+                {canResetSelectedBlockTheme && (
+                  <Tooltip title="Clear block-level color overrides and follow the site theme again.">
+                    <Button size="small" variant="text" onClick={resetSelectedBlockToSiteTheme}>
+                      Reset block to site theme
+                    </Button>
+                  </Tooltip>
+                )}
                 <Tooltip title={t("manager.visualBuilder.inspector.resetTooltip")}>
                   <Button
                     size="small"

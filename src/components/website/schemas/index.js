@@ -95,6 +95,7 @@ export const SCHEMA_REGISTRY = {
 
   featurePillars: {
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "title", type: "string", label: "Title" },
       { name: "badge", type: "string", label: "Badge" },
       { name: "caption", type: "text", label: "Caption", minRows: 3 },
@@ -201,6 +202,7 @@ export const SCHEMA_REGISTRY = {
 
 featureStories: {
   fields: [
+    { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
     { name: "title", type: "string", label: "Title" },
     { name: "caption", type: "text", label: "Caption", minRows: 3 },
     { name: "badge", type: "string", label: "Badge" },
@@ -253,6 +255,7 @@ featureStories: {
 },
   testimonialTiles: {
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "title", type: "string", label: "Title" },
       { name: "caption", type: "text", label: "Caption", minRows: 3 },
       {

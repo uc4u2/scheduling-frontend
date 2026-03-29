@@ -344,10 +344,37 @@ export const SCHEMA_REGISTRY = {
     ],
   },
 
+  testimonialTiles: {
+    title: "Testimonial Tiles",
+    fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
+      { name: "title", type: "richinline", label: "Title" },
+      { name: "caption", type: "richtext", label: "Caption", minRows: 3 },
+      {
+        name: "testimonials",
+        type: "objectArray",
+        label: "Testimonials",
+        fields: [
+          { name: "brand", type: "text", label: "Brand" },
+          { name: "badge", type: "text", label: "Badge" },
+          { name: "quote", type: "text", label: "Quote", minRows: 3 },
+          { name: "author", type: "text", label: "Author" },
+          { name: "role", type: "text", label: "Role" },
+          { name: "avatar", type: "image", label: "Avatar" },
+        ],
+      },
+      { name: "style", type: "select", label: "Layout", options: ["grid", "slider"], default: "grid" },
+      { name: "intervalMs", type: "number", label: "Slider interval (ms)", min: 1500, max: 12000, default: 4000 },
+      { name: "showDots", type: "boolean", label: "Show dots", default: true },
+      { name: "maxWidth", type: "select", label: "Max width", options: ["xs","sm","md","lg","xl","full"] },
+    ],
+  },
+
   /* -------------------- FEATURE PILLARS --------------------- */
   featurePillars: {
     title: "Feature Pillars",
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "title",       type: "richinline", label: "Title" },
       { name: "badge",       type: "richinline", label: "Badge / eyebrow" },
       { name: "caption",     type: "richtext",   label: "Caption", minRows: 3 },
@@ -392,6 +419,7 @@ export const SCHEMA_REGISTRY = {
   featureStories: {
     title: "Feature Stories",
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "title",        type: "richinline", label: "Title" },
       { name: "caption",      type: "richtext",   label: "Caption", minRows: 3 },
       { name: "badge",        type: "richinline", label: "Badge / eyebrow" },

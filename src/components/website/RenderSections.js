@@ -3997,6 +3997,7 @@ const TestimonialCarousel = ({
 
 
 const FeaturePillars = ({
+  followSiteTheme = true,
   title,
   caption,
   badge,
@@ -4008,6 +4009,7 @@ const FeaturePillars = ({
   intervalMs = 4000,
   background,
 }) => {
+  const themeDriven = followSiteTheme !== false;
   const entries = toArray(pillars)
     .map((item) => ({
       icon: toPlain(item?.icon ?? "") || (item?.label ?? "").toString().charAt(0),
@@ -4029,20 +4031,48 @@ const FeaturePillars = ({
   const gridSpacing = Math.max(3, clamp(Math.round(gridGapPx / 8), 1, 6));
 
   const sectionBackground =
-    background || card?.sectionBackground || "linear-gradient(90deg, #2DC8FF 0%, #2FE6C8 100%)";
-  const cardSurface = card?.surface || "rgba(255,255,255,0.92)";
-  const cardHoverSurface = card?.hoverSurface || "rgba(255,255,255,1)";
-  const cardShadow = card?.shadow || "0 16px 40px rgba(15,23,42,0.18)";
-  const ringColor = card?.ringColor || "rgba(15,23,42,0.08)";
-  const chipBg = card?.chipBg || "rgba(191,219,254,0.45)";
-  const chipColor = card?.chipColor || "#1d4ed8";
-  const chipBorder = card?.chipBorder || "rgba(37,99,235,0.35)";
-  const badgeSurface = card?.badgeSurface || "rgba(37,99,235,0.12)";
-  const badgeText = card?.badgeText || "rgba(37,99,235,0.95)";
-  const iconBg = card?.iconBg ?? card?.badgeBg ?? "rgba(37,99,235,0.12)";
-  const iconColor = card?.iconColor ?? card?.badgeColor ?? "#1d4ed8";
-  const headingColor = card?.headingColor || "#0f172a";
-  const bodyColor = card?.bodyColor || "rgba(15,23,42,0.72)";
+    themeDriven
+      ? "var(--page-secondary-bg, linear-gradient(135deg, #fff1f4 0%, #f7d7df 52%, #e9b7c6 100%))"
+      : background || card?.sectionBackground || "linear-gradient(90deg, #2DC8FF 0%, #2FE6C8 100%)";
+  const cardSurface = themeDriven
+    ? "var(--page-card-bg, rgba(255,255,255,0.92))"
+    : card?.surface || "rgba(255,255,255,0.92)";
+  const cardHoverSurface = themeDriven
+    ? "var(--page-card-bg, rgba(255,255,255,0.98))"
+    : card?.hoverSurface || "rgba(255,255,255,1)";
+  const cardShadow = themeDriven
+    ? "var(--page-card-shadow, 0 16px 40px rgba(15,23,42,0.18))"
+    : card?.shadow || "0 16px 40px rgba(15,23,42,0.18)";
+  const ringColor = themeDriven
+    ? "color-mix(in srgb, var(--page-heading-color, rgba(15,23,42,0.12)) 10%, rgba(255,255,255,0.15))"
+    : card?.ringColor || "rgba(15,23,42,0.08)";
+  const chipBg = themeDriven
+    ? "color-mix(in srgb, var(--page-link-color, #2563eb) 12%, rgba(255,255,255,0.88))"
+    : card?.chipBg || "rgba(191,219,254,0.45)";
+  const chipColor = themeDriven
+    ? "var(--page-link-color, #1d4ed8)"
+    : card?.chipColor || "#1d4ed8";
+  const chipBorder = themeDriven
+    ? "color-mix(in srgb, var(--page-link-color, #2563eb) 24%, rgba(255,255,255,0.18))"
+    : card?.chipBorder || "rgba(37,99,235,0.35)";
+  const badgeSurface = themeDriven
+    ? "color-mix(in srgb, var(--page-link-color, #2563eb) 12%, rgba(255,255,255,0.88))"
+    : card?.badgeSurface || "rgba(37,99,235,0.12)";
+  const badgeText = themeDriven
+    ? "var(--page-link-color, rgba(37,99,235,0.95))"
+    : card?.badgeText || "rgba(37,99,235,0.95)";
+  const iconBg = themeDriven
+    ? "color-mix(in srgb, var(--page-link-color, #2563eb) 12%, rgba(255,255,255,0.88))"
+    : card?.iconBg ?? card?.badgeBg ?? "rgba(37,99,235,0.12)";
+  const iconColor = themeDriven
+    ? "var(--page-link-color, #1d4ed8)"
+    : card?.iconColor ?? card?.badgeColor ?? "#1d4ed8";
+  const headingColor = themeDriven
+    ? "var(--page-heading-color, #0f172a)"
+    : card?.headingColor || "#0f172a";
+  const bodyColor = themeDriven
+    ? "var(--page-body-color, rgba(15,23,42,0.72))"
+    : card?.bodyColor || "rgba(15,23,42,0.72)";
 
   const interval = clamp(intervalMs || 4000, 1500, 12000);
   const reduced = usePrefersReducedMotion();
@@ -4296,6 +4326,7 @@ const FeaturePillars = ({
 
 
 const FeatureStories = ({
+  followSiteTheme = true,
   title,
   caption,
   legend = [],
@@ -4306,6 +4337,7 @@ const FeatureStories = ({
   legendAlign = "center",
   card = {},
 }) => {
+  const themeDriven = followSiteTheme !== false;
   const entries = toArray(stories)
     .map((item) => ({
       icon: toPlain(item?.icon ?? ""),
@@ -4334,23 +4366,41 @@ const FeatureStories = ({
   const gapXs = card?.gapXs ?? (typeof gap === "number" ? Math.min(gap, 28) : gap);
   const rawMaxContainer = card?.maxWidth ?? 1440;
   const maxContainer = typeof rawMaxContainer === "number" ? `${rawMaxContainer}px` : rawMaxContainer;
-  const sectionBackground = card?.sectionBackground || "linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)";
+  const sectionBackground = themeDriven
+    ? "var(--page-secondary-bg, linear-gradient(135deg, #fff1f4 0%, #f7d7df 52%, #e9b7c6 100%))"
+    : card?.sectionBackground || "linear-gradient(135deg, #1d4ed8 0%, #14b8a6 100%)";
 
-  const cardSurface = card?.surface || "#ffffff";
-  const cardBorder = card?.borderColor || "rgba(15,23,42,0.08)";
-  const cardShadow = card?.shadow || "0 10px 24px rgba(15,23,42,0.12)";
-  const cardShadowHover = card?.shadowHover || "0 20px 42px rgba(15,23,42,0.18)";
-  const headingColor = card?.headingColor || "#0f172a";
-  const bodyColor = card?.bodyColor || "rgba(51,65,85,0.88)";
-  const badgeBg = card?.badgeBg || "rgba(37,99,235,0.16)";
-  const badgeColor = card?.badgeColor || "#2563eb";
-  const chipBgDefault = card?.chipBg || "rgba(226,232,240,0.9)";
-  const chipColorDefault = card?.chipColor || "#1f2937";
-  const chipBorderDefault = card?.chipBorder || "rgba(15,23,42,0.08)";
-  const legendBg = card?.legendBg || "rgba(255,255,255,0.72)";
-  const legendColor = card?.legendColor || "rgba(15,23,42,0.7)";
-  const metricBg = card?.metricBg || "rgba(255,255,255,0.18)";
-  const metricColor = card?.metricColor || "#0f172a";
+  const cardSurface = themeDriven ? "var(--page-card-bg, #ffffff)" : card?.surface || "#ffffff";
+  const cardBorder = themeDriven
+    ? "color-mix(in srgb, var(--page-heading-color, rgba(15,23,42,0.08)) 10%, rgba(255,255,255,0.15))"
+    : card?.borderColor || "rgba(15,23,42,0.08)";
+  const cardShadow = themeDriven
+    ? "var(--page-card-shadow, 0 10px 24px rgba(15,23,42,0.12))"
+    : card?.shadow || "0 10px 24px rgba(15,23,42,0.12)";
+  const cardShadowHover = themeDriven
+    ? "var(--page-card-shadow, 0 20px 42px rgba(15,23,42,0.18))"
+    : card?.shadowHover || "0 20px 42px rgba(15,23,42,0.18)";
+  const headingColor = themeDriven ? "var(--page-heading-color, #0f172a)" : card?.headingColor || "#0f172a";
+  const bodyColor = themeDriven ? "var(--page-body-color, rgba(51,65,85,0.88))" : card?.bodyColor || "rgba(51,65,85,0.88)";
+  const badgeBg = themeDriven
+    ? "color-mix(in srgb, var(--page-link-color, #2563eb) 14%, rgba(255,255,255,0.85))"
+    : card?.badgeBg || "rgba(37,99,235,0.16)";
+  const badgeColor = themeDriven ? "var(--page-link-color, #2563eb)" : card?.badgeColor || "#2563eb";
+  const chipBgDefault = themeDriven
+    ? "color-mix(in srgb, var(--page-link-color, #2563eb) 10%, rgba(255,255,255,0.92))"
+    : card?.chipBg || "rgba(226,232,240,0.9)";
+  const chipColorDefault = themeDriven ? "var(--page-heading-color, #1f2937)" : card?.chipColor || "#1f2937";
+  const chipBorderDefault = themeDriven
+    ? "color-mix(in srgb, var(--page-heading-color, rgba(15,23,42,0.08)) 10%, rgba(255,255,255,0.18))"
+    : card?.chipBorder || "rgba(15,23,42,0.08)";
+  const legendBg = themeDriven
+    ? "color-mix(in srgb, var(--page-card-bg, rgba(255,255,255,0.92)) 80%, rgba(255,255,255,0.12))"
+    : card?.legendBg || "rgba(255,255,255,0.72)";
+  const legendColor = themeDriven ? "var(--page-body-color, rgba(15,23,42,0.7))" : card?.legendColor || "rgba(15,23,42,0.7)";
+  const metricBg = themeDriven
+    ? "color-mix(in srgb, var(--page-link-color, #2563eb) 12%, rgba(255,255,255,0.86))"
+    : card?.metricBg || "rgba(255,255,255,0.18)";
+  const metricColor = themeDriven ? "var(--page-heading-color, #0f172a)" : card?.metricColor || "#0f172a";
   const blur = Number(card?.blur ?? 0);
   const columnMinWidth = Number(card?.columnMinWidth ?? 320);
   const columnCount = Number.isFinite(Number(card?.columns)) && Number(card?.columns) > 0 ? Number(card?.columns) : 3;
@@ -4424,7 +4474,7 @@ const FeatureStories = ({
               fontWeight: 700,
               fontSize: { xs: "2rem", md: "2.6rem" },
               letterSpacing: "-0.015em",
-              color: "#f8fafc",
+              color: themeDriven ? "var(--page-heading-color, #0f172a)" : "#f8fafc",
               textAlign: titleAlign,
             }}
           >
@@ -4436,7 +4486,7 @@ const FeatureStories = ({
             variant="body1"
             sx={{
               mb: 4,
-              color: "rgba(248,250,252,0.85)",
+              color: themeDriven ? "var(--page-body-color, rgba(51,65,85,0.88))" : "rgba(248,250,252,0.85)",
               fontSize: { xs: "1rem", md: "1.1rem" },
               maxWidth: 720,
               mx: titleAlign === "center" ? "auto" : 0,
@@ -4647,6 +4697,7 @@ const FeatureStories = ({
   );
 };
 const TestimonialTiles = ({
+  followSiteTheme = true,
   title,
   caption,
   testimonials = [],
@@ -4657,6 +4708,7 @@ const TestimonialTiles = ({
   intervalMs = 4000,
   showDots = true,
 }) => {
+  const themeDriven = followSiteTheme !== false;
   const entries = toArray(testimonials)
     .map((item) => ({
       brand: item?.brand ?? "",
@@ -4693,15 +4745,21 @@ const TestimonialTiles = ({
         display: "flex",
         flexDirection: "column",
         gap: Math.max(4, gap - 4),
-        boxShadow: "0 16px 40px rgba(120,45,6,0.24)",
-        background: "linear-gradient(155deg, rgba(255,199,171,0.24), rgba(120,45,6,0.82))",
-        border: "1px solid rgba(178,64,24,0.32)",
-        color: "#fff7ed",
+        boxShadow: themeDriven
+          ? "var(--page-card-shadow, 0 16px 40px rgba(120,45,6,0.24))"
+          : "0 16px 40px rgba(120,45,6,0.24)",
+        background: themeDriven
+          ? "var(--page-card-bg, rgba(255,255,255,0.92))"
+          : "linear-gradient(155deg, rgba(255,199,171,0.24), rgba(120,45,6,0.82))",
+        border: themeDriven
+          ? "1px solid color-mix(in srgb, var(--page-heading-color, rgba(15,23,42,0.1)) 10%, rgba(255,255,255,0.18))"
+          : "1px solid rgba(178,64,24,0.32)",
+        color: themeDriven ? "var(--page-heading-color, #0f172a)" : "#fff7ed",
         minHeight: 200,
       }}
     >
       <Stack direction="row" spacing={Math.max(4, gap - 6)} alignItems="center">
-        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#fff7ed", letterSpacing: ".04em", fontSize: 13 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: themeDriven ? "var(--page-heading-color, #0f172a)" : "#fff7ed", letterSpacing: ".04em", fontSize: 13 }}>
           {toPlain(item.brand)}
         </Typography>
         {item.badge && (
@@ -4710,8 +4768,10 @@ const TestimonialTiles = ({
               px: 1,
               py: 0.5,
               borderRadius: 999,
-              backgroundColor: "rgba(255,220,200,0.3)",
-              color: "#2b0a05",
+              backgroundColor: themeDriven
+                ? "color-mix(in srgb, var(--page-link-color, #2563eb) 12%, rgba(255,255,255,0.88))"
+                : "rgba(255,220,200,0.3)",
+              color: themeDriven ? "var(--page-link-color, #2b0a05)" : "#2b0a05",
               fontSize: 10,
               letterSpacing: ".08em",
               textTransform: "uppercase",
@@ -4723,7 +4783,7 @@ const TestimonialTiles = ({
           </Box>
         )}
       </Stack>
-      <Typography variant="body2" sx={{ color: "#fff4eb", lineHeight: 1.45 }}>
+      <Typography variant="body2" sx={{ color: themeDriven ? "var(--page-body-color, rgba(15,23,42,0.78))" : "#fff4eb", lineHeight: 1.45 }}>
         {`“${toPlain(item.quote)}”`}
       </Typography>
       <Stack direction="row" spacing={Math.max(4, gap - 6)} alignItems="center" sx={{ mt: "auto" }}>
@@ -4732,7 +4792,9 @@ const TestimonialTiles = ({
             width: avatarSize,
             height: avatarSize,
             borderRadius: avatarSize / 3,
-            background: "rgba(255,220,200,0.2)",
+            background: themeDriven
+              ? "color-mix(in srgb, var(--page-link-color, #2563eb) 8%, rgba(255,255,255,0.86))"
+              : "rgba(255,220,200,0.2)",
             overflow: "hidden",
             flexShrink: 0,
           }}
@@ -4742,11 +4804,11 @@ const TestimonialTiles = ({
           ) : null}
         </Box>
         <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#ffe7d6", fontSize: 12 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: themeDriven ? "var(--page-heading-color, #0f172a)" : "#ffe7d6", fontSize: 12 }}>
             {toPlain(item.author)}
           </Typography>
           {item.role && (
-            <Typography variant="caption" sx={{ color: "rgba(255,231,214,0.85)" }}>
+            <Typography variant="caption" sx={{ color: themeDriven ? "var(--page-body-color, rgba(15,23,42,0.72))" : "rgba(255,231,214,0.85)" }}>
               {toPlain(item.role)}
             </Typography>
           )}
@@ -4758,12 +4820,27 @@ const TestimonialTiles = ({
   return (
     <Container maxWidth={toContainerMax(maxWidth)}>
       {title && (
-        <HtmlTypo variant="h5" sx={{ mb: caption ? 0.5 : 2, fontWeight: 800, textAlign: titleAlign || "left" }}>
+        <HtmlTypo
+          variant="h5"
+          sx={{
+            mb: caption ? 0.5 : 2,
+            fontWeight: 800,
+            textAlign: titleAlign || "left",
+            color: themeDriven ? "var(--page-heading-color, currentColor)" : undefined,
+          }}
+        >
           {title}
         </HtmlTypo>
       )}
       {caption && (
-        <HtmlTypo variant="body2" sx={{ mb: 2, color: "text.secondary", textAlign: titleAlign || "left" }}>
+        <HtmlTypo
+          variant="body2"
+          sx={{
+            mb: 2,
+            color: themeDriven ? "var(--page-body-color, text.secondary)" : "text.secondary",
+            textAlign: titleAlign || "left",
+          }}
+        >
           {caption}
         </HtmlTypo>
       )}

@@ -512,6 +512,7 @@ export const NEW_BLOCKS = {
   featurePillars: () => ({
     type: "featurePillars",
     props: {
+      followSiteTheme: true,
       title: "Choose your command center",
       caption: "Connect scheduling, payroll, and commerce with one dashboard.",
       layout: "dense",
@@ -593,6 +594,7 @@ export const NEW_BLOCKS = {
 featureStories: () => ({
   type: "featureStories",
   props: {
+    followSiteTheme: true,
     title: "Command centers for every crew",
     caption: "Preview the scheduling, payroll, and commerce hubs teams activate on day one.",
     badge: "Why teams upgrade",
@@ -672,6 +674,7 @@ featureStories: () => ({
   testimonialTiles: () => ({
     type: "testimonialTiles",
     props: {
+      followSiteTheme: true,
       title: "Teams scaling with Schedulaa",
       caption: "Enterprise operators replace stitched tools with one modern platform.",
       style: "grid",
