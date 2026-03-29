@@ -130,6 +130,62 @@ const LAYOUT_PRESETS = [
   { value: "split", label: "Logo left, nav right" },
 ];
 
+const HEADER_MODE_PRESETS = [
+  {
+    key: "classic-solid",
+    label: "Classic Solid",
+    description: "Traditional solid header with no hero overlap.",
+    values: {
+      sticky: false,
+      overlay_hero: false,
+      transparent_on_top: false,
+      scrolled_shadow: false,
+      scroll_threshold: 64,
+      scroll_cta_enabled: false,
+    },
+  },
+  {
+    key: "transparent-hero",
+    label: "Transparent Hero",
+    description: "Header overlays the hero and becomes solid on scroll.",
+    values: {
+      sticky: true,
+      overlay_hero: true,
+      transparent_on_top: true,
+      scrolled_shadow: true,
+      scroll_threshold: 56,
+      scroll_cta_enabled: false,
+    },
+  },
+  {
+    key: "compact-cta",
+    label: "Compact CTA",
+    description: "Hero overlay that collapses to a compact CTA header on scroll.",
+    values: {
+      sticky: true,
+      overlay_hero: true,
+      transparent_on_top: true,
+      scrolled_shadow: true,
+      scroll_threshold: 48,
+      scroll_cta_enabled: true,
+      scroll_cta_after: 96,
+    },
+  },
+  {
+    key: "minimal-solid",
+    label: "Minimal Solid",
+    description: "Always-solid sticky header with restrained scrolled shadow.",
+    values: {
+      sticky: true,
+      overlay_hero: false,
+      transparent_on_top: false,
+      scrolled_shadow: true,
+      scroll_threshold: 40,
+      scroll_cta_enabled: false,
+    },
+  },
+];
+
 const clampValue = (val, min, max) => {
   const num = Number(val);
   if (!Number.isFinite(num)) return min;
@@ -1074,6 +1130,13 @@ export default function WebsiteBrandingCard({
     },
     [header, onChangeHeader]
   );
+  const applyHeaderModePreset = useCallback(
+    (preset) => {
+      if (!preset) return;
+      updateHeader(preset.values || {});
+    },
+    [updateHeader]
+  );
 
   const handleClearManualNav = useCallback(() => {
     if (!manualNavCount) return;
@@ -1304,6 +1367,31 @@ export default function WebsiteBrandingCard({
             }
             label="Sticky header"
           />
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">Header mode presets</Typography>
+            <Typography variant="caption" color="text.secondary">
+              Apply a ready-made header behavior, then fine-tune colors or spacing if needed.
+            </Typography>
+            <Grid container spacing={1}>
+              {HEADER_MODE_PRESETS.map((preset) => (
+                <Grid item xs={12} sm={6} key={preset.key}>
+                  <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+                    <Stack spacing={1}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        {preset.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {preset.description}
+                      </Typography>
+                      <Button size="small" variant="outlined" onClick={() => applyHeaderModePreset(preset)}>
+                        Apply header mode
+                      </Button>
+                    </Stack>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          </Stack>
           <FormControlLabel
             control={
               <Switch

@@ -737,6 +737,156 @@ const THEME_PRESET_LIBRARY = [
   },
 ];
 
+const BUTTON_STYLE_PRESET_LIBRARY = [
+  {
+    key: "soft-rounded",
+    label: "Soft Rounded",
+    description: "Friendly rounded buttons for beauty, wellness, and lifestyle sites.",
+    values: { btnRadius: 10 },
+  },
+  {
+    key: "luxury-rectangle",
+    label: "Luxury Rectangle",
+    description: "Sharper premium button treatment with restrained corners.",
+    values: { btnRadius: 4 },
+  },
+  {
+    key: "pill",
+    label: "Pill",
+    description: "Full pill buttons for softer consumer-facing brands.",
+    values: { btnRadius: 999 },
+  },
+  {
+    key: "sharp-minimal",
+    label: "Sharp Minimal",
+    description: "Low-radius buttons for corporate, legal, and product-led sites.",
+    values: { btnRadius: 2 },
+  },
+];
+
+const HEADER_MODE_PRESET_LIBRARY = [
+  {
+    key: "classic-solid",
+    label: "Classic Solid",
+    description: "Traditional solid header with no hero overlap.",
+    values: {
+      sticky: false,
+      overlay_hero: false,
+      transparent_on_top: false,
+      scrolled_shadow: false,
+      scroll_threshold: 64,
+      scroll_cta_enabled: false,
+    },
+  },
+  {
+    key: "transparent-hero",
+    label: "Transparent Hero",
+    description: "Header overlays the hero and becomes solid on scroll.",
+    values: {
+      sticky: true,
+      overlay_hero: true,
+      transparent_on_top: true,
+      scrolled_shadow: true,
+      scroll_threshold: 56,
+      scroll_cta_enabled: false,
+    },
+  },
+  {
+    key: "compact-cta",
+    label: "Compact CTA",
+    description: "Transparent hero header that collapses to logo + CTA on scroll.",
+    values: {
+      sticky: true,
+      overlay_hero: true,
+      transparent_on_top: true,
+      scrolled_shadow: true,
+      scroll_threshold: 48,
+      scroll_cta_enabled: true,
+      scroll_cta_after: 96,
+    },
+  },
+  {
+    key: "minimal-solid",
+    label: "Minimal Solid",
+    description: "Always-solid minimal header with sticky behavior and shadow.",
+    values: {
+      sticky: true,
+      overlay_hero: false,
+      transparent_on_top: false,
+      scrolled_shadow: true,
+      scroll_threshold: 40,
+      scroll_cta_enabled: false,
+    },
+  },
+];
+
+const INDUSTRY_STARTER_PACKS = [
+  {
+    key: "medspa-beauty",
+    label: "Medspa / Beauty",
+    description: "Blush palette, transparent hero header, and soft rounded CTA.",
+    themePresetKey: "blush-spa",
+    headerModeKey: "transparent-hero",
+    buttonStyleKey: "soft-rounded",
+  },
+  {
+    key: "luxury-boutique",
+    label: "Luxury Boutique",
+    description: "Champagne tones with a premium rectangular button treatment.",
+    themePresetKey: "champagne-luxe",
+    headerModeKey: "transparent-hero",
+    buttonStyleKey: "luxury-rectangle",
+  },
+  {
+    key: "wellness-spa",
+    label: "Wellness / Spa",
+    description: "Sage and moss with a soft, elevated header treatment.",
+    themePresetKey: "forest-calm",
+    headerModeKey: "transparent-hero",
+    buttonStyleKey: "soft-rounded",
+  },
+  {
+    key: "medical-aesthetic",
+    label: "Medical Aesthetic",
+    description: "Clean blues with a solid, polished clinical header.",
+    themePresetKey: "ocean-clean",
+    headerModeKey: "classic-solid",
+    buttonStyleKey: "sharp-minimal",
+  },
+  {
+    key: "premium-noir",
+    label: "Premium Noir",
+    description: "Dark luxury palette with a compact sticky CTA header.",
+    themePresetKey: "modern-noir",
+    headerModeKey: "compact-cta",
+    buttonStyleKey: "luxury-rectangle",
+  },
+  {
+    key: "minimal-corporate",
+    label: "Minimal Corporate",
+    description: "Light neutral palette with a simple solid header and sharp CTAs.",
+    themePresetKey: "soft-minimal",
+    headerModeKey: "minimal-solid",
+    buttonStyleKey: "sharp-minimal",
+  },
+  {
+    key: "editorial-beauty",
+    label: "Editorial Beauty",
+    description: "Berry palette with a softer premium button treatment.",
+    themePresetKey: "berry-editorial",
+    headerModeKey: "transparent-hero",
+    buttonStyleKey: "soft-rounded",
+  },
+  {
+    key: "lifestyle-service",
+    label: "Lifestyle Service",
+    description: "Warm sunset palette with a friendly modern hero header.",
+    themePresetKey: "sunset-glow",
+    headerModeKey: "transparent-hero",
+    buttonStyleKey: "pill",
+  },
+];
+
 /* ---------- CSS VARS helper for page-level style (NEW) ---------- */
 /* ---------- CSS VARS helper for page-level style (final) ---------- */
 function styleToCssVars(style = {}) {
@@ -805,6 +955,8 @@ function PageStyleCard({
   onToggleApplyToAll,
   onApplyNow,
   onApplyThemePreset,
+  onApplyButtonStylePreset,
+  onApplyIndustryStarterPack,
   onOpenAdvanced,
   companyId,
 }) {
@@ -1082,6 +1234,14 @@ function PageStyleCard({
     if (!preset) return;
     onApplyThemePreset?.(preset, { applyToAll: !!applyToAll });
   };
+  const applyButtonPreset = (preset) => {
+    if (!preset) return;
+    onApplyButtonStylePreset?.(preset, { applyToAll: !!applyToAll });
+  };
+  const applyIndustryPack = (pack) => {
+    if (!pack) return;
+    onApplyIndustryStarterPack?.(pack, { applyToAll: !!applyToAll });
+  };
 
   return (
     <Stack id="page-style-card" spacing={1.5}>
@@ -1164,6 +1324,31 @@ function PageStyleCard({
 
       {pageStyleTab === "style" && (
         <Stack spacing={1.25}>
+          <Typography variant="subtitle2">Industry starter packs</Typography>
+          <Typography variant="caption" color="text.secondary">
+            One-click combinations that apply a curated color theme, header mode, and button style.
+          </Typography>
+          <Grid container spacing={1}>
+            {INDUSTRY_STARTER_PACKS.map((pack) => (
+              <Grid item xs={12} sm={6} key={pack.key}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      {pack.label}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {pack.description}
+                    </Typography>
+                    <Button size="small" variant="outlined" onClick={() => applyIndustryPack(pack)}>
+                      Apply starter pack
+                    </Button>
+                  </Stack>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+
+          <Divider />
           <Typography variant="subtitle2">Theme presets</Typography>
           <Typography variant="caption" color="text.secondary">
             Apply a curated theme across the current page and sync the matching header, footer, and menu colors.
@@ -1423,6 +1608,28 @@ function PageStyleCard({
 
           <Divider />
           <Typography variant="subtitle2">{t("manager.visualBuilder.pageStyle.buttons.heading")}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Apply a button style preset first, then fine-tune colors or radius if needed.
+          </Typography>
+          <Grid container spacing={1}>
+            {BUTTON_STYLE_PRESET_LIBRARY.map((preset) => (
+              <Grid item xs={12} sm={6} key={preset.key}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                      {preset.label}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {preset.description}
+                    </Typography>
+                    <Button size="small" variant="outlined" onClick={() => applyButtonPreset(preset)}>
+                      Apply button style
+                    </Button>
+                  </Stack>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
           <Stack direction="row" spacing={1}>
             {colorField({
               label: t("manager.visualBuilder.pageStyle.buttons.background"),
@@ -2383,6 +2590,121 @@ const applyThemePreset = useCallback(
     }
 
     setMsg(`Applied theme preset: ${preset.label}`);
+    setErr("");
+  },
+  [
+    applyStyleToAllPagesNow,
+    editing,
+    footerDraft,
+    handleFooterDraftChange,
+    handleHeaderDraftChange,
+    handleNavDraftChange,
+    headerDraft,
+    navStyleState,
+  ]
+);
+
+const applyButtonStylePreset = useCallback(
+  async (preset, { applyToAll = false } = {}) => {
+    if (!preset) return;
+    const currentPageStyle =
+      readPageStyleProps(editing) ||
+      editing?.content?.meta?.pageStyle ||
+      editing?.content?.style ||
+      {};
+    const nextPageStyle = {
+      ...currentPageStyle,
+      ...(preset.values || {}),
+      buttonStylePresetKey: preset.key,
+    };
+
+    setEditing((cur) => {
+      const content = { ...(cur.content || {}) };
+      content.meta = { ...(content.meta || {}), pageStyle: nextPageStyle };
+      content.style = { ...(content.style || {}), ...nextPageStyle };
+      let updated = { ...cur, content };
+      updated = writePageStyleProps(updated, nextPageStyle);
+      return withLiftedLayout(updated);
+    });
+
+    if (applyToAll) {
+      await applyStyleToAllPagesNow(nextPageStyle);
+    }
+
+    setMsg(`Applied button style: ${preset.label}`);
+    setErr("");
+  },
+  [applyStyleToAllPagesNow, editing]
+);
+
+const applyHeaderModePreset = useCallback(
+  (preset) => {
+    if (!preset) return;
+    const nextHeader = normalizeHeaderConfig({
+      ...(headerDraft || defaultHeaderConfig()),
+      ...(preset.values || {}),
+    });
+    handleHeaderDraftChange(nextHeader);
+    setMsg(`Applied header mode: ${preset.label}`);
+    setErr("");
+  },
+  [handleHeaderDraftChange, headerDraft]
+);
+
+const applyIndustryStarterPack = useCallback(
+  async (pack, { applyToAll = false } = {}) => {
+    if (!pack) return;
+    const themePreset = THEME_PRESET_LIBRARY.find((preset) => preset.key === pack.themePresetKey);
+    const buttonPreset = BUTTON_STYLE_PRESET_LIBRARY.find((preset) => preset.key === pack.buttonStyleKey);
+    const headerPreset = HEADER_MODE_PRESET_LIBRARY.find((preset) => preset.key === pack.headerModeKey);
+    if (!themePreset) return;
+
+    const currentPageStyle =
+      readPageStyleProps(editing) ||
+      editing?.content?.meta?.pageStyle ||
+      editing?.content?.style ||
+      {};
+    const nextPageStyle = {
+      ...currentPageStyle,
+      ...(themePreset.pageStyle || {}),
+      ...(buttonPreset?.values || {}),
+      themePresetKey: themePreset.key,
+      buttonStylePresetKey: buttonPreset?.key || currentPageStyle.buttonStylePresetKey,
+      industryStarterPackKey: pack.key,
+    };
+
+    setEditing((cur) => {
+      const content = { ...(cur.content || {}) };
+      content.meta = { ...(content.meta || {}), pageStyle: nextPageStyle };
+      content.style = { ...(content.style || {}), ...nextPageStyle };
+      let updated = { ...cur, content };
+      updated = writePageStyleProps(updated, nextPageStyle);
+      return withLiftedLayout(updated);
+    });
+
+    const nextHeader = normalizeHeaderConfig({
+      ...(headerDraft || defaultHeaderConfig()),
+      ...(themePreset.header || {}),
+      ...(headerPreset?.values || {}),
+    });
+    const nextFooter = normalizeFooterConfig({
+      ...(footerDraft || defaultFooterConfig()),
+      ...(themePreset.footer || {}),
+    });
+    const nextNav = normalizeNavStyle({
+      ...(navStyleState || NAV_STYLE_DEFAULT),
+      ...(themePreset.navStyle || {}),
+    });
+
+    handleHeaderDraftChange(nextHeader);
+    handleFooterDraftChange(nextFooter);
+    handleNavDraftChange({ nav_style: nextNav });
+
+    if (applyToAll) {
+      await applyStyleToAllPagesNow(nextPageStyle);
+    }
+
+    setMsg(`Applied starter pack: ${pack.label}`);
     setErr("");
   },
   [
@@ -5835,6 +6157,8 @@ function InspectorColumn() {
         onToggleApplyToAll={setApplyPageStyleToAll}
         onApplyNow={applyStyleToAllPagesNow}
         onApplyThemePreset={applyThemePreset}
+        onApplyButtonStylePreset={applyButtonStylePreset}
+        onApplyIndustryStarterPack={applyIndustryStarterPack}
         companyId={companyId}
         onOpenAdvanced={() => {
           addSection("pageStyle");
