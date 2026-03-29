@@ -2385,9 +2385,25 @@ const FAQ = ({ title, items = [], titleAlign, maxWidth }) => {
         </HtmlTypo>
       )}
       {list.map((q, i) => (
-        <Accordion key={i} disableGutters>
+        <Accordion
+          key={i}
+          disableGutters
+          elevation={0}
+          sx={{
+            background: "var(--page-card-bg, rgba(255,255,255,0.92))",
+            color: "var(--page-heading-color, inherit)",
+            borderRadius: "var(--page-card-radius, 18px)",
+            boxShadow: "var(--page-card-shadow, 0 18px 48px rgba(15,23,42,0.08))",
+            border: "1px solid color-mix(in srgb, var(--page-body-color, rgba(15,23,42,0.2)) 12%, transparent)",
+            overflow: "hidden",
+            mb: 1.25,
+            "&:before": { display: "none" },
+          }}
+        >
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography fontWeight={700}>{toPlain(q.question)}</Typography>
+            <Typography fontWeight={700} sx={{ color: "var(--page-heading-color, inherit)" }}>
+              {toPlain(q.question)}
+            </Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ color: "var(--page-body-color, inherit)" }}>
             {q.answer ? (
@@ -2888,14 +2904,24 @@ const ProcessSteps = ({
 
 const CTA = ({ title, subtitle, buttonText, buttonLink, titleAlign, maxWidth }) => (
   <Container maxWidth={toContainerMax(maxWidth)}>
-    <Card sx={{ p: { xs: 2, md: 3 }, textAlign: titleAlign || "center" }}>
+    <Card
+      sx={{
+        p: { xs: 2, md: 3 },
+        textAlign: titleAlign || "center",
+        background: "var(--page-card-bg, rgba(255,255,255,0.92))",
+        color: "var(--page-heading-color, inherit)",
+        borderRadius: "var(--page-card-radius, 18px)",
+        boxShadow: "var(--page-card-shadow, 0 18px 48px rgba(15,23,42,0.08))",
+        border: "1px solid color-mix(in srgb, var(--page-body-color, rgba(15,23,42,0.2)) 12%, transparent)",
+      }}
+    >
       {title && (
         <HtmlTypo variant="h5" sx={{ fontWeight: 800 }}>
           {title}
         </HtmlTypo>
       )}
       {subtitle && (
-        <HtmlTypo variant="body2" sx={{ mt: 0.5, color: "text.secondary" }}>
+        <HtmlTypo variant="body2" sx={{ mt: 0.5, color: "var(--page-body-color, inherit)" }}>
           {subtitle}
         </HtmlTypo>
       )}
