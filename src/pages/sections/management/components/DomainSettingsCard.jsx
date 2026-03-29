@@ -90,6 +90,20 @@ const buildStatusMeta = (t) => ({
   },
 });
 
+const statusChipSx = (meta) => {
+  if (meta?.color === "warning") {
+    return {
+      bgcolor: "#fff3cd",
+      color: "#8a4b00",
+      borderColor: "#f3c46b",
+      "& .MuiChip-icon": {
+        color: "#8a4b00",
+      },
+    };
+  }
+  return undefined;
+};
+
 const buildSslMeta = (t) => ({
   pending: { label: t("management.domainSettings.ssl.pending"), color: "warning" },
   active: { label: t("management.domainSettings.ssl.active"), color: "success" },
@@ -744,6 +758,7 @@ const DomainSettingsCard = ({
                   color={statusMeta.color === "default" ? undefined : statusMeta.color}
                   variant={statusMeta.color === "default" ? "outlined" : "filled"}
                   size="small"
+                  sx={statusChipSx(statusMeta)}
                 />
                 {sslMeta && (
                   <Chip
