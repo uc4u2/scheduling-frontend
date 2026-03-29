@@ -510,7 +510,7 @@ const DomainSettingsCard = ({
       defaultValue: "Detected",
     }),
     missing: t("management.domainSettings.workerRoute.missing", {
-      defaultValue: "Missing",
+      defaultValue: "Not detected",
     }),
     could_not_check: t("management.domainSettings.workerRoute.couldNotCheck", {
       defaultValue: "Could not check",
@@ -1529,6 +1529,12 @@ const DomainSettingsCard = ({
                 {t("management.domainSettings.workerRoute.advisory", {
                   defaultValue:
                     "This route is currently added manually in Cloudflare Workers Routes.",
+                })}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {t("management.domainSettings.workerRoute.behaviorCheck", {
+                  defaultValue:
+                    "Schedulaa currently checks this by probing worker-owned routes on your live host.",
                 })}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
