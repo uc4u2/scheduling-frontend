@@ -2284,7 +2284,7 @@ function PageStyleCard({
           <Button
             size="small"
             variant="contained"
-            onClick={onApplyNow}
+            onClick={() => onApplyNow?.()}
             disabled={!onApplyNow}
           >
             {t("manager.visualBuilder.pageStyle.applyNow")}
@@ -3387,8 +3387,16 @@ const [applyPageStyleToAll, setApplyPageStyleToAll] = useState(false);
 async function applyStyleToAllPagesNow(overrideStyle = null) {
   if (!companyId) return;
 
+  const isEventLike =
+    overrideStyle &&
+    typeof overrideStyle === "object" &&
+    (typeof overrideStyle.preventDefault === "function" ||
+      typeof overrideStyle.stopPropagation === "function" ||
+      overrideStyle.nativeEvent);
+  const safeOverrideStyle = isEventLike ? null : overrideStyle;
+
   const srcProps =
-    overrideStyle ||
+    safeOverrideStyle ||
     editing?.content?.meta?.pageStyle ||
     readPageStyleProps(editing) ||
     null;
