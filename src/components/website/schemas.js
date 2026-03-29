@@ -239,6 +239,7 @@ export const SCHEMA_REGISTRY = {
   logoCloud: {
     title: "Logo Cloud",
     fields: [
+      { name: "followSiteTheme", type: "boolean", label: "Follow site theme", default: true },
       { name: "title",      type: "richinline", label: "Title", labelKey: "manager.visualBuilder.schemas.testimonials.fields.title" },
       { name: "caption",    type: "richinline", label: "Caption" },
       {

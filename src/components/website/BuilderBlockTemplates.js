@@ -313,6 +313,7 @@ export const NEW_BLOCKS = {
   logoCloud: () => ({
     type: "logoCloud",
     props: {
+      followSiteTheme: true,
       title: "Choose a format that fits",
       caption: "Showcase workshops, commissions, or bundles.",
       supportingText: "Highlight offerings with quick pricing and CTA links.",

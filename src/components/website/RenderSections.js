@@ -3276,6 +3276,7 @@ const normalizeLogoItem = (item) => {
 };
 
 const LogoCloud = ({
+  followSiteTheme = true,
   title,
   caption,
   logos = [],
@@ -3295,6 +3296,7 @@ const LogoCloud = ({
   const entries = toArray(logos)
     .map(normalizeLogoItem)
     .filter((item) => item && (item?.src || item?.label || item?.caption));
+  const themeDriven = followSiteTheme !== false;
 
   const tabEntries = toArray(tabs)
     .map((tab) => {
@@ -3406,7 +3408,9 @@ const LogoCloud = ({
       fontWeight: 700,
       letterSpacing: ".12em",
       textTransform: "uppercase",
-      color: "#e0f2fe",
+      color: themeDriven
+        ? "var(--page-heading-color, currentColor)"
+        : "#e0f2fe",
       ...badgeStyle,
     };
 
@@ -3423,11 +3427,19 @@ const LogoCloud = ({
             key={idx}
             elevation={0}
             sx={{
-              background: "rgba(5,17,37,0.65)",
-              border: "1px solid rgba(148,163,184,0.28)",
-              boxShadow: "0 24px 44px rgba(8,23,53,0.32)",
-              color: "#f8fafc",
-              borderRadius: 14,
+              background: themeDriven
+                ? "var(--page-card-bg, rgba(255,255,255,0.92))"
+                : "rgba(5,17,37,0.65)",
+              border: themeDriven
+                ? "1px solid color-mix(in srgb, var(--page-heading-color, rgba(0,0,0,0.18)) 10%, rgba(255,255,255,0.15))"
+                : "1px solid rgba(148,163,184,0.28)",
+              boxShadow: themeDriven
+                ? "var(--page-card-shadow, 0 24px 44px rgba(8,23,53,0.14))"
+                : "0 24px 44px rgba(8,23,53,0.32)",
+              color: themeDriven
+                ? "var(--page-heading-color, currentColor)"
+                : "#f8fafc",
+              borderRadius: "var(--page-card-radius, 14px)",
               px: 3,
               py: 3,
               minWidth: 220,
@@ -3444,7 +3456,13 @@ const LogoCloud = ({
             {(showLabels || item.caption) && (
               <Typography
                 variant="caption"
-                sx={{ opacity: 0.85, letterSpacing: ".05em" }}
+                sx={{
+                  opacity: 0.85,
+                  letterSpacing: ".05em",
+                  color: themeDriven
+                    ? "var(--page-body-color, inherit)"
+                    : undefined,
+                }}
               >
                 {item.caption || item.label}
               </Typography>
@@ -3471,7 +3489,7 @@ const LogoCloud = ({
           <Card
             elevation={0}
             className={`logo-cloud-card${item.highlight ? " featured" : ""}`}
-            sx={{
+              sx={{
               height: "100%",
               borderRadius: resolvedCardRadius,
               p: 3,
@@ -3483,15 +3501,24 @@ const LogoCloud = ({
                   fontSize: ".95rem",
                   fontWeight: 800,
                   letterSpacing: ".22em",
+                  color: themeDriven
+                    ? "var(--page-heading-color, currentColor)"
+                    : undefined,
                 },
                 "& .logo-cloud-card-meta": {
                   fontSize: "2.5rem",
                   fontWeight: 800,
                   letterSpacing: "-0.02em",
+                  color: themeDriven
+                    ? "var(--page-heading-color, currentColor)"
+                    : undefined,
                 },
                 "& .logo-cloud-card-caption": {
                   fontSize: "1rem",
                   fontWeight: 600,
+                  color: themeDriven
+                    ? "var(--page-body-color, inherit)"
+                    : undefined,
                 },
                 "& .logo-cloud-card-image-wrap": {
                   width: "100%",
@@ -3509,11 +3536,15 @@ const LogoCloud = ({
                   objectPosition: "center",
                   display: "block",
                   borderRadius: 18,
-                  border: "1px solid rgba(203,255,247,0.55)",
-                  background:
-                    "radial-gradient(circle at 30% 20%, rgba(170,255,245,0.38), rgba(255,255,255,0.05))",
-                  boxShadow:
-                    "0 20px 42px rgba(6,10,22,0.38), 0 0 36px rgba(143,255,237,0.42)",
+                  border: themeDriven
+                    ? "1px solid color-mix(in srgb, var(--page-heading-color, rgba(0,0,0,0.18)) 10%, rgba(255,255,255,0.15))"
+                    : "1px solid rgba(203,255,247,0.55)",
+                  background: themeDriven
+                    ? "color-mix(in srgb, var(--page-secondary-bg, rgba(255,255,255,0.92)) 72%, rgba(255,255,255,0.38))"
+                    : "radial-gradient(circle at 30% 20%, rgba(170,255,245,0.38), rgba(255,255,255,0.05))",
+                  boxShadow: themeDriven
+                    ? "var(--page-card-shadow, 0 20px 42px rgba(6,10,22,0.14))"
+                    : "0 20px 42px rgba(6,10,22,0.38), 0 0 36px rgba(143,255,237,0.42)",
                 },
               }}
             >
@@ -3571,7 +3602,12 @@ const LogoCloud = ({
                 <Typography
                   variant="body2"
                   className="logo-cloud-card-description"
-                  sx={{ color: "text.primary", opacity: 0.85 }}
+                  sx={{
+                    color: themeDriven
+                      ? "var(--page-body-color, inherit)"
+                      : "text.primary",
+                    opacity: 0.85,
+                  }}
                 >
                   {item.description}
                 </Typography>
@@ -3590,7 +3626,16 @@ const LogoCloud = ({
                       key={i}
                     >
                       <CheckIcon fontSize="small" />
-                      <Typography variant="body2">{toPlain(f)}</Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: themeDriven
+                            ? "var(--page-body-color, inherit)"
+                            : undefined,
+                        }}
+                      >
+                        {toPlain(f)}
+                      </Typography>
                     </Stack>
                   ))}
                 </Stack>
@@ -3622,6 +3667,7 @@ const LogoCloud = ({
             fontWeight: 800,
             textTransform: "uppercase",
             letterSpacing: ".06em",
+            color: themeDriven ? "var(--page-heading-color, currentColor)" : undefined,
             ...alignSx(resolvedTitleAlign),
           }}
         >
@@ -3633,7 +3679,9 @@ const LogoCloud = ({
           variant="body2"
           sx={{
             mb: supportingText ? 1 : 2,
-            color: "text.secondary",
+            color: themeDriven
+              ? "var(--page-body-color, text.secondary)"
+              : "text.secondary",
             ...alignSx(resolvedTitleAlign),
           }}
         >
@@ -3645,7 +3693,9 @@ const LogoCloud = ({
           variant="body1"
           sx={{
             mb: 3,
-            color: "text.secondary",
+            color: themeDriven
+              ? "var(--page-body-color, text.secondary)"
+              : "text.secondary",
             maxWidth: 720,
             ...alignSx(resolvedSupportingAlign),
           }}
