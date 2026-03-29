@@ -420,6 +420,8 @@ const DomainSettingsCard = ({
   );
   const requestedDomainValue = requestedDomain || domainDetails?.requested || normalizeDomain(domainInput || domain);
   const canonicalDomainValue = canonicalDomain || domainDetails?.canonical || normalizeDomain(domain || "");
+  const fallbackLiveHost = canonicalDomainValue || "www.example.com";
+  const expectedRootRedirectTarget = rootRedirectExpectedTarget || (canonicalDomainValue ? `https://${canonicalDomainValue}` : "—");
 
   const statusMeta = statusMetaMap[status] || statusMetaMap.none;
   const sslMeta = sslStatus ? sslMetaMap[sslStatus] : null;
@@ -1051,7 +1053,7 @@ const DomainSettingsCard = ({
                     validationError ||
                     t("management.domainSettings.cards.liveHostHint", {
                       defaultValue: "Your live website will use {{host}}",
-                      host: canonicalDomainValue || "www.example.com",
+                      host: fallbackLiveHost,
                     })
                   }
                   error={Boolean(validationError)}
@@ -1467,7 +1469,7 @@ const DomainSettingsCard = ({
               <Typography variant="body2" color="text.secondary">
                 {t("management.domainSettings.cards.liveHint", {
                   defaultValue: "Your website already works on {{host}}",
-                  host: canonicalDomainValue || "www.example.com",
+                  host: fallbackLiveHost,
                 })}
               </Typography>
             </Stack>
@@ -1511,7 +1513,7 @@ const DomainSettingsCard = ({
               </Typography>
               <Typography variant="body2">
                 <strong>{t("management.domainSettings.rootRedirect.expectedLabel", { defaultValue: "Expected target" })}:</strong>{" "}
-                {rootRedirectExpectedTarget || (canonicalDomainValue ? `https://${canonicalDomainValue}` : "—")}
+                {expectedRootRedirectTarget}
               </Typography>
               <Typography variant="body2">
                 <strong>{t("management.domainSettings.rootRedirect.observedLabel", { defaultValue: "Observed location" })}:</strong>{" "}
@@ -1520,7 +1522,7 @@ const DomainSettingsCard = ({
               <Typography variant="body2" color="text.secondary">
                 {t("management.domainSettings.cards.rootRedirectGoDaddy", {
                   defaultValue: "GoDaddy forwarding: send the root domain to {{host}} with a permanent 301 and no masking.",
-                  host: canonicalDomainValue ? `https://${canonicalDomainValue}` : "https://www.example.com",
+                  host: expectedRootRedirectTarget === "—" ? "https://www.example.com" : expectedRootRedirectTarget,
                 })}
               </Typography>
             </Stack>
