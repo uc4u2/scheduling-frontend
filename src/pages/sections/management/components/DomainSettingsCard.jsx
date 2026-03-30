@@ -574,6 +574,12 @@ const DomainSettingsCard = ({
   });
   const summaryMeta = buildConnectionSummaryMeta(connectionSummary, t);
   const isVerifiedStatus = domainIsConnected || Boolean(verifiedAt) || ["verified", "ssl_active"].includes(status);
+  const sslStatusDisplay = sslStatus
+    || (domainIsConnected && cloudflareDetails?.hostname_status === "not_required"
+      ? t("management.domainSettings.labels.sslRuntimeConfirmed", {
+          defaultValue: "runtime confirmed",
+        })
+      : "—");
   const rootRedirectLabelMap = {
     detected: t("management.domainSettings.rootRedirect.detected", {
       defaultValue: "Detected",
@@ -900,7 +906,7 @@ const DomainSettingsCard = ({
       `Canonical domain: ${canonicalDomainValue || "—"}`,
       `Verified at: ${verifiedAt ? formatDateTime(verifiedAt, t) : "Not yet"}`,
       `Cloudflare hostname: ${cloudflareDetails?.hostname_status || "—"}`,
-      `SSL status: ${sslStatus || "—"}`,
+      `SSL status: ${sslStatusDisplay}`,
       `Bootstrap: ${bootstrapDetails?.ok ? "ok" : "not_ok"}`,
       `Bootstrap slug: ${bootstrapDetails?.slug || "—"}`,
       `Worker route: ${workerRouteState || "—"}`,
@@ -1837,6 +1843,7 @@ const DomainSettingsCard = ({
                 <Typography variant="body2"><strong>Canonical domain:</strong> {canonicalDomainValue || "—"}</Typography>
                 <Typography variant="body2"><strong>Verified at:</strong> {verifiedAt ? formatDateTime(verifiedAt, t) : "—"}</Typography>
                 <Typography variant="body2"><strong>Cloudflare hostname ID:</strong> {cloudflareHostnameId || "—"}</Typography>
+                <Typography variant="body2"><strong>SSL status:</strong> {sslStatusDisplay}</Typography>
                 <Typography variant="body2"><strong>Bootstrap:</strong> {bootstrapDetails?.ok ? "ok" : "not_ok"}</Typography>
                 <Typography variant="body2"><strong>Bootstrap slug:</strong> {bootstrapDetails?.slug || "—"}</Typography>
                 <Typography variant="body2"><strong>Worker route state:</strong> {workerRouteState || "—"}</Typography>
