@@ -761,6 +761,7 @@ export default function PublicPageShell({
     }
   }, []);
   const slug = (slugOverride || routeSlug || querySlug || storedSlug || "").trim() || null;
+  const isCustomDomain = getTenantHostMode() === "custom";
 
   // Persist the site slug so Login can find it even if opened without ?site=
   useEditGuard(); // <-- added call
