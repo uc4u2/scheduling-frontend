@@ -222,6 +222,21 @@ const formatDuration = (seconds) => {
   return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
 };
 
+const normalizeRequestedDomainInput = (value) => {
+  if (!value) return "";
+  let raw = String(value).trim().toLowerCase();
+  if (!raw) return "";
+  try {
+    if (raw.startsWith("http://") || raw.startsWith("https://")) {
+      raw = new URL(raw).hostname || raw;
+    }
+  } catch {
+    // Keep the raw value for existing hostname validation.
+  }
+  const normalized = normalizeDomain(raw);
+  return normalized.startsWith("www.") ? normalized.slice(4) : normalized;
+};
+
 const normalizeRedirectTarget = (value) => {
   if (!value) return "";
   try {
@@ -492,8 +507,8 @@ const DomainSettingsCard = ({
   const [retrySeconds, setRetrySeconds] = useState(0);
 
   useEffect(() => {
-    setDomainInput(domain || "");
-  }, [domain]);
+    setDomainInput(requestedDomain || domainDetails?.requested || normalizeRequestedDomainInput(domain) || "");
+  }, [domain, requestedDomain, domainDetails]);
 
   useEffect(() => {
     if (!nextRetrySeconds || Number.isNaN(nextRetrySeconds)) {
@@ -552,9 +567,13 @@ const DomainSettingsCard = ({
     () => tenantBaseUrl({ customDomain: domain, slug: companySlug, primaryHost }),
     [domain, companySlug, primaryHost]
   );
-  const requestedDomainValue = requestedDomain || domainDetails?.requested || normalizeDomain(domainInput || domain);
+  const requestedDomainValue =
+    normalizeRequestedDomainInput(requestedDomain || domainDetails?.requested || domainInput || domain);
   const canonicalDomainValue = canonicalDomain || domainDetails?.canonical || normalizeDomain(domain || "");
   const fallbackLiveHost = canonicalDomainValue || "www.example.com";
+  const normalizedTypedDomain = normalizeRequestedDomainInput(domainInput);
+  const typedStartsWithWww = normalizeDomain(domainInput).startsWith("www.");
+  const typedCanonicalHost = normalizedTypedDomain ? `www.${normalizedTypedDomain}` : fallbackLiveHost;
   const expectedRootRedirectTarget = rootRedirectExpectedTarget || (canonicalDomainValue ? `https://${canonicalDomainValue}` : "—");
   const dnsTxtDetected = typeof dnsDetails?.txt_ok === "boolean" ? dnsDetails.txt_ok : dnsTxtOk;
   const dnsCnameDetected = typeof dnsDetails?.cname_ok === "boolean" ? dnsDetails.cname_ok : dnsCnameOk;
@@ -807,7 +826,7 @@ const DomainSettingsCard = ({
   };
 
   const handleRequest = async () => {
-    const normalized = normalizeDomain(domainInput);
+    const normalized = normalizeRequestedDomainInput(domainInput);
     if (!normalized) {
       setValidationError(t("management.domainSettings.validation.enterDomain"));
       return;
@@ -959,7 +978,7 @@ const DomainSettingsCard = ({
   };
 
   const handleDomainConnectStart = async () => {
-    const normalized = normalizeDomain(domainInput || domain);
+    const normalized = normalizeRequestedDomainInput(domainInput || requestedDomainValue || domain);
     if (!normalized) {
       setActiveTab(MANUAL_TAB);
       setValidationError(t("management.domainSettings.validation.connectEnterDomain"));
@@ -1254,12 +1273,21 @@ const DomainSettingsCard = ({
                     if (validationError) setValidationError("");
                     setDomainInput(event.target.value);
                   }}
+                  onBlur={() => setDomainInput((prev) => normalizeRequestedDomainInput(prev))}
                   helperText={
                     validationError ||
+                    (typedStartsWithWww
+                      ? t("management.domainSettings.cards.requestedDomainNormalizedHint", {
+                          defaultValue:
+                            "We’ll save {{requested}} as the requested domain and use {{host}} as the live website host.",
+                          requested: normalizedTypedDomain || "example.com",
+                          host: typedCanonicalHost,
+                        })
+                      :
                     t("management.domainSettings.cards.liveHostHint", {
                       defaultValue: "Your live website will use {{host}}",
                       host: fallbackLiveHost,
-                    })
+                    }))
                   }
                   error={Boolean(validationError)}
                   disabled={processing || !companyId}
@@ -1981,12 +2009,13 @@ const ManualPanel = ({
         <TextField
           fullWidth
           label={t("management.domainSettings.manual.domainLabel")}
-          placeholder="customer.com"
-          value={domainInput}
-          onChange={(event) => {
-            if (validationError) setValidationError("");
-            setDomainInput(event.target.value);
-          }}
+        placeholder="customer.com"
+        value={domainInput}
+        onChange={(event) => {
+          if (validationError) setValidationError("");
+          setDomainInput(event.target.value);
+        }}
+        onBlur={() => setDomainInput((prev) => normalizeRequestedDomainInput(prev))}
           helperText={validationError || t("management.domainSettings.manual.helper")}
           error={Boolean(validationError)}
           disabled={processing || !companyId}
@@ -2192,12 +2221,13 @@ const ConnectPanel = ({
       <TextField
         fullWidth
         label={t("management.domainSettings.manual.domainLabel")}
-        placeholder="www.customer.com"
+        placeholder="customer.com"
         value={domainInput}
         onChange={(event) => {
           setValidationError("");
           setDomainInput(event.target.value);
         }}
+        onBlur={() => setDomainInput((prev) => normalizeRequestedDomainInput(prev))}
         helperText={
           validationError ||
           t("management.domainSettings.connect.registrarDetected", {

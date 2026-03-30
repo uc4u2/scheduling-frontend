@@ -491,9 +491,8 @@ function buildIntroMessages({ isTenant = false, config = null } = {}) {
   const chips = PAGE_CHIPS[path] || [];
   const tenantChips = [
     "Tell me about your business",
-    "What workshops do you offer?",
+    "What services do you offer?",
     "How do I book and pay?",
-    "What is your cancellation policy?",
   ];
   const quickReplies =
     Array.isArray(config?.quick_replies) && config.quick_replies.length > 0
@@ -505,7 +504,7 @@ function buildIntroMessages({ isTenant = false, config = null } = {}) {
   const displayName = (config?.assistant_name || "this business").trim();
   const greetingText =
     config?.greeting_text ||
-    "I can help with bookings, services, and workshop questions.\nAsk me about schedules, pricing, or booking policies.\nI’ll answer based on this business’s published information.";
+    "I can help with bookings and services.\nAsk me about schedules, pricing, or booking policies.\nI’ll answer based on this business’s published information.";
   return [
     {
       sender: "bot",
