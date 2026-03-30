@@ -86,6 +86,22 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
 
   const [domainSnapshot, setDomainSnapshot] = useState({ status: "none", domain: "", verifiedAt: null });
 
+  const normalizeDomainSnapshot = useCallback((snapshot, previous = null) => {
+    if (!snapshot) return previous || { status: "none", domain: "", verifiedAt: null };
+    const verifiedAt = snapshot.verifiedAt ?? previous?.verifiedAt ?? null;
+    const domainValue = snapshot.domain ?? previous?.domain ?? "";
+    const explicitStatus = snapshot.status && snapshot.status !== "none" ? snapshot.status : "";
+    return {
+      ...(previous || {}),
+      ...snapshot,
+      domain: domainValue,
+      verifiedAt,
+      status: verifiedAt
+        ? "verified"
+        : explicitStatus || (domainValue ? "pending_dns" : "none"),
+    };
+  }, []);
+
   const [chatbotEnabled, setChatbotEnabled] = useState(false);
   const [chatbotKnowledge, setChatbotKnowledge] = useState("");
   const [chatbotUpdatedAt, setChatbotUpdatedAt] = useState(null);
@@ -135,17 +151,22 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
 
   const handleDomainSnapshotUpdate = useCallback((snapshot) => {
     if (!snapshot) return;
-    setDomainSnapshot(snapshot);
+    setDomainSnapshot((prev) => normalizeDomainSnapshot(snapshot, prev));
     setSettings((prev) => {
       if (!prev) return prev;
+      const nextSnapshot = normalizeDomainSnapshot(snapshot, {
+        status: prev.domain_status,
+        domain: prev.custom_domain,
+        verifiedAt: prev.domain_verified_at,
+      });
       return {
         ...prev,
-        custom_domain: snapshot.domain ?? prev.custom_domain,
-        domain_status: snapshot.status ?? prev.domain_status,
-        domain_verified_at: snapshot.verifiedAt ?? prev.domain_verified_at,
+        custom_domain: nextSnapshot.domain ?? prev.custom_domain,
+        domain_status: nextSnapshot.status ?? prev.domain_status,
+        domain_verified_at: nextSnapshot.verifiedAt ?? prev.domain_verified_at,
       };
     });
-  }, []);
+  }, [normalizeDomainSnapshot]);
 
   const handleSeoSave = useCallback(
     async (seoPayload) => {
@@ -205,6 +226,9 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
   }, [slugPath]);
 
   const domainStatusMeta = useMemo(() => {
+    if (domainSnapshot.verifiedAt) {
+      return { label: t("management.website.domainStatus.verified"), color: "success" };
+    }
     switch (domainSnapshot.status) {
       case "ssl_active":
       case "verified":
