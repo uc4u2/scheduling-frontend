@@ -96,8 +96,50 @@ const statusChipSx = (meta) => {
       bgcolor: "#fff3cd",
       color: "#8a4b00",
       borderColor: "#f3c46b",
+      "& .MuiChip-label": {
+        color: "#8a4b00",
+      },
       "& .MuiChip-icon": {
         color: "#8a4b00",
+      },
+    };
+  }
+  if (meta?.color === "success") {
+    return {
+      bgcolor: "#e8f5e9",
+      color: "#1b5e20",
+      borderColor: "#81c784",
+      "& .MuiChip-label": {
+        color: "#1b5e20",
+      },
+      "& .MuiChip-icon": {
+        color: "#1b5e20",
+      },
+    };
+  }
+  if (meta?.color === "info") {
+    return {
+      bgcolor: "#e3f2fd",
+      color: "#0d47a1",
+      borderColor: "#64b5f6",
+      "& .MuiChip-label": {
+        color: "#0d47a1",
+      },
+      "& .MuiChip-icon": {
+        color: "#0d47a1",
+      },
+    };
+  }
+  if (meta?.color === "error") {
+    return {
+      bgcolor: "#fdecea",
+      color: "#b3261e",
+      borderColor: "#ef9a9a",
+      "& .MuiChip-label": {
+        color: "#b3261e",
+      },
+      "& .MuiChip-icon": {
+        color: "#b3261e",
       },
     };
   }
