@@ -241,7 +241,33 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
       default:
         return { label: t("management.website.domainStatus.none"), color: "default" };
     }
-  }, [domainSnapshot.status, t]);
+  }, [domainSnapshot.status, domainSnapshot.verifiedAt, t]);
+
+  const domainStatusChipSx = useMemo(() => {
+    if (domainStatusMeta.color === "success") {
+      return {
+        bgcolor: "#e8f5e9",
+        color: "#1b5e20",
+        borderColor: "#81c784",
+        "& .MuiChip-label": {
+          color: "#1b5e20",
+          fontWeight: 600,
+        },
+      };
+    }
+    if (domainStatusMeta.color === "warning") {
+      return {
+        bgcolor: "#fff3cd",
+        color: "#8a4b00",
+        borderColor: "#f3c46b",
+        "& .MuiChip-label": {
+          color: "#8a4b00",
+          fontWeight: 600,
+        },
+      };
+    }
+    return undefined;
+  }, [domainStatusMeta.color]);
 
   const statusLabels = useMemo(
     () => ({
@@ -639,6 +665,7 @@ const WebsiteManager = ({ companyId: companyIdProp }) => {
           label={domainStatusMeta.label}
           color={domainStatusMeta.color === "default" ? "default" : domainStatusMeta.color}
           variant={domainStatusMeta.color === "default" ? "outlined" : "filled"}
+          sx={domainStatusChipSx}
         />
         {hasDraftChanges && (
           <Chip size="small" color="warning" label={t("management.website.labels.draftPending", "Draft changes pending")} />
