@@ -158,7 +158,10 @@ function useEditGuard() {
     (async () => {
       try {
         // 1) Resolve company id from public site payload
-        const sitePayload = await publicSite.getWebsiteShell(slug);
+        const isCustomDomain = getTenantHostMode() === "custom";
+        const sitePayload = isCustomDomain
+          ? await publicSite.getWebsiteShellByHost().catch(() => publicSite.getWebsiteShell(slug))
+          : await publicSite.getWebsiteShell(slug);
         const cid = sitePayload?.company_id || sitePayload?.company?.id;
         if (cid) {
           localStorage.setItem("company_id", String(cid));
@@ -825,7 +828,9 @@ export default function PublicPageShell({
 
     (async () => {
       try {
-        const ok = await publicSite.getWebsiteShell(slug);
+        const ok = isCustomDomain
+          ? await publicSite.getWebsiteShellByHost().catch(() => publicSite.getWebsiteShell(slug))
+          : await publicSite.getWebsiteShell(slug);
         if (!alive) return;
         setSite(ok || null);
         if (ok) writeShellCache(cacheKey, ok);

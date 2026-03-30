@@ -1070,7 +1070,9 @@ export default function CompanyPublic({ slugOverride }) {
     (async () => {
       try {
         setLoading(true); setErr("");
-        const data = await publicSite.getBySlug(slug);
+        const data = isCustomDomain
+          ? await publicSite.getByHost().catch(() => publicSite.getBySlug(slug))
+          : await publicSite.getBySlug(slug);
         if (!alive) return;
         setSitePayload(data || null);
         setCompany(data?.company || null);
@@ -1105,7 +1107,7 @@ export default function CompanyPublic({ slugOverride }) {
       }
     })();
     return () => { alive = false; };
-  }, [slug]);
+  }, [slug, isCustomDomain]);
 
   useEffect(() => {
     if (isManagerForCompany && searchParams.get("edit") === "1") setEditorOpen(true);
@@ -1136,7 +1138,11 @@ export default function CompanyPublic({ slugOverride }) {
     if (existing?.content?.sections?.length) return () => {};
     (async () => {
       try {
-        const resp = await publicSite.getPage(slug, pageSlugToFetch);
+        const resp = isCustomDomain
+          ? await publicSite
+              .getPageByHost(pageSlugToFetch)
+              .catch(() => publicSite.getPage(slug, pageSlugToFetch))
+          : await publicSite.getPage(slug, pageSlugToFetch);
         if (!alive) return;
         const pageData = resp?.page || resp;
         if (!pageData) return;
@@ -1170,7 +1176,7 @@ export default function CompanyPublic({ slugOverride }) {
     return () => {
       alive = false;
     };
-  }, [slug, pageSlugToFetch, pages]);
+  }, [slug, pageSlugToFetch, pages, isCustomDomain]);
 
   useEffect(() => {
     const heroUrl = sitePayload?.preview?.hero?.image;

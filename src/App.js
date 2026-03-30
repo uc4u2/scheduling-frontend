@@ -518,13 +518,18 @@ const AppContent = ({ token, setToken }) => {
   }, [isCustomDomain]);
 
   useEffect(() => {
-    if (!chatbotSlug) {
+    if ((!isCustomDomain && !chatbotSlug) || (isCustomDomain && !tenantLoaded)) {
       return;
     }
     let alive = true;
     setChatbotConfigLoaded(false);
-    publicSite
-      .getChatbotConfig(chatbotSlug)
+    const request = isCustomDomain
+      ? publicSite.getChatbotConfigByHost().catch(() => {
+          if (!tenantSlug) throw new Error("tenant_slug_unavailable");
+          return publicSite.getChatbotConfig(tenantSlug);
+        })
+      : publicSite.getChatbotConfig(chatbotSlug);
+    request
       .then((res) => {
         if (!alive) return;
         setChatbotConfig(res || null);
@@ -539,7 +544,7 @@ const AppContent = ({ token, setToken }) => {
     return () => {
       alive = false;
     };
-  }, [chatbotSlug]);
+  }, [chatbotSlug, isCustomDomain, tenantLoaded, tenantSlug]);
 
   if (isCustomDomain && !tenantLoaded) {
     return null;

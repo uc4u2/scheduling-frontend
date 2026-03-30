@@ -135,6 +135,15 @@ const getSupportSessionId = () => {
   }
 };
 
+const publicHostHeaderConfig = () => {
+  if (typeof window === "undefined" || !window.location?.hostname) return {};
+  return {
+    headers: {
+      "X-Public-Host": window.location.hostname,
+    },
+  };
+};
+
 const normalizeMediaAsset = (asset, companyId) => {
   if (!asset) return null;
   const stored =
@@ -984,6 +993,14 @@ export const publicSite = {
       .get(`/api/public/${encodeURIComponent(keySlug)}/website`, { noCompanyHeader: true })
       .then((r) => r.data);
   },
+  getByHost: () =>
+    api
+      .get("/public/website", {
+        noCompanyHeader: true,
+        noAuth: true,
+        ...publicHostHeaderConfig(),
+      })
+      .then((r) => r.data),
   getWebsiteShell: (slug) => {
     const keySlug = String(slug || "").trim().toLowerCase();
     const key = _keyWithVersion(`shell:${keySlug}`, keySlug);
@@ -1011,6 +1028,14 @@ export const publicSite = {
     _setCached(_publicShellCache, key, req);
     return req;
   },
+  getWebsiteShellByHost: () =>
+    api
+      .get("/public/website-shell", {
+        noCompanyHeader: true,
+        noAuth: true,
+        ...publicHostHeaderConfig(),
+      })
+      .then((r) => r.data),
   getPage: (slug, pageSlug) => {
     const keySlug = String(slug || "").trim().toLowerCase();
     const keyPage = String(pageSlug || "").trim().toLowerCase();
@@ -1030,6 +1055,14 @@ export const publicSite = {
     _setCached(_publicPageCache, key, req);
     return req;
   },
+  getPageByHost: (pageSlug) =>
+    api
+      .get(`/public/page/${encodeURIComponent(String(pageSlug || "").trim().toLowerCase())}`, {
+        noCompanyHeader: true,
+        noAuth: true,
+        ...publicHostHeaderConfig(),
+      })
+      .then((r) => r.data),
   getBootstrap: (slug, include = "services,departments,packages,website_shell") => {
     const keySlug = String(slug || "").trim().toLowerCase();
     const keyInclude = String(include || "").trim().toLowerCase();
@@ -1110,6 +1143,14 @@ export const publicSite = {
     _setCached(_publicChatbotCache, key, req);
     return req;
   },
+  getChatbotConfigByHost: () =>
+    api
+      .get("/public/chatbot-config", {
+        noAuth: true,
+        noCompanyHeader: true,
+        ...publicHostHeaderConfig(),
+      })
+      .then((r) => r.data),
 
   getArtist: (slug, artistIdOrToken) => {
     const key = String(artistIdOrToken || "").trim();
