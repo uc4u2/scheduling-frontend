@@ -263,6 +263,12 @@ const buildConnectionSummaryMeta = (summary, t) => {
   }
 };
 
+const buildConnectedStatusMeta = (t) => ({
+  label: t("management.domainSettings.summary.connected", { defaultValue: "Connected" }),
+  color: "success",
+  icon: <CheckCircleIcon fontSize="small" />,
+});
+
 const progressChipColor = (state) => {
   switch (state) {
     case "done":
@@ -494,7 +500,11 @@ const DomainSettingsCard = ({
   const workerRoutePattern = workerRouteRequiredPattern || (canonicalDomainValue ? `${canonicalDomainValue}/*` : "www.example.com/*");
   const workerName = workerRouteWorkerName || "schedulaa-edge-router";
 
-  const statusMeta = statusMetaMap[status] || statusMetaMap.none;
+  const domainIsConnected =
+    connectionSummary === "connected" || (Boolean(verifiedAt) && Boolean(bootstrapDetails?.ok));
+  const statusMeta = domainIsConnected
+    ? buildConnectedStatusMeta(t)
+    : (statusMetaMap[status] || statusMetaMap.none);
   const sslMeta = sslStatus ? sslMetaMap[sslStatus] : null;
   const connectAvailable = registrarHint === CONNECT_REGISTRAR;
   const suggestedDomain = companySlug ? `${companySlug}.com` : "";
@@ -521,6 +531,7 @@ const DomainSettingsCard = ({
     error: workerRouteError,
   });
   const summaryMeta = buildConnectionSummaryMeta(connectionSummary, t);
+  const isVerifiedStatus = domainIsConnected || Boolean(verifiedAt) || ["verified", "ssl_active"].includes(status);
   const rootRedirectLabelMap = {
     detected: t("management.domainSettings.rootRedirect.detected", {
       defaultValue: "Detected",
@@ -580,17 +591,23 @@ const DomainSettingsCard = ({
     {
       key: "dns",
       title: t("management.domainSettings.progress.dnsDetected", { defaultValue: "DNS records detected" }),
-      state: dnsTxtOk || dnsCnameOk ? "done" : requestedDomainValue ? "warning" : "pending",
-      detail: t("management.domainSettings.progress.dnsDetectedDetail", {
-        defaultValue: "TXT: {{txt}} · www CNAME: {{cname}}",
-        txt: dnsTxtOk ? "detected" : "missing",
-        cname: dnsCnameOk ? "detected" : "missing",
-      }),
+      state: domainIsConnected ? "done" : dnsTxtOk || dnsCnameOk ? "done" : requestedDomainValue ? "warning" : "pending",
+      detail: domainIsConnected && !(dnsTxtOk && dnsCnameOk)
+        ? t("management.domainSettings.progress.dnsConnectedDetail", {
+            defaultValue: "Live host is confirmed. Raw DNS checks may be stale or advisory.",
+          })
+        : t("management.domainSettings.progress.dnsDetectedDetail", {
+            defaultValue: "TXT: {{txt}} · www CNAME: {{cname}}",
+            txt: dnsTxtOk ? "detected" : "missing",
+            cname: dnsCnameOk ? "detected" : "missing",
+          }),
     },
     {
       key: "hostname",
       title: t("management.domainSettings.progress.cloudflareHostname", { defaultValue: "Cloudflare hostname" }),
-      state:
+      state: domainIsConnected
+        ? "done"
+        :
         cloudflareDetails?.hostname_status === "active"
           ? "done"
           : cloudflareDetails?.hostname_status === "error"
@@ -598,16 +615,24 @@ const DomainSettingsCard = ({
             : requestedDomainValue
               ? "pending"
               : "pending",
-      detail: t("management.domainSettings.progress.cloudflareHostnameDetail", {
-        defaultValue: "Status: {{status}}",
-        status: cloudflareDetails?.hostname_status || "not started",
-      }),
+      detail: domainIsConnected && cloudflareDetails?.hostname_status !== "active"
+        ? t("management.domainSettings.progress.cloudflareHostnameConnectedDetail", {
+            defaultValue: "Live host is confirmed. Cloudflare hostname detail may be stale.",
+          })
+        : t("management.domainSettings.progress.cloudflareHostnameDetail", {
+            defaultValue: "Status: {{status}}",
+            status: cloudflareDetails?.hostname_status || "not started",
+          }),
     },
     {
       key: "ssl",
       title: t("management.domainSettings.progress.sslCertificate", { defaultValue: "SSL certificate" }),
-      state: sslStatus === "active" ? "done" : sslStatus === "error" ? "error" : requestedDomainValue ? "pending" : "pending",
-      detail: sslStatus === "error"
+      state: domainIsConnected ? "done" : sslStatus === "active" ? "done" : sslStatus === "error" ? "error" : requestedDomainValue ? "pending" : "pending",
+      detail: domainIsConnected && sslStatus !== "active"
+        ? t("management.domainSettings.progress.sslConnectedDetail", {
+            defaultValue: "Live host is confirmed. SSL detail may be stale.",
+          })
+        : sslStatus === "error"
         ? (sslError || t("management.domainSettings.progress.sslError", { defaultValue: "SSL needs attention." }))
         : t("management.domainSettings.progress.sslDetail", {
             defaultValue: "Status: {{status}}",
@@ -1005,7 +1030,6 @@ const DomainSettingsCard = ({
   })();
 
   const quickVerify = !verifyDisabled ? helpVerifyDns : undefined;
-  const isVerifiedStatus = ["verified", "ssl_active"].includes(status);
   const quickConnect = connectAvailable ? helpDomainConnect : undefined;
   return (
     <>
