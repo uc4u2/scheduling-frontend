@@ -32,6 +32,7 @@ const INITIAL_STATE = {
   rootRedirectError: null,
   rootRedirectCheckedScheme: null,
   rootRedirectState: null,
+  rootRedirectDetails: null,
   workerRouteState: null,
   workerRouteRequiredPattern: null,
   workerRouteWorkerName: null,
@@ -295,18 +296,50 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
       if (hasOwn(payload, "domain_details")) {
         next.domainDetails = payload.domain_details || null;
+        next.verifiedAt =
+          toDate(payload.domain_details?.verified_at) || next.verifiedAt || null;
         next.requestedDomain = payload.domain_details?.requested || next.requestedDomain || null;
         next.canonicalDomain = payload.domain_details?.canonical || next.canonicalDomain || null;
+        next.domain = payload.domain_details?.canonical || next.domain || "";
         next.cloudflareHostnameId =
           payload.domain_details?.cloudflare_hostname_id || next.cloudflareHostnameId || null;
       }
 
       if (hasOwn(payload, "cloudflare")) {
         next.cloudflareDetails = payload.cloudflare || null;
+        if (hasOwn(payload.cloudflare || {}, "ssl_status")) {
+          next.sslStatus = payload.cloudflare?.ssl_status ?? null;
+        }
+        if (hasOwn(payload.cloudflare || {}, "ssl_error")) {
+          next.sslError = payload.cloudflare?.ssl_error ?? null;
+        }
+        if (hasOwn(payload.cloudflare || {}, "hostname_id")) {
+          next.cloudflareHostnameId = payload.cloudflare?.hostname_id || next.cloudflareHostnameId || null;
+        }
       }
 
       if (hasOwn(payload, "bootstrap")) {
         next.bootstrapDetails = payload.bootstrap || null;
+      }
+
+      if (hasOwn(payload, "root_redirect")) {
+        next.rootRedirectDetails = payload.root_redirect || null;
+        next.rootRedirectOk =
+          typeof payload.root_redirect?.ok === "boolean" ? payload.root_redirect.ok : next.rootRedirectOk;
+        next.rootRedirectCheckedAt =
+          toDate(payload.root_redirect?.checked_at) || next.rootRedirectCheckedAt || null;
+        next.rootRedirectStatusCode =
+          typeof payload.root_redirect?.status_code === "number"
+            ? payload.root_redirect.status_code
+            : next.rootRedirectStatusCode;
+        next.rootRedirectExpectedTarget =
+          payload.root_redirect?.expected_target || next.rootRedirectExpectedTarget || null;
+        next.rootRedirectObservedLocation =
+          payload.root_redirect?.observed_location || next.rootRedirectObservedLocation || null;
+        next.rootRedirectError = payload.root_redirect?.error || next.rootRedirectError || null;
+        next.rootRedirectCheckedScheme =
+          payload.root_redirect?.checked_scheme || next.rootRedirectCheckedScheme || null;
+        next.rootRedirectState = payload.root_redirect?.state || next.rootRedirectState || null;
       }
 
       if (hasOwn(payload, "worker_route")) {
@@ -621,12 +654,15 @@ export default function useDomainSettings(companyId, { auto = true } = {}) {
 
   const derived = useMemo(
     () => ({
-      isVerified: ["verified", "ssl_active"].includes(state.status),
-      isPending: ["pending_dns", "verified_dns", "provisioning_ssl"].includes(state.status),
+      isVerified: Boolean(state.verifiedAt) || state.connectionSummary === "connected" || ["verified", "ssl_active"].includes(state.status),
+      isPending:
+        !state.verifiedAt &&
+        state.connectionSummary !== "connected" &&
+        ["pending_dns", "verified_dns", "provisioning_ssl"].includes(state.status),
       hasDomain: Boolean(state.domain),
       hasInstructions: Boolean(state.instructions),
     }),
-    [state.status, state.domain, state.instructions]
+    [state.status, state.verifiedAt, state.connectionSummary, state.domain, state.instructions]
   );
 
   return {

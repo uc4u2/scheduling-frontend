@@ -311,6 +311,21 @@ const buildConnectedStatusMeta = (t) => ({
   icon: <CheckCircleIcon fontSize="small" />,
 });
 
+const DOMAIN_ONBOARDING_FIELD_MAP = Object.freeze({
+  topLevelSummary: {
+    required: ["connection_summary", "domain_details.verified_at", "bootstrap.ok"],
+  },
+  steps: {
+    domainSaved: ["domain_details.requested"],
+    dnsDetected: ["dns.txt_ok", "dns.cname_ok"],
+    cloudflareHostname: ["cloudflare.hostname_status"],
+    ssl: ["cloudflare.ssl_status", "cloudflare.ssl_error"],
+    websiteBootstrap: ["bootstrap.ok", "bootstrap.slug"],
+    edgeRouting: ["worker_route.state", "worker_route.required_pattern", "worker_route.worker_name"],
+    rootRedirect: ["root_redirect.state", "root_redirect.expected_target", "root_redirect.observed_location"],
+  },
+});
+
 const progressChipColor = (state) => {
   switch (state) {
     case "done":
@@ -444,6 +459,7 @@ const DomainSettingsCard = ({
     rootRedirectError,
     rootRedirectCheckedScheme,
     rootRedirectState,
+    rootRedirectDetails,
     workerRouteState,
     workerRouteRequiredPattern,
     workerRouteWorkerName,
@@ -459,6 +475,7 @@ const DomainSettingsCard = ({
     dnsDetails,
     cloudflareDetails,
     bootstrapDetails,
+    workerRouteDetails,
   } = useDomainSettings(companyId);
 
   const statusMetaMap = useMemo(() => buildStatusMeta(t), [t]);
@@ -539,15 +556,23 @@ const DomainSettingsCard = ({
   const canonicalDomainValue = canonicalDomain || domainDetails?.canonical || normalizeDomain(domain || "");
   const fallbackLiveHost = canonicalDomainValue || "www.example.com";
   const expectedRootRedirectTarget = rootRedirectExpectedTarget || (canonicalDomainValue ? `https://${canonicalDomainValue}` : "—");
-  const workerRoutePattern = workerRouteRequiredPattern || (canonicalDomainValue ? `${canonicalDomainValue}/*` : "www.example.com/*");
-  const workerName = workerRouteWorkerName || "schedulaa-edge-router";
+  const dnsTxtDetected = typeof dnsDetails?.txt_ok === "boolean" ? dnsDetails.txt_ok : dnsTxtOk;
+  const dnsCnameDetected = typeof dnsDetails?.cname_ok === "boolean" ? dnsDetails.cname_ok : dnsCnameOk;
+  const cloudflareHostnameStatus = cloudflareDetails?.hostname_status || null;
+  const effectiveSslStatus = cloudflareDetails?.ssl_status ?? sslStatus;
+  const effectiveSslError = cloudflareDetails?.ssl_error ?? sslError;
+  const bootstrapOk = Boolean(bootstrapDetails?.ok);
+  const workerRouteCurrentState = workerRouteDetails?.state || workerRouteState;
+  const workerRoutePattern = workerRouteDetails?.required_pattern || workerRouteRequiredPattern || (canonicalDomainValue ? `${canonicalDomainValue}/*` : "www.example.com/*");
+  const workerName = workerRouteDetails?.worker_name || workerRouteWorkerName || "schedulaa-edge-router";
+  const rootRedirectCurrentState = rootRedirectDetails?.state || rootRedirectState;
 
   const domainIsConnected =
-    connectionSummary === "connected" || (Boolean(verifiedAt) && Boolean(bootstrapDetails?.ok));
+    connectionSummary === "connected" || (Boolean(verifiedAt) && bootstrapOk);
   const statusMeta = domainIsConnected
     ? buildConnectedStatusMeta(t)
     : (statusMetaMap[status] || statusMetaMap.none);
-  const sslMeta = sslStatus ? sslMetaMap[sslStatus] : null;
+  const sslMeta = effectiveSslStatus ? sslMetaMap[effectiveSslStatus] : null;
   const connectAvailable = registrarHint === CONNECT_REGISTRAR;
   const suggestedDomain = companySlug ? `${companySlug}.com` : "";
   const verifyDisabled =
@@ -560,22 +585,22 @@ const DomainSettingsCard = ({
     cdnProvider === "cloudflare" &&
     Boolean(domain) &&
     Boolean(verifiedAt) &&
-    (sslStatus === "error" || status === "ssl_failed" || Boolean(sslError));
+    (effectiveSslStatus === "error" || status === "ssl_failed" || Boolean(effectiveSslError));
   const rootRedirectMeta = buildRootRedirectMeta({
-    state: rootRedirectState,
+    state: rootRedirectCurrentState,
     ok: rootRedirectOk,
     expectedTarget: rootRedirectExpectedTarget,
     observedLocation: rootRedirectObservedLocation,
     error: rootRedirectError,
   });
   const workerRouteMeta = buildWorkerRouteMeta({
-    state: workerRouteState,
+    state: workerRouteCurrentState,
     error: workerRouteError,
   });
   const summaryMeta = buildConnectionSummaryMeta(connectionSummary, t);
   const isVerifiedStatus = domainIsConnected || Boolean(verifiedAt) || ["verified", "ssl_active"].includes(status);
-  const sslStatusDisplay = sslStatus
-    || (domainIsConnected && cloudflareDetails?.hostname_status === "not_required"
+  const sslStatusDisplay = effectiveSslStatus
+    || (domainIsConnected && cloudflareHostnameStatus === "not_required"
       ? t("management.domainSettings.labels.sslRuntimeConfirmed", {
           defaultValue: "runtime confirmed",
         })
@@ -595,11 +620,11 @@ const DomainSettingsCard = ({
     }),
   };
   const bootstrapMeta = {
-    state: bootstrapDetails?.ok ? "done" : (verifiedAt ? "warning" : "pending"),
-    label: bootstrapDetails?.ok
+    state: bootstrapOk ? "done" : (verifiedAt ? "warning" : "pending"),
+    label: bootstrapOk
       ? t("management.domainSettings.bootstrap.ok", { defaultValue: "Tenant routing is working" })
       : t("management.domainSettings.bootstrap.pending", { defaultValue: "Tenant routing not confirmed yet" }),
-    detail: bootstrapDetails?.ok
+    detail: bootstrapOk
       ? t("management.domainSettings.bootstrap.slugDetail", {
           defaultValue: "Resolved site: {{slug}}",
           slug: bootstrapDetails?.slug || companySlug || "—",
@@ -639,15 +664,15 @@ const DomainSettingsCard = ({
     {
       key: "dns",
       title: t("management.domainSettings.progress.dnsDetected", { defaultValue: "DNS records detected" }),
-      state: domainIsConnected ? "done" : dnsTxtOk || dnsCnameOk ? "done" : requestedDomainValue ? "warning" : "pending",
-      detail: domainIsConnected && !(dnsTxtOk && dnsCnameOk)
+      state: domainIsConnected ? "done" : dnsTxtDetected || dnsCnameDetected ? "done" : requestedDomainValue ? "warning" : "pending",
+      detail: domainIsConnected && !(dnsTxtDetected && dnsCnameDetected)
         ? t("management.domainSettings.progress.dnsConnectedDetail", {
             defaultValue: "Live host is confirmed. Raw DNS checks may be stale or advisory.",
           })
         : t("management.domainSettings.progress.dnsDetectedDetail", {
             defaultValue: "TXT: {{txt}} · www CNAME: {{cname}}",
-            txt: dnsTxtOk ? "detected" : "missing",
-            cname: dnsCnameOk ? "detected" : "missing",
+            txt: dnsTxtDetected ? "detected" : "missing",
+            cname: dnsCnameDetected ? "detected" : "missing",
           }),
     },
     {
@@ -656,35 +681,35 @@ const DomainSettingsCard = ({
       state: domainIsConnected
         ? "done"
         :
-        cloudflareDetails?.hostname_status === "active"
+        cloudflareHostnameStatus === "active"
           ? "done"
-          : cloudflareDetails?.hostname_status === "error"
+          : cloudflareHostnameStatus === "error"
             ? "error"
             : requestedDomainValue
               ? "pending"
               : "pending",
-      detail: domainIsConnected && cloudflareDetails?.hostname_status !== "active"
+      detail: domainIsConnected && cloudflareHostnameStatus !== "active"
         ? t("management.domainSettings.progress.cloudflareHostnameConnectedDetail", {
             defaultValue: "Live host is confirmed. Cloudflare hostname detail may be stale.",
           })
         : t("management.domainSettings.progress.cloudflareHostnameDetail", {
             defaultValue: "Status: {{status}}",
-            status: cloudflareDetails?.hostname_status || "not started",
+            status: cloudflareHostnameStatus || "not started",
           }),
     },
     {
       key: "ssl",
       title: t("management.domainSettings.progress.sslCertificate", { defaultValue: "SSL certificate" }),
-      state: domainIsConnected ? "done" : sslStatus === "active" ? "done" : sslStatus === "error" ? "error" : requestedDomainValue ? "pending" : "pending",
-      detail: domainIsConnected && sslStatus !== "active"
+      state: domainIsConnected ? "done" : effectiveSslStatus === "active" ? "done" : effectiveSslStatus === "error" ? "error" : requestedDomainValue ? "pending" : "pending",
+      detail: domainIsConnected && effectiveSslStatus !== "active"
         ? t("management.domainSettings.progress.sslConnectedDetail", {
             defaultValue: "Live host is confirmed. SSL detail may be stale.",
           })
-        : sslStatus === "error"
-        ? (sslError || t("management.domainSettings.progress.sslError", { defaultValue: "SSL needs attention." }))
+        : effectiveSslStatus === "error"
+        ? (effectiveSslError || t("management.domainSettings.progress.sslError", { defaultValue: "SSL needs attention." }))
         : t("management.domainSettings.progress.sslDetail", {
             defaultValue: "Status: {{status}}",
-            status: sslStatus || "not started",
+            status: effectiveSslStatus || "not started",
           }),
     },
     {
