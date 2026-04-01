@@ -22,7 +22,7 @@ import { useParams, useNavigate } from "react-router-dom";
 
 import { api } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
-import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
+import { isoFromParts } from "../../utils/datetime";
 import {
   resolveSeatsLeft,
   slotIsAvailable,
@@ -42,14 +42,20 @@ const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 const AUTO_SELECT_FIRST_TIME = true;
 const sheetSafePadding = "calc(env(safe-area-inset-bottom) + 16px)";
 
-/**
- * Build display date/time using backend-prepared local fields when available.
- * If backends later add day-level hints, this remains compatible.
- */
-const buildDisplayFromISO = (iso) => {
-  const dt = new Date(iso);
-  if (Number.isNaN(dt.getTime())) return { date: "—", time: "—" };
-  return { date: formatDate(dt), time: formatTime(dt) };
+const formatYmdForDisplay = (dateStr) => {
+  if (!dateStr) return "—";
+  try {
+    const [year, month, day] = String(dateStr).split("-").map(Number);
+    const dt = new Date(year, (month || 1) - 1, day || 1);
+    if (Number.isNaN(dt.getTime())) return String(dateStr);
+    return dt.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  } catch {
+    return String(dateStr);
+  }
 };
 
 /** Build "cart" JSON for the availability endpoint (filter by date + artist). */
@@ -178,6 +184,10 @@ export default function EmployeeAvailabilityCalendar({
     },
     "&:focus-visible": focusRing,
   });
+  const displayTimezone =
+    slots.find((s) => s?.timezone)?.timezone ||
+    priceInfo?.timezone ||
+    "UTC";
 
   /* ------------ load day slots when selection changes ------------ */
   useEffect(() => {
@@ -310,12 +320,7 @@ export default function EmployeeAvailabilityCalendar({
   }, []);
 
   useEffect(() => {
-    const iso = isoFromParts(
-      selectedDate,
-      slots[0]?.start_time || "00:00",
-      slots[0]?.timezone || userTz
-    );
-    const label = buildDisplayFromISO(iso).date;
+    const label = formatYmdForDisplay(slots[0]?.date || selectedDate);
     setTimeAnnounce(
       slots.length
         ? `${slots.length} slot${slots.length === 1 ? "" : "s"} available${
@@ -347,7 +352,7 @@ export default function EmployeeAvailabilityCalendar({
         firstBtn?.focus({ preventScroll: true });
       });
     }
-  }, [slots, selectedDate, userTz, isMobile, selectedTime]);
+  }, [slots, selectedDate, isMobile, selectedTime]);
 
   /* ------------ handlers ------------ */
   const goPrevMonth = () =>
@@ -496,7 +501,7 @@ export default function EmployeeAvailabilityCalendar({
     const chosen = {
       date: selectedDate,
       start_time: selectedTime,
-      timezone: userTz, // FE sends local strings; BE attaches authoritative zone
+      timezone: slots.find((s) => s.start_time === selectedTime)?.timezone || displayTimezone,
     };
 
     if (typeof onSlotSelect === "function") {
@@ -546,9 +551,7 @@ export default function EmployeeAvailabilityCalendar({
       }}
     >
       {slots.map((s, idx) => {
-        const iso = isoFromParts(selectedDate, s.start_time, s.timezone || userTz);
-        const { time } = buildDisplayFromISO(iso);
-        const label = time || s.start_time;
+        const label = s.start_time || "";
         const seatsLeft = resolveSeatsLeft(s);
         const isFullGroup = slotIsFullGroup(s);
         const seatsLabel = slotSeatsLabel(s);
@@ -602,8 +605,7 @@ export default function EmployeeAvailabilityCalendar({
     </Box>
   );
 
-  const contextISO = isoFromParts(selectedDate, (slots[0]?.start_time || "00:00"), (slots[0]?.timezone || userTz));
-  const disp = buildDisplayFromISO(contextISO);
+  const disp = { date: formatYmdForDisplay(slots[0]?.date || selectedDate) };
   const svcName = serviceName || priceInfo?.name || "Selected Service";
 
   /* ------------ JSX ------------ */
@@ -641,7 +643,7 @@ export default function EmployeeAvailabilityCalendar({
             >
               <Chip
                 size="small"
-                label={`TZ: ${userTz}`}
+                label={`TZ: ${displayTimezone}`}
                 sx={{
                   borderRadius: 999,
                   fontWeight: 500,
