@@ -8,7 +8,24 @@ import {
 import RefreshIcon from "@mui/icons-material/Refresh";
 import api from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
-import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
+
+const bookingTimestamp = (booking) => {
+  if (booking?.start_utc) {
+    const dt = new Date(booking.start_utc);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+  if (booking?.date && booking?.start_time) {
+    const dt = new Date(`${booking.date}T${booking.start_time}:00Z`);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+  return null;
+};
+
+const bookingDisplay = (booking) => ({
+  date: booking?.local_date || booking?.date || "",
+  start: booking?.local_start_time || booking?.start_time || "",
+  end: booking?.local_end_time || booking?.end_time || "",
+});
 
 export default function ClientDashboardOverview() {
   const [overview, setOverview] = useState(null);
@@ -42,18 +59,17 @@ export default function ClientDashboardOverview() {
     ])
       .then(([bookingsRes]) => {
         const bookings = bookingsRes.data.bookings || [];
-        const futureBookings = bookings.filter(b => {
-          const tz = b.timezone || userTimezone;
-          const iso = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tz);
-          return new Date(iso) >= now && b.status !== "cancelled";
+        const futureBookings = bookings.filter((b) => {
+          const dt = bookingTimestamp(b);
+          return dt && dt >= now && b.status !== "cancelled";
         });
         const nextBooking = futureBookings.length
           ? futureBookings.reduce((a, b) => {
-              const tzA = a.timezone || userTimezone;
-              const tzB = b.timezone || userTimezone;
-              const isoA = isoFromParts(a.local_date || a.date, a.local_start_time || a.start_time, tzA);
-              const isoB = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tzB);
-              return new Date(isoA) < new Date(isoB) ? a : b;
+              const dtA = bookingTimestamp(a);
+              const dtB = bookingTimestamp(b);
+              if (!dtA) return b;
+              if (!dtB) return a;
+              return dtA < dtB ? a : b;
             })
           : null;
 
@@ -104,13 +120,11 @@ export default function ClientDashboardOverview() {
                 <>
                   {(() => {
                     const b = overview.nextBooking;
-                    const tz = b.timezone || userTimezone;
-                    const iso = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tz);
-                    const dateObj = new Date(iso);
+                    const display = bookingDisplay(b);
                     return (
                       <>
                         <Typography variant="h6">
-                          {formatDate(dateObj)} {formatTime(dateObj)}
+                          {display.date} {display.start}
                         </Typography>
                         <Typography variant="body2">
                           {b.service} <br />
@@ -132,16 +146,14 @@ export default function ClientDashboardOverview() {
                 <>
                   {(() => {
                     const b = overview.recentBooking;
-                    const tz = b.timezone || userTimezone;
-                    const iso = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tz);
-                    const dateObj = new Date(iso);
+                    const display = bookingDisplay(b);
                     return (
                       <>
                         <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 1 }}>
                           Most recent booking
                         </Typography>
                         <Typography variant="h6">
-                          {formatDate(dateObj)} {formatTime(dateObj)}
+                          {display.date} {display.start}
                         </Typography>
                         <Typography variant="body2">
                           {b.service} <br />
@@ -177,14 +189,10 @@ export default function ClientDashboardOverview() {
               <Typography variant="h6" gutterBottom>Booking Details</Typography>
 
               {(() => {
-                const tz = selected.timezone || userTimezone;
-                const startIso = isoFromParts(selected.local_date || selected.date, selected.local_start_time || selected.start_time, tz);
-                const endIso = isoFromParts(selected.local_date || selected.date, selected.local_end_time || selected.end_time, tz);
-                const startDateObj = new Date(startIso);
-                const endDateObj = new Date(endIso);
+                const display = bookingDisplay(selected);
                 return (
                   <>
-                    <Typography><b>Date:</b> {formatDate(startDateObj)} {formatTime(startDateObj)} - {formatTime(endDateObj)}</Typography>
+                    <Typography><b>Date:</b> {display.date} {display.start} - {display.end}</Typography>
                   </>
                 );
               })()}
