@@ -97,13 +97,8 @@ const ClientAppointments = () => {
       ) : (
         <Box>
           {appointments.map((appt) => {
-            // Build display date/time from UTC + timezone
-            const tz = appt.timezone || userTimezone;
-            const startIso = isoFromParts(appt.date, appt.start_time, tz);
-            const startDateObj = new Date(startIso);
-
-            const displayDate = formatDate(startDateObj);
-            const displayTime = formatTime(startDateObj);
+            const displayDate = appt.local_date || appt.date || "";
+            const displayTime = appt.local_start_time || appt.start_time || "";
 
             return (
               <Card key={appt.id} sx={{ mb: 2, borderLeft: "5px solid #1976d2" }}>

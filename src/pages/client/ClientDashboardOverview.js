@@ -179,7 +179,7 @@ export default function ClientDashboardOverview() {
               {(() => {
                 const tz = selected.timezone || userTimezone;
                 const startIso = isoFromParts(selected.local_date || selected.date, selected.local_start_time || selected.start_time, tz);
-                const endIso = isoFromParts(selected.date, selected.end_time, tz);
+                const endIso = isoFromParts(selected.local_date || selected.date, selected.local_end_time || selected.end_time, tz);
                 const startDateObj = new Date(startIso);
                 const endDateObj = new Date(endIso);
                 return (

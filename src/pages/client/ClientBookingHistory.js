@@ -149,11 +149,8 @@ export default function ClientBookingHistory() {
           </TableHead>
           <TableBody>
             {bookings.map((b) => {
-              const tz = b.timezone || userTimezone;
-              const startIso = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tz);
-              const startDateObj = new Date(startIso);
-              const displayDate = formatDate(startDateObj);
-              const displayTime = formatTime(startDateObj);
+              const displayDate = b.local_date || b.date || "";
+              const displayTime = b.local_start_time || b.start_time || "";
 
               return (
                 <TableRow key={b.id}>
@@ -193,14 +190,9 @@ export default function ClientBookingHistory() {
               <Typography variant="h6" gutterBottom>Booking Details</Typography>
 
               {(() => {
-                const tz = selected.timezone || userTimezone;
-                const startIso = isoFromParts(selected.local_date || selected.date, selected.local_start_time || selected.start_time, tz);
-                const endIso = isoFromParts(selected.date, selected.end_time, tz);
-                const startDateObj = new Date(startIso);
-                const endDateObj = new Date(endIso);
-                const displayDate = formatDate(startDateObj);
-                const displayStartTime = formatTime(startDateObj);
-                const displayEndTime = formatTime(endDateObj);
+                const displayDate = selected.local_date || selected.date || "";
+                const displayStartTime = selected.local_start_time || selected.start_time || "";
+                const displayEndTime = selected.local_end_time || selected.end_time || "";
                 return (
                   <>
                     <Typography><b>Date:</b> {displayDate}</Typography>
