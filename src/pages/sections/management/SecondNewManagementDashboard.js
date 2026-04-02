@@ -541,6 +541,8 @@ const panels = useMemo(
       icon: <EventAvailableIcon />,
 
       element: <AllEmployeeSlotsCalendar token={token} />,
+      hideDefaultActions: true,
+      dialogScroll: "body",
 
     },
 

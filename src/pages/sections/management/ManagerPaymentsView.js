@@ -1,5 +1,5 @@
 // src/pages/sections/management/ManagerPaymentsView.js
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateTime } from "luxon";
 import { getUserTimezone } from "../../../utils/timezone";
 import { isoFromParts } from "../../../utils/datetime";
@@ -238,6 +238,7 @@ const paymentStatusChipColor = (status) => {
 
 export default function ManagerPaymentsView({ connect }) {
   const location = useLocation();
+  const consumedDeepLinkRef = useRef("");
   const mobileComplianceMode = isMobileComplianceMode();
 
   const hasConnect = Boolean(connect && typeof connect === 'object');
@@ -1163,8 +1164,11 @@ export default function ManagerPaymentsView({ connect }) {
     const presetTip = qs.get("tip");
     const presetCurrency = qs.get("currency");
     if (!apptId) return;
+    const deepLinkKey = qs.toString();
+    if (consumedDeepLinkRef.current === deepLinkKey) return;
     const booking = bookings.find((x) => String(x.id) === String(apptId));
     if (booking) {
+      consumedDeepLinkRef.current = deepLinkKey;
       if (presetCurrency) {
         const normalized = normalizeCurrency(presetCurrency);
         if (normalized && normalized !== displayCurrency) {
@@ -1182,6 +1186,10 @@ export default function ManagerPaymentsView({ connect }) {
           extra: presetExtra || "",
           tip: presetTip || "",
         });
+      }
+      if (typeof window !== "undefined" && window.history?.replaceState) {
+        const cleaned = `${window.location.pathname}${window.location.hash || ""}`;
+        window.history.replaceState({}, document.title, cleaned);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

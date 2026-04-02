@@ -219,8 +219,9 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   /* ─────────────────────────────── Pre‑fill on employee change ─────────────────── */
 useEffect(() => {
   if (!selectedEmployeeId) {
-    setWDayFrom("");
-    setWDayTo("");
+    const today = DateTime.now().toISODate();
+    setWDayFrom(today);
+    setWDayTo(today);
     setWStart("");
     setWEnd("");
     setMakeSlots(false);
@@ -237,14 +238,12 @@ useEffect(() => {
       .get(`/api/manager/employees/${selectedEmployeeId}/availability`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((r) => {
-        const slots = r.data || [];
-        if (!slots.length) return;
-        const s = slots[0];
-        setWDayFrom(s.date);
-        setWDayTo(s.date);
-        setWStart(s.start_time);
-        setWEnd(s.end_time);
+    .then((r) => {
+      const slots = r.data || [];
+      if (!slots.length) return;
+      const s = slots[0];
+        setWStart((prev) => prev || s.start_time);
+        setWEnd((prev) => prev || s.end_time);
       })
       .catch(() => {});
 }, [selectedEmployeeId, employees, token]);
