@@ -1581,6 +1581,19 @@ export default function ManagerPaymentsView({ connect }) {
                           variant={
                             b.payment_status === "paid" ? "filled" : "outlined"
                           }
+                          sx={(theme) =>
+                            b.payment_status === "paid"
+                              ? {
+                                  backgroundColor: theme.palette.success.dark,
+                                  color: theme.palette.success.contrastText,
+                                  fontWeight: 700,
+                                  borderColor: theme.palette.success.dark,
+                                  "& .MuiChip-label": {
+                                    color: theme.palette.success.contrastText,
+                                  },
+                                }
+                              : undefined
+                          }
                         />
                       </Stack>
                       <Typography variant="body2" color="text.secondary">

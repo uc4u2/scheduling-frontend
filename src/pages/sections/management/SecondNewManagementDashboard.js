@@ -161,7 +161,7 @@ const SecondNewManagementDashboard = ({ token }) => {
   // which modal is open: number (panel index) or "analytics"
 
   const [openIndex, setOpenIndex] = useState(null);
-  const [analyticsFullscreen, setAnalyticsFullscreen] = useState(false);
+  const [dialogFullscreen, setDialogFullscreen] = useState(false);
 
 
 
@@ -436,7 +436,7 @@ const startLinkLabel =
 const openAnalytics = useCallback(() => {
 
   setOpenIndex("analytics");
-  setAnalyticsFullscreen(false);
+  setDialogFullscreen(false);
 
 }, []);
 
@@ -714,7 +714,7 @@ const panels = useMemo(
 
   const handleClose = () => {
     setOpenIndex(null);
-    setAnalyticsFullscreen(false);
+    setDialogFullscreen(false);
   };
 
 
@@ -757,7 +757,10 @@ const panels = useMemo(
 
   const analyticsImmersive =
 
-    openIndex === "analytics" && analyticsFullscreen && !fullScreen;
+    dialogFullscreen && !fullScreen;
+
+  const primaryTabCount = 10;
+  const overflowPanels = !isCompactTabs ? panels.slice(primaryTabCount) : [];
 
 
 
@@ -1075,7 +1078,7 @@ const panels = useMemo(
 
           >
 
-            {panels.map((p, idx) => (
+            {panels.slice(0, primaryTabCount).map((p, idx) => (
 
               <Tab
 
@@ -1101,16 +1104,40 @@ const panels = useMemo(
 
 
 
-        {/* Light inline message */}
-
-        <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-
-          <Typography variant="body2" color="text.secondary">
-
-            {t("manager.advanced.tabsHint")}
-
-          </Typography>
-
+        <Box sx={{ p: { xs: 1, sm: 2, md: 2.5 } }}>
+          {overflowPanels.length > 0 ? (
+            <Stack
+              direction="row"
+              spacing={1}
+              useFlexGap
+              flexWrap="wrap"
+              alignItems="center"
+            >
+              {overflowPanels.map((panel, idx) => (
+                <Button
+                  key={panel.label}
+                  variant="text"
+                  startIcon={panel.icon}
+                  onClick={() => handleOpen(primaryTabCount + idx)}
+                  sx={{
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    fontWeight: 600,
+                    color: "text.secondary",
+                    borderRadius: 2,
+                    px: 1.25,
+                    minHeight: 40,
+                  }}
+                >
+                  {panel.label}
+                </Button>
+              ))}
+            </Stack>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              {t("manager.advanced.tabsHint")}
+            </Typography>
+          )}
         </Box>
 
       </Paper>
@@ -1243,13 +1270,13 @@ const panels = useMemo(
 
           >
 
-            {openIndex === "analytics" && !fullScreen ? (
+            {openIndex !== null && !fullScreen ? (
               <>
                 <IconButton
 
                   aria-label={analyticsImmersive ? "Exit full page" : "Open full page"}
 
-                  onClick={() => setAnalyticsFullscreen((prev) => !prev)}
+                  onClick={() => setDialogFullscreen((prev) => !prev)}
 
                   size="small"
 
