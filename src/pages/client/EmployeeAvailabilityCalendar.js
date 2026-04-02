@@ -94,6 +94,8 @@ export default function EmployeeAvailabilityCalendar({
   departmentId: departmentIdProp,
   serviceName,
   onSlotSelect, // optional callback({ date, start_time, timezone })
+  autoSelectFirstTime = AUTO_SELECT_FIRST_TIME,
+  autoScrollToTimes = true,
 }) {
   const params = useParams();
   const navigate = useNavigate();
@@ -247,6 +249,8 @@ export default function EmployeeAvailabilityCalendar({
             cart: cartJSON || undefined,
             department_id: departmentId || undefined,
           },
+          noCompanyHeader: true,
+          noAuth: true,
         });
 
         const sourceSlots = Array.isArray(data?.slots) ? data.slots : [];
@@ -255,7 +259,10 @@ export default function EmployeeAvailabilityCalendar({
         // Optional: pull simple pricing from your public service endpoint if you have it
         if (!priceInfo) {
           try {
-            const svc = await api.get(`/public/${companySlug}/service/${serviceId}`);
+            const svc = await api.get(`/public/${companySlug}/service/${serviceId}`, {
+              noCompanyHeader: true,
+              noAuth: true,
+            });
             setPriceInfo({ name: svc.data?.name, base_price: svc.data?.base_price });
           } catch {
             // ignore
@@ -334,7 +341,7 @@ export default function EmployeeAvailabilityCalendar({
       return;
     }
 
-    if (AUTO_SELECT_FIRST_TIME && !selectedTime) {
+    if (autoSelectFirstTime && !selectedTime) {
       setSelectedTime(slots[0].start_time);
     }
 
@@ -343,7 +350,7 @@ export default function EmployeeAvailabilityCalendar({
       return;
     }
 
-    if (timesRef.current) {
+    if (autoScrollToTimes && timesRef.current) {
       window.requestAnimationFrame(() => {
         timesRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
         const firstBtn = timesRef.current.querySelector(
@@ -352,7 +359,7 @@ export default function EmployeeAvailabilityCalendar({
         firstBtn?.focus({ preventScroll: true });
       });
     }
-  }, [slots, selectedDate, isMobile, selectedTime]);
+  }, [slots, selectedDate, isMobile, selectedTime, autoSelectFirstTime, autoScrollToTimes]);
 
   /* ------------ handlers ------------ */
   const goPrevMonth = () =>

@@ -581,6 +581,9 @@ const panels = useMemo(
       icon: <BookOnlineIcon />,
 
       element: <ClientBookingView />,
+      hideDefaultActions: true,
+      dialogMaxWidth: "lg",
+      dialogScroll: "body",
 
     },
 
@@ -741,6 +744,13 @@ const panels = useMemo(
       ? panels[openIndex]?.label
 
       : "";
+
+  const activePanel =
+    openIndex !== null && typeof openIndex === "number" ? panels[openIndex] : null;
+  const hideDialogActions =
+    openIndex !== null &&
+    typeof openIndex === "number" &&
+    Boolean(panels[openIndex]?.hideDefaultActions);
 
 
   const analyticsImmersive =
@@ -1114,10 +1124,11 @@ const panels = useMemo(
         onClose={handleClose}
 
         fullScreen={fullScreen || analyticsImmersive}
+        scroll={activePanel?.dialogScroll || "paper"}
 
         fullWidth
 
-        maxWidth="xl"
+        maxWidth={activePanel?.dialogMaxWidth || "xl"}
 
         PaperProps={{
 
@@ -1130,6 +1141,7 @@ const panels = useMemo(
             maxWidth: analyticsImmersive ? "100vw" : undefined,
             height: analyticsImmersive ? "100vh" : undefined,
             maxHeight: analyticsImmersive ? "100vh" : undefined,
+            alignSelf: activePanel?.dialogScroll === "body" ? "flex-start" : undefined,
 
           },
 
@@ -1288,11 +1300,18 @@ const panels = useMemo(
 
             p: { xs: 1.5, sm: 2.5, md: 3 },
 
-            maxHeight: analyticsImmersive ? "calc(100vh - 72px)" : "calc(100vh - 160px)",
+            maxHeight:
+              activePanel?.dialogScroll === "body"
+                ? "none"
+                : analyticsImmersive
+                ? "calc(100vh - 72px)"
+                : "calc(100vh - 160px)",
 
-            overflow: "auto",
+            overflow: activePanel?.dialogScroll === "body" ? "visible" : "auto",
+            display: "flex",
+            flexDirection: "column",
 
-            bgcolor: "background.default",
+            bgcolor: hideDialogActions ? "background.paper" : "background.default",
             "&::-webkit-scrollbar": {
               width: 10,
             },
@@ -1334,7 +1353,7 @@ const panels = useMemo(
             borderColor: "divider",
 
             bgcolor: "background.paper",
-            display: analyticsImmersive ? "none" : "flex",
+            display: analyticsImmersive || hideDialogActions ? "none" : "flex",
 
           }}
 
