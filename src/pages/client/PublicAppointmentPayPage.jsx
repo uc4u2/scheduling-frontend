@@ -214,12 +214,6 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
               <Button
                 variant="contained"
-                onClick={() => navigate(`/${slug}/booking-confirmation/${appointmentId}`)}
-              >
-                View booking
-              </Button>
-              <Button
-                variant="outlined"
                 onClick={() => navigate(`/${slug}?page=my-bookings`)}
               >
                 My bookings

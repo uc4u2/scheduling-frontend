@@ -758,6 +758,11 @@ const panels = useMemo(
   const analyticsImmersive =
 
     dialogFullscreen && !fullScreen;
+  const immersiveBodyScroll =
+    activePanel?.dialogScroll === "body" && (fullScreen || analyticsImmersive);
+  const dialogScrollMode = immersiveBodyScroll
+    ? "paper"
+    : activePanel?.dialogScroll || "paper";
 
   const primaryTabCount = 10;
   const overflowPanels = !isCompactTabs ? panels.slice(primaryTabCount) : [];
@@ -1153,7 +1158,7 @@ const panels = useMemo(
         onClose={handleClose}
 
         fullScreen={fullScreen || analyticsImmersive}
-        scroll={activePanel?.dialogScroll || "paper"}
+        scroll={dialogScrollMode}
 
         fullWidth
 
@@ -1165,12 +1170,14 @@ const panels = useMemo(
 
             borderRadius: fullScreen || analyticsImmersive ? 0 : 2,
 
-            overflow: "hidden",
+            overflow: immersiveBodyScroll ? "auto" : "hidden",
+            overflowY: immersiveBodyScroll ? "auto" : undefined,
             width: analyticsImmersive ? "100vw" : undefined,
             maxWidth: analyticsImmersive ? "100vw" : undefined,
             height: analyticsImmersive ? "100vh" : undefined,
             maxHeight: analyticsImmersive ? "100vh" : undefined,
             alignSelf: activePanel?.dialogScroll === "body" ? "flex-start" : undefined,
+            overscrollBehavior: immersiveBodyScroll ? "contain" : undefined,
 
           },
 
@@ -1336,7 +1343,10 @@ const panels = useMemo(
                 ? "calc(100vh - 72px)"
                 : "calc(100vh - 160px)",
 
-            overflow: activePanel?.dialogScroll === "body" ? "visible" : "auto",
+            overflow:
+              activePanel?.dialogScroll === "body" && !immersiveBodyScroll
+                ? "visible"
+                : "auto",
             display: "flex",
             flexDirection: "column",
 
