@@ -189,6 +189,7 @@ import ProductDetails from "./pages/client/ProductDetails";
 import MyBasket from "./pages/client/MyBasket";
 import PublicReview from "./pages/client/PublicReview";
 import PublicReviewList from "./pages/client/PublicReviewList";
+import PublicAppointmentPayPage from "./pages/client/PublicAppointmentPayPage";
 import PublicTip from "./pages/client/PublicTip";
 import { useEmbedConfig } from "./embed";
 import ManagerPaymentsView from "./pages/sections/management/ManagerPaymentsView";
@@ -655,6 +656,7 @@ const AppContent = ({ token, setToken }) => {
               <Route path="/cancel-booking/:bookingId" element={<ClientCancelBooking slugOverride={tenantSlug} />} />
               <Route path="/appointment-cancel/:bookingId" element={<ClientCancelBooking slugOverride={tenantSlug} />} />
               <Route path="/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking slugOverride={tenantSlug} />} />
+              <Route path="/pay/:appointmentId" element={<PublicAppointmentPayPage slugOverride={tenantSlug} />} />
               <Route path="/meet/:artistId" element={<MeetWithArtistPage slugOverride={tenantSlug} />} />
               <Route path="/reviews" element={<PublicReviewList slugOverride={tenantSlug} />} />
               <Route path="/review/:appointmentId" element={<PublicReview slugOverride={tenantSlug} />} />
@@ -786,6 +788,7 @@ const AppContent = ({ token, setToken }) => {
           <Route path="/:slug/cancel-booking/:bookingId" element={<ClientCancelBooking />} />
           <Route path="/:slug/appointment-cancel/:bookingId" element={<ClientCancelBooking />} />
           <Route path="/:slug/appointment-reschedule/:bookingId" element={<ClientRescheduleBooking />} />
+          <Route path="/:slug/pay/:appointmentId" element={<PublicAppointmentPayPage />} />
           <Route path="/book-slot/:recruiterId/:token" element={<CandidateBooking />} />
           <Route path="/:slug/meet/:artistId" element={<MeetWithArtistPage />} />
           <Route path="/settings/payments/stripe/return" element={<StripeConnectReturn />} />
