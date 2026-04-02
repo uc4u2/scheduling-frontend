@@ -150,7 +150,7 @@ export default function ClientBookingHistory() {
           <TableBody>
             {bookings.map((b) => {
               const tz = b.timezone || userTimezone;
-              const startIso = isoFromParts(b.date, b.start_time, tz);
+              const startIso = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tz);
               const startDateObj = new Date(startIso);
               const displayDate = formatDate(startDateObj);
               const displayTime = formatTime(startDateObj);
@@ -194,7 +194,7 @@ export default function ClientBookingHistory() {
 
               {(() => {
                 const tz = selected.timezone || userTimezone;
-                const startIso = isoFromParts(selected.date, selected.start_time, tz);
+                const startIso = isoFromParts(selected.local_date || selected.date, selected.local_start_time || selected.start_time, tz);
                 const endIso = isoFromParts(selected.date, selected.end_time, tz);
                 const startDateObj = new Date(startIso);
                 const endDateObj = new Date(endIso);

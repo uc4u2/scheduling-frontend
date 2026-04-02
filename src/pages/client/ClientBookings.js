@@ -346,31 +346,19 @@ export default function ClientBookings() {
       field: "date",
       headerName: "Date",
       width: 130,
-      valueGetter: (p) => {
-        const tz = p.row.timezone || userTimezone;
-        const iso = isoFromParts(p.row.date, p.row.start_time, tz);
-        return formatDate(new Date(iso));
-      },
+      valueGetter: (p) => p.row.local_date || p.row.date || "",
     },
     {
       field: "start_time",
       headerName: "Start",
       width: 90,
-      valueGetter: (p) => {
-        const tz = p.row.timezone || userTimezone;
-        const iso = isoFromParts(p.row.date, p.row.start_time, tz);
-        return formatTime(new Date(iso));
-      },
+      valueGetter: (p) => p.row.local_start_time || p.row.start_time || "",
     },
     {
       field: "end_time",
       headerName: "End",
       width: 90,
-      valueGetter: (p) => {
-        const tz = p.row.timezone || userTimezone;
-        const iso = isoFromParts(p.row.date, p.row.end_time, tz);
-        return formatTime(new Date(iso));
-      },
+      valueGetter: (p) => p.row.local_end_time || p.row.end_time || "",
     },
     {
       field: "status",
@@ -525,14 +513,9 @@ export default function ClientBookings() {
               </Typography>
 
               {(() => {
-                const tz = selected.timezone || userTimezone;
-                const startIso = isoFromParts(selected.date, selected.start_time, tz);
-                const endIso = isoFromParts(selected.date, selected.end_time, tz);
-                const startDateObj = new Date(startIso);
-                const endDateObj = new Date(endIso);
-                const displayDate = formatDate(startDateObj);
-                const displayStartTime = formatTime(startDateObj);
-                const displayEndTime = formatTime(endDateObj);
+                const displayDate = selected.local_date || selected.date || "";
+                const displayStartTime = selected.local_start_time || selected.start_time || "";
+                const displayEndTime = selected.local_end_time || selected.end_time || "";
                 return (
                   <>
                     <Typography>

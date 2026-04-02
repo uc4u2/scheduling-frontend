@@ -200,6 +200,9 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
         <Stack spacing={1} sx={{ mt: 2, mb: 3 }}>
           <Typography><strong>Service:</strong> {details.service_name || "Appointment"}</Typography>
           <Typography><strong>Provider:</strong> {details.provider_name || "-"}</Typography>
+          {details.when_label ? (
+            <Typography><strong>When:</strong> {details.when_label}</Typography>
+          ) : null}
           <Typography><strong>Amount due:</strong> {amountLabel}</Typography>
         </Stack>
 

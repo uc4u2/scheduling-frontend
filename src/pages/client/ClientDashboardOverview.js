@@ -44,15 +44,15 @@ export default function ClientDashboardOverview() {
         const bookings = bookingsRes.data.bookings || [];
         const futureBookings = bookings.filter(b => {
           const tz = b.timezone || userTimezone;
-          const iso = isoFromParts(b.date, b.start_time, tz);
+          const iso = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tz);
           return new Date(iso) >= now && b.status !== "cancelled";
         });
         const nextBooking = futureBookings.length
           ? futureBookings.reduce((a, b) => {
               const tzA = a.timezone || userTimezone;
               const tzB = b.timezone || userTimezone;
-              const isoA = isoFromParts(a.date, a.start_time, tzA);
-              const isoB = isoFromParts(b.date, b.start_time, tzB);
+              const isoA = isoFromParts(a.local_date || a.date, a.local_start_time || a.start_time, tzA);
+              const isoB = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tzB);
               return new Date(isoA) < new Date(isoB) ? a : b;
             })
           : null;
@@ -105,7 +105,7 @@ export default function ClientDashboardOverview() {
                   {(() => {
                     const b = overview.nextBooking;
                     const tz = b.timezone || userTimezone;
-                    const iso = isoFromParts(b.date, b.start_time, tz);
+                    const iso = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tz);
                     const dateObj = new Date(iso);
                     return (
                       <>
@@ -133,7 +133,7 @@ export default function ClientDashboardOverview() {
                   {(() => {
                     const b = overview.recentBooking;
                     const tz = b.timezone || userTimezone;
-                    const iso = isoFromParts(b.date, b.start_time, tz);
+                    const iso = isoFromParts(b.local_date || b.date, b.local_start_time || b.start_time, tz);
                     const dateObj = new Date(iso);
                     return (
                       <>
@@ -178,7 +178,7 @@ export default function ClientDashboardOverview() {
 
               {(() => {
                 const tz = selected.timezone || userTimezone;
-                const startIso = isoFromParts(selected.date, selected.start_time, tz);
+                const startIso = isoFromParts(selected.local_date || selected.date, selected.local_start_time || selected.start_time, tz);
                 const endIso = isoFromParts(selected.date, selected.end_time, tz);
                 const startDateObj = new Date(startIso);
                 const endDateObj = new Date(endIso);
