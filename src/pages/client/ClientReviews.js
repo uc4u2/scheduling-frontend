@@ -1,25 +1,43 @@
 // src/pages/client/ClientReviews.js
 import React, { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import {
   Box, Typography, Paper, Button, Rating, TextField, Table, TableBody, TableCell, TableHead, TableRow, CircularProgress
 } from "@mui/material";
 import api from "../../utils/api";
+import { persistTenantSlug, resolveTenantSlug } from "../../utils/clientTenant";
 
 export default function ClientReviews() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ appointment_id: "", rating: 0, comment: "" });
+  const location = useLocation();
+  const { slug: routeSlug } = useParams();
+  const tenantSlug = resolveTenantSlug({ routeSlug, search: location.search });
 
   useEffect(() => {
-    api.get("/public/reviews").then(res => setReviews(res.data)).finally(() => setLoading(false));
-  }, []);
+    if (tenantSlug) persistTenantSlug(tenantSlug);
+  }, [tenantSlug]);
+
+  useEffect(() => {
+    if (!tenantSlug) {
+      setReviews([]);
+      setLoading(false);
+      return;
+    }
+    api.get(`/public/${tenantSlug}/reviews`).then(res => setReviews(res.data)).finally(() => setLoading(false));
+  }, [tenantSlug]);
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
   const handleRating = (e, value) => setForm(f => ({ ...f, rating: value }));
 
   const handleSubmit = async () => {
+    if (!tenantSlug) return alert("Open the correct business site before submitting a review.");
     if (!form.appointment_id || !form.rating) return alert("Appointment and rating required.");
-    await api.post("/public/review", form);
+    const token = localStorage.getItem("token");
+    await api.post(`/client/${encodeURIComponent(tenantSlug)}/feedback/review`, form, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
     setForm({ appointment_id: "", rating: 0, comment: "" });
     alert("Thank you for your review!");
   };

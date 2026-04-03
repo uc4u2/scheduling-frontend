@@ -21,6 +21,7 @@ import api from "../../utils/api";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
+import { persistTenantSlug, resolveTenantSlug, tenantParams } from "../../utils/clientTenant";
 
 const toTitle = (value) => {
   const raw = String(value || "").trim();
@@ -98,14 +99,12 @@ export default function ClientBookings() {
   const { slug: routeSlug } = useParams();
 
   const tenantSlug = useMemo(() => {
-    if (routeSlug) return routeSlug;
-    try {
-      const params = new URLSearchParams(location.search || "");
-      return params.get("site") || "";
-    } catch {
-      return "";
-    }
+    return resolveTenantSlug({ routeSlug, search: location.search });
   }, [routeSlug, location.search]);
+
+  useEffect(() => {
+    if (tenantSlug) persistTenantSlug(tenantSlug);
+  }, [tenantSlug]);
 
   const userTimezone = getUserTimezone();
   const orderDialogPaperSx = useMemo(
@@ -142,7 +141,7 @@ export default function ClientBookings() {
     api
       .get("/api/client/bookings", {
         headers: authHeaders(),
-        params: tenantSlug ? { slug: tenantSlug } : {},
+        params: tenantParams(tenantSlug),
       })
       .then((res) => {
         const data = res.data.bookings || res.data || [];
@@ -160,7 +159,7 @@ export default function ClientBookings() {
         params: {
           page: 1,
           per_page: 50,
-          ...(tenantSlug ? { slug: tenantSlug } : {}),
+          ...tenantParams(tenantSlug),
         },
       })
       .then((res) => {
@@ -195,7 +194,7 @@ export default function ClientBookings() {
       api
         .post(`/api/client/bookings/${row.id}/cancel`, null, {
           headers: authHeaders(),
-          params: tenantSlug ? { slug: tenantSlug } : {},
+          params: tenantParams(tenantSlug),
         })
         .then(() => {
           setBookings((prev) =>
@@ -215,7 +214,7 @@ export default function ClientBookings() {
         { note },
         {
           headers: authHeaders(),
-          params: tenantSlug ? { slug: tenantSlug } : {},
+          params: tenantParams(tenantSlug),
         }
       )
       .then(() => {
@@ -233,7 +232,7 @@ export default function ClientBookings() {
     api
       .get(`/api/client/bookings/${row.id}`, {
         headers: authHeaders(),
-        params: tenantSlug ? { slug: tenantSlug } : {},
+        params: tenantParams(tenantSlug),
       })
       .then((res) => {
         setSelected((prev) => ({ ...(prev || row), ...(res.data || {}) }));
@@ -254,7 +253,7 @@ export default function ClientBookings() {
     api
       .get(`/api/client/product-orders/${row.id}`, {
         headers: authHeaders(),
-        params: tenantSlug ? { slug: tenantSlug } : {},
+        params: tenantParams(tenantSlug),
       })
       .then((res) => setSelectedOrder(res.data || null))
       .catch((err) => {
@@ -266,7 +265,7 @@ export default function ClientBookings() {
     api
       .get(`/api/client/product-orders/${row.id}/digital-access`, {
         headers: authHeaders(),
-        params: tenantSlug ? { slug: tenantSlug } : {},
+        params: tenantParams(tenantSlug),
       })
       .then((res) => setOrderDigitalAccess(res.data || null))
       .catch((err) => {

@@ -1,20 +1,29 @@
 // src/pages/client/ClientPackages.js
 import React, { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell, Chip
 } from "@mui/material";
 import api from "../../utils/api";
+import { persistTenantSlug, resolveTenantSlug, tenantParams } from "../../utils/clientTenant";
 
 export default function ClientPackages() {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const location = useLocation();
+  const { slug: routeSlug } = useParams();
+  const tenantSlug = resolveTenantSlug({ routeSlug, search: location.search });
+
+  useEffect(() => {
+    if (tenantSlug) persistTenantSlug(tenantSlug);
+  }, [tenantSlug]);
 
   const loadPackages = () => {
     setLoading(true);
     setError("");
     api
-      .get("/me/packages")
+      .get("/me/packages", { params: tenantParams(tenantSlug) })
       .then((res) => setPackages(res.data || []))
       .catch(() => setError("Unable to load packages."))
       .finally(() => setLoading(false));
@@ -22,13 +31,13 @@ export default function ClientPackages() {
 
   useEffect(() => {
     loadPackages();
-  }, []);
+  }, [tenantSlug]);
 
   useEffect(() => {
     const handler = () => loadPackages();
     window.addEventListener("booking:changed", handler);
     return () => window.removeEventListener("booking:changed", handler);
-  }, []);
+  }, [tenantSlug]);
 
   return (
     <Box>

@@ -8,7 +8,8 @@ import ClientProfile from "./client/ClientProfile";
 import ClientNotifications from "./client/ClientNotifications";
 import ClientPackages from "./client/ClientPackages";
 import { jwtDecode } from "jwt-decode";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { buildTenantDashboardPath, buildTenantLoginPath, persistTenantSlug, resolveTenantSlug } from "../utils/clientTenant";
 
 // Tab names for display and logic
 const tabLabels = [
@@ -44,15 +45,18 @@ function getRoleFromToken(token) {
 export default function ClientDashboard() {
   const [tab, setTab] = useState(0);
   const navigate = useNavigate();
+  const location = useLocation();
   const dashboardSurface = "var(--page-card-bg, var(--checkout-card-bg, #ffffff))";
   const dashboardText = "var(--page-body-color, #111827)";
   const dashboardBorder = "var(--page-border-color, rgba(15,23,42,0.12))";
+  const tenantSlug = resolveTenantSlug({ search: location.search });
 
   // Restrict page to clients only
   useEffect(() => {
+    if (tenantSlug) persistTenantSlug(tenantSlug);
     const token = localStorage.getItem("token");
     if (getRoleFromToken(token) !== "client") {
-      navigate("/login");
+      navigate(buildTenantLoginPath(tenantSlug));
       return;
     }
     // Optionally, set tab by URL hash
@@ -60,7 +64,7 @@ export default function ClientDashboard() {
     if (tabHashMap.hasOwnProperty(hash)) {
       setTab(tabHashMap[hash]);
     }
-  }, [navigate]);
+  }, [navigate, tenantSlug]);
 
   const handleTabChange = (_, value) => {
     if (value === LOGOUT_TAB_INDEX) {
@@ -70,14 +74,13 @@ export default function ClientDashboard() {
       const params = new URLSearchParams(window.location.search);
       const siteSlug = params.get("site");
       if (params.get("page") === "my-bookings") {
-        const basePath = window.location.pathname || "/";
-        window.location.assign(`${basePath}?page=my-bookings`);
+        window.location.assign(buildTenantDashboardPath(tenantSlug, { page: "my-bookings" }));
         return;
       }
-      if (siteSlug) {
-        window.location.assign(`/${siteSlug}?page=my-bookings`);
+      if (siteSlug || tenantSlug) {
+        window.location.assign(`/${siteSlug || tenantSlug}?page=my-bookings`);
       } else {
-        navigate("/login");
+        navigate(buildTenantLoginPath(tenantSlug));
       }
       return;
     }

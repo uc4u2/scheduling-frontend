@@ -11,7 +11,9 @@ import {
   Alert,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { useLocation, useParams } from "react-router-dom";
 import api from "../../utils/api";
+import { persistTenantSlug, resolveTenantSlug, tenantParams } from "../../utils/clientTenant";
 
 export default function ClientProfileSettings() {
   const theme = useTheme();
@@ -20,13 +22,21 @@ export default function ClientProfileSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const location = useLocation();
+  const { slug: routeSlug } = useParams();
   const token = localStorage.getItem("token");
+  const tenantSlug = resolveTenantSlug({ routeSlug, search: location.search });
+
+  useEffect(() => {
+    if (tenantSlug) persistTenantSlug(tenantSlug);
+  }, [tenantSlug]);
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const { data } = await api.get(`/profile`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          params: tenantParams(tenantSlug),
         });
         setProfile(data || {});
         setForm(data || {});
@@ -38,7 +48,7 @@ export default function ClientProfileSettings() {
     };
 
     fetchProfile();
-  }, [token]);
+  }, [token, tenantSlug]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -50,6 +60,7 @@ export default function ClientProfileSettings() {
       setSaving(true);
       await api.put(`/profile`, form, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        params: tenantParams(tenantSlug),
       });
       setProfile(form);
       setError("");

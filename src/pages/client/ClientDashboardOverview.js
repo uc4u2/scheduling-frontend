@@ -8,6 +8,8 @@ import {
 import RefreshIcon from "@mui/icons-material/Refresh";
 import api from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
+import { useLocation, useParams } from "react-router-dom";
+import { persistTenantSlug, resolveTenantSlug, tenantParams } from "../../utils/clientTenant";
 
 const bookingTimestamp = (booking) => {
   if (booking?.start_utc) {
@@ -32,9 +34,19 @@ export default function ClientDashboardOverview() {
   const [loading, setLoading] = useState(true);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const location = useLocation();
+  const { slug: routeSlug } = useParams();
   const userTimezone = getUserTimezone();
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
+  const tenantSlug = useMemo(
+    () => resolveTenantSlug({ routeSlug, search: location.search }),
+    [routeSlug, location.search]
+  );
+
+  useEffect(() => {
+    if (tenantSlug) persistTenantSlug(tenantSlug);
+  }, [tenantSlug]);
 
   useEffect(() => {
     const isMyBookings =
@@ -47,7 +59,7 @@ export default function ClientDashboardOverview() {
     }
     loadEverything();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userTimezone, token]);
+  }, [userTimezone, token, tenantSlug]);
 
   function loadEverything() {
     setLoading(true);
@@ -55,7 +67,7 @@ export default function ClientDashboardOverview() {
 
     // Core cards
     const p1 = Promise.all([
-      api.get(`/api/client/bookings`, auth),
+      api.get(`/api/client/bookings`, { ...auth, params: tenantParams(tenantSlug) }),
     ])
       .then(([bookingsRes]) => {
         const bookings = bookingsRes.data.bookings || [];

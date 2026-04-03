@@ -1,5 +1,6 @@
 // src/pages/client/ClientBookingHistory.js
 import React, { useEffect, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -24,6 +25,7 @@ import PaymentHistory from "./PaymentHistory";
 
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
+import { persistTenantSlug, resolveTenantSlug, tenantParams } from "../../utils/clientTenant";
 
 // Helper to set chip colors
 function statusColor(status) {
@@ -44,14 +46,22 @@ export default function ClientBookingHistory() {
   const [loading, setLoading] = useState(true);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+  const location = useLocation();
+  const { slug: routeSlug } = useParams();
 
   const userTimezone = getUserTimezone();
+  const tenantSlug = resolveTenantSlug({ routeSlug, search: location.search });
+
+  useEffect(() => {
+    if (tenantSlug) persistTenantSlug(tenantSlug);
+  }, [tenantSlug]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     api
       .get("/api/client/bookings", {
         headers: { Authorization: `Bearer ${token}` },
+        params: tenantParams(tenantSlug),
       })
       .then((res) => setBookings(res.data.bookings || []))
       .catch((err) => {
@@ -59,7 +69,7 @@ export default function ClientBookingHistory() {
         setBookings([]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [tenantSlug]);
 
   useEffect(() => {
     const token = () => localStorage.getItem("token");
@@ -67,6 +77,7 @@ export default function ClientBookingHistory() {
       api
         .get("/api/client/bookings", {
           headers: { Authorization: 'Bearer ' + token() },
+          params: tenantParams(tenantSlug),
         })
         .then((res) => setBookings(res.data.bookings || []))
         .catch((err) => console.error("Failed to load client booking history:", err));
@@ -74,13 +85,14 @@ export default function ClientBookingHistory() {
 
     window.addEventListener("booking:changed", handler);
     return () => window.removeEventListener("booking:changed", handler);
-  }, []);
+  }, [tenantSlug]);
 
   const handleViewBooking = (id) => {
     const token = localStorage.getItem("token");
     api
       .get(`/api/client/bookings/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: tenantParams(tenantSlug),
       })
       .then((res) => {
         setSelected(res.data);
@@ -97,6 +109,7 @@ export default function ClientBookingHistory() {
     try {
       await api.post(`/api/client/bookings/${selected.id}/cancel`, null, {
         headers: { Authorization: `Bearer ${token}` },
+        params: tenantParams(tenantSlug),
       });
 
       setBookings((prev) =>

@@ -23,7 +23,8 @@ import PaymentsIcon from "@mui/icons-material/Payments";
 import LanguageIcon from "@mui/icons-material/Language";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { persistTenantSlug, resolveTenantSlug } from "../../utils/clientTenant";
 
 const quickActions = [
   {
@@ -328,9 +329,25 @@ const levenshtein = (a = "", b = "") => {
 };
 
 const ClientSupport = () => {
+  const location = useLocation();
+  const { slug: routeSlug } = useParams();
+  const tenantSlug = resolveTenantSlug({ routeSlug, search: location.search });
   const [query, setQuery] = useState("");
   const [articles, setArticles] = useState(DEFAULT_ARTICLES);
   const [loadingArticles, setLoadingArticles] = useState(true);
+
+  useEffect(() => {
+    if (tenantSlug) persistTenantSlug(tenantSlug);
+  }, [tenantSlug]);
+
+  const tenantAwarePath = (to) => {
+    if (!tenantSlug) return to;
+    if (to.startsWith("/client/") || to === "/dashboard") {
+      const glue = to.includes("?") ? "&" : "?";
+      return `${to}${glue}site=${encodeURIComponent(tenantSlug)}`;
+    }
+    return to;
+  };
 
   useEffect(() => {
     let active = true;
@@ -538,7 +555,7 @@ const ClientSupport = () => {
                     <Typography variant="body2" color="text.secondary">
                       {item.description}
                     </Typography>
-                    <Button component={Link} to={item.to} variant="outlined" size="small" sx={{ alignSelf: "flex-start" }}>
+                    <Button component={Link} to={tenantAwarePath(item.to)} variant="outlined" size="small" sx={{ alignSelf: "flex-start" }}>
                       Go there
                     </Button>
                   </Stack>

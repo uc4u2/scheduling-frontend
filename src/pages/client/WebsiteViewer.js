@@ -25,6 +25,7 @@ import {
   navStyleToCssVars,
   createNavButtonStyles,
 } from "../../utils/navStyle";
+import { buildTenantDashboardPath, buildTenantLoginPath, persistTenantSlug } from "../../utils/clientTenant";
 
 const rewriteAnchorsHTML = (html, resolver) => {
   if (!html || typeof html !== "string") return html;
@@ -74,6 +75,11 @@ export default function WebsiteViewer() {
     return () => {
       alive = false;
     };
+  }, [slug]);
+
+  useEffect(() => {
+    if (!slug) return;
+    persistTenantSlug(slug);
   }, [slug]);
 
   const pages = useMemo(() => {
@@ -132,9 +138,9 @@ export default function WebsiteViewer() {
   useEffect(() => {
     if (!activePage) return;
     if (activePage.slug === "login") {
-      navigate("/login", { replace: true });
+      navigate(buildTenantLoginPath(slug), { replace: true });
     } else if (activePage.slug === "my-bookings") {
-      navigate(`/dashboard?site=${encodeURIComponent(slug)}`, { replace: true });
+      navigate(buildTenantDashboardPath(slug, { page: "my-bookings" }), { replace: true });
     }
   }, [activePage, navigate, slug]);
 

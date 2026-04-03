@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import api from "../../utils/api";
+import { useLocation, useParams } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -18,6 +19,7 @@ import {
 
 import { getUserTimezone } from "../../utils/timezone";
 import { isoFromParts, formatDate, formatTime } from "../../utils/datetime";
+import { persistTenantSlug, resolveTenantSlug, tenantParams } from "../../utils/clientTenant";
 
 const ClientAppointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -25,8 +27,15 @@ const ClientAppointments = () => {
   const [error, setError] = useState("");
   const [selectedAppt, setSelectedAppt] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const location = useLocation();
+  const { slug: routeSlug } = useParams();
 
   const userTimezone = getUserTimezone();
+  const tenantSlug = resolveTenantSlug({ routeSlug, search: location.search });
+
+  useEffect(() => {
+    if (tenantSlug) persistTenantSlug(tenantSlug);
+  }, [tenantSlug]);
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
@@ -35,6 +44,7 @@ const ClientAppointments = () => {
       const token = localStorage.getItem("token");
       const { data } = await api.get("/api/client/bookings", {
         headers: { Authorization: `Bearer ${token}` },
+        params: tenantParams(tenantSlug),
       });
       setAppointments(data.bookings || []);
     } catch {
@@ -42,7 +52,7 @@ const ClientAppointments = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tenantSlug]);
 
   useEffect(() => {
     fetchAppointments();
@@ -58,9 +68,11 @@ const ClientAppointments = () => {
     if (!selectedAppt) return;
 
     try {
-      await api.post(
-        `/public/${selectedAppt.slug}/appointment/${selectedAppt.id}/cancel?token=${selectedAppt.cancel_token}`
-      );
+      const token = localStorage.getItem("token");
+      await api.post(`/api/client/bookings/${selectedAppt.id}/cancel`, null, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: tenantParams(tenantSlug),
+      });
       setAppointments((prev) =>
         prev.map((appt) =>
           appt.id === selectedAppt.id ? { ...appt, status: "cancelled" } : appt
