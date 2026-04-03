@@ -213,7 +213,10 @@ export default function ClientBookings() {
       .post(
         `/api/client/bookings/${selected.id}/note`,
         { note },
-        { headers: authHeaders() }
+        {
+          headers: authHeaders(),
+          params: tenantSlug ? { slug: tenantSlug } : {},
+        }
       )
       .then(() => {
         setNoteMsg("Note sent successfully!");

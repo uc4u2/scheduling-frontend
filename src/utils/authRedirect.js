@@ -13,11 +13,14 @@ const normalizeRole = (rawRole) => {
 
 const extractSessionUser = (data) => {
   if (!data || typeof data !== "object") return null;
+  const storedRole =
+    typeof localStorage !== "undefined" ? localStorage.getItem("role") : "";
   const rawRole =
     data.role ??
     data.user?.role ??
     data.account?.role ??
-    (data.is_manager ? "manager" : "");
+    (data.is_manager ? "manager" : null) ??
+    storedRole;
   const role = normalizeRole(rawRole);
   const companyId =
     data.company_id ?? data.companyId ?? data.company?.id ?? data.user?.company_id ?? null;
@@ -59,6 +62,9 @@ export const getAuthRedirectTarget = ({ user, searchParams }) => {
   const plan = String(qs.get("plan") || "").toLowerCase();
   const interval = String(qs.get("interval") || "").toLowerCase();
   const returnTo = String(qs.get("returnTo") || "").trim();
+  const site =
+    String(qs.get("site") || "").trim() ||
+    (typeof localStorage !== "undefined" ? String(localStorage.getItem("site") || "").trim() : "");
 
   if (tab === "billing" || plan) {
     const billingParams = new URLSearchParams();
@@ -72,6 +78,8 @@ export const getAuthRedirectTarget = ({ user, searchParams }) => {
   const role = normalizeRole(user?.role);
   if (role === "manager") return "/manager/dashboard";
   if (role === "employee") return "/employee";
-  if (role === "client") return "/dashboard";
+  if (role === "client") {
+    return site ? `/dashboard?site=${encodeURIComponent(site)}` : "/dashboard";
+  }
   return "/manager/dashboard";
 };
