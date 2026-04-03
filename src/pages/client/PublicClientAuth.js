@@ -1,9 +1,24 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   Box, Paper, Stack, Typography, TextField, Button, Alert, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, Link, Checkbox, FormControlLabel
 } from "@mui/material";
 import { api } from "../../utils/api";
 import { getTenantHostMode } from "../../utils/tenant";
+import TimezoneSelect from "../../components/TimezoneSelect";
+import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
+
+const renderDetectedTimezoneNotice = (timezone, showManual, onToggle) => (
+  <Stack spacing={1} sx={{ mt: 1 }}>
+    <Alert severity="info" sx={{ mb: showManual ? 1 : 0 }}>
+      Timezone detected automatically: <strong>{formatTimezoneLabel(timezone) || timezone || "UTC"}</strong>
+    </Alert>
+    <Box>
+      <Button size="small" onClick={onToggle}>
+        {showManual ? "Hide timezone change" : "Change timezone"}
+      </Button>
+    </Box>
+  </Stack>
+);
 
 export default function PublicClientAuth({ slug }) {
   const [tab, setTab] = useState("login");
@@ -14,6 +29,8 @@ export default function PublicClientAuth({ slug }) {
   const [forgotMessage, setForgotMessage] = useState("");
   const [forgotError, setForgotError] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
+  const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
+  const [timezone, setTimezone] = useState(() => getUserTimezone());
 
   // login form
   const [email, setEmail] = useState("");
@@ -23,14 +40,16 @@ export default function PublicClientAuth({ slug }) {
   const [last, setLast] = useState("");
   const [phone, setPhone] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
-
   const finish = (token) => {
     localStorage.setItem("token", token);
     localStorage.setItem("role", "client");
-    // Optional: persist company scope if your APIs expect it
-    // localStorage.setItem("company_id", "<set if you scope to a company>");
-    const target = getTenantHostMode() === "custom" ? "/?page=my-bookings" : `/${slug}/my-bookings`;
+    if (slug) localStorage.setItem("site", slug);
+    const target =
+      getTenantHostMode() === "custom"
+        ? "/?page=my-bookings"
+        : slug
+          ? `/dashboard?site=${encodeURIComponent(slug)}`
+          : "/dashboard";
     window.location.assign(target);
   };
 
@@ -38,7 +57,7 @@ export default function PublicClientAuth({ slug }) {
     setError(""); setBusy(true);
     try {
       const { data } = await api.post(`/login`, {
-        email, password, role: "client", timezone: tz
+        email, password, role: "client", timezone, company_slug: slug || undefined
       }, { noAuth: true, noCompanyHeader: true });
       if (!data?.access_token) throw new Error("No token");
       finish(data.access_token);
@@ -66,13 +85,14 @@ export default function PublicClientAuth({ slug }) {
         email,
         phone,
         password,
-        timezone: tz,
+        timezone,
         role: "client",
+        company_slug: slug || undefined,
         agreed_to_terms: true
       }, { noAuth: true, noCompanyHeader: true });
       // auto-login for convenience
       const { data } = await api.post(`/login`, {
-        email, password, role: "client", timezone: tz
+        email, password, role: "client", timezone, company_slug: slug || undefined
       }, { noAuth: true, noCompanyHeader: true });
       if (!data?.access_token) throw new Error("No token");
       finish(data.access_token);
@@ -100,7 +120,7 @@ export default function PublicClientAuth({ slug }) {
     try {
       const { data } = await api.post(
         "/forgot-password",
-        { email: forgotEmail },
+        { email: forgotEmail, company_slug: slug || undefined },
         { noAuth: true, noCompanyHeader: true }
       );
       setForgotMessage(data?.message || "Reset email sent.");
@@ -132,6 +152,10 @@ export default function PublicClientAuth({ slug }) {
             <TextField label="Phone" type="tel" value={phone} onChange={e=>setPhone(e.target.value)} fullWidth />
           )}
           <TextField label="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} fullWidth />
+          {renderDetectedTimezoneNotice(timezone, showTimezoneSelect, () => setShowTimezoneSelect((prev) => !prev))}
+          {showTimezoneSelect ? (
+            <TimezoneSelect label="Timezone" value={timezone} onChange={setTimezone} />
+          ) : null}
           {tab === "login" && (
             <Box>
               <Link component="button" variant="body2" onClick={() => setForgotOpen(true)}>

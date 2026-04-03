@@ -249,12 +249,12 @@ function LoginDialog({ open, onClose, onLoginSuccess, companySlug }) {
           </Button>
         </DialogActions>
       </Dialog>
-      <ForgotPasswordDialog open={forgotOpen} onClose={() => setForgotOpen(false)} />
+      <ForgotPasswordDialog open={forgotOpen} onClose={() => setForgotOpen(false)} companySlug={companySlug} />
     </>
   );
 }
 
-function ForgotPasswordDialog({ open, onClose }) {
+function ForgotPasswordDialog({ open, onClose, companySlug }) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -272,7 +272,7 @@ function ForgotPasswordDialog({ open, onClose }) {
     try {
       const res = await apiClient.post(
         "/forgot-password",
-        { email },
+        { email, company_slug: companySlug || undefined },
         { noAuth: true, noCompanyHeader: true }
       );
       setMessage(res.data?.message || "Reset email sent.");
@@ -378,6 +378,7 @@ function RegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, onOpenF
         password,
         role: "client",
         timezone,
+        company_slug: companySlug || undefined,
       });
       if (loginRes.data.access_token) {
         onRegisterSuccess(loginRes.data.access_token);
@@ -1981,6 +1982,7 @@ function CheckoutFormCore({
     localStorage.setItem("token", token);
     localStorage.setItem("role", "client");
     localStorage.setItem("clientToken", token);
+    if (slugLocal || companySlug) localStorage.setItem("site", slugLocal || companySlug);
     syncClientFromToken(token);
   };
 
@@ -1988,6 +1990,7 @@ function CheckoutFormCore({
     localStorage.setItem("token", token);
     localStorage.setItem("role", "client");
     localStorage.setItem("clientToken", token);
+    if (slugLocal || companySlug) localStorage.setItem("site", slugLocal || companySlug);
     syncClientFromToken(token);
   };
 
@@ -3101,7 +3104,11 @@ function CheckoutFormCore({
         }}
         companySlug={companySlug}
       />
-      <ForgotPasswordDialog open={forgotDialogOpen} onClose={() => setForgotDialogOpen(false)} />
+      <ForgotPasswordDialog
+        open={forgotDialogOpen}
+        onClose={() => setForgotDialogOpen(false)}
+        companySlug={companySlug}
+      />
       <PublicBookingUnavailableDialog
         open={publicUpgradeOpen}
         message={publicUpgradeMessage}

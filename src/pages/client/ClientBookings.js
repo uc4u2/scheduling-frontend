@@ -140,7 +140,10 @@ export default function ClientBookings() {
 
   const loadBookings = () => {
     api
-      .get("/api/client/bookings", { headers: authHeaders() })
+      .get("/api/client/bookings", {
+        headers: authHeaders(),
+        params: tenantSlug ? { slug: tenantSlug } : {},
+      })
       .then((res) => {
         const data = res.data.bookings || res.data || [];
         setBookings(Array.isArray(data) ? data : []);
@@ -192,6 +195,7 @@ export default function ClientBookings() {
       api
         .post(`/api/client/bookings/${row.id}/cancel`, null, {
           headers: authHeaders(),
+          params: tenantSlug ? { slug: tenantSlug } : {},
         })
         .then(() => {
           setBookings((prev) =>
@@ -226,6 +230,7 @@ export default function ClientBookings() {
     api
       .get(`/api/client/bookings/${row.id}`, {
         headers: authHeaders(),
+        params: tenantSlug ? { slug: tenantSlug } : {},
       })
       .then((res) => {
         setSelected((prev) => ({ ...(prev || row), ...(res.data || {}) }));

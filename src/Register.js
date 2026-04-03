@@ -44,7 +44,7 @@ const getRoleMeta = (value) =>
 
 const AGREEMENT_VERSION = "2025-11";
 
-const Register = () => {
+const Register = ({ slugOverride = "" }) => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -63,6 +63,13 @@ const Register = () => {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const siteParam = (searchParams.get("site") || "").trim();
+  const persistedSite =
+    typeof localStorage !== "undefined" ? (localStorage.getItem("site") || "").trim() : "";
+  const clientSite = useMemo(
+    () => String(slugOverride || "").trim() || siteParam || persistedSite,
+    [persistedSite, siteParam, slugOverride]
+  );
   const passwordChecklist = useMemo(
     () => [
       { label: "At least 8 characters", pass: password.length >= 8 },
@@ -109,12 +116,21 @@ const Register = () => {
         password_confirm: confirmPassword,
         timezone,
         role: targetRole,
+        company_slug: targetRole === "client" ? clientSite || undefined : undefined,
         agreed_to_terms: acceptedTerms,
         terms_version: AGREEMENT_VERSION,
         terms_agreed_at: new Date().toISOString(),
       });
       setMessage(response.data.message);
-      const nextPath = targetRole === "client" ? "/industries" : "/login";
+      if (targetRole === "client" && clientSite) {
+        localStorage.setItem("site", clientSite);
+      }
+      const nextPath =
+        targetRole === "client"
+          ? clientSite
+            ? `/login?site=${encodeURIComponent(clientSite)}`
+            : "/login"
+          : "/login";
       setTimeout(() => navigate(nextPath), 1500);
     } catch (err) {
       setError(err.response?.data?.error || "Registration failed!");
@@ -393,7 +409,15 @@ const Register = () => {
                 Already have an account?{" "}
                 <MuiLink
                   component={RouterLink}
-                  to={selectedPlan ? `/login?plan=${encodeURIComponent(selectedPlan)}` : "/login"}
+                  to={
+                    (() => {
+                      const nextParams = new URLSearchParams();
+                      if (selectedPlan) nextParams.set("plan", selectedPlan);
+                      if (clientSite) nextParams.set("site", clientSite);
+                      const suffix = nextParams.toString();
+                      return suffix ? `/login?${suffix}` : "/login";
+                    })()
+                  }
                   sx={{ fontWeight: 600 }}
                 >
                   Log in

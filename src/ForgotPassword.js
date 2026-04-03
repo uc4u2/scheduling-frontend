@@ -1,14 +1,24 @@
 // src/ForgotPassword.js
 import React, { useState } from "react";
 import { Container, Button, Alert, Typography, TextField } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { api } from "./utils/api";
 
-const ForgotPassword = () => {
+const ForgotPassword = ({ slugOverride = "" }) => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams();
+  const search = new URLSearchParams(location.search || "");
+  const querySite = (search.get("site") || "").trim();
+  const storedSite =
+    typeof localStorage !== "undefined" ? (localStorage.getItem("site") || "").trim() : "";
+  const tenantSite =
+    String(slugOverride || "").trim() ||
+    String(params.slug || "").trim() ||
+    querySite ||
+    storedSite;
 
   const handleSubmit = async () => {
     if (!email) {
@@ -18,7 +28,7 @@ const ForgotPassword = () => {
     try {
       const response = await api.post(
         "/forgot-password",
-        { email },
+        { email, company_slug: tenantSite || undefined },
         { noAuth: true, noCompanyHeader: true }
       );
       setMessage(response.data.message);

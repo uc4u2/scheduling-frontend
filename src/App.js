@@ -638,6 +638,14 @@ const AppContent = ({ token, setToken }) => {
                   </PublicPageShell>
                 }
               />
+              <Route
+                path="/forgot-password"
+                element={
+                  <PublicPageShell slugOverride={tenantSlug} activeKey="__login">
+                    <ForgotPassword slugOverride={tenantSlug} />
+                  </PublicPageShell>
+                }
+              />
               <Route path="/" element={<CompanyPublic slugOverride={tenantSlug} />} />
               <Route path="/jobs" element={<PublicJobsListPage slugOverride={tenantSlug} />} />
               <Route path="/jobs/:jobSlug" element={<PublicJobDetailPage slugOverride={tenantSlug} />} />
@@ -741,11 +749,11 @@ const AppContent = ({ token, setToken }) => {
             </>
           )}
           {/* Auth */}
-          <Route path="/login" element={<Login setToken={setToken} />} />
+          <Route path="/login" element={<Login setToken={setToken} slugOverride={tenantSlug} />} />
           <Route path="/signup" element={<Navigate to="/register" replace />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={<Register slugOverride={tenantSlug} />} />
           <Route path="/upgrade" element={<UpgradeBridgePage />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/forgot-password" element={<ForgotPassword slugOverride={tenantSlug} />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/reset-password/temp" element={<ResetPassword />} />

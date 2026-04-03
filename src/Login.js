@@ -1,5 +1,5 @@
 // src/Login.js
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Typography,
   TextField,
@@ -78,7 +78,7 @@ const getAuthErrorMessage = (err, fallback) => {
   return payload.message || payload.error || fallback;
 };
 
-const Login = ({ setToken }) => {
+const Login = ({ setToken, slugOverride = "" }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [authChecking, setAuthChecking] = useState(true);
@@ -105,6 +105,15 @@ const Login = ({ setToken }) => {
   const intervalParam = (qs.get("interval") || "").toLowerCase();
   const returnToParam = (qs.get("returnTo") || "").trim();
   const disabledReasonParam = (qs.get("reason") || "").trim();
+  const siteFromStorage =
+    typeof localStorage !== "undefined" ? (localStorage.getItem("site") || "").trim() : "";
+  const effectiveSite = useMemo(() => {
+    return (
+      String(slugOverride || "").trim() ||
+      String(siteParam || "").trim() ||
+      siteFromStorage
+    );
+  }, [siteParam, siteFromStorage, slugOverride]);
 
   useEffect(() => {
     let active = true;
@@ -149,15 +158,12 @@ const Login = ({ setToken }) => {
 
   // Persist site from query once present
   useEffect(() => {
-    if (siteParam) localStorage.setItem("site", siteParam);
-  }, [siteParam]);
+    if (effectiveSite) localStorage.setItem("site", effectiveSite);
+  }, [effectiveSite]);
 
   // Consistent way to figure out the site slug
   const siteForRedirect = () => {
-    if (siteParam) return siteParam;
-
-    const stored = localStorage.getItem("site");
-    if (stored) return stored;
+    if (effectiveSite) return effectiveSite;
 
     // As a last resort, infer from same-origin referrer path (/slug or /slug/*)
     try {
@@ -248,15 +254,18 @@ const Login = ({ setToken }) => {
         role: targetRole,
         timezone,
         remember_device: rememberDevice,
+        company_slug: targetRole === "client" ? siteForRedirect() || undefined : undefined,
         },
         { noAuth: true, noCompanyHeader: true }
       );
 
       if (targetRole === "client" && res.data?.access_token) {
         const token = res.data.access_token;
+        const site = siteForRedirect();
         localStorage.setItem("token", token);
         localStorage.setItem("role", targetRole);
         localStorage.setItem("timezone", timezone);
+        if (site) localStorage.setItem("site", site);
         setToken(token);
 
         await resolveAndStoreCompanyId(token, res.data?.company_id);
@@ -266,7 +275,6 @@ const Login = ({ setToken }) => {
           return;
         }
 
-        const site = siteForRedirect();
         const next =
           nextParam ||
           (site ? `/dashboard?site=${encodeURIComponent(site)}` : "/dashboard");
@@ -471,7 +479,13 @@ const Login = ({ setToken }) => {
                   <Button
                     size="small"
                     variant="text"
-                    onClick={() => navigate("/forgot-password")}
+                    onClick={() =>
+                      navigate(
+                        siteForRedirect()
+                          ? `/forgot-password?site=${encodeURIComponent(siteForRedirect())}`
+                          : "/forgot-password"
+                      )
+                    }
                   >
                     Forgot password?
                   </Button>
@@ -544,6 +558,7 @@ const Login = ({ setToken }) => {
                       if (planParam) registerQs.set("plan", planParam);
                       if (intervalParam) registerQs.set("interval", intervalParam);
                       if (returnToParam) registerQs.set("returnTo", returnToParam);
+                      if (siteForRedirect()) registerQs.set("site", siteForRedirect());
                       const suffix = registerQs.toString();
                       navigate(suffix ? `/register?${suffix}` : "/register");
                     }}
