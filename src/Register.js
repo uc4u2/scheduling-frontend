@@ -357,6 +357,8 @@ const Register = ({ slugOverride = "" }) => {
                 sx={authInputSx}
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                SelectProps={{ notched: false }}
                 required
                 helperText="Select your account type to ensure the right dashboard experience."
               >

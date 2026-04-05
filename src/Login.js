@@ -511,6 +511,8 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   sx={authInputSx}
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value)}
+                  InputLabelProps={{ shrink: true }}
+                  SelectProps={{ notched: false }}
                   fullWidth
                   helperText="Select your account type to ensure the right dashboard experience."
                 >
