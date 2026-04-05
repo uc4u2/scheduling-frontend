@@ -182,8 +182,11 @@ const Register = ({ slugOverride = "" }) => {
   if (authChecking) {
     return (
       <AuthCardShell
+        eyebrow="Workspace onboarding"
         title="Create your account"
         subtitle="Checking your session..."
+        heroTitle="Launch a polished booking and operations experience from day one."
+        heroSubtitle="Create a secure account for client access, staffing, scheduling, and growth inside one platform."
       >
         <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
           <CircularProgress size={22} />
@@ -197,8 +200,11 @@ const Register = ({ slugOverride = "" }) => {
 
   return (
     <AuthCardShell
+      eyebrow="Tenant-aware registration"
       title="Create your account"
       subtitle="Set up your Schedulaa workspace and launch scheduling, payroll, and booking from one panel."
+      heroTitle="Build a business workspace clients actually trust."
+      heroSubtitle="From premium booking flows to operational control, Schedulaa keeps the customer experience and the back office connected."
     >
       <Tooltip
         title="Enterprise-grade scheduling & payroll, made simple. Whether you're a business owner, team member, or customer, choose your role below and get started."
@@ -227,6 +233,9 @@ const Register = ({ slugOverride = "" }) => {
 
           <Box component="form" onSubmit={handleRegister} noValidate>
             <Stack spacing={2.5}>
+              <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+                Workspace details
+              </Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2.5}>
                 <TextField
                   label="First Name"
@@ -307,6 +316,9 @@ const Register = ({ slugOverride = "" }) => {
                 required
               />
 
+              <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+                Preferences
+              </Typography>
 
               {role === "customer" ? (
                 <Stack spacing={1}>
@@ -365,6 +377,9 @@ const Register = ({ slugOverride = "" }) => {
                 Employees are invited by their manager.
               </Typography>
 
+              <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+                Compliance
+              </Typography>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -405,7 +420,15 @@ const Register = ({ slugOverride = "" }) => {
               >
                 {loading ? "Registering..." : "Create account"}
               </Button>
-              <Typography variant="body2" color="text.secondary" textAlign="center">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                textAlign="center"
+                sx={{
+                  pt: 1,
+                  borderTop: "1px solid rgba(226,232,240,0.9)",
+                }}
+              >
                 Already have an account?{" "}
                 <MuiLink
                   component={RouterLink}

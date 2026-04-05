@@ -410,8 +410,11 @@ const Login = ({ setToken, slugOverride = "" }) => {
   if (authChecking) {
     return (
       <AuthCardShell
-        title="Welcome back to Schedulaa"
+        eyebrow="Client, team, and owner access"
+        title="Welcome back"
         subtitle="Checking your session..."
+        heroTitle="Run bookings, staffing, payroll, and client access from one secure workspace."
+        heroSubtitle="Sign in to continue where scheduling, customer experience, and operations stay aligned."
       >
         <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center">
           <CircularProgress size={22} />
@@ -425,8 +428,11 @@ const Login = ({ setToken, slugOverride = "" }) => {
 
   return (
     <AuthCardShell
-      title="Welcome back to Schedulaa"
+      eyebrow="Tenant-aware sign in"
+      title="Welcome back"
       subtitle="Sign in to manage bookings, staffing, payroll, and operations from one workspace."
+      heroTitle="Scheduling that feels premium. Operations that stay disciplined."
+      heroSubtitle="Schedulaa keeps client access, bookings, and business workflows in one secure tenant-scoped system."
     >
 
           {error && (
@@ -443,6 +449,9 @@ const Login = ({ setToken, slugOverride = "" }) => {
           {step === 1 ? (
             <Box component="form" onSubmit={handleLoginSubmit} noValidate>
               <Stack spacing={2.5}>
+                <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+                  Account access
+                </Typography>
                 <TextField
                   label="Email"
                   type="email"
@@ -466,7 +475,12 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   autoComplete="current-password"
                 />
 
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  justifyContent="space-between"
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  spacing={1}
+                >
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -547,7 +561,16 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   Sign In
                 </Button>
 
-                <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={0.75}
+                  justifyContent="center"
+                  alignItems="center"
+                  sx={{
+                    pt: 1,
+                    borderTop: "1px solid rgba(226,232,240,0.9)",
+                  }}
+                >
                   <Typography variant="body2" color="text.secondary">
                     New to Schedulaa?
                   </Typography>
@@ -572,6 +595,9 @@ const Login = ({ setToken, slugOverride = "" }) => {
           ) : (
             <Box component="form" onSubmit={handleOTPSubmit} noValidate>
               <Stack spacing={2.5}>
+                <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+                  Secure verification
+                </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Enter the one-time code we emailed you to continue.
                 </Typography>
