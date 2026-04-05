@@ -271,9 +271,12 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
               borderRadius: "8px",
               textTransform: "none",
               fontWeight: 700,
-              color: "#ffffff",
+              color: isTenant ? "#ffffff" : "#d9f99d",
               background: shell.launcherBg,
               boxShadow: shell.launcherShadow,
+              "& .MuiButton-startIcon": {
+                color: isTenant ? "#ffffff" : "#bef264",
+              },
               "&:hover": {
                 background: shell.launcherBg,
                 filter: "brightness(0.96)",
@@ -350,13 +353,13 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                       height: 24,
                       fontWeight: 700,
                       borderRadius: "8px",
-                      color: isTenant ? tenantAccent : "#dbeafe",
+                      color: isTenant ? tenantAccent : "#d9f99d",
                       bgcolor: isTenant
                         ? "rgba(255,255,255,0.88)"
-                        : "rgba(255,255,255,0.08)",
+                        : "rgba(163,230,53,0.12)",
                       border: isTenant
                         ? "1px solid rgba(226,232,240,0.94)"
-                        : "1px solid rgba(191,219,254,0.18)",
+                        : "1px solid rgba(190,242,100,0.28)",
                     }}
                   />
                 </Stack>
