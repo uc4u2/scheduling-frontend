@@ -25,11 +25,11 @@ export const authInputSx = {
       borderColor: "rgba(203,213,225,1)",
     },
     "&.Mui-focused": {
-      boxShadow: "0 0 0 4px rgba(225,181,74,0.18), 0 14px 30px rgba(148,163,184,0.16)",
+      boxShadow: "0 0 0 4px rgba(34,197,94,0.14), 0 14px 30px rgba(148,163,184,0.16)",
       transform: "translateY(-1px)",
     },
     "&.Mui-focused fieldset": {
-      borderColor: "#d6a93d",
+      borderColor: "#22c55e",
     },
     "& .MuiOutlinedInput-input": {
       py: 1.55,
@@ -43,12 +43,12 @@ export const authButtonSx = {
   textTransform: "none",
   fontWeight: 800,
   letterSpacing: 0.1,
-  color: "#22160a",
-  background: "linear-gradient(135deg, #f7dc84 0%, #efc14f 58%, #e4a72f 100%)",
-  boxShadow: "0 18px 34px rgba(228,167,47,0.28), inset 0 1px 0 rgba(255,255,255,0.42)",
+  color: "#f8fafc",
+  background: "linear-gradient(135deg, #22c55e 0%, #16a34a 55%, #15803d 100%)",
+  boxShadow: "0 18px 34px rgba(34,197,94,0.22), inset 0 1px 0 rgba(255,255,255,0.14)",
   "&:hover": {
-    background: "linear-gradient(135deg, #f2d16a 0%, #eab439 58%, #da9920 100%)",
-    boxShadow: "0 22px 40px rgba(228,167,47,0.32), inset 0 1px 0 rgba(255,255,255,0.38)",
+    background: "linear-gradient(135deg, #1fbb59 0%, #169748 55%, #166534 100%)",
+    boxShadow: "0 22px 40px rgba(22,163,74,0.26), inset 0 1px 0 rgba(255,255,255,0.14)",
   },
   "&.Mui-disabled": {
     color: "rgba(51,65,85,0.72)",
@@ -61,7 +61,7 @@ const defaultHeroCards = [
   {
     label: "Client booking",
     value: "Tenant-aware auth",
-    tone: "gold",
+    tone: "accent",
     position: { top: 24, left: 24 },
   },
   {
@@ -97,7 +97,7 @@ export default function AuthCardShell({
         py: { xs: 4, md: 6 },
         px: { xs: 1.5, sm: 2.5, md: 3.5 },
         background:
-          "radial-gradient(circle at 12% 18%, rgba(248,215,130,0.26), transparent 34%), radial-gradient(circle at 88% 14%, rgba(255,255,255,0.66), transparent 28%), linear-gradient(180deg, #f6f3eb 0%, #ece8df 52%, #e7eaf1 100%)",
+          "radial-gradient(circle at 12% 18%, rgba(34,197,94,0.12), transparent 34%), radial-gradient(circle at 88% 14%, rgba(14,165,233,0.14), transparent 30%), linear-gradient(180deg, #f8fafc 0%, #eef6f1 48%, #e8eef7 100%)",
       }}
     >
       <Container maxWidth="lg" sx={{ px: { xs: 0, sm: 1 } }}>
@@ -112,7 +112,7 @@ export default function AuthCardShell({
             border: "1px solid rgba(255,255,255,0.64)",
             boxShadow: "0 30px 60px rgba(15,23,42,0.14), 0 8px 26px rgba(15,23,42,0.08)",
             backdropFilter: "blur(18px)",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.32))",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.4))",
           }}
         >
           <Paper
@@ -127,7 +127,7 @@ export default function AuthCardShell({
               background:
                 theme.palette.mode === "dark"
                   ? "linear-gradient(180deg, rgba(17,24,39,0.96), rgba(15,23,42,0.92))"
-                  : "linear-gradient(180deg, rgba(252,250,246,0.96), rgba(246,242,234,0.94))",
+                  : "linear-gradient(180deg, rgba(255,255,255,0.97), rgba(247,250,252,0.95))",
               borderRight: { xs: "none", lg: `1px solid ${alpha(theme.palette.common.white, 0.44)}` },
             })}
           >
@@ -141,7 +141,7 @@ export default function AuthCardShell({
                     borderRadius: 999,
                     fontWeight: 700,
                     letterSpacing: 0.2,
-                    color: "#40311d",
+                    color: "#1e293b",
                     backgroundColor: "rgba(255,255,255,0.74)",
                     border: "1px solid rgba(148,163,184,0.24)",
                     boxShadow: "0 10px 24px rgba(148,163,184,0.12)",
@@ -168,9 +168,9 @@ export default function AuthCardShell({
                   minHeight: 180,
                   borderRadius: 4,
                   overflow: "hidden",
-                  backgroundImage: `linear-gradient(180deg, rgba(34,24,14,0.22), rgba(34,24,14,0.5)), url(${heroImage})`,
+                  backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.2), rgba(15,23,42,0.46)), url(${heroImage})`,
                   backgroundSize: "cover",
-                  backgroundPosition: "center",
+                  backgroundPosition: "center 28%",
                   boxShadow: "0 18px 34px rgba(15,23,42,0.14)",
                 }}
               >
@@ -190,8 +190,8 @@ export default function AuthCardShell({
                     size="small"
                     sx={{
                       alignSelf: "flex-start",
-                      bgcolor: "rgba(247,220,132,0.94)",
-                      color: "#2b1907",
+                      bgcolor: "rgba(34,197,94,0.94)",
+                      color: "#f8fafc",
                       fontWeight: 700,
                     }}
                   />
@@ -241,7 +241,7 @@ export default function AuthCardShell({
               position: "relative",
               minHeight: 760,
               overflow: "hidden",
-              backgroundColor: "#efe7d5",
+              backgroundColor: "#e9f1ee",
             }}
           >
             <Box
@@ -250,9 +250,9 @@ export default function AuthCardShell({
                 inset: 18,
                 borderRadius: 5,
                 overflow: "hidden",
-                backgroundImage: `linear-gradient(180deg, rgba(39,28,18,0.14), rgba(39,28,18,0.38)), url(${heroImage})`,
+                backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.16), rgba(15,23,42,0.34)), url(${heroImage})`,
                 backgroundSize: "cover",
-                backgroundPosition: "center",
+                backgroundPosition: "center 24%",
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.24)",
               }}
             />
@@ -269,7 +269,7 @@ export default function AuthCardShell({
             >
               <Stack spacing={2} sx={{ maxWidth: 360, ml: "auto", mt: 2, mr: 2 }}>
                 {heroCards.map((card) => {
-                  const isGold = card.tone === "gold";
+                  const isAccent = card.tone === "accent";
                   const isDark = card.tone === "dark";
                   return (
                     <Paper
@@ -285,12 +285,12 @@ export default function AuthCardShell({
                         py: 1.5,
                         minWidth: isDark ? 230 : 200,
                         borderRadius: 3,
-                        background: isGold
-                          ? "linear-gradient(135deg, rgba(247,220,132,0.96), rgba(237,186,81,0.96))"
+                        background: isAccent
+                          ? "linear-gradient(135deg, rgba(34,197,94,0.96), rgba(22,163,74,0.96))"
                           : isDark
                           ? "linear-gradient(180deg, rgba(25,30,40,0.88), rgba(17,24,39,0.84))"
                           : "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248,250,252,0.86))",
-                        color: isDark ? "#f8fafc" : "#1f2937",
+                        color: isDark || isAccent ? "#f8fafc" : "#1f2937",
                         boxShadow: "0 18px 32px rgba(15,23,42,0.18)",
                         border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.5)"}`,
                       }}
@@ -312,7 +312,7 @@ export default function AuthCardShell({
                   ml: 4,
                   mr: 8,
                   mb: 4,
-                  maxWidth: 430,
+                  maxWidth: 380,
                   color: "#fffaf0",
                   textShadow: "0 6px 18px rgba(15,23,42,0.18)",
                 }}
@@ -321,10 +321,10 @@ export default function AuthCardShell({
                   label="Enterprise scheduling"
                   sx={{
                     mb: 2,
-                    bgcolor: "rgba(255,255,255,0.18)",
+                    bgcolor: "rgba(34,197,94,0.22)",
                     color: "#fffaf0",
                     backdropFilter: "blur(8px)",
-                    border: "1px solid rgba(255,255,255,0.2)",
+                    border: "1px solid rgba(255,255,255,0.18)",
                   }}
                 />
                 <Typography variant="h4" fontWeight={800} sx={{ lineHeight: 1.12, letterSpacing: "-0.03em" }}>
