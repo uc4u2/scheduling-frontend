@@ -2,14 +2,20 @@
 
 Last updated: 2026-04-05
 
-This document defines the frontend UI contract for the shared chatbot widget used by:
+This document defines the frontend UI contract for the shared app/tenant chatbot widget used by:
 
-- the public Schedulaa website
 - tenant/public business websites
+- app/product surfaces that use the `frontend` repo widget
 
 This is a UI source of truth only. Backend chat behavior, knowledge routing, and tenant chatbot settings remain owned by:
 
 - `backend/docs/chatbot.md`
+
+Important:
+
+- this document does **not** own the marketing-site chatbot on `www.schedulaa.com`
+- the marketing-site assistant lives in:
+  - `schedulaa-marketing-techwind/src/components/shared/assistant/SchedulaaAssistant.tsx`
 
 ## 1. Scope
 
@@ -56,6 +62,20 @@ Shared across both:
 - mobile and desktop layout structure
 
 The shared widget must remain a single component unless there is a strong maintenance reason to split it later.
+
+## 3.1 Repo boundary
+
+There are two separate chatbot UIs in the overall platform:
+
+### This document covers
+
+- `frontend/src/components/ui/ChatBot.js`
+
+### This document does not cover
+
+- `schedulaa-marketing-techwind/src/components/shared/assistant/SchedulaaAssistant.tsx`
+
+If a change is needed on `www.schedulaa.com`, update the marketing repo widget and its own source of truth instead of this file.
 
 ## 4. Schedulaa mode
 
@@ -149,11 +169,32 @@ The redesign must not change:
 - CTA destination behavior
 - public-vs-tenant chatbot routing logic
 
-## 8. Files to inspect before future chatbot edits
+## 8. Recent UI upgrades in this widget
+
+Recent app/tenant widget work included:
+
+- premium messenger-shell redesign
+- stronger Schedulaa-mode styling
+- tenant-mode safe separation
+- launcher, transcript, quick-reply, and composer refresh
+
+This widget remains:
+
+- UI-only modernization
+- no backend churn
+- no tenant settings redesign
+- no chatbot behavior rewrite
+
+## 9. Files to inspect before future chatbot edits
 
 - `frontend/src/components/ui/ChatBot.js`
 - `frontend/src/App.js`
 - `frontend/src/utils/api.js`
 - `backend/docs/chatbot.md`
+
+Related but separate:
+
+- `schedulaa-marketing-techwind/src/components/shared/assistant/SchedulaaAssistant.tsx`
+- `schedulaa-marketing-techwind/docs/CHATBOT_UI_SOURCE_OF_TRUTH.md`
 
 If a future change affects chat content rather than UI, update the backend/chatbot source of truth and knowledge workflow instead of only changing the frontend.
