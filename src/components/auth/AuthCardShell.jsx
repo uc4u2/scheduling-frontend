@@ -77,7 +77,7 @@ export default function AuthCardShell({
   subtitle,
   eyebrow = "Schedulaa",
   children,
-  heroImage = "/images/auth/lumen-auth-reference.jpeg",
+  heroImage = "/images/auth/chatgpt-auth-reference.png",
   heroTitle = "Unified booking, staffing, payroll, and client access.",
   heroSubtitle = "Built for teams that need premium scheduling without losing operational control.",
   heroCards = defaultHeroCards,
