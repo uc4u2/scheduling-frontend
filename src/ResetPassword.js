@@ -7,6 +7,7 @@ import {
   Typography,
   Link as MuiLink,
 } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 import PasswordField from "./PasswordField";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "./utils/api";
@@ -30,6 +31,7 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,6 +51,7 @@ const ResetPassword = () => {
     }
 
     try {
+      setSubmitting(true);
       let res;
       if (isTokenReset) {
         const endpoint = resetType === "recruiter" ? "/recruiter/reset-password" : "/reset-password";
@@ -87,11 +90,14 @@ const ResetPassword = () => {
     } catch (err) {
       setError(err.response?.data?.error || "Password change failed.");
       setMessage("");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <AuthCardShell
+      eyebrow={isTempReset ? "Password refresh" : isTokenReset ? "Secure reset" : "Password settings"}
       title={
         isTempReset
           ? "Set new password"
@@ -100,8 +106,21 @@ const ResetPassword = () => {
           : "Reset your password"
       }
       subtitle="Use a strong password to secure your account access."
+      heroTitle={
+        isTempReset
+          ? "Replace temporary access with a permanent password."
+          : isTokenReset
+          ? "Finish your password reset and get back into your workspace."
+          : "Update your password without breaking your workflow."
+      }
+      heroSubtitle={
+        isTempReset
+          ? "Schedulaa keeps first-time security updates clear so you can finish setup and return to operations."
+          : isTokenReset
+          ? "Schedulaa keeps password recovery fast so bookings, staffing, and client access stay on track."
+          : "Schedulaa keeps account protection simple while your scheduling and business operations keep moving."
+      }
     >
-
       {isTempReset && (
         <Alert severity="info" sx={{ mb: 2 }}>
           You are using a temporary password. Please set a new password to continue.
@@ -116,8 +135,11 @@ const ResetPassword = () => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
 
-      <form onSubmit={handleSubmit}>
-        <Stack spacing={2}>
+      <Stack component="form" spacing={2.5} onSubmit={handleSubmit} noValidate>
+        <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.2 }}>
+          Password security
+        </Typography>
+
         {isTempReset && (
           <PasswordField
             label="Current Temporary Password"
@@ -147,18 +169,42 @@ const ResetPassword = () => {
           required
         />
 
-        <Box mt={1}>
-          <Button variant="contained" fullWidth type="submit" sx={authButtonSx}>
-            {isTempReset ? "Set Password" : "Reset Password"}
+        <Box mt={0.5}>
+          <Button variant="contained" fullWidth type="submit" disabled={submitting} sx={authButtonSx}>
+            {submitting
+              ? isTempReset
+                ? "Saving password..."
+                : "Resetting password..."
+              : isTempReset
+              ? "Set Password"
+              : "Reset Password"}
           </Button>
         </Box>
+
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={0.75}
+          justifyContent="center"
+          alignItems="center"
+          sx={{
+            pt: 1,
+            borderTop: "1px solid rgba(226,232,240,0.9)",
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Need a different account action?
+          </Typography>
+          <MuiLink component={RouterLink} to="/login" underline="hover" sx={{ fontWeight: 700 }}>
+            Back to sign in
+          </MuiLink>
+        </Stack>
+
         <Typography variant="body2" color="text.secondary" textAlign="center">
           <MuiLink href={buildMarketingUrl("/en")} sx={{ fontWeight: 600 }}>
             Back to website
           </MuiLink>
         </Typography>
-        </Stack>
-      </form>
+      </Stack>
     </AuthCardShell>
   );
 };

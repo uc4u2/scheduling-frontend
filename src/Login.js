@@ -428,11 +428,23 @@ const Login = ({ setToken, slugOverride = "" }) => {
 
   return (
     <AuthCardShell
-      eyebrow="Tenant-aware sign in"
-      title="Welcome back"
-      subtitle="Sign in to manage bookings, staffing, payroll, and operations from one workspace."
-      heroTitle="Scheduling that feels premium. Operations that stay disciplined."
-      heroSubtitle="Schedulaa keeps client access, bookings, and business workflows in one secure tenant-scoped system."
+      eyebrow={step === 1 ? "Secure sign in" : "Secure verification"}
+      title={step === 1 ? "Welcome back" : "Verify your sign in"}
+      subtitle={
+        step === 1
+          ? "Sign in to manage bookings, staffing, payroll, and operations from one workspace."
+          : "Enter the one-time passcode we emailed you to complete secure access."
+      }
+      heroTitle={
+        step === 1
+          ? "Scheduling that feels premium. Operations that stay disciplined."
+          : "Protected access for bookings, staffing, payroll, and operations."
+      }
+      heroSubtitle={
+        step === 1
+          ? "Schedulaa keeps client access, bookings, and business workflows connected inside one secure workspace."
+          : "One-time verification keeps your workspace protected without adding friction to the sign-in flow."
+      }
     >
 
           {error && (
@@ -598,14 +610,30 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   sx={authInputSx}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
+                  InputLabelProps={{
+                    shrink: true,
+                    sx: {
+                      transform: "translate(14px, -12px) scale(0.75)",
+                    },
+                  }}
                   fullWidth
                   required
+                  autoFocus
                   inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                 />
                 <Button type="submit" variant="contained" fullWidth sx={authButtonSx}>
                   Verify OTP
                 </Button>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  alignItems="center"
+                  justifyContent="center"
+                  sx={{
+                    pt: 1,
+                    borderTop: "1px solid rgba(226,232,240,0.9)",
+                  }}
+                >
                   <Typography variant="caption" color="text.secondary">
                     Didn't get a code?
                   </Typography>
