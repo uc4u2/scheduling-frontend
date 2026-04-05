@@ -25,11 +25,11 @@ export const authInputSx = {
       borderColor: "rgba(203,213,225,1)",
     },
     "&.Mui-focused": {
-      boxShadow: "0 0 0 4px rgba(34,197,94,0.14), 0 14px 30px rgba(148,163,184,0.16)",
+      boxShadow: "0 0 0 4px rgba(249,115,22,0.16), 0 14px 30px rgba(148,163,184,0.16)",
       transform: "translateY(-1px)",
     },
     "&.Mui-focused fieldset": {
-      borderColor: "#22c55e",
+      borderColor: "#f97316",
     },
     "& .MuiOutlinedInput-input": {
       py: 1.55,
@@ -44,11 +44,11 @@ export const authButtonSx = {
   fontWeight: 800,
   letterSpacing: 0.1,
   color: "#f8fafc",
-  background: "linear-gradient(135deg, #22c55e 0%, #16a34a 55%, #15803d 100%)",
-  boxShadow: "0 18px 34px rgba(34,197,94,0.22), inset 0 1px 0 rgba(255,255,255,0.14)",
+  background: "linear-gradient(135deg, #fb923c 0%, #f97316 52%, #ea580c 100%)",
+  boxShadow: "0 18px 34px rgba(249,115,22,0.24), inset 0 1px 0 rgba(255,255,255,0.14)",
   "&:hover": {
-    background: "linear-gradient(135deg, #1fbb59 0%, #169748 55%, #166534 100%)",
-    boxShadow: "0 22px 40px rgba(22,163,74,0.26), inset 0 1px 0 rgba(255,255,255,0.14)",
+    background: "linear-gradient(135deg, #f88a2c 0%, #ea6a0c 52%, #c2410c 100%)",
+    boxShadow: "0 22px 40px rgba(234,88,12,0.28), inset 0 1px 0 rgba(255,255,255,0.14)",
   },
   "&.Mui-disabled": {
     color: "rgba(51,65,85,0.72)",
@@ -65,16 +65,10 @@ const defaultHeroCards = [
     position: { top: 24, left: 24 },
   },
   {
-    label: "Operations",
-    value: "Bookings, payroll, storefront",
-    tone: "light",
-    position: { bottom: 28, left: 28 },
-  },
-  {
     label: "Portal",
     value: "My Bookings access",
     tone: "dark",
-    position: { bottom: 38, right: 30 },
+    position: { bottom: 34, right: 28 },
   },
 ];
 
@@ -97,7 +91,7 @@ export default function AuthCardShell({
         py: { xs: 4, md: 6 },
         px: { xs: 1.5, sm: 2.5, md: 3.5 },
         background:
-          "radial-gradient(circle at 12% 18%, rgba(34,197,94,0.12), transparent 34%), radial-gradient(circle at 88% 14%, rgba(14,165,233,0.14), transparent 30%), linear-gradient(180deg, #f8fafc 0%, #eef6f1 48%, #e8eef7 100%)",
+          "radial-gradient(circle at 12% 18%, rgba(249,115,22,0.12), transparent 34%), radial-gradient(circle at 88% 14%, rgba(251,191,36,0.12), transparent 28%), linear-gradient(180deg, #f8fafc 0%, #f7f5f2 46%, #eef2f7 100%)",
       }}
     >
       <Container maxWidth="lg" sx={{ px: { xs: 0, sm: 1 } }}>
@@ -105,7 +99,7 @@ export default function AuthCardShell({
           sx={{
             display: "grid",
             gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 0.92fr) minmax(360px, 1.08fr)" },
-            gap: { xs: 0, lg: 2.5 },
+            gap: { xs: 0, lg: 0 },
             alignItems: "stretch",
             borderRadius: { xs: 4, lg: 5 },
             overflow: "hidden",
@@ -118,7 +112,7 @@ export default function AuthCardShell({
           <Paper
             elevation={0}
             sx={(theme) => ({
-              p: { xs: 3, sm: 4, lg: 5 },
+              p: { xs: 3, sm: 4, lg: 5.25 },
               borderRadius: 0,
               minHeight: { xs: "auto", lg: 760 },
               display: "flex",
@@ -149,8 +143,8 @@ export default function AuthCardShell({
                 />
                 <Avatar
                   sx={{
-                    width: 56,
-                    height: 56,
+                    width: 52,
+                    height: 52,
                     bgcolor: "rgba(255,255,255,0.82)",
                     color: "#6b7280",
                     boxShadow: "0 14px 26px rgba(148,163,184,0.18)",
@@ -169,8 +163,9 @@ export default function AuthCardShell({
                   borderRadius: 4,
                   overflow: "hidden",
                   backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.2), rgba(15,23,42,0.46)), url(${heroImage})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center 28%",
+                  backgroundSize: "contain",
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "center 25%",
                   boxShadow: "0 18px 34px rgba(15,23,42,0.14)",
                 }}
               >
@@ -190,7 +185,7 @@ export default function AuthCardShell({
                     size="small"
                     sx={{
                       alignSelf: "flex-start",
-                      bgcolor: "rgba(34,197,94,0.94)",
+                      bgcolor: "rgba(249,115,22,0.94)",
                       color: "#f8fafc",
                       fontWeight: 700,
                     }}
@@ -241,17 +236,18 @@ export default function AuthCardShell({
               position: "relative",
               minHeight: 760,
               overflow: "hidden",
-              backgroundColor: "#e9f1ee",
+              backgroundColor: "#edf0f4",
             }}
           >
             <Box
               sx={{
                 position: "absolute",
-                inset: 18,
+                inset: 20,
                 borderRadius: 5,
                 overflow: "hidden",
                 backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.16), rgba(15,23,42,0.34)), url(${heroImage})`,
-                backgroundSize: "cover",
+                backgroundSize: "contain",
+                backgroundRepeat: "no-repeat",
                 backgroundPosition: "center 24%",
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.24)",
               }}
@@ -260,14 +256,28 @@ export default function AuthCardShell({
             <Box
               sx={{
                 position: "absolute",
+                left: 20,
+                right: 20,
+                bottom: 20,
+                height: 220,
+                borderBottomLeftRadius: 40,
+                borderBottomRightRadius: 40,
+                background: "linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.58) 55%, rgba(15,23,42,0.76) 100%)",
+                pointerEvents: "none",
+              }}
+            />
+
+            <Box
+              sx={{
+                position: "absolute",
                 inset: 0,
-                p: 4,
+                p: 3.5,
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
               }}
             >
-              <Stack spacing={2} sx={{ maxWidth: 360, ml: "auto", mt: 2, mr: 2 }}>
+              <Stack spacing={2} sx={{ maxWidth: 320, ml: "auto", mt: 2, mr: 2 }}>
                 {heroCards.map((card) => {
                   const isAccent = card.tone === "accent";
                   const isDark = card.tone === "dark";
@@ -282,11 +292,11 @@ export default function AuthCardShell({
                         right: card.position?.right,
                         bottom: card.position?.bottom,
                         px: 2,
-                        py: 1.5,
-                        minWidth: isDark ? 230 : 200,
+                        py: 1.35,
+                        minWidth: isDark ? 214 : 190,
                         borderRadius: 3,
                         background: isAccent
-                          ? "linear-gradient(135deg, rgba(34,197,94,0.96), rgba(22,163,74,0.96))"
+                          ? "linear-gradient(135deg, rgba(249,115,22,0.96), rgba(234,88,12,0.96))"
                           : isDark
                           ? "linear-gradient(180deg, rgba(25,30,40,0.88), rgba(17,24,39,0.84))"
                           : "linear-gradient(180deg, rgba(255,255,255,0.9), rgba(248,250,252,0.86))",
@@ -310,27 +320,28 @@ export default function AuthCardShell({
                 sx={{
                   mt: "auto",
                   ml: 4,
-                  mr: 8,
+                  mr: 6,
                   mb: 4,
-                  maxWidth: 380,
+                  maxWidth: 330,
                   color: "#fffaf0",
                   textShadow: "0 6px 18px rgba(15,23,42,0.18)",
                 }}
               >
-                <Chip
-                  label="Enterprise scheduling"
-                  sx={{
-                    mb: 2,
-                    bgcolor: "rgba(34,197,94,0.22)",
-                    color: "#fffaf0",
-                    backdropFilter: "blur(8px)",
-                    border: "1px solid rgba(255,255,255,0.18)",
-                  }}
-                />
                 <Typography variant="h4" fontWeight={800} sx={{ lineHeight: 1.12, letterSpacing: "-0.03em" }}>
                   {heroTitle}
                 </Typography>
-                <Typography variant="body1" sx={{ mt: 1.2, color: "rgba(255,250,240,0.84)", lineHeight: 1.7 }}>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    mt: 1.2,
+                    color: "rgba(255,250,240,0.84)",
+                    lineHeight: 1.7,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
                   {heroSubtitle}
                 </Typography>
               </Box>
