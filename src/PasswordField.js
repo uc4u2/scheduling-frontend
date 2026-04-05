@@ -10,6 +10,7 @@ const PasswordField = ({
   autoComplete = "current-password",
   helperText,
   InputProps,
+  InputLabelProps,
   inputProps,
   autoFocus,
   ...rest
@@ -26,6 +27,7 @@ const PasswordField = ({
       autoComplete={autoComplete}
       helperText={helperText}
       autoFocus={autoFocus}
+      InputLabelProps={InputLabelProps}
       InputProps={{
         ...InputProps,
         endAdornment: (

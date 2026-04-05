@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Typography,
   TextField,
-  MenuItem,
   Button,
   Box,
   Alert,
@@ -15,6 +14,7 @@ import {
 } from "@mui/material";
 import PasswordField from "./PasswordField";
 import TimezoneSelect from "./components/TimezoneSelect";
+import RoleSelect from "./components/RoleSelect";
 import { useNavigate, useLocation } from "react-router-dom";
 import { api, publicSite } from "./utils/api";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
@@ -89,7 +89,7 @@ const Login = ({ setToken, slugOverride = "" }) => {
   const [step, setStep] = useState(1);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [selectedRole, setSelectedRole] = useState("employee");
+  const [selectedRole, setSelectedRole] = useState("owner");
   const [timezone, setTimezone] = useState(detectedTz);
   const [forceChange, setForceChange] = useState(false);
   const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
@@ -470,6 +470,12 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   sx={authInputSx}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  InputLabelProps={{
+                    shrink: true,
+                    sx: {
+                      transform: "translate(14px, -12px) scale(0.75)",
+                    },
+                  }}
                   fullWidth
                   required
                   autoComplete="current-password"
@@ -505,30 +511,14 @@ const Login = ({ setToken, slugOverride = "" }) => {
                   </Button>
                 </Stack>
 
-                <TextField
-                  select
+                <RoleSelect
                   label="Role"
-                  sx={authInputSx}
                   value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  SelectProps={{ notched: false }}
-                  fullWidth
+                  onChange={setSelectedRole}
+                  options={ROLE_OPTIONS}
+                  textFieldSx={authInputSx}
                   helperText="Select your account type to ensure the right dashboard experience."
-                >
-                  {ROLE_OPTIONS.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      <Box>
-                        <Typography variant="subtitle2" fontWeight={600}>
-                          {option.label}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {option.description}
-                        </Typography>
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </TextField>
+                />
 
                 {selectedRole === "customer" ? (
                   <Stack spacing={1}>

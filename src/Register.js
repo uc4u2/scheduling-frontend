@@ -4,7 +4,6 @@ import {
   Alert,
   Typography,
   TextField,
-  MenuItem,
   Box,
   Stack,
   Tooltip,
@@ -19,6 +18,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PasswordField from "./PasswordField";
 import api from "./utils/api";
 import TimezoneSelect from "./components/TimezoneSelect";
+import RoleSelect from "./components/RoleSelect";
 import AuthCardShell, { authButtonSx, authInputSx } from "./components/auth/AuthCardShell";
 import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
 import { buildMarketingUrl } from "./config/origins";
@@ -286,6 +286,12 @@ const Register = ({ slugOverride = "" }) => {
                 sx={authInputSx}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                InputLabelProps={{
+                  shrink: true,
+                  sx: {
+                    transform: "translate(14px, -12px) scale(0.75)",
+                  },
+                }}
                 autoComplete="new-password"
                 helperText={
                   <Box display="inline-flex" alignItems="center" gap={0.5}>
@@ -308,6 +314,12 @@ const Register = ({ slugOverride = "" }) => {
                 sx={authInputSx}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                InputLabelProps={{
+                  shrink: true,
+                  sx: {
+                    transform: "translate(14px, -12px) scale(0.75)",
+                  },
+                }}
                 autoComplete="new-password"
                 error={Boolean(confirmPassword) && !passwordsMatch}
                 helperText={
@@ -350,31 +362,15 @@ const Register = ({ slugOverride = "" }) => {
                 />
               )}
 
-              <TextField
-                select
+              <RoleSelect
                 label="Role"
-                fullWidth
-                sx={authInputSx}
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                SelectProps={{ notched: false }}
+                onChange={setRole}
+                options={ROLE_OPTIONS}
+                textFieldSx={authInputSx}
                 required
                 helperText="Select your account type to ensure the right dashboard experience."
-              >
-                {ROLE_OPTIONS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    <Box>
-                      <Typography variant="subtitle2" fontWeight={600}>
-                        {option.label}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {option.description}
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
               <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
                 Employees are invited by their manager.
               </Typography>
