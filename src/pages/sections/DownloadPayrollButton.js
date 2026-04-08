@@ -225,7 +225,7 @@ export default function DownloadPayrollButton({
         alignItems={{ xs: "stretch", sm: "center" }}
         sx={{ mb: 1.5 }}
       >
-        <Tooltip title="Download the employee-safe payslip PDF (whitelisted fields only)">
+        <Tooltip title="Finalize payroll, lock the run, and download the employee-safe payslip PDF without e-mailing the employee.">
           <span>
             <Button
               variant="contained"
@@ -235,7 +235,7 @@ export default function DownloadPayrollButton({
               disabled={busy || disableFinalize}
               sx={{ minWidth: 240, textTransform: "none" }}
             >
-              Download Employee Payslip (PDF)
+              Finalize + Download Employee Payslip
             </Button>
           </span>
         </Tooltip>
@@ -261,7 +261,7 @@ export default function DownloadPayrollButton({
         </Typography>
       )}
       <Typography variant="caption" color="text.secondary">
-        Employee Payslip = whitelisted PDF for employees. Finalize Payroll = locks the run, syncs data, and sends the payslip with an audit trail.
+        Employee Payslip actions finalize the payroll run first. The blue action downloads the employee-safe PDF without e-mail. The green action finalizes, downloads the manager copy, and e-mails the employee payslip.
       </Typography>
 
       <Snackbar

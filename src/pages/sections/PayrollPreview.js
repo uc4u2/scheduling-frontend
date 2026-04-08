@@ -1519,16 +1519,21 @@ const handleRecalculate = () => {
         finalizeBlockReason={rawModeWarning}
       />
 
-      {/* Actions */}
-      <Button
-        variant="contained"
-        color="primary"
-        sx={{ ml: 2, mt: 2 }}
-        disabled={savingFinalized || isRawPayrollMode}
-        onClick={saveFinalizedPayroll}
-      >
-        {savingFinalized ? <CircularProgress size={18} /> : "Finalize & Save"}
-      </Button>
+      <Box sx={{ mt: 2 }}>
+        <Tooltip title="Save the internal finalized payroll PDF and metadata into the payslip portal/history table for later admin or employee-portal retrieval. This stores a persistent record; it is not the employee e-mail action.">
+          <span>
+            <Button
+              variant="contained"
+              color="primary"
+              disabled={savingFinalized || isRawPayrollMode}
+              onClick={saveFinalizedPayroll}
+              sx={{ textTransform: "none" }}
+            >
+              {savingFinalized ? <CircularProgress size={18} /> : "Finalize & Save to Portal History"}
+            </Button>
+          </span>
+        </Tooltip>
+      </Box>
 
       {/* Payments accordion (secondary) */}
       <Accordion sx={{ mt: 2 }} defaultExpanded={false}>
