@@ -99,6 +99,15 @@ const SummaryCard = ({ label, value, icon }) => {
   );
 };
 
+const readableRosterChipSx = (theme) => ({
+  color: theme.palette.text.primary,
+  borderColor: alpha(theme.palette.text.primary, 0.28),
+  fontWeight: 700,
+  "& .MuiChip-label": {
+    color: "inherit",
+  },
+});
+
 const TimeEntriesPanel = ({ recruiters = [] }) => {
   const theme = useTheme();
   const viewerTimezone = getUserTimezone();
@@ -1506,12 +1515,14 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
               color="primary"
               variant="outlined"
               label={`${rosterStats.active} active`}
+              sx={readableRosterChipSx}
             />
             <Chip
               size="small"
               color={rosterStats.onBreak ? "warning" : "default"}
               variant="outlined"
               label={`${rosterStats.onBreak} on break`}
+              sx={readableRosterChipSx}
             />
             <Tooltip title={rosterCollapsed ? "Expand roster" : "Collapse roster"}>
               <IconButton size="small" onClick={() => setRosterCollapsed((prev) => !prev)}>
@@ -1568,6 +1579,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                         size="small"
                         color={statusColor[active.status] || "default"}
                         label={active.status}
+                        sx={{ fontWeight: 700 }}
                       />
                       {(() => {
                         if (active.break_in_progress) {
@@ -1596,10 +1608,11 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                               color={overage ? "error" : "warning"}
                               label={label}
                               variant={overage ? "filled" : "outlined"}
+                              sx={overage ? { fontWeight: 700 } : readableRosterChipSx}
                             />
                           );
                         }
-                        return <Chip size="small" variant="outlined" label="On shift" />;
+                        return <Chip size="small" variant="outlined" label="On shift" sx={readableRosterChipSx} />;
                       })()}
                       {active.break_slot?.start && active.break_slot?.end && (
                         <Chip
@@ -1607,10 +1620,11 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                           variant="outlined"
                           color="info"
                           label={`Slot ${active.break_slot.start}–${active.break_slot.end}`}
+                          sx={readableRosterChipSx}
                         />
                       )}
                       {active.timezone && (
-                        <Chip size="small" variant="outlined" label={active.timezone} />
+                        <Chip size="small" variant="outlined" label={active.timezone} sx={readableRosterChipSx} />
                       )}
                     </Stack>
                   </Paper>

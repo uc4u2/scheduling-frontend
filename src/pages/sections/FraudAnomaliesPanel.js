@@ -22,7 +22,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import api from "../../utils/api";
 
@@ -63,6 +63,17 @@ const flagLabels = {
   outside_trusted: "Outside trusted IP",
 };
 
+const readableTableSx = (theme) => ({
+  "& .MuiTableHead-root .MuiTableCell-root": {
+    color: theme.palette.text.primary,
+    fontWeight: 700,
+    backgroundColor: alpha(theme.palette.primary.main, 0.06),
+  },
+  "& .MuiTableBody-root .MuiTableCell-root": {
+    color: theme.palette.text.primary,
+  },
+});
+
 function flagChips(flags = {}) {
   return Object.entries(flags)
     .filter(([, v]) => v)
@@ -72,7 +83,7 @@ function flagChips(flags = {}) {
         size="small"
         label={flagLabels[k] || k}
         color={k === "outside_trusted" ? "error" : k === "multi_ip_same_day" ? "warning" : "primary"}
-        sx={{ mr: 0.5, mb: 0.5 }}
+        sx={{ mr: 0.5, mb: 0.5, fontWeight: 700 }}
       />
     ));
 }
@@ -315,7 +326,7 @@ const FraudAnomaliesPanel = () => {
           <Typography color="text.secondary">No anomalies found for this range.</Typography>
         ) : (
           <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 720 }}>
+            <Table size="small" sx={(theme) => ({ minWidth: 720, ...readableTableSx(theme) })}>
               <TableHead>
                 <TableRow>
                   <TableCell>Employee</TableCell>
@@ -378,7 +389,7 @@ const FraudAnomaliesPanel = () => {
           <Typography color="text.secondary">No events in this range.</Typography>
         ) : (
           <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 720 }}>
+            <Table size="small" sx={(theme) => ({ minWidth: 720, ...readableTableSx(theme) })}>
               <TableHead>
                 <TableRow>
                   <TableCell>Date</TableCell>
