@@ -138,6 +138,7 @@ const SecondEmployeeShiftView = () => {
     const end = format(new Date(), "yyyy-MM-dd");
     return { startDate: end, endDate: end, status: "all" };
   });
+  const [locationCaptureMessage, setLocationCaptureMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState(DateTime.now());
   const targetWeeklyHours = timeSummary?.policy?.target_weekly_hours || 40;
 
@@ -798,11 +799,13 @@ useEffect(() => {
     }
 
     return new Promise((resolve) => {
+      const captureStartedAt = Date.now();
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          const captureDelayMs = Date.now() - captureStartedAt;
           const coords = position?.coords;
           if (!coords) {
-            resolve({ location: { permission_state: "unavailable" } });
+            resolve({ location: { permission_state: "unavailable", capture_delay_ms: captureDelayMs } });
             return;
           }
           const accuracy = Number(coords.accuracy);
@@ -813,18 +816,25 @@ useEffect(() => {
               accuracy_m: Number.isFinite(accuracy) ? accuracy : undefined,
               captured_at: new Date(position.timestamp || Date.now()).toISOString(),
               permission_state: Number.isFinite(accuracy) && accuracy > 500 ? "weak_accuracy" : "granted",
+              capture_delay_ms: captureDelayMs,
             },
           });
         },
         (error) => {
+          const captureDelayMs = Date.now() - captureStartedAt;
           const stateByCode = {
             1: "denied",
             2: "unavailable",
             3: "timeout",
           };
-          resolve({ location: { permission_state: stateByCode[error?.code] || permissionState || "unavailable" } });
+          resolve({
+            location: {
+              permission_state: stateByCode[error?.code] || permissionState || "unavailable",
+              capture_delay_ms: captureDelayMs,
+            },
+          });
         },
-        { enableHighAccuracy: true, timeout: 2500, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     });
   }, [timeSummary?.policy?.punch_location_mode]);
@@ -838,7 +848,11 @@ useEffect(() => {
       if (!confirmed) return;
     }
     setClocking(true);
+    setLocationCaptureMessage("");
     try {
+      if ((timeSummary?.policy?.punch_location_mode || "off") === "optional") {
+        setLocationCaptureMessage("Getting location evidence...");
+      }
       const punchPayload = await getPunchLocationPayload();
       if (action === "in") {
         await timeTracking.clockIn(todayShift.id, punchPayload);
@@ -846,6 +860,11 @@ useEffect(() => {
       } else {
         await timeTracking.clockOut(todayShift.id, punchPayload);
         setSnackbar({ open: true, msg: "Clock-out recorded.", error: false });
+      }
+      if (punchPayload?.location?.permission_state === "timeout") {
+        setLocationCaptureMessage("Location could not be verified in time. Your punch was still recorded.");
+      } else {
+        setLocationCaptureMessage("");
       }
       await loadShifts();
       await loadTimeSummary();
@@ -1706,10 +1725,15 @@ const breakTimelineMeta = useMemo(() => {
                     </Button>
                   </span>
                 </Tooltip>
-                {isClocked && !isInProgress && !isCompleted && (
-                  <Chip label={todayShift.status} size="small" sx={{ width: "fit-content" }} />
-                )}
+              {isClocked && !isInProgress && !isCompleted && (
+                <Chip label={todayShift.status} size="small" sx={{ width: "fit-content" }} />
+              )}
               </Stack>
+              {locationCaptureMessage && (
+                <Alert severity={locationCaptureMessage.includes("could not") ? "warning" : "info"} sx={{ mt: 1 }}>
+                  {locationCaptureMessage}
+                </Alert>
+              )}
               {isInProgress && (
                 <Stack
                   direction={{ xs: "column", sm: "row" }}

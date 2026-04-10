@@ -5,21 +5,22 @@ import {
   Button,
   Chip,
   CircularProgress,
+  MenuItem,
   Grid,
   Link,
   Paper,
   Stack,
+  Typography,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
   TextField,
-  Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { DateTime } from "luxon";
-import { timeTracking } from "../../utils/api";
+import api, { timeTracking } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
 
 const formatDateTime = (value, timezone) => {
@@ -54,6 +55,16 @@ const locationStateChipSx = (location) => (theme) => {
   };
 };
 
+const slowLocationChipSx = (theme) => ({
+  color: theme.palette.text.primary,
+  bgcolor: alpha(theme.palette.warning.main, 0.14),
+  border: `1px solid ${alpha(theme.palette.warning.main, 0.42)}`,
+  fontWeight: 800,
+  "& .MuiChip-label": {
+    color: "inherit",
+  },
+});
+
 const LocationCell = ({ location }) => {
   if (!location?.has_location && !location?.permission_state) {
     return <Typography color="text.secondary">No evidence</Typography>;
@@ -67,6 +78,9 @@ const LocationCell = ({ location }) => {
           label={location.permission_state || "unknown"}
           sx={locationStateChipSx(location)}
         />
+        {Number(location.capture_delay_ms) > 5000 && (
+          <Chip size="small" label="Slow location" sx={slowLocationChipSx} />
+        )}
         {location.has_location && href && (
           <Link href={href} target="_blank" rel="noreferrer" underline="hover">
             Open map
@@ -90,7 +104,14 @@ const LocationCell = ({ location }) => {
 const PunchLocationsPanel = () => {
   const viewerTimezone = getUserTimezone();
   const today = useMemo(() => DateTime.local().toISODate(), []);
-  const [filters, setFilters] = useState({ start_date: today, end_date: today });
+  const [departments, setDepartments] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [filters, setFilters] = useState({
+    recruiter_id: "",
+    department_id: "",
+    start_date: today,
+    end_date: today,
+  });
   const [items, setItems] = useState([]);
   const [summary, setSummary] = useState(null);
   const [policy, setPolicy] = useState(null);
@@ -117,9 +138,102 @@ const PunchLocationsPanel = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const loadDepartments = async () => {
+      try {
+        const res = await api.get("/api/departments", { headers });
+        const data = res.data;
+        if (Array.isArray(data)) {
+          setDepartments(data.map((dept) => ({ id: dept.id, name: dept.name })));
+        }
+      } catch {
+        setDepartments([]);
+      }
+    };
+
+    const loadEmployees = async () => {
+      try {
+        const res = await api.get("/manager/recruiters", {
+          headers,
+        });
+        const data = res.data;
+        const rows = Array.isArray(data?.recruiters) ? data.recruiters : Array.isArray(data) ? data : [];
+        setEmployees(rows);
+      } catch {
+        setEmployees([]);
+      }
+    };
+
+    loadDepartments();
+    loadEmployees();
+  }, []);
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.start_date, filters.end_date, filters.department_id, filters.recruiter_id]);
+
   const handleFilter = (key) => (event) => {
     setFilters((prev) => ({ ...prev, [key]: event.target.value }));
   };
+
+  const handleDepartmentChange = (event) => {
+    const value = event.target.value;
+    setFilters((prev) => {
+      let recruiterId = prev.recruiter_id;
+      if (
+        value &&
+        recruiterId &&
+        !employees.some(
+          (emp) =>
+            String(emp.id) === String(recruiterId) &&
+            String(emp.department_id || emp.departmentId || "") === String(value)
+        )
+      ) {
+        recruiterId = "";
+      }
+      return { ...prev, department_id: value, recruiter_id: recruiterId };
+    });
+  };
+
+  const applyDatePreset = (preset) => {
+    const now = DateTime.local();
+    let start = now;
+    let end = now;
+    if (preset === "this_week") {
+      start = now.startOf("week");
+      end = now.endOf("week");
+    } else if (preset === "last_week") {
+      start = now.startOf("week").minus({ weeks: 1 });
+      end = start.endOf("week");
+    }
+    setFilters((prev) => ({
+      ...prev,
+      start_date: start.toISODate(),
+      end_date: end.toISODate(),
+    }));
+  };
+
+  const departmentOptions = useMemo(() => {
+    if (departments.length) return departments;
+    const unique = new Map();
+    employees.forEach((emp) => {
+      if (emp.department_id && emp.department_name) {
+        unique.set(emp.department_id, emp.department_name);
+      }
+    });
+    return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
+  }, [departments, employees]);
+
+  const visibleEmployees = useMemo(() => {
+    if (!filters.department_id) return employees;
+    return employees.filter(
+      (emp) => String(emp.department_id || emp.departmentId || "") === String(filters.department_id)
+    );
+  }, [employees, filters.department_id]);
 
   return (
     <Stack spacing={2.5}>
@@ -133,14 +247,81 @@ const PunchLocationsPanel = () => {
               Advisory GPS evidence captured only when employees tap Clock In or Clock Out. This is review-only and never blocks a punch.
             </Typography>
           </Box>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={4}>
-              <TextField type="date" fullWidth label="From" value={filters.start_date} onChange={handleFilter("start_date")} InputLabelProps={{ shrink: true }} />
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={3}>
+              <TextField
+                select
+                fullWidth
+                label="Department"
+                value={filters.department_id}
+                onChange={handleDepartmentChange}
+              >
+                <MenuItem value="">All departments</MenuItem>
+                {departmentOptions.map((dept) => (
+                  <MenuItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </MenuItem>
+                ))}
+              </TextField>
             </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField type="date" fullWidth label="To" value={filters.end_date} onChange={handleFilter("end_date")} InputLabelProps={{ shrink: true }} />
+            <Grid item xs={12} md={3}>
+              <TextField
+                select
+                fullWidth
+                label="Employee"
+                value={filters.recruiter_id}
+                onChange={handleFilter("recruiter_id")}
+                helperText="Choose one employee or leave as All employees to see everyone."
+              >
+                <MenuItem value="">All employees (show everyone)</MenuItem>
+                {visibleEmployees.map((rec) => {
+                  const displayName =
+                    rec.name ||
+                    rec.full_name ||
+                    [rec.first_name, rec.last_name].filter(Boolean).join(" ") ||
+                    (rec.email ? rec.email : `#${rec.id}`);
+                  return (
+                    <MenuItem key={rec.id} value={rec.id}>
+                      {displayName}
+                    </MenuItem>
+                  );
+                })}
+              </TextField>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} md={3}>
+              <TextField
+                type="date"
+                fullWidth
+                label="From"
+                value={filters.start_date}
+                onChange={handleFilter("start_date")}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                type="date"
+                fullWidth
+                label="To"
+                value={filters.end_date}
+                onChange={handleFilter("end_date")}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ height: "100%" }}>
+                <Button size="small" variant="outlined" onClick={() => applyDatePreset("today")}>
+                  Today
+                </Button>
+                <Button size="small" variant="outlined" onClick={() => applyDatePreset("this_week")}>
+                  This week
+                </Button>
+                <Button size="small" variant="outlined" onClick={() => applyDatePreset("last_week")}>
+                  Last week
+                </Button>
+              </Stack>
+            </Grid>
+            <Grid item xs={12} md={3}>
               <Button variant="contained" onClick={load} disabled={loading}>
                 Refresh
               </Button>

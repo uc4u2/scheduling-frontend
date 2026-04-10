@@ -24,6 +24,7 @@ import {
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import { DateTime } from "luxon";
 import api from "../../utils/api";
 
 const palette = {
@@ -113,6 +114,8 @@ function flagChips(flags = {}) {
 const FraudAnomaliesPanel = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [departments, setDepartments] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState({ counts: {}, total_events: 0, total_shifts: 0, anomaly_percent: 0 });
   const [offenders, setOffenders] = useState([]);
@@ -123,6 +126,8 @@ const FraudAnomaliesPanel = () => {
     return {
       start_date: start.toISOString().slice(0, 10),
       end_date: today.toISOString().slice(0, 10),
+      department_id: "",
+      recruiter_id: "",
       type: "any",
     };
   });
@@ -141,6 +146,8 @@ const FraudAnomaliesPanel = () => {
         end_date: filters.end_date,
         type: filters.type || "any",
       });
+      if (filters.department_id) params.set("department_id", filters.department_id);
+      if (filters.recruiter_id) params.set("recruiter_id", filters.recruiter_id);
       const res = await api.get(`/manager/time-entries/anomalies?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -159,7 +166,100 @@ const FraudAnomaliesPanel = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const loadDepartments = async () => {
+      try {
+        const res = await api.get("/api/departments", { headers });
+        const data = res.data;
+        if (Array.isArray(data)) {
+          setDepartments(data.map((dept) => ({ id: dept.id, name: dept.name })));
+        }
+      } catch {
+        setDepartments([]);
+      }
+    };
+
+    const loadEmployees = async () => {
+      try {
+        const res = await api.get("/manager/recruiters", {
+          headers,
+        });
+        const data = res.data;
+        const rows = Array.isArray(data?.recruiters) ? data.recruiters : Array.isArray(data) ? data : [];
+        setEmployees(rows);
+      } catch {
+        setEmployees([]);
+      }
+    };
+
+    loadDepartments();
+    loadEmployees();
+  }, []);
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.start_date, filters.end_date, filters.department_id, filters.recruiter_id, filters.type]);
+
   const percent = (summary?.anomaly_percent || 0).toFixed(1);
+
+  const handleDepartmentChange = (event) => {
+    const value = event.target.value;
+    setFilters((prev) => {
+      let recruiterId = prev.recruiter_id;
+      if (
+        value &&
+        recruiterId &&
+        !employees.some(
+          (emp) =>
+            String(emp.id) === String(recruiterId) &&
+            String(emp.department_id || emp.departmentId || "") === String(value)
+        )
+      ) {
+        recruiterId = "";
+      }
+      return { ...prev, department_id: value, recruiter_id: recruiterId };
+    });
+  };
+
+  const applyDatePreset = (preset) => {
+    const now = DateTime.local();
+    let start = now;
+    let end = now;
+    if (preset === "this_week") {
+      start = now.startOf("week");
+      end = now.endOf("week");
+    } else if (preset === "last_week") {
+      start = now.startOf("week").minus({ weeks: 1 });
+      end = start.endOf("week");
+    }
+    setFilters((prev) => ({
+      ...prev,
+      start_date: start.toISODate(),
+      end_date: end.toISODate(),
+    }));
+  };
+
+  const departmentOptions = useMemo(() => {
+    if (departments.length) return departments;
+    const unique = new Map();
+    employees.forEach((emp) => {
+      if (emp.department_id && emp.department_name) {
+        unique.set(emp.department_id, emp.department_name);
+      }
+    });
+    return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
+  }, [departments, employees]);
+
+  const visibleEmployees = useMemo(() => {
+    if (!filters.department_id) return employees;
+    return employees.filter(
+      (emp) => String(emp.department_id || emp.departmentId || "") === String(filters.department_id)
+    );
+  }, [employees, filters.department_id]);
 
   const riskChip = (score) => {
     const val = Number(score || 0);
@@ -231,50 +331,101 @@ const FraudAnomaliesPanel = () => {
         </Paper>
       </Collapse>
 
-      <Stack
-        direction={isMobile ? "column" : "row"}
-        spacing={isMobile ? 1.5 : 2}
-        alignItems={isMobile ? "stretch" : "center"}
-        flexWrap="wrap"
-      >
-        <TextField
-          label="From"
-          type="date"
-          size="small"
-          value={filters.start_date}
-          onChange={(e) => setFilters((f) => ({ ...f, start_date: e.target.value }))}
-          InputLabelProps={{ shrink: true }}
-          fullWidth={isMobile}
-        />
-        <TextField
-          label="To"
-          type="date"
-          size="small"
-          value={filters.end_date}
-          onChange={(e) => setFilters((f) => ({ ...f, end_date: e.target.value }))}
-          InputLabelProps={{ shrink: true }}
-          fullWidth={isMobile}
-        />
-        <TextField
-          label="Anomaly type"
-          select
-          size="small"
-          value={filters.type}
-          onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
-          sx={{ minWidth: isMobile ? "100%" : 180 }}
-          fullWidth={isMobile}
-        >
-          <MenuItem value="any">Any</MenuItem>
-          <MenuItem value="device">New device</MenuItem>
-          <MenuItem value="location">New location</MenuItem>
-          <MenuItem value="multi_ip">Multi-IP same day</MenuItem>
-          <MenuItem value="outside_trusted">Outside trusted IP</MenuItem>
-        </TextField>
-        {/* future: add employee/department filters when needed */}
-        <Button variant="contained" onClick={load} disabled={loading} fullWidth={isMobile}>
-          {loading ? "Loading…" : "Refresh"}
-        </Button>
-      </Stack>
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={3}>
+          <TextField
+            select
+            fullWidth
+            label="Anomaly type"
+            value={filters.type}
+            onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
+          >
+            <MenuItem value="any">Any</MenuItem>
+            <MenuItem value="device">New device</MenuItem>
+            <MenuItem value="location">New location</MenuItem>
+            <MenuItem value="multi_ip">Multi-IP same day</MenuItem>
+            <MenuItem value="outside_trusted">Outside trusted IP</MenuItem>
+          </TextField>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <TextField
+            select
+            fullWidth
+            label="Department"
+            value={filters.department_id}
+            onChange={handleDepartmentChange}
+          >
+            <MenuItem value="">All departments</MenuItem>
+            {departmentOptions.map((dept) => (
+              <MenuItem key={dept.id} value={dept.id}>
+                {dept.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <TextField
+            select
+            fullWidth
+            label="Employee"
+            value={filters.recruiter_id}
+            onChange={(e) => setFilters((f) => ({ ...f, recruiter_id: e.target.value }))}
+            helperText="Choose one employee or leave as All employees to see everyone."
+          >
+            <MenuItem value="">All employees (show everyone)</MenuItem>
+            {visibleEmployees.map((rec) => {
+              const displayName =
+                rec.name ||
+                rec.full_name ||
+                [rec.first_name, rec.last_name].filter(Boolean).join(" ") ||
+                (rec.email ? rec.email : `#${rec.id}`);
+              return (
+                <MenuItem key={rec.id} value={rec.id}>
+                  {displayName}
+                </MenuItem>
+              );
+            })}
+          </TextField>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <TextField
+            label="From"
+            type="date"
+            fullWidth
+            value={filters.start_date}
+            onChange={(e) => setFilters((f) => ({ ...f, start_date: e.target.value }))}
+            InputLabelProps={{ shrink: true }}
+          />
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <TextField
+            label="To"
+            type="date"
+            fullWidth
+            value={filters.end_date}
+            onChange={(e) => setFilters((f) => ({ ...f, end_date: e.target.value }))}
+            InputLabelProps={{ shrink: true }}
+          />
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ height: "100%" }}>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("today")}>
+              Today
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("this_week")}>
+              This week
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("last_week")}>
+              Last week
+            </Button>
+          </Stack>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Button variant="contained" onClick={load} disabled={loading} fullWidth={isMobile}>
+            {loading ? "Loading…" : "Refresh"}
+          </Button>
+        </Grid>
+      </Grid>
 
       {error && <Alert severity="error">{error}</Alert>}
 
