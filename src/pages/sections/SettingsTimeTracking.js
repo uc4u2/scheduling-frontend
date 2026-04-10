@@ -5,6 +5,7 @@ import {
   Button,
   CircularProgress,
   Grid,
+  MenuItem,
   Snackbar,
   Stack,
   Switch,
@@ -45,6 +46,7 @@ const SettingsTimeTracking = () => {
         rounding_minutes: data.rounding_minutes ?? 15,
         unpaid_break_minutes_over_6h: data.unpaid_break_minutes_over_6h ?? 30,
         require_manager_approval: data.require_manager_approval ?? true,
+        punch_location_mode: data.punch_location_mode || "off",
       });
     } catch (err) {
       setError(err?.response?.data?.error || "Unable to load time-tracking settings.");
@@ -64,6 +66,10 @@ const SettingsTimeTracking = () => {
   const handleNumberChange = (key) => (event) => {
     const raw = Number(event.target.value || 0);
     setPolicy((prev) => ({ ...prev, [key]: Math.max(0, raw) }));
+  };
+
+  const handleSelectChange = (key) => (event) => {
+    setPolicy((prev) => ({ ...prev, [key]: event.target.value }));
   };
 
   const save = async () => {
@@ -128,6 +134,22 @@ const SettingsTimeTracking = () => {
         </Stack>
 
         <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <TextField
+              select
+              label={t("settings.timeTracking.fields.punch_location_mode.label", "Punch location evidence")}
+              fullWidth
+              value={policy.punch_location_mode || "off"}
+              onChange={handleSelectChange("punch_location_mode")}
+              helperText={t(
+                "settings.timeTracking.fields.punch_location_mode.helper",
+                "Optional mode attempts one foreground location capture during clock in/out. It never blocks punching."
+              )}
+            >
+              <MenuItem value="off">{t("settings.timeTracking.locationMode.off", "Off")}</MenuItem>
+              <MenuItem value="optional">{t("settings.timeTracking.locationMode.optional", "Optional evidence")}</MenuItem>
+            </TextField>
+          </Grid>
           {numericFields.map((field) => (
             <Grid item xs={12} md={6} key={field.key}>
               <TextField

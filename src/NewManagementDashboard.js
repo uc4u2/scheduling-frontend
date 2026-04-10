@@ -100,6 +100,7 @@ import SecondMasterCalendar from "./pages/sections/SecondMasterCalendar";
 import Team from "./pages/sections/Team";
 import TimeEntriesPanel from "./pages/sections/TimeEntriesPanel";
 import FraudAnomaliesPanel from "./pages/sections/FraudAnomaliesPanel";
+import PunchLocationsPanel from "./pages/sections/PunchLocationsPanel";
 import LeaveRequests from "./pages/sections/LeaveRequests";
 import Meetings from "./pages/sections/Meetings";
 import ROE from "./pages/sections/ROE";
@@ -187,6 +188,7 @@ const menuConfig = [
       { labelKey: "manager.menu.shiftMonitoring", key: "shift-monitoring", icon: <History /> },
       { labelKey: "manager.menu.timeTracking", key: "time-tracking", icon: <History /> },
       { labelKey: "manager.menu.fraudAnomalies", key: "time-tracking-fraud", icon: <History /> },
+      { label: "Punch Locations", key: "time-tracking-locations", icon: <History /> },
       { labelKey: "manager.menu.leaves", key: "leaves", icon: <Assignment /> },
       { labelKey: "manager.menu.swapApprovals", key: "swap-approvals", icon: <Assignment /> },
     ],
@@ -3114,6 +3116,20 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
             }}
           >
             <FraudAnomaliesPanel />
+          </ManagementFrame>
+        );
+
+      case "time-tracking-locations":
+        return (
+          <ManagementFrame
+            title="Punch Locations"
+            subtitle="Review advisory on-punch location evidence without blocking employee time logging."
+            fullWidth
+            contentSx={{
+              p: { xs: 1.5, md: 2.5 },
+            }}
+          >
+            <PunchLocationsPanel />
           </ManagementFrame>
         );
 

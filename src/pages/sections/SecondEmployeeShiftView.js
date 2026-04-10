@@ -780,6 +780,55 @@ useEffect(() => {
     [shiftTimezone, viewerTimezone]
   );
 
+  const getPunchLocationPayload = useCallback(async () => {
+    const mode = timeSummary?.policy?.punch_location_mode || "off";
+    if (mode !== "optional") return {};
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      return { location: { permission_state: "unsupported" } };
+    }
+
+    let permissionState = "prompt";
+    try {
+      if (navigator.permissions?.query) {
+        const permission = await navigator.permissions.query({ name: "geolocation" });
+        permissionState = permission?.state || permissionState;
+      }
+    } catch {
+      permissionState = "prompt";
+    }
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = position?.coords;
+          if (!coords) {
+            resolve({ location: { permission_state: "unavailable" } });
+            return;
+          }
+          const accuracy = Number(coords.accuracy);
+          resolve({
+            location: {
+              lat: coords.latitude,
+              lng: coords.longitude,
+              accuracy_m: Number.isFinite(accuracy) ? accuracy : undefined,
+              captured_at: new Date(position.timestamp || Date.now()).toISOString(),
+              permission_state: Number.isFinite(accuracy) && accuracy > 500 ? "weak_accuracy" : "granted",
+            },
+          });
+        },
+        (error) => {
+          const stateByCode = {
+            1: "denied",
+            2: "unavailable",
+            3: "timeout",
+          };
+          resolve({ location: { permission_state: stateByCode[error?.code] || permissionState || "unavailable" } });
+        },
+        { enableHighAccuracy: true, timeout: 2500, maximumAge: 0 }
+      );
+    });
+  }, [timeSummary?.policy?.punch_location_mode]);
+
   const handleClockAction = async (action) => {
     if (!todayShift) return;
     if (action === "out" && canClockOut) {
@@ -790,11 +839,12 @@ useEffect(() => {
     }
     setClocking(true);
     try {
+      const punchPayload = await getPunchLocationPayload();
       if (action === "in") {
-        await timeTracking.clockIn(todayShift.id);
+        await timeTracking.clockIn(todayShift.id, punchPayload);
         setSnackbar({ open: true, msg: "Clock-in recorded.", error: false });
       } else {
-        await timeTracking.clockOut(todayShift.id);
+        await timeTracking.clockOut(todayShift.id, punchPayload);
         setSnackbar({ open: true, msg: "Clock-out recorded.", error: false });
       }
       await loadShifts();

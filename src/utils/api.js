@@ -433,16 +433,18 @@ export const timeTracking = {
     api.get("/admin/time-tracking-settings", config).then((r) => r.data?.policy || r.data),
   saveSettings: (payload, config = {}) =>
     api.post("/admin/time-tracking-settings", payload, config).then((r) => r.data),
-  clockIn: (shiftId, config = {}) =>
-    api.post(`/employee/shifts/${shiftId}/clock-in`, {}, config).then((r) => r.data),
-  clockOut: (shiftId, config = {}) =>
-    api.post(`/employee/shifts/${shiftId}/clock-out`, {}, config).then((r) => r.data),
+  clockIn: (shiftId, payload = {}, config = {}) =>
+    api.post(`/employee/shifts/${shiftId}/clock-in`, payload, config).then((r) => r.data),
+  clockOut: (shiftId, payload = {}, config = {}) =>
+    api.post(`/employee/shifts/${shiftId}/clock-out`, payload, config).then((r) => r.data),
   startBreak: (shiftId, config = {}) =>
     api.post(`/employee/shifts/${shiftId}/break-start`, {}, config).then((r) => r.data),
   endBreak: (shiftId, config = {}) =>
     api.post(`/employee/shifts/${shiftId}/break-end`, {}, config).then((r) => r.data),
   listEntries: (params = {}, config = {}) =>
     api.get("/manager/time-entries", { params, ...config }).then((r) => r.data),
+  listPunchLocations: (params = {}, config = {}) =>
+    api.get("/manager/time-entries/locations", { params, ...config }).then((r) => r.data),
   managerHistory: (params = {}, config = {}) =>
     api.get("/manager/time-entries/history", { params, ...config }).then((r) => r.data),
   approveEntry: (id, config = {}) =>
