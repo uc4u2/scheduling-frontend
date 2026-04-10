@@ -17,6 +17,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import { timeTracking } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
@@ -35,6 +36,24 @@ const mapLink = (loc) => {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${loc.lat},${loc.lng}`)}`;
 };
 
+const locationStateChipSx = (location) => (theme) => {
+  const isDenied = location?.permission_state === "denied";
+  const base = location?.has_location
+    ? theme.palette.success.main
+    : isDenied
+    ? theme.palette.warning.main
+    : theme.palette.text.secondary;
+  return {
+    color: theme.palette.text.primary,
+    bgcolor: alpha(base, 0.14),
+    border: `1px solid ${alpha(base, 0.38)}`,
+    fontWeight: 800,
+    "& .MuiChip-label": {
+      color: "inherit",
+    },
+  };
+};
+
 const LocationCell = ({ location }) => {
   if (!location?.has_location && !location?.permission_state) {
     return <Typography color="text.secondary">No evidence</Typography>;
@@ -46,7 +65,7 @@ const LocationCell = ({ location }) => {
         <Chip
           size="small"
           label={location.permission_state || "unknown"}
-          color={location.has_location ? "success" : location.permission_state === "denied" ? "warning" : "default"}
+          sx={locationStateChipSx(location)}
         />
         {location.has_location && href && (
           <Link href={href} target="_blank" rel="noreferrer" underline="hover">

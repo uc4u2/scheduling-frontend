@@ -106,6 +106,10 @@ const readableRosterChipSx = (theme) => ({
   "& .MuiChip-label": {
     color: "inherit",
   },
+  "&.MuiChip-filled": {
+    color: theme.palette.text.primary,
+    backgroundColor: alpha(theme.palette.warning.main, 0.16),
+  },
 });
 
 const TimeEntriesPanel = ({ recruiters = [] }) => {
@@ -1579,7 +1583,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                         size="small"
                         color={statusColor[active.status] || "default"}
                         label={active.status}
-                        sx={{ fontWeight: 700 }}
+                        sx={readableRosterChipSx}
                       />
                       {(() => {
                         if (active.break_in_progress) {

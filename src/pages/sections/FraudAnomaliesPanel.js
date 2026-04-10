@@ -74,6 +74,25 @@ const readableTableSx = (theme) => ({
   },
 });
 
+const anomalyChipSx = (tone = "primary") => (theme) => {
+  const colorByTone = {
+    error: theme.palette.error.main,
+    warning: theme.palette.warning.main,
+    success: theme.palette.success.main,
+    primary: theme.palette.primary.main,
+  };
+  const base = colorByTone[tone] || theme.palette.primary.main;
+  return {
+    color: theme.palette.text.primary,
+    bgcolor: alpha(base, 0.14),
+    border: `1px solid ${alpha(base, 0.4)}`,
+    fontWeight: 800,
+    "& .MuiChip-label": {
+      color: "inherit",
+    },
+  };
+};
+
 function flagChips(flags = {}) {
   return Object.entries(flags)
     .filter(([, v]) => v)
@@ -82,8 +101,11 @@ function flagChips(flags = {}) {
         key={k}
         size="small"
         label={flagLabels[k] || k}
-        color={k === "outside_trusted" ? "error" : k === "multi_ip_same_day" ? "warning" : "primary"}
-        sx={{ mr: 0.5, mb: 0.5, fontWeight: 700 }}
+        sx={(theme) => ({
+          ...anomalyChipSx(k === "outside_trusted" ? "error" : k === "multi_ip_same_day" ? "warning" : "primary")(theme),
+          mr: 0.5,
+          mb: 0.5,
+        })}
       />
     ));
 }
@@ -141,15 +163,14 @@ const FraudAnomaliesPanel = () => {
 
   const riskChip = (score) => {
     const val = Number(score || 0);
-    let color = "success";
-    if (val >= 60) color = "error";
-    else if (val >= 30) color = "warning";
+    let tone = "success";
+    if (val >= 60) tone = "error";
+    else if (val >= 30) tone = "warning";
     return (
       <Chip
         size="small"
         label={`${val}`}
-        color={color}
-        sx={{ fontWeight: 600 }}
+        sx={anomalyChipSx(tone)}
       />
     );
   };
