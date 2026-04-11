@@ -69,6 +69,42 @@ const statusColor = {
   rejected: "error",
 };
 
+const formatBreakMinutesLabel = (value, compact = false) => {
+  const minutes = Number(value || 0);
+  if (!Number.isFinite(minutes) || minutes <= 0) return compact ? "0m" : "0 min";
+  if (minutes < 1) return compact ? "<1m" : "Less than 1 min";
+  const rounded = Math.round(minutes);
+  return compact ? `${rounded}m` : `${rounded} min`;
+};
+
+const statusChipSx = (status, active = false) => (theme) => {
+  const normalized = String(status || "").toLowerCase();
+  if (active || normalized === "in_progress") {
+    return {
+      bgcolor: theme.palette.primary.main,
+      color: theme.palette.primary.contrastText,
+      fontWeight: 800,
+      border: `1px solid ${theme.palette.primary.dark}`,
+      "& .MuiChip-icon": { color: "inherit" },
+    };
+  }
+  if (normalized === "approved" || normalized === "completed") {
+    return {
+      bgcolor: theme.palette.success.main,
+      color: theme.palette.success.contrastText,
+      fontWeight: 800,
+      "& .MuiChip-icon": { color: "inherit" },
+    };
+  }
+  return {
+    bgcolor: theme.palette.background.paper,
+    color: theme.palette.text.primary,
+    fontWeight: 700,
+    border: `1px solid ${theme.palette.divider}`,
+    "& .MuiChip-icon": { color: "inherit" },
+  };
+};
+
 /* eslint-disable react-hooks/exhaustive-deps */
 
 const SecondEmployeeShiftView = () => {
@@ -1185,7 +1221,12 @@ const breakTimelineMeta = useMemo(() => {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Chip size="small" color={headerChipColor} label={headerStatusLabel} />
+          <Chip
+            size="small"
+            color={headerChipColor}
+            label={headerStatusLabel}
+            sx={statusChipSx(todayShift?.status, isInProgress)}
+          />
           {lastUpdatedLabel && (
             <Typography variant="caption" color="text.secondary">
               Last updated {lastUpdatedLabel} · auto-refreshing
@@ -1532,6 +1573,7 @@ const breakTimelineMeta = useMemo(() => {
                 color={isLockedShift ? "success" : isInProgress ? "primary" : "default"}
                 label={todayShift.status}
                 icon={<Box component="span" sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "currentColor" }} />}
+                sx={statusChipSx(todayShift.status, isInProgress)}
               />
             )}
           </Stack>
@@ -1682,7 +1724,7 @@ const breakTimelineMeta = useMemo(() => {
                       label={
                         timelineMeta.breakDeficit > 0
                           ? `Break overdue · ${timelineMeta.breakDeficit}m required`
-                          : `Break compliant (${totalBreakMinutes}m logged)`
+                          : `Break compliant (${formatBreakMinutesLabel(totalBreakMinutes, true)} logged)`
                       }
                       sx={{ mt: 1, width: "fit-content" }}
                     />
@@ -1726,7 +1768,7 @@ const breakTimelineMeta = useMemo(() => {
                   </span>
                 </Tooltip>
               {isClocked && !isInProgress && !isCompleted && (
-                <Chip label={todayShift.status} size="small" sx={{ width: "fit-content" }} />
+                <Chip label={todayShift.status} size="small" sx={statusChipSx(todayShift.status)} />
               )}
               </Stack>
               {locationCaptureMessage && (
@@ -1761,7 +1803,7 @@ const breakTimelineMeta = useMemo(() => {
                     End Break
                   </Button>
                   <Typography variant="caption" color="text.secondary">
-                    Breaks logged: {totalBreakMinutes} min {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
+                    Breaks logged: {formatBreakMinutesLabel(totalBreakMinutes)} {todayShift?.break_paid ? "(paid)" : "(unpaid)"}
                   </Typography>
                 </Stack>
               )}
