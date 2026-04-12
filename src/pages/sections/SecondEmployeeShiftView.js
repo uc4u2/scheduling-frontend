@@ -290,10 +290,10 @@ const loadEmployeeLeaveRequests = useCallback(async () => {
   }
 }, [token]);
 
-const loadEmployeeLeaveBalances = useCallback(async () => {
+const loadEmployeeLeaveBalances = useCallback(async (params = {}) => {
   setLeaveBalancesLoading(true);
   try {
-    const res = await api.get("/employee/leave-balances", { headers: authHeader });
+    const res = await api.get("/employee/leave-balances", { headers: authHeader, params });
     setEmployeeLeaveBalances(normalizeLeaveBalanceSummary(res.data));
   } catch {
     setEmployeeLeaveBalances(normalizeLeaveBalanceSummary());
@@ -524,6 +524,15 @@ useEffect(() => {
 useEffect(() => {
   loadTimeHistory();
 }, [loadTimeHistory, historyFilters.startDate, historyFilters.endDate, historyFilters.status]);
+
+useEffect(() => {
+  if (!leaveModalOpen || !leaveForm.leave_type) return;
+  loadEmployeeLeaveBalances({
+    leave_start_date: leaveForm.start_date || undefined,
+    leave_type: leaveForm.leave_type,
+    requested_hours: leaveForm.requested_hours || undefined,
+  });
+}, [leaveModalOpen, leaveForm.leave_type, leaveForm.start_date, leaveForm.requested_hours, loadEmployeeLeaveBalances]);
 
 useEffect(() => {
   const id = setInterval(() => setLastUpdated(DateTime.now()), 30000);
@@ -2561,6 +2570,22 @@ const breakTimelineMeta = useMemo(() => {
                     <Typography variant="body2" fontWeight={800}>
                       {formatBalanceHours(balance.balance_hours)}
                     </Typography>
+                    {balance.days_equivalent != null && (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                        ~{Number(balance.days_equivalent).toFixed(2)} day(s)
+                      </Typography>
+                    )}
+                    {balance.next_expected_accrual_hours ? (
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                        Next: +{formatBalanceHours(balance.next_expected_accrual_hours)}
+                        {balance.next_expected_accrual_date ? ` on ${balance.next_expected_accrual_date}` : ""}
+                      </Typography>
+                    ) : null}
+                    {balance.eligibility_date && !balance.eligible_now && (
+                      <Typography variant="caption" color="warning.main" sx={{ display: "block", fontWeight: 700 }}>
+                        Eligible {balance.eligibility_date}
+                      </Typography>
+                    )}
                   </Paper>
                 </Grid>
               ))}
@@ -3170,6 +3195,54 @@ const breakTimelineMeta = useMemo(() => {
             }
             label="Paid Leave"
           />
+          {(() => {
+            const selectedBalance = employeeLeaveBalances.balances.find((row) => row.leave_type === leaveForm.leave_type);
+            const future = selectedBalance?.future_balance;
+            if (!selectedBalance) return null;
+            return (
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, mt: 1 }}>
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2" fontWeight={800}>
+                    Paid balance context
+                  </Typography>
+                  {!leaveForm.is_paid_leave ? (
+                    <Alert severity="info" variant="outlined">
+                      Unpaid leave does not deduct from paid balance. It still creates a leave record, may affect scheduling, and may still require manager approval.
+                    </Alert>
+                  ) : (
+                    <>
+                      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 1 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Current balance</Typography>
+                          <Typography variant="body2" fontWeight={800}>{formatBalanceHours(selectedBalance.balance_hours)}</Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Available on start</Typography>
+                          <Typography variant="body2" fontWeight={800}>
+                            {future ? formatBalanceHours(future.available_on_leave_start_hours) : "—"}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Projected after request</Typography>
+                          <Typography variant="body2" fontWeight={800}>
+                            {future ? formatBalanceHours(future.projected_remaining_hours) : "—"}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      {future?.waiting_period_blocking && (
+                        <Alert severity="warning" variant="outlined">{future.waiting_period_message}</Alert>
+                      )}
+                      {selectedBalance.policy_summary?.grant_method && (
+                        <Typography variant="caption" color="text.secondary">
+                          Policy: {selectedBalance.policy_summary.grant_method.replace(/_/g, " ")} · Payroll formulas are separate.
+                        </Typography>
+                      )}
+                    </>
+                  )}
+                </Stack>
+              </Paper>
+            );
+          })()}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => {

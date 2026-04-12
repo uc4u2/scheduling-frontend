@@ -475,6 +475,14 @@ export const leaveSettings = {
     api.get("/manager/leave-balance-policies", config).then((r) => r.data),
   saveBalancePolicies: (payload, config = {}) =>
     api.put("/manager/leave-balance-policies", payload, config).then((r) => r.data),
+  getEntitlementPolicies: (config = {}) =>
+    api.get("/manager/leave-entitlement-policies", config).then((r) => r.data),
+  saveEntitlementPolicies: (payload, config = {}) =>
+    api.put("/manager/leave-entitlement-policies", payload, config).then((r) => r.data),
+  previewEntitlements: (payload, config = {}) =>
+    api.post("/manager/leave-entitlements/preview", payload, config).then((r) => r.data),
+  applyEntitlements: (payload, config = {}) =>
+    api.post("/manager/leave-entitlements/apply", payload, config).then((r) => r.data),
   previewBalanceAccruals: (payload, config = {}) =>
     api.post("/manager/leave-balance-accruals/preview", payload, config).then((r) => r.data),
   postBalanceAccruals: (payload, config = {}) =>

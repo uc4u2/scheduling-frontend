@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Box,
   Button,
   Chip,
@@ -36,6 +39,7 @@ import {
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import CloseIcon from "@mui/icons-material/Close";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SectionCard from "../../components/ui/SectionCard";
 import SettingsLeaveInsights from "./SettingsLeaveInsights";
 import { leaveSettings } from "../../utils/api";
@@ -44,13 +48,25 @@ import {
   LEAVE_TYPE_OPTIONS,
   ACCRUAL_FREQUENCY_OPTIONS,
   ACCRUAL_UNIT_OPTIONS,
+  ALLOWANCE_UNIT_OPTIONS,
+  ENTITLEMENT_GRANT_METHOD_OPTIONS,
   INSUFFICIENT_BALANCE_MODE_OPTIONS,
+  POLICY_YEAR_BASIS_OPTIONS,
+  PRORATION_METHOD_OPTIONS,
+  START_BASIS_OPTIONS,
+  buildLeaveEntitlementPolicyPatch,
   buildLeaveBalancePolicyPatch,
   buildLeaveSettingsPatch,
   formatAccrualFrequencyLabel,
+  formatGrantMethodLabel,
   formatLeaveTypeLabel,
+  formatPolicyYearBasisLabel,
+  formatProrationMethodLabel,
+  formatStartBasisLabel,
   hasLeaveBalancePolicyChanges,
+  hasLeaveEntitlementPolicyChanges,
   hasLeaveSettingsChanges,
+  normalizeLeaveEntitlementPolicies,
   normalizeLeaveBalancePolicies,
   normalizeLeaveSettings,
 } from "./utils/leaveSettings";
@@ -123,6 +139,25 @@ const formatAccrualTriggerLabel = (trigger) => {
     scheduled: "Scheduled automation",
   };
   return labels[trigger] || String(trigger || "manual").replace(/_/g, " ");
+};
+
+const entitlementImpactLabels = {
+  initialize: "Initialize",
+  partial_initialize: "Partial initialize",
+  top_up: "Top up",
+  skip_existing_balance: "Skipped: existing balance",
+  conflict_existing_manual_balance: "Manual balance conflict",
+  blocked_by_waiting_period: "Waiting period",
+  not_assigned: "Not assigned",
+  would_create_first_accrual: "Accrual preview",
+  no_change: "No change",
+};
+
+const entitlementImpactTone = (impact, skipped) => {
+  if (impact === "blocked_by_waiting_period" || impact === "conflict_existing_manual_balance") return "warning";
+  if (skipped) return "default";
+  if (impact === "would_create_first_accrual") return "primary";
+  return "success";
 };
 
 const readableChipSx = (tone = "default") => {
@@ -637,12 +672,30 @@ const SettingsLeaveSettings = () => {
   const [original, setOriginal] = useState(null);
   const [policies, setPolicies] = useState(() => normalizeLeaveBalancePolicies());
   const [originalPolicies, setOriginalPolicies] = useState(() => normalizeLeaveBalancePolicies());
+  const [entitlementPolicies, setEntitlementPolicies] = useState(() => normalizeLeaveEntitlementPolicies());
+  const [originalEntitlementPolicies, setOriginalEntitlementPolicies] = useState(() => normalizeLeaveEntitlementPolicies());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [policiesLoading, setPoliciesLoading] = useState(true);
   const [policiesSaving, setPoliciesSaving] = useState(false);
+  const [entitlementsLoading, setEntitlementsLoading] = useState(true);
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [entitlementPreviewDraft, setEntitlementPreviewDraft] = useState({
+    leave_type: "vacation",
+    recruiter_id: "",
+    department_id: "",
+    as_of_date: "",
+    effective_date: "",
+    action_mode: "initialize_missing_only",
+  });
+  const [entitlementPreviewResult, setEntitlementPreviewResult] = useState(null);
+  const [entitlementPreviewLoading, setEntitlementPreviewLoading] = useState(false);
+  const [entitlementPreviewError, setEntitlementPreviewError] = useState("");
+  const [entitlementApplyOpen, setEntitlementApplyOpen] = useState(false);
+  const [entitlementApplyLoading, setEntitlementApplyLoading] = useState(false);
+  const [entitlementApplyError, setEntitlementApplyError] = useState("");
+  const [entitlementApplyResult, setEntitlementApplyResult] = useState(null);
   const [previewDraft, setPreviewDraft] = useState({
     leave_type: "vacation",
     recruiter_id: "",
@@ -680,6 +733,10 @@ const SettingsLeaveSettings = () => {
     () => hasLeaveBalancePolicyChanges(policies, originalPolicies),
     [policies, originalPolicies]
   );
+  const entitlementsDirty = useMemo(
+    () => hasLeaveEntitlementPolicyChanges(entitlementPolicies, originalEntitlementPolicies),
+    [entitlementPolicies, originalEntitlementPolicies]
+  );
   const selectedDayCount = dayCountOptions.find((option) => option.value === settings?.default_day_count_strategy);
   const latestAccrualRun = accrualRuns[0] || null;
   const selectedLeaveTypeGuide = leaveTypeHelp ? leaveTypeSetupGuides[leaveTypeHelp] : null;
@@ -701,16 +758,24 @@ const SettingsLeaveSettings = () => {
 
   const loadBalancePolicies = async () => {
     setPoliciesLoading(true);
+    setEntitlementsLoading(true);
     setPoliciesError("");
     try {
-      const data = await leaveSettings.getBalancePolicies();
-      const normalized = normalizeLeaveBalancePolicies(data);
-      setPolicies(normalized);
-      setOriginalPolicies(normalized);
+      const [balanceData, entitlementData] = await Promise.all([
+        leaveSettings.getBalancePolicies(),
+        leaveSettings.getEntitlementPolicies(),
+      ]);
+      const normalizedBalance = normalizeLeaveBalancePolicies(balanceData);
+      const normalizedEntitlements = normalizeLeaveEntitlementPolicies(entitlementData);
+      setPolicies(normalizedBalance);
+      setOriginalPolicies(normalizedBalance);
+      setEntitlementPolicies(normalizedEntitlements);
+      setOriginalEntitlementPolicies(normalizedEntitlements);
     } catch (err) {
-      setPoliciesError(err?.response?.data?.error || err?.displayMessage || "Unable to load leave balance policies.");
+      setPoliciesError(err?.response?.data?.error || err?.displayMessage || "Unable to load leave allowance policies.");
     } finally {
       setPoliciesLoading(false);
+      setEntitlementsLoading(false);
     }
   };
 
@@ -796,19 +861,37 @@ const SettingsLeaveSettings = () => {
     }));
   };
 
+  const updateEntitlementPolicy = (leaveType, key, value) => {
+    setEntitlementPolicies((prev) => ({
+      ...(prev || normalizeLeaveEntitlementPolicies()),
+      policies: (prev?.policies || []).map((policy) =>
+        policy.leave_type === leaveType ? { ...policy, [key]: value } : policy
+      ),
+    }));
+  };
+
   const handleSavePolicies = async () => {
-    if (!policiesDirty || policiesSaving) return;
+    if ((!policiesDirty && !entitlementsDirty) || policiesSaving) return;
     setPoliciesSaving(true);
     setPoliciesError("");
     try {
-      const patch = buildLeaveBalancePolicyPatch(policies, originalPolicies);
-      const data = await leaveSettings.saveBalancePolicies(patch);
-      const normalized = normalizeLeaveBalancePolicies(data);
-      setPolicies(normalized);
-      setOriginalPolicies(normalized);
-      setSnackbar({ open: true, severity: "success", message: "Leave balance policies saved." });
+      if (entitlementsDirty) {
+        const entitlementPatch = buildLeaveEntitlementPolicyPatch(entitlementPolicies, originalEntitlementPolicies);
+        const entitlementData = await leaveSettings.saveEntitlementPolicies(entitlementPatch);
+        const normalizedEntitlements = normalizeLeaveEntitlementPolicies(entitlementData);
+        setEntitlementPolicies(normalizedEntitlements);
+        setOriginalEntitlementPolicies(normalizedEntitlements);
+      }
+      if (policiesDirty) {
+        const patch = buildLeaveBalancePolicyPatch(policies, originalPolicies);
+        const data = await leaveSettings.saveBalancePolicies(patch);
+        const normalized = normalizeLeaveBalancePolicies(data);
+        setPolicies(normalized);
+        setOriginalPolicies(normalized);
+      }
+      setSnackbar({ open: true, severity: "success", message: "Leave allowances and balance rules saved." });
     } catch (err) {
-      const message = err?.response?.data?.error || err?.displayMessage || "Unable to save leave balance policies.";
+      const message = err?.response?.data?.error || err?.displayMessage || "Unable to save leave allowances and balance rules.";
       setPoliciesError(message);
       setSnackbar({ open: true, severity: "error", message });
     } finally {
@@ -844,6 +927,10 @@ const SettingsLeaveSettings = () => {
     () => (previewResult?.rows || []).filter((row) => !row.skipped && Number(row.proposed_accrual_hours || 0) > 0),
     [previewResult]
   );
+  const postableEntitlementRows = useMemo(
+    () => (entitlementPreviewResult?.rows || []).filter((row) => !row.skipped && Number(row.proposed_ledger_delta_hours || 0) > 0),
+    [entitlementPreviewResult]
+  );
 
   const applySetupProfile = () => {
     const profile = setupProfiles[selectedSetupProfile] || setupProfiles.standard;
@@ -861,11 +948,98 @@ const SettingsLeaveSettings = () => {
         })),
       };
     });
+    setEntitlementPolicies((prev) => {
+      const normalized = prev || normalizeLeaveEntitlementPolicies();
+      return {
+        ...normalized,
+        policies: (normalized.policies || []).map((policy) => ({
+          ...policy,
+          enabled: false,
+          paid_entitlement_enabled: false,
+          allowance_amount: 0,
+          allowance_unit: "hours",
+          workday_hours: 8,
+          grant_method: "opening_balance",
+          policy_year_basis: "calendar_year",
+          start_basis: "hire_date",
+          proration_method: "prorate_first_period",
+          waiting_period_days: 0,
+          applies_to_new_hires: false,
+        })),
+      };
+    });
     setSnackbar({
       open: true,
       severity: "info",
       message: `${profile.label} recommended defaults applied to the draft. Review and save when ready.`,
     });
+  };
+
+  const buildEntitlementPreviewPayload = () => ({
+    leave_type: entitlementPreviewDraft.leave_type,
+    action_mode: entitlementPreviewDraft.action_mode || "initialize_missing_only",
+    ...(entitlementPreviewDraft.recruiter_id ? { recruiter_ids: [Number(entitlementPreviewDraft.recruiter_id)] } : {}),
+    ...(entitlementPreviewDraft.department_id ? { department_id: Number(entitlementPreviewDraft.department_id) } : {}),
+    ...(entitlementPreviewDraft.as_of_date ? { as_of_date: entitlementPreviewDraft.as_of_date } : {}),
+    ...(entitlementPreviewDraft.effective_date ? { effective_date: entitlementPreviewDraft.effective_date } : {}),
+  });
+
+  const runEntitlementPreview = async () => {
+    setEntitlementPreviewLoading(true);
+    setEntitlementPreviewError("");
+    setEntitlementPreviewResult(null);
+    setEntitlementApplyResult(null);
+    setEntitlementApplyError("");
+    try {
+      const data = await leaveSettings.previewEntitlements(buildEntitlementPreviewPayload());
+      setEntitlementPreviewResult(data);
+    } catch (err) {
+      setEntitlementPreviewError(err?.response?.data?.error || err?.displayMessage || "Unable to preview leave entitlements.");
+    } finally {
+      setEntitlementPreviewLoading(false);
+    }
+  };
+
+  const applyEntitlements = async () => {
+    if (!entitlementPreviewResult || entitlementApplyLoading || postableEntitlementRows.length === 0) return;
+    setEntitlementApplyLoading(true);
+    setEntitlementApplyError("");
+    try {
+      const selectedIds = postableEntitlementRows.map((row) => row.recruiter_id);
+      const data = await leaveSettings.applyEntitlements({
+        ...buildEntitlementPreviewPayload(),
+        action_mode: "apply_selected_only",
+        selected_recruiter_ids: selectedIds,
+        confirm: true,
+        idempotency_key: [
+          "entitlement",
+          entitlementPreviewDraft.leave_type,
+          entitlementPreviewDraft.department_id || "all-departments",
+          entitlementPreviewDraft.recruiter_id || "all-employees",
+          entitlementPreviewDraft.as_of_date || "asof-default",
+          entitlementPreviewDraft.effective_date || "effective-default",
+        ].join("-"),
+      });
+      setEntitlementApplyResult(data);
+      setEntitlementApplyOpen(false);
+      loadEmployeeBalancesAfterEntitlementApply();
+      setSnackbar({
+        open: true,
+        severity: data.idempotent_replay ? "info" : "success",
+        message: data.idempotent_replay ? "This entitlement apply was already completed for the same key." : "Entitlement balances applied.",
+      });
+    } catch (err) {
+      const message = err?.response?.data?.error || err?.displayMessage || "Unable to apply entitlements.";
+      setEntitlementApplyError(message);
+      setSnackbar({ open: true, severity: "error", message });
+    } finally {
+      setEntitlementApplyLoading(false);
+    }
+  };
+
+  const loadEmployeeBalancesAfterEntitlementApply = () => {
+    // Keep this narrow: re-run the preview so managers see updated skipped/projected rows after ledger writes.
+    runEntitlementPreview();
   };
 
   const postAccruals = async () => {
@@ -1208,7 +1382,7 @@ const SettingsLeaveSettings = () => {
   };
 
   const renderBalancePoliciesBody = () => {
-    if (policiesLoading) {
+    if (policiesLoading || entitlementsLoading) {
       return (
         <Box display="flex" justifyContent="center" py={4}>
           <CircularProgress size={24} />
@@ -1226,6 +1400,10 @@ const SettingsLeaveSettings = () => {
     }
 
     const policyRows = policies?.policies || [];
+    const entitlementByType = (entitlementPolicies?.policies || []).reduce((acc, policy) => {
+      acc[policy.leave_type] = policy;
+      return acc;
+    }, {});
 
     return (
       <Stack spacing={3}>
@@ -1233,9 +1411,9 @@ const SettingsLeaveSettings = () => {
 
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "flex-start" }}>
           <Box>
-            <Typography variant="subtitle2" fontWeight={800}>Leave balance policies</Typography>
+            <Typography variant="subtitle2" fontWeight={800}>Leave allowances & balance rules</Typography>
             <Typography variant="body2" color="text.secondary">
-              Configure balance usage, shortage handling, and accrual policy setup by leave type.
+              Set company allowance policies first, then keep advanced balance mechanics available for stricter teams.
             </Typography>
           </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
@@ -1259,11 +1437,14 @@ const SettingsLeaveSettings = () => {
         </Stack>
 
         <Alert severity="info" variant="outlined">
-          Balance usage rules can guide approval-time deductions when enabled. Accrual automation is still inactive, manual adjustments remain available, and these settings do not change payroll calculations.
+          Policy setup does not automatically give every employee a balance. Use Preview employee impact, then apply eligible rows when you want ledger-backed opening or front-load entries. Monthly and biweekly accrual policies are previewed here; actual accrual posting uses the Accrual preview / manual posting workflow.
         </Alert>
 
         <Grid container spacing={2}>
-          {policyRows.map((policy) => (
+          {policyRows.map((policy) => {
+            const entitlement = entitlementByType[policy.leave_type] || {};
+            const isAccrualGrant = ["monthly_accrual", "biweekly_accrual"].includes(entitlement.grant_method);
+            return (
             <Grid item xs={12} md={6} xl={4} key={policy.leave_type}>
               <Box
                 sx={{
@@ -1282,14 +1463,14 @@ const SettingsLeaveSettings = () => {
                         {formatLeaveTypeLabel(policy.leave_type)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Balance usage + future accrual policy
+                        Company allowance + balance behavior
                       </Typography>
                     </Box>
                     <Stack direction="row" spacing={0.5} alignItems="center">
                       <Chip
                         size="small"
-                        sx={readableChipSx(policy.balance_managed ? "success" : "default")}
-                        label={policy.balance_managed ? "Balance-managed" : "Manual"}
+                        sx={readableChipSx(entitlement.paid_entitlement_enabled ? "success" : "default")}
+                        label={entitlement.paid_entitlement_enabled ? "Paid entitlement" : "Manual"}
                       />
                       <IconButton
                         size="small"
@@ -1300,6 +1481,203 @@ const SettingsLeaveSettings = () => {
                       </IconButton>
                     </Stack>
                   </Stack>
+
+                  <Alert severity={entitlement.paid_entitlement_enabled ? "success" : "info"} variant="outlined">
+                    {entitlement.paid_entitlement_enabled
+                      ? `${formatLeaveTypeLabel(policy.leave_type)} has a company allowance policy. Employees still need ledger balances via preview/apply, manual adjustment, front-load, or accrual posting.`
+                      : "No paid entitlement is enabled for this leave type. Managers can still handle requests manually if allowed by request rules."}
+                  </Alert>
+
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={Boolean(entitlement.paid_entitlement_enabled)}
+                        onChange={(event) => {
+                          updateEntitlementPolicy(policy.leave_type, "enabled", event.target.checked);
+                          updateEntitlementPolicy(policy.leave_type, "paid_entitlement_enabled", event.target.checked);
+                          if (event.target.checked) updatePolicy(policy.leave_type, "balance_managed", true);
+                        }}
+                      />
+                    }
+                    label="Enable paid entitlement"
+                  />
+
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        type="number"
+                        label="Allowance amount"
+                        value={entitlement.allowance_amount ?? 0}
+                        onChange={(event) => updateEntitlementPolicy(policy.leave_type, "allowance_amount", event.target.value)}
+                        inputProps={{ min: 0, step: "0.01" }}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label="Unit"
+                        value={entitlement.allowance_unit || "hours"}
+                        onChange={(event) => updateEntitlementPolicy(policy.leave_type, "allowance_unit", event.target.value)}
+                      >
+                        {ALLOWANCE_UNIT_OPTIONS.map((option) => (
+                          <MenuItem key={option} value={option}>{formatLeaveTypeLabel(option)}</MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        type="number"
+                        label="Workday hours"
+                        value={entitlement.workday_hours ?? 8}
+                        onChange={(event) => updateEntitlementPolicy(policy.leave_type, "workday_hours", event.target.value)}
+                        helperText="Used to convert days to hours"
+                        inputProps={{ min: 0.25, max: 24, step: "0.25" }}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label="Grant method"
+                        value={entitlement.grant_method || "opening_balance"}
+                        onChange={(event) => updateEntitlementPolicy(policy.leave_type, "grant_method", event.target.value)}
+                      >
+                        {ENTITLEMENT_GRANT_METHOD_OPTIONS.map((option) => (
+                          <MenuItem key={option} value={option}>{formatGrantMethodLabel(option)}</MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    <Grid item xs={12}>
+                      {isAccrualGrant && (
+                        <Alert severity="warning" variant="outlined">
+                          This policy accrues over time. Use Accrual preview / manual posting to create accrual ledger entries; entitlement apply will not create a fake opening balance.
+                        </Alert>
+                      )}
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label="Policy year basis"
+                        value={entitlement.policy_year_basis || "calendar_year"}
+                        onChange={(event) => updateEntitlementPolicy(policy.leave_type, "policy_year_basis", event.target.value)}
+                      >
+                        {POLICY_YEAR_BASIS_OPTIONS.map((option) => (
+                          <MenuItem key={option} value={option}>{formatPolicyYearBasisLabel(option)}</MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    {entitlement.policy_year_basis === "company_policy_year" && (
+                      <>
+                        <Grid item xs={6} sm={3}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="number"
+                            label="Start month"
+                            value={entitlement.policy_year_start_month ?? 1}
+                            onChange={(event) => updateEntitlementPolicy(policy.leave_type, "policy_year_start_month", event.target.value)}
+                            inputProps={{ min: 1, max: 12 }}
+                          />
+                        </Grid>
+                        <Grid item xs={6} sm={3}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="number"
+                            label="Start day"
+                            value={entitlement.policy_year_start_day ?? 1}
+                            onChange={(event) => updateEntitlementPolicy(policy.leave_type, "policy_year_start_day", event.target.value)}
+                            inputProps={{ min: 1, max: 31 }}
+                          />
+                        </Grid>
+                      </>
+                    )}
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label="Start basis"
+                        value={entitlement.start_basis || "hire_date"}
+                        onChange={(event) => updateEntitlementPolicy(policy.leave_type, "start_basis", event.target.value)}
+                      >
+                        {START_BASIS_OPTIONS.map((option) => (
+                          <MenuItem key={option} value={option}>{formatStartBasisLabel(option)}</MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    {entitlement.start_basis === "custom_effective_date" && (
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          type="date"
+                          label="Custom effective date"
+                          InputLabelProps={{ shrink: true }}
+                          value={entitlement.custom_effective_date || ""}
+                          onChange={(event) => updateEntitlementPolicy(policy.leave_type, "custom_effective_date", event.target.value)}
+                        />
+                      </Grid>
+                    )}
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        type="number"
+                        label="Waiting period days"
+                        value={entitlement.waiting_period_days ?? 0}
+                        onChange={(event) => updateEntitlementPolicy(policy.leave_type, "waiting_period_days", event.target.value)}
+                        helperText="Visible but unavailable until eligible"
+                        inputProps={{ min: 0 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label="New hire proration"
+                        value={entitlement.proration_method || "prorate_first_period"}
+                        onChange={(event) => updateEntitlementPolicy(policy.leave_type, "proration_method", event.target.value)}
+                      >
+                        {PRORATION_METHOD_OPTIONS.map((option) => (
+                          <MenuItem key={option} value={option}>{formatProrationMethodLabel(option)}</MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    {entitlement.proration_method === "cutoff_day" && (
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          type="number"
+                          label="Cutoff day"
+                          value={entitlement.proration_cutoff_day ?? ""}
+                          onChange={(event) => updateEntitlementPolicy(policy.leave_type, "proration_cutoff_day", event.target.value)}
+                          inputProps={{ min: 1, max: 31 }}
+                        />
+                      </Grid>
+                    )}
+                  </Grid>
+
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={Boolean(entitlement.applies_to_new_hires)}
+                        onChange={(event) => updateEntitlementPolicy(policy.leave_type, "applies_to_new_hires", event.target.checked)}
+                      />
+                    }
+                    label="Apply policy to new hires"
+                  />
 
                   <FormControlLabel
                     control={
@@ -1329,22 +1707,36 @@ const SettingsLeaveSettings = () => {
                         ))}
                       </TextField>
                     </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        select
-                        fullWidth
-                        size="small"
-                        label="Deduct balance"
-                        value={policy.deduct_on || "approval"}
-                        onChange={(event) => updatePolicy(policy.leave_type, "deduct_on", event.target.value)}
-                        helperText="Current active option"
-                      >
-                        <MenuItem value="approval">{deductOnLabels.approval}</MenuItem>
-                      </TextField>
-                    </Grid>
                   </Grid>
 
-                  <Divider />
+                  <Accordion disableGutters elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, "&:before": { display: "none" } }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={800}>Advanced rules</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Balance deduction mechanics and saved accrual policy fields.
+                        </Typography>
+                      </Box>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Stack spacing={1.5}>
+                        <Grid container spacing={1.5}>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              select
+                              fullWidth
+                              size="small"
+                              label="Deduct balance"
+                              value={policy.deduct_on || "approval"}
+                              onChange={(event) => updatePolicy(policy.leave_type, "deduct_on", event.target.value)}
+                              helperText="Current active option"
+                            >
+                              <MenuItem value="approval">{deductOnLabels.approval}</MenuItem>
+                            </TextField>
+                          </Grid>
+                        </Grid>
+
+                        <Divider />
 
                   <FormControlLabel
                     control={
@@ -1425,6 +1817,9 @@ const SettingsLeaveSettings = () => {
                   <Typography variant="caption" color="text.secondary">
                     Saved for future balance-cap workflows. For approval behavior today, use “If balance is insufficient” above and choose “Allow negative balance.”
                   </Typography>
+                      </Stack>
+                    </AccordionDetails>
+                  </Accordion>
 
                   {policy.updated_by_name && (
                     <Typography variant="caption" color="text.secondary">
@@ -1434,12 +1829,211 @@ const SettingsLeaveSettings = () => {
                 </Stack>
               </Box>
             </Grid>
-          ))}
+            );
+          })}
         </Grid>
 
+        <Divider />
+
+        <Box>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ xs: "stretch", md: "flex-start" }} sx={{ mb: 1.5 }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800}>Preview employee impact</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Preview which employees would receive ledger-backed balances before applying anything. Existing balances and waiting periods are shown as skipped or blocked rows.
+              </Typography>
+            </Box>
+            <Chip size="small" label="Dry run first" sx={readableChipSx("primary")} />
+          </Stack>
+          <Grid container spacing={1.5}>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Leave type"
+                value={entitlementPreviewDraft.leave_type}
+                onChange={(event) => setEntitlementPreviewDraft((prev) => ({ ...prev, leave_type: event.target.value }))}
+              >
+                {LEAVE_TYPE_OPTIONS.map((type) => (
+                  <MenuItem key={type} value={type}>{formatLeaveTypeLabel(type)}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Department"
+                value={entitlementPreviewDraft.department_id}
+                onChange={(event) => setEntitlementPreviewDraft((prev) => ({ ...prev, department_id: event.target.value, recruiter_id: "" }))}
+              >
+                <MenuItem value="">All departments</MenuItem>
+                {departments.map((department) => (
+                  <MenuItem key={department.id} value={department.id}>{department.name || `Department #${department.id}`}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Employee"
+                value={entitlementPreviewDraft.recruiter_id}
+                onChange={(event) => setEntitlementPreviewDraft((prev) => ({ ...prev, recruiter_id: event.target.value }))}
+              >
+                <MenuItem value="">All employees</MenuItem>
+                {employees
+                  .filter((employee) => !entitlementPreviewDraft.department_id || String(employee.department_id || "") === String(entitlementPreviewDraft.department_id))
+                  .map((employee) => (
+                    <MenuItem key={employee.id} value={employee.id}>
+                      {employee.name || employee.full_name || employee.email || `Employee #${employee.id}`}
+                    </MenuItem>
+                  ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label="Apply mode"
+                value={entitlementPreviewDraft.action_mode}
+                onChange={(event) => setEntitlementPreviewDraft((prev) => ({ ...prev, action_mode: event.target.value }))}
+              >
+                <MenuItem value="initialize_missing_only">Initialize missing only</MenuItem>
+                <MenuItem value="apply_selected_only">Apply previewed eligible rows</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                type="date"
+                label="As of date"
+                InputLabelProps={{ shrink: true }}
+                value={entitlementPreviewDraft.as_of_date}
+                onChange={(event) => setEntitlementPreviewDraft((prev) => ({ ...prev, as_of_date: event.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                type="date"
+                label="Effective date"
+                InputLabelProps={{ shrink: true }}
+                value={entitlementPreviewDraft.effective_date}
+                onChange={(event) => setEntitlementPreviewDraft((prev) => ({ ...prev, effective_date: event.target.value }))}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <Button variant="contained" onClick={runEntitlementPreview} disabled={entitlementPreviewLoading}>
+                  {entitlementPreviewLoading ? "Previewing..." : "Preview employee impact"}
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  disabled={!entitlementPreviewResult || postableEntitlementRows.length === 0 || entitlementPreviewLoading || entitlementApplyLoading}
+                  onClick={() => setEntitlementApplyOpen(true)}
+                >
+                  Apply eligible rows
+                </Button>
+              </Stack>
+            </Grid>
+          </Grid>
+
+          {entitlementPreviewError && <Alert severity="error" sx={{ mt: 1.5 }}>{entitlementPreviewError}</Alert>}
+          {entitlementApplyError && (
+            <Alert severity={String(entitlementApplyError).includes("preview-only") ? "info" : "error"} sx={{ mt: 1.5 }}>
+              {entitlementApplyError}
+            </Alert>
+          )}
+
+          {entitlementPreviewResult && (
+            <Stack spacing={1.5} sx={{ mt: 2 }}>
+              <Alert severity="success" variant="outlined">
+                Preview complete. {entitlementPreviewResult.summary?.employees_postable || 0} employee(s) eligible for {formatHours(entitlementPreviewResult.summary?.total_proposed_ledger_delta_hours)}. No balances were changed.
+              </Alert>
+              {["monthly_accrual", "biweekly_accrual"].includes(entitlementPreviewResult.policy?.grant_method) && (
+                <Alert severity="warning" variant="outlined">
+                  This policy accrues over time. Use Accrual preview / manual posting below to create accrual ledger entries.
+                </Alert>
+              )}
+              {entitlementPreviewResult.rows?.length ? (
+                <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Employee</TableCell>
+                        <TableCell>Eligibility</TableCell>
+                        <TableCell>Period</TableCell>
+                        <TableCell>Current</TableCell>
+                        <TableCell>Allowance</TableCell>
+                        <TableCell>Proposed</TableCell>
+                        <TableCell>Projected</TableCell>
+                        <TableCell>Impact</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {entitlementPreviewResult.rows.map((row) => (
+                        <TableRow key={`${row.recruiter_id}-${row.leave_type}-${row.period_start}`}>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={700}>{row.employee_name || `Employee #${row.recruiter_id}`}</Typography>
+                            <Typography variant="caption" color="text.secondary">Hire: {row.hire_date || "—"}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">{row.eligible_now ? "Eligible" : "Not eligible"}</Typography>
+                            <Typography variant="caption" color="text.secondary">{row.eligibility_date || "No waiting period"}</Typography>
+                          </TableCell>
+                          <TableCell>{row.period_start || "—"} to {row.period_end || "—"}</TableCell>
+                          <TableCell>{formatHours(row.current_balance_hours)}</TableCell>
+                          <TableCell>
+                            <Typography variant="body2">{formatHours(row.allowance_hours)}</Typography>
+                            {row.grant_period_allowance_hours != null && (
+                              <Typography variant="caption" color="text.secondary">Period: {formatHours(row.grant_period_allowance_hours)}</Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>{formatHours(row.proposed_ledger_delta_hours)}</TableCell>
+                          <TableCell>{formatHours(row.projected_balance_hours)}</TableCell>
+                          <TableCell>
+                            <Stack spacing={0.5} alignItems="flex-start">
+                              <Chip
+                                size="small"
+                                sx={readableChipSx(entitlementImpactTone(row.impact_type, row.skipped))}
+                                label={entitlementImpactLabels[row.impact_type] || String(row.impact_type || "No change").replace(/_/g, " ")}
+                              />
+                              <Typography variant="caption" color="text.secondary">
+                                {row.skipped ? skipReasonLabel(row.skip_reason) : row.message}
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Alert severity="warning" variant="outlined">No employees matched these filters.</Alert>
+              )}
+            </Stack>
+          )}
+
+          {entitlementApplyResult && (
+            <Alert severity={entitlementApplyResult.idempotent_replay ? "info" : "success"} variant="outlined" sx={{ mt: 1.5 }}>
+              {entitlementApplyResult.idempotent_replay
+                ? "This entitlement apply was already completed with the same idempotency key. No duplicate ledger entries were created."
+                : `Applied ${formatHours(entitlementApplyResult.summary?.total_posted_hours)} for ${entitlementApplyResult.summary?.employees_posted || 0} employee(s). Payroll formulas were not changed.`}
+            </Alert>
+          )}
+        </Box>
+
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
-          <Button variant="contained" onClick={handleSavePolicies} disabled={!policiesDirty || policiesSaving}>
-            {policiesSaving ? "Saving..." : policiesDirty ? "Save balance policies" : "No policy changes to save"}
+          <Button variant="contained" onClick={handleSavePolicies} disabled={(!policiesDirty && !entitlementsDirty) || policiesSaving}>
+            {policiesSaving ? "Saving..." : (policiesDirty || entitlementsDirty) ? "Save allowances & rules" : "No policy changes to save"}
           </Button>
           <Button variant="text" onClick={loadBalancePolicies} disabled={policiesLoading || policiesSaving}>Reload</Button>
         </Stack>
@@ -1833,8 +2427,8 @@ const SettingsLeaveSettings = () => {
               {renderBody()}
             </SectionCard>
             <SectionCard
-              title="Leave balance policies"
-              description="Configure which leave types use balances at approval time, and save future accrual policy settings without changing payroll formulas."
+              title="Leave allowances & balance rules"
+              description="Configure company allowances, employee balance behavior, and advanced mechanics by leave type without changing payroll formulas."
             >
               {renderBalancePoliciesBody()}
             </SectionCard>
@@ -1897,6 +2491,48 @@ const SettingsLeaveSettings = () => {
           <Button onClick={() => setPostConfirmOpen(false)} disabled={postLoading}>Cancel</Button>
           <Button color="warning" variant="contained" onClick={postAccruals} disabled={postLoading}>
             {postLoading ? "Posting..." : "Confirm and post"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={entitlementApplyOpen} onClose={() => !entitlementApplyLoading && setEntitlementApplyOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Apply entitlement balances?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Alert severity="warning" variant="outlined">
+              This creates real leave balance ledger entries for eligible rows only. Payroll formulas are not changed.
+            </Alert>
+            {["monthly_accrual", "biweekly_accrual"].includes(entitlementPreviewResult?.policy?.grant_method) ? (
+              <Alert severity="info" variant="outlined">
+                This policy accrues over time, so entitlement apply is preview-only. Use Accrual preview / manual posting to create accrual ledger entries.
+              </Alert>
+            ) : (
+              <>
+                <Typography variant="body2">
+                  Employees eligible: <strong>{postableEntitlementRows.length}</strong>
+                </Typography>
+                <Typography variant="body2">
+                  Total hours to apply: <strong>{formatHours(entitlementPreviewResult?.summary?.total_proposed_ledger_delta_hours)}</strong>
+                </Typography>
+                <Typography variant="body2">
+                  Skipped rows: <strong>{entitlementPreviewResult?.summary?.employees_skipped || 0}</strong>
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Existing balance rows are skipped by default; manual balance conflicts remain visible in the preview.
+                </Typography>
+              </>
+            )}
+            {entitlementApplyError && <Alert severity="error">{entitlementApplyError}</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEntitlementApplyOpen(false)} disabled={entitlementApplyLoading}>Cancel</Button>
+          <Button
+            color="warning"
+            variant="contained"
+            onClick={applyEntitlements}
+            disabled={entitlementApplyLoading || ["monthly_accrual", "biweekly_accrual"].includes(entitlementPreviewResult?.policy?.grant_method)}
+          >
+            {entitlementApplyLoading ? "Applying..." : "Confirm and apply"}
           </Button>
         </DialogActions>
       </Dialog>

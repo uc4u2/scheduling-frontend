@@ -191,3 +191,154 @@ export const buildLeaveBalancePolicyPatch = (current = {}, original = {}) => {
 
 export const hasLeaveBalancePolicyChanges = (current = {}, original = {}) =>
   Object.keys(buildLeaveBalancePolicyPatch(current, original)).length > 0;
+
+export const ALLOWANCE_UNIT_OPTIONS = ["hours", "days"];
+export const ENTITLEMENT_GRANT_METHOD_OPTIONS = ["opening_balance", "annual_front_load", "monthly_accrual", "biweekly_accrual"];
+export const POLICY_YEAR_BASIS_OPTIONS = ["calendar_year", "company_policy_year", "anniversary_year"];
+export const START_BASIS_OPTIONS = ["hire_date", "custom_effective_date"];
+export const PRORATION_METHOD_OPTIONS = ["prorate_first_period", "start_next_cycle", "full_period", "cutoff_day"];
+
+export const formatGrantMethodLabel = (value) => ({
+  opening_balance: "Opening balance setup",
+  annual_front_load: "Annual front-load",
+  monthly_accrual: "Monthly accrual",
+  biweekly_accrual: "Biweekly accrual",
+}[value] || formatLeaveTypeLabel(value));
+
+export const formatPolicyYearBasisLabel = (value) => ({
+  calendar_year: "Calendar year",
+  company_policy_year: "Company policy year",
+  anniversary_year: "Employee anniversary year",
+}[value] || formatLeaveTypeLabel(value));
+
+export const formatStartBasisLabel = (value) => ({
+  hire_date: "Employee hire date",
+  custom_effective_date: "Custom effective date",
+}[value] || formatLeaveTypeLabel(value));
+
+export const formatProrationMethodLabel = (value) => ({
+  prorate_first_period: "Prorate first period",
+  start_next_cycle: "Start next cycle",
+  full_period: "Full period",
+  cutoff_day: "Cutoff day",
+}[value] || formatLeaveTypeLabel(value));
+
+export const defaultLeaveEntitlementPolicy = (leaveType) => ({
+  leave_type: leaveType,
+  enabled: false,
+  paid_entitlement_enabled: false,
+  allowance_amount: 0,
+  allowance_unit: "hours",
+  workday_hours: 8,
+  allowance_hours: 0,
+  grant_method: "opening_balance",
+  policy_year_basis: "calendar_year",
+  policy_year_start_month: 1,
+  policy_year_start_day: 1,
+  start_basis: "hire_date",
+  custom_effective_date: "",
+  proration_method: "prorate_first_period",
+  proration_cutoff_day: "",
+  waiting_period_days: 0,
+  applies_to_new_hires: false,
+  carryover_enabled: false,
+  carryover_limit_hours: "",
+  payroll_truth: false,
+});
+
+export const normalizeLeaveEntitlementPolicies = (value = {}) => {
+  const policies = Array.isArray(value?.policies) ? value.policies : [];
+  const byType = policies.reduce((acc, policy) => {
+    const leaveType = String(policy?.leave_type || "").trim().toLowerCase();
+    if (!LEAVE_TYPE_OPTIONS.includes(leaveType)) return acc;
+    acc[leaveType] = {
+      ...defaultLeaveEntitlementPolicy(leaveType),
+      ...policy,
+      leave_type: leaveType,
+      enabled: Boolean(policy.enabled),
+      paid_entitlement_enabled: Boolean(policy.paid_entitlement_enabled),
+      allowance_amount: policy.allowance_amount ?? 0,
+      allowance_unit: policy.allowance_unit || "hours",
+      workday_hours: policy.workday_hours ?? 8,
+      allowance_hours: policy.allowance_hours ?? 0,
+      grant_method: policy.grant_method || "opening_balance",
+      policy_year_basis: policy.policy_year_basis || "calendar_year",
+      policy_year_start_month: policy.policy_year_start_month ?? 1,
+      policy_year_start_day: policy.policy_year_start_day ?? 1,
+      start_basis: policy.start_basis || "hire_date",
+      custom_effective_date: policy.custom_effective_date || "",
+      proration_method: policy.proration_method || "prorate_first_period",
+      proration_cutoff_day: policy.proration_cutoff_day ?? "",
+      waiting_period_days: policy.waiting_period_days ?? 0,
+      applies_to_new_hires: Boolean(policy.applies_to_new_hires),
+      carryover_enabled: Boolean(policy.carryover_enabled),
+      carryover_limit_hours: policy.carryover_limit_hours ?? "",
+    };
+    return acc;
+  }, {});
+
+  return {
+    company_id: value?.company_id ?? null,
+    payroll_truth: Boolean(value?.payroll_truth),
+    policies: LEAVE_TYPE_OPTIONS.map((leaveType) => byType[leaveType] || defaultLeaveEntitlementPolicy(leaveType)),
+  };
+};
+
+const editableEntitlementKeys = [
+  "enabled",
+  "paid_entitlement_enabled",
+  "allowance_amount",
+  "allowance_unit",
+  "workday_hours",
+  "grant_method",
+  "policy_year_basis",
+  "policy_year_start_month",
+  "policy_year_start_day",
+  "start_basis",
+  "custom_effective_date",
+  "proration_method",
+  "proration_cutoff_day",
+  "waiting_period_days",
+  "applies_to_new_hires",
+  "carryover_enabled",
+  "carryover_limit_hours",
+];
+
+const normalizeEntitlementPatchValue = (key, value) => {
+  if (["allowance_amount", "workday_hours", "carryover_limit_hours"].includes(key)) {
+    if (value === "" || value === null || value === undefined) return key === "carryover_limit_hours" ? null : 0;
+    return Number(value);
+  }
+  if (["policy_year_start_month", "policy_year_start_day", "proration_cutoff_day", "waiting_period_days"].includes(key)) {
+    if (value === "" || value === null || value === undefined) return key === "proration_cutoff_day" ? null : 0;
+    return Number(value);
+  }
+  if (key === "custom_effective_date") return value || null;
+  return value;
+};
+
+export const buildLeaveEntitlementPolicyPatch = (current = {}, original = {}) => {
+  const currentPolicies = Array.isArray(current.policies) ? current.policies : [];
+  const originalPolicies = Array.isArray(original.policies) ? original.policies : [];
+  const originalByType = originalPolicies.reduce((acc, policy) => {
+    acc[policy.leave_type] = policy;
+    return acc;
+  }, {});
+
+  const policies = currentPolicies.reduce((updates, policy) => {
+    const originalPolicy = originalByType[policy.leave_type] || defaultLeaveEntitlementPolicy(policy.leave_type);
+    const patch = { leave_type: policy.leave_type };
+    editableEntitlementKeys.forEach((key) => {
+      const currentValue = normalizeEntitlementPatchValue(key, policy[key]);
+      const originalValue = normalizeEntitlementPatchValue(key, originalPolicy[key]);
+      if (JSON.stringify(currentValue) !== JSON.stringify(originalValue)) patch[key] = currentValue;
+    });
+    if (Object.keys(patch).length > 1) updates.push(patch);
+    return updates;
+  }, []);
+
+  return policies.length ? { policies } : {};
+};
+
+export const hasLeaveEntitlementPolicyChanges = (current = {}, original = {}) =>
+  Object.keys(buildLeaveEntitlementPolicyPatch(current, original)).length > 0;

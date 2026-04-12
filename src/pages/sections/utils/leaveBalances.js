@@ -16,9 +16,18 @@ export const normalizeLeaveBalanceSummary = (payload = {}) => {
     const leaveType = String(row?.leave_type || "").trim().toLowerCase();
     if (!leaveType || leaveType === "unpaid") return acc;
     acc[leaveType] = {
+      ...row,
       leave_type: leaveType,
       label: formatLeaveTypeLabel(leaveType),
       balance_hours: Number(row?.balance_hours || 0),
+      current_balance_hours: Number(row?.current_balance_hours ?? row?.balance_hours ?? 0),
+      days_equivalent: row?.days_equivalent ?? null,
+      next_expected_accrual_hours: row?.next_expected_accrual_hours ?? null,
+      next_expected_accrual_date: row?.next_expected_accrual_date || null,
+      eligibility_date: row?.eligibility_date || null,
+      eligible_now: row?.eligible_now ?? true,
+      policy_summary: row?.policy_summary || null,
+      future_balance: row?.future_balance || null,
     };
     return acc;
   }, {});
@@ -33,6 +42,14 @@ export const normalizeLeaveBalanceSummary = (payload = {}) => {
         leave_type: leaveType,
         label: formatLeaveTypeLabel(leaveType),
         balance_hours: 0,
+        current_balance_hours: 0,
+        days_equivalent: null,
+        next_expected_accrual_hours: null,
+        next_expected_accrual_date: null,
+        eligibility_date: null,
+        eligible_now: true,
+        policy_summary: null,
+        future_balance: null,
       }
     )),
     ledger: Array.isArray(source?.ledger)

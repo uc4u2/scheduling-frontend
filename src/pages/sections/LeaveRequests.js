@@ -277,6 +277,11 @@ const LeaveRequests = () => {
     try {
       const res = await api.get(`/manager/recruiters/${recruiterId}/leave-balances`, {
         headers: authHeaders,
+        params: {
+          leave_start_date: selectedLeave?.start_date || undefined,
+          leave_type: selectedLeave?.leave_type || undefined,
+          requested_hours: selectedLeave?.requested_hours || selectedLeave?.approved_hours || undefined,
+        },
       });
       setBalanceSummary(normalizeLeaveBalanceSummary(res.data));
     } catch {
@@ -292,7 +297,7 @@ const LeaveRequests = () => {
     } else {
       setBalanceSummary(normalizeLeaveBalanceSummary());
     }
-  }, [selectedLeave?.recruiter_id]);
+  }, [selectedLeave?.recruiter_id, selectedLeave?.start_date, selectedLeave?.leave_type, selectedLeave?.requested_hours, selectedLeave?.approved_hours]);
 
   const handleBalanceAdjustment = async () => {
     if (!selectedLeave?.recruiter_id) return;
@@ -794,6 +799,55 @@ const LeaveRequests = () => {
                 </Stack>
               </Paper>
             )}
+
+            {(() => {
+              const selectedBalance = balanceSummary.balances.find((row) => row.leave_type === selectedLeave.leave_type);
+              const future = selectedBalance?.future_balance;
+              if (!selectedBalance && !future) return null;
+              return (
+                <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      Decision balance context
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Uses the leave start date as the decision date. Balances are HR tracking, not payroll formulas.
+                    </Typography>
+                    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 1 }}>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Usable now</Typography>
+                        <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.usable_now_hours ?? selectedBalance?.balance_hours)}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Expected before leave</Typography>
+                        <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.expected_before_leave_start_hours)}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Available on start</Typography>
+                        <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.available_on_leave_start_hours ?? selectedBalance?.balance_hours)}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Projected remaining</Typography>
+                        <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.projected_remaining_hours)}</Typography>
+                      </Box>
+                    </Box>
+                    {future?.eligibility_date && (
+                      <Typography variant="body2">
+                        <strong>Eligibility date:</strong> {future.eligibility_date} · {future.eligible_on_leave_start ? "Eligible on leave start" : "Not eligible on leave start"}
+                      </Typography>
+                    )}
+                    {future?.waiting_period_blocking && (
+                      <Alert severity="warning" variant="outlined">{future.waiting_period_message}</Alert>
+                    )}
+                    {!drawerMeta.isPaid && (
+                      <Alert severity="info" variant="outlined">
+                        This is unpaid leave. It does not deduct from paid entitlement balance, but it can still affect scheduling and approval records.
+                      </Alert>
+                    )}
+                  </Stack>
+                </Paper>
+              );
+            })()}
 
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
               <Stack spacing={1.25}>
