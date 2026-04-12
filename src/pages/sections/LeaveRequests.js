@@ -76,12 +76,45 @@ const payChipSx = (isPaid) => (theme) => {
   };
 };
 
-const statusChipColor = (status) => {
+const readableChipSx = (tone = "neutral", variant = "filled") => (theme) => {
+  const tones = {
+    success: { bg: theme.palette.success.main, fg: theme.palette.success.contrastText, border: theme.palette.success.dark },
+    warning: { bg: "#9a5b00", fg: "#fff8e1", border: "#6d3f00" },
+    error: { bg: theme.palette.error.main, fg: theme.palette.error.contrastText, border: theme.palette.error.dark },
+    info: { bg: theme.palette.info.main, fg: theme.palette.info.contrastText, border: theme.palette.info.dark },
+    neutral: { bg: theme.palette.grey[700], fg: theme.palette.common.white, border: theme.palette.grey[800] },
+  };
+  const color = tones[tone] || tones.neutral;
+  if (variant === "outlined") {
+    return {
+      color: color.border || color.bg,
+      borderColor: color.border || color.bg,
+      bgcolor: theme.palette.background.paper,
+      fontWeight: 800,
+      "& .MuiChip-label": { color: "inherit" },
+    };
+  }
+  return {
+    bgcolor: color.bg,
+    color: color.fg,
+    border: `1px solid ${color.border || color.bg}`,
+    fontWeight: 800,
+    "& .MuiChip-label": { color: "inherit" },
+  };
+};
+
+const statusChipTone = (status) => {
   const normalized = String(status || "").toLowerCase();
   if (normalized === "approved") return "success";
   if (normalized === "pending") return "warning";
-  if (normalized === "rejected") return "error";
-  return "default";
+  if (normalized === "rejected" || normalized === "cancelled" || normalized === "withdrawn") return "error";
+  return "neutral";
+};
+
+const readinessChipTone = (meta = {}) => {
+  if (meta.payrollReady) return "success";
+  if (meta.estimated) return "warning";
+  return "info";
 };
 
 const fmtDateTime = (value) => {
@@ -595,7 +628,7 @@ const LeaveRequests = () => {
                         <TableCell>
                           <Stack spacing={0.5}>
                             <Typography variant="body2" fontWeight={800}>{employeeName(row)}</Typography>
-                            <Chip size="small" color={statusChipColor(row.status)} label={row.status || "pending"} sx={{ alignSelf: "flex-start" }} />
+                            <Chip size="small" label={row.status || "pending"} sx={(theme) => ({ ...readableChipSx(statusChipTone(row.status))(theme), alignSelf: "flex-start" })} />
                           </Stack>
                         </TableCell>
                         <TableCell>
@@ -616,13 +649,13 @@ const LeaveRequests = () => {
                         </TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                            <Chip size="small" color={leaveMeta.payrollColor} variant="outlined" label={leaveMeta.payrollLabel} />
-                            {leaveMeta.estimated && <Chip size="small" color="warning" variant="outlined" label="Estimated" />}
+                            <Chip size="small" variant="outlined" label={leaveMeta.payrollLabel} sx={readableChipSx(readinessChipTone(leaveMeta), "outlined")} />
+                            {leaveMeta.estimated && <Chip size="small" variant="outlined" label="Estimated" sx={readableChipSx("warning", "outlined")} />}
                             {leaveMeta.actionNeeded && (
                               <Chip
                                 size="small"
-                                color="warning"
                                 label={leaveMeta.status === "approved" && !leaveMeta.payrollReady ? "Confirm hours" : "Review needed"}
+                                sx={readableChipSx("warning")}
                               />
                             )}
                           </Stack>
@@ -673,10 +706,10 @@ const LeaveRequests = () => {
             </Stack>
 
             <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-              <Chip size="small" color={statusChipColor(selectedLeave.status)} label={selectedLeave.status || "pending"} />
+              <Chip size="small" label={selectedLeave.status || "pending"} sx={readableChipSx(statusChipTone(selectedLeave.status))} />
               <Chip size="small" label={drawerMeta.payLabel} sx={payChipSx(drawerMeta.isPaid)} />
-              <Chip size="small" color={drawerMeta.payrollColor} variant="outlined" label={drawerMeta.payrollLabel} />
-              {drawerMeta.estimated && <Chip size="small" color="warning" variant="outlined" label="Estimated hours" />}
+              <Chip size="small" variant="outlined" label={drawerMeta.payrollLabel} sx={readableChipSx(readinessChipTone(drawerMeta), "outlined")} />
+              {drawerMeta.estimated && <Chip size="small" variant="outlined" label="Estimated hours" sx={readableChipSx("warning", "outlined")} />}
             </Stack>
 
             <Alert severity={drawerMeta.actionNeeded ? "warning" : "info"} variant="outlined">
