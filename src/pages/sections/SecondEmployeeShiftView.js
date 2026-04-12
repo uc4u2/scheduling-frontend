@@ -2624,7 +2624,7 @@ const breakTimelineMeta = useMemo(() => {
                         Duration: {formatLeaveDurationMode(leave.duration_mode)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {formatLeaveHours(leave) || "Hours pending manager review"}
+                        {formatLeaveHours(leave) || (String(leave.status || "").toLowerCase() === "approved" ? "Approved; payroll hours not confirmed" : "Hours pending manager review")}
                       </Typography>
                       {leave.balance_impact?.balance_managed && (
                         <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>

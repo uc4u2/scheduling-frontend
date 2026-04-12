@@ -610,7 +610,7 @@ const LeaveRequests = () => {
                           <Stack spacing={0.5} alignItems="flex-start">
                             <Chip size="small" label={leaveMeta.payLabel} sx={payChipSx(leaveMeta.isPaid)} />
                             <Typography variant="caption" color="text.secondary">
-                              Approved: {leaveMeta.approvedHours ? `${leaveMeta.approvedHours}h` : "—"} · Requested: {leaveMeta.requestedHours ? `${leaveMeta.requestedHours}h` : "—"}
+                              Approved: {row.approved_hours !== null && row.approved_hours !== undefined && row.approved_hours !== "" ? `${Number(row.approved_hours)}h` : "—"} · Requested: {row.requested_hours !== null && row.requested_hours !== undefined && row.requested_hours !== "" ? `${Number(row.requested_hours)}h` : "—"}
                             </Typography>
                           </Stack>
                         </TableCell>
@@ -618,7 +618,13 @@ const LeaveRequests = () => {
                           <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                             <Chip size="small" color={leaveMeta.payrollColor} variant="outlined" label={leaveMeta.payrollLabel} />
                             {leaveMeta.estimated && <Chip size="small" color="warning" variant="outlined" label="Estimated" />}
-                            {leaveMeta.actionNeeded && <Chip size="small" color="warning" label="Review needed" />}
+                            {leaveMeta.actionNeeded && (
+                              <Chip
+                                size="small"
+                                color="warning"
+                                label={leaveMeta.status === "approved" && !leaveMeta.payrollReady ? "Confirm hours" : "Review needed"}
+                              />
+                            )}
                           </Stack>
                         </TableCell>
                         <TableCell>{renderWarnings(leaveMeta)}</TableCell>

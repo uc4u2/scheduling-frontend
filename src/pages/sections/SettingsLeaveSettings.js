@@ -31,6 +31,7 @@ import {
   TableRow,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -161,10 +162,11 @@ const setupProfiles = {
   simple: {
     label: "Simple",
     tagline: "Best for smaller or lighter-process teams that want safe manual controls.",
-    description: "Keeps request options conservative, emphasizes manager review, and leaves balances/accruals mostly manual.",
+    description: "Keeps request options conservative, uses approval as payroll-hours confirmation, and leaves balances/accruals mostly manual.",
     summary: [
       "Hourly and partial-day requests off by default; full-day, multi-day, and shift-linked leave remain available.",
       "Approved leave blocks Smart Shift; pending leave warns.",
+      "Approving leave also confirms payroll-ready hours from the request's safe computed hours.",
       "Balance usage remains manual for all leave types.",
       "Scheduled accrual automation stays off.",
     ],
@@ -180,7 +182,7 @@ const setupProfiles = {
       pending_leave_smart_shift_mode: "warn",
       approved_leave_smart_shift_mode: "block",
       attachment_required_leave_types_json: [],
-      require_manager_confirmed_hours_for_payroll_ready: true,
+      require_manager_confirmed_hours_for_payroll_ready: false,
       automatic_accruals_enabled: false,
       automatic_accrual_frequency: "monthly",
     },
@@ -933,7 +935,18 @@ const SettingsLeaveSettings = () => {
         <Divider />
 
         <Box>
-          <Typography variant="subtitle2" fontWeight={800} gutterBottom>Payroll readiness</Typography>
+          <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5 }}>
+            <Typography variant="subtitle2" fontWeight={800}>Payroll readiness</Typography>
+            <Tooltip
+              placement="top"
+              arrow
+              title="Payroll-ready leave is approved leave that payroll exports can use. If this is on, managers approve the request first and then must confirm the exact approved hours in the manager leave drawer. If this is off, approval also confirms the request's safe computed/requested hours. Keep it on for hourly, partial-day, split-to-unpaid, or stricter payroll review workflows."
+            >
+              <IconButton size="small" aria-label="Payroll readiness help">
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
           <FormControlLabel
             control={
               <Switch
@@ -944,7 +957,7 @@ const SettingsLeaveSettings = () => {
             label="Require manager-confirmed hours before payroll-ready"
           />
           <Typography variant="caption" color="text.secondary" display="block">
-            This preserves the current payroll safety model: estimated leave should remain preview-only until a manager confirms payroll-safe hours.
+            On: approved leave stays preview-only until a manager confirms approved hours in the manager leave drawer. Off: approving leave also confirms payroll-ready hours from safe request/computed values. Payroll formulas are unchanged.
           </Typography>
         </Box>
 
