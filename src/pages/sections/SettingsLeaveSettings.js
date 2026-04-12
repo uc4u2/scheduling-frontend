@@ -493,7 +493,7 @@ const SettingsLeaveSettings = () => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [balancePolicyHelpOpen, setBalancePolicyHelpOpen] = useState(false);
   const [leaveTypeHelp, setLeaveTypeHelp] = useState(null);
-  const [selectedSetupProfile, setSelectedSetupProfile] = useState("standard");
+  const [selectedSetupProfile, setSelectedSetupProfile] = useState("simple");
   const [leaveAreaTab, setLeaveAreaTab] = useState("settings");
 
   const dirty = useMemo(() => settings && original && hasLeaveSettingsChanges(settings, original), [settings, original]);
