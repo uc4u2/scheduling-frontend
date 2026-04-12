@@ -465,6 +465,26 @@ export const timeTracking = {
     api.get("/api/shift-templates", config).then((r) => r.data),
 };
 
+/* ------------------------------ Leave Settings ------------------------------ */
+export const leaveSettings = {
+  getSettings: (config = {}) =>
+    api.get("/manager/leave-settings", config).then((r) => r.data?.settings || r.data),
+  saveSettings: (payload, config = {}) =>
+    api.put("/manager/leave-settings", payload, config).then((r) => r.data?.settings || r.data),
+  getBalancePolicies: (config = {}) =>
+    api.get("/manager/leave-balance-policies", config).then((r) => r.data),
+  saveBalancePolicies: (payload, config = {}) =>
+    api.put("/manager/leave-balance-policies", payload, config).then((r) => r.data),
+  previewBalanceAccruals: (payload, config = {}) =>
+    api.post("/manager/leave-balance-accruals/preview", payload, config).then((r) => r.data),
+  postBalanceAccruals: (payload, config = {}) =>
+    api.post("/manager/leave-balance-accruals/post", payload, config).then((r) => r.data),
+  listBalanceAccrualRuns: (params = {}, config = {}) =>
+    api.get("/manager/leave-balance-accruals/runs", { params, ...config }).then((r) => r.data),
+  getBalanceAccrualRun: (runId, config = {}) =>
+    api.get(`/manager/leave-balance-accruals/runs/${runId}`, config).then((r) => r.data),
+};
+
 /* ------------------------------ Invitation Questionnaire Assignments ------------------------------ */
 export const invitationQuestionnaires = {
   list: (invitationId, config = {}) =>

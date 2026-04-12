@@ -31,6 +31,7 @@ import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
+import { extractApiErrorMessage } from "../../utils/apiError";
 
 const NO_STATE_INCOME_TAX_STATES = new Set(["AK", "FL", "NV", "SD", "TX", "WA", "WY", "TN", "NH"]);
 
@@ -66,12 +67,14 @@ export default function PayrollRawPage() {
   const [loading, setLoading] = useState(false);
   const [detailRow, setDetailRow] = useState(null);
   const [showFinalizedOnly, setShowFinalizedOnly] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const fetchRows = async (pageOverride) => {
     const currentPage = pageOverride || page;
     if (!startDate || !endDate) return;
 
     setLoading(true);
+    setErrorMessage("");
     try {
       const params = {
         page: currentPage,
@@ -96,6 +99,7 @@ export default function PayrollRawPage() {
       setTotalRows(res.data?.total_rows || 0);
     } catch (err) {
       console.error("Raw payroll fetch failed", err?.response?.data || err.message);
+      setErrorMessage(await extractApiErrorMessage(err, "Raw payroll fetch failed."));
     } finally {
       setLoading(false);
     }
@@ -103,6 +107,7 @@ export default function PayrollRawPage() {
 
   const handleExport = async (fmt) => {
     if (!startDate || !endDate) return;
+    setErrorMessage("");
     try {
       const params = new URLSearchParams();
       params.append("start_date", startDate);
@@ -129,6 +134,7 @@ export default function PayrollRawPage() {
       window.URL.revokeObjectURL(a.href);
     } catch (err) {
       console.error("Export failed", err?.response?.data || err.message);
+      setErrorMessage(await extractApiErrorMessage(err, "Payroll export failed."));
     }
   };
 
@@ -169,11 +175,16 @@ export default function PayrollRawPage() {
         message="Payroll exports require the Pro plan or higher."
       />
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Accountant view: one row per finalized payroll period. Use filters, then export via existing CSV/XLSX endpoints.
+        Accountant view: finalized rows show payroll truth; preview rows are for review only. Paid and unpaid leave hours are informational columns for reconciliation and do not change formulas here.
       </Typography>
       {!showFinalizedOnly && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Raw preview ledger (not finalized paystubs). State withholding may be N/A for unsupported states.
+          Raw preview ledger only. Preview-only or estimated leave may appear for review, but it is not finalized paystub truth.
+        </Alert>
+      )}
+      {errorMessage && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMessage("")}>
+          {errorMessage}
         </Alert>
       )}
       <Box display="flex" gap={1} mb={2} flexWrap="wrap">
@@ -326,6 +337,8 @@ export default function PayrollRawPage() {
                 <TableCell align="right">Hours</TableCell>
                 <TableCell align="right">Reg Hrs</TableCell>
                 <TableCell align="right">OT Hrs</TableCell>
+                <TableCell align="right">Paid Leave Hrs</TableCell>
+                <TableCell align="right">Unpaid Leave Hrs</TableCell>
                 <TableCell align="right">Regular Pay</TableCell>
                 <TableCell align="right">OT Pay</TableCell>
                 <TableCell align="right">Holiday Pay</TableCell>
@@ -376,6 +389,8 @@ export default function PayrollRawPage() {
                   <TableCell align="right">{row.hours_worked}</TableCell>
                   <TableCell align="right">{row.regular_hours}</TableCell>
                   <TableCell align="right">{row.overtime_hours}</TableCell>
+                  <TableCell align="right">{row.paid_leave_hours || 0}</TableCell>
+                  <TableCell align="right">{row.unpaid_leave_hours || 0}</TableCell>
                   <TableCell align="right">{moneyOrNA(row.regular_pay, row.region)}</TableCell>
                   <TableCell align="right">{moneyOrNA(row.overtime_pay, row.region)}</TableCell>
                   <TableCell align="right">{row.holiday_pay}</TableCell>
@@ -423,8 +438,8 @@ export default function PayrollRawPage() {
 
               {!loading && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} align="center">
-                    No data. Pick filters and click “Load data”.
+                  <TableCell colSpan={42} align="center">
+                    No payroll rows match the selected filters. Pick a period, choose finalized or preview mode, then click “Load data”.
                   </TableCell>
                 </TableRow>
               )}
@@ -481,7 +496,14 @@ export default function PayrollRawPage() {
               </Typography>
               <Stack spacing={0.5}>
                 <Typography variant="body2">Rate: ${detailRow.rate}</Typography>
-                <Typography variant="body2">Hours: {detailRow.hours_worked} (Reg {detailRow.regular_hours} / OT {detailRow.overtime_hours} / Hol {detailRow.holiday_hours})</Typography>
+                <Typography variant="body2">
+                  Hours: {detailRow.hours_worked} (Reg {detailRow.regular_hours} / OT {detailRow.overtime_hours} / Hol {detailRow.holiday_hours})
+                </Typography>
+                {(Number(detailRow.paid_leave_hours || 0) > 0 || Number(detailRow.unpaid_leave_hours || 0) > 0) && (
+                  <Typography variant="body2" color="text.secondary">
+                    Leave hours: paid {detailRow.paid_leave_hours || 0} / unpaid {detailRow.unpaid_leave_hours || 0}. Paid leave hours are already represented in finalized payroll totals when payroll-ready.
+                  </Typography>
+                )}
                 {[
                   ["Regular pay", detailRow.regular_pay],
                   ["Overtime pay", detailRow.overtime_pay],

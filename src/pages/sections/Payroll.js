@@ -47,6 +47,7 @@ import { vacationIncludedByDefault, defaultVacationPercent } from "./utils/payro
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import PayrollScenarios from "./PayrollScenarios";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { extractApiErrorMessage, parseApiErrorPayload } from "../../utils/apiError";
 
 const columnsToExport = [
   "employee_name",
@@ -294,7 +295,7 @@ useEffect(() => {
       downloadBlob(res.data, `finalized_payroll_${params.region}_${params.start_date}_${params.end_date}.csv`);
     } catch (err) {
       console.error(err);
-      showMessage("Export failed.", "error");
+      showMessage(await extractApiErrorMessage(err, "Export failed."), "error");
     } finally {
       setExporting(false);
     }
@@ -326,7 +327,7 @@ useEffect(() => {
       downloadBlob(res.data, `payroll_summary_${params.region}_${params.start_date}_${params.end_date}.csv`);
     } catch (err) {
       console.error(err);
-      showMessage("Summary export failed.", "error");
+      showMessage(await extractApiErrorMessage(err, "Summary export failed."), "error");
     } finally {
       setExporting(false);
     }
@@ -357,7 +358,7 @@ useEffect(() => {
       downloadBlob(res.data, `payslips_${params.region}_${params.start_date}_${params.end_date}.zip`);
     } catch (err) {
       console.error(err);
-      showMessage("Payslip ZIP export failed.", "error");
+      showMessage(await extractApiErrorMessage(err, "Payslip ZIP export failed."), "error");
     } finally {
       setExporting(false);
     }
@@ -391,10 +392,8 @@ useEffect(() => {
     } catch (err) {
       console.error(err);
       try {
-        const blob = err?.response?.data;
-        if (blob instanceof Blob) {
-          const text = await blob.text();
-          const parsed = JSON.parse(text);
+        const parsed = await parseApiErrorPayload(err?.response?.data);
+        if (parsed) {
           if (parsed?.error === "missing_external_employee_id" && Array.isArray(parsed?.employees)) {
             setMissingExternalEmployees(parsed.employees);
             showMessage("Provider export blocked: missing external employee IDs.", "warning");
@@ -407,13 +406,16 @@ useEffect(() => {
           } else if (parsed?.error === "no_provider_import_rows_after_filters") {
             showMessage("No provider import rows found (all employees had 0 gross pay or were not finalized).", "warning");
           } else {
-            showMessage(parsed?.error || "Provider CSV export failed.", "error");
+            showMessage(
+              parsed?.message || parsed?.error || parsed?.error_code || "Provider CSV export failed.",
+              "error"
+            );
           }
         } else {
-          showMessage("Provider CSV export failed.", "error");
+          showMessage(await extractApiErrorMessage(err, "Provider CSV export failed."), "error");
         }
       } catch {
-        showMessage("Provider CSV export failed.", "error");
+        showMessage(await extractApiErrorMessage(err, "Provider CSV export failed."), "error");
       }
     } finally {
       setExporting(false);

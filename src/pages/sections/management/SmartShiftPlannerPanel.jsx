@@ -138,6 +138,33 @@ const buildWeekLabel = (weekKey) => {
 const hasSuggestionWarnings = (suggestion) =>
   Array.isArray(suggestion?.conflicts) && suggestion.conflicts.length > 0;
 
+const formatLeaveConflictReason = (conflict = {}) => {
+  const leaveType = conflict.leave_type ? String(conflict.leave_type).replace(/_/g, " ") : "leave";
+  const status = conflict.leave_status || "leave";
+  const minutes = Number(conflict.overlap_minutes || 0);
+  const hoursLabel = minutes > 0 ? ` (${(minutes / 60).toFixed(minutes % 60 ? 2 : 0)}h overlap)` : "";
+  const prefix = conflict.blocking ? "Blocked" : "Warning";
+  const base =
+    conflict.message ||
+    (conflict.reason === "pending_leave_warning"
+      ? "Pending leave overlaps this shift window."
+      : "Leave overlaps this shift window.");
+  const conservative = conflict.time_unspecified
+    ? " Time was not specified, so Smart Shift treats the full day as unavailable."
+    : "";
+  return `${prefix}: ${leaveType} ${status}${hoursLabel}. ${base}${conservative}`;
+};
+
+const formatSmartShiftWarning = (warning = {}, recruiterNameById = new Map()) => {
+  const conflicts = Array.isArray(warning.leave_conflicts) ? warning.leave_conflicts : [];
+  if (!conflicts.length) return warning.message || warning.reason || "";
+  const name = recruiterNameById.get(Number(warning.recruiter_id)) || `employee #${warning.recruiter_id}`;
+  const windowLabel = [warning.date, warning.start_time && warning.end_time ? `${warning.start_time}-${warning.end_time}` : ""]
+    .filter(Boolean)
+    .join(" ");
+  return `${name}${windowLabel ? ` (${windowLabel})` : ""}: ${conflicts.map(formatLeaveConflictReason).join(" ")}`;
+};
+
 const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = [], onApplied }) => {
   const autoTimezone = useMemo(() => detectTimezone(), []);
 
@@ -524,6 +551,10 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
       const maxSuggestionsReached = apiWarnings.some((w) =>
         String(w?.message || "").toLowerCase().includes("max_suggestions reached")
       );
+      const leaveWarningMessages = apiWarnings
+        .map((warning) => formatSmartShiftWarning(warning, recruiterNameById))
+        .filter(Boolean)
+        .slice(0, 5);
       const recruiterSuggestionCounts = list.reduce((acc, item) => {
         const rid = Number(item?.recruiter_id);
         if (!Number.isFinite(rid)) return acc;
@@ -575,6 +606,9 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         warningMessages.push(
           `All generated suggestions currently belong to ${dominantRecruiterName}. No other selected employees qualified for this run. If that was not intended, leave managers excluded and verify Smart Shift availability for the rest of the team.`
         );
+      }
+      if (leaveWarningMessages.length) {
+        warningMessages.push(`Leave conflicts: ${leaveWarningMessages.join(" ")}`);
       }
       setSuggestWarning(warningMessages.join(" "));
 
@@ -636,7 +670,30 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         },
       });
 
+      const failedRows = Array.isArray(data?.failed) ? data.failed : [];
+      const appliedRows = Array.isArray(data?.applied) ? data.applied : [];
+      const leaveFailureMessages = failedRows
+        .filter((row) => row?.error_code === "leave_conflict" || Array.isArray(row?.leave_conflicts))
+        .map((row) => {
+          const details = (row.leave_conflicts || []).map(formatLeaveConflictReason).join(" ");
+          return details || row.message || row.reason || "Leave conflict blocked this suggestion.";
+        })
+        .filter(Boolean);
+      const leaveWarningMessages = appliedRows
+        .flatMap((row) => (Array.isArray(row?.leave_warnings) ? row.leave_warnings : []))
+        .map(formatLeaveConflictReason)
+        .filter(Boolean);
       setSuccess(`Applied ${data?.run?.applied_count || 0} shift(s), failed ${data?.run?.failed_count || 0}.`);
+      if (leaveFailureMessages.length || leaveWarningMessages.length) {
+        setSuggestWarning(
+          [
+            leaveFailureMessages.length ? `Blocked by leave: ${leaveFailureMessages.join(" ")}` : "",
+            leaveWarningMessages.length ? `Leave warnings applied: ${leaveWarningMessages.join(" ")}` : "",
+          ]
+            .filter(Boolean)
+            .join(" ")
+        );
+      }
       if (onApplied) onApplied();
 
       await fetchRuns({ page: 1, limit: runsPageSize });
@@ -1990,6 +2047,11 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                                   `Department ${s.location_id}`
                                 }
                               />
+                            ) : null}
+                            {warnings ? (
+                              <Typography variant="caption" color="warning.dark" sx={{ maxWidth: 520 }}>
+                                {s.conflicts.map(formatLeaveConflictReason).join(" ")}
+                              </Typography>
                             ) : null}
                           </Stack>
                           <Typography variant="caption" color="text.secondary">

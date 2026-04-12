@@ -8,6 +8,7 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import EmailIcon from "@mui/icons-material/Email";
 import api, { API_BASE_URL } from "../../utils/api";
 import dayjs  from "dayjs";
+import { extractApiErrorMessage } from "../../utils/apiError";
 
 /* ──────────────────────────────────────────────────────────
    Helper – ensure we always send a valid YYYY-MM
@@ -208,7 +209,8 @@ export default function DownloadPayrollButton({
       });
     } catch (err) {
       console.error(err);
-      setSnack({ open: true, sev: "error", msg: `Export failed: ${err.message}` });
+      const message = await extractApiErrorMessage(err, "Export failed.");
+      setSnack({ open: true, sev: "error", msg: `Export failed: ${message}` });
     } finally {
       setBusy(false);
     }

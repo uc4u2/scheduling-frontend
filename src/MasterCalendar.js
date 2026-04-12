@@ -21,8 +21,9 @@ import {
 import { useTheme } from "@mui/material/styles";
 import api from "./utils/api";
 import moment from "moment-timezone"; // keep for formatting in drawer
+import { LEAVE_TYPE_OPTIONS, formatLeaveTypeLabel } from "./pages/sections/utils/leaveSettings";
 
-const leaveTypes = ["sick", "vacation", "personal", "family"];
+const leaveTypes = LEAVE_TYPE_OPTIONS;
 
 const MasterCalendar = ({ token, loggedInRecruiter }) => {
   const theme = useTheme();
@@ -300,7 +301,7 @@ const MasterCalendar = ({ token, loggedInRecruiter }) => {
                 >
                   {leaveTypes.map((t) => (
                     <MenuItem key={t} value={t}>
-                      {t}
+                      {formatLeaveTypeLabel(t)}
                     </MenuItem>
                   ))}
                 </TextField>

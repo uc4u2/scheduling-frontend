@@ -26,11 +26,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Alert,
 } from "@mui/material";
 import { useDepartments, useEmployeesByDepartment } from "./hooks/useRecruiterDepartments";
 import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
+import { extractApiErrorMessage } from "../../utils/apiError";
 
 export default function PayrollAuditPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
@@ -64,6 +66,7 @@ export default function PayrollAuditPage() {
   const [diff, setDiff] = useState(null);
   const [pdfAuditId, setPdfAuditId] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const userTz = getUserTimezone();
   const latestEntryByPeriod = rows.reduce((acc, row) => {
     const key = `${row.employee_id || "na"}|${row.region || "na"}|${row.start_date || "na"}|${row.end_date || "na"}`;
@@ -74,6 +77,7 @@ export default function PayrollAuditPage() {
   const fetchRows = async (pageOverride) => {
     const currentPage = pageOverride || page;
     setLoading(true);
+    setErrorMessage("");
     try {
       const params = {
         page: currentPage,
@@ -94,6 +98,7 @@ export default function PayrollAuditPage() {
       setTotalRows(res.data?.total_rows || 0);
     } catch (err) {
       console.error("Payroll audit fetch failed", err?.response?.data || err.message);
+      setErrorMessage(await extractApiErrorMessage(err, "Payroll audit fetch failed."));
     } finally {
       setLoading(false);
     }
@@ -109,6 +114,7 @@ export default function PayrollAuditPage() {
   const handleDownloadPdf = async (id) => {
     if (!id) return;
     setDownloading(true);
+    setErrorMessage("");
     try {
       const res = await api.get(`/automation/payroll/audit/${id}/pdf`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -124,6 +130,7 @@ export default function PayrollAuditPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("PDF download failed", err?.response?.data || err.message);
+      setErrorMessage(await extractApiErrorMessage(err, "PDF download failed."));
     } finally {
       setDownloading(false);
     }
@@ -141,6 +148,11 @@ export default function PayrollAuditPage() {
       <Typography variant="body2" color="text.secondary" gutterBottom>
         Shows who finalized or overwrote a payroll period. Latest entry is the authoritative snapshot.
       </Typography>
+      {errorMessage && (
+        <Alert severity="error" sx={{ mt: 2 }} onClose={() => setErrorMessage("")}>
+          {errorMessage}
+        </Alert>
+      )}
 
       <Grid container spacing={2} sx={{ my: 2 }}>
         <Grid item xs={12} md={3}>

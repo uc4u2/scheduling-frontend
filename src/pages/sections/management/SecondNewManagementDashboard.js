@@ -758,6 +758,7 @@ const panels = useMemo(
   const analyticsImmersive =
 
     dialogFullscreen && !fullScreen;
+  const analyticsOpen = openIndex === "analytics";
   const immersiveBodyScroll =
     activePanel?.dialogScroll === "body" && (fullScreen || analyticsImmersive);
   const dialogScrollMode = immersiveBodyScroll
@@ -1174,8 +1175,10 @@ const panels = useMemo(
             overflowY: immersiveBodyScroll ? "auto" : undefined,
             width: analyticsImmersive ? "100vw" : undefined,
             maxWidth: analyticsImmersive ? "100vw" : undefined,
-            height: analyticsImmersive ? "100vh" : undefined,
-            maxHeight: analyticsImmersive ? "100vh" : undefined,
+            height: analyticsOpen ? (analyticsImmersive ? "100vh" : "calc(100vh - 48px)") : undefined,
+            maxHeight: analyticsOpen ? (analyticsImmersive ? "100vh" : "calc(100vh - 48px)") : undefined,
+            display: analyticsOpen ? "flex" : undefined,
+            flexDirection: analyticsOpen ? "column" : undefined,
             alignSelf: activePanel?.dialogScroll === "body" ? "flex-start" : undefined,
             overscrollBehavior: immersiveBodyScroll ? "contain" : undefined,
 
@@ -1337,6 +1340,9 @@ const panels = useMemo(
             p: { xs: 1.5, sm: 2.5, md: 3 },
 
             maxHeight:
+              analyticsOpen
+                ? "none"
+                :
               activePanel?.dialogScroll === "body"
                 ? "none"
                 : analyticsImmersive
@@ -1349,6 +1355,9 @@ const panels = useMemo(
                 : "auto",
             display: "flex",
             flexDirection: "column",
+            flex: analyticsOpen ? "1 1 auto" : undefined,
+            minHeight: analyticsOpen ? 0 : undefined,
+            overscrollBehavior: analyticsOpen ? "contain" : undefined,
 
             bgcolor: hideDialogActions ? "background.paper" : "background.default",
             "&::-webkit-scrollbar": {
@@ -1367,7 +1376,9 @@ const panels = useMemo(
 
           {openIndex === "analytics" ? (
 
-            <EnterpriseAnalytics defaultTab={0} />
+            <Box sx={{ minHeight: 0, width: "100%" }}>
+              <EnterpriseAnalytics defaultTab={0} />
+            </Box>
 
           ) : openIndex !== null && typeof openIndex === "number" && mounted[openIndex] ? (
 

@@ -5,6 +5,11 @@ import {
   defaultVacationPercent,
   vacationIncludedByDefault,
 } from "./utils/payrollRules";
+import {
+  formatLeaveBlockerReason,
+  getPayrollLeaveVisibility,
+} from "./utils/payrollLeaveVisibility";
+import { extractApiErrorMessage } from "../../utils/apiError";
 
 import api from "../../utils/api";
 import {
@@ -267,6 +272,13 @@ export default function PayrollPreview({
   const rawModeWarning =
     payrollWarnings[0] ||
     "U.S. payroll finalize is supported only in AK, FL, NV, SD, TX, WA, WY, TN, NH.";
+  const leaveVisibility = getPayrollLeaveVisibility(payroll);
+  const leaveFinalizeBlocked = leaveVisibility.finalizationBlocked;
+  const finalizeBlocked = isRawPayrollMode || leaveFinalizeBlocked;
+  const finalizeBlockReason = isRawPayrollMode
+    ? rawModeWarning
+    : leaveVisibility.finalizationBlockReason;
+  const hoursLabel = (value) => `${Number(value || 0).toFixed(2)}h`;
 
   const computePayDate = () => {
     const endDate = payroll?.end_date;
@@ -420,6 +432,14 @@ const saveFinalizedPayroll = async () => {
       });
       return;
     }
+    if (leaveFinalizeBlocked) {
+      setSnackbar({
+        open: true,
+        severity: "warning",
+        message: leaveVisibility.finalizationBlockReason,
+      });
+      return;
+    }
 
     // 1️⃣ quick validation
     if (!payroll?.recruiter_id || !payroll?.start_date || !payroll?.end_date) {
@@ -456,7 +476,8 @@ const saveFinalizedPayroll = async () => {
       message:"✅ Finalized payroll saved" });
   } catch (err) {
     console.error(err);
-    setSnackbar({ open:true, severity:"error", message:"❌ Save failed" });
+    const message = await extractApiErrorMessage(err, "Save failed.");
+    setSnackbar({ open:true, severity:"error", message:`❌ ${message}` });
   } finally {
     setSavingFinalized(false);
   }
@@ -1493,6 +1514,91 @@ const handleRecalculate = () => {
         )}
       </Stack>
 
+      {leaveVisibility.hasLeaveData && (
+        <Box
+          sx={{
+            mt: 2,
+            p: 2,
+            border: "1px solid",
+            borderColor: leaveFinalizeBlocked ? "error.light" : "divider",
+            borderRadius: 2,
+            bgcolor: leaveFinalizeBlocked ? "rgba(211, 47, 47, 0.04)" : "background.paper",
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              spacing={1}
+              alignItems={{ xs: "flex-start", md: "center" }}
+            >
+              <Typography variant="subtitle2">Leave readiness in this payroll preview</Typography>
+              <Chip
+                size="small"
+                color={leaveFinalizeBlocked ? "error" : "success"}
+                label={leaveFinalizeBlocked ? "Finalize blocked" : "Ready to finalize"}
+              />
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Payroll-ready leave has manager-confirmed hours. Preview-only or estimated leave is shown for review and warnings, but it is not used as finalized payroll truth.
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`Payroll-ready leave: ${leaveVisibility.payrollReadyLeaveCount}`}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`Preview-only leave: ${leaveVisibility.previewOnlyLeaveCount}`}
+              />
+              <Chip
+                size="small"
+                color="success"
+                variant="outlined"
+                label={`Paid ready: ${hoursLabel(leaveVisibility.paidLeaveReadyHours)}`}
+              />
+              <Chip
+                size="small"
+                color="warning"
+                variant="outlined"
+                label={`Unpaid ready: ${hoursLabel(leaveVisibility.unpaidLeaveReadyHours)}`}
+              />
+              {leaveVisibility.previewUnpaidLeaveHours > leaveVisibility.unpaidLeaveReadyHours && (
+                <Chip
+                  size="small"
+                  color="info"
+                  variant="outlined"
+                  label={`Preview unpaid: ${hoursLabel(leaveVisibility.previewUnpaidLeaveHours)}`}
+                />
+              )}
+            </Stack>
+
+            {leaveFinalizeBlocked && (
+              <Alert severity="error">
+                <Typography variant="body2" fontWeight={700}>
+                  Resolve leave blockers before finalizing payroll.
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  A blocker usually means payroll-ready leave overlaps worked time. Review the leave request and time entry before closing payroll.
+                </Typography>
+                <Stack spacing={0.5} sx={{ mt: 1 }}>
+                  {leaveVisibility.blockers.map((blocker, idx) => (
+                    <Typography key={`${blocker.leave_id || "leave"}-${idx}`} variant="body2">
+                      {formatLeaveBlockerReason(blocker.reason_code)}
+                      {blocker.leave_id ? ` · Leave #${blocker.leave_id}` : ""}
+                      {blocker.leave_type ? ` · ${String(blocker.leave_type).replace(/_/g, " ")}` : ""}
+                      {blocker.computed_hours !== undefined ? ` · ${hoursLabel(blocker.computed_hours)}` : ""}
+                      {blocker.paid_flag !== undefined ? ` · ${blocker.paid_flag ? "paid" : "unpaid"}` : ""}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Alert>
+            )}
+          </Stack>
+        </Box>
+      )}
+
       <DownloadPayrollButton
         recruiterId={payroll.recruiter_id}
         payroll={payroll}
@@ -1504,6 +1610,8 @@ const handleRecalculate = () => {
         selectedColumns={[
           "regular_hours",
           "overtime_hours",
+          "paid_leave_hours",
+          "unpaid_leave_hours",
           "bonus",
           "commission",
           "tip",
@@ -1515,8 +1623,8 @@ const handleRecalculate = () => {
           "federal_tax_amount",
           "provincial_tax_amount",
         ]}
-        disableFinalize={isRawPayrollMode}
-        finalizeBlockReason={rawModeWarning}
+        disableFinalize={finalizeBlocked}
+        finalizeBlockReason={finalizeBlockReason}
       />
 
       <Box sx={{ mt: 2 }}>
@@ -1525,7 +1633,7 @@ const handleRecalculate = () => {
             <Button
               variant="contained"
               color="primary"
-              disabled={savingFinalized || isRawPayrollMode}
+              disabled={savingFinalized || finalizeBlocked}
               onClick={saveFinalizedPayroll}
               sx={{ textTransform: "none" }}
             >

@@ -47,6 +47,10 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditIcon from "@mui/icons-material/Edit";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import BlockIcon from "@mui/icons-material/Block";
+import {
+  formatLeaveWarningReason,
+  getLeaveReviewVisibility,
+} from "./utils/leaveReviewVisibility";
 
 const statusColor = {
   assigned: "default",
@@ -111,6 +115,10 @@ const readableRosterChipSx = (theme) => ({
     backgroundColor: alpha(theme.palette.warning.main, 0.16),
   },
 });
+
+const isLeaveEntry = (entry) => entry?.entry_type === "leave";
+const leaveKindLabel = (entry) => getLeaveReviewVisibility(entry).payShortLabel;
+const leaveHours = (entry) => Number(entry?.paid_leave_hours || entry?.unpaid_leave_hours || entry?.hours_worked_rounded || 0);
 
 const TimeEntriesPanel = ({ recruiters = [] }) => {
   const theme = useTheme();
@@ -200,8 +208,14 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     return { active, onBreak };
   }, [roster]);
   const pendingCount = useMemo(
-    () => entries.filter((e) => e.status === "completed").length,
+    () => entries.filter((e) => !isLeaveEntry(e) && e.status === "completed").length,
     [entries]
+  );
+  const selectableEntries = useMemo(() => entries.filter((entry) => !isLeaveEntry(entry)), [entries]);
+  const leaveRows = useMemo(() => entries.filter(isLeaveEntry), [entries]);
+  const ptoHoursRange = useMemo(
+    () => leaveRows.reduce((sum, entry) => sum + leaveHours(entry), 0),
+    [leaveRows]
   );
   const hoursToday = useMemo(() => {
     const targetDate = filters.startDate === filters.endDate ? filters.startDate : null;
@@ -233,6 +247,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         maxBreakMissing: 0,
       };
     }
+    const shiftEntries = detailEntries.filter((entry) => !isLeaveEntry(entry));
     let breakNon = 0;
     let unusual = 0;
     let rejected = 0;
@@ -240,7 +255,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     let inProgress = 0;
     let anomalies = 0;
     let maxBreakMissing = 0;
-    detailEntries.forEach((e) => {
+    shiftEntries.forEach((e) => {
       if (e.break_non_compliant) breakNon += 1;
       if (e.clock_in_unusual || e.clock_out_unusual) unusual += 1;
       if (e.status === "rejected") rejected += 1;
@@ -250,7 +265,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       if (missing > maxBreakMissing) maxBreakMissing = missing;
     });
     anomalies = breakNon + unusual + rejected;
-    const total = detailEntries.length;
+    const total = shiftEntries.length;
     const breakCompliance = total ? Math.round(((total - breakNon) / total) * 100) : null;
     return {
       total,
@@ -310,7 +325,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
   const selectedCount = selectedIds.length;
   const handleSelectAll = (event) => {
     if (event.target.checked) {
-      const allIds = entries.map((entry) => entry.id);
+      const allIds = selectableEntries.map((entry) => entry.id);
       setSelectedIds(allIds);
     } else {
       setSelectedIds([]);
@@ -359,7 +374,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       }
       return;
     }
-    setSelectedIds((prev) => prev.filter((id) => entries.some((entry) => entry.id === id)));
+    setSelectedIds((prev) => prev.filter((id) => entries.some((entry) => !isLeaveEntry(entry) && entry.id === id)));
   }, [entries, selectedIds.length]);
 
   useEffect(() => {
@@ -708,11 +723,15 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
     lines.push(
       [
         "Employee",
+        "Entry Type",
         "Date",
         "Clock In",
         "Clock Out",
         "Timezone",
         "Hours",
+        "Leave Type",
+        "Paid Leave",
+        "Leave Hours Source",
         "Break minutes",
         "Break required",
         "Break missing",
@@ -732,11 +751,15 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
       lines.push(
         [
           csvEscape(detailEmployeeName || detailEmployee.email || detailEmployee.id),
-          csvEscape(entry.date),
+          csvEscape(entry.entry_type || "shift"),
+          csvEscape(entry.date_label || entry.date),
           csvEscape(formatClockShort(entry.clock_in, entry.timezone)),
           csvEscape(formatClockShort(entry.clock_out, entry.timezone)),
           csvEscape(entry.timezone || ""),
           csvEscape(entry.hours_worked_rounded ?? entry.hours_worked),
+          csvEscape(entry.leave_label || ""),
+          csvEscape(isLeaveEntry(entry) ? (entry.is_paid_leave ? "yes" : "no") : ""),
+          csvEscape(entry.leave_hours_source || ""),
           csvEscape(entry.break_minutes || 0),
           csvEscape(entry.break_required_minutes || 0),
           csvEscape(entry.break_missing_minutes || 0),
@@ -934,6 +957,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
             <SummaryCard label="On break now" value={onBreakCount} />
             <SummaryCard label="Pending approvals" value={pendingCount} />
             <SummaryCard label="Hours (range)" value={hoursToday.toFixed(2)} />
+            <SummaryCard label="PTO / time off" value={`${ptoHoursRange.toFixed(2)}h`} />
           </Stack>
         </Grid>
 
@@ -1121,8 +1145,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                       <TableRow>
                         <TableCell padding="checkbox">
                           <Checkbox
-                            indeterminate={selectedCount > 0 && selectedCount < entries.length}
-                            checked={entries.length > 0 && selectedCount === entries.length}
+                            indeterminate={selectedCount > 0 && selectedCount < selectableEntries.length}
+                            checked={selectableEntries.length > 0 && selectedCount === selectableEntries.length}
                             onChange={handleSelectAll}
                           />
                         </TableCell>
@@ -1137,6 +1161,8 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                     </TableHead>
                     <TableBody>
                     {entries.map((entry) => {
+                      const entryIsLeave = isLeaveEntry(entry);
+                      const leaveMeta = entryIsLeave ? getLeaveReviewVisibility(entry) : null;
                       const r =
                         entry.recruiter ||
                         recruiterMap[entry.recruiter_id] ||
@@ -1213,6 +1239,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                         <TableRow key={entry.id} hover selected={selectedIds.includes(entry.id)}>
                           <TableCell padding="checkbox">
                             <Checkbox
+                              disabled={entryIsLeave}
                               checked={selectedIds.includes(entry.id)}
                               onChange={handleSelectOne(entry.id)}
                             />
@@ -1249,57 +1276,142 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                               </Stack>
                             </Button>
                           </TableCell>
-                          <TableCell>{entry.date}</TableCell>
+                          <TableCell>{entry.date_label || entry.date}</TableCell>
                           <TableCell>
-                            <Stack spacing={0.5}>
-                              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                                <Chip size="small" variant="outlined" label="In" />
-                                <Typography variant="body2">{formatClock(entry.clock_in, entry.timezone)}</Typography>
-                                {entry.clock_in_ip && (
-                                  <Tooltip title={entry.clock_in_device_hint || "Clock-in device"}>
-                                    <Chip
-                                      label={entry.clock_in_ip}
-                                      color={entry.clock_in_unusual ? "error" : "default"}
-                                      size="small"
-                                      variant={entry.clock_in_unusual ? "filled" : "outlined"}
-                                    />
-                                  </Tooltip>
+                            {entryIsLeave ? (
+                              <Stack spacing={0.5}>
+                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                  <Chip
+                                    size="small"
+                                    label={leaveMeta.payShortLabel}
+                                    sx={{
+                                      bgcolor: alpha(leaveMeta.isPaid ? theme.palette.success.main : theme.palette.warning.main, 0.16),
+                                      color: theme.palette.text.primary,
+                                      fontWeight: 700,
+                                    }}
+                                  />
+                                  <Chip
+                                    size="small"
+                                    color={leaveMeta.payrollColor}
+                                    variant="outlined"
+                                    label={leaveMeta.payrollLabel}
+                                  />
+                                  {leaveMeta.estimated && (
+                                    <Tooltip title="Leave hours are estimated and should be manager-confirmed before finalized payroll use.">
+                                      <Chip size="small" color="warning" variant="outlined" label="Estimated" />
+                                    </Tooltip>
+                                  )}
+                                  {leaveMeta.hasWorkedOverlap && (
+                                    <Tooltip title="Approved leave overlaps worked time. Resolve before finalizing payroll.">
+                                      <Chip size="small" color="error" variant="outlined" label="Overlap warning" />
+                                    </Tooltip>
+                                  )}
+                                  <Typography variant="body2">{entry.leave_label || "Time off"}</Typography>
+                                </Stack>
+                                {entry.reason && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    {entry.reason}
+                                  </Typography>
                                 )}
                               </Stack>
-                              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                                <Chip size="small" variant="outlined" label="Out" />
-                                <Typography variant="body2">{formatClock(entry.clock_out, entry.timezone)}</Typography>
-                                {entry.clock_out_ip && (
-                                  <Tooltip title={entry.clock_out_device_hint || "Clock-out device"}>
-                                    <Chip
-                                      label={entry.clock_out_ip}
-                                      color={entry.clock_out_unusual ? "error" : "default"}
-                                      size="small"
-                                      variant={entry.clock_out_unusual ? "filled" : "outlined"}
-                                    />
-                                  </Tooltip>
-                                )}
+                            ) : (
+                              <Stack spacing={0.5}>
+                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                  <Chip size="small" variant="outlined" label="In" />
+                                  <Typography variant="body2">{formatClock(entry.clock_in, entry.timezone)}</Typography>
+                                  {entry.clock_in_ip && (
+                                    <Tooltip title={entry.clock_in_device_hint || "Clock-in device"}>
+                                      <Chip
+                                        label={entry.clock_in_ip}
+                                        color={entry.clock_in_unusual ? "error" : "default"}
+                                        size="small"
+                                        variant={entry.clock_in_unusual ? "filled" : "outlined"}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                </Stack>
+                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                                  <Chip size="small" variant="outlined" label="Out" />
+                                  <Typography variant="body2">{formatClock(entry.clock_out, entry.timezone)}</Typography>
+                                  {entry.clock_out_ip && (
+                                    <Tooltip title={entry.clock_out_device_hint || "Clock-out device"}>
+                                      <Chip
+                                        label={entry.clock_out_ip}
+                                        color={entry.clock_out_unusual ? "error" : "default"}
+                                        size="small"
+                                        variant={entry.clock_out_unusual ? "filled" : "outlined"}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                </Stack>
                               </Stack>
-                            </Stack>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Stack spacing={0.5}>
                               <Typography>{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
-                              {breakChips}
+                              {entryIsLeave ? (
+                                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    label={leaveMeta.isPaid ? "Paid leave hours" : "Unpaid time-off hours"}
+                                    sx={{ width: "fit-content" }}
+                                  />
+                                  {leaveMeta.hoursSource && (
+                                    <Chip
+                                      size="small"
+                                      variant="outlined"
+                                      label={`Source: ${String(leaveMeta.hoursSource).replace(/_/g, " ")}`}
+                                      sx={{ width: "fit-content" }}
+                                    />
+                                  )}
+                                  {leaveMeta.estimated && (
+                                    <Tooltip title="No override hours or linked shift duration was available, so this uses the report estimate.">
+                                      <Chip
+                                        size="small"
+                                        variant="outlined"
+                                        color="warning"
+                                        label="Estimated"
+                                        sx={{ width: "fit-content" }}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                  {leaveMeta.warnings.map((warning, idx) => (
+                                    <Tooltip key={`${warning.code || warning.reason_code || "warning"}-${idx}`} title={warning.message || ""}>
+                                      <Chip
+                                        size="small"
+                                        variant="outlined"
+                                        color={leaveMeta.hasWorkedOverlap ? "error" : "warning"}
+                                        label={formatLeaveWarningReason(warning.code || warning.reason_code)}
+                                        sx={{ width: "fit-content" }}
+                                      />
+                                    </Tooltip>
+                                  ))}
+                                </Stack>
+                              ) : breakChips}
                             </Stack>
                           </TableCell>
                           <TableCell>
                             <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                              {anomalyChips(entry)}
+                              {entryIsLeave ? (
+                                <Typography variant="body2" color="text.secondary">—</Typography>
+                              ) : anomalyChips(entry)}
                             </Stack>
                           </TableCell>
                           <TableCell>
-                            <Chip label={entry.status} size="small" color={statusColor[entry.status] || "default"} variant="outlined" />
+                            <Chip
+                              label={entryIsLeave ? leaveMeta.payrollLabel : entry.status}
+                              size="small"
+                              color={entryIsLeave ? leaveMeta.payrollColor : statusColor[entry.status] || "default"}
+                              variant="outlined"
+                            />
                           </TableCell>
                           <TableCell align="right">
                             <IconButton
                               size="small"
                               aria-label="Row actions"
+                              disabled={entryIsLeave}
                               onClick={(e) => {
                                 setRowMenuAnchor(e.currentTarget);
                                 setRowMenuEntry(entry);
@@ -1776,23 +1888,52 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {detailEntries.map((entry) => (
+                  {detailEntries.map((entry) => {
+                    const entryIsLeave = isLeaveEntry(entry);
+                    const leaveMeta = entryIsLeave ? getLeaveReviewVisibility(entry) : null;
+                    return (
                     <TableRow key={entry.id}>
-                      <TableCell>{entry.date}</TableCell>
+                      <TableCell>{entry.date_label || entry.date}</TableCell>
                       <TableCell>
-                        <Typography variant="body2">
-                          In: {formatClockShort(entry.clock_in, entry.timezone)}
-                        </Typography>
-                        <Typography variant="body2">
-                          Out: {formatClockShort(entry.clock_out, entry.timezone)}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {entry.clock_in_ip ? `IP: ${entry.clock_in_ip}` : ""}
-                        </Typography>
+                        {entryIsLeave ? (
+                          <>
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                              <Chip size="small" variant="outlined" color={leaveMeta.isPaid ? "success" : "warning"} label={leaveMeta.payShortLabel} />
+                              <Chip size="small" variant="outlined" color={leaveMeta.payrollColor} label={leaveMeta.payrollLabel} />
+                              {leaveMeta.estimated && <Chip size="small" variant="outlined" color="warning" label="Estimated" />}
+                              {leaveMeta.hasWorkedOverlap && <Chip size="small" variant="outlined" color="error" label="Overlap warning" />}
+                            </Stack>
+                            <Typography variant="caption" color="text.secondary">
+                              {entry.leave_label || "Time off"}
+                            </Typography>
+                          </>
+                        ) : (
+                          <>
+                            <Typography variant="body2">
+                              In: {formatClockShort(entry.clock_in, entry.timezone)}
+                            </Typography>
+                            <Typography variant="body2">
+                              Out: {formatClockShort(entry.clock_out, entry.timezone)}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {entry.clock_in_ip ? `IP: ${entry.clock_in_ip}` : ""}
+                            </Typography>
+                          </>
+                        )}
                       </TableCell>
-                      <TableCell>{entry.hours_worked_rounded ?? entry.hours_worked}h</TableCell>
                       <TableCell>
-                        {entry.shift_deviation_minutes !== null && entry.shift_deviation_minutes !== undefined ? (
+                        <Typography variant="body2">{entry.hours_worked_rounded ?? entry.hours_worked}h</Typography>
+                        {entryIsLeave && leaveMeta.estimated && (
+                          <Chip size="small" variant="outlined" color="warning" label="Estimated" sx={{ mt: 0.5 }} />
+                        )}
+                        {entryIsLeave && leaveMeta.hoursSource && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                            Source: {String(leaveMeta.hoursSource).replace(/_/g, " ")}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {!entryIsLeave && entry.shift_deviation_minutes !== null && entry.shift_deviation_minutes !== undefined ? (
                           <Chip
                             size="small"
                             label={`${entry.shift_deviation_minutes}m`}
@@ -1812,31 +1953,53 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Chip
-                          size="small"
-                          label={`${entry.break_minutes || 0}m`}
-                          color={entry.break_non_compliant ? "error" : "default"}
-                          variant={entry.break_non_compliant ? "filled" : "outlined"}
-                        />
-                        {entry.break_missing_minutes > 0 && (
-                          <Typography variant="caption" color="error.main" sx={{ display: "block" }}>
-                            Missing {entry.break_missing_minutes}m
-                          </Typography>
+                        {entryIsLeave ? (
+                          <Typography variant="body2" color="text.secondary">—</Typography>
+                        ) : (
+                          <>
+                            <Chip
+                              size="small"
+                              label={`${entry.break_minutes || 0}m`}
+                              color={entry.break_non_compliant ? "error" : "default"}
+                              variant={entry.break_non_compliant ? "filled" : "outlined"}
+                            />
+                            {entry.break_missing_minutes > 0 && (
+                              <Typography variant="caption" color="error.main" sx={{ display: "block" }}>
+                                Missing {entry.break_missing_minutes}m
+                              </Typography>
+                            )}
+                          </>
                         )}
                       </TableCell>
                       <TableCell>
-                        <Chip size="small" label={entry.status} />
+                        <Chip
+                          size="small"
+                          label={entryIsLeave ? leaveMeta.payrollLabel : entry.status}
+                          color={entryIsLeave ? leaveMeta.payrollColor : "default"}
+                          variant="outlined"
+                        />
                         {entry.approved_by_name && (
                           <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                             By {entry.approved_by_name}
                           </Typography>
                         )}
                         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.5 }}>
-                          {anomalyChips(entry)}
+                          {entryIsLeave
+                            ? leaveMeta.warnings.map((warning, idx) => (
+                                <Chip
+                                  key={`${warning.code || warning.reason_code || "warning"}-${idx}`}
+                                  size="small"
+                                  variant="outlined"
+                                  color={leaveMeta.hasWorkedOverlap ? "error" : "warning"}
+                                  label={formatLeaveWarningReason(warning.code || warning.reason_code)}
+                                />
+                              ))
+                            : anomalyChips(entry)}
                         </Stack>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  );
+                })}
                 </TableBody>
               </Table>
             )}

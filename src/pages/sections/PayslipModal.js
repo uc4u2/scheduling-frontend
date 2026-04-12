@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -205,16 +206,30 @@ export default function PayslipModal({ open, onClose, payroll = {}, month }) {
           </>
         )}
 
-        {/*  Hours breakdown (show if any OT or hours exist) */}
-        {(isNonZero(row.regular_hours) || isNonZero(row.overtime_hours)) && (
+        {/*  Hours breakdown. Paid leave is informational here; payroll math stays in regular pay. */}
+        {(isNonZero(row.regular_hours) ||
+          isNonZero(row.overtime_hours) ||
+          isNonZero(row.paid_leave_hours) ||
+          isNonZero(row.unpaid_leave_hours)) && (
           <>
             <Divider sx={{ my: 2 }} />
             <Typography sx={{ fontWeight: 500 }}>Hours</Typography>
+            {(isNonZero(row.paid_leave_hours) || isNonZero(row.unpaid_leave_hours)) && (
+              <Alert severity="info" variant="outlined" sx={{ my: 1 }}>
+                Leave hours are shown for transparency. Paid leave is included only when payroll-ready; unpaid leave is informational and does not add paid wages.
+              </Alert>
+            )}
             {isNonZero(row.regular_hours) && (
               <Typography>Regular Hours: {row.regular_hours}</Typography>
             )}
             {isNonZero(row.overtime_hours) && (
               <Typography>Overtime Hours: {row.overtime_hours}</Typography>
+            )}
+            {isNonZero(row.paid_leave_hours) && (
+              <Typography>Paid Leave Hours: {row.paid_leave_hours}</Typography>
+            )}
+            {isNonZero(row.unpaid_leave_hours) && (
+              <Typography>Unpaid Leave Hours: {row.unpaid_leave_hours}</Typography>
             )}
           </>
         )}

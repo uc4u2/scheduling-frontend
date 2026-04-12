@@ -118,24 +118,63 @@ const normalizeBookingPaymentStatus = (booking = {}) => {
   };
 };
 
-const paymentStatusChipColor = (status) => {
-  switch (status) {
-    case "paid":
-      return "success";
-    case "card_on_file":
-      return "primary";
-    case "pending":
-    case "processing":
-      return "warning";
-    case "partially_refunded":
-    case "refunded":
-      return "info";
-    case "failed":
-    case "requires_payment_method":
-      return "error";
-    default:
-      return "default";
-  }
+const paymentStatusChipSx = (status) => {
+  const normalized = toLowerSafe(status);
+  const styles = {
+    paid: {
+      bgcolor: "#dcfce7",
+      color: "#14532d",
+      borderColor: "#86efac",
+    },
+    card_on_file: {
+      bgcolor: "#dbeafe",
+      color: "#1e3a8a",
+      borderColor: "#93c5fd",
+    },
+    pending: {
+      bgcolor: "#ffedd5",
+      color: "#7c2d12",
+      borderColor: "#fdba74",
+    },
+    processing: {
+      bgcolor: "#ffedd5",
+      color: "#7c2d12",
+      borderColor: "#fdba74",
+    },
+    partially_refunded: {
+      bgcolor: "#e0f2fe",
+      color: "#075985",
+      borderColor: "#7dd3fc",
+    },
+    refunded: {
+      bgcolor: "#e0f2fe",
+      color: "#075985",
+      borderColor: "#7dd3fc",
+    },
+    failed: {
+      bgcolor: "#fee2e2",
+      color: "#7f1d1d",
+      borderColor: "#fca5a5",
+    },
+    requires_payment_method: {
+      bgcolor: "#fee2e2",
+      color: "#7f1d1d",
+      borderColor: "#fca5a5",
+    },
+    default: {
+      bgcolor: "#f1f5f9",
+      color: "#0f172a",
+      borderColor: "#cbd5e1",
+    },
+  };
+  return {
+    ...(styles[normalized] || styles.default),
+    border: "1px solid",
+    fontWeight: 800,
+    "& .MuiChip-label": {
+      color: "inherit",
+    },
+  };
 };
 
 const ManagerBookings = ({ slug, connect }) => {
@@ -1001,8 +1040,7 @@ const RowActions = ({ row }) => {
           <Chip
             size="small"
             label={paymentStatusLabel(params.row.payment_status)}
-            color={paymentStatusChipColor(params.row.payment_status)}
-            variant={params.row.payment_status === "paid" ? "filled" : "outlined"}
+            sx={paymentStatusChipSx(params.row.payment_status)}
           />
         ),
       },
@@ -1593,8 +1631,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
-
 
 
 

@@ -52,6 +52,9 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DownloadIcon from "@mui/icons-material/Download";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import api from "../../utils/api";
 import { STATUS } from "../../utils/shiftSwap";
 import { POLL_MS } from "../../utils/shiftSwap";
@@ -60,6 +63,25 @@ import IncomingSwapRequests from "../../components/IncomingSwapRequests";
 import { getUserTimezone } from "../../utils/timezone";
 import { timeTracking } from "../../utils/api";
 import SmartShiftAvailabilityTab from "../recruiter/SmartShiftAvailabilityTab";
+import {
+  applyEmployeeLeaveDurationMode,
+  applyEmployeeLeaveStartDate,
+  buildEmployeeLeaveRequestSubmission,
+  canWithdrawEmployeeLeave,
+  defaultEmployeeLeaveForm,
+  normalizeEmployeeLeaveRequest,
+} from "./utils/employeeLeaveRequest";
+import {
+  attachmentLabel,
+  canEmployeeDeleteLeaveAttachment,
+  canEmployeeUploadLeaveAttachment,
+  normalizeLeaveAttachment,
+  openAttachmentDownload,
+  parseAttachmentDownloadResponse,
+} from "./utils/leaveAttachments";
+import { formatLeaveApiError } from "./utils/leaveErrors";
+import { LEAVE_TYPE_OPTIONS, formatLeaveTypeLabel } from "./utils/leaveSettings";
+import { formatBalanceHours, normalizeLeaveBalanceSummary } from "./utils/leaveBalances";
 
 const statusColor = {
   assigned: "default",
@@ -105,6 +127,43 @@ const statusChipSx = (status, active = false) => (theme) => {
   };
 };
 
+const leaveChipSx = (status) => (theme) => {
+  const normalized = String(status || "").toLowerCase();
+  const palette =
+    normalized === "approved"
+      ? theme.palette.success
+      : normalized === "pending"
+      ? theme.palette.warning
+      : theme.palette.error;
+  return {
+    mt: 1,
+    mr: 1,
+    bgcolor: palette.main,
+    color: palette.contrastText,
+    border: `1px solid ${palette.dark || palette.main}`,
+    fontWeight: 800,
+    maxWidth: "100%",
+    "& .MuiChip-label": {
+      color: "inherit",
+      fontWeight: 800,
+      whiteSpace: "normal",
+      lineHeight: 1.2,
+      py: 0.25,
+    },
+  };
+};
+
+const readableLightChipSx = (theme) => ({
+  bgcolor: theme.palette.background.paper,
+  color: theme.palette.text.primary,
+  border: `1px solid ${theme.palette.divider}`,
+  fontWeight: 800,
+  "& .MuiChip-label": {
+    color: "inherit",
+    fontWeight: 800,
+  },
+});
+
 /* eslint-disable react-hooks/exhaustive-deps */
 
 const SecondEmployeeShiftView = () => {
@@ -135,12 +194,16 @@ const SecondEmployeeShiftView = () => {
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
   const [selectedShift, setSelectedShift] = useState(null);
   const [leaveForm, setLeaveForm] = useState({
-    leave_type: "sick",
-    reason: "",
-    override_hours: "",
-    is_paid_leave: true,
+    ...defaultEmployeeLeaveForm(null),
   });
   const [submittingLeave, setSubmittingLeave] = useState(false);
+  const [leaveFormError, setLeaveFormError] = useState("");
+  const [employeeLeaveRequests, setEmployeeLeaveRequests] = useState([]);
+  const [leaveHistoryLoading, setLeaveHistoryLoading] = useState(false);
+  const [selectedEmployeeLeave, setSelectedEmployeeLeave] = useState(null);
+  const [leaveAttachmentBusy, setLeaveAttachmentBusy] = useState(false);
+  const [employeeLeaveBalances, setEmployeeLeaveBalances] = useState(() => normalizeLeaveBalanceSummary());
+  const [leaveBalancesLoading, setLeaveBalancesLoading] = useState(false);
 
   // ──────────────── Swap states ────────────────
   const [swapModalOpen, setSwapModalOpen] = useState(false);
@@ -214,6 +277,31 @@ const loadTimeHistory = useCallback(async () => {
   }
 }, [historyFilters.endDate, historyFilters.startDate, historyFilters.status]);
 
+const loadEmployeeLeaveRequests = useCallback(async () => {
+  setLeaveHistoryLoading(true);
+  try {
+    const res = await api.get("/employee/leave-requests", { headers: authHeader });
+    const rows = Array.isArray(res.data?.requests) ? res.data.requests : [];
+    setEmployeeLeaveRequests(rows.map(normalizeEmployeeLeaveRequest));
+  } catch {
+    setEmployeeLeaveRequests([]);
+  } finally {
+    setLeaveHistoryLoading(false);
+  }
+}, [token]);
+
+const loadEmployeeLeaveBalances = useCallback(async () => {
+  setLeaveBalancesLoading(true);
+  try {
+    const res = await api.get("/employee/leave-balances", { headers: authHeader });
+    setEmployeeLeaveBalances(normalizeLeaveBalanceSummary(res.data));
+  } catch {
+    setEmployeeLeaveBalances(normalizeLeaveBalanceSummary());
+  } finally {
+    setLeaveBalancesLoading(false);
+  }
+}, [token]);
+
 const loadShifts = async () => {
   try {
     const today = format(new Date(), "yyyy-MM-dd");
@@ -225,15 +313,39 @@ const loadShifts = async () => {
       }),
       (async () => {
         try {
-          return await api.get("/leave/all", { headers: authHeader });
+          return await api.get("/employee/leave-requests", { headers: authHeader });
         } catch {
-          return await api.get("/my-availability", { headers: authHeader });
+          try {
+            return await api.get("/leave/all", { headers: authHeader });
+          } catch {
+            return await api.get("/my-availability", { headers: authHeader });
+          }
         }
       })(),
     ]);
 
     const { events = [] } = res.data || {};
-    const leaveBlocks = Array.isArray(leaveRes.data)
+    const employeeLeaveRows = Array.isArray(leaveRes.data?.requests)
+      ? leaveRes.data.requests.map(normalizeEmployeeLeaveRequest)
+      : null;
+    if (employeeLeaveRows) {
+      setEmployeeLeaveRequests(employeeLeaveRows);
+    }
+    const leaveBlocks = employeeLeaveRows
+      ? employeeLeaveRows.map((l) => ({
+          id: l.id,
+          leave_type: l.leave_type || "Leave",
+          leave_subtype: l.leave_subtype || null,
+          status: l.status,
+          start_date: l.start_date,
+          end_date: l.end_date || l.start_date,
+          duration_mode: l.duration_mode,
+          requested_hours: l.requested_hours,
+          approved_hours: l.approved_hours,
+          is_paid_leave: l.is_paid_leave,
+          review_comment: l.review_comment,
+        }))
+      : Array.isArray(leaveRes.data)
       ? leaveRes.data.map((l) => ({
           id: l.id,
           leave_type: l.leave_type || "Leave",
@@ -301,6 +413,11 @@ const loadShifts = async () => {
           leave_type: leave.leave_type || "Leave",
           leave_subtype: leave.leave_subtype || null,
           leave_status: leave.status || "approved",
+          duration_mode: leave.duration_mode,
+          requested_hours: leave.requested_hours,
+          approved_hours: leave.approved_hours,
+          is_paid_leave: leave.is_paid_leave,
+          review_comment: leave.review_comment,
           date: dateStr,
           is_leave_entry: true,
         });
@@ -386,6 +503,8 @@ useEffect(() => {
   loadOptOut();
   loadSmartShiftPolicy();
   loadTimeHistory();
+  loadEmployeeLeaveRequests();
+  loadEmployeeLeaveBalances();
 }, [userId]);
 
 // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -415,14 +534,10 @@ useEffect(() => {
 //  Leave-request logic
 
   // ───────────────────────────────────────────────────────
-  const openLeaveForm = (shift) => {
+  const openLeaveForm = (shift = null) => {
     setSelectedShift(shift);
-    setLeaveForm({
-      leave_type: "sick",
-      reason: "",
-      override_hours: "",
-      is_paid_leave: true,
-    });
+    setLeaveForm(defaultEmployeeLeaveForm(shift));
+    setLeaveFormError("");
     setLeaveModalOpen(true);
   };
 
@@ -458,20 +573,15 @@ useEffect(() => {
   const submitLeaveRequest = async () => {
     setSubmittingLeave(true);
     try {
+      const submission = buildEmployeeLeaveRequestSubmission(leaveForm, selectedShift);
+      if (submission.error) {
+        setLeaveFormError(submission.error);
+        throw new Error(submission.error);
+      }
+      setLeaveFormError("");
       const res = await api.post(
-        "/employee/leave-request",
-        {
-          shift_id: selectedShift.id,
-          leave_type: leaveForm.leave_type,
-          leave_subtype: leaveForm.leave_subtype,
-          reason: leaveForm.reason,
-          start: selectedShift.clock_in,
-          end: selectedShift.clock_out,
-          is_paid_leave: leaveForm.is_paid_leave,
-          override_hours: leaveForm.override_hours || null,
-          top_up_percent: leaveForm.top_up_percent,
-          top_up_cap: leaveForm.top_up_cap,
-        },
+        submission.endpoint,
+        submission.payload,
         {
           headers: {
             "Content-Type": "application/json",
@@ -483,11 +593,119 @@ useEffect(() => {
       if (data?.error) throw new Error(data.error || "Request failed");
       setSnackbar({ open: true, msg: "Leave request submitted.", error: false });
       setLeaveModalOpen(false);
+      setLeaveForm(defaultEmployeeLeaveForm(null));
       loadShifts();
+      loadEmployeeLeaveRequests();
     } catch (err) {
-      setSnackbar({ open: true, msg: err.message, error: true });
+      setSnackbar({ open: true, msg: err.response?.data?.error || err.message, error: true });
     } finally {
       setSubmittingLeave(false);
+    }
+  };
+
+  const withdrawLeaveRequest = async (leaveId) => {
+    try {
+      await api.post(`/employee/leave-requests/${leaveId}/withdraw`, {}, { headers: authHeader });
+      setSnackbar({ open: true, msg: "Leave request withdrawn.", error: false });
+      setSelectedEmployeeLeave(null);
+      loadShifts();
+      loadEmployeeLeaveRequests();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        msg: err.response?.data?.error || "Could not withdraw leave request.",
+        error: true,
+      });
+    }
+  };
+
+  const openEmployeeLeaveDetail = async (leave) => {
+    const fallback = normalizeEmployeeLeaveRequest(leave);
+    setSelectedEmployeeLeave(fallback);
+    if (!fallback.id) return;
+    try {
+      const res = await api.get(`/employee/leave-requests/${fallback.id}`, { headers: authHeader });
+      const detail = res.data?.request ? normalizeEmployeeLeaveRequest(res.data.request) : fallback;
+      setSelectedEmployeeLeave(detail);
+    } catch {
+      setSelectedEmployeeLeave(fallback);
+    }
+  };
+
+  const applyUpdatedEmployeeLeave = (request) => {
+    if (!request) return;
+    const normalized = normalizeEmployeeLeaveRequest(request);
+    setSelectedEmployeeLeave(normalized);
+    setEmployeeLeaveRequests((prev) =>
+      prev.map((row) => (String(row.id) === String(normalized.id) ? normalized : row))
+    );
+  };
+
+  const uploadEmployeeLeaveAttachment = async (leave, file) => {
+    if (!leave?.id || !file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    setLeaveAttachmentBusy(true);
+    try {
+      const res = await api.post(`/employee/leave-requests/${leave.id}/attachment`, formData, {
+        headers: authHeader,
+      });
+      applyUpdatedEmployeeLeave(res.data?.request);
+      setSnackbar({ open: true, msg: "Supporting document uploaded.", error: false });
+      loadEmployeeLeaveRequests();
+    } catch (err) {
+      const msg = await formatLeaveApiError(err, "Could not upload document.");
+      setSnackbar({
+        open: true,
+        msg,
+        error: true,
+      });
+    } finally {
+      setLeaveAttachmentBusy(false);
+    }
+  };
+
+  const deleteEmployeeLeaveAttachment = async (leave) => {
+    if (!leave?.id) return;
+    setLeaveAttachmentBusy(true);
+    try {
+      const res = await api.delete(`/employee/leave-requests/${leave.id}/attachment`, { headers: authHeader });
+      applyUpdatedEmployeeLeave(res.data?.request);
+      setSnackbar({ open: true, msg: "Supporting document removed.", error: false });
+      loadEmployeeLeaveRequests();
+    } catch (err) {
+      const msg = await formatLeaveApiError(err, "Could not remove document.");
+      setSnackbar({
+        open: true,
+        msg,
+        error: true,
+      });
+    } finally {
+      setLeaveAttachmentBusy(false);
+    }
+  };
+
+  const downloadEmployeeLeaveAttachment = async (leave) => {
+    if (!leave?.id) return;
+    setLeaveAttachmentBusy(true);
+    try {
+      const res = await api.get(`/employee/leave-requests/${leave.id}/attachment`, {
+        headers: authHeader,
+        responseType: "blob",
+      });
+      const download = await parseAttachmentDownloadResponse(res);
+      if (!openAttachmentDownload(download)) {
+        throw new Error("Document is not available.");
+      }
+    } catch (err) {
+      const msg = await formatLeaveApiError(err, "Could not download document.");
+      setSnackbar({
+        open: true,
+        msg,
+        error: true,
+      });
+    } finally {
+      setLeaveAttachmentBusy(false);
     }
   };
 
@@ -578,6 +796,43 @@ useEffect(() => {
     return shift.override_hours
       ? `⏱️ ${shift.override_hours}h (override)`
       : `⏱️ ${h}h ${m}m`;
+  };
+
+  const formatLeaveDurationMode = (mode) => {
+    if (mode === "shift_linked") return "Shift-linked";
+    if (mode === "partial_day") return "Partial day";
+    if (mode === "hourly") return "Hourly";
+    return "Full day";
+  };
+
+  const formatLeaveHours = (leave) => {
+    const approved = Number(leave.approved_hours);
+    const requested = Number(leave.requested_hours);
+    if (Number.isFinite(approved) && approved > 0) return `Approved ${approved}h`;
+    if (Number.isFinite(requested) && requested > 0) return `Requested ${requested}h`;
+    return "";
+  };
+
+  const balancePolicyActionLabel = (action) => {
+    const labels = {
+      within_balance: "Within balance",
+      warn: "Balance warning",
+      insufficient_warn: "Balance warning",
+      block: "Blocked by balance policy",
+      insufficient_block: "Blocked by balance policy",
+      split_to_unpaid: "Available paid hours only",
+      allow_negative: "Negative balance allowed",
+      unpaid_no_deduction: "Unpaid, no balance deduction",
+      not_balance_managed: "Not balance-managed",
+    };
+    return labels[action] || String(action || "Balance impact").replace(/_/g, " ");
+  };
+
+  const balanceImpactSeverity = (impact) => {
+    if (impact?.blocking) return "error";
+    if (impact?.warning || Number(impact?.insufficient_hours || 0) > 0) return "warning";
+    if (impact?.balance_managed) return "success";
+    return "info";
   };
 
   const [overrideShiftId, setOverrideShiftId] = useState(null);
@@ -1978,6 +2233,16 @@ const breakTimelineMeta = useMemo(() => {
 
       <Divider sx={{ my: 2 }} />
 
+      <Box sx={{ px: 2, mb: 2 }}>
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={() => openLeaveForm(null)}
+        >
+          Request time off
+        </Button>
+      </Box>
+
       {/* Shifts list, loading & error blocks */}
       {showMySwapRequests ? (
         <Box sx={{ px: 2 }}>
@@ -2104,7 +2369,7 @@ const breakTimelineMeta = useMemo(() => {
                             : "error"
                         }
                         size="small"
-                        sx={{ mt: 1, mr: 1 }}
+                        sx={leaveChipSx(shift.leave_status)}
                       />
                     )}
                     {dateLeaves.map((leave) => {
@@ -2123,7 +2388,7 @@ const breakTimelineMeta = useMemo(() => {
                           } (${status})`}
                           color={color}
                           size="small"
-                          sx={{ mt: 1, mr: 1 }}
+                          sx={{ ...leaveChipSx(status)(theme), mt: 1, mr: 1 }}
                         />
                       );
                     })}
@@ -2139,9 +2404,8 @@ const breakTimelineMeta = useMemo(() => {
                     {durationChip(shift) && (
                       <Chip
                         label={durationChip(shift)}
-                        color="primary"
                         size="small"
-                        sx={{ mt: 1 }}
+                        sx={{ ...readableLightChipSx(theme), mt: 1 }}
                       />
                     )}
 
@@ -2198,7 +2462,7 @@ const breakTimelineMeta = useMemo(() => {
         {shifts.some((s) => s.on_leave || s.is_leave_entry) && (
           <>
             <Divider sx={{ my: 2 }} />
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: 2 }}>
               Leave
             </Typography>
             <Box sx={{ px: 2 }}>
@@ -2237,7 +2501,7 @@ const breakTimelineMeta = useMemo(() => {
                             } (${status})`}
                             color={color}
                             size="small"
-                            sx={{ mt: 1 }}
+                            sx={{ ...leaveChipSx(status)(theme), mt: 1 }}
                           />
                         );
                       })()}
@@ -2260,6 +2524,160 @@ const breakTimelineMeta = useMemo(() => {
             )}
           </>
         )}
+        <Divider sx={{ my: 2 }} />
+        <Box sx={{ px: 2, pb: 2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary">
+                Leave balances
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                HR-tracked balances. Manual adjustments and approved balance-managed leave can update these hours, but payroll calculations stay separate.
+              </Typography>
+            </Box>
+            <Button size="small" onClick={loadEmployeeLeaveBalances} disabled={leaveBalancesLoading}>
+              Refresh
+            </Button>
+          </Stack>
+          {leaveBalancesLoading ? (
+            <Box display="flex" justifyContent="center" py={2}>
+              <CircularProgress size={22} />
+            </Box>
+          ) : (
+            <Grid container spacing={1}>
+              {employeeLeaveBalances.balances.map((balance) => (
+                <Grid item xs={6} sm={4} key={balance.leave_type}>
+                  <Paper
+                    variant="outlined"
+                    sx={(theme) => ({
+                      p: 1,
+                      borderRadius: 2,
+                      bgcolor: theme.palette.background.default,
+                    })}
+                  >
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                      {balance.label}
+                    </Typography>
+                    <Typography variant="body2" fontWeight={800}>
+                      {formatBalanceHours(balance.balance_hours)}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Box>
+        <Divider sx={{ my: 2 }} />
+        <Box sx={{ px: 2, pb: 2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Leave requests
+            </Typography>
+            <Button size="small" onClick={loadEmployeeLeaveRequests}>
+              Refresh
+            </Button>
+          </Stack>
+          {leaveHistoryLoading ? (
+            <Box display="flex" justifyContent="center" py={2}>
+              <CircularProgress size={22} />
+            </Box>
+          ) : employeeLeaveRequests.length === 0 ? (
+            <Stack spacing={0.5}>
+              <Typography variant="body2" color="text.secondary">
+                No leave requests yet.
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Submitted time-off requests will appear here with status, approved hours, manager comments, and any supporting document.
+              </Typography>
+            </Stack>
+          ) : (
+            <Stack spacing={1}>
+              {employeeLeaveRequests.map((leave) => {
+                const status = String(leave.status || "pending").toLowerCase();
+                const statusColor =
+                  status === "approved"
+                    ? "success"
+                    : status === "pending"
+                    ? "warning"
+                    : status === "withdrawn" || status === "cancelled"
+                    ? "default"
+                    : "error";
+                return (
+                  <Paper key={leave.id} variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                    <Stack spacing={0.75}>
+                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                        <Typography variant="body2" fontWeight={800}>
+                          {leave.leave_type}
+                          {leave.leave_subtype ? ` · ${leave.leave_subtype}` : ""}
+                        </Typography>
+                        <Chip size="small" color={statusColor} label={status} sx={statusChipSx(status)} />
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          label={leave.is_paid_leave ? "Paid leave" : "Unpaid leave"}
+                        />
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        Dates: {leave.start_date || "—"}
+                        {leave.end_date && leave.end_date !== leave.start_date ? ` → ${leave.end_date}` : ""}
+                        {" · "}
+                        Duration: {formatLeaveDurationMode(leave.duration_mode)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatLeaveHours(leave) || "Hours pending manager review"}
+                      </Typography>
+                      {leave.balance_impact?.balance_managed && (
+                        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                          <Chip
+                            size="small"
+                            color={balanceImpactSeverity(leave.balance_impact)}
+                            variant="outlined"
+                            label={balancePolicyActionLabel(leave.balance_impact.policy_action)}
+                          />
+                          <Typography variant="caption" color="text.secondary">
+                            Projected balance: {formatBalanceHours(leave.balance_impact.projected_balance_hours)}
+                          </Typography>
+                        </Stack>
+                      )}
+                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                        <Chip
+                          size="small"
+                          icon={<UploadFileIcon />}
+                          variant="outlined"
+                          label={attachmentLabel(normalizeLeaveAttachment(leave))}
+                        />
+                      </Stack>
+                      {leave.review_comment && (
+                        <Typography variant="caption" color="text.secondary">
+                          Manager comment: {leave.review_comment}
+                        </Typography>
+                      )}
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => openEmployeeLeaveDetail(leave)}
+                        >
+                          Details
+                        </Button>
+                        {canWithdrawEmployeeLeave(leave) && (
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            onClick={() => withdrawLeaveRequest(leave.id)}
+                          >
+                            Withdraw
+                          </Button>
+                        )}
+                      </Stack>
+                    </Stack>
+                  </Paper>
+                );
+              })}
+            </Stack>
+          )}
+        </Box>
         </>
       )}
 
@@ -2277,32 +2695,294 @@ const breakTimelineMeta = useMemo(() => {
       )}
     </Drawer>
 
+      <Drawer
+        anchor="right"
+        open={Boolean(selectedEmployeeLeave)}
+        onClose={() => setSelectedEmployeeLeave(null)}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 420 }, p: 2 } }}
+      >
+        {selectedEmployeeLeave && (
+          <Stack spacing={2}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Typography variant="h6">Leave request details</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedEmployeeLeave.leave_type}
+                  {selectedEmployeeLeave.leave_subtype ? ` · ${selectedEmployeeLeave.leave_subtype}` : ""}
+                </Typography>
+              </Box>
+              <IconButton onClick={() => setSelectedEmployeeLeave(null)} aria-label="Close leave details">
+                <CloseIcon />
+              </IconButton>
+            </Stack>
+
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+              <Chip
+                size="small"
+                color={
+                  selectedEmployeeLeave.status === "approved"
+                    ? "success"
+                    : selectedEmployeeLeave.status === "pending"
+                    ? "warning"
+                    : selectedEmployeeLeave.status === "rejected"
+                    ? "error"
+                    : "default"
+                }
+                label={selectedEmployeeLeave.status || "pending"}
+                sx={statusChipSx(selectedEmployeeLeave.status)}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={selectedEmployeeLeave.is_paid_leave ? "Paid leave" : "Unpaid leave"}
+              />
+              {selectedEmployeeLeave.payroll_ready && (
+                <Chip size="small" color="success" variant="outlined" label="Payroll-ready" />
+              )}
+            </Stack>
+
+            <Alert severity="info" variant="outlined">
+              Payroll-ready means your manager has confirmed the approved hours for payroll. Uploading a supporting document does not change approval or payroll status.
+            </Alert>
+
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Stack spacing={0.75}>
+                <Typography variant="body2">
+                  <strong>Dates:</strong> {selectedEmployeeLeave.start_date || "—"}
+                  {selectedEmployeeLeave.end_date && selectedEmployeeLeave.end_date !== selectedEmployeeLeave.start_date
+                    ? ` → ${selectedEmployeeLeave.end_date}`
+                    : ""}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Duration:</strong> {formatLeaveDurationMode(selectedEmployeeLeave.duration_mode)}
+                </Typography>
+                {selectedEmployeeLeave.start_time || selectedEmployeeLeave.end_time ? (
+                  <Typography variant="body2">
+                    <strong>Time:</strong> {selectedEmployeeLeave.start_time || "—"} – {selectedEmployeeLeave.end_time || "—"}
+                  </Typography>
+                ) : null}
+                <Typography variant="body2">
+                  <strong>Requested hours:</strong> {selectedEmployeeLeave.requested_hours ? `${selectedEmployeeLeave.requested_hours}h` : "—"}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Approved hours:</strong> {selectedEmployeeLeave.approved_hours ? `${selectedEmployeeLeave.approved_hours}h` : "—"}
+                </Typography>
+                {!selectedEmployeeLeave.approved_hours && (
+                  <Typography variant="caption" color="text.secondary">
+                    Approved hours may stay blank until a manager reviews or confirms the request.
+                  </Typography>
+                )}
+                <Typography variant="body2">
+                  <strong>Reason:</strong> {selectedEmployeeLeave.reason || "—"}
+                </Typography>
+              </Stack>
+            </Paper>
+
+            {selectedEmployeeLeave.balance_impact && (
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+                <Stack spacing={1}>
+                  <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      Balance impact
+                    </Typography>
+                    <Chip
+                      size="small"
+                      color={balanceImpactSeverity(selectedEmployeeLeave.balance_impact)}
+                      variant="outlined"
+                      label={balancePolicyActionLabel(selectedEmployeeLeave.balance_impact.policy_action)}
+                    />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    This is HR balance tracking only. Payroll status is handled separately by manager review.
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                      gap: 1,
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Current balance</Typography>
+                      <Typography variant="body2" fontWeight={800}>
+                        {formatBalanceHours(selectedEmployeeLeave.balance_impact.current_balance_hours)}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Requested</Typography>
+                      <Typography variant="body2" fontWeight={800}>
+                        {formatBalanceHours(selectedEmployeeLeave.balance_impact.requested_hours)}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Projected</Typography>
+                      <Typography variant="body2" fontWeight={800}>
+                        {formatBalanceHours(selectedEmployeeLeave.balance_impact.projected_balance_hours)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {Number(selectedEmployeeLeave.balance_impact.insufficient_hours || 0) > 0 && (
+                    <Typography variant="body2">
+                      Insufficient balance: {formatBalanceHours(selectedEmployeeLeave.balance_impact.insufficient_hours)}
+                    </Typography>
+                  )}
+                  {selectedEmployeeLeave.balance_impact.message && (
+                    <Alert severity={balanceImpactSeverity(selectedEmployeeLeave.balance_impact)} variant="outlined">
+                      {selectedEmployeeLeave.balance_impact.message}
+                    </Alert>
+                  )}
+                </Stack>
+              </Paper>
+            )}
+
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Stack spacing={1}>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={800}>
+                    Supporting document
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {attachmentLabel(selectedEmployeeLeave.attachment)}
+                  </Typography>
+                  {canEmployeeUploadLeaveAttachment(selectedEmployeeLeave) && (
+                    <Typography variant="caption" color="text.secondary">
+                      {selectedEmployeeLeave.status === "approved"
+                        ? "This leave is already approved. Uploading a supporting document will not change approval or payroll status."
+                        : "One document can be attached while this request is pending."}
+                    </Typography>
+                  )}
+                </Box>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {selectedEmployeeLeave.attachment?.present && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<DownloadIcon />}
+                      disabled={leaveAttachmentBusy}
+                      onClick={() => downloadEmployeeLeaveAttachment(selectedEmployeeLeave)}
+                    >
+                      Download document
+                    </Button>
+                  )}
+                  {canEmployeeUploadLeaveAttachment(selectedEmployeeLeave) && (
+                    <Button
+                      size="small"
+                      variant={selectedEmployeeLeave.attachment?.present ? "outlined" : "contained"}
+                      startIcon={<UploadFileIcon />}
+                      component="label"
+                      disabled={leaveAttachmentBusy}
+                    >
+                      {selectedEmployeeLeave.attachment?.present ? "Replace document" : "Upload document"}
+                      <input
+                        hidden
+                        type="file"
+                        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = "";
+                          if (file) uploadEmployeeLeaveAttachment(selectedEmployeeLeave, file);
+                        }}
+                      />
+                    </Button>
+                  )}
+                  {canEmployeeDeleteLeaveAttachment(selectedEmployeeLeave) && selectedEmployeeLeave.attachment?.present && (
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      startIcon={<DeleteOutlineIcon />}
+                      disabled={leaveAttachmentBusy}
+                      onClick={() => deleteEmployeeLeaveAttachment(selectedEmployeeLeave)}
+                    >
+                      Remove document
+                    </Button>
+                  )}
+                </Stack>
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Stack spacing={0.75}>
+                <Typography variant="body2">
+                  <strong>Manager comment:</strong> {selectedEmployeeLeave.review_comment || "—"}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Reviewed by:</strong> {selectedEmployeeLeave.reviewer_name || "—"}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Reviewed at:</strong> {selectedEmployeeLeave.reviewed_at ? format(parseISO(selectedEmployeeLeave.reviewed_at), "yyyy-MM-dd HH:mm") : "—"}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Submitted:</strong> {selectedEmployeeLeave.created_at ? format(parseISO(selectedEmployeeLeave.created_at), "yyyy-MM-dd HH:mm") : "—"}
+                </Typography>
+                {selectedEmployeeLeave.withdrawn_at && (
+                  <Typography variant="body2">
+                    <strong>Withdrawn:</strong> {format(parseISO(selectedEmployeeLeave.withdrawn_at), "yyyy-MM-dd HH:mm")}
+                  </Typography>
+                )}
+                {selectedEmployeeLeave.cancelled_at && (
+                  <Typography variant="body2">
+                    <strong>Cancelled:</strong> {format(parseISO(selectedEmployeeLeave.cancelled_at), "yyyy-MM-dd HH:mm")}
+                  </Typography>
+                )}
+                {selectedEmployeeLeave.cancel_reason && (
+                  <Typography variant="body2">
+                    <strong>Cancel reason:</strong> {selectedEmployeeLeave.cancel_reason}
+                  </Typography>
+                )}
+              </Stack>
+            </Paper>
+
+            {canWithdrawEmployeeLeave(selectedEmployeeLeave) && (
+              <Button
+                color="error"
+                variant="outlined"
+                onClick={() => withdrawLeaveRequest(selectedEmployeeLeave.id)}
+              >
+                Withdraw request
+              </Button>
+            )}
+          </Stack>
+        )}
+      </Drawer>
+
       {/* Leave dialog */}
       <Dialog
         fullScreen={isSmDown}
         open={leaveModalOpen}
-        onClose={() => setLeaveModalOpen(false)}
+        onClose={() => {
+          setLeaveModalOpen(false);
+          setLeaveFormError("");
+        }}
         maxWidth="sm"
         fullWidth
       >
-        {/* Leave form markup as before */}
-        <DialogTitle>Request Leave</DialogTitle>
+        <DialogTitle>{selectedShift ? "Request leave for shift" : "Request time off"}</DialogTitle>
         <DialogContent>
+          {selectedShift && (
+            <Alert severity="info" sx={{ mt: 1, mb: 1 }}>
+              This request is linked to the selected shift. Use “Request time off” for a date-range, hourly, or partial-day request that is not tied to one shift.
+            </Alert>
+          )}
+          {leaveFormError && (
+            <Alert severity="error" sx={{ mt: 1, mb: 1 }}>
+              {leaveFormError}
+            </Alert>
+          )}
           <TextField
             select
             label="Leave Type"
             fullWidth
             margin="normal"
             value={leaveForm.leave_type}
-            onChange={(e) =>
-              setLeaveForm({ ...leaveForm, leave_type: e.target.value, leave_subtype: "" })
-            }
+            onChange={(e) => {
+              setLeaveFormError("");
+              setLeaveForm({ ...leaveForm, leave_type: e.target.value, leave_subtype: "" });
+            }}
           >
-            <MenuItem value="sick">Sick</MenuItem>
-            <MenuItem value="vacation">Vacation</MenuItem>
-            <MenuItem value="personal">Personal</MenuItem>
-            <MenuItem value="emergency">Emergency</MenuItem>
-            <MenuItem value="family">Family / Parental</MenuItem>
+            {LEAVE_TYPE_OPTIONS.map((type) => (
+              <MenuItem key={type} value={type}>{formatLeaveTypeLabel(type)}</MenuItem>
+            ))}
           </TextField>
 
           {leaveForm.leave_type === "family" && (
@@ -2312,13 +2992,121 @@ const breakTimelineMeta = useMemo(() => {
               fullWidth
               margin="normal"
               value={leaveForm.leave_subtype || ""}
-              onChange={(e) => setLeaveForm({ ...leaveForm, leave_subtype: e.target.value })}
+              onChange={(e) => {
+                setLeaveFormError("");
+                setLeaveForm({ ...leaveForm, leave_subtype: e.target.value });
+              }}
             >
               <MenuItem value="maternity">Maternity</MenuItem>
               <MenuItem value="paternity">Paternity</MenuItem>
               <MenuItem value="parental">Parental</MenuItem>
               <MenuItem value="adoption">Adoption</MenuItem>
             </TextField>
+          )}
+
+          {!selectedShift && (
+            <TextField
+              select
+              label="Duration"
+              fullWidth
+              margin="normal"
+              value={leaveForm.duration_mode}
+              onChange={(e) => {
+                setLeaveFormError("");
+                setLeaveForm(applyEmployeeLeaveDurationMode(leaveForm, e.target.value));
+              }}
+              helperText={
+                leaveForm.duration_mode === "full_day"
+                  ? "Use full day for one day or a multi-day range."
+                  : leaveForm.duration_mode === "partial_day"
+                  ? "Use partial day for part of one day."
+                  : "Use hourly when you only need to request a number of hours."
+              }
+            >
+              <MenuItem value="full_day">Full day</MenuItem>
+              <MenuItem value="partial_day">Partial day</MenuItem>
+              <MenuItem value="hourly">Hourly</MenuItem>
+            </TextField>
+          )}
+
+          {!selectedShift && (
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <TextField
+                label="Start date"
+                type="date"
+                fullWidth
+                margin="normal"
+                InputLabelProps={{ shrink: true }}
+                value={leaveForm.start_date}
+                onChange={(e) => {
+                  setLeaveFormError("");
+                  setLeaveForm(applyEmployeeLeaveStartDate(leaveForm, e.target.value));
+                }}
+              />
+              <TextField
+                label="End date"
+                type="date"
+                fullWidth
+                margin="normal"
+                InputLabelProps={{ shrink: true }}
+                disabled={leaveForm.duration_mode === "partial_day" || leaveForm.duration_mode === "hourly"}
+                value={leaveForm.duration_mode === "partial_day" || leaveForm.duration_mode === "hourly" ? leaveForm.start_date : leaveForm.end_date}
+                helperText={leaveForm.duration_mode === "partial_day" || leaveForm.duration_mode === "hourly" ? "Same-day request" : ""}
+                onChange={(e) => {
+                  setLeaveFormError("");
+                  setLeaveForm({ ...leaveForm, end_date: e.target.value });
+                }}
+              />
+            </Stack>
+          )}
+
+          {leaveForm.duration_mode === "partial_day" && !selectedShift && (
+            <>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <TextField
+                  label="Start time"
+                  type="time"
+                  fullWidth
+                  margin="normal"
+                  InputLabelProps={{ shrink: true }}
+                  value={leaveForm.start_time}
+                  onChange={(e) => {
+                    setLeaveFormError("");
+                    setLeaveForm({ ...leaveForm, start_time: e.target.value });
+                  }}
+                />
+                <TextField
+                  label="End time"
+                  type="time"
+                  fullWidth
+                  margin="normal"
+                  InputLabelProps={{ shrink: true }}
+                  value={leaveForm.end_time}
+                  onChange={(e) => {
+                    setLeaveFormError("");
+                    setLeaveForm({ ...leaveForm, end_time: e.target.value });
+                  }}
+                />
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                You can enter start/end time, or use requested hours below.
+              </Typography>
+            </>
+          )}
+
+          {(leaveForm.duration_mode === "hourly" || leaveForm.duration_mode === "partial_day") && !selectedShift && (
+            <TextField
+              label={leaveForm.duration_mode === "hourly" ? "Requested hours" : "Requested hours (optional)"}
+              type="number"
+              fullWidth
+              margin="normal"
+              value={leaveForm.requested_hours}
+              onChange={(e) => {
+                setLeaveFormError("");
+                setLeaveForm({ ...leaveForm, requested_hours: e.target.value });
+              }}
+              inputProps={{ min: 0, step: 0.25 }}
+            />
           )}
 
           <TextField
@@ -2328,7 +3116,10 @@ const breakTimelineMeta = useMemo(() => {
             multiline
             minRows={2}
             value={leaveForm.reason}
-            onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
+            onChange={(e) => {
+              setLeaveFormError("");
+              setLeaveForm({ ...leaveForm, reason: e.target.value });
+            }}
           />
 
           {leaveForm.leave_type === "family" && leaveForm.leave_subtype && (
@@ -2354,14 +3145,21 @@ const breakTimelineMeta = useMemo(() => {
             </>
           )}
 
-          <TextField
-            label="Override Hours (optional)"
-            type="number"
-            fullWidth
-            margin="normal"
-            value={leaveForm.override_hours}
-            onChange={(e) => setLeaveForm({ ...leaveForm, override_hours: e.target.value })}
-          />
+          {selectedShift && (
+            <TextField
+              label="Requested hours (optional)"
+              type="number"
+              fullWidth
+              margin="normal"
+              value={leaveForm.requested_hours}
+              onChange={(e) => {
+                setLeaveFormError("");
+                setLeaveForm({ ...leaveForm, requested_hours: e.target.value });
+              }}
+              helperText="Leave blank to use the selected shift duration."
+              inputProps={{ min: 0, step: 0.25 }}
+            />
+          )}
 
           <FormControlLabel
             control={
@@ -2374,7 +3172,10 @@ const breakTimelineMeta = useMemo(() => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setLeaveModalOpen(false)}>Cancel</Button>
+          <Button onClick={() => {
+            setLeaveModalOpen(false);
+            setLeaveFormError("");
+          }}>Cancel</Button>
           <Button onClick={submitLeaveRequest} disabled={submittingLeave} variant="contained">
             Submit
           </Button>
@@ -2524,10 +3325,16 @@ const breakTimelineMeta = useMemo(() => {
       {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
+        autoHideDuration={snackbar.error ? 9000 : 4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert severity={snackbar.error ? "error" : "success"}>{snackbar.msg}</Alert>
+        <Alert
+          severity={snackbar.error ? "error" : "success"}
+          variant={snackbar.error ? "filled" : "standard"}
+          sx={{ maxWidth: 560, alignItems: "flex-start", whiteSpace: "pre-line" }}
+        >
+          {snackbar.msg}
+        </Alert>
       </Snackbar>
     </>
   );

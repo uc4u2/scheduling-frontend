@@ -229,6 +229,12 @@ export default function EnterpriseAnalytics() {
   const workforceDepartmentBreakdown = workforce?.department_breakdown || [];
   const workforceRisk = workforce?.overtime_risk || [];
   const workforceReadiness = workforce?.payroll_readiness || {};
+  const leaveReadiness = workforce?.leave_readiness || {};
+  const leaveReadinessSummary = leaveReadiness?.summary || {};
+  const leaveReadinessTrend = leaveReadiness?.trend || [];
+  const leaveReadinessDepartments = leaveReadiness?.department_breakdown || [];
+  const leaveReadinessAttention = leaveReadiness?.employee_attention || [];
+  const leaveReadinessBlockers = leaveReadiness?.blockers || [];
   const workforceEmployees = useMemo(() => {
     return (wfDepartmentId
       ? wfRecruiters.filter(
@@ -275,6 +281,11 @@ export default function EnterpriseAnalytics() {
       setGroup("month");
     }
   };
+
+  const readableReason = (code) =>
+    String(code || "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
   /* ------------ Shared Filter Bar (used in tabs) ------------ */
   const Filters = (
@@ -1149,6 +1160,438 @@ const ClientsTab = (
     </Box>
   );
 
+  const LeaveReadinessTab = (
+    <Box>
+      <SectionCard
+        title="Leave Readiness Filters"
+        description="Review leave impact, payroll-prep status, and blockers using the same workforce analytics filters."
+        sx={{ mb: 2 }}
+      >
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={2}>
+            <TextField
+              label="From"
+              type="date"
+              fullWidth
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField
+              label="To"
+              type="date"
+              fullWidth
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField
+              select
+              label="Group"
+              fullWidth
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+            >
+              <MenuItem value="day">Daily</MenuItem>
+              <MenuItem value="week">Weekly</MenuItem>
+              <MenuItem value="month">Monthly</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              select
+              label="Department"
+              fullWidth
+              value={wfDepartmentId}
+              onChange={(e) => {
+                setWfDepartmentId(e.target.value);
+                setWfEmployeeId("");
+              }}
+            >
+              <MenuItem value="">All departments</MenuItem>
+              {wfDepartments.map((dept) => (
+                <MenuItem key={dept.id} value={String(dept.id)}>
+                  {dept.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              select
+              label="Employee"
+              fullWidth
+              value={wfEmployeeId}
+              onChange={(e) => setWfEmployeeId(e.target.value)}
+            >
+              <MenuItem value="">All employees</MenuItem>
+              {workforceEmployees.map((rec) => (
+                <MenuItem key={rec.id} value={String(rec.id)}>
+                  {rec.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              label="Timezone"
+              fullWidth
+              value={tz}
+              onChange={(e) => setTz(e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={12} md={9}>
+            <Stack
+              direction="row"
+              spacing={1}
+              justifyContent="flex-end"
+              flexWrap="wrap"
+              useFlexGap
+            >
+              <Button size="small" onClick={() => applyPreset("TODAY")}>
+                Today
+              </Button>
+              <Button size="small" onClick={() => applyPreset("WTD")}>
+                WTD
+              </Button>
+              <Button size="small" onClick={() => applyPreset("MTD")}>
+                MTD
+              </Button>
+              <Button size="small" onClick={() => applyPreset("QTD")}>
+                QTD
+              </Button>
+              <Button size="small" onClick={() => applyPreset("YTD")}>
+                YTD
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  fetchWorkforceDirectory();
+                  fetchWorkforce();
+                }}
+              >
+                Refresh readiness
+              </Button>
+            </Stack>
+          </Grid>
+        </Grid>
+        {wfLoading && <LinearProgress sx={{ mt: 2 }} />}
+        {wfDirErr && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            {wfDirErr}
+          </Alert>
+        )}
+        {wfErr && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {wfErr}
+          </Alert>
+        )}
+      </SectionCard>
+
+      <Alert severity="info" sx={{ mb: 2 }}>
+        This is an operational payroll-readiness view for managers and payroll admins. Finalized payroll still uses only payroll-ready leave and existing payroll rules; preview-only and estimated items are shown so they can be reviewed before payroll closes.
+      </Alert>
+
+      {workforce && (
+        <>
+          <SectionCard
+            title="Leave & Payroll Readiness"
+            description="Current leave volume, payroll-ready hours, preview-only records, and blockers in the selected window."
+            sx={{ mb: 2 }}
+          >
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Pending Leave"
+                  value={leaveReadinessSummary.pending_leave_requests || 0}
+                  help="Needs manager review"
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Approved Leave"
+                  value={leaveReadinessSummary.approved_leave_requests || 0}
+                  help="Approved in this range"
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Payroll-Ready"
+                  value={leaveReadinessSummary.payroll_ready_leave_requests || 0}
+                  help="Confirmed for payroll input"
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Preview-Only / Estimated"
+                  value={
+                    leaveReadinessSummary.preview_only_estimated_leave_requests || 0
+                  }
+                  help="Visible for review, not finalized payroll truth"
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Paid Leave Hours"
+                  value={fmtHours(leaveReadinessSummary.paid_leave_hours)}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Unpaid Leave Hours"
+                  value={fmtHours(leaveReadinessSummary.unpaid_leave_hours)}
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Leave Blockers"
+                  value={leaveReadinessSummary.leave_blockers_count || 0}
+                  help="Blocks finalization when present"
+                />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <KPI
+                  label="Cancelled Leave"
+                  value={leaveReadinessSummary.cancelled_leave_count || 0}
+                />
+              </Grid>
+            </Grid>
+          </SectionCard>
+
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12} md={6}>
+              <SectionCard
+                title="Leave Trend"
+                description="Leave readiness by selected day/week/month grouping."
+              >
+                {leaveReadinessTrend.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No leave requests in this range.
+                  </Typography>
+                ) : (
+                  leaveReadinessTrend.map((row) => (
+                    <Box
+                      key={row.bucket}
+                      sx={{
+                        mb: 1.25,
+                        p: 1.25,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 1.5,
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                      >
+                        <Typography variant="subtitle2">{row.bucket}</Typography>
+                        <Chip
+                          size="small"
+                          color={row.blocked ? "error" : "primary"}
+                          variant={row.blocked ? "filled" : "outlined"}
+                          label={`${row.approved || 0} approved`}
+                        />
+                      </Stack>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                        sx={{ mt: 1 }}
+                      >
+                        <Chip size="small" label={`Pending ${row.pending || 0}`} />
+                        <Chip
+                          size="small"
+                          label={`Payroll-ready ${row.payroll_ready || 0}`}
+                        />
+                        <Chip
+                          size="small"
+                          label={`Preview-only ${row.preview_only || 0}`}
+                        />
+                        <Chip
+                          size="small"
+                          label={`Paid ${fmtHours(row.paid_leave_hours)}`}
+                        />
+                        <Chip
+                          size="small"
+                          label={`Unpaid ${fmtHours(row.unpaid_leave_hours)}`}
+                        />
+                      </Stack>
+                    </Box>
+                  ))
+                )}
+              </SectionCard>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <SectionCard
+                title="Payroll Readiness Blockers"
+                description="Leave records that require payroll attention before finalization, usually because payroll-ready leave overlaps worked time."
+              >
+                {leaveReadinessBlockers.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No leave finalization blockers in this range.
+                  </Typography>
+                ) : (
+                  leaveReadinessBlockers.map((row, idx) => (
+                    <Box
+                      key={`${row.leave_id}-${idx}`}
+                      sx={{
+                        mb: 1.25,
+                        p: 1.25,
+                        border: "1px solid",
+                        borderColor: "error.light",
+                        borderRadius: 1.5,
+                        bgcolor: "rgba(211, 47, 47, 0.04)",
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        <Typography variant="subtitle2">
+                          {row.employee_name || "Unknown employee"}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          color="error"
+                          label={readableReason(row.reason_code)}
+                        />
+                      </Stack>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                        {row.warning?.message || "Leave overlaps worked time."}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.department_name || "Unassigned"} · Leave #{row.leave_id} · {fmtHours(row.computed_hours)}
+                      </Typography>
+                    </Box>
+                  ))
+                )}
+              </SectionCard>
+            </Grid>
+          </Grid>
+
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <SectionCard
+                title="Department Leave Breakdown"
+                description="Leave hours and readiness signals by department."
+              >
+                {leaveReadinessDepartments.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No department leave data in this range.
+                  </Typography>
+                ) : (
+                  leaveReadinessDepartments.slice(0, 12).map((row, idx) => (
+                    <Box
+                      key={`${row.department_id ?? "unassigned"}-${idx}`}
+                      sx={{ mb: 1.5 }}
+                    >
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="subtitle2">
+                          {row.department_name || "Unassigned"}
+                        </Typography>
+                        <Typography variant="subtitle2">
+                          {fmtHours(
+                            Number(row.paid_leave_hours || 0) +
+                              Number(row.unpaid_leave_hours || 0)
+                          )}
+                        </Typography>
+                      </Stack>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                        sx={{ mt: 0.75 }}
+                      >
+                        <Chip size="small" label={`Pending ${row.pending || 0}`} />
+                        <Chip
+                          size="small"
+                          color={row.blocked ? "error" : "default"}
+                          label={`Blocked ${row.blocked || 0}`}
+                        />
+                        <Chip
+                          size="small"
+                          label={`Payroll-ready ${row.payroll_ready || 0}`}
+                        />
+                        <Chip
+                          size="small"
+                          label={`Preview-only ${row.preview_only || 0}`}
+                        />
+                      </Stack>
+                    </Box>
+                  ))
+                )}
+              </SectionCard>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <SectionCard
+                title="Employee Attention List"
+                description="Employees with pending, estimated, preview-only, or blocked leave that may need manager or payroll review."
+              >
+                {leaveReadinessAttention.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No employee leave attention items in this range.
+                  </Typography>
+                ) : (
+                  leaveReadinessAttention.slice(0, 12).map((row) => (
+                    <Box key={row.recruiter_id} sx={{ mb: 1.5 }}>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="subtitle2">
+                          {row.employee || "Unknown employee"}
+                        </Typography>
+                        <Typography variant="subtitle2">
+                          {fmtHours(
+                            Number(row.paid_leave_hours || 0) +
+                              Number(row.unpaid_leave_hours || 0)
+                          )}
+                        </Typography>
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.department_name || "Unassigned"}
+                      </Typography>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                        sx={{ mt: 0.75 }}
+                      >
+                        {(row.attention_reasons || []).map((reason) => (
+                          <Chip
+                            key={reason}
+                            size="small"
+                            color={
+                              reason === "finalization_blocker"
+                                ? "error"
+                                : reason === "pending_review"
+                                ? "warning"
+                                : "default"
+                            }
+                            variant="outlined"
+                            label={readableReason(reason)}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  ))
+                )}
+              </SectionCard>
+            </Grid>
+          </Grid>
+        </>
+      )}
+    </Box>
+  );
+
   const AdvancedTab = (
     <Box>
       {Filters}
@@ -1577,6 +2020,7 @@ const ClientsTab = (
     { label: "Overview", content: OverviewTab },
     { label: "Advanced", content: AdvancedTab },
     { label: "Workforce Cost", content: WorkforceTab },
+    { label: "Leave Readiness", content: LeaveReadinessTab },
     { label: "Tips & Clients", content: TipsTab },
     { label: "Clients 360", content: ClientsTab },
 
