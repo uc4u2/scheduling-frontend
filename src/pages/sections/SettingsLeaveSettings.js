@@ -431,6 +431,184 @@ const leaveTypeSetupGuides = {
   },
 };
 
+const managerSetupLeaveGuides = [
+  {
+    title: "Vacation",
+    subtitle: "Usually the first leave type to track",
+    overview:
+      "Vacation is the most common leave type to manage with a balance. For most companies, this is the best leave type to start with.",
+    best: [
+      "Track balance usage: On",
+      "If balance is insufficient: Warn manager",
+      "Deduct balance: On approval",
+      "Enable saved accrual policy: Often On",
+      "Accrual unit: Hours",
+      "Frequency: Monthly",
+      "Max balance hours: Blank at first",
+      "Allow negative balance flag: Off",
+    ],
+    why:
+      "Vacation is usually planned ahead, easier to review, and easier to manage consistently than other leave types.",
+    example:
+      "An employee has 24 vacation hours and requests 8 hours. If approved, the system deducts 8 hours and the remaining balance becomes 16.",
+    stricter:
+      "Use Block approval if managers should not approve paid vacation above the available balance.",
+  },
+  {
+    title: "Sick",
+    subtitle: "Usually tracked, but often needs more flexibility",
+    overview:
+      "Sick leave is commonly used for illness, recovery, or medical appointments. Many companies track it with a balance, but usually allow more manager judgment than vacation.",
+    best: [
+      "Track balance usage: On",
+      "If balance is insufficient: Warn manager",
+      "Deduct balance: On approval",
+      "Enable saved accrual policy: Off at first, or On if the company has a defined sick accrual policy",
+      "Accrual unit: Hours",
+      "Frequency: None or Monthly",
+      "Max balance hours: Blank at first",
+      "Allow negative balance flag: Off",
+    ],
+    why:
+      "Sick leave often needs some flexibility because real health situations are not always predictable.",
+    example:
+      "An employee has 6 sick hours and requests 8. With Warn manager, the manager sees the shortage and can decide whether to approve, adjust, or handle it another way.",
+    stricter:
+      "Use Block approval only if the company has a firm sick leave policy and does not allow exceptions.",
+  },
+  {
+    title: "Personal",
+    subtitle: "Often flexible, sometimes tracked",
+    overview:
+      "Personal leave is often used for errands, short appointments, or personal matters. Some companies track it, while others handle it case by case.",
+    best: [
+      "Track balance usage: On",
+      "If balance is insufficient: Warn manager",
+      "Deduct balance: On approval",
+      "Enable saved accrual policy: Usually Off",
+      "Accrual unit: Hours",
+      "Frequency: None",
+      "Max balance hours: Blank",
+      "Allow negative balance flag: Off",
+    ],
+    why:
+      "Personal leave is usually less formal than vacation, so managers often want flexibility without losing visibility.",
+    example:
+      "An employee has 2 personal hours and requests 4. With Warn manager, the manager sees the shortage but can still make an exception if appropriate.",
+    simpler:
+      "Turn Track balance usage Off if personal leave is handled case by case and the company does not want a tracked entitlement.",
+  },
+  {
+    title: "Emergency",
+    subtitle: "Usually manual, not strongly balance-managed",
+    overview:
+      "Emergency leave is usually for unexpected situations that need immediate time away. Most small and medium teams do not track this with a formal balance.",
+    best: [
+      "Track balance usage: Off",
+      "If balance is insufficient: Warn manager only if tracking is enabled later",
+      "Deduct balance: On approval",
+      "Enable saved accrual policy: Off",
+      "Accrual unit: Hours",
+      "Frequency: None",
+      "Max balance hours: Blank",
+      "Allow negative balance flag: Off",
+    ],
+    why:
+      "Emergency leave is often better handled case by case rather than through a strict tracked bank.",
+    example:
+      "An employee has an urgent personal issue and needs immediate time off. The manager reviews the case directly instead of relying on a formal balance.",
+    tracking:
+      "Only turn tracking on if the company has a clearly defined emergency leave entitlement and wants it enforced consistently.",
+  },
+  {
+    title: "Family / Parental",
+    subtitle: "Usually manual unless the company has a mature policy",
+    overview:
+      "Family / Parental leave often involves longer absences or policy-heavy situations. Many teams avoid simple balance tracking unless they have a very clear internal framework.",
+    best: [
+      "Track balance usage: Off",
+      "If balance is insufficient: Warn manager only if tracking is enabled",
+      "Deduct balance: On approval",
+      "Enable saved accrual policy: Off",
+      "Accrual unit: Hours",
+      "Frequency: None",
+      "Max balance hours: Blank",
+      "Allow negative balance flag: Off",
+    ],
+    why:
+      "This leave type often needs careful case-by-case review and may depend on company policy beyond a simple balance rule.",
+    example:
+      "A family-related leave request may span multiple days and need extra review, rather than being treated like ordinary vacation.",
+    tracking:
+      "Only track it if the company already has a defined family/parental leave bank and managers are expected to track it operationally.",
+  },
+  {
+    title: "Compassionate",
+    subtitle: "Often sensitive, usually manager-guided",
+    overview:
+      "Compassionate leave is commonly used for bereavement or serious family hardship. Some companies track it, but many prefer manager judgment.",
+    best: [
+      "Track balance usage: Off, or On only if intentionally tracked",
+      "If balance is insufficient: Warn manager",
+      "Deduct balance: On approval",
+      "Enable saved accrual policy: Usually Off",
+      "Accrual unit: Hours",
+      "Frequency: None",
+      "Max balance hours: Blank",
+      "Allow negative balance flag: Off",
+    ],
+    why:
+      "Compassionate leave often needs empathy and discretion. A rigid balance policy can feel too harsh unless the company has a very formal entitlement model.",
+    example:
+      "An employee requests compassionate leave during a serious family event. The manager may want policy guidance, but still needs room for judgment.",
+    documentation:
+      "If the company expects supporting documentation, use the Documentation settings to show that expectation, while still keeping manager discretion in review.",
+  },
+];
+
+const managerSetupSettingGuide = [
+  {
+    title: "Track balance usage",
+    body:
+      "Turn this On when the leave type should reduce from a tracked balance. Turn it Off when the leave is usually handled manually or case by case.",
+  },
+  {
+    title: "If balance is insufficient",
+    body:
+      "Warn manager is the best default for most growing teams. Block approval is best for stricter teams. Allow negative should be used only when the company intentionally allows borrowing from future balance. Approve available paid hours only is more advanced control for applying only the available paid portion.",
+  },
+  {
+    title: "Deduct balance",
+    body:
+      "Usually best as On approval. This keeps requests from changing balances before a manager confirms them.",
+  },
+  {
+    title: "Enable saved accrual policy",
+    body:
+      "Turn this On only when the company wants this leave type to build up over time. Good early candidates are Vacation and sometimes Sick.",
+  },
+  {
+    title: "Accrual unit",
+    body:
+      "Usually best as Hours because it works well with hourly, partial-day, and payroll-ready workflows.",
+  },
+  {
+    title: "Frequency",
+    body:
+      "Usually best as Monthly for Vacation, and None if accrual is not being used yet.",
+  },
+  {
+    title: "Max balance hours",
+    body:
+      "Usually leave this blank at first. Add a cap later when the company has a clear cap policy.",
+  },
+  {
+    title: "Allow negative balance flag",
+    body:
+      "Usually Off. Use only when the company clearly wants negative balances as part of policy.",
+  },
+];
+
 const buildPostingKey = (draft = {}) => [
   "manual-accrual",
   draft.leave_type || "leave",
@@ -492,6 +670,7 @@ const SettingsLeaveSettings = () => {
   const [snackbar, setSnackbar] = useState({ open: false, severity: "success", message: "" });
   const [helpOpen, setHelpOpen] = useState(false);
   const [balancePolicyHelpOpen, setBalancePolicyHelpOpen] = useState(false);
+  const [managerSetupGuideOpen, setManagerSetupGuideOpen] = useState(false);
   const [leaveTypeHelp, setLeaveTypeHelp] = useState(null);
   const [selectedSetupProfile, setSelectedSetupProfile] = useState("simple");
   const [leaveAreaTab, setLeaveAreaTab] = useState("settings");
@@ -1059,14 +1238,24 @@ const SettingsLeaveSettings = () => {
               Configure balance usage, shortage handling, and accrual policy setup by leave type.
             </Typography>
           </Box>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<HelpOutlineIcon />}
-            onClick={() => setBalancePolicyHelpOpen(true)}
-          >
-            Help
-          </Button>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<HelpOutlineIcon />}
+              onClick={() => setManagerSetupGuideOpen(true)}
+            >
+              Manager setup guide
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<HelpOutlineIcon />}
+              onClick={() => setBalancePolicyHelpOpen(true)}
+            >
+              Field guide
+            </Button>
+          </Stack>
         </Stack>
 
         <Alert severity="info" variant="outlined">
@@ -1977,6 +2166,118 @@ const SettingsLeaveSettings = () => {
               Balance and accrual policy settings do not change payroll calculations.
             </Typography>
           </HelpSection>
+        </Stack>
+      </Drawer>
+      <Drawer
+        anchor="right"
+        open={managerSetupGuideOpen}
+        onClose={() => setManagerSetupGuideOpen(false)}
+        sx={{ "& .MuiDrawer-paper": { width: { xs: "100%", sm: 680 }, p: 2.5 } }}
+      >
+        <Stack spacing={2}>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+            <Box>
+              <Typography variant="h6" fontWeight={800}>Manager setup guide</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Practical guidance for choosing balance rules, shortage handling, and accrual defaults by leave type.
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={() => setManagerSetupGuideOpen(false)} aria-label="Close manager setup guide">
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+
+          <Alert severity="info" variant="outlined">
+            Use this guide as a manager-friendly starting point. These recommendations do not change payroll formulas, and every setting remains editable.
+          </Alert>
+
+          <HelpSection title="A simple mental model" status="How to decide" statusColor="primary">
+            <Typography variant="body2">
+              Track balance usage means this leave type should use a tracked balance. If balance is insufficient controls what happens when an employee requests more paid time than they have.
+            </Typography>
+            <Typography variant="body2">
+              Deduct balance controls when the balance decreases. Enable saved accrual policy stores the intended earning rules for manual accrual preview/posting and future automation setup.
+            </Typography>
+            <Typography variant="body2">
+              Payroll remains separate: these settings affect leave balances and manager decisions, not payroll formulas.
+            </Typography>
+          </HelpSection>
+
+          <Divider />
+
+          {managerSetupLeaveGuides.map((guide) => (
+            <React.Fragment key={guide.title}>
+              <HelpSection title={guide.title} status={guide.subtitle} statusColor="default">
+                <Typography variant="body2">{guide.overview}</Typography>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                    Best starting point for most SMBs
+                  </Typography>
+                  <Stack component="ul" spacing={0.5} sx={{ pl: 2.5, my: 0 }}>
+                    {guide.best.map((item) => (
+                      <Typography component="li" variant="body2" key={item}>{item}</Typography>
+                    ))}
+                  </Stack>
+                </Box>
+                <Typography variant="body2">
+                  <strong>Why this is usually best:</strong> {guide.why}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Example:</strong> {guide.example}
+                </Typography>
+                {guide.stricter && (
+                  <Typography variant="body2">
+                    <strong>When to be stricter:</strong> {guide.stricter}
+                  </Typography>
+                )}
+                {guide.simpler && (
+                  <Typography variant="body2">
+                    <strong>When to simplify further:</strong> {guide.simpler}
+                  </Typography>
+                )}
+                {guide.tracking && (
+                  <Typography variant="body2">
+                    <strong>When to turn tracking on:</strong> {guide.tracking}
+                  </Typography>
+                )}
+                {guide.documentation && (
+                  <Typography variant="body2">
+                    <strong>When to pair it with documentation:</strong> {guide.documentation}
+                  </Typography>
+                )}
+              </HelpSection>
+              <Divider />
+            </React.Fragment>
+          ))}
+
+          <HelpSection title="What each setting means in practice" status="Field meanings" statusColor="primary">
+            <Stack spacing={1}>
+              {managerSetupSettingGuide.map((item) => (
+                <Box key={item.title}>
+                  <Typography variant="body2" fontWeight={800}>{item.title}</Typography>
+                  <Typography variant="body2" color="text.secondary">{item.body}</Typography>
+                </Box>
+              ))}
+            </Stack>
+          </HelpSection>
+
+          <Divider />
+
+          <HelpSection title="Recommended manager-friendly starting setup" status="Profiles" statusColor="success">
+            <Typography variant="body2">
+              <strong>Simple teams:</strong> Vacation tracked; Sick and Personal optional; Emergency, Family / Parental, and Compassionate usually manual; Warn manager for shortages; Deduct on approval; saved accrual policy Off or Vacation only; automation Off.
+            </Typography>
+            <Typography variant="body2">
+              <strong>Standard teams:</strong> Vacation and Sick tracked; Personal optional; Emergency, Family / Parental, and Compassionate mostly manual; Warn manager; Deduct on approval; saved accrual policy for Vacation and maybe Sick; automation Off.
+            </Typography>
+            <Typography variant="body2">
+              <strong>Advanced teams:</strong> Vacation and Sick tracked; Personal tracked if needed; Compassionate tracked only if intentionally formalized; Block approval or Approve available paid hours only for shortages; saved accrual policy On for tracked leave types; automation still Off by default until ready.
+            </Typography>
+          </HelpSection>
+
+          <Alert severity="info" variant="outlined">
+            These are recommended starting values, not hard rules. Managers can still adjust every setting to match the company's real leave policy.
+          </Alert>
         </Stack>
       </Drawer>
       <Drawer
