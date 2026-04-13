@@ -321,148 +321,166 @@ const leaveTypeSetupGuides = {
   sick: {
     title: "Sick leave setup guide",
     overview:
-      "Sick leave is commonly used for illness, recovery, medical appointments, or short health-related absences. Many companies choose to track sick leave with a balance, but the right strictness depends on how formal their policy is.",
+      "Sick leave is commonly used for illness, recovery, medical appointments, or short health-related absences. Many teams track it as a paid entitlement, but sick leave usually needs more manager judgment than vacation.",
     best: [
-      "Track balance usage: On",
-      "If balance is insufficient: Warn manager",
-      "Deduct balance: On approval",
-      "Enable saved accrual policy: Often Off at first, or On if the company has a defined sick accrual policy",
-      "Accrual unit: Hours",
-      "Frequency: None if managed manually, Monthly if the company accrues sick leave",
-      "Max balance hours: Blank at first unless the company has a known cap",
-      "Allow negative balance flag: Off",
+      "Enable paid entitlement: Usually On if the company offers paid sick time",
+      "Allowance amount: use the company policy, for example 5 days/year or 40 hours/year",
+      "Allowance unit: Days for manager-friendly setup, Hours for exact hourly policies",
+      "Workday hours: Usually 8 unless the company uses a different standard day",
+      "Grant method: Opening balance for initial setup, Annual front-load if granted yearly, Monthly accrual if earned over time",
+      "Policy year basis: Calendar year for simple teams, company policy year if the company uses a custom reset date",
+      "Start basis: Employee hire date",
+      "Waiting period: 0 unless employees must wait before sick time is usable",
+      "New hire proration: Prorate first period",
+      "Shortage handling: Warn manager",
+      "Advanced rules: Track balance usage On, deduct On approval, allow negative Off",
     ],
     why:
-      "This gives managers visibility and control without making the workflow too rigid. Sick leave often needs some flexibility because real health situations are not always predictable.",
+      "This gives managers the real company allowance in plain terms while still keeping flexibility for health-related situations. The ledger balance remains the source of truth after preview/apply or accrual posting.",
     stricter:
-      "Choose Block approval if the company has a tightly enforced sick balance policy and managers should not approve paid sick time beyond available balance.",
+      "Use Block approval if paid sick time must never exceed the available balance. Use a waiting period if employees are not eligible immediately after hire.",
     flexible:
-      "Choose Allow negative only if the company intentionally allows employees to borrow against future sick entitlement.",
+      "Use Allow negative only if the company intentionally allows borrowing from future sick entitlement. Otherwise keep Warn manager so exceptions are visible but controlled.",
     example:
-      "An employee has 6 hours of sick balance and requests 8 paid sick hours. With Warn manager, the manager sees the shortage and can decide whether to approve, adjust, or handle the extra time another way.",
+      "A company offers 5 sick days per year with an 8-hour workday. The manager enters Allowance amount 5 and Unit Days. The system stores 40 allowance hours. If an employee hired mid-year is prorated, preview shows the employee-specific amount before any ledger entry is created.",
     guidance:
-      "Sick leave is one of the most common leave types to balance-manage. Most growing teams start with Track balance usage On and Warn manager before moving to stricter enforcement later.",
+      "For most SMBs, Sick should be configured as a paid entitlement only if the company has a real sick-time policy. Start with Warn manager and On approval deduction before moving to stricter enforcement.",
   },
   vacation: {
     title: "Vacation setup guide",
     overview:
-      "Vacation leave is the most common leave type to track with a balance. If a company uses any balance-managed leave at all, Vacation is usually the first and strongest candidate.",
+      "Vacation is usually the first leave type companies manage with a paid allowance and tracked balance. It is planned ahead, easier to audit, and usually has the clearest company policy.",
     best: [
-      "Track balance usage: On",
-      "If balance is insufficient: Warn manager",
-      "Deduct balance: On approval",
-      "Enable saved accrual policy: Often On once the company is ready to define vacation earning rules",
-      "Accrual unit: Hours",
-      "Frequency: Monthly is usually the best starting point if vacation accrues",
-      "Max balance hours: Blank at first, then set a cap if the company policy requires one",
-      "Allow negative balance flag: Off",
+      "Enable paid entitlement: On",
+      "Allowance amount: use the company policy, for example 10 days/year or 80 hours/year",
+      "Allowance unit: Days for simple setup, Hours if the company manages vacation hourly",
+      "Workday hours: Usually 8",
+      "Grant method: Annual front-load if granted at the start of the year, Monthly accrual if earned over time, Opening balance for first-time setup only",
+      "Policy year basis: Calendar year or company policy year",
+      "Start basis: Employee hire date",
+      "Waiting period: 0 unless vacation cannot be used immediately",
+      "New hire proration: Prorate first period for mid-year hires",
+      "Shortage handling: Warn manager for most teams, Block approval for stricter teams",
+      "Advanced rules: Track balance usage On, deduct On approval, max balance blank until the company has a known cap",
     ],
     why:
-      "Vacation is usually planned in advance and easier to manage consistently than other leave types. This makes it a strong fit for balance tracking and later accrual setup.",
+      "Vacation is the strongest fit for the new allowance workflow because managers normally think in annual days or hours, employees expect to see remaining balance, and approvals should show projected remaining balance.",
     stricter:
-      "Choose Block approval for larger or stricter teams that do not want paid vacation approved beyond available balance.",
+      "Use Block approval if managers should not approve paid vacation above the available balance. Use Approve available paid hours only if the company wants only the available paid portion applied and the overage handled manually/unpaid.",
     advanced:
-      "Use Approve available paid hours only if the company wants tighter control without fully blocking the manager workflow.",
+      "For Monthly or Biweekly accrual, entitlement preview shows expected current-period impact, but apply does not create a fake opening balance. Use Accrual preview / manual posting to create real accrual ledger entries.",
     example:
-      "An employee has 24 hours of vacation balance and requests 8 hours. With Track balance usage On and Deduct balance On approval, the balance reduces only after the manager approves.",
+      "A company offers 10 vacation days per year. The manager enters Allowance amount 10, Unit Days, Workday hours 8. Preview shows each employee's eligible/prorated hours. Applying eligible rows creates ledger-backed entries only for safe opening/front-load policies.",
     guidance:
-      "Vacation is usually the best leave type to track first. For most SMBs, this is the safest place to start with both balance tracking and later accrual policies.",
+      "Vacation is the best first candidate for paid entitlement, employee balance visibility, request impact preview, and manager approval-time deduction.",
   },
   personal: {
     title: "Personal leave setup guide",
     overview:
-      "Personal leave is often used for personal errands, family needs, short appointments, or discretionary personal time. Some companies track it formally, while others keep it more flexible.",
+      "Personal leave is often used for errands, appointments, family needs, or discretionary personal time. Some companies offer a small paid allowance; others keep it manager-discretionary.",
     best: [
-      "Track balance usage: On",
-      "If balance is insufficient: Warn manager",
-      "Deduct balance: On approval",
-      "Enable saved accrual policy: Usually Off at first",
-      "Accrual unit: Hours",
-      "Frequency: None unless the company has a defined personal-time accrual policy",
-      "Max balance hours: Blank",
-      "Allow negative balance flag: Off",
+      "Enable paid entitlement: On only if the company has a defined personal leave allowance",
+      "Allowance amount: commonly small, for example 2 days/year or 16 hours/year",
+      "Allowance unit: Days for simple policy, Hours for precise partial-day usage",
+      "Workday hours: Usually 8",
+      "Grant method: Annual front-load or Opening balance; Monthly accrual only if the company intentionally earns personal time over time",
+      "Policy year basis: Calendar year for simple teams",
+      "Start basis: Employee hire date",
+      "Waiting period: usually 0",
+      "New hire proration: Prorate first period or Full period depending on company generosity",
+      "Shortage handling: Warn manager",
+      "Advanced rules: Track balance usage On if entitlement-backed, Off if handled case-by-case",
     ],
     why:
-      "Personal leave is often less formal than vacation. Warn manager gives flexibility while still helping managers see when a request exceeds the available balance.",
+      "Personal leave benefits from visibility, but it is usually less strict than vacation. A small allowance with Warn manager gives managers context without overcomplicating approvals.",
     stricter:
-      "Choose Block approval if personal leave is formally limited and the company wants managers to enforce the policy consistently.",
+      "Use Block approval only if personal leave is a firm capped paid benefit and exceptions should not be approved as paid time.",
     simpler:
-      "Turn Track balance usage Off if personal leave is handled case-by-case and the company does not want to maintain a tracked entitlement.",
+      "Leave paid entitlement Off and Track balance usage Off if personal leave is handled case-by-case without a tracked bank.",
     example:
-      "An employee has 2 hours of personal balance and requests 4 hours. With Warn manager, the manager sees the shortage but can still decide whether to approve as an exception.",
+      "A company offers 2 personal days per year. The system stores this as 16 hours when Workday hours is 8. Employees see remaining balance, and managers see projected remaining balance before approval.",
     guidance:
-      "For many SMBs, Personal starts either as balance-managed with Warn manager or as fully manual. It is less commonly enforced as strictly as Vacation.",
+      "Personal should either be a small paid entitlement with flexible warnings or remain fully manual. Avoid making it stricter than the company's real policy.",
   },
   emergency: {
     title: "Emergency leave setup guide",
     overview:
-      "Emergency leave is usually used for unexpected personal situations that need immediate time away. Many companies do not track this as a formal balance unless they have a very specific policy.",
+      "Emergency leave is usually for unexpected situations that need immediate time away. Most SMBs do not treat it as a standard paid entitlement unless they have a very specific internal policy.",
     best: [
-      "Track balance usage: Off",
-      "If balance is insufficient: Warn manager if balance tracking is enabled later",
-      "Deduct balance: On approval",
-      "Enable saved accrual policy: Off",
-      "Accrual unit: Hours if ever used",
-      "Frequency: None",
-      "Max balance hours: Blank",
-      "Allow negative balance flag: Off",
+      "Enable paid entitlement: Usually Off",
+      "Allowance amount: 0 unless the company has a formal emergency leave allowance",
+      "Allowance unit: Hours if tracked",
+      "Workday hours: Usually 8 if days are used",
+      "Grant method: Opening balance only if initializing a formal emergency bank",
+      "Policy year basis: Calendar year if tracked",
+      "Start basis: Employee hire date",
+      "Waiting period: usually 0",
+      "New hire proration: usually Full period if emergency leave is intentionally offered",
+      "Shortage handling: Warn manager if tracking is enabled",
+      "Advanced rules: Track balance usage Off for most teams",
     ],
     why:
-      "Emergency leave is often handled case-by-case. A strict balance can be too rigid for unexpected situations, especially in smaller teams.",
+      "Emergency leave usually needs speed and discretion. A strict paid balance can be too rigid unless the company has a defined entitlement.",
     tracking:
-      "Only enable Track balance usage if the company has a clearly defined emergency leave entitlement and wants it enforced consistently.",
+      "Only enable paid entitlement and Track balance usage if the company has a clearly defined emergency leave bank and wants managers to enforce it consistently.",
     example:
-      "An employee calls in with an urgent situation. Instead of relying on a tracked balance, the manager reviews the case directly and decides how to record it.",
+      "An employee has an urgent issue and needs immediate time away. For most teams, the manager records and approves the request without using a formal entitlement balance.",
     guidance:
-      "Most SMBs leave Emergency as manual. If it becomes policy-heavy later, the company can turn balance tracking on with Warn manager before adopting stricter rules.",
+      "Keep Emergency manual unless the business has a real paid emergency leave allowance. If tracking is added later, start with Warn manager, not Block approval.",
   },
   family: {
     title: "Family / Parental leave setup guide",
     overview:
-      "Family / Parental leave often involves longer absences, protected leave, or policy-heavy situations. Because this can overlap with legal and jurisdiction-specific rules, many companies avoid using simple balance tracking unless they have a very clear internal framework.",
+      "Family / Parental leave often involves longer absences and policy-heavy situations. It may overlap with company policy or external legal requirements, so simple balance tracking should be used carefully.",
     best: [
-      "Track balance usage: Off",
-      "If balance is insufficient: Warn manager if balance tracking is ever enabled",
-      "Deduct balance: On approval",
-      "Enable saved accrual policy: Off",
-      "Accrual unit: Hours if used internally",
-      "Frequency: None",
-      "Max balance hours: Blank",
-      "Allow negative balance flag: Off",
+      "Enable paid entitlement: Usually Off unless the company has a defined paid family/parental bank",
+      "Allowance amount: 0 unless internally defined",
+      "Allowance unit: Hours if tracked operationally",
+      "Workday hours: Usually 8 if days are used",
+      "Grant method: Opening balance only for an internal bank; avoid monthly/biweekly accrual unless the policy truly earns over time",
+      "Policy year basis: Company policy year or employee anniversary year only if the internal policy requires it",
+      "Start basis: Employee hire date",
+      "Waiting period: set only if company policy has eligibility timing",
+      "New hire proration: usually Start next cycle or Prorate first period if tracked",
+      "Shortage handling: Warn manager if tracking is enabled",
+      "Advanced rules: Track balance usage Off unless intentionally balance-managed",
     ],
     why:
-      "This leave type often needs case-by-case manager/admin review and may depend on company policy or outside legal requirements. A simple tracked balance is often not the best first model.",
+      "This leave type often needs careful manager/admin review. A simple entitlement balance is not always the right model for longer or protected absences.",
     tracking:
-      "Only if the company has a clearly defined internal parental/family leave bank that managers are meant to track operationally.",
+      "Use paid entitlement only if the company has a clearly defined internal family/parental leave bank that managers are expected to track operationally.",
     example:
-      "A manager reviews a family-related leave request with extra care because it may involve longer time ranges or specific company policy, rather than treating it like ordinary vacation.",
+      "A company may keep Family / Parental manual so managers can review the employee's situation, expected duration, documentation, and company policy before deciding how to record the leave.",
     guidance:
-      "Most SMBs keep Family / Parental leave manual unless they have a mature HR policy and know exactly what balance behavior they want.",
+      "Most SMBs should keep Family / Parental manual until they have a mature policy. Do not imply this feature provides legal entitlement calculations.",
   },
   compassionate: {
     title: "Compassionate leave setup guide",
     overview:
-      "Compassionate leave is typically used for bereavement or serious family hardship situations. Some companies want it documented and tracked, while others prefer manager discretion.",
+      "Compassionate leave is typically used for bereavement or serious family hardship. Some companies offer a small paid allowance; many prefer manager discretion.",
     best: [
-      "Track balance usage: Usually Off or On only if the company has a defined compassionate leave entitlement",
-      "If balance is insufficient: Warn manager if tracked",
-      "Deduct balance: On approval",
-      "Enable saved accrual policy: Usually Off",
-      "Accrual unit: Hours",
-      "Frequency: None unless policy clearly defines accrual",
-      "Max balance hours: Blank",
-      "Allow negative balance flag: Off",
+      "Enable paid entitlement: Off unless the company has a defined compassionate leave allowance",
+      "Allowance amount: use company policy, for example 3 days/year if formalized",
+      "Allowance unit: Days for manager-friendly setup, Hours for exact balances",
+      "Workday hours: Usually 8",
+      "Grant method: Annual front-load or Opening balance if formalized; usually not monthly/biweekly accrual",
+      "Policy year basis: Calendar year for simple teams",
+      "Start basis: Employee hire date",
+      "Waiting period: usually 0 unless company policy requires eligibility timing",
+      "New hire proration: Full period or Prorate first period depending on company policy",
+      "Shortage handling: Warn manager",
+      "Advanced rules: Track balance usage Off unless intentionally formalized",
     ],
     why:
-      "Compassionate leave often needs empathy and manager judgment. A highly rigid balance policy can be too harsh unless the company has a very formal entitlement model.",
+      "Compassionate leave needs empathy and discretion. A rigid balance policy can feel too harsh unless the company has a formal entitlement.",
     tracking:
-      "Turn Track balance usage On only if the company intentionally wants a measured compassionate leave bank.",
+      "Turn paid entitlement and Track balance usage On only if the company intentionally wants a measured compassionate leave bank.",
     documentation:
-      "If the company expects supporting documentation for compassionate leave, make that expectation visible through the documentation settings, while still keeping manager judgment in review.",
+      "If the company expects supporting documentation, use Documentation settings to show that expectation while still keeping manager judgment in review.",
     example:
-      "An employee requests compassionate leave during a difficult family event. The manager may want policy guidance, but still needs room for discretion.",
+      "A company offers 3 compassionate days per year. The manager enters 3 days and uses Warn manager so shortages are visible but not handled harshly by default.",
     guidance:
-      "Compassionate leave is often better as manual for smaller teams. Larger or more policy-heavy teams may track it, but should do so thoughtfully.",
+      "Smaller teams often keep Compassionate manual. Larger or more policy-heavy teams may track it, but should do so thoughtfully and avoid over-automation.",
   },
 };
 
@@ -3134,7 +3152,7 @@ const SettingsLeaveSettings = () => {
           </Stack>
 
           <Alert severity="info" variant="outlined">
-            These are practical product recommendations for configuring leave balances in Schedulaa. They do not replace legal, payroll, or HR compliance advice. Payroll formulas are not changed by these settings.
+            These are practical product recommendations for configuring company leave allowances and balance rules in Schedulaa. They do not replace legal, payroll, or HR compliance advice. Payroll formulas are not changed by these settings.
           </Alert>
 
           {selectedLeaveTypeGuide && (
@@ -3158,6 +3176,20 @@ const SettingsLeaveSettings = () => {
 
               <HelpSection title={`${formatLeaveTypeLabel(leaveTypeHelp)} overview`} status="Use case" statusColor="default">
                 <Typography variant="body2">{selectedLeaveTypeGuide.overview}</Typography>
+              </HelpSection>
+
+              <Divider />
+
+              <HelpSection title="How this card is organized" status="New setup" statusColor="primary">
+                <Typography variant="body2">
+                  Start with the simple allowance fields: paid entitlement, allowance amount, unit, workday hours, grant method, policy year, hire-date start, waiting period, and proration.
+                </Typography>
+                <Typography variant="body2">
+                  Use Advanced rules only when you need lower-level mechanics such as balance-managed deductions, saved accrual rate/frequency, max balance, or negative-balance behavior.
+                </Typography>
+                <Typography variant="body2">
+                  Monthly and biweekly entitlement policies are preview-only in this setup flow. Use Accrual preview / manual posting to create real accrual ledger entries.
+                </Typography>
               </HelpSection>
 
               <Divider />
