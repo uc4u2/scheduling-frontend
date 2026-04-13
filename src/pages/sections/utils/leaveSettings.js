@@ -24,7 +24,7 @@ export const defaultLeaveSettings = () => ({
   pending_leave_smart_shift_mode: "warn",
   approved_leave_smart_shift_mode: "block",
   attachment_required_leave_types_json: [],
-  require_manager_confirmed_hours_for_payroll_ready: true,
+  require_manager_confirmed_hours_for_payroll_ready: false,
   automatic_accruals_enabled: false,
   automatic_accrual_frequency: "monthly",
   automatic_accrual_last_run_at: null,

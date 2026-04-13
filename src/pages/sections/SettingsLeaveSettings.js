@@ -219,7 +219,10 @@ const metricCellSx = {
   bgcolor: "background.paper",
 };
 
-const formatEntitlementSummary = (entitlement = {}) => {
+const formatEntitlementSummary = (entitlement = {}, policy = {}) => {
+  if (!entitlement.paid_entitlement_enabled && policy.balance_managed) {
+    return "No company allowance is configured. Balance tracking is still enabled below.";
+  }
   if (!entitlement.paid_entitlement_enabled) return "Manual leave type. No paid entitlement is configured.";
   const amount = Number(entitlement.allowance_amount || 0);
   const unit = entitlement.allowance_unit || "hours";
@@ -236,8 +239,8 @@ const setupProfiles = {
     summary: [
       "Hourly and partial-day requests off by default; full-day, multi-day, and shift-linked leave remain available.",
       "Approved leave blocks Smart Shift; pending leave warns.",
-      "Approving leave also confirms payroll-ready hours from the request's safe computed hours.",
-      "Balance usage remains manual for all leave types.",
+      "Approving leave confirms payroll-ready hours from safe request/computed values; the extra payroll-hours review is off.",
+      "Track balance usage is off for every leave type, so paid leave can still be approved without balance checks.",
       "Scheduled accrual automation stays off.",
     ],
     settings: {
@@ -1542,7 +1545,7 @@ const SettingsLeaveSettings = () => {
                   <Box sx={{ ...policyGroupSx, bgcolor: entitlement.paid_entitlement_enabled ? "rgba(240, 253, 244, 0.72)" : "rgba(248, 250, 252, 0.82)" }}>
                     <Stack spacing={0.75}>
                       <Typography variant="body2" fontWeight={850}>
-                        {formatEntitlementSummary(entitlement)}
+                        {formatEntitlementSummary(entitlement, policy)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {entitlement.paid_entitlement_enabled
