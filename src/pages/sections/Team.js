@@ -292,6 +292,10 @@ const asLocalDate = (ymd) => {
   const [showWeekends, setShowWeekends] = useState(true);
   const [workHoursOnly, setWorkHoursOnly] = useState(false);
   const [compactDensity, setCompactDensity] = useState(false);
+  const [showTimeOffOnCalendar, setShowTimeOffOnCalendar] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("schedulaa.showTimeOffOnShiftCalendar") === "true";
+  });
 
   const accentPalette = useMemo(
     () => [
@@ -346,6 +350,11 @@ const asLocalDate = (ymd) => {
     }),
     [theme]
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("schedulaa.showTimeOffOnShiftCalendar", showTimeOffOnCalendar ? "true" : "false");
+  }, [showTimeOffOnCalendar]);
 
   /* -------------------------------- filters --------------------------------- */
   const [departments, setDepartments] = useState([]);
@@ -1014,7 +1023,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     () =>
       filteredShifts.map((s) => {
         const color = getRecruiterAccent(s.recruiter_id);
-        const isOnLeave = s.on_leave === true;
+        const isOnLeave = showTimeOffOnCalendar && s.on_leave === true;
         const rec = recruiters.find((r) => r.id === s.recruiter_id);
         const bgTint = alpha(color, 0.14);
         const entry = timeEntriesMap[String(s.id)];
@@ -1058,6 +1067,14 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             profile_image_url: rec?.profile_image_url || rec?.avatar || null,
             status: s.status,
             timezone: s.timezone,
+            on_leave: isOnLeave,
+            leave_id: s.leave_id || null,
+            leave_type: s.leave_type || null,
+            leave_subtype: s.leave_subtype || null,
+            leave_paid: s.leave_paid,
+            leave_approved_hours: s.leave_approved_hours,
+            leave_source: s.leave_source || null,
+            leave_display_label: s.leave_display_label || null,
             leave_reason: s.leave_reason || null,
             _empColor: color,
             break_in_progress: breakInProgress,
@@ -1082,6 +1099,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       timeEntriesMap,
       timePolicy,
       getRecruiterAccent,
+      showTimeOffOnCalendar,
       ui,
       theme,
     ]
@@ -1918,6 +1936,68 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         ? `Late +${xp.late_minutes}m`
         : "";
 
+    if (xp.on_leave) {
+      const leaveLabel = xp.leave_display_label || "Time off";
+      const paidLabel = xp.leave_paid === false ? "Unpaid" : "Paid";
+      const hoursLabel =
+        xp.leave_approved_hours !== undefined && xp.leave_approved_hours !== null
+          ? `${Number(xp.leave_approved_hours).toFixed(2).replace(/\.00$/, "")}h`
+          : "";
+      return (
+        <div
+          style={{
+            padding: isDayView ? "5px 7px" : "3px 5px",
+            borderLeft: `4px solid ${ui.leave.border}`,
+            lineHeight: 1.18,
+            background: `repeating-linear-gradient(135deg, ${ui.leave.bg}, ${ui.leave.bg} 8px, ${alpha(theme.palette.grey[300], 0.62)} 8px, ${alpha(theme.palette.grey[300], 0.62)} 12px)`,
+            borderRadius: 10,
+            height: "100%",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, minWidth: 0 }}>
+            <span
+              style={{
+                fontSize: isDayView ? 10 : 9,
+                textTransform: "uppercase",
+                letterSpacing: 0.35,
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: alpha(theme.palette.grey[900], 0.08),
+                border: `1px dashed ${ui.leave.border}`,
+                color: ui.leave.text,
+                flexShrink: 0,
+              }}
+            >
+              OFF
+            </span>
+            <span
+              style={{
+                fontWeight: 800,
+                fontSize: isDayView ? 11 : 10,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                color: theme.palette.text.primary,
+                minWidth: 0,
+              }}
+            >
+              {emp}
+            </span>
+          </div>
+          <div style={{ fontSize: isDayView ? 11 : 10, fontWeight: 700, color: ui.leave.text, marginBottom: 2 }}>
+            {leaveLabel}
+            {hoursLabel ? ` · ${hoursLabel}` : ""}
+          </div>
+          <div style={{ fontSize: isDayView ? 10 : 9, color: theme.palette.text.secondary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {startTime}
+            {endTime ? ` – ${endTime}` : ""}
+            {` · ${paidLabel}`}
+          </div>
+        </div>
+      );
+    }
+
     if (isWeekView) {
       return (
         <div
@@ -2244,10 +2324,27 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const end = info.event.end ? format(info.event.end, timeFmt12h ? "hh:mmaaa" : "HH:mm") : "";
     const loc = xp.location ? `\nLocation: ${xp.location}` : "";
     const note = xp.note ? `\nNote: ${xp.note}` : "";
-    info.el.setAttribute("title", `${emp}\n${start}–${end}${loc}${note}`);
+    if (xp.on_leave) {
+      const leaveLabel = xp.leave_display_label || "Time off";
+      const paidLabel = xp.leave_paid === false ? "Unpaid" : "Paid";
+      const hours = xp.leave_approved_hours != null ? `\nApproved hours: ${xp.leave_approved_hours}` : "";
+      const reason = xp.leave_reason ? `\nReason: ${xp.leave_reason}` : "";
+      info.el.setAttribute("title", `${emp}\n${leaveLabel} (${paidLabel})\n${start}–${end}${hours}${reason}`);
+    } else {
+      info.el.setAttribute("title", `${emp}\n${start}–${end}${loc}${note}`);
+    }
     const accent = xp._empColor || theme.palette.primary.main;
     const viewType = info.view?.type || "";
     const isTimeGrid = viewType.startsWith("timeGrid");
+    if (xp.on_leave) {
+      info.el.style.borderRadius = "12px";
+      info.el.style.boxShadow = "none";
+      info.el.style.border = `1px dashed ${ui.leave.border}`;
+      info.el.style.borderLeft = `4px solid ${ui.leave.border}`;
+      info.el.style.background = ui.leave.bg;
+      info.el.style.overflow = "hidden";
+      return;
+    }
     info.el.style.borderRadius = "12px";
     info.el.style.boxShadow = isTimeGrid ? "none" : theme.shadows[2];
     info.el.style.borderLeft = `4px solid ${accent}`;
@@ -2337,6 +2434,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             borderRadius: 8,
             boxShadow: theme.shadows[1],
           },
+          ".fc .shift-leave": {
+            cursor: "default",
+            opacity: 0.96,
+          },
+          ".fc .shift-leave .fc-event-main": {
+            color: `${ui.leave.text} !important`,
+          },
           ".fc .fc-timegrid-col.fc-day-today": {
             background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.02)} 100%)`,
           },
@@ -2404,6 +2508,25 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           <Button variant="outlined" onClick={handleExportToExcel}>
             Export
           </Button>
+          <FormControlLabel
+            sx={{
+              m: 0,
+              px: 1,
+              py: 0.25,
+              border: "1px solid",
+              borderColor: showTimeOffOnCalendar ? "primary.main" : "divider",
+              borderRadius: 999,
+              bgcolor: showTimeOffOnCalendar ? alpha(theme.palette.primary.main, 0.06) : "background.paper",
+            }}
+            control={
+              <Switch
+                size="small"
+                checked={showTimeOffOnCalendar}
+                onChange={(event) => setShowTimeOffOnCalendar(event.target.checked)}
+              />
+            }
+            label={<Typography variant="caption" fontWeight={800}>Show time off on calendar</Typography>}
+          />
           <Button variant="outlined" onClick={fetchShifts}>
             Refresh
           </Button>
@@ -2420,6 +2543,16 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           </Tooltip>
         </Stack>
       </Stack>
+
+      {showTimeOffOnCalendar && (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
+          <Chip size="small" label="Work shift" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), border: `1px solid ${alpha(theme.palette.primary.main, 0.35)}` }} />
+          <Chip size="small" label="Time off" sx={{ bgcolor: ui.leave.bg, color: ui.leave.text, border: `1px dashed ${ui.leave.border}` }} />
+          <Typography variant="caption" color="text.secondary">
+            Approved time off is shown only when it has shift context.
+          </Typography>
+        </Stack>
+      )}
 
       {showSmartShift && (
         <SmartShiftPlannerPanel
