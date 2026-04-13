@@ -987,6 +987,8 @@ const SettingsLeaveSettings = () => {
     () => (entitlementPreviewResult?.rows || []).filter((row) => !row.skipped && Number(row.proposed_ledger_delta_hours || 0) > 0),
     [entitlementPreviewResult]
   );
+  const hasSettingsDraftChanges = Boolean(dirty);
+  const hasPolicyDraftChanges = Boolean(policiesDirty || entitlementsDirty);
 
   const applySetupProfile = () => {
     const profile = setupProfiles[selectedSetupProfile] || setupProfiles.standard;
@@ -1024,11 +1026,7 @@ const SettingsLeaveSettings = () => {
         })),
       };
     });
-    setSnackbar({
-      open: true,
-      severity: "info",
-      message: `${profile.label} recommended defaults applied to the draft. Review and save when ready.`,
-    });
+    setSnackbar({ open: true, severity: "info", message: `${profile.label} defaults applied. Use the floating Save bar to make them active.` });
   };
 
   const buildEntitlementPreviewPayload = () => ({
@@ -2531,6 +2529,51 @@ const SettingsLeaveSettings = () => {
         </Tabs>
         {leaveAreaTab === "settings" ? (
           <Stack spacing={2}>
+            {(hasSettingsDraftChanges || hasPolicyDraftChanges) && (
+              <Alert
+                severity="info"
+                variant="filled"
+                sx={{
+                  position: "sticky",
+                  top: 8,
+                  zIndex: 8,
+                  borderRadius: 2,
+                  boxShadow: "0 14px 34px rgba(15, 23, 42, 0.18)",
+                  "& .MuiAlert-message": { width: "100%" },
+                }}
+              >
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={900}>
+                      Draft leave settings are ready to save
+                    </Typography>
+                    <Typography variant="body2">
+                      Recommended defaults are only active after saving. Save both sections if profile defaults changed settings and allowance rules.
+                    </Typography>
+                  </Box>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                    <Button
+                      variant="contained"
+                      color="inherit"
+                      onClick={handleSave}
+                      disabled={!hasSettingsDraftChanges || saving}
+                      sx={{ color: "#0f172a", bgcolor: "common.white", "&:hover": { bgcolor: "#f8fafc" } }}
+                    >
+                      {saving ? "Saving..." : "Save leave settings"}
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="inherit"
+                      onClick={handleSavePolicies}
+                      disabled={!hasPolicyDraftChanges || policiesSaving}
+                      sx={{ color: "#0f172a", bgcolor: "common.white", "&:hover": { bgcolor: "#f8fafc" } }}
+                    >
+                      {policiesSaving ? "Saving..." : "Save allowances & rules"}
+                    </Button>
+                  </Stack>
+                </Stack>
+              </Alert>
+            )}
             <SectionCard
               title={
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
@@ -2574,13 +2617,21 @@ const SettingsLeaveSettings = () => {
       </Box>
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={4000}
+        autoHideDuration={7000}
         onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          sx={{ width: "100%" }}
+          variant="filled"
+          sx={{
+            width: "100%",
+            minWidth: { xs: "auto", sm: 520 },
+            fontSize: 15,
+            fontWeight: 800,
+            boxShadow: "0 14px 34px rgba(15, 23, 42, 0.22)",
+          }}
         >
           {snackbar.message}
         </Alert>
