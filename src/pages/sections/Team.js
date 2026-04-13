@@ -3208,10 +3208,10 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                 {shiftHandlingMode === "time_off" && (
                   <Stack spacing={1.5} sx={{ mt: 1.5 }}>
                     <Alert severity="info" variant="outlined">
-                      Mark as time off creates an approved leave record. Paid time off may affect leave balance if this leave type is balance-managed. Payroll formulas are not changed.
+                      Marking time off creates an approved leave record. Paid time off may affect leave balance if this leave type is balance-managed. Payroll formulas are unchanged.
                     </Alert>
                     <Alert severity="warning" variant="outlined">
-                      In V1, manager-entered time off always removes the shift from active scheduling. If this time off is cancelled later, leave effects can be reversed, but the original shift is not restored automatically.
+                      Marking time off removes this shift from the active schedule. If needed later, shift restoration is handled separately.
                     </Alert>
                     <Grid container spacing={1.5}>
                       <Grid item xs={12} sm={6}>
@@ -3276,10 +3276,10 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                               onChange={() => {}}
                             />
                           }
-                          label="Remove employee from active schedule (required in V1)"
+                          label="Removed from active schedule"
                         />
                         <Typography variant="caption" color="text.secondary" display="block">
-                          Required for now so approved time off and active work shifts cannot overlap.
+                          This happens automatically for manager-entered time off.
                         </Typography>
                       </Grid>
                       <Grid item xs={12}>
