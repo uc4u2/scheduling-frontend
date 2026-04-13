@@ -2529,51 +2529,6 @@ const SettingsLeaveSettings = () => {
         </Tabs>
         {leaveAreaTab === "settings" ? (
           <Stack spacing={2}>
-            {(hasSettingsDraftChanges || hasPolicyDraftChanges) && (
-              <Alert
-                severity="info"
-                variant="filled"
-                sx={{
-                  position: "sticky",
-                  top: 8,
-                  zIndex: 8,
-                  borderRadius: 2,
-                  boxShadow: "0 14px 34px rgba(15, 23, 42, 0.18)",
-                  "& .MuiAlert-message": { width: "100%" },
-                }}
-              >
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
-                  <Box>
-                    <Typography variant="subtitle2" fontWeight={900}>
-                      Draft leave settings are ready to save
-                    </Typography>
-                    <Typography variant="body2">
-                      Recommended defaults are only active after saving. Save both sections if profile defaults changed settings and allowance rules.
-                    </Typography>
-                  </Box>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                    <Button
-                      variant="contained"
-                      color="inherit"
-                      onClick={handleSave}
-                      disabled={!hasSettingsDraftChanges || saving}
-                      sx={{ color: "#0f172a", bgcolor: "common.white", "&:hover": { bgcolor: "#f8fafc" } }}
-                    >
-                      {saving ? "Saving..." : "Save leave settings"}
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="inherit"
-                      onClick={handleSavePolicies}
-                      disabled={!hasPolicyDraftChanges || policiesSaving}
-                      sx={{ color: "#0f172a", bgcolor: "common.white", "&:hover": { bgcolor: "#f8fafc" } }}
-                    >
-                      {policiesSaving ? "Saving..." : "Save allowances & rules"}
-                    </Button>
-                  </Stack>
-                </Stack>
-              </Alert>
-            )}
             <SectionCard
               title={
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
@@ -2615,6 +2570,55 @@ const SettingsLeaveSettings = () => {
           <SettingsLeaveInsights />
         )}
       </Box>
+      {leaveAreaTab === "settings" && (hasSettingsDraftChanges || hasPolicyDraftChanges) && (
+        <Alert
+          severity="info"
+          variant="filled"
+          sx={{
+            position: "fixed",
+            right: { xs: 12, md: 24 },
+            bottom: { xs: 12, md: 24 },
+            zIndex: (theme) => theme.zIndex.snackbar + 2,
+            width: { xs: "calc(100% - 24px)", sm: 430, md: 540 },
+            borderRadius: 3,
+            boxShadow: "0 22px 54px rgba(15, 23, 42, 0.28)",
+            "& .MuiAlert-message": { width: "100%" },
+          }}
+        >
+          <Stack spacing={1.25}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={900}>
+                Unsaved leave changes
+              </Typography>
+              <Typography variant="body2">
+                Save now to make draft settings active. Profile defaults and allowance rules do not apply until saved.
+              </Typography>
+            </Box>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button
+                fullWidth
+                variant="contained"
+                color="inherit"
+                onClick={handleSave}
+                disabled={!hasSettingsDraftChanges || saving}
+                sx={{ color: "#0f172a", bgcolor: "common.white", "&:hover": { bgcolor: "#f8fafc" } }}
+              >
+                {saving ? "Saving..." : "Save leave settings"}
+              </Button>
+              <Button
+                fullWidth
+                variant="contained"
+                color="inherit"
+                onClick={handleSavePolicies}
+                disabled={!hasPolicyDraftChanges || policiesSaving}
+                sx={{ color: "#0f172a", bgcolor: "common.white", "&:hover": { bgcolor: "#f8fafc" } }}
+              >
+                {policiesSaving ? "Saving..." : "Save allowances & rules"}
+              </Button>
+            </Stack>
+          </Stack>
+        </Alert>
+      )}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={7000}
