@@ -104,6 +104,25 @@ const defaultBreakPolicyForm = {
   breakRotate: false,
 };
 
+const defaultShiftTimeOffForm = {
+  leaveType: "sick",
+  isPaidLeave: true,
+  approvedHours: "",
+  note: "",
+  removeFromSchedule: true,
+};
+
+const shiftTimeOffLeaveTypes = [
+  { value: "sick", label: "Sick" },
+  { value: "vacation", label: "Vacation" },
+  { value: "personal", label: "Personal" },
+  { value: "emergency", label: "Emergency" },
+  { value: "family", label: "Family / Parental" },
+  { value: "compassionate", label: "Compassionate" },
+  { value: "unpaid_day_off", label: "Unpaid day off" },
+  { value: "other", label: "Other / Manager note" },
+];
+
 const hydrateBreakPolicyFormState = (policy) => {
   if (!policy || typeof policy !== "object") {
     return { ...defaultBreakPolicyForm };
@@ -573,6 +592,11 @@ const [formData, setFormData] = useState({
 });
   const [modalAvailabilitySlots, setModalAvailabilitySlots] = useState([]);
   const [selectedAvailabilityIds, setSelectedAvailabilityIds] = useState([]);
+  const [shiftHandlingMode, setShiftHandlingMode] = useState("scheduled");
+  const [shiftTimeOffForm, setShiftTimeOffForm] = useState(defaultShiftTimeOffForm);
+  const [shiftTimeOffPreview, setShiftTimeOffPreview] = useState(null);
+  const [shiftTimeOffPreviewLoading, setShiftTimeOffPreviewLoading] = useState(false);
+  const [shiftTimeOffPreviewError, setShiftTimeOffPreviewError] = useState("");
 
   /* ------------------------------- messaging -------------------------------- */
   const [successMsg, setSuccessMsg] = useState("");
@@ -655,6 +679,27 @@ const [formData, setFormData] = useState({
       if (!existingStartUtc || !existingEndUtc) return false;
       return newStartUtc < existingEndUtc && newEndUtc > existingStartUtc;
     });
+  };
+
+  const estimateShiftHoursFromForm = () => {
+    if (!formData.date || !formData.startTime || !formData.endTime) return "";
+    const start = new Date(`${formData.date}T${formData.startTime}`);
+    const end = new Date(`${formData.date}T${formData.endTime}`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "";
+    const adjustedEnd = end <= start ? new Date(end.getTime() + 24 * 60 * 60 * 1000) : end;
+    const hours = Math.max((adjustedEnd - start) / 3600000, 0);
+    return hours ? String(Math.round(hours * 100) / 100) : "";
+  };
+
+  const resetShiftTimeOffState = (hours = "") => {
+    setShiftHandlingMode("scheduled");
+    setShiftTimeOffForm({
+      ...defaultShiftTimeOffForm,
+      approvedHours: hours,
+    });
+    setShiftTimeOffPreview(null);
+    setShiftTimeOffPreviewError("");
+    setShiftTimeOffPreviewLoading(false);
   };
 
   const getWeeklyHours = (recruiterId, date) => {
@@ -1142,6 +1187,15 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       repeatWeeks: 2,
       repeatUntil: "",
     });
+    const defaultHours = (() => {
+      const start = new Date(`${startDate || shift.date}T${startTime || ""}`);
+      const end = new Date(`${startDate || shift.date}T${endTime || ""}`);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "";
+      const adjustedEnd = end <= start ? new Date(end.getTime() + 24 * 60 * 60 * 1000) : end;
+      const hours = Math.max((adjustedEnd - start) / 3600000, 0);
+      return hours ? String(Math.round(hours * 100) / 100) : "";
+    })();
+    resetShiftTimeOffState(defaultHours);
     setSelectedAvailabilityIds(shift.availability_id ? [shift.availability_id] : []);
     fetchAvailabilityForModal(shift.recruiter_id, shift.date);
     setModalOpen(true);
@@ -1167,6 +1221,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       repeatWeeks: 2,
       repeatUntil: "",
     });
+    resetShiftTimeOffState("");
     setSelectedAvailabilityIds([]);
     if (selectedRecruiters.length === 1) {
       fetchAvailabilityForModal(selectedRecruiters[0], formatDate(clickInfo.date));
@@ -1607,6 +1662,16 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   const handleUpdateShift = async () => {
     if (!editingShift) return;
 
+    if (shiftHandlingMode === "time_off") {
+      await handleMarkShiftAsTimeOff();
+      return;
+    }
+
+    if (shiftHandlingMode === "delete") {
+      await handleDeleteShift();
+      return;
+    }
+
     const recruiterId = editingShift.recruiter_id;
     const dateStr = formData.date;
     const clock_in = `${dateStr}T${formData.startTime}`;
@@ -1663,6 +1728,66 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       fetchShifts();
     } catch {
       setErrorMsg("Error deleting shift.");
+    }
+  };
+
+  const buildShiftTimeOffPayload = (extra = {}) => ({
+    leave_type: shiftTimeOffForm.leaveType,
+    is_paid_leave: shiftTimeOffForm.leaveType === "unpaid_day_off" ? false : Boolean(shiftTimeOffForm.isPaidLeave),
+    approved_hours: Number(shiftTimeOffForm.approvedHours || estimateShiftHoursFromForm() || 0),
+    note: shiftTimeOffForm.note,
+    remove_from_schedule: Boolean(shiftTimeOffForm.removeFromSchedule),
+    ...extra,
+  });
+
+  const previewShiftTimeOffImpact = async () => {
+    if (!editingShift) return;
+    setShiftTimeOffPreviewLoading(true);
+    setShiftTimeOffPreviewError("");
+    try {
+      const response = await api.post(
+        `/manager/shifts/${editingShift.id}/mark-time-off`,
+        buildShiftTimeOffPayload({ dry_run: true }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+        }
+      );
+      setShiftTimeOffPreview(response.data?.preview || null);
+    } catch (err) {
+      setShiftTimeOffPreview(null);
+      setShiftTimeOffPreviewError(err?.response?.data?.message || err?.response?.data?.error || "Unable to preview time-off impact.");
+    } finally {
+      setShiftTimeOffPreviewLoading(false);
+    }
+  };
+
+  const handleMarkShiftAsTimeOff = async () => {
+    if (!editingShift) return;
+    setIsSubmitting(true);
+    setShiftTimeOffPreviewError("");
+    try {
+      const response = await api.post(
+        `/manager/shifts/${editingShift.id}/mark-time-off`,
+        buildShiftTimeOffPayload(),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+        }
+      );
+      setSuccessMsg(response.data?.message || "Shift marked as time off.");
+      setModalOpen(false);
+      setEditingShift(null);
+      resetShiftTimeOffState("");
+      fetchShifts();
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.message || err?.response?.data?.error || "Error marking shift as time off.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -2711,6 +2836,7 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
           setEditingShift(null);
           setSelectedAvailabilityIds([]);
           setModalAvailabilitySlots([]);
+          resetShiftTimeOffState("");
         }}
       >
         <Box
@@ -3039,6 +3165,165 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
               </FormHelperText>
             </FormControl>
 
+            {editingShift && (
+              <Box
+                mt={2}
+                sx={{
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                  p: 1.5,
+                  bgcolor: "rgba(248,250,252,0.72)",
+                }}
+              >
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Attendance / time-off handling
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Choose whether this remains scheduled work, becomes manager-entered time off, or is deleted only from the schedule.
+                </Typography>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={shiftHandlingMode}
+                  onChange={(_, value) => {
+                    if (!value) return;
+                    setShiftHandlingMode(value);
+                    setShiftTimeOffPreview(null);
+                    setShiftTimeOffPreviewError("");
+                  }}
+                  sx={{ mt: 1, flexWrap: "wrap", gap: 1 }}
+                >
+                  <ToggleButton value="scheduled">Scheduled work</ToggleButton>
+                  <ToggleButton value="time_off">Mark as time off</ToggleButton>
+                  <ToggleButton value="delete">Delete shift only</ToggleButton>
+                </ToggleButtonGroup>
+
+                {shiftHandlingMode === "delete" && (
+                  <Alert severity="warning" variant="outlined" sx={{ mt: 1.5 }}>
+                    Delete shift only is scheduling cleanup. It does not create leave, deduct balance, or create payroll-ready leave hours.
+                  </Alert>
+                )}
+
+                {shiftHandlingMode === "time_off" && (
+                  <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                    <Alert severity="info" variant="outlined">
+                      Mark as time off creates an approved leave record. Paid time off may affect leave balance if this leave type is balance-managed. Payroll formulas are not changed.
+                    </Alert>
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          select
+                          fullWidth
+                          size="small"
+                          label="Leave type"
+                          value={shiftTimeOffForm.leaveType}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setShiftTimeOffForm((prev) => ({
+                              ...prev,
+                              leaveType: value,
+                              isPaidLeave: value === "unpaid_day_off" ? false : prev.isPaidLeave,
+                            }));
+                            setShiftTimeOffPreview(null);
+                          }}
+                        >
+                          {shiftTimeOffLeaveTypes.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={Boolean(shiftTimeOffForm.isPaidLeave) && shiftTimeOffForm.leaveType !== "unpaid_day_off"}
+                              disabled={shiftTimeOffForm.leaveType === "unpaid_day_off"}
+                              onChange={(e) => {
+                                setShiftTimeOffForm((prev) => ({ ...prev, isPaidLeave: e.target.checked }));
+                                setShiftTimeOffPreview(null);
+                              }}
+                            />
+                          }
+                          label={shiftTimeOffForm.leaveType === "unpaid_day_off" ? "Unpaid time off" : "Paid time off"}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          type="number"
+                          label="Approved hours"
+                          value={shiftTimeOffForm.approvedHours}
+                          onChange={(e) => {
+                            setShiftTimeOffForm((prev) => ({ ...prev, approvedHours: e.target.value }));
+                            setShiftTimeOffPreview(null);
+                          }}
+                          inputProps={{ min: 0, step: 0.25 }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={Boolean(shiftTimeOffForm.removeFromSchedule)}
+                              onChange={(e) => setShiftTimeOffForm((prev) => ({ ...prev, removeFromSchedule: e.target.checked }))}
+                            />
+                          }
+                          label="Remove employee from active schedule"
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Optional note"
+                          value={shiftTimeOffForm.note}
+                          onChange={(e) => setShiftTimeOffForm((prev) => ({ ...prev, note: e.target.value }))}
+                          placeholder="Example: Employee called in sick"
+                        />
+                      </Grid>
+                    </Grid>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                      <Button variant="outlined" size="small" onClick={previewShiftTimeOffImpact} disabled={shiftTimeOffPreviewLoading}>
+                        {shiftTimeOffPreviewLoading ? "Previewing..." : "Preview balance impact"}
+                      </Button>
+                      <Typography variant="caption" color="text.secondary">
+                        Preview is read-only. It does not create leave or ledger rows.
+                      </Typography>
+                    </Stack>
+                    {shiftTimeOffPreviewError && <Alert severity="error">{shiftTimeOffPreviewError}</Alert>}
+                    {shiftTimeOffPreview?.balance_impact?.balance_managed && shiftTimeOffPreview?.is_paid_leave && (
+                      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 1 }}>
+                        <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+                          <Typography variant="caption" color="text.secondary">Current balance</Typography>
+                          <Typography variant="body2" fontWeight={800}>{shiftTimeOffPreview.balance_impact.current_balance_hours}h</Typography>
+                        </Paper>
+                        <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+                          <Typography variant="caption" color="text.secondary">Hours to deduct</Typography>
+                          <Typography variant="body2" fontWeight={800}>{shiftTimeOffPreview.balance_impact.deduction_hours}h</Typography>
+                        </Paper>
+                        <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+                          <Typography variant="caption" color="text.secondary">Projected balance</Typography>
+                          <Typography variant="body2" fontWeight={800}>{shiftTimeOffPreview.balance_impact.projected_balance_hours}h</Typography>
+                        </Paper>
+                      </Box>
+                    )}
+                    {shiftTimeOffPreview?.balance_impact?.message && (
+                      <Alert
+                        severity={shiftTimeOffPreview.balance_impact.blocking ? "error" : shiftTimeOffPreview.balance_impact.warning ? "warning" : "success"}
+                        variant="outlined"
+                      >
+                        {shiftTimeOffPreview.balance_impact.message}
+                      </Alert>
+                    )}
+                  </Stack>
+                )}
+              </Box>
+            )}
+
             {/* Recurrence controls */}
             <Box mt={2}>
               <FormControl fullWidth>
@@ -3160,14 +3445,18 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
             {editingShift ? (
               <>
                 <Button variant="contained" onClick={handleUpdateShift}>
-                  Update Shift
+                  {shiftHandlingMode === "time_off"
+                    ? "Mark as time off"
+                    : shiftHandlingMode === "delete"
+                    ? "Delete shift only"
+                    : "Update Shift"}
                 </Button>
                 <Button
                   variant="outlined"
                   color="error"
                   onClick={handleDeleteShift}
                 >
-                  Delete Shift
+                  Delete shift only
                 </Button>
               </>
             ) : (
