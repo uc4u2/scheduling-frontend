@@ -1736,7 +1736,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     is_paid_leave: shiftTimeOffForm.leaveType === "unpaid_day_off" ? false : Boolean(shiftTimeOffForm.isPaidLeave),
     approved_hours: Number(shiftTimeOffForm.approvedHours || estimateShiftHoursFromForm() || 0),
     note: shiftTimeOffForm.note,
-    remove_from_schedule: Boolean(shiftTimeOffForm.removeFromSchedule),
+    remove_from_schedule: true,
     ...extra,
   });
 
@@ -3210,6 +3210,9 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                     <Alert severity="info" variant="outlined">
                       Mark as time off creates an approved leave record. Paid time off may affect leave balance if this leave type is balance-managed. Payroll formulas are not changed.
                     </Alert>
+                    <Alert severity="warning" variant="outlined">
+                      In V1, manager-entered time off always removes the shift from active scheduling. If this time off is cancelled later, leave effects can be reversed, but the original shift is not restored automatically.
+                    </Alert>
                     <Grid container spacing={1.5}>
                       <Grid item xs={12} sm={6}>
                         <TextField
@@ -3268,12 +3271,16 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
                         <FormControlLabel
                           control={
                             <Switch
-                              checked={Boolean(shiftTimeOffForm.removeFromSchedule)}
-                              onChange={(e) => setShiftTimeOffForm((prev) => ({ ...prev, removeFromSchedule: e.target.checked }))}
+                              checked
+                              disabled
+                              onChange={() => {}}
                             />
                           }
-                          label="Remove employee from active schedule"
+                          label="Remove employee from active schedule (required in V1)"
                         />
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Required for now so approved time off and active work shifts cannot overlap.
+                        </Typography>
                       </Grid>
                       <Grid item xs={12}>
                         <TextField
