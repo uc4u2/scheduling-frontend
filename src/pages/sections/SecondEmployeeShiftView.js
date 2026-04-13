@@ -3200,29 +3200,43 @@ const breakTimelineMeta = useMemo(() => {
             const future = selectedBalance?.future_balance;
             if (!selectedBalance) return null;
             return (
-              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, mt: 1 }}>
-                <Stack spacing={1}>
-                  <Typography variant="subtitle2" fontWeight={800}>
-                    Paid balance context
-                  </Typography>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 1.75,
+                  borderRadius: 3,
+                  mt: 1,
+                  borderColor: "rgba(148, 163, 184, 0.45)",
+                  bgcolor: "rgba(248, 250, 252, 0.72)",
+                }}
+              >
+                <Stack spacing={1.25}>
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={900}>
+                      Paid balance context
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Shows the expected paid balance position for this request. Payroll formulas remain separate.
+                    </Typography>
+                  </Box>
                   {!leaveForm.is_paid_leave ? (
                     <Alert severity="info" variant="outlined">
-                      Unpaid leave does not deduct from paid balance. It still creates a leave record, may affect scheduling, and may still require manager approval.
+                      Unpaid leave does not deduct from paid entitlement balance. It still creates a leave record, can affect scheduling visibility, and may still require manager approval.
                     </Alert>
                   ) : (
                     <>
                       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 1 }}>
-                        <Box>
+                        <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                           <Typography variant="caption" color="text.secondary">Current balance</Typography>
                           <Typography variant="body2" fontWeight={800}>{formatBalanceHours(selectedBalance.balance_hours)}</Typography>
                         </Box>
-                        <Box>
+                        <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                           <Typography variant="caption" color="text.secondary">Available on start</Typography>
                           <Typography variant="body2" fontWeight={800}>
                             {future ? formatBalanceHours(future.available_on_leave_start_hours) : "—"}
                           </Typography>
                         </Box>
-                        <Box>
+                        <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                           <Typography variant="caption" color="text.secondary">Projected after request</Typography>
                           <Typography variant="body2" fontWeight={800}>
                             {future ? formatBalanceHours(future.projected_remaining_hours) : "—"}

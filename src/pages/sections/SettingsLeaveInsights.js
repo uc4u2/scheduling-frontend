@@ -381,6 +381,92 @@ const AttentionList = ({ rows }) => {
   );
 };
 
+const QueuePanel = ({ rows }) => (
+  <Stack spacing={1.2}>
+    {rows.map((row) => (
+      <Box
+        key={row.key}
+        sx={{
+          p: 1.45,
+          borderRadius: 2,
+          border: "1px solid",
+          borderColor: row.tone === "danger" ? "error.light" : "divider",
+          bgcolor: row.tone === "danger" ? "rgba(220, 38, 38, 0.04)" : "background.paper",
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center">
+          <Box>
+            <Typography variant="subtitle2" fontWeight={850}>{row.label}</Typography>
+            <Typography variant="caption" color="text.secondary">{row.help}</Typography>
+          </Box>
+          <Chip size="small" label={row.value} sx={readableChipSx(row.tone)} />
+        </Stack>
+      </Box>
+    ))}
+  </Stack>
+);
+
+const RiskSummaryPanel = ({ rows }) => (
+  <Stack spacing={1.2}>
+    {rows.map((row) => (
+      <Box key={row.key}>
+        <Stack direction="row" justifyContent="space-between" spacing={1} sx={{ mb: 0.5 }}>
+          <Typography variant="body2" fontWeight={800}>{row.label}</Typography>
+          <Typography variant="body2" fontWeight={900}>{row.value}</Typography>
+        </Stack>
+        <LinearProgress
+          variant="determinate"
+          value={Math.min(100, Math.max(0, row.percent))}
+          sx={{
+            height: 8,
+            borderRadius: 999,
+            bgcolor: "rgba(148, 163, 184, 0.18)",
+            "& .MuiLinearProgress-bar": {
+              borderRadius: 999,
+              bgcolor: row.color,
+            },
+          }}
+        />
+        <Typography variant="caption" color="text.secondary">{row.help}</Typography>
+      </Box>
+    ))}
+  </Stack>
+);
+
+const LeaveTypeDistribution = ({ attention, blockers }) => {
+  const counts = new Map();
+  [...safeArray(attention), ...safeArray(blockers)].forEach((row) => {
+    const type = row.leave_type || "unknown";
+    const current = counts.get(type) || { leave_type: type, count: 0, hours: 0 };
+    current.count += 1;
+    current.hours += Number(row.computed_hours || 0);
+    counts.set(type, current);
+  });
+  const rows = Array.from(counts.values()).sort((a, b) => b.count - a.count).slice(0, 8);
+  const maxCount = Math.max(1, ...rows.map((row) => row.count));
+
+  if (!rows.length) {
+    return <EmptyState>No leave type attention concentration in this range.</EmptyState>;
+  }
+
+  return (
+    <Stack spacing={1.25}>
+      {rows.map((row) => (
+        <Box key={row.leave_type}>
+          <Stack direction="row" justifyContent="space-between" spacing={1}>
+            <Typography variant="body2" fontWeight={850}>{readableReason(row.leave_type)}</Typography>
+            <Typography variant="body2" fontWeight={850}>{row.count} item(s)</Typography>
+          </Stack>
+          <Box sx={{ mt: 0.55, height: 10, borderRadius: 999, bgcolor: "rgba(148, 163, 184, 0.18)", overflow: "hidden" }}>
+            <Box sx={{ width: `${Math.max((row.count / maxCount) * 100, 6)}%`, height: "100%", bgcolor: palette.approved }} />
+          </Box>
+          <Typography variant="caption" color="text.secondary">{fmtHours(row.hours)} represented in attention/blocker rows</Typography>
+        </Box>
+      ))}
+    </Stack>
+  );
+};
+
 const SettingsLeaveInsights = () => {
   const [from, setFrom] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [to, setTo] = useState(dayjs().format("YYYY-MM-DD"));
@@ -499,6 +585,79 @@ const SettingsLeaveInsights = () => {
     { key: "blocked", label: "Blockers", value: summary.leave_blockers_count || 0, color: palette.blocked },
     { key: "cancelled", label: "Cancelled", value: summary.cancelled_leave_count || 0, color: palette.cancelled },
   ];
+  const totalActiveSignals = Math.max(
+    1,
+    Number(summary.pending_leave_requests || 0) +
+      Number(summary.preview_only_estimated_leave_requests || 0) +
+      Number(summary.leave_blockers_count || 0) +
+      attention.length
+  );
+  const reasonCount = (reason) =>
+    attention.filter((row) => safeArray(row.attention_reasons || row.reason_codes).includes(reason)).length;
+  const queueRows = [
+    {
+      key: "pending",
+      label: "Pending manager review",
+      value: summary.pending_leave_requests || 0,
+      help: "Requests that still need an approve/reject decision.",
+      tone: "warning",
+    },
+    {
+      key: "preview",
+      label: "Preview-only / estimated",
+      value: summary.preview_only_estimated_leave_requests || 0,
+      help: "Records visible for review, not finalized payroll truth.",
+      tone: "purple",
+    },
+    {
+      key: "confirmation",
+      label: "Awaiting manager confirmation",
+      value: reasonCount("manager_confirmation_needed"),
+      help: "Approved leave that still needs payroll-ready hour confirmation.",
+      tone: "info",
+    },
+    {
+      key: "blocked",
+      label: "Finalization blockers",
+      value: summary.leave_blockers_count || 0,
+      help: "Worked-time overlap or other blockers before payroll close.",
+      tone: "danger",
+    },
+  ];
+  const riskRows = [
+    {
+      key: "blocked",
+      label: "Payroll blocker risk",
+      value: summary.leave_blockers_count || 0,
+      percent: (Number(summary.leave_blockers_count || 0) / totalActiveSignals) * 100,
+      color: palette.blocked,
+      help: "Resolve these before finalizing payroll for the selected range.",
+    },
+    {
+      key: "pending",
+      label: "Pending decision load",
+      value: summary.pending_leave_requests || 0,
+      percent: (Number(summary.pending_leave_requests || 0) / totalActiveSignals) * 100,
+      color: palette.pending,
+      help: "Manager action is still required.",
+    },
+    {
+      key: "estimated",
+      label: "Estimated hour review",
+      value: reasonCount("estimated_hours"),
+      percent: (reasonCount("estimated_hours") / totalActiveSignals) * 100,
+      color: palette.previewOnly,
+      help: "Estimated records should be confirmed before payroll close when they affect pay.",
+    },
+    {
+      key: "preview",
+      label: "Preview-only review",
+      value: reasonCount("preview_only"),
+      percent: (reasonCount("preview_only") / totalActiveSignals) * 100,
+      color: palette.approved,
+      help: "Preview-only rows are attention signals, not finalized inputs.",
+    },
+  ];
 
   return (
     <Stack spacing={2.5}>
@@ -513,6 +672,20 @@ const SettingsLeaveInsights = () => {
         title="Insight filters"
         description="Use the same workforce analytics window and team filters for leave readiness reporting."
       >
+        <Stack spacing={2}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {[
+              ["TODAY", "Today"],
+              ["WTD", "Week to date"],
+              ["MTD", "Month to date"],
+              ["QTD", "Quarter to date"],
+              ["YTD", "Year to date"],
+            ].map(([key, label]) => (
+              <Button key={key} size="small" variant="outlined" onClick={() => applyPreset(key)}>
+                {label}
+              </Button>
+            ))}
+          </Stack>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={2}>
             <TextField label="From" type="date" fullWidth value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -561,17 +734,13 @@ const SettingsLeaveInsights = () => {
           </Grid>
           <Grid item xs={12} md={9}>
             <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
-              <Button size="small" onClick={() => applyPreset("TODAY")}>Today</Button>
-              <Button size="small" onClick={() => applyPreset("WTD")}>WTD</Button>
-              <Button size="small" onClick={() => applyPreset("MTD")}>MTD</Button>
-              <Button size="small" onClick={() => applyPreset("QTD")}>QTD</Button>
-              <Button size="small" onClick={() => applyPreset("YTD")}>YTD</Button>
               <Button variant="contained" onClick={() => { fetchDirectory(); fetchInsights(); }}>
                 Refresh insights
               </Button>
             </Stack>
           </Grid>
         </Grid>
+        </Stack>
         {loading && <LinearProgress sx={{ mt: 2 }} />}
         {directoryError && <Alert severity="warning" sx={{ mt: 2 }}>{directoryError}</Alert>}
         {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
@@ -635,6 +804,24 @@ const SettingsLeaveInsights = () => {
       </Grid>
 
       <Grid container spacing={2}>
+        <Grid item xs={12} lg={4}>
+          <SectionCard title="Payroll-readiness queue" description="Operational queues managers should clear before payroll close.">
+            <QueuePanel rows={queueRows} />
+          </SectionCard>
+        </Grid>
+        <Grid item xs={12} lg={4}>
+          <SectionCard title="Balance and readiness risk" description="Where review pressure is concentrated in this range.">
+            <RiskSummaryPanel rows={riskRows} />
+          </SectionCard>
+        </Grid>
+        <Grid item xs={12} lg={4}>
+          <SectionCard title="Leave type distribution" description="Leave types represented in attention and blocker rows.">
+            <LeaveTypeDistribution attention={attention} blockers={blockers} />
+          </SectionCard>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
         <Grid item xs={12} lg={6}>
           <SectionCard title="Payroll readiness blockers" description="Leave records that need payroll review before finalization.">
             {blockers.length === 0 ? (
@@ -669,17 +856,19 @@ const SettingsLeaveInsights = () => {
           </SectionCard>
         </Grid>
         <Grid item xs={12} lg={6}>
-          <SectionCard title="Operational notes" description="How to read this dashboard without confusing it with finalized payroll output.">
+          <SectionCard title="Operational guidance" description="How to read this dashboard without confusing it with finalized payroll output.">
             <Stack spacing={1.25}>
-              <Alert severity="success" variant="outlined">
-                Payroll-ready leave is the only leave state intended to flow into finalized payroll input.
-              </Alert>
-              <Alert severity="warning" variant="outlined">
-                Preview-only and estimated leave are review signals. They should be resolved before payroll close when they affect pay.
-              </Alert>
-              <Alert severity="info" variant="outlined">
-                Balances, attachments, and saved accrual policies stay outside payroll formulas. They support HR operations and manager review.
-              </Alert>
+              {[
+                ["Payroll-ready", "Only payroll-ready leave is intended to flow into finalized payroll input.", "success"],
+                ["Preview-only", "Preview-only and estimated leave are review signals. Resolve them before payroll close when they affect pay.", "warning"],
+                ["Blockers", "Worked-time overlaps and finalization blockers need operational cleanup before payroll can be finalized safely.", "error"],
+                ["Balances", "Balances, attachments, and saved accrual policies support HR operations. They do not change payroll formulas.", "info"],
+              ].map(([title, body, severity]) => (
+                <Alert key={title} severity={severity} variant="outlined">
+                  <Typography variant="body2" fontWeight={850}>{title}</Typography>
+                  <Typography variant="caption">{body}</Typography>
+                </Alert>
+              ))}
             </Stack>
           </SectionCard>
         </Grid>

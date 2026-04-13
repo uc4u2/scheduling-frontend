@@ -193,6 +193,41 @@ const readableChipSx = (tone = "default") => {
   };
 };
 
+const enterpriseCardSx = {
+  border: "1px solid",
+  borderColor: "rgba(148, 163, 184, 0.45)",
+  borderRadius: 3,
+  p: 2.25,
+  height: "100%",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.86))",
+  boxShadow: "0 16px 38px rgba(15, 23, 42, 0.055)",
+};
+
+const policyGroupSx = {
+  border: "1px solid",
+  borderColor: "rgba(148, 163, 184, 0.32)",
+  borderRadius: 2,
+  p: 1.5,
+  bgcolor: "rgba(248, 250, 252, 0.72)",
+};
+
+const metricCellSx = {
+  border: "1px solid",
+  borderColor: "divider",
+  borderRadius: 2,
+  p: 1.25,
+  bgcolor: "background.paper",
+};
+
+const formatEntitlementSummary = (entitlement = {}) => {
+  if (!entitlement.paid_entitlement_enabled) return "Manual leave type. No paid entitlement is configured.";
+  const amount = Number(entitlement.allowance_amount || 0);
+  const unit = entitlement.allowance_unit || "hours";
+  const workday = Number(entitlement.workday_hours || 8);
+  const waiting = Number(entitlement.waiting_period_days || 0);
+  return `${amount || 0} ${unit}/year · ${workday}h standard workday · ${waiting ? `${waiting} day waiting period` : "no waiting period"}`;
+};
+
 const setupProfiles = {
   simple: {
     label: "Simple",
@@ -1465,31 +1500,18 @@ const SettingsLeaveSettings = () => {
             return (
             <Grid item xs={12} md={6} xl={4} key={policy.leave_type}>
               <Box
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 2,
-                  p: 2,
-                  height: "100%",
-                  backgroundColor: "background.paper",
-                }}
+                sx={enterpriseCardSx}
               >
-                <Stack spacing={1.5}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                <Stack spacing={1.75}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.25}>
                     <Box>
-                      <Typography variant="subtitle2" fontWeight={800}>
+                      <Typography variant="subtitle1" fontWeight={900}>
                         {formatLeaveTypeLabel(policy.leave_type)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Company allowance + balance behavior
+                        Company allowance and balance behavior
                       </Typography>
                     </Box>
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <Chip
-                        size="small"
-                        sx={readableChipSx(entitlement.paid_entitlement_enabled ? "success" : "default")}
-                        label={entitlement.paid_entitlement_enabled ? "Paid entitlement" : "Manual"}
-                      />
                       <IconButton
                         size="small"
                         onClick={() => setLeaveTypeHelp(policy.leave_type)}
@@ -1497,14 +1519,38 @@ const SettingsLeaveSettings = () => {
                       >
                         <HelpOutlineIcon fontSize="small" />
                       </IconButton>
-                    </Stack>
                   </Stack>
 
-                  <Alert severity={entitlement.paid_entitlement_enabled ? "success" : "info"} variant="outlined">
-                    {entitlement.paid_entitlement_enabled
-                      ? `${formatLeaveTypeLabel(policy.leave_type)} has a company allowance policy. Employees still need ledger balances via preview/apply, manual adjustment, front-load, or accrual posting.`
-                      : "No paid entitlement is enabled for this leave type. Managers can still handle requests manually if allowed by request rules."}
-                  </Alert>
+                  <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Chip
+                      size="small"
+                      sx={readableChipSx(entitlement.paid_entitlement_enabled ? "success" : "default")}
+                      label={entitlement.paid_entitlement_enabled ? "Paid entitlement" : "Manual"}
+                    />
+                    <Chip
+                      size="small"
+                      sx={readableChipSx(isAccrualGrant ? "primary" : "default")}
+                      label={formatGrantMethodLabel(entitlement.grant_method || "opening_balance")}
+                    />
+                    <Chip
+                      size="small"
+                      sx={readableChipSx("default")}
+                      label={formatPolicyYearBasisLabel(entitlement.policy_year_basis || "calendar_year")}
+                    />
+                  </Stack>
+
+                  <Box sx={{ ...policyGroupSx, bgcolor: entitlement.paid_entitlement_enabled ? "rgba(240, 253, 244, 0.72)" : "rgba(248, 250, 252, 0.82)" }}>
+                    <Stack spacing={0.75}>
+                      <Typography variant="body2" fontWeight={850}>
+                        {formatEntitlementSummary(entitlement)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {entitlement.paid_entitlement_enabled
+                          ? "Preview/apply creates ledger-backed balances only when you explicitly confirm eligible rows."
+                          : "Requests can still be reviewed manually if the leave request rules allow this leave type."}
+                      </Typography>
+                    </Stack>
+                  </Box>
 
                   <FormControlLabel
                     control={
@@ -1520,7 +1566,11 @@ const SettingsLeaveSettings = () => {
                     label="Enable paid entitlement"
                   />
 
-                  <Grid container spacing={1.5}>
+                  <Box sx={policyGroupSx}>
+                    <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 900, letterSpacing: 0.9 }}>
+                      Company allowance
+                    </Typography>
+                  <Grid container spacing={1.5} sx={{ mt: 0.25 }}>
                     <Grid item xs={6}>
                       <TextField
                         fullWidth
@@ -1551,7 +1601,7 @@ const SettingsLeaveSettings = () => {
                         fullWidth
                         size="small"
                         type="number"
-                        label="Workday hours"
+                        label="Standard workday hours"
                         value={entitlement.workday_hours ?? 8}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "workday_hours", event.target.value)}
                         helperText="Used to convert days to hours"
@@ -1579,6 +1629,14 @@ const SettingsLeaveSettings = () => {
                         </Alert>
                       )}
                     </Grid>
+                  </Grid>
+                  </Box>
+
+                  <Box sx={policyGroupSx}>
+                    <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 900, letterSpacing: 0.9 }}>
+                      Eligibility and new hire handling
+                    </Typography>
+                    <Grid container spacing={1.5} sx={{ mt: 0.25 }}>
                     <Grid item xs={12} sm={6}>
                       <TextField
                         select
@@ -1663,7 +1721,7 @@ const SettingsLeaveSettings = () => {
                         select
                         fullWidth
                         size="small"
-                        label="New hire proration"
+                        label="New hire handling"
                         value={entitlement.proration_method || "prorate_first_period"}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "proration_method", event.target.value)}
                       >
@@ -1686,6 +1744,7 @@ const SettingsLeaveSettings = () => {
                       </Grid>
                     )}
                   </Grid>
+                  </Box>
 
                   <FormControlLabel
                     control={
@@ -1694,9 +1753,13 @@ const SettingsLeaveSettings = () => {
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "applies_to_new_hires", event.target.checked)}
                       />
                     }
-                    label="Apply policy to new hires"
+                    label="Auto-apply to new hires"
                   />
 
+                  <Box sx={policyGroupSx}>
+                    <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 900, letterSpacing: 0.9 }}>
+                      Approval guardrail
+                    </Typography>
                   <FormControlLabel
                     control={
                       <Switch
@@ -1710,7 +1773,7 @@ const SettingsLeaveSettings = () => {
                     When enabled, approved paid leave can deduct from this leave balance using the policy below. Payroll calculations remain separate.
                   </Typography>
 
-                  <Grid container spacing={1.5}>
+                  <Grid container spacing={1.5} sx={{ mt: 0.25 }}>
                     <Grid item xs={12} sm={6}>
                       <TextField
                         select
@@ -1726,11 +1789,12 @@ const SettingsLeaveSettings = () => {
                       </TextField>
                     </Grid>
                   </Grid>
+                  </Box>
 
-                  <Accordion disableGutters elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, "&:before": { display: "none" } }}>
+                  <Accordion disableGutters elevation={0} sx={{ border: "1px solid", borderColor: "rgba(148, 163, 184, 0.36)", borderRadius: 2, overflow: "hidden", "&:before": { display: "none" } }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Box>
-                        <Typography variant="body2" fontWeight={800}>Advanced rules</Typography>
+                        <Typography variant="body2" fontWeight={850}>Advanced balance mechanics</Typography>
                         <Typography variant="caption" color="text.secondary">
                           Balance deduction mechanics and saved accrual policy fields.
                         </Typography>
@@ -1853,10 +1917,10 @@ const SettingsLeaveSettings = () => {
 
         <Divider />
 
-        <Box>
+        <Box sx={{ border: "1px solid", borderColor: "rgba(148, 163, 184, 0.42)", borderRadius: 3, p: 2, bgcolor: "rgba(248, 250, 252, 0.62)" }}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ xs: "stretch", md: "flex-start" }} sx={{ mb: 1.5 }}>
             <Box>
-              <Typography variant="subtitle2" fontWeight={800}>Preview employee impact</Typography>
+              <Typography variant="subtitle1" fontWeight={900}>Preview employee balance impact</Typography>
               <Typography variant="body2" color="text.secondary">
                 Preview which employees would receive ledger-backed balances before applying anything. Existing balances and waiting periods are shown as skipped or blocked rows.
               </Typography>
@@ -1950,7 +2014,7 @@ const SettingsLeaveSettings = () => {
             <Grid item xs={12} md={6}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                 <Button variant="contained" onClick={runEntitlementPreview} disabled={entitlementPreviewLoading}>
-                  {entitlementPreviewLoading ? "Previewing..." : "Preview employee impact"}
+                  {entitlementPreviewLoading ? "Previewing..." : "Preview balance impact"}
                 </Button>
                 <Button
                   variant="outlined"
@@ -1976,6 +2040,26 @@ const SettingsLeaveSettings = () => {
               <Alert severity="success" variant="outlined">
                 Preview complete. {entitlementPreviewResult.summary?.employees_postable || 0} employee(s) eligible for {formatHours(entitlementPreviewResult.summary?.total_proposed_ledger_delta_hours)}. No balances were changed.
               </Alert>
+              <Grid container spacing={1.25}>
+                <Grid item xs={12} sm={4}>
+                  <Box sx={metricCellSx}>
+                    <Typography variant="caption" color="text.secondary">Eligible employees</Typography>
+                    <Typography variant="h6" fontWeight={900}>{entitlementPreviewResult.summary?.employees_postable || 0}</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Box sx={metricCellSx}>
+                    <Typography variant="caption" color="text.secondary">Skipped / blocked</Typography>
+                    <Typography variant="h6" fontWeight={900}>{entitlementPreviewResult.summary?.employees_skipped || 0}</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Box sx={metricCellSx}>
+                    <Typography variant="caption" color="text.secondary">Proposed ledger hours</Typography>
+                    <Typography variant="h6" fontWeight={900}>{formatHours(entitlementPreviewResult.summary?.total_proposed_ledger_delta_hours)}</Typography>
+                  </Box>
+                </Grid>
+              </Grid>
               {["monthly_accrual", "biweekly_accrual"].includes(entitlementPreviewResult.policy?.grant_method) && (
                 <Alert severity="warning" variant="outlined">
                   This policy accrues over time. Use Accrual preview / manual posting below to create accrual ledger entries.
@@ -1984,39 +2068,43 @@ const SettingsLeaveSettings = () => {
               {entitlementPreviewResult.rows?.length ? (
                 <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
                   <Table size="small">
-                    <TableHead>
+                    <TableHead sx={{ bgcolor: "rgba(15, 23, 42, 0.035)" }}>
                       <TableRow>
                         <TableCell>Employee</TableCell>
+                        <TableCell>Hire date</TableCell>
                         <TableCell>Eligibility</TableCell>
                         <TableCell>Period</TableCell>
-                        <TableCell>Current</TableCell>
-                        <TableCell>Allowance</TableCell>
-                        <TableCell>Proposed</TableCell>
-                        <TableCell>Projected</TableCell>
+                        <TableCell align="right">Current</TableCell>
+                        <TableCell align="right">Period allowance</TableCell>
+                        <TableCell align="right">Proposed</TableCell>
+                        <TableCell align="right">Projected</TableCell>
                         <TableCell>Impact</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {entitlementPreviewResult.rows.map((row) => (
-                        <TableRow key={`${row.recruiter_id}-${row.leave_type}-${row.period_start}`}>
+                        <TableRow
+                          key={`${row.recruiter_id}-${row.leave_type}-${row.period_start}`}
+                          sx={{ "&:nth-of-type(even)": { bgcolor: "rgba(248, 250, 252, 0.72)" } }}
+                        >
                           <TableCell>
                             <Typography variant="body2" fontWeight={700}>{row.employee_name || `Employee #${row.recruiter_id}`}</Typography>
-                            <Typography variant="caption" color="text.secondary">Hire: {row.hire_date || "—"}</Typography>
                           </TableCell>
+                          <TableCell>{row.hire_date || "—"}</TableCell>
                           <TableCell>
                             <Typography variant="body2">{row.eligible_now ? "Eligible" : "Not eligible"}</Typography>
                             <Typography variant="caption" color="text.secondary">{row.eligibility_date || "No waiting period"}</Typography>
                           </TableCell>
                           <TableCell>{row.period_start || "—"} to {row.period_end || "—"}</TableCell>
-                          <TableCell>{formatHours(row.current_balance_hours)}</TableCell>
-                          <TableCell>
+                          <TableCell align="right">{formatHours(row.current_balance_hours)}</TableCell>
+                          <TableCell align="right">
                             <Typography variant="body2">{formatHours(row.allowance_hours)}</Typography>
                             {row.grant_period_allowance_hours != null && (
                               <Typography variant="caption" color="text.secondary">Period: {formatHours(row.grant_period_allowance_hours)}</Typography>
                             )}
                           </TableCell>
-                          <TableCell>{formatHours(row.proposed_ledger_delta_hours)}</TableCell>
-                          <TableCell>{formatHours(row.projected_balance_hours)}</TableCell>
+                          <TableCell align="right">{formatHours(row.proposed_ledger_delta_hours)}</TableCell>
+                          <TableCell align="right">{formatHours(row.projected_balance_hours)}</TableCell>
                           <TableCell>
                             <Stack spacing={0.5} alignItems="flex-start">
                               <Chip
@@ -2041,11 +2129,25 @@ const SettingsLeaveSettings = () => {
           )}
 
           {entitlementApplyResult && (
-            <Alert severity={entitlementApplyResult.idempotent_replay ? "info" : "success"} variant="outlined" sx={{ mt: 1.5 }}>
-              {entitlementApplyResult.idempotent_replay
-                ? "This entitlement apply was already completed with the same idempotency key. No duplicate ledger entries were created."
-                : `Applied ${formatHours(entitlementApplyResult.summary?.total_posted_hours)} for ${entitlementApplyResult.summary?.employees_posted || 0} employee(s). Payroll formulas were not changed.`}
-            </Alert>
+            <Box sx={{ mt: 1.5, ...policyGroupSx, bgcolor: entitlementApplyResult.idempotent_replay ? "rgba(239, 246, 255, 0.74)" : "rgba(240, 253, 244, 0.76)" }}>
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Chip
+                    size="small"
+                    sx={readableChipSx(entitlementApplyResult.idempotent_replay ? "primary" : "success")}
+                    label={entitlementApplyResult.idempotent_replay ? "Idempotent replay" : "Ledger entries created"}
+                  />
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    {entitlementApplyResult.idempotent_replay
+                      ? "This apply was already completed. No duplicate ledger entries were created."
+                      : `Applied ${formatHours(entitlementApplyResult.summary?.total_posted_hours)} for ${entitlementApplyResult.summary?.employees_posted || 0} employee(s).`}
+                  </Typography>
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  Payroll formulas were not changed. Review ledger history for employee-level balance audit details.
+                </Typography>
+              </Stack>
+            </Box>
           )}
         </Box>
 
@@ -2517,7 +2619,7 @@ const SettingsLeaveSettings = () => {
         <DialogContent>
           <Stack spacing={1.5} sx={{ mt: 1 }}>
             <Alert severity="warning" variant="outlined">
-              This creates real leave balance ledger entries for eligible rows only. Payroll formulas are not changed.
+              This creates real leave balance ledger entries for eligible rows only. Review the totals before confirming; payroll formulas are not changed.
             </Alert>
             {["monthly_accrual", "biweekly_accrual"].includes(entitlementPreviewResult?.policy?.grant_method) ? (
               <Alert severity="info" variant="outlined">
@@ -2525,15 +2627,26 @@ const SettingsLeaveSettings = () => {
               </Alert>
             ) : (
               <>
-                <Typography variant="body2">
-                  Employees eligible: <strong>{postableEntitlementRows.length}</strong>
-                </Typography>
-                <Typography variant="body2">
-                  Total hours to apply: <strong>{formatHours(entitlementPreviewResult?.summary?.total_proposed_ledger_delta_hours)}</strong>
-                </Typography>
-                <Typography variant="body2">
-                  Skipped rows: <strong>{entitlementPreviewResult?.summary?.employees_skipped || 0}</strong>
-                </Typography>
+                <Grid container spacing={1.25}>
+                  <Grid item xs={12} sm={4}>
+                    <Box sx={metricCellSx}>
+                      <Typography variant="caption" color="text.secondary">Eligible</Typography>
+                      <Typography variant="h6" fontWeight={900}>{postableEntitlementRows.length}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Box sx={metricCellSx}>
+                      <Typography variant="caption" color="text.secondary">Hours to apply</Typography>
+                      <Typography variant="h6" fontWeight={900}>{formatHours(entitlementPreviewResult?.summary?.total_proposed_ledger_delta_hours)}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Box sx={metricCellSx}>
+                      <Typography variant="caption" color="text.secondary">Skipped</Typography>
+                      <Typography variant="h6" fontWeight={900}>{entitlementPreviewResult?.summary?.employees_skipped || 0}</Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
                 <Typography variant="caption" color="text.secondary">
                   Existing balance rows are skipped by default; manual balance conflicts remain visible in the preview.
                 </Typography>

@@ -805,28 +805,38 @@ const LeaveRequests = () => {
               const future = selectedBalance?.future_balance;
               if (!selectedBalance && !future) return null;
               return (
-                <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-                  <Stack spacing={1}>
-                    <Typography variant="subtitle2" fontWeight={800}>
-                      Decision balance context
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Uses the leave start date as the decision date. Balances are HR tracking, not payroll formulas.
-                    </Typography>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 1.75,
+                    borderRadius: 3,
+                    borderColor: "rgba(148, 163, 184, 0.45)",
+                    bgcolor: "rgba(248, 250, 252, 0.72)",
+                  }}
+                >
+                  <Stack spacing={1.25}>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={900}>
+                        Decision balance context
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Uses the leave start date as the decision date. Balances are HR tracking, not payroll formulas.
+                      </Typography>
+                    </Box>
                     <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 1 }}>
-                      <Box>
+                      <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                         <Typography variant="caption" color="text.secondary">Usable now</Typography>
                         <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.usable_now_hours ?? selectedBalance?.balance_hours)}</Typography>
                       </Box>
-                      <Box>
+                      <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                         <Typography variant="caption" color="text.secondary">Expected before leave</Typography>
                         <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.expected_before_leave_start_hours)}</Typography>
                       </Box>
-                      <Box>
+                      <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                         <Typography variant="caption" color="text.secondary">Available on start</Typography>
                         <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.available_on_leave_start_hours ?? selectedBalance?.balance_hours)}</Typography>
                       </Box>
-                      <Box>
+                      <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                         <Typography variant="caption" color="text.secondary">Projected remaining</Typography>
                         <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.projected_remaining_hours)}</Typography>
                       </Box>
