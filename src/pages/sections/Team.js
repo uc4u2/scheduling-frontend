@@ -580,6 +580,8 @@ const [templateFormData, setTemplateFormData] = useState({
   /* ----------------------------- shift form/modal ---------------------------- */
   const [modalOpen, setModalOpen] = useState(false);
   const [editingShift, setEditingShift] = useState(null);
+  const [leaveDetailOpen, setLeaveDetailOpen] = useState(false);
+  const [selectedLeaveDetail, setSelectedLeaveDetail] = useState(null);
 const [formData, setFormData] = useState({
   date: "",
   startTime: "",
@@ -1178,6 +1180,27 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   const handleEventClick = (clickInfo) => {
     const shift = shifts.find((s) => String(s.id) === String(clickInfo.event.id));
     if (!shift) return;
+    const xp = clickInfo.event.extendedProps || {};
+    if (xp.on_leave) {
+      setSelectedLeaveDetail({
+        employeeName: xp.recruiter_name || shift.recruiter?.name || `Employee #${shift.recruiter_id}`,
+        leaveDisplayLabel: xp.leave_display_label || "Time off",
+        leaveType: xp.leave_type || shift.leave_type || "—",
+        leaveSubtype: xp.leave_subtype || shift.leave_subtype || "",
+        leavePaid: xp.leave_paid,
+        approvedHours: xp.leave_approved_hours,
+        reason: xp.leave_reason || shift.leave_reason || "",
+        leaveSource: xp.leave_source || shift.leave_source || "shift_linked",
+        leaveId: xp.leave_id || shift.leave_id || null,
+        shiftId: shift.id,
+        status: shift.status,
+        start: getLocalStartIso(shift),
+        end: getLocalEndIso(shift),
+        date: getShiftLocalDate(shift) || shift.date || "",
+      });
+      setLeaveDetailOpen(true);
+      return;
+    }
     setEditingShift(shift);
     const startDate = getShiftLocalDate(shift);
     const startTime = getShiftLocalStart(shift);
@@ -2960,6 +2983,137 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
 
           {/* Full Screen dialog removed per enterprise layout */}
         </>
+
+      {/* ============================ Time Off Detail Modal ============================ */}
+      <Modal
+        open={leaveDetailOpen}
+        onClose={() => {
+          setLeaveDetailOpen(false);
+          setSelectedLeaveDetail(null);
+        }}
+      >
+        <Box
+          sx={{
+            position: "relative",
+            p: { xs: 2.5, sm: 3 },
+            bgcolor: "background.paper",
+            width: { xs: "calc(100% - 24px)", sm: 520 },
+            maxWidth: 640,
+            mx: "auto",
+            mt: { xs: "6vh", sm: "10%" },
+            borderRadius: 3,
+            boxShadow: 8,
+            outline: "none",
+          }}
+        >
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={1} alignItems="flex-start" justifyContent="space-between">
+              <Box>
+                <Typography variant="overline" color="text.secondary" fontWeight={800}>
+                  Schedule-context time off
+                </Typography>
+                <Typography variant="h6" fontWeight={900}>
+                  {selectedLeaveDetail?.leaveDisplayLabel || "Time off"}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  This calendar item is read-only. It represents approved time off tied to a scheduled shift.
+                </Typography>
+              </Box>
+              <Chip
+                size="small"
+                label="OFF"
+                sx={{ bgcolor: ui.leave.bg, color: ui.leave.text, border: `1px dashed ${ui.leave.border}`, fontWeight: 900 }}
+              />
+            </Stack>
+
+            <Alert severity="info" variant="outlined">
+              This is not an editable work shift. Payroll formulas are unchanged.
+            </Alert>
+
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} sm={6}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Employee</Typography>
+                  <Typography variant="body2" fontWeight={800}>{selectedLeaveDetail?.employeeName || "—"}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Paid status</Typography>
+                  <Typography variant="body2" fontWeight={800}>
+                    {selectedLeaveDetail?.leavePaid === false ? "Unpaid time off" : "Paid time off"}
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Canonical leave type</Typography>
+                  <Typography variant="body2" fontWeight={800}>{selectedLeaveDetail?.leaveType || "—"}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Subtype</Typography>
+                  <Typography variant="body2" fontWeight={800}>{selectedLeaveDetail?.leaveSubtype || "None"}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Approved hours</Typography>
+                  <Typography variant="body2" fontWeight={800}>
+                    {selectedLeaveDetail?.approvedHours != null ? `${selectedLeaveDetail.approvedHours}h` : "—"}
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Leave source</Typography>
+                  <Typography variant="body2" fontWeight={800}>
+                    {String(selectedLeaveDetail?.leaveSource || "shift_linked").replace(/_/g, " ")}
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={900} gutterBottom>
+                Scheduled time
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedLeaveDetail?.date || "—"}
+                {selectedLeaveDetail?.start || selectedLeaveDetail?.end ? ` · ${selectedLeaveDetail?.start || "—"} – ${selectedLeaveDetail?.end || "—"}` : ""}
+              </Typography>
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={900} gutterBottom>
+                Reason / note
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedLeaveDetail?.reason || "No note provided."}
+              </Typography>
+            </Box>
+
+            <Divider />
+
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }}>
+              <Typography variant="caption" color="text.secondary">
+                Linked shift #{selectedLeaveDetail?.shiftId || "—"}
+                {selectedLeaveDetail?.leaveId ? ` · Leave record #${selectedLeaveDetail.leaveId}` : ""}
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  setLeaveDetailOpen(false);
+                  setSelectedLeaveDetail(null);
+                }}
+              >
+                Close
+              </Button>
+            </Stack>
+          </Stack>
+        </Box>
+      </Modal>
 
       {/* ============================ Add/Edit Shift Modal ============================ */}
       <Modal
