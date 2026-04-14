@@ -119,6 +119,13 @@ const normalizeApiUrl = (url) => {
   return `${base}${url.startsWith("/") ? "" : "/"}${url}`;
 };
 
+const formatProfileMoney = (value) => {
+  const numeric = Number(value || 0);
+  return Number.isFinite(numeric)
+    ? numeric.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 })
+    : "$0.00";
+};
+
 const EmployeeProfileForm = ({ token, isManager = false }) => {
   const { t, i18n } = useTranslation();
   const language = i18n.language;
@@ -142,6 +149,7 @@ const EmployeeProfileForm = ({ token, isManager = false }) => {
   const [onboardingSendError, setOnboardingSendError] = useState("");
   const [onboardingSendSuccess, setOnboardingSendSuccess] = useState(false);
   const [payrollExpanded, setPayrollExpanded] = useState(true);
+  const [snapshotExpanded, setSnapshotExpanded] = useState(false);
   const [retirementPlan, setRetirementPlan] = useState(null);
   const [retirementElection, setRetirementElection] = useState({
     contrib_percent: "",
@@ -231,6 +239,7 @@ const FRONTEND_ORIGIN =
 
   const handleSelect = async (id) => {
     setSelectedId(id);
+    setSnapshotExpanded(false);
     if (!id) return;
     setLoading(true);
     try {
@@ -643,6 +652,50 @@ const FRONTEND_ORIGIN =
       : []),
   ];
 
+  const employeeDepartmentName = useMemo(() => {
+    if (!employee?.department_id) return "";
+    return departments.find((dept) => String(dept.id) === String(employee.department_id))?.name || "";
+  }, [departments, employee?.department_id]);
+
+  const publicBookingLink = employee
+    ? `${FRONTEND_ORIGIN}/${employee.company_slug || employee.company?.slug || ""}/meet/${employee.public_meet_token || employee.id}`
+    : "";
+  const employeeFullName = employee
+    ? `${employee.first_name || ""} ${employee.last_name || ""}`.trim() || employee.name || "Selected employee"
+    : "";
+  const employmentStatus = employee
+    ? employee.status || (employee.archived || employee.is_archived ? "archived" : "active")
+    : "";
+  const snapshotAttentionChips = employee
+    ? [
+        !employee.department_id && "Missing department",
+        !employee.hire_date && "Missing hire date",
+        !employee.sin && "Missing SIN",
+        !employee.insurance_number && "Missing insurance number",
+        Boolean(employee.allow_public_booking) && !employee.profile_image_url && "Public booking enabled, no image",
+        documents.length === 0 && "No signed documents",
+      ].filter(Boolean)
+    : [];
+  const visibleSnapshotAttention = snapshotAttentionChips.slice(0, 3);
+  const hiddenSnapshotAttentionCount = Math.max(snapshotAttentionChips.length - visibleSnapshotAttention.length, 0);
+  const snapshotSummaryItems = employee
+    ? [
+        { label: "Name", value: employeeFullName, missing: !employeeFullName },
+        { label: "Public title / role", value: employee.role || "Not set", missing: !employee.role },
+        { label: "Department", value: employeeDepartmentName || "Not assigned", missing: !employeeDepartmentName },
+        { label: "Hire date", value: employee.hire_date || "Not set", missing: !employee.hire_date },
+        { label: "Hourly rate", value: formatProfileMoney(employee.hourly_rate), missing: !Number(employee.hourly_rate || 0) },
+        { label: "Documents", value: `${documents.length} stored`, missing: documents.length === 0 },
+      ]
+    : [];
+  const snapshotStatusRows = employee
+    ? [
+        { label: "Public booking", value: employee.allow_public_booking ? "Link available" : "Disabled", healthy: Boolean(employee.allow_public_booking) },
+        { label: "Profile image", value: employee.profile_image_url ? "Image set" : "Missing", healthy: Boolean(employee.profile_image_url) },
+        { label: "Pay defaults", value: employee.default_pay_frequency || employee.default_pay_cycle ? "Configured" : "Not set", healthy: Boolean(employee.default_pay_frequency || employee.default_pay_cycle) },
+      ]
+    : [];
+
   return (
     <ManagementFrame
       title={t("manager.employeeProfiles.title")}
@@ -717,6 +770,129 @@ const FRONTEND_ORIGIN =
       {loading && <CircularProgress sx={{ mb: 2 }} />}
 
       {employee && (
+        <>
+        <Accordion
+          expanded={snapshotExpanded}
+          onChange={(_, expanded) => setSnapshotExpanded(expanded)}
+          sx={{
+            mb: 2,
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: "16px !important",
+            boxShadow: "0 14px 34px rgba(15, 23, 42, 0.04)",
+            "&:before": { display: "none" },
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ xs: "flex-start", sm: "center" }} sx={{ width: "100%" }}>
+              <Avatar src={employee.profile_image_url || ""} alt={employeeFullName} sx={{ width: 40, height: 40 }} />
+              <Box flex={1}>
+                <Typography variant="subtitle1" fontWeight={800}>
+                  Employee Snapshot
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Quick summary of employment, scheduling, leave, and public profile status.
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Chip size="small" label={employmentStatus ? employmentStatus.replace(/_/g, " ") : "Status unknown"} variant="outlined" />
+                <Chip
+                  size="small"
+                  label={employee.allow_public_booking ? "Public booking on" : "Public booking off"}
+                  color={employee.allow_public_booking ? "success" : "default"}
+                  variant="outlined"
+                />
+                {snapshotAttentionChips.length > 0 && (
+                  <Chip size="small" label={`${snapshotAttentionChips.length} attention item${snapshotAttentionChips.length === 1 ? "" : "s"}`} color="warning" variant="outlined" />
+                )}
+              </Stack>
+            </Stack>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Grid container spacing={1.5}>
+              {snapshotSummaryItems.map((item) => (
+                <Grid item xs={12} sm={6} md={4} key={item.label}>
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 1,
+                      borderRadius: 2,
+                      bgcolor: item.missing ? "rgba(245, 158, 11, 0.06)" : "rgba(15, 23, 42, 0.018)",
+                      borderColor: item.missing ? "rgba(245, 158, 11, 0.22)" : "rgba(148, 163, 184, 0.2)",
+                    }}
+                  >
+                    <Typography variant="caption" color="text.secondary" fontWeight={800} sx={{ lineHeight: 1.1 }}>
+                      {item.label}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      fontWeight={800}
+                      noWrap
+                      title={String(item.value)}
+                      color={item.missing ? "warning.dark" : "text.primary"}
+                      sx={{ lineHeight: 1.25 }}
+                    >
+                      {item.value}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+
+            <Stack spacing={1.25} sx={{ mt: 1.5 }}>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between">
+                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                  {snapshotStatusRows.map((row) => (
+                    <Stack key={row.label} spacing={0.1}>
+                      <Typography variant="caption" color="text.secondary" fontWeight={800}>
+                        {row.label}
+                      </Typography>
+                      <Typography variant="caption" fontWeight={850} color={row.healthy ? "success.dark" : "text.secondary"}>
+                        {row.value}
+                      </Typography>
+                    </Stack>
+                  ))}
+                </Stack>
+              </Stack>
+
+              {snapshotAttentionChips.length > 0 && (
+                <Alert severity="warning" variant="outlined" sx={{ py: 0.65, borderColor: "rgba(245, 158, 11, 0.24)" }}>
+                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap alignItems="center">
+                    {visibleSnapshotAttention.map((item) => (
+                      <Chip key={item} size="small" label={item} color="warning" variant="outlined" />
+                    ))}
+                    {hiddenSnapshotAttentionCount > 0 && (
+                      <Tooltip title={snapshotAttentionChips.slice(visibleSnapshotAttention.length).join(", ")}>
+                        <Chip size="small" label={`+${hiddenSnapshotAttentionCount} more`} variant="outlined" />
+                      </Tooltip>
+                    )}
+                  </Stack>
+                </Alert>
+              )}
+
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                <Button
+                  size="small"
+                  variant="contained"
+                  disabled={!employee.allow_public_booking || !publicBookingLink}
+                  onClick={() => navigator.clipboard?.writeText(publicBookingLink)}
+                >
+                  Copy public booking link
+                </Button>
+                <Button size="small" variant="outlined" component={RouterLink} to="/manager/leaves">
+                  Open leaves
+                </Button>
+                <Button size="small" variant="outlined" component={RouterLink} to={`/manager/team?recruiter=${selectedId}`}>
+                  Open shifts
+                </Button>
+                <Button size="small" variant="text" onClick={() => fetchDocuments(selectedId)} disabled={docLoading}>
+                  Refresh documents
+                </Button>
+              </Stack>
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
+
         <Paper sx={{ p: 3, mt: 2, borderRadius: 3 }} variant="outlined">
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
@@ -1625,6 +1801,7 @@ const FRONTEND_ORIGIN =
             </Button>
           </Box>
         </Paper>
+        </>
       )}
 
       <Snackbar

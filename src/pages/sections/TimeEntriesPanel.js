@@ -20,6 +20,8 @@ import {
   Paper,
   Snackbar,
   Stack,
+  Tab,
+  Tabs,
   Table,
   TableBody,
   TableCell,
@@ -103,6 +105,158 @@ const SummaryCard = ({ label, value, icon }) => {
   );
 };
 
+const formatTimeInsightHours = (value) => `${Number(value || 0).toFixed(1)} h`;
+
+const hasTimeAnomaly = (entry) =>
+  Boolean(
+    entry?.device_new ||
+      entry?.location_new ||
+      entry?.multi_ip_same_day ||
+      entry?.outside_trusted ||
+      entry?.clock_in_unusual ||
+      entry?.clock_out_unusual
+  );
+
+const hasMissingLocationEvidence = (entry) =>
+  Boolean(
+    entry?.location_missing ||
+      entry?.missing_location_evidence ||
+      entry?.clock_in_location_missing ||
+      entry?.clock_out_location_missing
+  );
+
+const TimeInsightCard = ({ label, value, help, tone = "default" }) => {
+  const toneMap = {
+    success: { main: "#15803d", soft: "rgba(34, 197, 94, 0.08)" },
+    warning: { main: "#b45309", soft: "rgba(245, 158, 11, 0.09)" },
+    danger: { main: "#b91c1c", soft: "rgba(239, 68, 68, 0.08)" },
+    info: { main: "#1d4ed8", soft: "rgba(59, 130, 246, 0.08)" },
+    default: { main: "#0f172a", soft: "rgba(15, 23, 42, 0.03)" },
+  };
+  const colors = toneMap[tone] || toneMap.default;
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1.45,
+        borderRadius: 3,
+        height: "100%",
+        borderColor: "rgba(148, 163, 184, 0.22)",
+        background: `linear-gradient(145deg, ${colors.soft}, rgba(255,255,255,0.96))`,
+        boxShadow: "0 12px 28px rgba(15, 23, 42, 0.04)",
+      }}
+    >
+      <Stack spacing={0.45}>
+        <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center">
+          <Typography variant="overline" color="text.secondary" fontWeight={900} sx={{ letterSpacing: 0.75, lineHeight: 1.2 }}>
+            {label}
+          </Typography>
+          <Box sx={{ width: 8, height: 8, borderRadius: 999, bgcolor: colors.main }} />
+        </Stack>
+        <Typography variant="h4" fontWeight={950} sx={{ color: colors.main, lineHeight: 1 }}>
+          {value}
+        </Typography>
+        {help && <Typography variant="caption" color="text.secondary">{help}</Typography>}
+      </Stack>
+    </Paper>
+  );
+};
+
+const TimeInsightSection = ({ title, description, children, attention = false }) => (
+  <Paper
+    variant="outlined"
+    sx={{
+      p: 2,
+      borderRadius: 3,
+      height: "100%",
+      borderColor: attention ? "rgba(245, 158, 11, 0.24)" : "rgba(148, 163, 184, 0.22)",
+      boxShadow: attention ? "0 16px 38px rgba(180, 83, 9, 0.07)" : "0 12px 30px rgba(15, 23, 42, 0.035)",
+      bgcolor: "background.paper",
+    }}
+  >
+    <Stack spacing={1.5}>
+      <Box>
+        <Typography variant="subtitle1" fontWeight={900}>{title}</Typography>
+        {description && <Typography variant="body2" color="text.secondary">{description}</Typography>}
+      </Box>
+      {children}
+    </Stack>
+  </Paper>
+);
+
+const TimeInsightEmpty = ({ children }) => (
+  <Box sx={{ py: 1, px: 1.25, borderRadius: 2, bgcolor: "rgba(148, 163, 184, 0.08)", color: "text.secondary" }}>
+    <Typography variant="caption">{children}</Typography>
+  </Box>
+);
+
+const TimeRankedBars = ({ rows, valueKey = "value", valueFormatter = (value) => value, color = "#2563eb", emptyText }) => {
+  const visible = rows.slice(0, 8);
+  const max = Math.max(1, ...visible.map((row) => Number(row[valueKey] || 0)));
+  if (!visible.length) return <TimeInsightEmpty>{emptyText || "No data available."}</TimeInsightEmpty>;
+  return (
+    <Stack spacing={1.1}>
+      {visible.map((row) => {
+        const value = Number(row[valueKey] || 0);
+        return (
+          <Box key={row.key || row.label}>
+            <Stack direction="row" justifyContent="space-between" spacing={1}>
+              <Typography variant="body2" fontWeight={850} noWrap>{row.label}</Typography>
+              <Typography variant="body2" fontWeight={900}>{valueFormatter(value, row)}</Typography>
+            </Stack>
+            <Box sx={{ mt: 0.5, height: 9, borderRadius: 999, bgcolor: "rgba(148, 163, 184, 0.16)", overflow: "hidden" }}>
+              <Box sx={{ width: `${Math.max((value / max) * 100, value ? 6 : 0)}%`, height: "100%", bgcolor: color }} />
+            </Box>
+            {row.caption && <Typography variant="caption" color="text.secondary">{row.caption}</Typography>}
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+};
+
+const TimeTrendChart = ({ rows }) => {
+  const visible = rows.slice(0, 14);
+  const max = Math.max(1, ...visible.map((row) => Math.max(row.workedHours, row.approvedHours, row.ptoHours)));
+  if (!visible.length) return <TimeInsightEmpty>No time data in this range.</TimeInsightEmpty>;
+  return (
+    <Stack spacing={1.5}>
+      <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
+        {[
+          ["Worked", "#2563eb"],
+          ["Approved", "#15803d"],
+          ["PTO", "#64748b"],
+          ["Issues", "#b45309"],
+        ].map(([label, color]) => (
+          <Stack key={label} direction="row" spacing={0.65} alignItems="center">
+            <Box sx={{ width: 9, height: 9, borderRadius: 999, bgcolor: color }} />
+            <Typography variant="caption" color="text.secondary" fontWeight={800}>{label}</Typography>
+          </Stack>
+        ))}
+      </Stack>
+      <Box sx={{ display: "grid", gridTemplateColumns: `repeat(${visible.length}, minmax(36px, 1fr))`, gap: 1, alignItems: "end", minHeight: 210 }}>
+        {visible.map((row) => (
+          <Stack key={row.date} spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
+            <Stack justifyContent="flex-end" sx={{ height: 160, width: "100%", maxWidth: 44, borderRadius: 2, overflow: "hidden", bgcolor: "rgba(148, 163, 184, 0.13)", border: "1px solid rgba(148, 163, 184, 0.18)" }}>
+              {[
+                ["worked", row.workedHours, "#2563eb"],
+                ["approved", row.approvedHours, "#15803d"],
+                ["pto", row.ptoHours, "#64748b"],
+              ].map(([key, value, color]) => (
+                <Box key={key} title={`${key}: ${formatTimeInsightHours(value)}`} sx={{ height: `${Math.max((Number(value || 0) / max) * 100, value ? 5 : 0)}%`, minHeight: value ? 4 : 0, bgcolor: color }} />
+              ))}
+            </Stack>
+            {row.issueCount > 0 && <Box sx={{ width: 7, height: 7, borderRadius: 999, bgcolor: "#b45309" }} title={`${row.issueCount} issue signals`} />}
+            <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ writingMode: visible.length > 9 ? "vertical-rl" : "initial" }}>
+              {DateTime.fromISO(row.date).isValid ? DateTime.fromISO(row.date).toFormat("LLL d") : row.date}
+            </Typography>
+          </Stack>
+        ))}
+      </Box>
+    </Stack>
+  );
+};
+
 const readableRosterChipSx = (theme) => ({
   color: theme.palette.text.primary,
   borderColor: alpha(theme.palette.text.primary, 0.28),
@@ -120,11 +274,272 @@ const isLeaveEntry = (entry) => entry?.entry_type === "leave";
 const leaveKindLabel = (entry) => getLeaveReviewVisibility(entry).payShortLabel;
 const leaveHours = (entry) => Number(entry?.paid_leave_hours || entry?.unpaid_leave_hours || entry?.hours_worked_rounded || 0);
 
+const TimeInsightsPanel = ({
+  entries,
+  roster,
+  filters,
+  handleChange,
+  handleDepartmentChange,
+  applyDatePreset,
+  fetchEntries,
+  loading,
+  statusOptions,
+  departmentOptions,
+  visibleEmployees,
+  includeArchived,
+  setIncludeArchived,
+  recruiterMap,
+}) => {
+  const shiftEntries = useMemo(() => entries.filter((entry) => !isLeaveEntry(entry)), [entries]);
+  const leaveRows = useMemo(() => entries.filter(isLeaveEntry), [entries]);
+  const byDay = useMemo(() => {
+    const map = new Map();
+    entries.forEach((entry) => {
+      const date = entry.date || entry.date_label || "Unknown";
+      const row = map.get(date) || { date, workedHours: 0, approvedHours: 0, ptoHours: 0, issueCount: 0 };
+      if (isLeaveEntry(entry)) {
+        row.ptoHours += leaveHours(entry);
+      } else {
+        const hours = Number(entry.hours_worked_rounded ?? entry.hours_worked ?? 0);
+        row.workedHours += Number.isFinite(hours) ? hours : 0;
+        if (entry.status === "approved") row.approvedHours += Number.isFinite(hours) ? hours : 0;
+        if (hasTimeAnomaly(entry) || entry.break_non_compliant || Number(entry.break_missing_minutes || 0) > 0) {
+          row.issueCount += 1;
+        }
+      }
+      map.set(date, row);
+    });
+    return Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  }, [entries]);
+
+  const employeeRows = useMemo(() => {
+    const map = new Map();
+    shiftEntries.forEach((entry) => {
+      const employee = entry.recruiter || recruiterMap[entry.recruiter_id] || {};
+      const label =
+        employee.name ||
+        employee.full_name ||
+        `${employee.first_name || ""} ${employee.last_name || ""}`.trim() ||
+        employee.email ||
+        `Employee ${entry.recruiter_id || "unknown"}`;
+      const key = String(entry.recruiter_id || label);
+      const row = map.get(key) || {
+        key,
+        label,
+        totalHours: 0,
+        approvedHours: 0,
+        pending: 0,
+        anomalyCount: 0,
+        breakIssues: 0,
+      };
+      const hours = Number(entry.hours_worked_rounded ?? entry.hours_worked ?? 0);
+      row.totalHours += Number.isFinite(hours) ? hours : 0;
+      if (entry.status === "approved") row.approvedHours += Number.isFinite(hours) ? hours : 0;
+      if (entry.status === "completed") row.pending += 1;
+      if (hasTimeAnomaly(entry)) row.anomalyCount += 1;
+      if (entry.break_non_compliant || Number(entry.break_missing_minutes || 0) > 0) row.breakIssues += 1;
+      map.set(key, row);
+    });
+    return Array.from(map.values()).sort((a, b) => b.totalHours - a.totalHours);
+  }, [recruiterMap, shiftEntries]);
+
+  const pendingApprovals = shiftEntries.filter((entry) => entry.status === "completed").length;
+  const approvedHours = shiftEntries.reduce((sum, entry) => {
+    if (entry.status !== "approved") return sum;
+    const hours = Number(entry.hours_worked_rounded ?? entry.hours_worked ?? 0);
+    return sum + (Number.isFinite(hours) ? hours : 0);
+  }, 0);
+  const workedHours = shiftEntries.reduce((sum, entry) => {
+    const hours = Number(entry.hours_worked_rounded ?? entry.hours_worked ?? 0);
+    return sum + (Number.isFinite(hours) ? hours : 0);
+  }, 0);
+  const ptoHours = leaveRows.reduce((sum, entry) => sum + leaveHours(entry), 0);
+  const breakIssues = shiftEntries.filter((entry) => entry.break_non_compliant || Number(entry.break_missing_minutes || 0) > 0);
+  const anomalyEntries = shiftEntries.filter(hasTimeAnomaly);
+  const missingLocationCount = shiftEntries.filter(hasMissingLocationEvidence).length;
+  const clockedInNow = roster.length;
+  const onBreakNow = roster.filter((person) => person.break_in_progress).length;
+  const maxBreakMissing = breakIssues.reduce((max, entry) => Math.max(max, Number(entry.break_missing_minutes || 0)), 0);
+  const employeesAwaitingReview = new Set(shiftEntries.filter((entry) => entry.status === "completed").map((entry) => entry.recruiter_id)).size;
+  const longestActive = roster.reduce((longest, person) => {
+    if (!person.clock_in) return longest;
+    const start = DateTime.fromISO(person.clock_in, { zone: "utc" });
+    if (!start.isValid) return longest;
+    const minutes = Math.max(0, Math.round(DateTime.utc().diff(start, "minutes").minutes));
+    return Math.max(longest, minutes);
+  }, 0);
+
+  const riskRows = [
+    { key: "new-device", label: "New device", value: shiftEntries.filter((entry) => entry.device_new).length, caption: "Clock events from new devices." },
+    { key: "new-location", label: "New location", value: shiftEntries.filter((entry) => entry.location_new).length, caption: "Clock events from new locations." },
+    { key: "multi-ip", label: "Multiple IPs", value: shiftEntries.filter((entry) => entry.multi_ip_same_day).length, caption: "Same-day multi-IP signals." },
+    { key: "outside-trusted", label: "Outside trusted IP", value: shiftEntries.filter((entry) => entry.outside_trusted).length, caption: "Outside trusted location/IP controls." },
+  ].filter((row) => row.value > 0);
+
+  const breakEmployeeRows = employeeRows
+    .filter((row) => row.breakIssues > 0)
+    .map((row) => ({ ...row, value: row.breakIssues, caption: `${formatTimeInsightHours(row.totalHours)} worked` }));
+
+  return (
+    <Stack spacing={2} sx={{ mt: 2 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: "rgba(148, 163, 184, 0.24)", boxShadow: "0 14px 34px rgba(15, 23, 42, 0.04)" }}>
+        <Stack spacing={1.75}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={900}>Time insight controls</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Read-only attendance analytics using the current approvals range, employee, department, and status filters.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button size="small" variant="outlined" onClick={fetchEntries} disabled={loading}>Refresh</Button>
+            </Stack>
+          </Stack>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("today")}>Today</Button>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("this_week")}>This week</Button>
+            <Button size="small" variant="outlined" onClick={() => applyDatePreset("last_week")}>Last week</Button>
+          </Stack>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={2.4}>
+              <TextField select fullWidth label="Status" value={filters.status} onChange={handleChange("status")}>
+                {statusOptions.map((opt) => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2.4}>
+              <TextField select fullWidth label="Department" value={filters.departmentId} onChange={handleDepartmentChange}>
+                <MenuItem value="">All departments</MenuItem>
+                {departmentOptions.map((dept) => <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2.4}>
+              <TextField select fullWidth label="Employee" value={filters.recruiterId} onChange={handleChange("recruiterId")}>
+                <MenuItem value="">All employees</MenuItem>
+                {visibleEmployees.map((rec) => {
+                  const displayName = rec.name || rec.full_name || [rec.first_name, rec.last_name].filter(Boolean).join(" ") || rec.email || `#${rec.id}`;
+                  return <MenuItem key={rec.id} value={rec.id}>{displayName}</MenuItem>;
+                })}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={1.8}>
+              <TextField type="date" fullWidth label="From" InputLabelProps={{ shrink: true }} value={filters.startDate} onChange={handleChange("startDate")} />
+            </Grid>
+            <Grid item xs={12} md={1.8}>
+              <TextField type="date" fullWidth label="To" InputLabelProps={{ shrink: true }} value={filters.endDate} onChange={handleChange("endDate")} />
+            </Grid>
+            <Grid item xs={12} md={1.2}>
+              <FormControlLabel control={<Switch checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />} label="Archived" />
+            </Grid>
+          </Grid>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip size="small" variant="outlined" label={`${filters.startDate} to ${filters.endDate}`} />
+            <Chip size="small" variant="outlined" label={filters.status === "all" ? "All statuses" : filters.status.replace(/_/g, " ")} />
+            <Chip size="small" variant="outlined" label={filters.recruiterId ? "1 employee" : "All employees"} />
+            <Chip size="small" variant="outlined" label={filters.departmentId ? "Department filtered" : "All departments"} />
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Clocked in now" value={clockedInNow} help="Live roster active sessions" tone={clockedInNow ? "success" : "default"} /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="On break now" value={onBreakNow} help="Live roster break state" tone={onBreakNow ? "warning" : "default"} /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Pending approvals" value={pendingApprovals} help="Completed entries awaiting review" tone={pendingApprovals ? "warning" : "success"} /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Approved hours" value={formatTimeInsightHours(approvedHours)} help={`${formatTimeInsightHours(workedHours)} worked in range`} tone="info" /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="PTO / time off" value={formatTimeInsightHours(ptoHours)} help="Leave rows in current time view" tone={ptoHours ? "default" : "success"} /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Break issues" value={breakIssues.length} help={`Max missing ${maxBreakMissing}m`} tone={breakIssues.length ? "warning" : "success"} /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Anomaly events" value={anomalyEntries.length} help="Device, location, IP, or unusual clock signals" tone={anomalyEntries.length ? "danger" : "success"} /></Grid>
+        <Grid item xs={12} sm={6} lg={3}><TimeInsightCard label="Location evidence" value={missingLocationCount} help="Missing location evidence signals" tone={missingLocationCount ? "warning" : "success"} /></Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} lg={8}>
+          <TimeInsightSection title="Worked hours trend" description="Worked, approved, PTO, and issue signals by day in the selected range." attention={pendingApprovals > 0}>
+            <TimeTrendChart rows={byDay} />
+          </TimeInsightSection>
+        </Grid>
+        <Grid item xs={12} lg={4}>
+          <TimeInsightSection title="Approval pressure summary" description="Manager review pressure for the selected range." attention={pendingApprovals > 0}>
+            <TimeRankedBars
+              rows={[
+                { key: "pending", label: "Pending approvals", value: pendingApprovals, caption: `${employeesAwaitingReview} employee${employeesAwaitingReview === 1 ? "" : "s"} awaiting review` },
+                { key: "attention", label: "Entries needing attention", value: breakIssues.length + anomalyEntries.length, caption: "Break and anomaly signals combined" },
+                { key: "approved", label: "Approved hours", value: approvedHours, caption: "Confirmed for payroll input" },
+              ]}
+              valueFormatter={(value, row) => row.key === "approved" ? formatTimeInsightHours(value) : value}
+              color={pendingApprovals ? "#b45309" : "#15803d"}
+            />
+          </TimeInsightSection>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={4}>
+          <TimeInsightSection title="Break compliance summary" description="Break issues and employees with recurring break signals." attention={breakIssues.length > 0}>
+            <TimeRankedBars rows={breakEmployeeRows} valueKey="value" color="#b45309" emptyText="No break issues in this range." />
+          </TimeInsightSection>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <TimeInsightSection title="Risk / anomaly summary" description="Fraud and location signals already present on time entries." attention={anomalyEntries.length > 0}>
+            <TimeRankedBars rows={riskRows} valueKey="value" color="#b91c1c" emptyText="No anomaly signals in this range." />
+          </TimeInsightSection>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <TimeInsightSection title="Live roster health" description="Current active sessions and break state." attention={onBreakNow > 0}>
+            <TimeRankedBars
+              rows={[
+                { key: "active", label: "Active now", value: clockedInNow, caption: "Clocked in right now" },
+                { key: "break", label: "On break now", value: onBreakNow, caption: "Break currently in progress" },
+                { key: "longest", label: "Longest active session", value: longestActive, caption: "Minutes since clock-in" },
+              ]}
+              valueFormatter={(value, row) => row.key === "longest" ? `${value}m` : value}
+              color="#2563eb"
+            />
+          </TimeInsightSection>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={8}>
+          <TimeInsightSection title="Employee time summary" description="Ranked by total worked hours in the selected range.">
+            <TimeRankedBars
+              rows={employeeRows.map((row) => ({
+                ...row,
+                value: row.totalHours,
+                caption: `${formatTimeInsightHours(row.approvedHours)} approved · ${row.pending} pending · ${row.anomalyCount} anomalies · ${row.breakIssues} break issues`,
+              }))}
+              valueKey="value"
+              valueFormatter={formatTimeInsightHours}
+              color="#2563eb"
+              emptyText="No employee time rows in this range."
+            />
+          </TimeInsightSection>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <TimeInsightSection title="PTO / leave interaction" description="Leave rows currently visible in the time tracking range.">
+            <TimeRankedBars
+              rows={[
+                { key: "pto-hours", label: "PTO / time off hours", value: ptoHours, caption: `${leaveRows.length} leave row${leaveRows.length === 1 ? "" : "s"}` },
+                { key: "estimated", label: "Estimated leave rows", value: leaveRows.filter((entry) => getLeaveReviewVisibility(entry).estimated).length, caption: "Needs manager confirmation when pay-impacting" },
+                { key: "overlap", label: "Worked-time overlap", value: leaveRows.filter((entry) => getLeaveReviewVisibility(entry).hasWorkedOverlap).length, caption: "Requires payroll attention" },
+              ]}
+              valueKey="value"
+              valueFormatter={(value, row) => row.key === "pto-hours" ? formatTimeInsightHours(value) : value}
+              color="#64748b"
+              emptyText="No PTO or leave rows in this range."
+            />
+          </TimeInsightSection>
+        </Grid>
+      </Grid>
+    </Stack>
+  );
+};
+
 const TimeEntriesPanel = ({ recruiters = [] }) => {
   const theme = useTheme();
   const viewerTimezone = getUserTimezone();
   const today = useMemo(() => new Date(), []);
   const [departments, setDepartments] = useState([]);
+  const [activeTab, setActiveTab] = useState("approvals");
   const [employees, setEmployees] = useState(recruiters || []);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [filters, setFilters] = useState({
@@ -950,6 +1365,19 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
 
   return (
     <>
+      <Paper variant="outlined" sx={{ mt: 2, borderRadius: 3, overflow: "hidden" }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_, value) => setActiveTab(value)}
+          sx={{ px: 2, borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}
+        >
+          <Tab value="approvals" label="Approvals" />
+          <Tab value="insights" label="Time Insights" />
+        </Tabs>
+      </Paper>
+
+      {activeTab === "approvals" ? (
+      <>
       <Grid container spacing={3} sx={{ mt: 2 }}>
         <Grid item xs={12}>
           <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
@@ -1754,6 +2182,25 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
           )}
         </Collapse>
       </Paper>
+      </>
+      ) : (
+        <TimeInsightsPanel
+          entries={entries}
+          roster={roster}
+          filters={filters}
+          handleChange={handleChange}
+          handleDepartmentChange={handleDepartmentChange}
+          applyDatePreset={applyDatePreset}
+          fetchEntries={fetchEntries}
+          loading={loading}
+          statusOptions={statusOptions}
+          departmentOptions={departmentOptions}
+          visibleEmployees={visibleEmployees}
+          includeArchived={includeArchived}
+          setIncludeArchived={setIncludeArchived}
+          recruiterMap={recruiterMap}
+        />
+      )}
 
       <Snackbar
         open={snackbar.open}

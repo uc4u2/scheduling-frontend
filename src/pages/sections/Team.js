@@ -39,6 +39,8 @@ import {
   InputAdornment,
   FormControlLabel,
   Switch,
+  Tabs,
+  Tab,
   Pagination,
   Menu,
   GlobalStyles,
@@ -50,7 +52,7 @@ import {
 import { KeyboardArrowDown, KeyboardArrowUp, InfoOutlined } from "@mui/icons-material";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { format, endOfMonth, addDays } from "date-fns";
+import { format, endOfMonth, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, MoreVert as MoreVertIcon } from "@mui/icons-material";
 import Accordion from "@mui/material/Accordion";
@@ -256,6 +258,764 @@ const parseUtcMillis = (iso) => {
   }
 };
 
+const fmtShiftHours = (value) => `${Number(value || 0).toFixed(1)} h`;
+
+const shiftInsightTone = {
+  success: { main: "#15803d", soft: "rgba(34, 197, 94, 0.08)", border: "rgba(34, 197, 94, 0.2)" },
+  warning: { main: "#b45309", soft: "rgba(245, 158, 11, 0.09)", border: "rgba(245, 158, 11, 0.22)" },
+  danger: { main: "#b91c1c", soft: "rgba(239, 68, 68, 0.08)", border: "rgba(239, 68, 68, 0.22)" },
+  info: { main: "#1d4ed8", soft: "rgba(59, 130, 246, 0.08)", border: "rgba(59, 130, 246, 0.2)" },
+  muted: { main: "#475569", soft: "rgba(100, 116, 139, 0.07)", border: "rgba(148, 163, 184, 0.22)" },
+  default: { main: "#0f172a", soft: "rgba(15, 23, 42, 0.03)", border: "rgba(148, 163, 184, 0.2)" },
+};
+
+const readableShiftLabel = (value) =>
+  String(value || "unknown")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const formatShiftInsightDateLabel = (value) => {
+  if (!value) return "";
+  const parsed = DateTime.fromISO(String(value));
+  return parsed.isValid ? parsed.toFormat("LLL d") : String(value);
+};
+
+const getShiftDurationHours = (shift) => {
+  const start = parseUtcMillis(shift?.clock_in || shift?.scheduled_clock_in);
+  const end = parseUtcMillis(shift?.clock_out || shift?.scheduled_clock_out);
+  if (!start || !end || end <= start) return 0;
+  return Math.max((end - start) / 3600000, 0);
+};
+
+const getShiftInsights = ({ shifts = [], recruiters = [], departments = [], timeEntriesMap = {}, rosterMap = {} }) => {
+  const recruiterById = new Map(recruiters.map((recruiter) => [String(recruiter.id), recruiter]));
+  const departmentById = new Map(departments.map((department) => [String(department.id), department]));
+  const activeShifts = shifts.filter((shift) => shift && shift.status !== "deleted");
+  const byDay = new Map();
+  const byDepartment = new Map();
+  const byEmployee = new Map();
+  const byLeaveType = new Map();
+  const byTemplate = new Map();
+
+  const summary = {
+    scheduled: activeShifts.length,
+    assigned: 0,
+    open: 0,
+    cancelled: 0,
+    timeOff: 0,
+    overtimeRisk: 0,
+    missingBreak: 0,
+    inProgress: 0,
+    affectedByLeave: 0,
+    restoredOrRestorable: 0,
+    totalHours: 0,
+  };
+
+  activeShifts.forEach((shift) => {
+    const status = shift.status || "assigned";
+    const shiftDate = getShiftLocalDate(shift) || shift.date || "Unscheduled";
+    const hours = getShiftDurationHours(shift);
+    const recruiter = recruiterById.get(String(shift.recruiter_id));
+    const employeeName = recruiter?.name || shift.recruiter_name || `Employee ${shift.recruiter_id || "unknown"}`;
+    const departmentId = shift.department_id || recruiter?.department_id || "unassigned";
+    const departmentName =
+      shift.department_name ||
+      departmentById.get(String(departmentId))?.name ||
+      recruiter?.department_name ||
+      "Unassigned";
+    const entry = timeEntriesMap[String(shift.id)] || {};
+    const roster = rosterMap[String(shift.id)] || {};
+    const isCancelled = status === "cancelled";
+    const isTimeOff = shift.on_leave === true || Boolean(shift.leave_id);
+    const isAssigned = ["assigned", "accepted", "in_progress", "completed"].includes(status) && !isCancelled;
+    const isOpen = !shift.recruiter_id || status === "open" || status === "unassigned" || status === "pending";
+    const breakMissing = Boolean(entry.break_non_compliant || entry.break_missing_minutes || shift.break_missing_minutes);
+    const inProgress = roster.status === "in_progress" || entry.status === "in_progress" || status === "in_progress";
+    const overtimeRisk = Boolean(shift.overtime_risk || shift.overtime);
+    const templateName = shift.template_name || shift.shift_template_name || shift.template_label || shift.selectedTemplate || null;
+
+    summary.assigned += isAssigned ? 1 : 0;
+    summary.open += isOpen ? 1 : 0;
+    summary.cancelled += isCancelled ? 1 : 0;
+    summary.timeOff += isTimeOff ? 1 : 0;
+    summary.missingBreak += breakMissing ? 1 : 0;
+    summary.inProgress += inProgress ? 1 : 0;
+    summary.overtimeRisk += overtimeRisk ? 1 : 0;
+    summary.affectedByLeave += isTimeOff ? 1 : 0;
+    summary.restoredOrRestorable += shift.shift_restoration?.restorable || shift.restored_from_leave ? 1 : 0;
+    summary.totalHours += hours;
+
+    const day = byDay.get(shiftDate) || { date: shiftDate, scheduled: 0, assigned: 0, open: 0, cancelled: 0, timeOff: 0 };
+    day.scheduled += 1;
+    day.assigned += isAssigned ? 1 : 0;
+    day.open += isOpen ? 1 : 0;
+    day.cancelled += isCancelled ? 1 : 0;
+    day.timeOff += isTimeOff ? 1 : 0;
+    byDay.set(shiftDate, day);
+
+    const dept = byDepartment.get(String(departmentId)) || {
+      key: String(departmentId),
+      name: departmentName,
+      total: 0,
+      assigned: 0,
+      open: 0,
+      cancelledOrTimeOff: 0,
+      hours: 0,
+    };
+    dept.total += 1;
+    dept.assigned += isAssigned ? 1 : 0;
+    dept.open += isOpen ? 1 : 0;
+    dept.cancelledOrTimeOff += isCancelled || isTimeOff ? 1 : 0;
+    dept.hours += hours;
+    byDepartment.set(String(departmentId), dept);
+
+    const employee = byEmployee.get(String(shift.recruiter_id || employeeName)) || {
+      key: String(shift.recruiter_id || employeeName),
+      name: employeeName,
+      assigned: 0,
+      hours: 0,
+      overtimeRisk: 0,
+      timeOff: 0,
+      inProgress: 0,
+    };
+    employee.assigned += isAssigned ? 1 : 0;
+    employee.hours += hours;
+    employee.overtimeRisk += overtimeRisk ? 1 : 0;
+    employee.timeOff += isTimeOff ? 1 : 0;
+    employee.inProgress += inProgress ? 1 : 0;
+    byEmployee.set(employee.key, employee);
+
+    if (isTimeOff) {
+      const leaveType = shift.leave_display_label || shift.leave_type || "Time off";
+      const leave = byLeaveType.get(leaveType) || { label: leaveType, count: 0, hours: 0 };
+      leave.count += 1;
+      leave.hours += hours;
+      byLeaveType.set(leaveType, leave);
+    }
+
+    if (templateName) {
+      const template = byTemplate.get(templateName) || { label: templateName, count: 0, assigned: 0, open: 0, hours: 0 };
+      template.count += 1;
+      template.assigned += isAssigned ? 1 : 0;
+      template.open += isOpen ? 1 : 0;
+      template.hours += hours;
+      byTemplate.set(templateName, template);
+    }
+  });
+
+  const trend = Array.from(byDay.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const departmentsRows = Array.from(byDepartment.values()).sort((a, b) => b.total - a.total);
+  const employeeRows = Array.from(byEmployee.values()).sort((a, b) => b.hours - a.hours);
+  const leaveRows = Array.from(byLeaveType.values()).sort((a, b) => b.count - a.count);
+  const templateRows = Array.from(byTemplate.values()).sort((a, b) => b.count - a.count);
+  const pressureRows = [
+    ...departmentsRows.filter((row) => row.open > 0).map((row) => ({
+      key: `dept-open-${row.key}`,
+      label: row.name,
+      value: `${row.open} open shift${row.open === 1 ? "" : "s"}`,
+      help: "Department has uncovered scheduling work.",
+      tone: "warning",
+    })),
+    ...employeeRows.filter((row) => row.hours >= 40).map((row) => ({
+      key: `employee-hours-${row.key}`,
+      label: row.name,
+      value: fmtShiftHours(row.hours),
+      help: "High scheduled workload in this range.",
+      tone: "info",
+    })),
+    ...trend.filter((row) => row.open > 0).map((row) => ({
+      key: `day-open-${row.date}`,
+      label: row.date,
+      value: `${row.open} open`,
+      help: "Day has uncovered shifts.",
+      tone: "warning",
+    })),
+  ].slice(0, 8);
+
+  return { summary, trend, departmentsRows, employeeRows, leaveRows, templateRows, pressureRows };
+};
+
+const ShiftInsightKpi = ({ label, value, help, tone = "default" }) => {
+  const colors = shiftInsightTone[tone] || shiftInsightTone.default;
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1.35,
+        borderRadius: 3,
+        height: "100%",
+        bgcolor: "rgba(255,255,255,0.92)",
+        borderColor: "rgba(148, 163, 184, 0.2)",
+        background: `linear-gradient(145deg, ${colors.soft}, rgba(255,255,255,0.96))`,
+        boxShadow: "0 12px 28px rgba(15, 23, 42, 0.04)",
+      }}
+    >
+      <Stack spacing={0.45}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+          <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 900, letterSpacing: 0.8, lineHeight: 1.2 }}>
+            {label}
+          </Typography>
+          <Box sx={{ width: 8, height: 8, borderRadius: 999, bgcolor: colors.main, boxShadow: `0 0 0 3px ${colors.soft}` }} />
+        </Stack>
+        <Typography variant="h3" fontWeight={950} sx={{ color: colors.main, lineHeight: 1 }}>
+          {value}
+        </Typography>
+        {help && (
+          <Typography variant="caption" color="text.secondary">
+            {help}
+          </Typography>
+        )}
+      </Stack>
+    </Paper>
+  );
+};
+
+const ShiftInsightSection = ({ title, description, children, accent = "default" }) => {
+  const colors = shiftInsightTone[accent] || shiftInsightTone.default;
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        height: "100%",
+        bgcolor: "background.paper",
+        borderColor: accent === "warning" ? colors.border : "rgba(148, 163, 184, 0.2)",
+        boxShadow: accent === "warning" ? "0 16px 38px rgba(180, 83, 9, 0.07)" : "0 12px 30px rgba(15, 23, 42, 0.035)",
+      }}
+    >
+      <Stack spacing={1.5}>
+        <Box>
+          <Typography variant="subtitle1" fontWeight={900}>
+            {title}
+          </Typography>
+          {description && (
+            <Typography variant="body2" color="text.secondary">
+              {description}
+            </Typography>
+          )}
+        </Box>
+        {children}
+      </Stack>
+    </Paper>
+  );
+};
+
+const MiniCoverageTrend = ({ rows }) => {
+  const visible = rows.slice(0, 14);
+  const max = Math.max(1, ...visible.map((row) => row.scheduled || 0));
+  if (!visible.length) {
+    return <Typography variant="body2" color="text.secondary">No shift data in this range.</Typography>;
+  }
+  return (
+    <Stack spacing={1.75}>
+      <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
+        {[
+          ["Assigned", "#15803d"],
+          ["Open", "#b45309"],
+          ["Cancelled", "#b91c1c"],
+          ["Time off", "#64748b"],
+        ].map(([label, color]) => (
+          <Stack key={label} direction="row" spacing={0.65} alignItems="center">
+            <Box sx={{ width: 9, height: 9, borderRadius: 999, bgcolor: color }} />
+            <Typography variant="caption" color="text.secondary" fontWeight={800}>
+              {label}
+            </Typography>
+          </Stack>
+        ))}
+      </Stack>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${visible.length}, minmax(34px, 1fr))`,
+          gap: 1,
+          alignItems: "end",
+          minHeight: 210,
+          px: 0.5,
+        }}
+      >
+      {visible.map((row) => (
+        <Stack key={row.date} spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
+          <Stack
+            justifyContent="flex-end"
+            sx={{
+              height: 162,
+              width: "100%",
+              maxWidth: 42,
+              borderRadius: 2,
+              overflow: "hidden",
+              bgcolor: "rgba(148, 163, 184, 0.14)",
+              border: "1px solid rgba(148, 163, 184, 0.2)",
+            }}
+          >
+            {[
+              ["assigned", row.assigned, "#15803d"],
+              ["open", row.open, "#b45309"],
+              ["cancelled", row.cancelled, "#b91c1c"],
+              ["timeOff", row.timeOff, "#64748b"],
+            ].map(([key, value, color]) => (
+              <Box
+                key={key}
+                title={`${readableShiftLabel(key)}: ${value}`}
+                sx={{
+                  height: `${Math.max((Number(value || 0) / max) * 100, value ? 5 : 0)}%`,
+                  minHeight: value ? 4 : 0,
+                  bgcolor: color,
+                }}
+              />
+            ))}
+          </Stack>
+          <Typography variant="caption" color="text.secondary" sx={{ writingMode: visible.length > 9 ? "vertical-rl" : "initial", fontWeight: 700 }}>
+            {formatShiftInsightDateLabel(row.date)}
+          </Typography>
+          <Typography variant="caption" fontWeight={900}>
+            {row.scheduled}
+          </Typography>
+        </Stack>
+      ))}
+      </Box>
+    </Stack>
+  );
+};
+
+const ShiftCompositionBar = ({ items }) => {
+  const total = Math.max(1, items.reduce((sum, item) => sum + Number(item.value || 0), 0));
+  return (
+    <Stack spacing={1.1}>
+      <Stack direction="row" sx={{ height: 16, borderRadius: 999, overflow: "hidden", bgcolor: "rgba(148, 163, 184, 0.13)" }}>
+        {items
+          .filter((item) => item.value > 0)
+          .map((item) => (
+            <Box key={item.label} sx={{ width: `${(item.value / total) * 100}%`, bgcolor: item.color }} />
+          ))}
+      </Stack>
+      <Stack spacing={0.75}>
+        {items.map((item) => (
+          <Stack key={item.label} direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+            <Stack direction="row" spacing={0.8} alignItems="center">
+              <Box sx={{ width: 9, height: 9, borderRadius: 999, bgcolor: item.color }} />
+              <Typography variant="body2" fontWeight={850}>
+                {item.label}
+              </Typography>
+            </Stack>
+            <Typography variant="caption" color="text.secondary" fontWeight={800}>
+              {Math.round((Number(item.value || 0) / total) * 100)}% · {item.value}
+            </Typography>
+          </Stack>
+        ))}
+      </Stack>
+    </Stack>
+  );
+};
+
+const ShiftInsightEmptyState = ({ children }) => (
+  <Box
+    sx={{
+      py: 1,
+      px: 1.25,
+      borderRadius: 2,
+      bgcolor: "rgba(148, 163, 184, 0.08)",
+      color: "text.secondary",
+    }}
+  >
+    <Typography variant="caption">{children}</Typography>
+  </Box>
+);
+
+const RankedBarList = ({
+  rows,
+  valueKey = "hours",
+  labelKey = "name",
+  valueFormatter = fmtShiftHours,
+  color = "#2563eb",
+  emptyText = "No data available.",
+}) => {
+  const visible = rows.slice(0, 8);
+  const max = Math.max(1, ...visible.map((row) => Number(row[valueKey] || 0)));
+  if (!visible.length) {
+    return <ShiftInsightEmptyState>{emptyText}</ShiftInsightEmptyState>;
+  }
+  return (
+    <Stack spacing={1.15}>
+      {visible.map((row) => {
+        const value = Number(row[valueKey] || 0);
+        return (
+          <Box key={row.key || row.label || row[labelKey]}>
+            <Stack direction="row" justifyContent="space-between" spacing={1}>
+              <Typography variant="body2" fontWeight={850} noWrap>
+                {row[labelKey] || row.label}
+              </Typography>
+              <Typography variant="body2" fontWeight={900}>
+                {valueFormatter(value, row)}
+              </Typography>
+            </Stack>
+            <Box sx={{ mt: 0.55, height: 9, borderRadius: 999, bgcolor: "rgba(148, 163, 184, 0.16)", overflow: "hidden" }}>
+              <Box sx={{ width: `${Math.max((value / max) * 100, value ? 6 : 0)}%`, height: "100%", bgcolor: color }} />
+            </Box>
+            {row.caption && (
+              <Typography variant="caption" color="text.secondary">
+                {row.caption}
+              </Typography>
+            )}
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+};
+
+const InsightStrip = ({ insights }) => (
+  <Grid container spacing={1.25}>
+    {insights.map((item) => {
+      const colors = shiftInsightTone[item.tone] || shiftInsightTone.default;
+      return (
+        <Grid item xs={12} md={6} xl={3} key={item.label}>
+          <Paper variant="outlined" sx={{ p: 1.2, borderRadius: 2.5, borderColor: "rgba(148, 163, 184, 0.2)", bgcolor: colors.soft }}>
+            <Typography variant="body2" fontWeight={900} sx={{ color: colors.main }}>
+              {item.label}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {item.help}
+            </Typography>
+          </Paper>
+        </Grid>
+      );
+    })}
+  </Grid>
+);
+
+const ShiftInsightsPanel = ({
+  insights,
+  departments = [],
+  recruiters = [],
+  selectedDepartment,
+  setSelectedDepartment,
+  selectedRecruiters,
+  setSelectedRecruiters,
+  selectedMonth,
+  dateRange,
+  handleMonthChange,
+  statusFilter,
+  setStatusFilter,
+  onRangePreset,
+  onResetFilters,
+  onRefresh,
+}) => {
+  const { summary, trend, departmentsRows, employeeRows, leaveRows, templateRows, pressureRows } = insights;
+  const compositionItems = [
+    { label: "Assigned", value: summary.assigned, color: "#15803d" },
+    { label: "Open", value: summary.open, color: "#b45309" },
+    { label: "Cancelled", value: summary.cancelled, color: "#b91c1c" },
+    { label: "Time off", value: summary.timeOff, color: "#64748b" },
+  ];
+  const insightRows = [
+    summary.open
+      ? { label: `${summary.open} open shift${summary.open === 1 ? "" : "s"}`, help: "Coverage needs manager attention.", tone: "warning" }
+      : { label: "No open shifts", help: "Coverage is assigned for the selected filters.", tone: "success" },
+    summary.timeOff
+      ? { label: `${summary.timeOff} time-off shift${summary.timeOff === 1 ? "" : "s"}`, help: "Approved leave is affecting scheduled coverage.", tone: "muted" }
+      : { label: "No schedule-context time off", help: "No OFF shift impact in this view.", tone: "success" },
+    summary.missingBreak
+      ? { label: `${summary.missingBreak} break issue${summary.missingBreak === 1 ? "" : "s"}`, help: "Review missing or non-compliant break signals.", tone: "warning" }
+      : { label: "No break issues", help: "No missing break signal in this range.", tone: "success" },
+    employeeRows[0]
+      ? { label: `${employeeRows[0].name} has highest hours`, help: `${fmtShiftHours(employeeRows[0].hours)} scheduled in this range.`, tone: employeeRows[0].hours >= 40 ? "info" : "default" }
+      : { label: "No employee workload", help: "No scheduled work in this filter range.", tone: "default" },
+  ];
+  const departmentVisualRows = departmentsRows.map((row) => ({
+    ...row,
+    caption: `${row.total} total · ${row.assigned} assigned · ${row.open} open · ${row.cancelledOrTimeOff} cancelled/off`,
+  }));
+  const employeeVisualRows = employeeRows.map((row) => ({
+    ...row,
+    caption: `${row.assigned} assigned · ${row.timeOff} off · ${row.inProgress} in progress · ${row.overtimeRisk} overtime risk`,
+  }));
+  const leaveVisualRows = leaveRows.map((row) => ({
+    ...row,
+    key: row.label,
+    name: readableShiftLabel(row.label),
+    caption: `${row.count} shift${row.count === 1 ? "" : "s"} affected`,
+  }));
+  const pressureVisualRows = pressureRows.map((row) => ({
+    ...row,
+    name: row.label,
+    count: Number.parseFloat(String(row.value).replace(/[^\d.]/g, "")) || 1,
+    caption: row.help,
+  }));
+  const riskVisualRows = [
+    { key: "open", name: "Open shifts", value: summary.open, caption: "Uncovered work in the selected range." },
+    { key: "breaks", name: "Missing breaks", value: summary.missingBreak, caption: "Break defaults or clocked break issues." },
+    { key: "overtime", name: "Overtime risk", value: summary.overtimeRisk, caption: "Signals already present on shift rows." },
+    { key: "leave", name: "Leave-affected shifts", value: summary.affectedByLeave, caption: "Approved leave with schedule context." },
+    { key: "restorable", name: "Restoration signals", value: summary.restoredOrRestorable, caption: "Shift restoration signal where available." },
+  ];
+  const templateVisualRows = templateRows.map((row) => ({
+    ...row,
+    key: row.label,
+    name: row.label,
+    caption: `${fmtShiftHours(row.hours)} · ${row.assigned} assigned · ${row.open} open`,
+  }));
+  const selectedDepartmentName =
+    toArray(departments).find((dept) => String(dept.id) === String(selectedDepartment))?.name || "All departments";
+  const employeeSelectionLabel = selectedRecruiters.length
+    ? `${selectedRecruiters.length} employee${selectedRecruiters.length === 1 ? "" : "s"} selected`
+    : "All employees";
+  const statusLabel = statusFilter === "all" ? "All statuses" : `${readableShiftLabel(statusFilter)} only`;
+  const monthLabel = selectedMonth
+    ? DateTime.fromFormat(selectedMonth, "yyyy-MM").toFormat("LLLL yyyy")
+    : "Current range";
+  const activeFilterChips = [
+    monthLabel,
+    dateRange?.start && dateRange?.end ? `${dateRange.start} to ${dateRange.end}` : null,
+    selectedDepartmentName,
+    employeeSelectionLabel,
+    statusLabel,
+  ].filter(Boolean);
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          bgcolor: "background.paper",
+          borderColor: "rgba(148, 163, 184, 0.32)",
+          boxShadow: "0 14px 34px rgba(15, 23, 42, 0.04)",
+        }}
+      >
+        <Stack spacing={1.75}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "flex-start" }} spacing={1.5}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={900}>
+                Shift insight controls
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Shared schedule filters for analytics, coverage health, and exception reporting.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }}>
+              <Button size="small" variant="outlined" onClick={onRefresh}>
+                Refresh
+              </Button>
+              <Button size="small" variant="text" color="inherit" onClick={onResetFilters}>
+                Reset filters
+              </Button>
+            </Stack>
+          </Stack>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button size="small" variant="outlined" onClick={() => onRangePreset("this_week")}>
+              This week
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => onRangePreset("next_7_days")}>
+              Next 7 days
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => onRangePreset("this_month")}>
+              This month
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => onRangePreset("next_month")}>
+              Next month
+            </Button>
+          </Stack>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={2.5}>
+              <TextField
+                type="month"
+                label="Month"
+                value={selectedMonth}
+                onChange={(event) => handleMonthChange(event.target.value)}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={2.5}>
+              <FormControl fullWidth>
+                <InputLabel>Department</InputLabel>
+                <Select
+                  value={selectedDepartment}
+                  label="Department"
+                  onChange={(event) => setSelectedDepartment(event.target.value)}
+                >
+                  <MenuItem value="">
+                    <em>All departments</em>
+                  </MenuItem>
+                  {toArray(departments).map((dept) => (
+                    <MenuItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>Employee</InputLabel>
+                <Select
+                  multiple
+                  value={selectedRecruiters}
+                  onChange={(event) => setSelectedRecruiters(event.target.value)}
+                  input={<OutlinedInput label="Employee" />}
+                  renderValue={(selected) =>
+                    selected.length
+                      ? `${selected.length} employee${selected.length === 1 ? "" : "s"} selected`
+                      : "All employees"
+                  }
+                >
+                  {recruiters.map((recruiter) => (
+                    <MenuItem key={recruiter.id} value={recruiter.id}>
+                      <Checkbox checked={selectedRecruiters.indexOf(recruiter.id) > -1} />
+                      <ListItemText primary={recruiter.name} secondary={recruiter.display_role} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <FormControl fullWidth>
+                <InputLabel>Status</InputLabel>
+                <Select value={statusFilter} label="Status" onChange={(event) => setStatusFilter(event.target.value)}>
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="pending">Pending</MenuItem>
+                  <MenuItem value="accepted">Accepted</MenuItem>
+                  <MenuItem value="rejected">Rejected</MenuItem>
+                  <MenuItem value="assigned">Assigned</MenuItem>
+                  <MenuItem value="cancelled">Cancelled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {activeFilterChips.map((label) => (
+              <Chip key={label} size="small" label={label} variant="outlined" sx={{ bgcolor: "rgba(15, 23, 42, 0.03)", fontWeight: 750 }} />
+            ))}
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Alert severity="info" variant="outlined" sx={{ py: 0.75, borderColor: "rgba(59, 130, 246, 0.2)" }}>
+        Read-only dashboard reflecting the current schedule filters and range. Scheduling behavior, drag/drop, Smart Shift, booking, and payroll formulas are unchanged.
+      </Alert>
+
+      <InsightStrip insights={insightRows} />
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Scheduled shifts" value={summary.scheduled} help={fmtShiftHours(summary.totalHours)} tone="info" />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Assigned shifts" value={summary.assigned} help="Active work coverage" tone="success" />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Open shifts" value={summary.open} help="Needs coverage" tone={summary.open ? "warning" : "muted"} />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Cancelled shifts" value={summary.cancelled} help="Removed from active work" tone={summary.cancelled ? "danger" : "muted"} />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Time off" value={summary.timeOff} help="Approved leave with shift context" tone="muted" />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Overtime risk" value={summary.overtimeRisk} help="Signals already present on shift rows" tone={summary.overtimeRisk ? "warning" : "muted"} />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Missing breaks" value={summary.missingBreak} help="Break defaults or clocked break issues" tone={summary.missingBreak ? "warning" : "muted"} />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="In progress" value={summary.inProgress} help="Roster/time-entry active now" tone={summary.inProgress ? "success" : "muted"} />
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} lg={8}>
+          <ShiftInsightSection
+            title="Coverage trend"
+            description="Scheduled, assigned, open, cancelled, and time-off mix by day in the selected range."
+            accent={summary.open ? "warning" : "success"}
+          >
+            <MiniCoverageTrend rows={trend} />
+          </ShiftInsightSection>
+        </Grid>
+        <Grid item xs={12} lg={4}>
+          <ShiftInsightSection
+            title="Coverage health composition"
+            description="Assigned, open, cancelled, and time-off mix."
+            accent={summary.open ? "warning" : "info"}
+          >
+            <ShiftCompositionBar items={compositionItems} />
+          </ShiftInsightSection>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
+          <ShiftInsightSection title="Department coverage breakdown" description="Coverage concentration by department." accent="info">
+            <RankedBarList rows={departmentVisualRows} valueKey="hours" labelKey="name" color="#2563eb" emptyText="No department coverage data." />
+          </ShiftInsightSection>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <ShiftInsightSection title="Employee workload summary" description="Assigned shifts, scheduled hours, time off, and active work by employee." accent={employeeRows.some((row) => row.hours >= 40) ? "warning" : "success"}>
+            <RankedBarList rows={employeeVisualRows} valueKey="hours" labelKey="name" color="#15803d" emptyText="No employee workload data." />
+          </ShiftInsightSection>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={4}>
+          <ShiftInsightSection title="Time-off impact on schedule" description="Approved leave and manager-entered time off visible through shift context." accent="muted">
+            <RankedBarList
+              rows={leaveVisualRows}
+              valueKey="count"
+              labelKey="name"
+              valueFormatter={(value, row) => `${value} · ${fmtShiftHours(row.hours)}`}
+              color="#64748b"
+              emptyText="No schedule-context time off in this range."
+            />
+          </ShiftInsightSection>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <ShiftInsightSection title="Exception / risk summary" description="Warning signals already available in current shift data." accent={summary.open || summary.missingBreak || summary.overtimeRisk ? "warning" : "success"}>
+            <RankedBarList
+              rows={riskVisualRows}
+              valueKey="value"
+              labelKey="name"
+              valueFormatter={(value) => value}
+              color={summary.open || summary.missingBreak || summary.overtimeRisk ? "#b45309" : "#15803d"}
+              emptyText="No major risk signals in this range."
+            />
+          </ShiftInsightSection>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <ShiftInsightSection title="Coverage pressure summary" description="The most visible places where manager review may be needed." accent={pressureRows.length ? "warning" : "success"}>
+            <RankedBarList
+              rows={pressureVisualRows}
+              valueKey="count"
+              labelKey="name"
+              valueFormatter={(value, row) => row.value}
+              color={pressureRows.length ? "#b45309" : "#15803d"}
+              emptyText="No major coverage pressure in this range."
+            />
+          </ShiftInsightSection>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <ShiftInsightSection title="Template distribution" description="Shown when current shift rows expose template names." accent="info">
+            <RankedBarList
+              rows={templateVisualRows}
+              valueKey="count"
+              labelKey="name"
+              valueFormatter={(value) => value}
+              color="#7c3aed"
+              emptyText="Template data is not available on the current shift rows."
+            />
+          </ShiftInsightSection>
+        </Grid>
+      </Grid>
+    </Stack>
+  );
+};
+
 const localPartsToUtcMillis = (date, time, zone) => {
   if (!date || !time) return null;
   try {
@@ -299,6 +1059,7 @@ const asLocalDate = (ymd) => {
   const [showWeekends, setShowWeekends] = useState(true);
   const [workHoursOnly, setWorkHoursOnly] = useState(false);
   const [compactDensity, setCompactDensity] = useState(false);
+  const [shiftManagementTab, setShiftManagementTab] = useState("schedule");
   const [showTimeOffOnCalendar, setShowTimeOffOnCalendar] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("schedulaa.showTimeOffOnShiftCalendar") === "true";
@@ -635,6 +1396,57 @@ const [formData, setFormData] = useState({
     start: format(new Date(), "yyyy-MM-dd"),
     end: format(addDays(new Date(), 30), "yyyy-MM-dd"),
   });
+
+  const handleMonthChange = useCallback((month) => {
+    if (!month) return;
+    setSelectedMonth(month);
+    const first = `${month}-01`;
+    const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
+    setDateRange({ start: first, end: last });
+    setSelectedDate(first);
+  }, []);
+
+  const handleShiftInsightRangePreset = useCallback((preset) => {
+    const today = new Date();
+    if (preset === "this_month") {
+      handleMonthChange(format(today, "yyyy-MM"));
+      return;
+    }
+    if (preset === "next_month") {
+      handleMonthChange(format(addDays(today, 30), "yyyy-MM"));
+      return;
+    }
+
+    const startDate =
+      preset === "this_week"
+        ? startOfWeek(today, { weekStartsOn: 1 })
+        : today;
+    const endDate =
+      preset === "this_week"
+        ? endOfWeek(today, { weekStartsOn: 1 })
+        : addDays(today, 6);
+    const nextStart = format(startDate, "yyyy-MM-dd");
+    setSelectedMonth(format(startDate, "yyyy-MM"));
+    setDateRange({
+      start: nextStart,
+      end: format(endDate, "yyyy-MM-dd"),
+    });
+    setSelectedDate(nextStart);
+  }, [handleMonthChange]);
+
+  const resetShiftInsightFilters = useCallback(() => {
+    const today = new Date();
+    const start = format(today, "yyyy-MM-dd");
+    setSelectedDepartment("");
+    setSelectedRecruiters([]);
+    setStatusFilter("all");
+    setSelectedMonth(format(today, "yyyy-MM"));
+    setDateRange({
+      start,
+      end: format(addDays(today, 30), "yyyy-MM-dd"),
+    });
+    setSelectedDate(start);
+  }, []);
 
   /* -------------------------------- helpers --------------------------------- */
   const getAuthHeaders = useCallback(() => {
@@ -1113,6 +1925,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
       ui,
       theme,
     ]
+	  );
+
+  const shiftInsights = useMemo(
+    () => getShiftInsights({ shifts: filteredShifts, recruiters, departments, timeEntriesMap, rosterMap }),
+    [filteredShifts, recruiters, departments, timeEntriesMap, rosterMap]
   );
 
   const canLinkAvailability = Boolean(editingShift) || selectedRecruiters.length === 1;
@@ -2528,10 +3345,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             Plan, assign, and manage team schedules in one place.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Button
-            variant={showSmartShift ? "contained" : "outlined"}
-            onClick={() => setShowSmartShift((v) => !v)}
+	        {shiftManagementTab === "schedule" && (
+	        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+	          <Button
+	            variant={showSmartShift ? "contained" : "outlined"}
+	            onClick={() => setShowSmartShift((v) => !v)}
           >
             {showSmartShift ? "Hide Smart Shift" : "Smart Shift"}
           </Button>
@@ -2572,12 +3390,39 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               >
                 Assign Shift
               </Button>
-            </span>
-          </Tooltip>
-        </Stack>
-      </Stack>
+	            </span>
+	          </Tooltip>
+	        </Stack>
+	        )}
+	      </Stack>
 
-      {showTimeOffOnCalendar && (
+	      <Paper
+	        elevation={0}
+	        sx={{
+	          mb: 2,
+	          borderRadius: 3,
+	          border: `1px solid ${theme.palette.divider}`,
+	          overflow: "hidden",
+	          bgcolor: "background.paper",
+	        }}
+	      >
+	        <Tabs
+	          value={shiftManagementTab}
+	          onChange={(_, value) => setShiftManagementTab(value)}
+	          variant={isSmDown ? "fullWidth" : "standard"}
+	          sx={{
+	            px: { xs: 0, sm: 1 },
+	            "& .MuiTab-root": { fontWeight: 900, textTransform: "none" },
+	          }}
+	        >
+	          <Tab value="schedule" label="Schedule" />
+	          <Tab value="insights" label="Shift Insights" />
+	        </Tabs>
+	      </Paper>
+	
+	      {shiftManagementTab === "schedule" ? (
+	      <>
+	      {showTimeOffOnCalendar && (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
           <Chip size="small" label="Work shift" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), border: `1px solid ${alpha(theme.palette.primary.main, 0.35)}` }} />
           <Chip size="small" label="Time off" sx={{ bgcolor: ui.leave.bg, color: ui.leave.text, border: `1px dashed ${ui.leave.border}` }} />
@@ -2682,17 +3527,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               <Grid item xs={12}>
                 <TextField
                   type="month"
-                  label="Month"
-                  value={selectedMonth}
-                  onChange={(e) => {
-                    const month = e.target.value;
-                    setSelectedMonth(month);
-                    const first = `${month}-01`;
-                    const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
-
-                    setDateRange({ start: first, end: last });
-                    setSelectedDate(first);
-                  }}
+	                  label="Month"
+	                  value={selectedMonth}
+	                  onChange={(e) => handleMonthChange(e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   fullWidth
                 />
@@ -2804,17 +3641,9 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           <Grid item xs={12} md={2}>
             <TextField
               type="month"
-              label="Month"
-              value={selectedMonth}
-              onChange={(e) => {
-                const month = e.target.value;
-                setSelectedMonth(month);
-                const first = `${month}-01`;
-const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
-
-                setDateRange({ start: first, end: last });
-                setSelectedDate(first);
-              }}
+	              label="Month"
+	              value={selectedMonth}
+	              onChange={(e) => handleMonthChange(e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
             />
@@ -4317,6 +5146,29 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
           </MenuItem>
         </Menu>
       </Box>
+      </>
+      ) : (
+        <ShiftInsightsPanel
+          insights={shiftInsights}
+          departments={departments}
+          recruiters={recruiters}
+          selectedDepartment={selectedDepartment}
+          setSelectedDepartment={setSelectedDepartment}
+          selectedRecruiters={selectedRecruiters}
+          setSelectedRecruiters={setSelectedRecruiters}
+          selectedMonth={selectedMonth}
+          dateRange={dateRange}
+          handleMonthChange={handleMonthChange}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          onRangePreset={handleShiftInsightRangePreset}
+          onResetFilters={resetShiftInsightFilters}
+          onRefresh={() => {
+            fetchShifts();
+            fetchTimeEntries();
+          }}
+        />
+      )}
     </Box>
   );
 };
