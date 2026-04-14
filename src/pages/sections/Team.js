@@ -78,6 +78,13 @@ const dayIndexToLabel = (value) => {
 const normalizeTemplateDays = (days) => (Array.isArray(days) ? days.map(dayIndexToLabel) : []);
 const formatAvailabilityDisplay = (slot) =>
   `${slot.date} • ${slot.start_time} - ${slot.end_time}${slot.booked ? " (booked)" : ""}`;
+const formatAvailabilityWarning = (payload) => {
+  if (!payload?.availability_warning) return "";
+  const count = Number(payload.overlapping_availability_count || 0);
+  const plural = count === 1 ? "slot" : "slots";
+  return payload.availability_warning_message
+    || `Approved successfully. This employee still has ${count} availability ${plural} during the approved leave window.`;
+};
 const toTimeInputValue = (value) => {
   if (!value) return "";
   if (typeof value === "string" && value.includes("T")) {
@@ -611,6 +618,7 @@ const [formData, setFormData] = useState({
 
   /* ------------------------------- messaging -------------------------------- */
   const [successMsg, setSuccessMsg] = useState("");
+  const [warningMsg, setWarningMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSmartShift, setShowSmartShift] = useState(false);
@@ -1809,6 +1817,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     if (!editingShift) return;
     setIsSubmitting(true);
     setShiftTimeOffPreviewError("");
+    setWarningMsg("");
     try {
       const response = await api.post(
         `/manager/shifts/${editingShift.id}/mark-time-off`,
@@ -1821,6 +1830,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         }
       );
       setSuccessMsg(response.data?.message || "Shift marked as time off.");
+      setWarningMsg(formatAvailabilityWarning(response.data));
       setModalOpen(false);
       setEditingShift(null);
       resetShiftTimeOffState("");
@@ -4055,6 +4065,13 @@ const last = format(endOfMonth(asLocalDate(first)), "yyyy-MM-dd");
         onClose={() => setSuccessMsg("")}
       >
         <Alert severity="success">{successMsg}</Alert>
+      </Snackbar>
+      <Snackbar
+        open={!!warningMsg}
+        autoHideDuration={7000}
+        onClose={() => setWarningMsg("")}
+      >
+        <Alert severity="warning">{warningMsg}</Alert>
       </Snackbar>
       <Snackbar
         open={!!errorMsg}

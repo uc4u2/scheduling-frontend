@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   Divider,
   Snackbar,
+  Chip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import api from "../../../utils/api";
@@ -27,6 +28,13 @@ import { DateTime } from "luxon";
 import { useNavigate } from "react-router-dom";
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHIFT_LOOKAHEAD_DAYS = 21;
+const availabilityConflictMessage = (err, fallback) => {
+  const data = err?.response?.data || {};
+  if (data.error_code === "availability_overlaps_approved_leave") {
+    return data.message || "This employee has approved time off during the selected availability window. Adjust the availability window or review the leave record first.";
+  }
+  return data.error || data.message || fallback;
+};
 
 const EmployeeAvailabilityManagement = ({ token }) => {
   const theme = useTheme();
@@ -413,7 +421,7 @@ useEffect(() => {
       }
       setSuccessMessage(`Shift window saved for ${dates.length} day(s)!`);
     } catch (err) {
-      setError(err.response?.data?.error || "Save failed.");
+      setError(availabilityConflictMessage(err, "Save failed."));
     } finally {
       setLoading(false);
     }
@@ -445,7 +453,7 @@ useEffect(() => {
       );
       setSuccessMessage("Recurring pattern saved!");
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to set availability.");
+      setError(availabilityConflictMessage(err, "Failed to set availability."));
     } finally {
       setLoading(false);
     }
@@ -470,7 +478,7 @@ useEffect(() => {
       );
       setSuccessMessage("Service slot added successfully!");
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to add service slot.");
+      setError(availabilityConflictMessage(err, "Failed to add service slot."));
     } finally {
       setLoading(false);
     }
@@ -982,7 +990,18 @@ useEffect(() => {
                         <Typography variant="body2">
                           {slot.date} • {slot.start_time}
                         </Typography>
-                        <Typography variant="body2">{serviceName}</Typography>
+                        <Stack spacing={0.5}>
+                          <Typography variant="body2">{serviceName}</Typography>
+                          {slot.blocked_by_leave && (
+                            <Chip
+                              size="small"
+                              color="warning"
+                              variant="outlined"
+                              label={slot.leave_type ? `Blocked by ${slot.leave_type} leave` : "Blocked by approved leave"}
+                              sx={{ alignSelf: "flex-start", fontWeight: 700 }}
+                            />
+                          )}
+                        </Stack>
                         <Typography variant="body2">{modeLabel}</Typography>
                         <Typography variant="body2">
                           {slot.mode === "group" ? capacity : "-"}

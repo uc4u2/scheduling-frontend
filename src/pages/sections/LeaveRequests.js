@@ -65,6 +65,14 @@ import {
 
 const token = () => localStorage.getItem("token");
 
+const formatAvailabilityWarning = (payload) => {
+  if (!payload?.availability_warning) return null;
+  const count = Number(payload.overlapping_availability_count || 0);
+  const plural = count === 1 ? "slot" : "slots";
+  return payload.availability_warning_message
+    || `Approved successfully. This employee still has ${count} availability ${plural} during the approved leave window.`;
+};
+
 const payChipSx = (isPaid) => (theme) => {
   const palette = isPaid ? theme.palette.success : theme.palette.warning;
   return {
@@ -185,7 +193,7 @@ const LeaveRequests = () => {
   const [balanceSaving, setBalanceSaving] = useState(false);
   const [balanceDraft, setBalanceDraft] = useState(defaultLeaveBalanceAdjustment());
   const [balanceError, setBalanceError] = useState("");
-  const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false });
+  const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false, severity: undefined });
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token()}` }), []);
 
@@ -330,7 +338,13 @@ const LeaveRequests = () => {
     try {
       const payload = buildManagerLeaveReviewPayload(selectedLeave, reviewDraft, action);
       const res = await api.post("/manager/leave-review", payload, { headers: authHeaders });
-      setSnackbar({ open: true, msg: res.data?.message || `Leave ${action}d.`, error: false });
+      const availabilityWarning = formatAvailabilityWarning(res.data);
+      setSnackbar({
+        open: true,
+        msg: availabilityWarning || res.data?.message || `Leave ${action}d.`,
+        error: false,
+        severity: availabilityWarning ? "warning" : "success",
+      });
       setSelectedLeave(null);
       await fetchRequests();
     } catch (err) {
@@ -1199,7 +1213,7 @@ const LeaveRequests = () => {
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert severity={snackbar.error ? "error" : "success"}>
+        <Alert severity={snackbar.severity || (snackbar.error ? "error" : "success")}>
           {snackbar.msg}
         </Alert>
       </Snackbar>
