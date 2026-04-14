@@ -164,6 +164,12 @@ const skipReasonLabel = (reason) => {
     accrual_frequency_none: "Frequency is none",
     accrual_rate_zero: "Accrual rate is zero",
     cap_already_reached: "Cap already reached",
+    entitlement_disabled: "Paid entitlement is off",
+    blocked_by_waiting_period: "Waiting period active",
+    allowance_zero: "No allowance configured",
+    existing_balance: "Already initialized",
+    no_current_period_entitlement: "No current-period entitlement",
+    not_selected: "Excluded by current apply mode",
   };
   return labels[reason] || String(reason || "Not skipped").replace(/_/g, " ");
 };
@@ -177,12 +183,12 @@ const formatAccrualTriggerLabel = (trigger) => {
 };
 
 const entitlementImpactLabels = {
-  initialize: "Initialize",
-  partial_initialize: "Partial initialize",
+  initialize: "Needs initialization",
+  partial_initialize: "Partial initialization",
   top_up: "Top up",
-  skip_existing_balance: "Skipped: existing balance",
+  skip_existing_balance: "Already initialized",
   conflict_existing_manual_balance: "Manual balance conflict",
-  blocked_by_waiting_period: "Waiting period",
+  blocked_by_waiting_period: "Eligibility pending",
   not_assigned: "Not assigned",
   would_create_first_accrual: "Accrual preview",
   no_change: "No change",
@@ -240,10 +246,10 @@ const enterpriseCardSx = {
 
 const policyGroupSx = {
   border: "1px solid",
-  borderColor: "rgba(148, 163, 184, 0.32)",
+  borderColor: "rgba(148, 163, 184, 0.24)",
   borderRadius: 2,
   p: 1.5,
-  bgcolor: "rgba(248, 250, 252, 0.72)",
+  bgcolor: "rgba(248, 250, 252, 0.52)",
 };
 
 const metricCellSx = {
@@ -264,6 +270,83 @@ const formatEntitlementSummary = (entitlement = {}, policy = {}) => {
   const workday = Number(entitlement.workday_hours || 8);
   const waiting = Number(entitlement.waiting_period_days || 0);
   return `${amount || 0} ${unit}/year · ${workday}h standard workday · ${waiting ? `${waiting} day waiting period` : "no waiting period"}`;
+};
+
+const formatAllowanceSetupLabel = (entitlement = {}) => {
+  if (!entitlement.paid_entitlement_enabled) return "Allowance not configured";
+  const amount = Number(entitlement.allowance_amount || 0);
+  const unit = entitlement.allowance_unit || "hours";
+  if (amount <= 0) return "Allowance amount missing";
+  return `${amount} ${unit}`;
+};
+
+const getEntitlementSetupChips = (entitlement = {}, policy = {}) => {
+  const waiting = Number(entitlement.waiting_period_days || 0);
+  return [
+    {
+      label: entitlement.paid_entitlement_enabled ? formatAllowanceSetupLabel(entitlement) : "No paid allowance",
+      tone: entitlement.paid_entitlement_enabled && Number(entitlement.allowance_amount || 0) > 0 ? "success" : "default",
+    },
+    {
+      label: policy.balance_managed ? "Balance tracking on" : "Balance tracking off",
+      tone: policy.balance_managed ? "primary" : "default",
+    },
+    {
+      label: waiting ? `${waiting} day waiting period` : "No waiting period",
+      tone: waiting ? "warning" : "default",
+    },
+    {
+      label: entitlement.applies_to_new_hires ? "Auto-applies to new hires" : "New hires manual",
+      tone: entitlement.applies_to_new_hires ? "primary" : "default",
+    },
+    {
+      label: insufficientBalanceLabels[policy.insufficient_balance_mode || "warn"] || "Warn manager",
+      tone: policy.insufficient_balance_mode === "block" ? "warning" : "default",
+    },
+  ];
+};
+
+const getEntitlementRowState = (row = {}) => {
+  if (row.impact_type === "blocked_by_waiting_period") {
+    return {
+      label: "Eligibility pending",
+      tone: "warning",
+      detail: row.message || (row.eligibility_date ? `Eligible on ${row.eligibility_date}` : "Waiting period is active."),
+    };
+  }
+  if (row.impact_type === "skip_existing_balance" || row.skip_reason === "existing_balance") {
+    return {
+      label: "Already initialized",
+      tone: "default",
+      detail: "This employee already has a balance row for this leave type.",
+    };
+  }
+  if (!row.skipped && Number(row.proposed_ledger_delta_hours || 0) > 0) {
+    return {
+      label: "Needs initialization",
+      tone: "success",
+      detail: row.message || "Eligible for a ledger-backed balance entry.",
+    };
+  }
+  if (row.impact_type === "would_create_first_accrual") {
+    return {
+      label: "Accrual preview only",
+      tone: "primary",
+      detail: "Use Accrual preview / manual posting to create accrual ledger entries.",
+    };
+  }
+  if (row.skipped) {
+    return {
+      label: "Skipped",
+      tone: "default",
+      detail: skipReasonLabel(row.skip_reason),
+    };
+  }
+  return {
+    label: "No action needed",
+    tone: "default",
+    detail: row.message || "No ledger-backed balance action is proposed.",
+  };
 };
 
 const setupProfiles = {
@@ -1022,6 +1105,16 @@ const SettingsLeaveSettings = () => {
     () => (entitlementPreviewResult?.rows || []).filter((row) => !row.skipped && Number(row.proposed_ledger_delta_hours || 0) > 0),
     [entitlementPreviewResult]
   );
+  const entitlementEnrollmentSummary = useMemo(() => {
+    const rows = entitlementPreviewResult?.rows || [];
+    return {
+      needsInitialization: rows.filter((row) => !row.skipped && Number(row.proposed_ledger_delta_hours || 0) > 0).length,
+      alreadyInitialized: rows.filter((row) => row.impact_type === "skip_existing_balance" || row.skip_reason === "existing_balance").length,
+      eligibilityPending: rows.filter((row) => row.impact_type === "blocked_by_waiting_period" || row.skip_reason === "blocked_by_waiting_period").length,
+      manualConflicts: rows.filter((row) => row.impact_type === "conflict_existing_manual_balance").length,
+      noAction: rows.filter((row) => row.impact_type === "no_change").length,
+    };
+  }, [entitlementPreviewResult]);
   const hasSettingsDraftChanges = Boolean(dirty);
   const hasPolicyDraftChanges = Boolean(policiesDirty || entitlementsDirty);
 
@@ -1382,7 +1475,7 @@ const SettingsLeaveSettings = () => {
             <Tooltip
               placement="top"
               arrow
-              title="Payroll-ready leave is approved leave that payroll exports can use. If this is on, managers approve the request first and then must confirm the exact approved hours in the manager leave drawer. If this is off, approval also confirms the request's safe computed/requested hours. Keep it on for hourly, partial-day, split-to-unpaid, or stricter payroll review workflows."
+              title="Ready-for-payroll leave is approved leave that payroll exports can use. If this is on, managers approve the request first and then must confirm the exact approved hours in the manager leave drawer. If this is off, approval also confirms the request's safe computed/requested hours. Keep it on for hourly, partial-day, split-to-unpaid, or stricter payroll review workflows."
             >
               <IconButton size="small" aria-label="Payroll readiness help">
                 <HelpOutlineIcon fontSize="small" />
@@ -1557,55 +1650,53 @@ const SettingsLeaveSettings = () => {
                       </IconButton>
                   </Stack>
 
-                  <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
-                    <Chip
-                      size="small"
-                      sx={readableChipSx(entitlement.paid_entitlement_enabled ? "success" : "default")}
-                      label={entitlement.paid_entitlement_enabled ? "Paid entitlement" : "Manual"}
-                    />
-                    <Chip
-                      size="small"
-                      sx={readableChipSx(isAccrualGrant ? "primary" : "default")}
-                      label={formatGrantMethodLabel(entitlement.grant_method || "opening_balance")}
-                    />
-                    <Chip
-                      size="small"
-                      sx={readableChipSx("default")}
-                      label={formatPolicyYearBasisLabel(entitlement.policy_year_basis || "calendar_year")}
-                    />
-                  </Stack>
-
-                  <Box sx={{ ...policyGroupSx, bgcolor: entitlement.paid_entitlement_enabled ? "rgba(240, 253, 244, 0.72)" : "rgba(248, 250, 252, 0.82)" }}>
-                    <Stack spacing={0.75}>
-                      <Typography variant="body2" fontWeight={850}>
-                        {formatEntitlementSummary(entitlement, policy)}
-                      </Typography>
+                  <Box
+                    sx={{
+                      px: 1.25,
+                      py: 1.15,
+                      borderRadius: 2,
+                      bgcolor: "rgba(248, 250, 252, 0.72)",
+                      border: "1px solid",
+                      borderColor: "rgba(226, 232, 240, 0.9)",
+                    }}
+                  >
+                    <Stack spacing={0.9}>
+                      <Stack direction="row" spacing={0.65} alignItems="center" flexWrap="wrap" useFlexGap>
+                        {getEntitlementSetupChips(entitlement, policy).map((chip) => (
+                          <Chip
+                            key={`${policy.leave_type}-${chip.label}`}
+                            size="small"
+                            sx={readableChipSx(chip.tone)}
+                            label={chip.label}
+                          />
+                        ))}
+                      </Stack>
                       <Typography variant="caption" color="text.secondary">
-                        {entitlement.paid_entitlement_enabled
-                          ? "Preview/apply creates ledger-backed balances only when you explicitly confirm eligible rows."
-                          : "Requests can still be reviewed manually if the leave request rules allow this leave type."}
+                        {formatEntitlementSummary(entitlement, policy)} Grant method: {formatGrantMethodLabel(entitlement.grant_method || "opening_balance")}. Current employee balances are confirmed through Preview employee balance impact.
                       </Typography>
                     </Stack>
                   </Box>
 
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={Boolean(entitlement.paid_entitlement_enabled)}
-                        onChange={(event) => {
-                          updateEntitlementPolicy(policy.leave_type, "enabled", event.target.checked);
-                          updateEntitlementPolicy(policy.leave_type, "paid_entitlement_enabled", event.target.checked);
-                          if (event.target.checked) updatePolicy(policy.leave_type, "balance_managed", true);
-                        }}
-                      />
-                    }
-                    label={fieldHelpLabel("Enable paid entitlement", leaveAllowanceFieldHelp.paidEntitlement)}
-                  />
-
                   <Box sx={policyGroupSx}>
-                    <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 900, letterSpacing: 0.9 }}>
-                      Company allowance
-                    </Typography>
+                    <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                      <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 900, letterSpacing: 0.9 }}>
+                        Core allowance settings
+                      </Typography>
+                    </Stack>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={Boolean(entitlement.paid_entitlement_enabled)}
+                          onChange={(event) => {
+                            updateEntitlementPolicy(policy.leave_type, "enabled", event.target.checked);
+                            updateEntitlementPolicy(policy.leave_type, "paid_entitlement_enabled", event.target.checked);
+                            if (event.target.checked) updatePolicy(policy.leave_type, "balance_managed", true);
+                          }}
+                        />
+                      }
+                      label={fieldHelpLabel("Enable paid entitlement", leaveAllowanceFieldHelp.paidEntitlement)}
+                      sx={{ mb: 0.5 }}
+                    />
                   <Grid container spacing={1.5} sx={{ mt: 0.25 }}>
                     <Grid item xs={6}>
                       <TextField
@@ -1780,8 +1871,7 @@ const SettingsLeaveSettings = () => {
                       </Grid>
                     )}
                   </Grid>
-                  </Box>
-
+                  <Divider sx={{ my: 1.25 }} />
                   <FormControlLabel
                     control={
                       <Switch
@@ -1791,6 +1881,10 @@ const SettingsLeaveSettings = () => {
                     }
                     label={fieldHelpLabel("Auto-apply to new hires", leaveAllowanceFieldHelp.appliesToNewHires)}
                   />
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Auto-apply affects future hires. Current employees are initialized through Preview employee balance impact.
+                  </Typography>
+                  </Box>
 
                   <Box sx={policyGroupSx}>
                     <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 900, letterSpacing: 0.9 }}>
@@ -1960,9 +2054,18 @@ const SettingsLeaveSettings = () => {
               <Typography variant="body2" color="text.secondary">
                 Preview which employees would receive ledger-backed balances before applying anything. Existing balances and waiting periods are shown as skipped or blocked rows.
               </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                Policy setup does not automatically create balances for all current employees. Preview eligible employees first, then apply ledger-backed balances when ready.
+              </Typography>
             </Box>
-            <Chip size="small" label="Dry run first" sx={readableChipSx("primary")} />
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+              <Chip size="small" label="Dry run first" sx={readableChipSx("primary")} />
+              <Chip size="small" label="Ledger-backed apply" sx={readableChipSx("success")} />
+            </Stack>
           </Stack>
+          <Alert severity="info" variant="outlined" sx={{ mb: 1.5 }}>
+            Auto-apply to new hires controls future employees. It does not initialize balances for employees who already exist today.
+          </Alert>
           <Grid container spacing={1.5}>
             <Grid item xs={12} sm={6} md={3}>
               <TextField
@@ -2024,6 +2127,9 @@ const SettingsLeaveSettings = () => {
                 <MenuItem value="initialize_missing_only">Initialize missing only</MenuItem>
                 <MenuItem value="apply_selected_only">Apply previewed eligible rows</MenuItem>
               </TextField>
+              <Typography variant="caption" color="text.secondary">
+                Initialize missing only means employees with existing balance rows are skipped, not overwritten.
+              </Typography>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <TextField
@@ -2096,6 +2202,13 @@ const SettingsLeaveSettings = () => {
                   </Box>
                 </Grid>
               </Grid>
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                <Chip size="small" sx={readableChipSx("success")} label={`Needs initialization: ${entitlementEnrollmentSummary.needsInitialization}`} />
+                <Chip size="small" sx={readableChipSx("default")} label={`Already initialized: ${entitlementEnrollmentSummary.alreadyInitialized}`} />
+                <Chip size="small" sx={readableChipSx("warning")} label={`Eligibility pending: ${entitlementEnrollmentSummary.eligibilityPending}`} />
+                <Chip size="small" sx={readableChipSx(entitlementEnrollmentSummary.manualConflicts ? "warning" : "default")} label={`Manual conflicts: ${entitlementEnrollmentSummary.manualConflicts}`} />
+                <Chip size="small" sx={readableChipSx("default")} label={`No action: ${entitlementEnrollmentSummary.noAction}`} />
+              </Stack>
               {["monthly_accrual", "biweekly_accrual"].includes(entitlementPreviewResult.policy?.grant_method) && (
                 <Alert severity="warning" variant="outlined">
                   This policy accrues over time. Use Accrual preview / manual posting below to create accrual ledger entries.
@@ -2143,13 +2256,28 @@ const SettingsLeaveSettings = () => {
                           <TableCell align="right">{formatHours(row.projected_balance_hours)}</TableCell>
                           <TableCell>
                             <Stack spacing={0.5} alignItems="flex-start">
+                              {(() => {
+                                const state = getEntitlementRowState(row);
+                                return (
+                                  <>
+                                    <Chip
+                                      size="small"
+                                      sx={readableChipSx(state.tone)}
+                                      label={state.label}
+                                    />
+                                    <Typography variant="caption" color="text.secondary">
+                                      {state.detail}
+                                    </Typography>
+                                  </>
+                                );
+                              })()}
                               <Chip
                                 size="small"
                                 sx={readableChipSx(entitlementImpactTone(row.impact_type, row.skipped))}
                                 label={entitlementImpactLabels[row.impact_type] || String(row.impact_type || "No change").replace(/_/g, " ")}
                               />
                               <Typography variant="caption" color="text.secondary">
-                                {row.skipped ? skipReasonLabel(row.skip_reason) : row.message}
+                                {row.skipped ? `Reason: ${skipReasonLabel(row.skip_reason)}` : row.message}
                               </Typography>
                             </Stack>
                           </TableCell>
@@ -2561,6 +2689,7 @@ const SettingsLeaveSettings = () => {
         >
           <Tab value="settings" label="Leave Settings" />
           <Tab value="insights" label="Leave Insights" />
+          <Tab value="operations" label="Leave Operations" />
         </Tabs>
         {leaveAreaTab === "settings" ? (
           <Stack spacing={2}>
@@ -2601,8 +2730,10 @@ const SettingsLeaveSettings = () => {
               {renderAccrualRunHistorySummary()}
             </SectionCard>
           </Stack>
+        ) : leaveAreaTab === "insights" ? (
+          <SettingsLeaveInsights onOpenOperations={() => setLeaveAreaTab("operations")} />
         ) : (
-          <SettingsLeaveInsights />
+          <SettingsLeaveInsights mode="operations" />
         )}
       </Box>
       {leaveAreaTab === "settings" && (hasSettingsDraftChanges || hasPolicyDraftChanges) && (
@@ -2992,7 +3123,7 @@ const SettingsLeaveSettings = () => {
 
           <HelpSection title="Payroll readiness" status="Active now" statusColor="success">
             <Typography variant="body2">
-              Payroll-ready means the leave has approved, payroll-safe hours. Preview-only or estimated leave can be shown to managers but should not silently become finalized payroll truth.
+              Ready for payroll means the leave has approved, payroll-safe hours. Estimated leave can be shown to managers but should not silently become finalized payroll truth.
             </Typography>
             <Typography variant="body2">
               Requiring manager-confirmed hours keeps payroll safer for partial-day, hourly, or unusual leave requests.

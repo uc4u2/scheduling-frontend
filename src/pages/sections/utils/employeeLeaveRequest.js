@@ -1,4 +1,4 @@
-import { format, parseISO } from "date-fns";
+import { differenceInCalendarDays, differenceInMinutes, format, parseISO } from "date-fns";
 import { normalizeLeaveAttachment } from "./leaveAttachments";
 
 const isoDate = (value, fallback = "") => {
@@ -101,6 +101,49 @@ export const validateEmployeeLeaveForm = (form = {}, selectedShift = null) => {
 };
 
 const optionalNumber = (value) => (value === "" || value === null || value === undefined ? null : Number(value));
+
+const positiveNumberOrZero = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+const hoursBetween = (start, end) => {
+  if (!start || !end) return 0;
+  try {
+    const minutes = differenceInMinutes(new Date(end), new Date(start));
+    return minutes > 0 ? Math.round((minutes / 60) * 100) / 100 : 0;
+  } catch {
+    return 0;
+  }
+};
+
+export const estimateEmployeeLeaveRequestedHours = (form = {}, selectedShift = null, selectedBalance = null) => {
+  const explicitHours = positiveNumberOrZero(form.requested_hours);
+  if (explicitHours) return explicitHours;
+
+  if (form.duration_mode === "shift_linked" && selectedShift) {
+    return hoursBetween(selectedShift.clock_in, selectedShift.clock_out);
+  }
+
+  if (form.duration_mode === "partial_day" && form.start_date && form.start_time && form.end_time) {
+    return hoursBetween(
+      `${form.start_date}T${form.start_time}`,
+      `${form.start_date}T${form.end_time}`
+    );
+  }
+
+  if (form.duration_mode === "full_day" && form.start_date && form.end_date) {
+    try {
+      const days = Math.max(1, differenceInCalendarDays(parseISO(form.end_date), parseISO(form.start_date)) + 1);
+      const workdayHours = positiveNumberOrZero(selectedBalance?.policy_summary?.workday_hours) || 8;
+      return Math.round(days * workdayHours * 100) / 100;
+    } catch {
+      return 0;
+    }
+  }
+
+  return 0;
+};
 
 export const canWithdrawEmployeeLeave = (request = {}) => (
   String(request.status || "").toLowerCase() === "pending" && !request.withdrawn_at && !request.cancelled_at

@@ -4,6 +4,7 @@ import {
   buildEmployeeLeaveRequestSubmission,
   canWithdrawEmployeeLeave,
   defaultEmployeeLeaveForm,
+  estimateEmployeeLeaveRequestedHours,
   normalizeEmployeeLeaveRequest,
   validateEmployeeLeaveForm,
 } from "../employeeLeaveRequest";
@@ -193,5 +194,32 @@ describe("employee leave request helpers", () => {
     expect(canWithdrawEmployeeLeave({ status: "approved" })).toBe(false);
     expect(canWithdrawEmployeeLeave({ status: "pending", withdrawn_at: "2026-04-13T10:00:00" })).toBe(false);
     expect(canWithdrawEmployeeLeave({ status: "pending", cancelled_at: "2026-04-13T10:00:00" })).toBe(false);
+  });
+
+  it("estimates requested hours for the employee preview panel", () => {
+    expect(estimateEmployeeLeaveRequestedHours({
+      duration_mode: "hourly",
+      requested_hours: "3.5",
+    })).toBe(3.5);
+
+    expect(estimateEmployeeLeaveRequestedHours({
+      duration_mode: "partial_day",
+      start_date: "2026-04-13",
+      start_time: "09:00",
+      end_time: "12:30",
+    })).toBe(3.5);
+
+    expect(estimateEmployeeLeaveRequestedHours({
+      duration_mode: "full_day",
+      start_date: "2026-04-13",
+      end_date: "2026-04-14",
+    }, null, { policy_summary: { workday_hours: 7.5 } })).toBe(15);
+
+    expect(estimateEmployeeLeaveRequestedHours({
+      duration_mode: "shift_linked",
+    }, {
+      clock_in: "2026-04-13T09:00:00",
+      clock_out: "2026-04-13T17:00:00",
+    })).toBe(8);
   });
 });

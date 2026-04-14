@@ -73,6 +73,15 @@ const formatAvailabilityWarning = (payload) => {
     || `Approved successfully. This employee still has ${count} availability ${plural} during the approved leave window.`;
 };
 
+const isBookingConflictPayload = (payload) =>
+  payload?.error_code === "booking_conflict" || payload?.code === "booking_conflict" || payload?.error === "booking_conflict";
+
+const payrollReadinessLabel = (leave = {}, meta = {}) => {
+  if (meta.payrollReady || leave.payroll_ready || leave.leave_approved_for_payroll) return "Ready for payroll";
+  if (meta.estimated || leave.estimated || leave.preview_only) return "Estimated for review";
+  return "Needs manager confirmation";
+};
+
 const payChipSx = (isPaid) => (theme) => {
   const palette = isPaid ? theme.palette.success : theme.palette.warning;
   return {
@@ -171,6 +180,241 @@ const balanceImpactSeverity = (impact) => {
 
 const employeeName = (row) => row.recruiter_name || row.employee_name || `Employee #${row.recruiter_id || "—"}`;
 
+const shiftRestorationTone = (status = {}) => {
+  if (!status?.has_linked_shift) return "neutral";
+  if (status.status === "restored") return "success";
+  if (status.restorable) return "success";
+  return "warning";
+};
+
+const shiftRestorationLabel = (status = {}) => {
+  if (!status?.has_linked_shift && !status?.linked_shift_id) return "No linked shift";
+  if (status.status === "restored") return "Original shift restored";
+  if (status.restorable) return "Restoration available";
+  return "Restoration blocked";
+};
+
+const DecisionMetric = ({ label, value, tone = "default" }) => {
+  const toneSx = {
+    success: { color: "success.dark", bgcolor: "rgba(22, 163, 74, 0.08)" },
+    warning: { color: "#92400e", bgcolor: "rgba(245, 158, 11, 0.10)" },
+    error: { color: "error.dark", bgcolor: "rgba(220, 38, 38, 0.08)" },
+    default: { color: "text.primary", bgcolor: "background.paper" },
+  }[tone] || {};
+
+  return (
+    <Box sx={{ p: 1.15, borderRadius: 2, border: "1px solid", borderColor: "divider", ...toneSx }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+        {label}
+      </Typography>
+      <Typography variant="body2" fontWeight={850}>
+        {value}
+      </Typography>
+    </Box>
+  );
+};
+
+const LeaveDecisionSummary = ({ leave, meta, balanceSummary, bookingConflict, availabilityWarning }) => {
+  if (!leave || !meta) return null;
+  const selectedBalance = balanceSummary?.balances?.find((row) => row.leave_type === leave.leave_type);
+  const future = selectedBalance?.future_balance || {};
+  const impact = leave.balance_impact || {};
+  const balanceManaged = Boolean(impact.balance_managed || selectedBalance?.balance_managed);
+  const shortage = Number(
+    impact.insufficient_hours ?? future.shortage_hours ?? 0
+  );
+  const currentBalance = impact.current_balance_hours ?? future.usable_now_hours ?? selectedBalance?.balance_hours;
+  const projectedBalance = impact.projected_balance_hours ?? future.projected_remaining_hours;
+  const readiness = payrollReadinessLabel(leave, meta);
+
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1.75,
+        borderRadius: 3,
+        borderColor: bookingConflict ? "error.light" : "rgba(148, 163, 184, 0.45)",
+        bgcolor: bookingConflict ? "rgba(220, 38, 38, 0.04)" : "rgba(248, 250, 252, 0.86)",
+      }}
+    >
+      <Stack spacing={1.25}>
+        <Box>
+          <Typography variant="subtitle2" fontWeight={900}>
+            Decision summary
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Review the operational impact before changing approval status.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+          <Chip size="small" label={meta.payLabel} sx={payChipSx(meta.isPaid)} />
+          <Chip
+            size="small"
+            variant="outlined"
+            label={balanceManaged ? "Balance-managed" : "Not balance-managed"}
+            sx={readableChipSx(balanceManaged ? "info" : "neutral", "outlined")}
+          />
+          <Chip
+            size="small"
+            variant="outlined"
+            label={readiness}
+            sx={readableChipSx(meta.payrollReady ? "success" : meta.estimated ? "warning" : "info", "outlined")}
+          />
+          {bookingConflict && (
+            <Chip size="small" label="Booked appointment conflict" sx={readableChipSx("error")} />
+          )}
+          {availabilityWarning && (
+            <Chip size="small" label="Availability still open" sx={readableChipSx("warning")} />
+          )}
+        </Stack>
+        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 1 }}>
+          <DecisionMetric label="Requested hours" value={meta.requestedHours ? `${meta.requestedHours}h` : "—"} />
+          <DecisionMetric label="Approved hours" value={meta.approvedHours ? `${meta.approvedHours}h` : "—"} tone={meta.approvedHours ? "success" : "warning"} />
+          <DecisionMetric label="Current balance" value={formatBalanceHours(currentBalance)} />
+          <DecisionMetric label="Projected balance" value={formatBalanceHours(projectedBalance)} tone={Number(projectedBalance || 0) < 0 ? "warning" : "default"} />
+          <DecisionMetric label="Shortage" value={formatBalanceHours(shortage)} tone={shortage > 0 ? "error" : "success"} />
+          <DecisionMetric label="Payroll readiness" value={readiness} tone={meta.payrollReady ? "success" : meta.estimated ? "warning" : "default"} />
+        </Box>
+      </Stack>
+    </Paper>
+  );
+};
+
+const BookingConflictAlert = ({ conflict }) => {
+  if (!conflict) return null;
+  const bookings = Array.isArray(conflict.bookings) ? conflict.bookings : [];
+  return (
+    <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>
+      <Stack spacing={1.2}>
+        <Box>
+          <Typography variant="subtitle2" fontWeight={900}>
+            Booked appointment conflict
+          </Typography>
+          <Typography variant="body2">
+            {conflict.message || "This employee has booked client appointments during the requested leave window."}
+          </Typography>
+          <Typography variant="caption" sx={{ display: "block", mt: 0.5 }}>
+            Resolve these bookings first, then try approval again.
+          </Typography>
+        </Box>
+        <Chip
+          size="small"
+          label={`${Number(conflict.overlapping_booking_count ?? bookings.length)} overlapping booking${Number(conflict.overlapping_booking_count ?? bookings.length) === 1 ? "" : "s"}`}
+          sx={{ alignSelf: "flex-start", fontWeight: 800 }}
+        />
+        {bookings.length > 0 && (
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Client</TableCell>
+                  <TableCell>Service</TableCell>
+                  <TableCell>Date/time</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>ID</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {bookings.map((booking, index) => (
+                  <TableRow key={booking.booking_id || booking.appointment_id || index}>
+                    <TableCell>{booking.client_name || "Client"}</TableCell>
+                    <TableCell>{booking.service || booking.service_name || "Service"}</TableCell>
+                    <TableCell>
+                      {booking.date || "—"}
+                      {(booking.start_time || booking.end_time) ? ` · ${booking.start_time || "—"}-${booking.end_time || "—"}` : ""}
+                    </TableCell>
+                    <TableCell>{booking.status || "booked"}</TableCell>
+                    <TableCell>{booking.booking_id || booking.appointment_id || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Stack>
+    </Alert>
+  );
+};
+
+const ShiftRestorationPanel = ({ restoration }) => {
+  if (!restoration?.linked_shift_id && !restoration?.has_linked_shift) return null;
+  const shift = restoration.original_shift || {};
+  return (
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+      <Stack spacing={1}>
+        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Typography variant="subtitle2" fontWeight={900}>Original shift</Typography>
+          <Chip size="small" label={shiftRestorationLabel(restoration)} sx={readableChipSx(shiftRestorationTone(restoration), "outlined")} />
+          {restoration.removed_from_schedule && (
+            <Chip size="small" label="Removed from active schedule" sx={readableChipSx("neutral", "outlined")} />
+          )}
+        </Stack>
+        <Typography variant="body2">
+          {shift.date || "Date not available"}
+          {shift.clock_in || shift.clock_out ? ` · ${fmtDateTime(shift.clock_in)} - ${fmtDateTime(shift.clock_out)}` : ""}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {restoration.message || "Linked shift restoration status is available."}
+        </Typography>
+        {restoration.blockers?.length ? (
+          <Alert severity="warning" variant="outlined">
+            <Stack spacing={0.5}>
+              {restoration.blockers.map((blocker, idx) => (
+                <Typography key={`${blocker.code}-${idx}`} variant="caption">
+                  {blocker.message || String(blocker.code || "Restore blocked").replace(/_/g, " ")}
+                </Typography>
+              ))}
+            </Stack>
+          </Alert>
+        ) : null}
+        {restoration.warnings?.length ? (
+          <Stack spacing={0.5}>
+            {restoration.warnings.map((warning, idx) => (
+              <Typography key={`${warning.code}-${idx}`} variant="caption" color="text.secondary">
+                {warning.message}
+              </Typography>
+            ))}
+          </Stack>
+        ) : null}
+      </Stack>
+    </Paper>
+  );
+};
+
+const AvailabilityWarningAlert = ({ warning }) => {
+  if (!warning?.availability_warning) return null;
+  const slots = Array.isArray(warning.availability_slots) ? warning.availability_slots : [];
+  return (
+    <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2 }}>
+      <Stack spacing={1}>
+        <Box>
+          <Typography variant="subtitle2" fontWeight={900}>
+            Availability still open
+          </Typography>
+          <Typography variant="body2">
+            {warning.availability_warning_message || "This employee still has availability slots during the approved leave window."}
+          </Typography>
+        </Box>
+        <Chip
+          size="small"
+          label={`${Number(warning.overlapping_availability_count ?? slots.length)} overlapping availability slot${Number(warning.overlapping_availability_count ?? slots.length) === 1 ? "" : "s"}`}
+          sx={{ alignSelf: "flex-start", fontWeight: 800 }}
+        />
+        {slots.length > 0 && (
+          <Stack spacing={0.5}>
+            {slots.slice(0, 4).map((slot) => (
+              <Typography key={slot.availability_id || `${slot.date}-${slot.start_time}`} variant="caption">
+                {slot.date || "—"} · {slot.start_time || "—"}-{slot.end_time || "—"}
+                {slot.service ? ` · ${slot.service}` : ""}
+              </Typography>
+            ))}
+          </Stack>
+        )}
+      </Stack>
+    </Alert>
+  );
+};
+
 const LeaveRequests = () => {
   const [requests, setRequests] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -186,6 +430,7 @@ const LeaveRequests = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState("");
+  const [restoreLinkedShift, setRestoreLinkedShift] = useState(false);
   const [saving, setSaving] = useState(false);
   const [attachmentDownloading, setAttachmentDownloading] = useState(false);
   const [balanceSummary, setBalanceSummary] = useState(() => normalizeLeaveBalanceSummary());
@@ -193,6 +438,8 @@ const LeaveRequests = () => {
   const [balanceSaving, setBalanceSaving] = useState(false);
   const [balanceDraft, setBalanceDraft] = useState(defaultLeaveBalanceAdjustment());
   const [balanceError, setBalanceError] = useState("");
+  const [bookingConflict, setBookingConflict] = useState(null);
+  const [availabilityWarningDetail, setAvailabilityWarningDetail] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false, severity: undefined });
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token()}` }), []);
@@ -274,6 +521,9 @@ const LeaveRequests = () => {
     setReviewDraft(defaultManagerLeaveReviewDraft(row));
     setBalanceDraft(defaultLeaveBalanceAdjustment());
     setBalanceError("");
+    setBookingConflict(null);
+    setAvailabilityWarningDetail(null);
+    setRestoreLinkedShift(false);
   };
 
   const loadLeaveBalancesForEmployee = async (recruiterId) => {
@@ -335,6 +585,8 @@ const LeaveRequests = () => {
   const handleReview = async (action) => {
     if (!selectedLeave) return;
     setSaving(true);
+    setBookingConflict(null);
+    setAvailabilityWarningDetail(null);
     try {
       const payload = buildManagerLeaveReviewPayload(selectedLeave, reviewDraft, action);
       const res = await api.post("/manager/leave-review", payload, { headers: authHeaders });
@@ -345,12 +597,26 @@ const LeaveRequests = () => {
         error: false,
         severity: availabilityWarning ? "warning" : "success",
       });
+      if (availabilityWarning) {
+        const updated = res.data?.request || selectedLeave;
+        setAvailabilityWarningDetail(res.data);
+        setSelectedLeave(updated);
+        setReviewDraft(defaultManagerLeaveReviewDraft(updated));
+        await fetchRequests();
+        return;
+      }
       setSelectedLeave(null);
       await fetchRequests();
     } catch (err) {
+      const data = err?.response?.data || {};
+      if (isBookingConflictPayload(data)) {
+        setBookingConflict(data);
+      }
       setSnackbar({
         open: true,
-        msg: err?.response?.data?.error || err?.response?.data?.message || "Failed to update leave request.",
+        msg: isBookingConflictPayload(data)
+          ? "Booked appointment conflict. Resolve these bookings first, then try approval again."
+          : data.error || data.message || "Failed to update leave request.",
         error: true,
       });
     } finally {
@@ -360,7 +626,9 @@ const LeaveRequests = () => {
 
   const handleCancelLeave = async () => {
     if (!selectedLeave) return;
-    const payload = buildManagerLeaveCancelPayload(selectedLeave, cancelReason);
+    const payload = buildManagerLeaveCancelPayload(selectedLeave, cancelReason, {
+      restore_linked_shift: restoreLinkedShift,
+    });
     if (payload.error) {
       setCancelError(payload.error);
       return;
@@ -372,13 +640,21 @@ const LeaveRequests = () => {
       setCancelDialogOpen(false);
       setCancelReason("");
       setCancelError("");
+      setRestoreLinkedShift(false);
+      setBookingConflict(null);
+      setAvailabilityWarningDetail(null);
       const updated = res.data?.request || null;
       setSelectedLeave(updated);
       await fetchRequests();
     } catch (err) {
+      const data = err?.response?.data || {};
+      if (data.shift_restoration && selectedLeave) {
+        setSelectedLeave({ ...selectedLeave, shift_restoration: data.shift_restoration });
+      }
+      setCancelError(data.message || data.error || "Failed to cancel leave request.");
       setSnackbar({
         open: true,
-        msg: err?.response?.data?.message || err?.response?.data?.error || "Failed to cancel leave request.",
+        msg: data.message || data.error || "Failed to cancel leave request.",
         error: true,
       });
     } finally {
@@ -420,6 +696,13 @@ const LeaveRequests = () => {
 
   const drawerMeta = selectedLeave ? getLeaveReviewVisibility(selectedLeave) : null;
   const drawerAttachment = selectedLeave ? normalizeLeaveAttachment(selectedLeave) : null;
+  const drawerShiftRestoration = selectedLeave?.shift_restoration || null;
+  const canRestoreLinkedShift = Boolean(drawerShiftRestoration?.has_linked_shift && drawerShiftRestoration?.restorable);
+  const drawerHasAvailabilityWarning = Boolean(
+    availabilityWarningDetail?.availability_warning
+    || selectedLeave?.availability_warning
+    || selectedLeave?.availability_warning_message
+  );
 
   return (
     <Box p={3}>
@@ -429,7 +712,7 @@ const LeaveRequests = () => {
             Leave Requests
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Review time off, confirm payroll-ready hours, and catch overlap warnings before payroll. Preview-only or estimated leave stays visible for review but is not finalized payroll truth.
+            Review time off, confirm ready-for-payroll hours, and catch overlap warnings before payroll. Estimated leave stays visible for review but is not finalized payroll truth.
           </Typography>
         </Box>
         <Button variant="outlined" onClick={fetchRequests} disabled={loading}>
@@ -578,8 +861,8 @@ const LeaveRequests = () => {
                 sx={{ minWidth: 170 }}
               >
                 <MenuItem value="">Any readiness</MenuItem>
-                <MenuItem value="true">Payroll-ready only</MenuItem>
-                <MenuItem value="false">Preview-only / needs confirmation</MenuItem>
+                <MenuItem value="true">Ready for payroll only</MenuItem>
+                <MenuItem value="false">Estimated or needs confirmation</MenuItem>
               </TextField>
               <TextField
                 select
@@ -673,7 +956,7 @@ const LeaveRequests = () => {
                             {leaveMeta.actionNeeded && (
                               <Chip
                                 size="small"
-                                label={leaveMeta.status === "approved" && !leaveMeta.payrollReady ? "Confirm hours" : "Review needed"}
+                                label={leaveMeta.status === "approved" && !leaveMeta.payrollReady ? "Confirm hours" : "Needs manager confirmation"}
                                 sx={readableChipSx("warning")}
                               />
                             )}
@@ -709,7 +992,12 @@ const LeaveRequests = () => {
       <Drawer
         anchor="right"
         open={Boolean(selectedLeave)}
-        onClose={() => setSelectedLeave(null)}
+        onClose={() => {
+          setSelectedLeave(null);
+          setBookingConflict(null);
+          setAvailabilityWarningDetail(null);
+          setRestoreLinkedShift(false);
+        }}
         PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, p: 2 } }}
       >
         {selectedLeave && drawerMeta && (
@@ -719,7 +1007,12 @@ const LeaveRequests = () => {
                 <Typography variant="h6">Leave details</Typography>
                 <Typography variant="body2" color="text.secondary">{employeeName(selectedLeave)}</Typography>
               </Box>
-              <IconButton onClick={() => setSelectedLeave(null)} aria-label="Close leave details">
+              <IconButton onClick={() => {
+                setSelectedLeave(null);
+                setBookingConflict(null);
+                setAvailabilityWarningDetail(null);
+                setRestoreLinkedShift(false);
+              }} aria-label="Close leave details">
                 <CloseIcon />
               </IconButton>
             </Stack>
@@ -734,8 +1027,24 @@ const LeaveRequests = () => {
             <Alert severity={drawerMeta.actionNeeded ? "warning" : "info"} variant="outlined">
               {drawerMeta.actionNeeded
                 ? "This request still needs manager confirmation before it is safe for finalized payroll."
-                : "Payroll-ready means the approved hours are confirmed for payroll inputs. Preview-only or estimated leave remains visible for review but is not finalized payroll truth."}
+                : "Ready for payroll means the approved hours are confirmed for payroll inputs. Estimated leave remains visible for review but is not finalized payroll truth."}
             </Alert>
+
+            <LeaveDecisionSummary
+              leave={selectedLeave}
+              meta={drawerMeta}
+              balanceSummary={balanceSummary}
+              bookingConflict={bookingConflict}
+              availabilityWarning={drawerHasAvailabilityWarning}
+            />
+
+            <BookingConflictAlert conflict={bookingConflict} />
+
+            <AvailabilityWarningAlert warning={availabilityWarningDetail} />
+
+            {renderWarnings(drawerMeta)}
+
+            <ShiftRestorationPanel restoration={drawerShiftRestoration} />
 
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
               <Stack spacing={0.75}>
@@ -1032,8 +1341,6 @@ const LeaveRequests = () => {
               </Stack>
             </Paper>
 
-            {renderWarnings(drawerMeta)}
-
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
               <Stack spacing={0.75}>
                 <Typography variant="body2"><strong>Reviewed by:</strong> {selectedLeave.reviewer_name || "—"}</Typography>
@@ -1064,7 +1371,7 @@ const LeaveRequests = () => {
                       value={reviewDraft.approved_hours}
                       onChange={(e) => setReviewDraft({ ...reviewDraft, approved_hours: e.target.value })}
                       inputProps={{ min: 0, step: 0.25 }}
-                      helperText="Confirm exact payroll-ready hours before approval."
+                      helperText="Confirm exact ready-for-payroll hours before approval."
                     />
                     <FormControlLabel
                       control={
@@ -1127,7 +1434,7 @@ const LeaveRequests = () => {
                     />
                     <Stack direction="row" spacing={1} justifyContent="flex-end">
                       <Button color="error" variant="outlined" disabled={saving} onClick={() => handleReview("reject")}>
-                        Reject
+                        Reject request
                       </Button>
                       <Button variant="contained" disabled={saving} onClick={() => handleReview("approve")}>
                         Approve
@@ -1147,6 +1454,9 @@ const LeaveRequests = () => {
                   </Typography>
                   <Alert severity="warning" sx={{ mb: 1.5 }}>
                     Cancelling approved leave may affect scheduling and payroll preview.
+                    {drawerShiftRestoration?.has_linked_shift
+                      ? " This leave is linked to an original shift; restoration is optional during cancellation."
+                      : ""}
                   </Alert>
                   <Button
                     color="error"
@@ -1155,10 +1465,11 @@ const LeaveRequests = () => {
                     onClick={() => {
                       setCancelReason("");
                       setCancelError("");
+                      setRestoreLinkedShift(false);
                       setCancelDialogOpen(true);
                     }}
                   >
-                    Cancel leave
+                    Cancel approved leave
                   </Button>
                 </Box>
               </>
@@ -1170,16 +1481,73 @@ const LeaveRequests = () => {
       <Dialog
         open={cancelDialogOpen}
         onClose={() => {
-          if (!saving) setCancelDialogOpen(false);
+          if (!saving) {
+            setCancelDialogOpen(false);
+            setRestoreLinkedShift(false);
+          }
         }}
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>Cancel leave request</DialogTitle>
+        <DialogTitle>Cancel approved leave</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>
             Cancelling approved leave may affect scheduling and payroll preview. If this leave was already used in finalized payroll, the backend will block cancellation.
           </Alert>
+          {drawerShiftRestoration?.has_linked_shift && (
+            <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 2 }}>
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Typography variant="subtitle2" fontWeight={900}>
+                    Original shift
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={shiftRestorationLabel(drawerShiftRestoration)}
+                    sx={readableChipSx(shiftRestorationTone(drawerShiftRestoration), "outlined")}
+                  />
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  {drawerShiftRestoration.message || "This leave is linked to a shift that was removed from the active schedule."}
+                </Typography>
+                {drawerShiftRestoration.original_shift && (
+                  <Typography variant="body2">
+                    {drawerShiftRestoration.original_shift.date || "Date not available"}
+                    {(drawerShiftRestoration.original_shift.clock_in || drawerShiftRestoration.original_shift.clock_out)
+                      ? ` · ${fmtDateTime(drawerShiftRestoration.original_shift.clock_in)} - ${fmtDateTime(drawerShiftRestoration.original_shift.clock_out)}`
+                      : ""}
+                  </Typography>
+                )}
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={restoreLinkedShift}
+                      disabled={saving || !canRestoreLinkedShift}
+                      onChange={(event) => {
+                        setRestoreLinkedShift(event.target.checked);
+                        setCancelError("");
+                      }}
+                    />
+                  }
+                  label="Cancel leave and restore original shift"
+                />
+                <Typography variant="caption" color="text.secondary">
+                  Leave cancellation only is the default. Restore the original shift only when you want it returned to the active schedule.
+                </Typography>
+                {!canRestoreLinkedShift && drawerShiftRestoration.blockers?.length > 0 && (
+                  <Alert severity="warning" variant="outlined">
+                    <Stack spacing={0.5}>
+                      {drawerShiftRestoration.blockers.map((blocker, index) => (
+                        <Typography key={`${blocker.code || "blocker"}-${index}`} variant="caption">
+                          {blocker.message || "Original shift cannot be restored."}
+                        </Typography>
+                      ))}
+                    </Stack>
+                  </Alert>
+                )}
+              </Stack>
+            </Paper>
+          )}
           {cancelError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {cancelError}
@@ -1199,11 +1567,17 @@ const LeaveRequests = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button disabled={saving} onClick={() => setCancelDialogOpen(false)}>
+          <Button
+            disabled={saving}
+            onClick={() => {
+              setCancelDialogOpen(false);
+              setRestoreLinkedShift(false);
+            }}
+          >
             Keep leave
           </Button>
           <Button color="error" variant="contained" disabled={saving} onClick={handleCancelLeave}>
-            Cancel leave
+            {restoreLinkedShift ? "Cancel leave and restore shift" : "Cancel approved leave"}
           </Button>
         </DialogActions>
       </Dialog>

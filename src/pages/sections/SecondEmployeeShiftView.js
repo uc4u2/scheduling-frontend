@@ -69,6 +69,7 @@ import {
   buildEmployeeLeaveRequestSubmission,
   canWithdrawEmployeeLeave,
   defaultEmployeeLeaveForm,
+  estimateEmployeeLeaveRequestedHours,
   normalizeEmployeeLeaveRequest,
 } from "./utils/employeeLeaveRequest";
 import {
@@ -97,6 +98,49 @@ const formatBreakMinutesLabel = (value, compact = false) => {
   if (minutes < 1) return compact ? "<1m" : "Less than 1 min";
   const rounded = Math.round(minutes);
   return compact ? `${rounded}m` : `${rounded} min`;
+};
+
+const balanceCardTone = (balance = {}) => {
+  if (!balance.balance_managed) return "default";
+  if (balance.eligible_now === false) return "warning";
+  if (Number(balance.balance_hours || 0) <= 0) return "warning";
+  return "success";
+};
+
+const balanceCardSx = (tone = "default") => (theme) => {
+  const colors = {
+    success: {
+      border: "rgba(34, 197, 94, 0.32)",
+      bg: "linear-gradient(145deg, rgba(240,253,244,0.96), rgba(255,255,255,0.92))",
+    },
+    warning: {
+      border: "rgba(245, 158, 11, 0.36)",
+      bg: "linear-gradient(145deg, rgba(255,251,235,0.96), rgba(255,255,255,0.92))",
+    },
+    default: {
+      border: "rgba(148, 163, 184, 0.36)",
+      bg: "linear-gradient(145deg, rgba(248,250,252,0.96), rgba(255,255,255,0.92))",
+    },
+  };
+  const selected = colors[tone] || colors.default;
+  return {
+    p: 1.4,
+    borderRadius: 2.5,
+    border: `1px solid ${selected.border}`,
+    bgcolor: theme.palette.background.paper,
+    background: selected.bg,
+    boxShadow: "0 12px 28px rgba(15, 23, 42, 0.06)",
+    height: "100%",
+  };
+};
+
+const formatPolicySummaryText = (balance = {}) => {
+  const policy = balance.policy_summary || {};
+  const parts = [];
+  if (policy.grant_method) parts.push(String(policy.grant_method).replace(/_/g, " "));
+  if (policy.workday_hours) parts.push(`${policy.workday_hours}h standard workday`);
+  if (balance.balance_managed) parts.push("balance-managed");
+  return parts.length ? parts.join(" · ") : "Manual or not balance-managed";
 };
 
 const statusChipSx = (status, active = false) => (theme) => {
@@ -301,6 +345,16 @@ const loadEmployeeLeaveBalances = useCallback(async (params = {}) => {
     setLeaveBalancesLoading(false);
   }
 }, [token]);
+
+const selectedLeaveBalancePreview = useMemo(
+  () => employeeLeaveBalances.balances.find((row) => row.leave_type === leaveForm.leave_type) || null,
+  [employeeLeaveBalances, leaveForm.leave_type]
+);
+
+const estimatedLeaveRequestHours = useMemo(
+  () => estimateEmployeeLeaveRequestedHours(leaveForm, selectedShift, selectedLeaveBalancePreview),
+  [leaveForm, selectedShift, selectedLeaveBalancePreview]
+);
 
 const loadShifts = async () => {
   try {
@@ -530,9 +584,9 @@ useEffect(() => {
   loadEmployeeLeaveBalances({
     leave_start_date: leaveForm.start_date || undefined,
     leave_type: leaveForm.leave_type,
-    requested_hours: leaveForm.requested_hours || undefined,
+    requested_hours: estimatedLeaveRequestHours || undefined,
   });
-}, [leaveModalOpen, leaveForm.leave_type, leaveForm.start_date, leaveForm.requested_hours, loadEmployeeLeaveBalances]);
+}, [leaveModalOpen, leaveForm.leave_type, leaveForm.start_date, estimatedLeaveRequestHours, loadEmployeeLeaveBalances]);
 
 useEffect(() => {
   const id = setInterval(() => setLastUpdated(DateTime.now()), 30000);
@@ -2537,55 +2591,91 @@ const breakTimelineMeta = useMemo(() => {
         <Box sx={{ px: 2, pb: 2 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
             <Box>
-              <Typography variant="subtitle2" color="text.secondary">
-                Leave balances
+              <Typography variant="subtitle2" fontWeight={900}>
+                My leave balances
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                HR-tracked balances. Manual adjustments and approved balance-managed leave can update these hours, but payroll calculations stay separate.
+                A self-serve view of your current paid leave balance, eligibility, and expected accrual signals. Payroll calculations stay separate.
               </Typography>
             </Box>
             <Button size="small" onClick={loadEmployeeLeaveBalances} disabled={leaveBalancesLoading}>
               Refresh
             </Button>
           </Stack>
+          <Alert severity="info" variant="outlined" sx={{ mb: 1.25 }}>
+            Before requesting paid leave, check whether the leave type is balance-managed and whether you are eligible on the leave start date.
+          </Alert>
           {leaveBalancesLoading ? (
             <Box display="flex" justifyContent="center" py={2}>
               <CircularProgress size={22} />
             </Box>
           ) : (
-            <Grid container spacing={1}>
+            <Grid container spacing={1.25}>
               {employeeLeaveBalances.balances.map((balance) => (
-                <Grid item xs={6} sm={4} key={balance.leave_type}>
+                <Grid item xs={12} sm={6} key={balance.leave_type}>
                   <Paper
                     variant="outlined"
-                    sx={(theme) => ({
-                      p: 1,
-                      borderRadius: 2,
-                      bgcolor: theme.palette.background.default,
-                    })}
+                    sx={balanceCardSx(balanceCardTone(balance))}
                   >
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                      {balance.label}
-                    </Typography>
-                    <Typography variant="body2" fontWeight={800}>
-                      {formatBalanceHours(balance.balance_hours)}
-                    </Typography>
-                    {balance.days_equivalent != null && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                        ~{Number(balance.days_equivalent).toFixed(2)} day(s)
-                      </Typography>
-                    )}
-                    {balance.next_expected_accrual_hours ? (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                        Next: +{formatBalanceHours(balance.next_expected_accrual_hours)}
-                        {balance.next_expected_accrual_date ? ` on ${balance.next_expected_accrual_date}` : ""}
-                      </Typography>
-                    ) : null}
-                    {balance.eligibility_date && !balance.eligible_now && (
-                      <Typography variant="caption" color="warning.main" sx={{ display: "block", fontWeight: 700 }}>
-                        Eligible {balance.eligibility_date}
-                      </Typography>
-                    )}
+                    <Stack spacing={1}>
+                      <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="flex-start">
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight={900}>
+                            {balance.label}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatPolicySummaryText(balance)}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          color={balance.balance_managed ? "info" : "default"}
+                          label={balance.balance_managed ? "Tracked" : "Manual"}
+                          sx={{ fontWeight: 800 }}
+                        />
+                      </Stack>
+
+                      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Remaining hours</Typography>
+                          <Typography variant="h6" fontWeight={900}>{formatBalanceHours(balance.balance_hours)}</Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">Days equivalent</Typography>
+                          <Typography variant="h6" fontWeight={900}>
+                            {balance.days_equivalent != null ? `${Number(balance.days_equivalent).toFixed(2)}d` : "—"}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                        <Chip
+                          size="small"
+                          color={balance.eligible_now === false ? "warning" : "success"}
+                          variant="outlined"
+                          label={balance.eligible_now === false ? "Eligibility pending" : "Eligible now"}
+                          sx={{ fontWeight: 800 }}
+                        />
+                        {balance.next_expected_accrual_hours ? (
+                          <Chip
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            label={`Next accrual +${formatBalanceHours(balance.next_expected_accrual_hours)}${balance.next_expected_accrual_date ? ` · ${balance.next_expected_accrual_date}` : ""}`}
+                            sx={{ fontWeight: 800 }}
+                          />
+                        ) : (
+                          <Chip size="small" variant="outlined" label="No scheduled accrual shown" />
+                        )}
+                      </Stack>
+
+                      {balance.eligibility_date && (
+                        <Typography variant="caption" color={balance.eligible_now === false ? "warning.main" : "text.secondary"} sx={{ fontWeight: balance.eligible_now === false ? 800 : 500 }}>
+                          {balance.eligible_now === false ? `You become eligible on ${balance.eligibility_date}.` : `Eligibility date: ${balance.eligibility_date}.`}
+                        </Typography>
+                      )}
+                    </Stack>
                   </Paper>
                 </Grid>
               ))}
@@ -2649,7 +2739,7 @@ const breakTimelineMeta = useMemo(() => {
                         Duration: {formatLeaveDurationMode(leave.duration_mode)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {formatLeaveHours(leave) || (String(leave.status || "").toLowerCase() === "approved" ? "Approved; payroll hours not confirmed" : "Hours pending manager review")}
+                        {formatLeaveHours(leave) || (String(leave.status || "").toLowerCase() === "approved" ? "Approved; payroll hours not confirmed" : "Manager must confirm payroll-ready hours")}
                       </Typography>
                       {leave.balance_impact?.balance_managed && (
                         <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -2762,12 +2852,12 @@ const breakTimelineMeta = useMemo(() => {
                 label={selectedEmployeeLeave.is_paid_leave ? "Paid leave" : "Unpaid leave"}
               />
               {selectedEmployeeLeave.payroll_ready && (
-                <Chip size="small" color="success" variant="outlined" label="Payroll-ready" />
+                <Chip size="small" color="success" variant="outlined" label="Ready for payroll" />
               )}
             </Stack>
 
             <Alert severity="info" variant="outlined">
-              Payroll-ready means your manager has confirmed the approved hours for payroll. Uploading a supporting document does not change approval or payroll status.
+              Ready for payroll means your manager has confirmed the approved hours for payroll. Uploading a supporting document does not change approval or payroll status.
             </Alert>
 
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
@@ -3196,62 +3286,125 @@ const breakTimelineMeta = useMemo(() => {
             label="Paid Leave"
           />
           {(() => {
-            const selectedBalance = employeeLeaveBalances.balances.find((row) => row.leave_type === leaveForm.leave_type);
+            const selectedBalance = selectedLeaveBalancePreview;
             const future = selectedBalance?.future_balance;
             if (!selectedBalance) return null;
+            const availableOnStart = future?.available_on_leave_start_hours ?? selectedBalance.balance_hours;
+            const projectedRemaining = leaveForm.is_paid_leave
+              ? future?.projected_remaining_hours
+              : availableOnStart;
+            const shortageHours = leaveForm.is_paid_leave ? Number(future?.shortage_hours || 0) : 0;
+            const expectedAccrual = Number(future?.expected_before_leave_start_hours ?? future?.expected_accrual_before_leave_start ?? 0);
+            const balanceManaged = Boolean(selectedBalance.balance_managed);
+            const eligibleNow = future?.eligible_now ?? selectedBalance.eligible_now;
+            const eligibleOnStart = future?.eligible_on_leave_start ?? eligibleNow;
+            const eligibilityLabel = eligibleNow ? "Eligible now" : eligibleOnStart ? "Eligible on start" : "Eligibility pending";
             return (
               <Paper
                 variant="outlined"
                 sx={{
-                  p: 1.75,
+                  p: 2,
                   borderRadius: 3,
-                  mt: 1,
-                  borderColor: "rgba(148, 163, 184, 0.45)",
-                  bgcolor: "rgba(248, 250, 252, 0.72)",
+                  mt: 1.5,
+                  borderColor: shortageHours > 0 ? "warning.light" : "rgba(148, 163, 184, 0.45)",
+                  bgcolor: shortageHours > 0 ? "rgba(245, 158, 11, 0.08)" : "rgba(248, 250, 252, 0.86)",
                 }}
               >
-                <Stack spacing={1.25}>
-                  <Box>
-                    <Typography variant="subtitle2" fontWeight={900}>
-                      Paid balance context
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Shows the expected paid balance position for this request. Payroll formulas remain separate.
-                    </Typography>
+                <Stack spacing={1.4}>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={900}>
+                        Before you submit
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        This is an estimate based on current policy and your selected dates.
+                      </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                      <Chip
+                        size="small"
+                        color={leaveForm.is_paid_leave ? "success" : "warning"}
+                        variant="outlined"
+                        label={leaveForm.is_paid_leave ? "Paid leave" : "Unpaid leave"}
+                        sx={{ fontWeight: 800 }}
+                      />
+                      <Chip
+                        size="small"
+                        color={balanceManaged ? "info" : "default"}
+                        variant="outlined"
+                        label={balanceManaged ? "Balance-managed" : "Not balance-managed"}
+                        sx={{ fontWeight: 800 }}
+                      />
+                      <Chip
+                        size="small"
+                        color={eligibleOnStart ? "success" : "warning"}
+                        variant="outlined"
+                        label={eligibilityLabel}
+                        sx={{ fontWeight: 800 }}
+                      />
+                    </Stack>
+                  </Stack>
+
+                  <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(128px, 1fr))", gap: 1 }}>
+                    <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                      <Typography variant="caption" color="text.secondary">Current balance</Typography>
+                      <Typography variant="body2" fontWeight={850}>{formatBalanceHours(selectedBalance.balance_hours)}</Typography>
+                    </Box>
+                    <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                      <Typography variant="caption" color="text.secondary">Available on start</Typography>
+                      <Typography variant="body2" fontWeight={850}>{formatBalanceHours(availableOnStart)}</Typography>
+                    </Box>
+                    <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                      <Typography variant="caption" color="text.secondary">Requested hours</Typography>
+                      <Typography variant="body2" fontWeight={850}>{estimatedLeaveRequestHours ? formatBalanceHours(estimatedLeaveRequestHours) : "—"}</Typography>
+                    </Box>
+                    <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: shortageHours > 0 ? "warning.light" : "divider", bgcolor: "background.paper" }}>
+                      <Typography variant="caption" color="text.secondary">Projected remaining</Typography>
+                      <Typography variant="body2" fontWeight={850}>{formatBalanceHours(projectedRemaining)}</Typography>
+                    </Box>
                   </Box>
-                  {!leaveForm.is_paid_leave ? (
+
+                  {expectedAccrual > 0 && (
+                    <Typography variant="caption" color="text.secondary">
+                      Expected accrual before leave starts: {formatBalanceHours(expectedAccrual)}
+                      {future?.next_expected_accrual_date ? ` · next expected accrual ${future.next_expected_accrual_date}` : ""}
+                    </Typography>
+                  )}
+
+                  {!balanceManaged && leaveForm.is_paid_leave && (
+                    <Alert severity="info" variant="outlined">
+                      This leave type is not balance-managed. No balance deduction is planned.
+                    </Alert>
+                  )}
+
+                  {!leaveForm.is_paid_leave && (
                     <Alert severity="info" variant="outlined">
                       Unpaid leave does not deduct from paid entitlement balance. It still creates a leave record, can affect scheduling visibility, and may still require manager approval.
                     </Alert>
-                  ) : (
-                    <>
-                      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 1 }}>
-                        <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
-                          <Typography variant="caption" color="text.secondary">Current balance</Typography>
-                          <Typography variant="body2" fontWeight={800}>{formatBalanceHours(selectedBalance.balance_hours)}</Typography>
-                        </Box>
-                        <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
-                          <Typography variant="caption" color="text.secondary">Available on start</Typography>
-                          <Typography variant="body2" fontWeight={800}>
-                            {future ? formatBalanceHours(future.available_on_leave_start_hours) : "—"}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
-                          <Typography variant="caption" color="text.secondary">Projected after request</Typography>
-                          <Typography variant="body2" fontWeight={800}>
-                            {future ? formatBalanceHours(future.projected_remaining_hours) : "—"}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      {future?.waiting_period_blocking && (
-                        <Alert severity="warning" variant="outlined">{future.waiting_period_message}</Alert>
-                      )}
-                      {selectedBalance.policy_summary?.grant_method && (
-                        <Typography variant="caption" color="text.secondary">
-                          Policy: {selectedBalance.policy_summary.grant_method.replace(/_/g, " ")} · Payroll formulas are separate.
-                        </Typography>
-                      )}
-                    </>
+                  )}
+
+                  {shortageHours > 0 && (
+                    <Alert severity="warning" variant="outlined">
+                      Estimated shortage: {formatBalanceHours(shortageHours)}. You can still submit unless company policy blocks this during review.
+                    </Alert>
+                  )}
+
+                  {(future?.waiting_period_blocking || (future?.eligibility_date && !eligibleNow)) && (
+                    <Alert severity={eligibleOnStart ? "info" : "warning"} variant="outlined">
+                      {future?.waiting_period_message || `You become eligible on ${future.eligibility_date}.`}
+                    </Alert>
+                  )}
+
+                  {future?.eligibility_date && eligibleNow && (
+                    <Typography variant="caption" color="text.secondary">
+                      Eligibility date: {future.eligibility_date}
+                    </Typography>
+                  )}
+
+                  {selectedBalance.policy_summary?.grant_method && (
+                    <Typography variant="caption" color="text.secondary">
+                      Policy: {selectedBalance.policy_summary.grant_method.replace(/_/g, " ")} · Standard workday: {selectedBalance.policy_summary.workday_hours || 8}h · Payroll formulas are separate.
+                    </Typography>
                   )}
                 </Stack>
               </Paper>

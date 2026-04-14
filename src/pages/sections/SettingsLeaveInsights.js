@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -25,6 +26,112 @@ const readableReason = (code) =>
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 const safeArray = (value) => (Array.isArray(value) ? value : []);
+
+const formatDateRange = (row) => {
+  if (row?.date_range) return row.date_range;
+  const start = row?.start_date || row?.date;
+  const end = row?.end_date;
+  if (start && end && start !== end) return `${start} to ${end}`;
+  return start || end || "Date not set";
+};
+
+const formatTimeRange = (row) => {
+  if (row?.start_time && row?.end_time) return `${row.start_time}-${row.end_time}`;
+  return "";
+};
+
+const getActorName = (row = {}) =>
+  row.employee_name || row.employee || row.client_name || row.recruiter_name || "Unknown";
+
+const getActorKey = (row = {}) =>
+  row.employee_id || row.recruiter_id || row.client_id || row.employee_name || row.employee || row.client_name || "unknown";
+
+const getRowUnitCount = (row = {}) =>
+  Number(row.availability_count || row.availability_slots_count || row.slot_count || row.open_slot_count || 1);
+
+const pluralize = (count, singular, plural = `${singular}s`) =>
+  `${Number(count || 0)} ${Number(count || 0) === 1 ? singular : plural}`;
+
+const groupOperationRows = (rows, fallbackMeta = {}) => {
+  const groups = new Map();
+  safeArray(rows).forEach((row, idx) => {
+    const type = row.type || fallbackMeta.type || "operation";
+    const employeeKey = getActorKey(row);
+    const leaveKey = row.leave_id || row.request_id || row.linked_leave_id || "";
+    const dateKey = row.start_date || row.date || row.end_date || "";
+    const issueKey = row.reason_code || row.error_code || row.status || "";
+    const groupKey = ["availability_open", "blocked_availability", "booking_conflict"].includes(type)
+      ? `${type}|${employeeKey}|${leaveKey || dateKey}`
+      : ["pending_leave", "estimated_review", "ready_for_payroll"].includes(type)
+      ? `${type}|${employeeKey}|${leaveKey || dateKey || idx}`
+      : `${type}|${employeeKey}|${leaveKey || issueKey || dateKey || idx}`;
+    const existing = groups.get(groupKey);
+    const unitCount = getRowUnitCount(row);
+    if (existing) {
+      existing.rows.push(row);
+      existing.count += 1;
+      existing.unitCount += unitCount;
+      existing.dateLabels.add(formatDateRange(row));
+      if (row.leave_id) existing.leaveIds.add(row.leave_id);
+      return;
+    }
+    groups.set(groupKey, {
+      key: groupKey,
+      type,
+      label: row.label || fallbackMeta.label || "Operation item",
+      tone: row.tone || fallbackMeta.tone || "default",
+      target: row.target || fallbackMeta.target || "leave",
+      priority: Number(row.priority || fallbackMeta.priority || 99),
+      employeeName: getActorName(row),
+      representative: row,
+      rows: [row],
+      count: 1,
+      unitCount,
+      dateLabels: new Set([formatDateRange(row)]),
+      leaveIds: new Set(row.leave_id ? [row.leave_id] : []),
+    });
+  });
+
+  return Array.from(groups.values()).sort((a, b) => {
+    const priority = a.priority - b.priority;
+    if (priority !== 0) return priority;
+    return String(a.employeeName).localeCompare(String(b.employeeName));
+  });
+};
+
+const describeGroupedOperation = (group) => {
+  const leaveCount = group.leaveIds.size || (group.representative.leave_id ? 1 : 0);
+  if (group.type === "availability_open") {
+    const leaveText = leaveCount ? pluralize(leaveCount, "approved leave record") : "approved leave";
+    return `${leaveText} with ${pluralize(group.unitCount, "open availability slot")}.`;
+  }
+  if (group.type === "blocked_availability") {
+    return `${pluralize(group.unitCount, "blocked availability row")} kept for audit.`;
+  }
+  if (group.type === "booking_conflict") {
+    return `${pluralize(group.count, "booked appointment conflict")} must be resolved before approval.`;
+  }
+  if (group.type === "payroll_blocker") {
+    return `${pluralize(group.count, "payroll blocker")} before payroll close.`;
+  }
+  if (group.type === "pending_leave") {
+    return `${pluralize(group.count, "pending leave request")} needs manager decision.`;
+  }
+  if (group.type === "estimated_review") {
+    return `${pluralize(group.count, "estimated record")} needs confirmation.`;
+  }
+  if (group.type === "ready_for_payroll") {
+    return `${pluralize(group.count, "ready-for-payroll record")} in this range.`;
+  }
+  return group.representative.message || group.representative.leave_message || "Review this operation item.";
+};
+
+const formatGroupDateSummary = (group) => {
+  const dates = Array.from(group.dateLabels).filter(Boolean);
+  if (!dates.length) return "Date not set";
+  if (dates.length === 1) return dates[0];
+  return `${dates[0]} + ${dates.length - 1} more`;
+};
 
 const kpiCardSx = {
   height: "100%",
@@ -275,8 +382,8 @@ const TrendChart = ({ rows }) => {
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
         <Chip size="small" label="Pending" sx={readableChipSx("warning")} />
         <Chip size="small" label="Approved" sx={readableChipSx("info")} />
-        <Chip size="small" label="Payroll-ready" sx={readableChipSx("success")} />
-        <Chip size="small" label="Preview-only" sx={readableChipSx("purple")} />
+        <Chip size="small" label="Ready for payroll" sx={readableChipSx("success")} />
+        <Chip size="small" label="Estimated for review" sx={readableChipSx("purple")} />
         <Chip size="small" label="Cancelled" sx={readableChipSx("muted")} />
       </Stack>
     </Box>
@@ -406,6 +513,218 @@ const QueuePanel = ({ rows }) => (
   </Stack>
 );
 
+const GroupDetailRows = ({ rows }) => {
+  const visibleRows = safeArray(rows).slice(0, 8);
+  return (
+    <Stack spacing={0.75} sx={{ mt: 1 }}>
+      {visibleRows.map((row, idx) => (
+        <Box
+          key={`${row.availability_id || row.appointment_id || row.booking_id || row.leave_id || idx}`}
+          sx={{
+            p: 0.9,
+            borderRadius: 1.5,
+            bgcolor: "rgba(255, 255, 255, 0.76)",
+            border: "1px solid",
+            borderColor: "rgba(226, 232, 240, 0.9)",
+          }}
+        >
+          <Stack direction="row" justifyContent="space-between" spacing={1}>
+            <Typography variant="caption" fontWeight={850}>
+              {formatDateRange(row)}
+              {formatTimeRange(row) ? ` · ${formatTimeRange(row)}` : ""}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {row.availability_id ? `Availability #${row.availability_id}` : row.appointment_id ? `Booking #${row.appointment_id}` : row.leave_id ? `Leave #${row.leave_id}` : ""}
+            </Typography>
+          </Stack>
+          <Typography variant="caption" color="text.secondary" display="block">
+            {row.message || row.leave_message || row.service || readableReason(row.reason_code) || "Operational detail row."}
+          </Typography>
+        </Box>
+      ))}
+      {safeArray(rows).length > visibleRows.length && (
+        <Typography variant="caption" color="text.secondary">
+          {safeArray(rows).length - visibleRows.length} more row(s) are available on the linked management page.
+        </Typography>
+      )}
+    </Stack>
+  );
+};
+
+const OperationGroupCard = ({ group, expanded, onToggle, action }) => (
+  <Box
+    sx={{
+      p: 1.15,
+      borderRadius: 2,
+      border: "1px solid",
+      borderColor: group.tone === "danger" ? "error.light" : group.tone === "warning" ? "warning.light" : "divider",
+      bgcolor:
+        group.tone === "danger"
+          ? "rgba(220, 38, 38, 0.04)"
+          : group.tone === "warning"
+          ? "rgba(245, 158, 11, 0.055)"
+          : "rgba(248, 250, 252, 0.78)",
+    }}
+  >
+    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ xs: "stretch", sm: "flex-start" }}>
+      <Box sx={{ minWidth: 0 }}>
+        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap alignItems="center">
+          <Chip size="small" label={group.label} sx={readableChipSx(group.tone)} />
+          <Typography variant="subtitle2" fontWeight={900} noWrap>
+            {group.employeeName}
+          </Typography>
+          <Chip size="small" label={group.type.includes("availability") ? pluralize(group.unitCount, "slot") : pluralize(group.count, "item")} sx={readableChipSx("muted")} />
+        </Stack>
+        <Typography variant="caption" color="text.secondary">
+          {formatGroupDateSummary(group)}
+          {group.representative.leave_type ? ` · ${readableReason(group.representative.leave_type)}` : ""}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {describeGroupedOperation(group)}
+        </Typography>
+      </Box>
+      <Stack direction="row" spacing={0.75} alignItems="center" justifyContent={{ xs: "flex-start", sm: "flex-end" }} flexWrap="wrap" useFlexGap>
+        {group.rows.length > 1 && (
+          <Button size="small" variant="text" onClick={onToggle}>
+            {expanded ? "Hide rows" : "Show affected rows"}
+          </Button>
+        )}
+        {action?.onClick && (
+          <Button size="small" variant="outlined" onClick={action.onClick}>
+            {action.label}
+          </Button>
+        )}
+      </Stack>
+    </Stack>
+    {expanded && <GroupDetailRows rows={group.rows} />}
+  </Box>
+);
+
+const OperationShortcutCard = ({ title, count, help, rows, tone = "default", actionLabel, onAction, groupType }) => {
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const groups = useMemo(
+    () => groupOperationRows(rows, { type: groupType || title.toLowerCase().replace(/\s+/g, "_"), label: title, tone }).slice(0, 5),
+    [groupType, rows, title, tone]
+  );
+  const toggleGroup = (key) => setExpandedGroups((current) => ({ ...current, [key]: !current[key] }));
+
+  return (
+    <Card variant="outlined" sx={{ ...kpiCardSx, minHeight: 230 }}>
+      <CardContent>
+        <Stack spacing={1.4} sx={{ height: "100%" }}>
+          <Stack direction="row" spacing={1} alignItems="flex-start" justifyContent="space-between">
+            <Box>
+              <Typography variant="overline" sx={{ color: "text.secondary", letterSpacing: 1.1, fontWeight: 850 }}>
+                {title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {help}
+              </Typography>
+            </Box>
+            <Chip size="small" label={count || 0} sx={readableChipSx(tone)} />
+          </Stack>
+
+          <Stack spacing={1} sx={{ flex: 1 }}>
+            {!groups.length ? (
+              <EmptyState>No active rows for this signal in the selected range.</EmptyState>
+            ) : (
+              groups.map((group) => (
+                <OperationGroupCard
+                  key={group.key}
+                  group={group}
+                  expanded={Boolean(expandedGroups[group.key])}
+                  onToggle={() => toggleGroup(group.key)}
+                />
+              ))
+            )}
+          </Stack>
+
+          {actionLabel && onAction && (
+            <Button size="small" variant="outlined" onClick={onAction} sx={{ alignSelf: "flex-start" }}>
+              {actionLabel}
+            </Button>
+          )}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+};
+
+const OperationsSummaryStrip = ({ items, onOpenOperations }) => (
+  <SectionCard
+    title="Operations summary"
+    description="Compact action counts. Open Leave Operations for row-level review."
+  >
+    <Stack direction={{ xs: "column", lg: "row" }} spacing={1.2} alignItems={{ xs: "stretch", lg: "center" }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+          gap: 1,
+          flex: 1,
+        }}
+      >
+        {items.map((item) => (
+          <Box
+            key={item.key}
+            sx={{
+              p: 1.2,
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              bgcolor: "rgba(248, 250, 252, 0.72)",
+            }}
+          >
+            <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center">
+              <Typography variant="caption" color="text.secondary" fontWeight={850}>
+                {item.label}
+              </Typography>
+              <Chip size="small" label={item.value || 0} sx={readableChipSx(item.tone)} />
+            </Stack>
+          </Box>
+        ))}
+      </Box>
+      <Button variant="contained" onClick={onOpenOperations} sx={{ whiteSpace: "nowrap" }}>
+        Open Leave Operations
+      </Button>
+    </Stack>
+  </SectionCard>
+);
+
+const TopAttentionQueue = ({ rows, onLeaveRequests, onAvailability, onPayroll }) => {
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const data = useMemo(() => groupOperationRows(rows).slice(0, 8), [rows]);
+  if (!data.length) {
+    return (
+      <Alert severity="success" variant="outlined">
+        No high-priority leave operations in this selected range.
+      </Alert>
+    );
+  }
+  const actionFor = (row) => {
+    if (row.target === "availability") return { label: "Review availability", onClick: onAvailability };
+    if (row.target === "payroll") return { label: "Open payroll", onClick: onPayroll };
+    return { label: "Open leave requests", onClick: onLeaveRequests };
+  };
+  const toggleGroup = (key) => setExpandedGroups((current) => ({ ...current, [key]: !current[key] }));
+  return (
+    <Stack spacing={1}>
+      {data.map((group) => {
+        const action = actionFor(group);
+        return (
+          <OperationGroupCard
+            key={group.key}
+            group={group}
+            expanded={Boolean(expandedGroups[group.key])}
+            onToggle={() => toggleGroup(group.key)}
+            action={action}
+          />
+        );
+      })}
+    </Stack>
+  );
+};
+
 const RiskSummaryPanel = ({ rows }) => (
   <Stack spacing={1.2}>
     {rows.map((row) => (
@@ -467,7 +786,8 @@ const LeaveTypeDistribution = ({ attention, blockers }) => {
   );
 };
 
-const SettingsLeaveInsights = () => {
+const SettingsLeaveInsights = ({ mode = "insights", onOpenOperations }) => {
+  const navigate = useNavigate();
   const [from, setFrom] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [to, setTo] = useState(dayjs().format("YYYY-MM-DD"));
   const [group, setGroup] = useState("day");
@@ -576,12 +896,73 @@ const SettingsLeaveInsights = () => {
   const departmentsBreakdown = safeArray(leaveReadiness?.department_breakdown);
   const attention = safeArray(leaveReadiness?.employee_attention);
   const blockers = safeArray(leaveReadiness?.blockers);
+  const pendingLeaveRows = safeArray(leaveReadiness?.pending_leave);
+  const readyForPayrollRows = safeArray(leaveReadiness?.ready_for_payroll);
+  const estimatedReviewRows = safeArray(leaveReadiness?.estimated_review);
+  const availabilityStillOpenRows = safeArray(leaveReadiness?.availability_still_open);
+  const bookingConflictRows = safeArray(leaveReadiness?.booking_conflicts);
+  const blockedAvailabilityRows = safeArray(leaveReadiness?.blocked_availability);
+
+  const openLeaveRequests = () => navigate("/manager/leaves");
+  const openAvailabilityManagement = () => navigate("/manager/employee-availability");
+  const openPayrollPreview = () => navigate("/manager/payroll");
+  const openOperations = onOpenOperations || (() => {});
+  const topAttentionRows = useMemo(() => {
+    const decorate = (rows, meta) => safeArray(rows).map((row) => ({ ...row, ...meta }));
+    return [
+      ...decorate(bookingConflictRows, {
+        type: "booking_conflict",
+        label: "Booked appointment conflict",
+        tone: "danger",
+        priority: 1,
+        target: "leave",
+      }),
+      ...decorate(blockers, {
+        type: "payroll_blocker",
+        label: "Payroll blocker",
+        tone: "danger",
+        priority: 2,
+        target: "payroll",
+      }),
+      ...decorate(availabilityStillOpenRows, {
+        type: "availability_open",
+        label: "Availability still open",
+        tone: "warning",
+        priority: 4,
+        target: "availability",
+      }),
+      ...decorate(blockedAvailabilityRows, {
+        type: "blocked_availability",
+        label: "Blocked availability",
+        tone: "warning",
+        priority: 5,
+        target: "availability",
+      }),
+      ...decorate(pendingLeaveRows, {
+        type: "pending_leave",
+        label: "Pending leave",
+        tone: "warning",
+        priority: 3,
+        target: "leave",
+      }),
+    ].sort((a, b) => {
+      const priority = Number(a.priority || 99) - Number(b.priority || 99);
+      if (priority !== 0) return priority;
+      return String(a.start_date || a.date || "").localeCompare(String(b.start_date || b.date || ""));
+    });
+  }, [
+    availabilityStillOpenRows,
+    blockedAvailabilityRows,
+    blockers,
+    bookingConflictRows,
+    pendingLeaveRows,
+  ]);
 
   const readinessItems = [
     { key: "pending", label: "Pending", value: summary.pending_leave_requests || 0, color: palette.pending },
     { key: "approved", label: "Approved", value: summary.approved_leave_requests || 0, color: palette.approved },
-    { key: "ready", label: "Payroll-ready", value: summary.payroll_ready_leave_requests || 0, color: palette.payrollReady },
-    { key: "preview", label: "Preview-only / estimated", value: summary.preview_only_estimated_leave_requests || 0, color: palette.previewOnly },
+    { key: "ready", label: "Ready for payroll", value: summary.payroll_ready_leave_requests || 0, color: palette.payrollReady },
+    { key: "preview", label: "Estimated for review", value: summary.preview_only_estimated_leave_requests || 0, color: palette.previewOnly },
     { key: "blocked", label: "Blockers", value: summary.leave_blockers_count || 0, color: palette.blocked },
     { key: "cancelled", label: "Cancelled", value: summary.cancelled_leave_count || 0, color: palette.cancelled },
   ];
@@ -604,7 +985,7 @@ const SettingsLeaveInsights = () => {
     },
     {
       key: "preview",
-      label: "Preview-only / estimated",
+      label: "Estimated for review",
       value: summary.preview_only_estimated_leave_requests || 0,
       help: "Records visible for review, not finalized payroll truth.",
       tone: "purple",
@@ -621,6 +1002,38 @@ const SettingsLeaveInsights = () => {
       label: "Finalization blockers",
       value: summary.leave_blockers_count || 0,
       help: "Worked-time overlap or other blockers before payroll close.",
+      tone: "danger",
+    },
+  ];
+  const operationSummaryItems = [
+    {
+      key: "pending",
+      label: "Pending actions",
+      value: summary.pending_leave_requests || 0,
+      tone: "warning",
+    },
+    {
+      key: "booking",
+      label: "Booking conflicts",
+      value: summary.booking_conflict_count || 0,
+      tone: "danger",
+    },
+    {
+      key: "availability",
+      label: "Availability exceptions",
+      value: summary.availability_still_open_count || 0,
+      tone: "warning",
+    },
+    {
+      key: "blocked_availability",
+      label: "Blocked availability",
+      value: summary.blocked_availability_count || 0,
+      tone: "info",
+    },
+    {
+      key: "payroll",
+      label: "Payroll blockers",
+      value: summary.leave_blockers_count || 0,
       tone: "danger",
     },
   ];
@@ -651,20 +1064,24 @@ const SettingsLeaveInsights = () => {
     },
     {
       key: "preview",
-      label: "Preview-only review",
+      label: "Estimated review",
       value: reasonCount("preview_only"),
       percent: (reasonCount("preview_only") / totalActiveSignals) * 100,
       color: palette.approved,
-      help: "Preview-only rows are attention signals, not finalized inputs.",
+      help: "Estimated rows are attention signals, not finalized inputs.",
     },
   ];
 
   return (
     <Stack spacing={2.5}>
       <Box>
-        <Typography variant="h5" fontWeight={900}>Leave Insights</Typography>
+        <Typography variant="h5" fontWeight={900}>
+          {mode === "operations" ? "Leave Operations" : "Leave Insights"}
+        </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Visual view of leave readiness, payroll-prep signals, blockers, and team attention areas.
+          {mode === "operations"
+            ? "Action queues for leave exceptions, booking conflicts, availability cleanup, and payroll-ready review."
+            : "Analytics-first view of leave readiness, payroll-prep signals, blockers, and team attention areas."}
         </Typography>
       </Box>
 
@@ -747,8 +1164,127 @@ const SettingsLeaveInsights = () => {
       </SectionCard>
 
       <Alert severity="info">
-        This is an operational insight view. Finalized payroll still uses only payroll-ready leave and the existing payroll rules; preview-only and estimated items are shown for manager review, not as finalized payroll truth.
+        {mode === "operations"
+          ? "Use this workspace to clear manager actions and exceptions. Finalized payroll still uses the existing payroll rules and payroll-ready leave inputs."
+          : "This is an analytics view. Finalized payroll still uses only payroll-ready leave and the existing payroll rules; estimated items are shown for manager review, not as finalized payroll truth."}
       </Alert>
+
+      {mode === "operations" ? (
+        <>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} lg={2}>
+              <KpiCard label="Pending leave" value={summary.pending_leave_requests || 0} help="Needs decision" tone="warning" />
+            </Grid>
+            <Grid item xs={12} sm={6} lg={2}>
+              <KpiCard label="Ready for payroll" value={summary.payroll_ready_leave_requests || 0} help="Confirmed hours" tone="success" />
+            </Grid>
+            <Grid item xs={12} sm={6} lg={2}>
+              <KpiCard label="Estimated review" value={summary.preview_only_estimated_leave_requests || 0} help="Needs confirmation" tone="purple" />
+            </Grid>
+            <Grid item xs={12} sm={6} lg={2}>
+              <KpiCard label="Availability open" value={summary.availability_still_open_count || 0} help="Review slots" tone="warning" />
+            </Grid>
+            <Grid item xs={12} sm={6} lg={2}>
+              <KpiCard label="Booking conflicts" value={summary.booking_conflict_count || 0} help="Hard stop" tone="danger" />
+            </Grid>
+            <Grid item xs={12} sm={6} lg={2}>
+              <KpiCard label="Blocked rows" value={summary.blocked_availability_count || 0} help="Availability" tone="info" />
+            </Grid>
+          </Grid>
+
+          <SectionCard
+            title="Top attention queue"
+            description="Highest-risk items appear first: booking conflicts, payroll blockers, availability exceptions, then pending review."
+          >
+            <TopAttentionQueue
+              rows={topAttentionRows}
+              onLeaveRequests={openLeaveRequests}
+              onAvailability={openAvailabilityManagement}
+              onPayroll={openPayrollPreview}
+            />
+          </SectionCard>
+
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6} xl={4}>
+              <OperationShortcutCard
+                title="Pending leave"
+                count={summary.pending_leave_requests || 0}
+                help="Requests waiting for manager decision."
+                rows={pendingLeaveRows}
+                tone="warning"
+                groupType="pending_leave"
+                actionLabel="Open leave requests"
+                onAction={openLeaveRequests}
+              />
+            </Grid>
+            <Grid item xs={12} md={6} xl={4}>
+              <OperationShortcutCard
+                title="Ready for payroll"
+                count={summary.payroll_ready_leave_requests || 0}
+                help="Approved payroll-ready hours in this range."
+                rows={readyForPayrollRows}
+                tone="success"
+                groupType="ready_for_payroll"
+                actionLabel="Open payroll"
+                onAction={openPayrollPreview}
+              />
+            </Grid>
+            <Grid item xs={12} md={6} xl={4}>
+              <OperationShortcutCard
+                title="Estimated for review"
+                count={summary.preview_only_estimated_leave_requests || 0}
+                help="Leave records where hours or readiness should be confirmed."
+                rows={estimatedReviewRows}
+                tone="purple"
+                groupType="estimated_review"
+                actionLabel="Open leave requests"
+                onAction={openLeaveRequests}
+              />
+            </Grid>
+            <Grid item xs={12} md={6} xl={4}>
+              <OperationShortcutCard
+                title="Availability still open"
+                count={summary.availability_still_open_count || 0}
+                help="Approved leave with availability slots still present."
+                rows={availabilityStillOpenRows}
+                tone="warning"
+                groupType="availability_open"
+                actionLabel="Review availability"
+                onAction={openAvailabilityManagement}
+              />
+            </Grid>
+            <Grid item xs={12} md={6} xl={4}>
+              <OperationShortcutCard
+                title="Booked appointment conflicts"
+                count={summary.booking_conflict_count || 0}
+                help="Pending leave that cannot be approved until bookings are resolved."
+                rows={bookingConflictRows}
+                tone="danger"
+                groupType="booking_conflict"
+                actionLabel="Open leave requests"
+                onAction={openLeaveRequests}
+              />
+            </Grid>
+            <Grid item xs={12} md={6} xl={4}>
+              <OperationShortcutCard
+                title="Blocked availability rows"
+                count={summary.blocked_availability_count || 0}
+                help="Availability rows kept for audit but blocked by approved leave."
+                rows={blockedAvailabilityRows}
+                tone="info"
+                groupType="blocked_availability"
+                actionLabel="Review availability"
+                onAction={openAvailabilityManagement}
+              />
+            </Grid>
+          </Grid>
+        </>
+      ) : (
+        <OperationsSummaryStrip items={operationSummaryItems} onOpenOperations={openOperations} />
+      )}
+
+      {mode === "operations" ? null : (
+      <>
 
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6} lg={3}>
@@ -758,13 +1294,13 @@ const SettingsLeaveInsights = () => {
           <KpiCard label="Approved Leave" value={summary.approved_leave_requests || 0} help="Approved in selected range" tone="info" />
         </Grid>
         <Grid item xs={12} sm={6} lg={3}>
-          <KpiCard label="Payroll-Ready" value={summary.payroll_ready_leave_requests || 0} help="Confirmed for payroll input" tone="success" />
+          <KpiCard label="Ready for payroll" value={summary.payroll_ready_leave_requests || 0} help="Confirmed for payroll input" tone="success" />
         </Grid>
         <Grid item xs={12} sm={6} lg={3}>
-          <KpiCard label="Preview-Only / Estimated" value={summary.preview_only_estimated_leave_requests || 0} help="Review signal, not finalized truth" tone="purple" />
+          <KpiCard label="Estimated for review" value={summary.preview_only_estimated_leave_requests || 0} help="Review signal, not finalized truth" tone="purple" />
         </Grid>
         <Grid item xs={12} sm={6} lg={3}>
-          <KpiCard label="Paid Leave Hours" value={fmtHours(summary.paid_leave_hours)} help="Payroll-ready visibility depends on approval state" tone="success" />
+          <KpiCard label="Paid Leave Hours" value={fmtHours(summary.paid_leave_hours)} help="Ready-for-payroll visibility depends on approval state" tone="success" />
         </Grid>
         <Grid item xs={12} sm={6} lg={3}>
           <KpiCard label="Unpaid Leave Hours" value={fmtHours(summary.unpaid_leave_hours)} help="Tracked separately from paid leave" tone="muted" />
@@ -805,7 +1341,7 @@ const SettingsLeaveInsights = () => {
 
       <Grid container spacing={2}>
         <Grid item xs={12} lg={4}>
-          <SectionCard title="Payroll-readiness queue" description="Operational queues managers should clear before payroll close.">
+          <SectionCard title="Readiness pressure summary" description="Aggregate signals that show where manager review pressure is concentrated.">
             <QueuePanel rows={queueRows} />
           </SectionCard>
         </Grid>
@@ -859,8 +1395,8 @@ const SettingsLeaveInsights = () => {
           <SectionCard title="Operational guidance" description="How to read this dashboard without confusing it with finalized payroll output.">
             <Stack spacing={1.25}>
               {[
-                ["Payroll-ready", "Only payroll-ready leave is intended to flow into finalized payroll input.", "success"],
-                ["Preview-only", "Preview-only and estimated leave are review signals. Resolve them before payroll close when they affect pay.", "warning"],
+                ["Ready for payroll", "Only ready-for-payroll leave is intended to flow into finalized payroll input.", "success"],
+                ["Estimated for review", "Estimated leave rows are review signals. Resolve them before payroll close when they affect pay.", "warning"],
                 ["Blockers", "Worked-time overlaps and finalization blockers need operational cleanup before payroll can be finalized safely.", "error"],
                 ["Balances", "Balances, attachments, and saved accrual policies support HR operations. They do not change payroll formulas.", "info"],
               ].map(([title, body, severity]) => (
@@ -873,6 +1409,8 @@ const SettingsLeaveInsights = () => {
           </SectionCard>
         </Grid>
       </Grid>
+      </>
+      )}
     </Stack>
   );
 };

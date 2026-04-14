@@ -1539,18 +1539,18 @@ const handleRecalculate = () => {
               />
             </Stack>
             <Typography variant="body2" color="text.secondary">
-              Payroll-ready leave has manager-confirmed hours. Preview-only or estimated leave is shown for review and warnings, but it is not used as finalized payroll truth.
+              Ready-for-payroll leave has manager-confirmed hours. Estimated leave is shown for review and warnings, but it is not used as finalized payroll truth.
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Chip
                 size="small"
                 variant="outlined"
-                label={`Payroll-ready leave: ${leaveVisibility.payrollReadyLeaveCount}`}
+                label={`Ready for payroll: ${leaveVisibility.payrollReadyLeaveCount}`}
               />
               <Chip
                 size="small"
                 variant="outlined"
-                label={`Preview-only leave: ${leaveVisibility.previewOnlyLeaveCount}`}
+                label={`Estimated for review: ${leaveVisibility.previewOnlyLeaveCount}`}
               />
               <Chip
                 size="small"

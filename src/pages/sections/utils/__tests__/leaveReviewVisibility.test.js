@@ -11,7 +11,7 @@ describe("leave review visibility", () => {
 
     expect(meta.payShortLabel).toBe("Paid PTO");
     expect(meta.payrollReady).toBe(true);
-    expect(meta.payrollLabel).toBe("Payroll-ready");
+    expect(meta.payrollLabel).toBe("Ready for payroll");
     expect(meta.computedHours).toBe(6);
     expect(meta.actionNeeded).toBe(false);
   });

@@ -1405,11 +1405,11 @@ const ClientsTab = (
                         <Chip size="small" label={`Pending ${row.pending || 0}`} />
                         <Chip
                           size="small"
-                          label={`Payroll-ready ${row.payroll_ready || 0}`}
+                          label={`Ready for payroll ${row.payroll_ready || 0}`}
                         />
                         <Chip
                           size="small"
-                          label={`Preview-only ${row.preview_only || 0}`}
+                          label={`Estimated for review ${row.preview_only || 0}`}
                         />
                         <Chip
                           size="small"
@@ -1519,11 +1519,11 @@ const ClientsTab = (
                         />
                         <Chip
                           size="small"
-                          label={`Payroll-ready ${row.payroll_ready || 0}`}
+                          label={`Ready for payroll ${row.payroll_ready || 0}`}
                         />
                         <Chip
                           size="small"
-                          label={`Preview-only ${row.preview_only || 0}`}
+                          label={`Estimated for review ${row.preview_only || 0}`}
                         />
                       </Stack>
                     </Box>

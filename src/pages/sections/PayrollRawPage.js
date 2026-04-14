@@ -179,7 +179,7 @@ export default function PayrollRawPage() {
       </Typography>
       {!showFinalizedOnly && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          Raw preview ledger only. Preview-only or estimated leave may appear for review, but it is not finalized paystub truth.
+          Raw preview ledger only. Estimated leave may appear for review, but it is not finalized paystub truth.
         </Alert>
       )}
       {errorMessage && (

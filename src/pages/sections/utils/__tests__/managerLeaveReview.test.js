@@ -83,6 +83,12 @@ describe("manager leave review helpers", () => {
       action: "cancel",
       cancel_reason: "Employee returned early",
     });
+    expect(buildManagerLeaveCancelPayload({ id: 5 }, "Employee returned early", { restore_linked_shift: true })).toEqual({
+      request_id: 5,
+      action: "cancel",
+      cancel_reason: "Employee returned early",
+      restore_linked_shift: true,
+    });
   });
 
   it("builds leave list query params from active filters only", () => {

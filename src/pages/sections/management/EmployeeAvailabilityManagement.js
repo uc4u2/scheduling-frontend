@@ -20,12 +20,18 @@ import {
   Divider,
   Snackbar,
   Chip,
+  Tooltip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import api from "../../../utils/api";
 import { pad } from "../../../utils/datetime";
 import { DateTime } from "luxon";
 import { useNavigate } from "react-router-dom";
+import {
+  filterAvailabilityRows,
+  formatAvailabilityLeaveTooltip,
+  isAvailabilityBlockedByLeave,
+} from "./utils/availabilityRows";
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SHIFT_LOOKAHEAD_DAYS = 21;
 const availabilityConflictMessage = (err, fallback) => {
@@ -34,6 +40,11 @@ const availabilityConflictMessage = (err, fallback) => {
     return data.message || "This employee has approved time off during the selected availability window. Adjust the availability window or review the leave record first.";
   }
   return data.error || data.message || fallback;
+};
+
+const availabilityConflictPayload = (err) => {
+  const data = err?.response?.data || {};
+  return data.error_code === "availability_overlaps_approved_leave" ? data : null;
 };
 
 const EmployeeAvailabilityManagement = ({ token }) => {
@@ -59,6 +70,7 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const [tab, setTab] = useState(0);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [availabilityConflict, setAvailabilityConflict] = useState(null);
 
   /* ─────────────────────────────── Daily‑window state ─────────────────────────── */
   const [wDayFrom, setWDayFrom] = useState("");
@@ -95,6 +107,7 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const [slotDate, setSlotDate] = useState("");
   const [slotStartTime, setSlotStartTime] = useState("");
   const [serviceSlots, setServiceSlots] = useState([]);
+  const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [loadingServiceSlots, setLoadingServiceSlots] = useState(false);
   const [assignedShifts, setAssignedShifts] = useState([]);
   const [loadingShifts, setLoadingShifts] = useState(false);
@@ -115,6 +128,7 @@ const EmployeeAvailabilityManagement = ({ token }) => {
   const resetAlerts = () => {
     setError("");
     setSuccessMessage("");
+    setAvailabilityConflict(null);
   };
 
   useEffect(() => {
@@ -290,7 +304,7 @@ const loadServiceSlots = useCallback(() => {
     })
     .then((r) => {
       const slots = r.data || [];
-      setServiceSlots(slots.filter((slot) => slot.service_id || slot.serviceId));
+      setServiceSlots(slots);
     })
     .catch(() => setServiceSlots([]))
     .finally(() => setLoadingServiceSlots(false));
@@ -325,6 +339,15 @@ useEffect(() => {
     const booked = Number(slot.booked_count || (slot.booked ? 1 : 0));
     return Math.max(0, capacity - booked);
   };
+
+  const filteredServiceSlots = useMemo(() => {
+    return filterAvailabilityRows(serviceSlots, availabilityFilter);
+  }, [serviceSlots, availabilityFilter]);
+
+  const blockedServiceSlotCount = useMemo(
+    () => filterAvailabilityRows(serviceSlots, "blocked").length,
+    [serviceSlots]
+  );
 
   const handleDepartmentChange = (e) => {
     setSelectedDepartment(e.target.value);
@@ -421,6 +444,7 @@ useEffect(() => {
       }
       setSuccessMessage(`Shift window saved for ${dates.length} day(s)!`);
     } catch (err) {
+      setAvailabilityConflict(availabilityConflictPayload(err));
       setError(availabilityConflictMessage(err, "Save failed."));
     } finally {
       setLoading(false);
@@ -453,6 +477,7 @@ useEffect(() => {
       );
       setSuccessMessage("Recurring pattern saved!");
     } catch (err) {
+      setAvailabilityConflict(availabilityConflictPayload(err));
       setError(availabilityConflictMessage(err, "Failed to set availability."));
     } finally {
       setLoading(false);
@@ -478,6 +503,7 @@ useEffect(() => {
       );
       setSuccessMessage("Service slot added successfully!");
     } catch (err) {
+      setAvailabilityConflict(availabilityConflictPayload(err));
       setError(availabilityConflictMessage(err, "Failed to add service slot."));
     } finally {
       setLoading(false);
@@ -499,7 +525,18 @@ useEffect(() => {
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+          <Stack spacing={0.75}>
+            <Typography variant="body2">{error}</Typography>
+            {availabilityConflict?.leave_conflicts?.length > 0 && (
+              <Stack spacing={0.5}>
+                {availabilityConflict.leave_conflicts.slice(0, 4).map((conflict, index) => (
+                  <Typography key={`${conflict.leave_id || "leave"}-${index}`} variant="caption">
+                    Leave #{conflict.leave_id || "—"} · {conflict.leave_type || "leave"} · {conflict.leave_status || "approved"} · {Number(conflict.overlap_minutes || 0).toFixed(0)} min overlap
+                  </Typography>
+                ))}
+              </Stack>
+            )}
+          </Stack>
         </Alert>
       )}
       {successMessage && (
@@ -955,8 +992,32 @@ useEffect(() => {
           <Grid item xs={12}>
             <Divider sx={{ my: 1 }} />
             <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
-              Service slots
+              Availability rows
             </Typography>
+            <Alert severity="info" variant="outlined" sx={{ mb: 1.5 }}>
+              Blocked rows are kept for audit but should not be treated as usable availability.
+            </Alert>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }} sx={{ mb: 1.5 }}>
+              <TextField
+                select
+                size="small"
+                label="Availability view"
+                value={availabilityFilter}
+                onChange={(event) => setAvailabilityFilter(event.target.value)}
+                sx={{ minWidth: 190 }}
+              >
+                <MenuItem value="all">All availability</MenuItem>
+                <MenuItem value="blocked">Blocked by leave</MenuItem>
+                <MenuItem value="available">Available only</MenuItem>
+              </TextField>
+              <Chip
+                size="small"
+                variant="outlined"
+                color={blockedServiceSlotCount ? "warning" : "default"}
+                label={`${blockedServiceSlotCount} blocked by approved leave`}
+                sx={{ alignSelf: { xs: "flex-start", sm: "center" }, fontWeight: 700 }}
+              />
+            </Stack>
             {loadingServiceSlots ? (
               <Stack direction="row" spacing={1} alignItems="center">
                 <CircularProgress size={18} />
@@ -966,17 +1027,23 @@ useEffect(() => {
               </Stack>
             ) : serviceSlots.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                No service slots yet.
+                No availability rows yet.
+              </Typography>
+            ) : filteredServiceSlots.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                No availability rows match this filter.
               </Typography>
             ) : (
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Stack spacing={1}>
-                  {serviceSlots.map((slot) => {
+                  {filteredServiceSlots.map((slot) => {
                     const slotServiceId = slot.service_id || slot.serviceId;
-                    const serviceName = serviceNameById.get(String(slotServiceId)) || "Service";
+                    const serviceName = serviceNameById.get(String(slotServiceId)) || slot.service || "General availability";
                     const modeLabel = slot.mode === "group" ? "Group" : "1:1";
                     const capacity = Number(slot.capacity || 1);
                     const seatsLeft = resolveSeatsLeft(slot);
+                    const blockedByLeave = isAvailabilityBlockedByLeave(slot);
+                    const blockedTitle = formatAvailabilityLeaveTooltip(slot);
                     return (
                       <Box
                         key={`${slot.date}-${slot.start_time}-${slotServiceId}-${slot.id || ""}`}
@@ -985,6 +1052,11 @@ useEffect(() => {
                           gridTemplateColumns: "1.3fr 1.2fr 0.8fr 0.7fr 0.8fr",
                           gap: 1,
                           alignItems: "center",
+                          p: blockedByLeave ? 1 : 0,
+                          borderRadius: 2,
+                          border: blockedByLeave ? "1px solid" : "none",
+                          borderColor: blockedByLeave ? "warning.light" : "transparent",
+                          bgcolor: blockedByLeave ? "rgba(245, 158, 11, 0.08)" : "transparent",
                         }}
                       >
                         <Typography variant="body2">
@@ -992,14 +1064,26 @@ useEffect(() => {
                         </Typography>
                         <Stack spacing={0.5}>
                           <Typography variant="body2">{serviceName}</Typography>
-                          {slot.blocked_by_leave && (
-                            <Chip
-                              size="small"
-                              color="warning"
-                              variant="outlined"
-                              label={slot.leave_type ? `Blocked by ${slot.leave_type} leave` : "Blocked by approved leave"}
-                              sx={{ alignSelf: "flex-start", fontWeight: 700 }}
-                            />
+                          {blockedByLeave && (
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                              <Tooltip title={blockedTitle || "Blocked by approved leave"}>
+                                <Chip
+                                  size="small"
+                                  color="warning"
+                                  variant="outlined"
+                                  label="Blocked by approved leave"
+                                  sx={{ alignSelf: "flex-start", fontWeight: 700 }}
+                                />
+                              </Tooltip>
+                              {slot.leave_type && (
+                                <Chip
+                                  size="small"
+                                  variant="outlined"
+                                  label={`${slot.leave_type} leave`}
+                                  sx={{ alignSelf: "flex-start", fontWeight: 700 }}
+                                />
+                              )}
+                            </Stack>
                           )}
                         </Stack>
                         <Typography variant="body2">{modeLabel}</Typography>

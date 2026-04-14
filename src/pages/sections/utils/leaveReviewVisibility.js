@@ -19,7 +19,7 @@ export const formatLeaveWarningReason = (code) => {
   if (code === "approved_leave_overlaps_worked_time" || code === "payroll_leave_worked_time_overlap") {
     return "Leave overlaps worked time";
   }
-  if (code === "non_payroll_ready_leave") return "Not payroll-ready";
+  if (code === "non_payroll_ready_leave") return "Not ready for payroll";
   if (code === "estimated_leave_hours") return "Estimated hours";
   if (code === "leave_not_approved") return "Not approved";
   if (code === "unpaid_leave_visibility") return "Unpaid leave visibility";
@@ -65,7 +65,7 @@ export const getLeaveReviewVisibility = (record = {}) => {
     warningCodes,
     hasWorkedOverlap,
     actionNeeded,
-    payrollLabel: payrollReady ? "Payroll-ready" : "Preview-only",
+    payrollLabel: payrollReady ? "Ready for payroll" : "Estimated for review",
     payrollColor: payrollReady ? "success" : "warning",
   };
 };

@@ -42,7 +42,7 @@ export const canManagerCancelLeave = (leave = {}) => {
   return status === "pending" || status === "approved";
 };
 
-export const buildManagerLeaveCancelPayload = (leave = {}, reason = "") => {
+export const buildManagerLeaveCancelPayload = (leave = {}, reason = "", options = {}) => {
   const cleanedReason = String(reason || "").trim();
   if (!cleanedReason) {
     return { error: "Cancellation reason is required." };
@@ -51,6 +51,7 @@ export const buildManagerLeaveCancelPayload = (leave = {}, reason = "") => {
     request_id: leave.id || leave.leave_id,
     action: "cancel",
     cancel_reason: cleanedReason,
+    ...(options.restore_linked_shift ? { restore_linked_shift: true } : {}),
   };
 };
 

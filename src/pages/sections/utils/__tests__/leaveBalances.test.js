@@ -12,7 +12,7 @@ describe("leave balance helpers", () => {
       payroll_truth: false,
       source: "manual_ledger",
       balances: [
-        { leave_type: "sick", balance_hours: 6 },
+        { leave_type: "sick", balance_hours: 6, balance_managed: true },
         { leave_type: "unpaid", balance_hours: 99 },
       ],
       ledger: [
@@ -25,6 +25,7 @@ describe("leave balance helpers", () => {
     expect(summary.payroll_truth).toBe(false);
     expect(summary.source).toBe("manual_ledger");
     expect(summary.balances.find((row) => row.leave_type === "sick").balance_hours).toBe(6);
+    expect(summary.balances.find((row) => row.leave_type === "sick").balance_managed).toBe(true);
     expect(summary.balances.find((row) => row.leave_type === "compassionate").balance_hours).toBe(0);
     expect(summary.balances.some((row) => row.leave_type === "unpaid")).toBe(false);
     expect(summary.ledger).toHaveLength(1);
