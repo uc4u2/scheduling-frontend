@@ -2991,6 +2991,34 @@ const SettingsLeaveSettings = () => {
               Balance and accrual policy settings do not change payroll calculations.
             </Typography>
           </HelpSection>
+
+          <Divider />
+
+          <HelpSection title="Bookings and availability guardrails" status="Operational safety" statusColor="success">
+            <Typography variant="body2">
+              Active client bookings are protected before approval. If an employee has a booked appointment during the requested leave window, the manager must cancel, reschedule, or reassign that booking before approving leave.
+            </Typography>
+            <Typography variant="body2">
+              Availability is handled differently. If availability already exists when leave is approved, approval can still succeed, but managers see a warning so they can review those slots.
+            </Typography>
+            <Typography variant="body2">
+              After leave is approved, managers cannot create or move availability into that approved leave window. Existing availability is kept for audit and shown as blocked by approved leave.
+            </Typography>
+          </HelpSection>
+
+          <Divider />
+
+          <HelpSection title="Shift-side time off and calendar visibility" status="Manager shortcut" statusColor="primary">
+            <Typography variant="body2">
+              Managers can mark a scheduled shift as time off from the Edit Shift modal. This creates an approved leave record through the same leave pipeline and removes the shift from active scheduling.
+            </Typography>
+            <Typography variant="body2">
+              Delete shift only remains scheduling-only. It does not create leave, deduct balances, or create payroll-ready leave hours.
+            </Typography>
+            <Typography variant="body2">
+              When Show time off on calendar is enabled, approved schedule-context time off appears as a distinct non-work item. Clicking it opens a read-only leave detail view instead of the editable shift modal.
+            </Typography>
+          </HelpSection>
         </Stack>
       </Drawer>
       <Drawer
@@ -3025,6 +3053,34 @@ const SettingsLeaveSettings = () => {
             </Typography>
             <Typography variant="body2">
               Payroll remains separate: these settings affect leave balances and manager decisions, not payroll formulas.
+            </Typography>
+          </HelpSection>
+
+          <Divider />
+
+          <HelpSection title="How leave interacts with bookings and availability" status="Manager workflow" statusColor="success">
+            <Typography variant="body2">
+              A booked client appointment is the strongest conflict. If an employee is booked with a client, leave approval is blocked until the booking is cancelled, rescheduled, or reassigned.
+            </Typography>
+            <Typography variant="body2">
+              Availability slots are softer operational intent. Existing availability during approved leave stays visible and is flagged for the manager, but it is not deleted automatically.
+            </Typography>
+            <Typography variant="body2">
+              Once leave is approved, new manager-created availability over that leave is blocked. This prevents blind availability from being published over known time off.
+            </Typography>
+          </HelpSection>
+
+          <Divider />
+
+          <HelpSection title="Small-team shortcut from shifts" status="SMB-friendly" statusColor="primary">
+            <Typography variant="body2">
+              For simple teams, managers can use Edit Shift to mark a scheduled shift as time off instead of asking the employee to submit a request first.
+            </Typography>
+            <Typography variant="body2">
+              This still creates a real approved leave record underneath, so reports, payroll readiness, balances, warnings, and calendar visibility stay connected to the same source of truth.
+            </Typography>
+            <Typography variant="body2">
+              If the manager only wants to remove schedule coverage without recording time off, use Delete shift only.
             </Typography>
           </HelpSection>
 
