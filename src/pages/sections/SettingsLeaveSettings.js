@@ -95,6 +95,41 @@ const deductOnLabels = {
   approval: "On approval",
 };
 
+const leaveAllowanceFieldHelp = {
+  paidEntitlement: "Turn this on only when the company gives this leave type as paid time off. If it is off, managers can still review requests manually, but no company allowance is configured here.",
+  allowanceAmount: "The company allowance for this leave type. Example: enter 5 with Unit = Days for 5 paid sick days, or 40 with Unit = Hours for 40 hours.",
+  allowanceUnit: "Choose whether the allowance is entered in days or hours. The backend always tracks hours, so days are converted using Standard workday hours.",
+  workdayHours: "The standard number of hours in one workday for this policy. Used only to convert day-based allowances into hours.",
+  grantMethod: "How the company gives this allowance. Opening balance is for setup, annual front-load is a yearly grant, and monthly/biweekly accrual means employees earn time over time.",
+  policyYearBasis: "Defines the policy period. Calendar year starts Jan 1, company policy year uses your chosen month/day, and anniversary year follows each employee's hire anniversary.",
+  policyYearStartMonth: "For company policy year only. This is the month when the company's leave year starts.",
+  policyYearStartDay: "For company policy year only. This is the day of the month when the company's leave year starts.",
+  startBasis: "Usually employee hire date. Use a custom effective date only when this policy should start from a specific company-defined date instead.",
+  customEffectiveDate: "The date this policy starts when Start basis is custom effective date.",
+  waitingPeriod: "How many days after the start basis the employee must wait before this paid entitlement becomes usable.",
+  prorationMethod: "How to handle employees hired mid-period or mid-year. Prorate gives a proportional amount; start next cycle gives none until the next period; full period gives the whole amount.",
+  cutoffDay: "For cutoff-day handling. Hired on or before this day gets the current period; hired after this day starts next cycle.",
+  appliesToNewHires: "When enabled, this policy is intended to apply to future employees by default. Existing employees still need preview/apply before ledger-backed balances are created.",
+  balanceManaged: "When enabled, approved paid leave can deduct from this leave balance. Keep it off for manual or case-by-case leave types.",
+  insufficientBalance: "What managers can do when a paid request is larger than the employee's available balance: warn, block, allow negative, or approve only available paid hours.",
+  deductOn: "When the balance should be reduced. On approval is the safe current behavior because pending requests do not change balances.",
+  accrualEnabled: "Stores the accrual policy for this leave type. It does not create ledger entries until the manager runs accrual preview/manual posting.",
+  accrualUnit: "The unit for accrual policy settings. Hours are recommended because they support hourly and partial-day leave clearly.",
+  accrualRate: "How much balance is earned each accrual period. Example: 8 with Monthly frequency gives 8 hours per month.",
+  accrualFrequency: "How often the accrual rate is earned. Monthly is common for vacation; none means no saved accrual cadence.",
+  maxBalance: "Optional cap for how high this balance can grow during accrual posting. Leave blank if the company has no cap yet.",
+  allowNegative: "Future-oriented flag for negative balance policy. For today's approval behavior, use If balance is insufficient and choose Allow negative balance.",
+};
+
+const fieldHelpLabel = (label, title) => (
+  <Stack component="span" direction="row" spacing={0.5} alignItems="center" sx={{ display: "inline-flex" }}>
+    <span>{label}</span>
+    <Tooltip title={title} arrow placement="top">
+      <HelpOutlineIcon sx={{ fontSize: 15, color: "text.secondary" }} />
+    </Tooltip>
+  </Stack>
+);
+
 const accrualRunStatusLabels = {
   posted: "Posted",
   partial: "Partial",
@@ -1564,7 +1599,7 @@ const SettingsLeaveSettings = () => {
                         }}
                       />
                     }
-                    label="Enable paid entitlement"
+                    label={fieldHelpLabel("Enable paid entitlement", leaveAllowanceFieldHelp.paidEntitlement)}
                   />
 
                   <Box sx={policyGroupSx}>
@@ -1577,7 +1612,7 @@ const SettingsLeaveSettings = () => {
                         fullWidth
                         size="small"
                         type="number"
-                        label="Allowance amount"
+                        label={fieldHelpLabel("Allowance amount", leaveAllowanceFieldHelp.allowanceAmount)}
                         value={entitlement.allowance_amount ?? 0}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "allowance_amount", event.target.value)}
                         inputProps={{ min: 0, step: "0.01" }}
@@ -1588,7 +1623,7 @@ const SettingsLeaveSettings = () => {
                         select
                         fullWidth
                         size="small"
-                        label="Unit"
+                        label={fieldHelpLabel("Unit", leaveAllowanceFieldHelp.allowanceUnit)}
                         value={entitlement.allowance_unit || "hours"}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "allowance_unit", event.target.value)}
                       >
@@ -1602,7 +1637,7 @@ const SettingsLeaveSettings = () => {
                         fullWidth
                         size="small"
                         type="number"
-                        label="Standard workday hours"
+                        label={fieldHelpLabel("Standard workday hours", leaveAllowanceFieldHelp.workdayHours)}
                         value={entitlement.workday_hours ?? 8}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "workday_hours", event.target.value)}
                         helperText="Used to convert days to hours"
@@ -1614,7 +1649,7 @@ const SettingsLeaveSettings = () => {
                         select
                         fullWidth
                         size="small"
-                        label="Grant method"
+                        label={fieldHelpLabel("Grant method", leaveAllowanceFieldHelp.grantMethod)}
                         value={entitlement.grant_method || "opening_balance"}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "grant_method", event.target.value)}
                       >
@@ -1643,7 +1678,7 @@ const SettingsLeaveSettings = () => {
                         select
                         fullWidth
                         size="small"
-                        label="Policy year basis"
+                        label={fieldHelpLabel("Policy year basis", leaveAllowanceFieldHelp.policyYearBasis)}
                         value={entitlement.policy_year_basis || "calendar_year"}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "policy_year_basis", event.target.value)}
                       >
@@ -1659,7 +1694,7 @@ const SettingsLeaveSettings = () => {
                             fullWidth
                             size="small"
                             type="number"
-                            label="Start month"
+                            label={fieldHelpLabel("Start month", leaveAllowanceFieldHelp.policyYearStartMonth)}
                             value={entitlement.policy_year_start_month ?? 1}
                             onChange={(event) => updateEntitlementPolicy(policy.leave_type, "policy_year_start_month", event.target.value)}
                             inputProps={{ min: 1, max: 12 }}
@@ -1670,7 +1705,7 @@ const SettingsLeaveSettings = () => {
                             fullWidth
                             size="small"
                             type="number"
-                            label="Start day"
+                            label={fieldHelpLabel("Start day", leaveAllowanceFieldHelp.policyYearStartDay)}
                             value={entitlement.policy_year_start_day ?? 1}
                             onChange={(event) => updateEntitlementPolicy(policy.leave_type, "policy_year_start_day", event.target.value)}
                             inputProps={{ min: 1, max: 31 }}
@@ -1683,7 +1718,7 @@ const SettingsLeaveSettings = () => {
                         select
                         fullWidth
                         size="small"
-                        label="Start basis"
+                        label={fieldHelpLabel("Start basis", leaveAllowanceFieldHelp.startBasis)}
                         value={entitlement.start_basis || "hire_date"}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "start_basis", event.target.value)}
                       >
@@ -1698,7 +1733,7 @@ const SettingsLeaveSettings = () => {
                           fullWidth
                           size="small"
                           type="date"
-                          label="Custom effective date"
+                          label={fieldHelpLabel("Custom effective date", leaveAllowanceFieldHelp.customEffectiveDate)}
                           InputLabelProps={{ shrink: true }}
                           value={entitlement.custom_effective_date || ""}
                           onChange={(event) => updateEntitlementPolicy(policy.leave_type, "custom_effective_date", event.target.value)}
@@ -1710,7 +1745,7 @@ const SettingsLeaveSettings = () => {
                         fullWidth
                         size="small"
                         type="number"
-                        label="Waiting period days"
+                        label={fieldHelpLabel("Waiting period days", leaveAllowanceFieldHelp.waitingPeriod)}
                         value={entitlement.waiting_period_days ?? 0}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "waiting_period_days", event.target.value)}
                         helperText="Visible but unavailable until eligible"
@@ -1722,7 +1757,7 @@ const SettingsLeaveSettings = () => {
                         select
                         fullWidth
                         size="small"
-                        label="New hire handling"
+                        label={fieldHelpLabel("New hire handling", leaveAllowanceFieldHelp.prorationMethod)}
                         value={entitlement.proration_method || "prorate_first_period"}
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "proration_method", event.target.value)}
                       >
@@ -1737,7 +1772,7 @@ const SettingsLeaveSettings = () => {
                           fullWidth
                           size="small"
                           type="number"
-                          label="Cutoff day"
+                          label={fieldHelpLabel("Cutoff day", leaveAllowanceFieldHelp.cutoffDay)}
                           value={entitlement.proration_cutoff_day ?? ""}
                           onChange={(event) => updateEntitlementPolicy(policy.leave_type, "proration_cutoff_day", event.target.value)}
                           inputProps={{ min: 1, max: 31 }}
@@ -1754,7 +1789,7 @@ const SettingsLeaveSettings = () => {
                         onChange={(event) => updateEntitlementPolicy(policy.leave_type, "applies_to_new_hires", event.target.checked)}
                       />
                     }
-                    label="Auto-apply to new hires"
+                    label={fieldHelpLabel("Auto-apply to new hires", leaveAllowanceFieldHelp.appliesToNewHires)}
                   />
 
                   <Box sx={policyGroupSx}>
@@ -1768,7 +1803,7 @@ const SettingsLeaveSettings = () => {
                         onChange={(event) => updatePolicy(policy.leave_type, "balance_managed", event.target.checked)}
                       />
                     }
-                    label="Track balance usage"
+                    label={fieldHelpLabel("Track balance usage", leaveAllowanceFieldHelp.balanceManaged)}
                   />
                   <Typography variant="caption" color="text.secondary">
                     When enabled, approved paid leave can deduct from this leave balance using the policy below. Payroll calculations remain separate.
@@ -1780,7 +1815,7 @@ const SettingsLeaveSettings = () => {
                         select
                         fullWidth
                         size="small"
-                        label="If balance is insufficient"
+                        label={fieldHelpLabel("If balance is insufficient", leaveAllowanceFieldHelp.insufficientBalance)}
                         value={policy.insufficient_balance_mode || "warn"}
                         onChange={(event) => updatePolicy(policy.leave_type, "insufficient_balance_mode", event.target.value)}
                       >
@@ -1809,7 +1844,7 @@ const SettingsLeaveSettings = () => {
                               select
                               fullWidth
                               size="small"
-                              label="Deduct balance"
+                              label={fieldHelpLabel("Deduct balance", leaveAllowanceFieldHelp.deductOn)}
                               value={policy.deduct_on || "approval"}
                               onChange={(event) => updatePolicy(policy.leave_type, "deduct_on", event.target.value)}
                               helperText="Current active option"
@@ -1828,7 +1863,7 @@ const SettingsLeaveSettings = () => {
                         onChange={(event) => updatePolicy(policy.leave_type, "accrual_enabled", event.target.checked)}
                       />
                     }
-                    label="Enable saved accrual policy"
+                    label={fieldHelpLabel("Enable saved accrual policy", leaveAllowanceFieldHelp.accrualEnabled)}
                   />
                   <Typography variant="caption" color="text.secondary">
                     This stores the intended accrual policy. It does not create accrual ledger entries yet.
@@ -1840,7 +1875,7 @@ const SettingsLeaveSettings = () => {
                         select
                         fullWidth
                         size="small"
-                        label="Accrual unit"
+                        label={fieldHelpLabel("Accrual unit", leaveAllowanceFieldHelp.accrualUnit)}
                         value={policy.accrual_unit || "hours"}
                         onChange={(event) => updatePolicy(policy.leave_type, "accrual_unit", event.target.value)}
                       >
@@ -1854,7 +1889,7 @@ const SettingsLeaveSettings = () => {
                         fullWidth
                         size="small"
                         type="number"
-                        label="Accrual rate"
+                        label={fieldHelpLabel("Accrual rate", leaveAllowanceFieldHelp.accrualRate)}
                         value={policy.accrual_rate ?? 0}
                         onChange={(event) => updatePolicy(policy.leave_type, "accrual_rate", event.target.value)}
                         inputProps={{ min: 0, step: "0.01" }}
@@ -1865,7 +1900,7 @@ const SettingsLeaveSettings = () => {
                         select
                         fullWidth
                         size="small"
-                        label="Frequency"
+                        label={fieldHelpLabel("Frequency", leaveAllowanceFieldHelp.accrualFrequency)}
                         value={policy.accrual_frequency || "none"}
                         onChange={(event) => updatePolicy(policy.leave_type, "accrual_frequency", event.target.value)}
                       >
@@ -1879,7 +1914,7 @@ const SettingsLeaveSettings = () => {
                         fullWidth
                         size="small"
                         type="number"
-                        label="Max balance hours"
+                        label={fieldHelpLabel("Max balance hours", leaveAllowanceFieldHelp.maxBalance)}
                         value={policy.max_balance_hours ?? ""}
                         onChange={(event) => updatePolicy(policy.leave_type, "max_balance_hours", event.target.value)}
                         inputProps={{ min: 0, step: "0.01" }}
@@ -1895,7 +1930,7 @@ const SettingsLeaveSettings = () => {
                         onChange={(event) => updatePolicy(policy.leave_type, "allow_negative_balance", event.target.checked)}
                       />
                     }
-                    label="Allow negative balance flag"
+                    label={fieldHelpLabel("Allow negative balance flag", leaveAllowanceFieldHelp.allowNegative)}
                   />
                   <Typography variant="caption" color="text.secondary">
                     Saved for future balance-cap workflows. For approval behavior today, use “If balance is insufficient” above and choose “Allow negative balance.”
