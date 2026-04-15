@@ -1624,7 +1624,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     if (isManager) return menuConfig;
     const allowedGroups = new Set();
     if (hasHrAccess) allowedGroups.add("employee-group");
-    if (canManageShifts) allowedGroups.add("shifts-group");
+    if (canManageShifts || canManageOnboarding || canManagePayroll) allowedGroups.add("shifts-group");
     if (canManagePayroll) allowedGroups.add("payroll-group");
     const base = menuConfig
       .filter((item) => allowedGroups.has(item.key))
@@ -1635,8 +1635,14 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
             children: (item.children || []).filter((child) => child.key === "employee-profiles"),
           };
         }
-        if (item.key === "shifts-group" && canManageShifts && !isManager) {
+        if (item.key === "shifts-group" && !isManager) {
           const children = item.children || [];
+          if (!canManageShifts) {
+            return {
+              ...item,
+              children: children.filter((child) => child.key === "leaves"),
+            };
+          }
           const hasMaster = children.some((child) => child.key === "master-calendar");
           const extra = hasMaster
             ? []
@@ -1654,7 +1660,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       if (checkoutItem) base.push(checkoutItem);
     }
     return base;
-  }, [isManager, hasHrAccess, canManageShifts, canCollectPaymentsSelf, canManagePayroll]);
+  }, [isManager, hasHrAccess, canManageOnboarding, canManageShifts, canCollectPaymentsSelf, canManagePayroll]);
 
   const menuItems = useMemo(
     () =>
@@ -2603,7 +2609,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                                 />
                                 <Typography variant="body2">HR onboarding access</Typography>
                                 <Tooltip
-                                  title="Full HR access: view and edit employee profiles, manage onboarding documents, and edit candidate profiles."
+                                  title="Full HR access: employee profiles, onboarding documents, candidate profile edits, Leave Settings, leave balance adjustments, Leave Reports, and accrual preview/posting. Does not grant payroll runs, catalog settings, or carryover apply."
                                   placement="top"
                                 >
                                   <IconButton size="small" aria-label="HR onboarding access help">
@@ -2625,7 +2631,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                                 />
                                 <Typography variant="body2">Limited HR onboarding access</Typography>
                                 <Tooltip
-                                  title="Limited HR access: can access HR tabs (invitations, forms, questionnaires, meetings, candidate search, public link) and read candidate profiles. No access to employee profiles or candidate edits."
+                                  title="Limited HR access: HR tabs and read-only candidate profiles only. No employee profile edits, Leave Settings, Leave Reports, balance adjustments, accrual posting, or carryover apply."
                                   placement="top"
                                 >
                                   <IconButton size="small" aria-label="Limited HR onboarding access help">
@@ -2646,7 +2652,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                                 />
                                 <Typography variant="body2">Supervisor access</Typography>
                                 <Tooltip
-                                  title="Shift & availability tools: Shift Management, Time Tracking, Fraud/Anomalies, Leaves, Swap Approvals, Master Calendar. Includes Booking Checkout access when enabled."
+                                  title="Supervisor access: operational scheduling, time tracking, fraud/anomaly review, swap approvals, master calendar, and leave approve/reject/cancel. No Leave Settings, Leave Reports, balance adjustments, accrual posting, or carryover apply."
                                   placement="top"
                                 >
                                   <IconButton size="small" aria-label="Supervisor access help">
@@ -2667,7 +2673,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                                 />
                                 <Typography variant="body2">Collect payments (self only)</Typography>
                                 <Tooltip
-                                  title="Allow this employee to collect payments for their own bookings only."
+                                  title="Allow this employee to collect payments for their own bookings only. This does not grant payroll, leave settings, reports, or company-wide checkout access."
                                   placement="top"
                                 >
                                   <IconButton size="small" aria-label="Collect payments access help">
@@ -2688,7 +2694,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                                 />
                                 <Typography variant="body2">Payroll access</Typography>
                                 <Tooltip
-                                  title="Advanced Payroll tools: Payroll, Saved Payrolls, Tax, ROE, T4, W2, Invoices."
+                                  title="Payroll access: payroll runs, saved payrolls, tax forms, ROE, T4/W-2, invoices, Leave Reports, leave balance corrections, accrual posting, and carryover apply. Does not grant Leave Settings or leave approval."
                                   placement="top"
                                 >
                                   <IconButton size="small" aria-label="Payroll access help">
@@ -3274,7 +3280,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
         return <Meetings token={token} />;
 
       case "leaves":
-        return <LeaveRequests token={token} />;
+        return <LeaveRequests token={token} currentUserInfo={currentUserInfo} />;
 
       case "swap-approvals":
         return <ShiftSwapPanel token={token} headerStyle={headerStyle} />;

@@ -46,3 +46,24 @@ Manager Portal → Employee Management
 6. Set a **Password** that meets the strength rules and confirm it.
 7. Accept the terms and click **Add team member**.
 8. If you hit a seat limit, you will be prompted to add seats before continuing.
+
+## Employee Access Permissions Source Of Truth
+
+Use these rules when deciding which toggles to enable in Employee Management.
+
+| Access | Intended owner | Includes | Does not include |
+| --- | --- | --- | --- |
+| Manager role | Company admin / owner | Full admin access across settings, payroll, scheduling, leave, catalog, and reports | N/A |
+| HR onboarding access | HR admin / HR coordinator | Employee/profile edits, onboarding forms, candidate profile edits, Leave Settings, leave balance adjustments, Leave Reports, and accrual preview/posting | Payroll runs, service/product/add-on management, and carryover apply |
+| Limited HR onboarding access | HR assistant / recruiting viewer | HR tabs and read-only candidate profile visibility | Employee profile edits, candidate edits, Leave Settings, Leave Reports, balance adjustments, accrual posting, and carryover apply |
+| Supervisor access | Team lead / shift supervisor | Shift and availability tools, time tracking, fraud/anomaly review, swap approvals, master calendar, and leave approve/reject/cancel | Leave Settings, Leave Reports, leave balance adjustments, accrual posting, and carryover apply |
+| Collect payments (self only) | Employee who checks out their own clients | Booking checkout for that employee's own bookings | Payroll, leave settings, reports, company-wide checkout, or accounting access |
+| Payroll access | Payroll admin / accountant | Payroll runs, saved payrolls, tax forms, ROE, T4/W-2, invoices, Leave Reports, leave balance corrections, accrual posting, and carryover apply | Leave Settings and leave approve/reject/cancel |
+
+Recommended setups:
+
+- Team lead: Employee + Supervisor access.
+- HR coordinator: Employee + HR onboarding access.
+- Payroll admin/accountant: Employee + Payroll access.
+- HR/payroll hybrid: Employee + HR onboarding access + Payroll access.
+- Front desk self-checkout: Employee + Collect payments (self only).

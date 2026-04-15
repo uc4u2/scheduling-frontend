@@ -627,7 +627,7 @@ const summaryCards = (report) => {
   ];
 };
 
-export default function SettingsLeaveReports() {
+export default function SettingsLeaveReports({ canApplyCarryover = true }) {
   const [filters, setFilters] = useState(defaultFilters);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -773,6 +773,10 @@ export default function SettingsLeaveReports() {
   const reportSummary = report?.summary || {};
 
   const applyCarryover = async () => {
+    if (!canApplyCarryover) {
+      setError("Only managers and payroll users can apply carryover.");
+      return;
+    }
     setApplyingCarryover(true);
     setError("");
     setApplyResult(null);
@@ -880,7 +884,7 @@ export default function SettingsLeaveReports() {
                 <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadReport} disabled={loading}>
                   {loading ? "Loading..." : "Refresh"}
                 </Button>
-                {isCarryoverPreviewReport && (
+                {isCarryoverPreviewReport && canApplyCarryover && (
                   <Button
                     variant="outlined"
                     color="success"

@@ -279,27 +279,28 @@ Use this to decide which access toggles to enable for each team member.
 Quick summary
 - Managers have full access to payroll, scheduling, settings, and the service catalog.
 - Employees are limited by the toggles you enable below.
-- HR onboarding access does not grant service, product, or add-on management.
+- Full HR, Supervisor, and Payroll access are intentionally separate so companies can split HR policy, operational approval, and accounting work.
 
 Role basics
 - Employee: core staff tools (schedule, bookings, time clock).
 - Manager: full admin access across settings, payroll, and catalog.
 
 Access toggles
-- HR onboarding access: manage onboarding forms and candidate profiles.
-- Limited HR onboarding: view HR tabs and read candidate profiles only.
-- Supervisor access: shift, time tracking, leaves, swap approvals, master calendar.
+- HR onboarding access: full HR tools, employee/profile edits, Leave Settings, leave balance adjustments, Leave Reports, and accrual preview/posting. It does not grant payroll runs or carryover apply.
+- Limited HR onboarding: HR tabs and read-only candidate profiles only. No employee profile edits, leave admin, reports, balances, accruals, or carryover.
+- Supervisor access: shift/time tools and leave approve/reject/cancel. No Leave Settings, Leave Reports, balance adjustments, accrual posting, or carryover apply.
 - Collect payments (self only): allows booking checkout for the employee's own clients.
-- Payroll access: payroll runs, tax forms, ROE, T4/W-2, invoices.
+- Payroll access: payroll runs, tax forms, ROE, T4/W-2, invoices, Leave Reports, leave balance corrections, accrual posting, and carryover apply. It does not grant Leave Settings or leave approval.
 
 Availability and slots
 - Employees can edit their own availability only when HR onboarding access is enabled and workspace settings allow it.
 - Team availability views and assigning slots for other employees require manager access.
 
 Common setups
-- Front desk coordinator: Employee + HR onboarding (no payroll).
+- HR coordinator: Employee + HR onboarding access.
 - Team lead: Employee + Supervisor access.
 - Payroll admin: Employee + Payroll access.
+- HR/payroll hybrid: Employee + HR onboarding access + Payroll access.
 
 ## Add Team Member Help
 Fill in this form to create a staff account. Permissions are set later in Employee Management.
@@ -310,10 +311,10 @@ Before you submit
 - Timezone matters for availability and appointment times.
 
 Permissions after creation
-- HR onboarding access lets someone manage onboarding forms and candidate profiles.
-- Supervisor access gives shift and availability tools.
+- HR onboarding access lets someone manage onboarding forms, candidate profiles, employee/profile edits, Leave Settings, leave balance adjustments, Leave Reports, and accrual posting.
+- Supervisor access gives operational shift/time tools and leave approve/reject/cancel, but not Leave Settings, reports, accruals, carryover, or balance adjustments.
 - Collect payments (self only) lets an employee process payments for their own bookings.
-- Payroll access opens payroll and tax tools.
+- Payroll access opens payroll/tax tools plus Leave Reports, leave balance corrections, accrual posting, and carryover apply.
 
 Availability and bookings
 - Employees can edit their own availability only if HR onboarding access is enabled and workspace settings allow edits.

@@ -29,7 +29,7 @@ const COPY = {
       items: [
         "Managers have full access to payroll, scheduling, settings, and the service catalog.",
         "Employees are limited by the toggles you enable below.",
-        "HR onboarding access does not grant service, product, or add-on management.",
+        "Full HR, Supervisor, and Payroll access are intentionally separate so companies can split HR policy, operational approval, and accounting work.",
       ],
     },
     roles: {
@@ -42,11 +42,11 @@ const COPY = {
     toggles: {
       title: "Access toggles",
       items: [
-        "HR onboarding access: manage onboarding forms and candidate profiles.",
-        "Limited HR onboarding: view HR tabs and read candidate profiles only.",
-        "Supervisor access: shift, time tracking, leaves, swap approvals, master calendar.",
+        "HR onboarding access: full HR tools, employee/profile edits, Leave Settings, leave balance adjustments, Leave Reports, and accrual preview/posting. It does not grant payroll runs or carryover apply.",
+        "Limited HR onboarding: HR tabs and read-only candidate profiles only. No employee profile edits, leave admin, reports, balances, accruals, or carryover.",
+        "Supervisor access: operational shift/time tools and leave approve/reject/cancel. No Leave Settings, Leave Reports, balance adjustments, accrual posting, or carryover apply.",
         "Collect payments (self only): allows booking checkout for the employee's own clients.",
-        "Payroll access: payroll runs, tax forms, ROE, T4/W-2, invoices.",
+        "Payroll access: payroll runs, tax forms, ROE, T4/W-2, invoices, Leave Reports, leave balance corrections, accrual posting, and carryover apply. It does not grant Leave Settings or leave approval.",
       ],
     },
     availability: {
@@ -59,9 +59,10 @@ const COPY = {
     examples: {
       title: "Common setups",
       items: [
-        "Front desk coordinator: Employee + HR onboarding (no payroll).",
+        "HR coordinator: Employee + HR onboarding access.",
         "Team lead: Employee + Supervisor access.",
         "Payroll admin: Employee + Payroll access.",
+        "HR/payroll hybrid: Employee + HR onboarding access + Payroll access.",
       ],
     },
   },

@@ -39,6 +39,32 @@ const KPI = ({ label, value, help }) => (
   </Card>
 );
 
+const chipPalette = {
+  primary: { color: "#1d4ed8", bg: "rgba(37, 99, 235, 0.08)", border: "rgba(37, 99, 235, 0.28)" },
+  success: { color: "#15803d", bg: "rgba(22, 163, 74, 0.09)", border: "rgba(22, 163, 74, 0.3)" },
+  warning: { color: "#92400e", bg: "rgba(245, 158, 11, 0.12)", border: "rgba(245, 158, 11, 0.34)" },
+  error: { color: "#991b1b", bg: "rgba(239, 68, 68, 0.1)", border: "rgba(239, 68, 68, 0.32)" },
+  default: { color: "#334155", bg: "rgba(148, 163, 184, 0.12)", border: "rgba(148, 163, 184, 0.28)" },
+};
+
+const readableChipSx = (tone = "default") => {
+  const colors = chipPalette[tone] || chipPalette.default;
+  return {
+    color: colors.color,
+    bgcolor: colors.bg,
+    border: `1px solid ${colors.border}`,
+    fontWeight: 850,
+    "& .MuiChip-label": {
+      color: colors.color,
+      fontWeight: 850,
+    },
+  };
+};
+
+const MetricChip = ({ tone = "default", ...props }) => (
+  <Chip size="small" variant="outlined" sx={readableChipSx(tone)} {...props} />
+);
+
 export default function WorkforceCostAnalytics({ compact = false } = {}) {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const auth = useMemo(
@@ -246,13 +272,13 @@ export default function WorkforceCostAnalytics({ compact = false } = {}) {
                     <Box sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="subtitle2">{row.bucket}</Typography>
-                        <Chip size="small" color="primary" label={fmtMoney(row.labor_cost)} />
+                        <MetricChip tone="primary" label={fmtMoney(row.labor_cost)} />
                       </Stack>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                        <Chip size="small" label={`Hours: ${fmtHours(row.worked_hours)}`} />
-                        <Chip size="small" label={`OT: ${fmtHours(row.overtime_hours)}`} />
-                        <Chip size="small" label={`Paid leave: ${fmtHours(row.paid_leave_hours)}`} />
-                        <Chip size="small" label={`Shifts: ${row.worked_shifts || 0}`} />
+                        <MetricChip label={`Hours: ${fmtHours(row.worked_hours)}`} />
+                        <MetricChip label={`OT: ${fmtHours(row.overtime_hours)}`} />
+                        <MetricChip label={`Paid leave: ${fmtHours(row.paid_leave_hours)}`} />
+                        <MetricChip label={`Shifts: ${row.worked_shifts || 0}`} />
                       </Stack>
                     </Box>
                   </Grid>
@@ -271,7 +297,7 @@ export default function WorkforceCostAnalytics({ compact = false } = {}) {
                     <Box key={`${row.recruiter_id}-${row.week}`} sx={{ mb: 1.25, p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="subtitle2">{row.employee}</Typography>
-                        <Chip size="small" color={row.status === "overtime" ? "error" : "warning"} label={row.status === "overtime" ? "In overtime" : "Close to overtime"} />
+                        <MetricChip tone={row.status === "overtime" ? "error" : "warning"} label={row.status === "overtime" ? "In overtime" : "Close to overtime"} />
                       </Stack>
                       <Typography variant="caption" color="text.secondary">{row.department_name || "Unassigned"} · {row.week}</Typography>
                       <LinearProgress
@@ -289,9 +315,9 @@ export default function WorkforceCostAnalytics({ compact = false } = {}) {
             <Grid item xs={12} md={6}>
               <SectionCard title="Payroll Readiness" description="What still needs review before payroll can close cleanly.">
                 <Stack spacing={1.25}>
-                  <Chip color={readiness.pending_time_approvals ? "warning" : "success"} label={`Pending time approvals: ${readiness.pending_time_approvals || 0}`} />
-                  <Chip color={readiness.pending_leave_requests ? "warning" : "success"} label={`Pending leave requests: ${readiness.pending_leave_requests || 0}`} />
-                  <Chip color={readiness.anomaly_count ? "warning" : "success"} label={`Time anomalies: ${readiness.anomaly_count || 0}`} />
+                  <MetricChip tone={readiness.pending_time_approvals ? "warning" : "success"} label={`Pending time approvals: ${readiness.pending_time_approvals || 0}`} />
+                  <MetricChip tone={readiness.pending_leave_requests ? "warning" : "success"} label={`Pending leave requests: ${readiness.pending_leave_requests || 0}`} />
+                  <MetricChip tone={readiness.anomaly_count ? "warning" : "success"} label={`Time anomalies: ${readiness.anomaly_count || 0}`} />
                   <Divider />
                   <Typography variant="body2" color="text.secondary">Estimated regular pay: {fmtMoney(kpis.regular_pay)}</Typography>
                   <Typography variant="body2" color="text.secondary">Estimated overtime pay: {fmtMoney(kpis.overtime_pay)}</Typography>
@@ -341,11 +367,11 @@ export default function WorkforceCostAnalytics({ compact = false } = {}) {
                         {row.department_name || "Unassigned"} · {fmtHours(row.worked_hours)} · OT {fmtHours(row.overtime_hours)}
                       </Typography>
                       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 0.75 }}>
-                        <Chip size="small" label={`Rate ${fmtMoney(row.hourly_rate)}/h`} />
-                        <Chip size="small" label={`Regular ${fmtMoney(row.regular_pay)}`} />
-                        <Chip size="small" label={`OT ${fmtMoney(row.overtime_pay)}`} />
+                        <MetricChip label={`Rate ${fmtMoney(row.hourly_rate)}/h`} />
+                        <MetricChip label={`Regular ${fmtMoney(row.regular_pay)}`} />
+                        <MetricChip label={`OT ${fmtMoney(row.overtime_pay)}`} />
                         {Number(row.paid_leave_cost || 0) > 0 && (
-                          <Chip size="small" color="success" variant="outlined" label={`Paid leave ${fmtMoney(row.paid_leave_cost)}`} />
+                          <MetricChip tone="success" label={`Paid leave ${fmtMoney(row.paid_leave_cost)}`} />
                         )}
                       </Stack>
                     </Box>

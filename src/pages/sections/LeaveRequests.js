@@ -538,7 +538,7 @@ const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
   </Drawer>
 );
 
-const LeaveRequests = () => {
+const LeaveRequests = ({ currentUserInfo = null }) => {
   const [leaveWorkspaceTab, setLeaveWorkspaceTab] = useState("requests");
   const [requests, setRequests] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -581,6 +581,23 @@ const LeaveRequests = () => {
   const leaveDetailsMobile = useMediaQuery(theme.breakpoints.down("md"));
   const leaveDetailsFullScreen = leaveDetailsMobile || leaveDetailsExpanded;
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token()}` }), []);
+  const storedRole = typeof window !== "undefined" ? String(window.localStorage.getItem("role") || "").toLowerCase() : "";
+  const isFullManager = Boolean(currentUserInfo?.is_manager || storedRole === "manager");
+  const hasHrLeaveAdminAccess = Boolean(currentUserInfo?.can_manage_onboarding);
+  const hasPayrollLeaveAccess = Boolean(currentUserInfo?.can_manage_payroll);
+  const canAdministerLeave = isFullManager || hasHrLeaveAdminAccess;
+  const canViewLeaveReports = isFullManager || hasHrLeaveAdminAccess || hasPayrollLeaveAccess;
+  const canAdjustLeaveBalances = isFullManager || hasHrLeaveAdminAccess || hasPayrollLeaveAccess;
+  const canApplyCarryover = isFullManager || hasPayrollLeaveAccess;
+
+  useEffect(() => {
+    if (!canAdministerLeave && leaveWorkspaceTab === "settings") {
+      setLeaveWorkspaceTab("requests");
+    }
+    if (!canViewLeaveReports && leaveWorkspaceTab === "reports") {
+      setLeaveWorkspaceTab("requests");
+    }
+  }, [canAdministerLeave, canViewLeaveReports, leaveWorkspaceTab]);
 
   const filteredEmployees = useMemo(() => {
     if (!filters.department_id) return employees;
@@ -759,6 +776,10 @@ const LeaveRequests = () => {
 
   const handleBalanceAdjustment = async () => {
     if (!selectedLeave?.recruiter_id) return;
+    if (!canAdjustLeaveBalances) {
+      setBalanceError("Only managers, HR admins, and payroll users can adjust leave balances.");
+      return;
+    }
     const payload = buildLeaveBalanceAdjustmentPayload(balanceDraft);
     if (payload.error) {
       setBalanceError(payload.error);
@@ -912,7 +933,7 @@ const LeaveRequests = () => {
             Leave
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Review requests, configure leave policies, monitor operations, and export accountant-ready leave reports from one manager workspace.
+            Review requests, monitor leave operations, and keep approval decisions clear from one manager workspace.
           </Typography>
         </Box>
         {leaveWorkspaceTab === "requests" && (
@@ -936,10 +957,10 @@ const LeaveRequests = () => {
           sx={{ px: 1, borderBottom: 1, borderColor: "divider" }}
         >
           <Tab value="requests" label="Leave Requests" />
-          <Tab value="settings" label="Leave Settings" />
+          {canAdministerLeave && <Tab value="settings" label="Leave Settings" />}
           <Tab value="insights" label="Leave Insights" />
           <Tab value="operations" label="Leave Operations" />
-          <Tab value="reports" label="Leave Reports" />
+          {canViewLeaveReports && <Tab value="reports" label="Leave Reports" />}
         </Tabs>
       </Paper>
 
@@ -1488,58 +1509,66 @@ const LeaveRequests = () => {
                     ))}
                   </Box>
                 )}
-                <Divider />
-                <Typography variant="subtitle2" fontWeight={800}>
-                  Adjust balance
-                </Typography>
-                {balanceError && <Alert severity="error">{balanceError}</Alert>}
-                <Stack spacing={1}>
-                  <TextField
-                    select
-                    size="small"
-                    label="Leave type"
-                    value={balanceDraft.leave_type}
-                    onChange={(event) => {
-                      setBalanceDraft((prev) => ({ ...prev, leave_type: event.target.value }));
-                      setBalanceError("");
-                    }}
-                  >
-                    {BALANCE_LEAVE_TYPES.map((type) => (
-                      <MenuItem key={type} value={type}>{formatLeaveTypeLabel(type)}</MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    size="small"
-                    label="Hours adjustment"
-                    type="number"
-                    value={balanceDraft.delta_hours}
-                    onChange={(event) => {
-                      setBalanceDraft((prev) => ({ ...prev, delta_hours: event.target.value }));
-                      setBalanceError("");
-                    }}
-                    helperText="Use positive hours to add balance or negative hours to subtract."
-                    inputProps={{ step: 0.25 }}
-                  />
-                  <TextField
-                    size="small"
-                    label="Adjustment reason"
-                    value={balanceDraft.reason}
-                    onChange={(event) => {
-                      setBalanceDraft((prev) => ({ ...prev, reason: event.target.value }));
-                      setBalanceError("");
-                    }}
-                    multiline
-                    minRows={2}
-                  />
-                  <Button
-                    variant="outlined"
-                    disabled={balanceSaving || balanceLoading}
-                    onClick={handleBalanceAdjustment}
-                    sx={{ alignSelf: "flex-start" }}
-                  >
-                    {balanceSaving ? "Saving..." : "Save adjustment"}
-                  </Button>
-                </Stack>
+                {canAdjustLeaveBalances ? (
+                  <>
+                    <Divider />
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      Adjust balance
+                    </Typography>
+                    {balanceError && <Alert severity="error">{balanceError}</Alert>}
+                    <Stack spacing={1}>
+                      <TextField
+                        select
+                        size="small"
+                        label="Leave type"
+                        value={balanceDraft.leave_type}
+                        onChange={(event) => {
+                          setBalanceDraft((prev) => ({ ...prev, leave_type: event.target.value }));
+                          setBalanceError("");
+                        }}
+                      >
+                        {BALANCE_LEAVE_TYPES.map((type) => (
+                          <MenuItem key={type} value={type}>{formatLeaveTypeLabel(type)}</MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        size="small"
+                        label="Hours adjustment"
+                        type="number"
+                        value={balanceDraft.delta_hours}
+                        onChange={(event) => {
+                          setBalanceDraft((prev) => ({ ...prev, delta_hours: event.target.value }));
+                          setBalanceError("");
+                        }}
+                        helperText="Use positive hours to add balance or negative hours to subtract."
+                        inputProps={{ step: 0.25 }}
+                      />
+                      <TextField
+                        size="small"
+                        label="Adjustment reason"
+                        value={balanceDraft.reason}
+                        onChange={(event) => {
+                          setBalanceDraft((prev) => ({ ...prev, reason: event.target.value }));
+                          setBalanceError("");
+                        }}
+                        multiline
+                        minRows={2}
+                      />
+                      <Button
+                        variant="outlined"
+                        disabled={balanceSaving || balanceLoading}
+                        onClick={handleBalanceAdjustment}
+                        sx={{ alignSelf: "flex-start" }}
+                      >
+                        {balanceSaving ? "Saving..." : "Save adjustment"}
+                      </Button>
+                    </Stack>
+                  </>
+                ) : (
+                  <Alert severity="info" variant="outlined">
+                    Supervisors can review, approve, reject, and cancel leave. Balance adjustments are available to managers, HR admins, and payroll users.
+                  </Alert>
+                )}
                 <Divider />
                 <Box>
                   <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
@@ -2073,14 +2102,16 @@ const LeaveRequests = () => {
       </Snackbar>
       <LeaveWorkspaceHelpDrawer open={leaveHelpOpen} onClose={() => setLeaveHelpOpen(false)} />
         </>
-      ) : leaveWorkspaceTab === "settings" ? (
+      ) : leaveWorkspaceTab === "settings" && canAdministerLeave ? (
         <SettingsLeaveSettings forcedAreaTab="settings" hideAreaTabs />
       ) : leaveWorkspaceTab === "insights" ? (
         <SettingsLeaveInsights onOpenOperations={() => setLeaveWorkspaceTab("operations")} />
       ) : leaveWorkspaceTab === "operations" ? (
         <SettingsLeaveInsights mode="operations" />
+      ) : leaveWorkspaceTab === "reports" && canViewLeaveReports ? (
+        <SettingsLeaveReports canApplyCarryover={canApplyCarryover} />
       ) : (
-        <SettingsLeaveReports />
+        <SettingsLeaveInsights onOpenOperations={() => setLeaveWorkspaceTab("operations")} />
       )}
     </Box>
   );

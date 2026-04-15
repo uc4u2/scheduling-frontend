@@ -341,8 +341,8 @@ const passwordStrength = useMemo(() => {
               title={
                 "After creating a team member, open Employee Management to grant access. " +
                 "Step 1: Find the employee. Step 2: Toggle Supervisor/Payroll/HR/Payments as needed. " +
-                "Examples: Team lead = Employee + Supervisor + Collect payments (self only). " +
-                "Front desk coordinator = Employee + HR onboarding (no payroll). " +
+                "Examples: Team lead = Employee + Supervisor access. " +
+                "HR coordinator = Employee + HR onboarding access. " +
                 "Payroll admin = Employee + Payroll access."
               }
               placement="top"
