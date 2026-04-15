@@ -42,6 +42,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SectionCard from "../../components/ui/SectionCard";
 import SettingsLeaveInsights from "./SettingsLeaveInsights";
+import SettingsLeaveReports from "./SettingsLeaveReports";
 import { leaveSettings } from "../../utils/api";
 import api from "../../utils/api";
 import {
@@ -119,6 +120,8 @@ const leaveAllowanceFieldHelp = {
   accrualFrequency: "How often the accrual rate is earned. Monthly is common for vacation; none means no saved accrual cadence.",
   maxBalance: "Optional cap for how high this balance can grow during accrual posting. Leave blank if the company has no cap yet.",
   allowNegative: "Future-oriented flag for negative balance policy. For today's approval behavior, use If balance is insufficient and choose Allow negative balance.",
+  carryoverEnabled: "Controls whether unused positive balance can move into the next policy year. This does not pay employees automatically.",
+  carryoverLimit: "Maximum hours that can carry into the next policy year. Hours above this cap are shown as forfeited / payout-review hours in carryover preview.",
 };
 
 const fieldHelpLabel = (label, title) => (
@@ -303,6 +306,12 @@ const getEntitlementSetupChips = (entitlement = {}, policy = {}) => {
       label: insufficientBalanceLabels[policy.insufficient_balance_mode || "warn"] || "Warn manager",
       tone: policy.insufficient_balance_mode === "block" ? "warning" : "default",
     },
+    {
+      label: entitlement.carryover_enabled
+        ? `Carryover on${entitlement.carryover_limit_hours != null ? `: max ${formatHours(entitlement.carryover_limit_hours)}` : ""}`
+        : "Carryover off",
+      tone: entitlement.carryover_enabled ? "success" : "default",
+    },
   ];
 };
 
@@ -433,12 +442,13 @@ const setupProfiles = {
   advanced: {
     label: "Advanced",
     tagline: "Best for larger or more policy-heavy teams that want stronger operating controls.",
-    description: "Expands balance-managed leave types, tightens shortage handling, and prepares accrual policy fields without turning automation on.",
+    description: "Turns on stricter review controls and balance tracking for common leave types. Managers still enter real allowance amounts, accrual rates, and carryover caps manually.",
     summary: [
       "All request modes stay available for detailed manager review.",
       "Approved leave blocks Smart Shift; pending leave blocks to reduce scheduling risk.",
       "Vacation, sick, personal, and compassionate leave become balance-managed.",
-      "Sick and compassionate leave are marked as documentation-expected. Scheduled automation stays off.",
+      "Shortages are blocked for tracked leave types; sick and compassionate leave are marked as documentation-expected.",
+      "Paid allowances, accrual rates, carryover caps, auto-apply to new hires, and scheduled automation stay manual/off.",
     ],
     settings: {
       allow_hourly_leave: true,
@@ -465,7 +475,7 @@ const setupProfiles = {
         accrual_enabled: false,
         accrual_unit: "hours",
         accrual_rate: 0,
-        accrual_frequency: managed ? "monthly" : "none",
+        accrual_frequency: "none",
         max_balance_hours: "",
         allow_negative_balance: false,
       };
@@ -841,7 +851,7 @@ const HelpSection = ({ title, status, statusColor, children }) => (
   </Box>
 );
 
-const SettingsLeaveSettings = () => {
+const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onOpenOperations } = {}) => {
   const [settings, setSettings] = useState(null);
   const [original, setOriginal] = useState(null);
   const [policies, setPolicies] = useState(() => normalizeLeaveBalancePolicies());
@@ -900,7 +910,10 @@ const SettingsLeaveSettings = () => {
   const [managerSetupGuideOpen, setManagerSetupGuideOpen] = useState(false);
   const [leaveTypeHelp, setLeaveTypeHelp] = useState(null);
   const [selectedSetupProfile, setSelectedSetupProfile] = useState("simple");
+  const [setupProfileOpen, setSetupProfileOpen] = useState(false);
+  const [unsavedBannerDismissed, setUnsavedBannerDismissed] = useState(false);
   const [leaveAreaTab, setLeaveAreaTab] = useState("settings");
+  const activeLeaveAreaTab = forcedAreaTab || leaveAreaTab;
 
   const dirty = useMemo(() => settings && original && hasLeaveSettingsChanges(settings, original), [settings, original]);
   const policiesDirty = useMemo(
@@ -1118,6 +1131,12 @@ const SettingsLeaveSettings = () => {
   const hasSettingsDraftChanges = Boolean(dirty);
   const hasPolicyDraftChanges = Boolean(policiesDirty || entitlementsDirty);
 
+  useEffect(() => {
+    if (!hasSettingsDraftChanges && !hasPolicyDraftChanges) {
+      setUnsavedBannerDismissed(false);
+    }
+  }, [hasSettingsDraftChanges, hasPolicyDraftChanges]);
+
   const applySetupProfile = () => {
     const profile = setupProfiles[selectedSetupProfile] || setupProfiles.standard;
     setSettings((prev) => ({
@@ -1285,65 +1304,92 @@ const SettingsLeaveSettings = () => {
           These settings define company leave defaults for current and future leave workflows. They do not rewrite existing approved leave rows, and some scheduling/documentation options are advisory until their related workflows are connected.
         </Alert>
 
-        <Box>
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between" alignItems={{ xs: "stretch", md: "flex-start" }} sx={{ mb: 1.5 }}>
-            <Box>
-              <Typography variant="subtitle2" fontWeight={800}>Setup profile</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Apply recommended starting defaults for different operating styles. This does not save automatically, and every setting remains editable afterward.
-              </Typography>
-            </Box>
-            <Button variant="contained" onClick={applySetupProfile} disabled={policiesLoading}>
-              Apply recommended defaults
-            </Button>
-          </Stack>
-          <Grid container spacing={1.5}>
-            {Object.entries(setupProfiles).map(([key, profile]) => {
-              const selected = selectedSetupProfile === key;
-              return (
-                <Grid item xs={12} md={4} key={key}>
-                  <Box
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedSetupProfile(key)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") setSelectedSetupProfile(key);
-                    }}
-                    sx={{
-                      border: "1px solid",
-                      borderColor: selected ? "primary.main" : "divider",
-                      borderRadius: 2,
-                      p: 1.5,
-                      height: "100%",
-                      cursor: "pointer",
-                      backgroundColor: selected ? "action.selected" : "background.paper",
-                      boxShadow: selected ? "0 0 0 1px rgba(66, 99, 235, 0.18)" : "none",
-                    }}
-                  >
-                    <Stack spacing={0.75}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                        <Typography variant="subtitle2" fontWeight={800}>{profile.label}</Typography>
-                        {selected && <Chip size="small" label="Selected" sx={readableChipSx("primary")} />}
-                      </Stack>
-                      <Typography variant="body2" color="text.secondary">{profile.tagline}</Typography>
-                      <Typography variant="caption" color="text.secondary">{profile.description}</Typography>
-                    </Stack>
-                  </Box>
-                </Grid>
-              );
-            })}
-          </Grid>
-          <Alert severity="info" variant="outlined" sx={{ mt: 1.5 }}>
-            <Typography variant="body2" fontWeight={700} gutterBottom>
-              {setupProfiles[selectedSetupProfile]?.label} profile preview
-            </Typography>
-            <Stack component="ul" spacing={0.5} sx={{ pl: 2.5, my: 0 }}>
-              {(setupProfiles[selectedSetupProfile]?.summary || []).map((item) => (
-                <Typography component="li" variant="body2" key={item}>{item}</Typography>
-              ))}
+        <Accordion
+          expanded={setupProfileOpen}
+          onChange={(_, expanded) => setSetupProfileOpen(expanded)}
+          variant="outlined"
+          sx={{
+            borderRadius: 2,
+            "&:before": { display: "none" },
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between" sx={{ width: "100%", pr: 1 }}>
+              <Box>
+                <Typography variant="subtitle2" fontWeight={900}>Setup profile</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Optional starter defaults. Current selection: {setupProfiles[selectedSetupProfile]?.label || "Simple"}.
+                </Typography>
+              </Box>
+              <Chip size="small" label={`${setupProfiles[selectedSetupProfile]?.label || "Simple"} selected`} sx={readableChipSx("primary", "outlined")} />
             </Stack>
-          </Alert>
-        </Box>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={2} justifyContent="space-between" alignItems={{ xs: "stretch", md: "flex-start" }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Apply recommended starting defaults for different operating styles. This does not save automatically, and every setting remains editable afterward.
+                  </Typography>
+                </Box>
+                <Button variant="contained" onClick={applySetupProfile} disabled={policiesLoading}>
+                  Apply recommended defaults
+                </Button>
+              </Stack>
+              <Grid container spacing={1.5}>
+                {Object.entries(setupProfiles).map(([key, profile]) => {
+                  const selected = selectedSetupProfile === key;
+                  return (
+                    <Grid item xs={12} md={4} key={key}>
+                      <Box
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedSetupProfile(key)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") setSelectedSetupProfile(key);
+                        }}
+                        sx={{
+                          border: "1px solid",
+                          borderColor: selected ? "primary.main" : "divider",
+                          borderRadius: 2,
+                          p: 1.5,
+                          height: "100%",
+                          cursor: "pointer",
+                          backgroundColor: selected ? "action.selected" : "background.paper",
+                          boxShadow: selected ? "0 0 0 1px rgba(66, 99, 235, 0.18)" : "none",
+                        }}
+                      >
+                        <Stack spacing={0.75}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                            <Typography variant="subtitle2" fontWeight={800}>{profile.label}</Typography>
+                            {selected && <Chip size="small" label="Selected" sx={readableChipSx("primary")} />}
+                          </Stack>
+                          <Typography variant="body2" color="text.secondary">{profile.tagline}</Typography>
+                          <Typography variant="caption" color="text.secondary">{profile.description}</Typography>
+                        </Stack>
+                      </Box>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+              <Alert severity="info" variant="outlined">
+                <Typography variant="body2" fontWeight={700} gutterBottom>
+                  {setupProfiles[selectedSetupProfile]?.label} profile preview
+                </Typography>
+                <Stack component="ul" spacing={0.5} sx={{ pl: 2.5, my: 0 }}>
+                  {(setupProfiles[selectedSetupProfile]?.summary || []).map((item) => (
+                    <Typography component="li" variant="body2" key={item}>{item}</Typography>
+                  ))}
+                </Stack>
+                {selectedSetupProfile === "advanced" && (
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                    Next step after applying Advanced: enter each leave type&apos;s real allowance amount, then use Preview employee impact before applying ledger-backed balances.
+                  </Typography>
+                )}
+              </Alert>
+            </Stack>
+          </AccordionDetails>
+        </Accordion>
 
         <Divider />
 
@@ -1881,12 +1927,55 @@ const SettingsLeaveSettings = () => {
                     }
                     label={fieldHelpLabel("Auto-apply to new hires", leaveAllowanceFieldHelp.appliesToNewHires)}
                   />
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Auto-apply affects future hires. Current employees are initialized through Preview employee balance impact.
-                  </Typography>
-                  </Box>
+	                  <Typography variant="caption" color="text.secondary" display="block">
+	                    Auto-apply affects future hires. Current employees are initialized through Preview employee balance impact.
+	                  </Typography>
+	                  </Box>
 
-                  <Box sx={policyGroupSx}>
+	                  <Box sx={policyGroupSx}>
+	                    <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+	                      <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 900, letterSpacing: 0.9 }}>
+	                        Year-end carryover
+	                      </Typography>
+	                      <Chip
+	                        size="small"
+	                        sx={readableChipSx(entitlement.carryover_enabled ? "success" : "default")}
+	                        label={entitlement.carryover_enabled ? `Carryover on${entitlement.carryover_limit_hours != null ? `: max ${formatHours(entitlement.carryover_limit_hours)}` : ""}` : "Carryover off"}
+	                      />
+	                    </Stack>
+	                    <FormControlLabel
+	                      control={
+	                        <Switch
+	                          checked={Boolean(entitlement.carryover_enabled)}
+	                          onChange={(event) => updateEntitlementPolicy(policy.leave_type, "carryover_enabled", event.target.checked)}
+	                        />
+	                      }
+	                      label={fieldHelpLabel("Enable carryover", leaveAllowanceFieldHelp.carryoverEnabled)}
+	                    />
+	                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+	                      Carryover controls whether unused balance can move into the next policy year. It does not automatically pay employees.
+	                    </Typography>
+	                    <Grid container spacing={1.5}>
+	                      <Grid item xs={12} sm={6}>
+	                        <TextField
+	                          fullWidth
+	                          size="small"
+	                          type="number"
+	                          label={fieldHelpLabel("Carryover cap hours", leaveAllowanceFieldHelp.carryoverLimit)}
+	                          value={entitlement.carryover_limit_hours ?? ""}
+	                          onChange={(event) => updateEntitlementPolicy(policy.leave_type, "carryover_limit_hours", event.target.value)}
+	                          inputProps={{ min: 0, step: "0.01" }}
+	                          helperText={entitlement.carryover_enabled ? "Blank means carry all positive balance in preview/apply." : "Ignored while carryover is off."}
+	                          disabled={!entitlement.carryover_enabled}
+	                        />
+	                      </Grid>
+	                    </Grid>
+	                    <Alert severity="info" variant="outlined" sx={{ mt: 1.25 }}>
+	                      If carryover is off, unused positive balance will not move forward during carryover apply. If your company pays unused leave instead, process that payout separately in payroll.
+	                    </Alert>
+	                  </Box>
+
+	                  <Box sx={policyGroupSx}>
                     <Typography variant="overline" sx={{ color: "text.secondary", fontWeight: 900, letterSpacing: 0.9 }}>
                       Approval guardrail
                     </Typography>
@@ -2680,18 +2769,21 @@ const SettingsLeaveSettings = () => {
   return (
     <Stack spacing={2}>
       <Box>
-        <Tabs
-          value={leaveAreaTab}
-          onChange={(_, value) => setLeaveAreaTab(value)}
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ mb: 2 }}
-        >
-          <Tab value="settings" label="Leave Settings" />
-          <Tab value="insights" label="Leave Insights" />
-          <Tab value="operations" label="Leave Operations" />
-        </Tabs>
-        {leaveAreaTab === "settings" ? (
+        {!hideAreaTabs && (
+          <Tabs
+            value={leaveAreaTab}
+            onChange={(_, value) => setLeaveAreaTab(value)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ mb: 2 }}
+          >
+            <Tab value="settings" label="Leave Settings" />
+            <Tab value="insights" label="Leave Insights" />
+            <Tab value="operations" label="Leave Operations" />
+            <Tab value="reports" label="Leave Reports" />
+          </Tabs>
+        )}
+        {activeLeaveAreaTab === "settings" ? (
           <Stack spacing={2}>
             <SectionCard
               title={
@@ -2730,16 +2822,29 @@ const SettingsLeaveSettings = () => {
               {renderAccrualRunHistorySummary()}
             </SectionCard>
           </Stack>
-        ) : leaveAreaTab === "insights" ? (
-          <SettingsLeaveInsights onOpenOperations={() => setLeaveAreaTab("operations")} />
-        ) : (
+        ) : activeLeaveAreaTab === "insights" ? (
+          <SettingsLeaveInsights onOpenOperations={() => (onOpenOperations ? onOpenOperations() : setLeaveAreaTab("operations"))} />
+        ) : activeLeaveAreaTab === "operations" ? (
           <SettingsLeaveInsights mode="operations" />
+        ) : (
+          <SettingsLeaveReports />
         )}
       </Box>
-      {leaveAreaTab === "settings" && (hasSettingsDraftChanges || hasPolicyDraftChanges) && (
+      {activeLeaveAreaTab === "settings" && (hasSettingsDraftChanges || hasPolicyDraftChanges) && !unsavedBannerDismissed && (
         <Alert
           severity="info"
           variant="filled"
+          action={
+            <IconButton
+              aria-label="Dismiss unsaved leave changes reminder"
+              color="inherit"
+              size="small"
+              onClick={() => setUnsavedBannerDismissed(true)}
+              sx={{ color: "common.white" }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          }
           sx={{
             position: "fixed",
             right: { xs: 12, md: 24 },
@@ -2749,6 +2854,7 @@ const SettingsLeaveSettings = () => {
             borderRadius: 3,
             boxShadow: "0 22px 54px rgba(15, 23, 42, 0.28)",
             "& .MuiAlert-message": { width: "100%" },
+            "& .MuiAlert-action": { alignItems: "flex-start", pt: 0.25 },
           }}
         >
           <Stack spacing={1.25}>

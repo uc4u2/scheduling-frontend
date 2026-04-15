@@ -491,6 +491,10 @@ export const leaveSettings = {
     api.get("/manager/leave-balance-accruals/runs", { params, ...config }).then((r) => r.data),
   getBalanceAccrualRun: (runId, config = {}) =>
     api.get(`/manager/leave-balance-accruals/runs/${runId}`, config).then((r) => r.data),
+  getAccountingReport: (params = {}, config = {}) =>
+    api.get("/manager/leave-accounting-report", { params, ...config }).then((r) => r.data),
+  applyCarryover: (payload, config = {}) =>
+    api.post("/manager/leave-carryover/apply", payload, config).then((r) => r.data),
 };
 
 /* ------------------------------ Invitation Questionnaire Assignments ------------------------------ */

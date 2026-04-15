@@ -20,6 +20,8 @@ import {
   Snackbar,
   Stack,
   Switch,
+  Tab,
+  Tabs,
   Table,
   TableBody,
   TableCell,
@@ -29,10 +31,13 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import { useTheme } from "@mui/material/styles";
 import { format } from "date-fns";
 import {
   formatLeaveWarningReason,
@@ -62,6 +67,9 @@ import {
   formatBalanceHours,
   normalizeLeaveBalanceSummary,
 } from "./utils/leaveBalances";
+import SettingsLeaveSettings from "./SettingsLeaveSettings";
+import SettingsLeaveInsights from "./SettingsLeaveInsights";
+import SettingsLeaveReports from "./SettingsLeaveReports";
 
 const token = () => localStorage.getItem("token");
 
@@ -179,6 +187,12 @@ const balanceImpactSeverity = (impact) => {
 };
 
 const employeeName = (row) => row.recruiter_name || row.employee_name || `Employee #${row.recruiter_id || "—"}`;
+
+const employeeDisplayName = (employee = {}) =>
+  `${employee.first_name || ""} ${employee.last_name || ""}`.trim()
+  || employee.name
+  || employee.email
+  || `Employee #${employee.id || "—"}`;
 
 const shiftRestorationTone = (status = {}) => {
   if (!status?.has_linked_shift) return "neutral";
@@ -415,7 +429,117 @@ const AvailabilityWarningAlert = ({ warning }) => {
   );
 };
 
+const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
+  <Drawer
+    anchor="right"
+    open={open}
+    onClose={onClose}
+    sx={{ zIndex: (theme) => theme.zIndex.modal + 20 }}
+    PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, p: 2 } }}
+  >
+    <Stack spacing={2}>
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+        <Box>
+          <Typography variant="h6" fontWeight={900}>Leave review guide</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Practical guidance for reviewing requests, confirming hours, and adjusting balances.
+          </Typography>
+        </Box>
+        <IconButton onClick={onClose} aria-label="Close leave help">
+          <CloseIcon />
+        </IconButton>
+      </Stack>
+
+      <Alert severity="info" variant="outlined">
+        Payroll formulas are not changed here. Managers confirm leave records and HR balance ledger entries; payroll still uses the existing payroll workflow.
+      </Alert>
+
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" fontWeight={900}>1. Start with the request list</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Use Status, Department, Employee, and More filters to find requests needing attention. Click Details to open the full review workspace.
+          </Typography>
+          <Typography variant="body2">
+            Example: choose <strong>Pending</strong> and an employee, then open Details to approve, reject, or confirm payroll-ready hours.
+          </Typography>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" fontWeight={900}>2. Manager review</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manager review is where you confirm what should become the approved leave record. For pending requests, review requested hours, balance impact, warnings, and any booking or availability conflicts before approving.
+          </Typography>
+          <Typography variant="body2">
+            Example: an employee requests <strong>8h paid vacation</strong>, but only <strong>5h</strong> should be paid. Set Approved hours to <strong>8</strong>, switch paid/unpaid only if policy requires it, and explain the change in Adjustment reason.
+          </Typography>
+          <Typography variant="body2">
+            Example: if a booking conflict appears, do not approve. Reschedule, cancel, or reassign the booked appointment first, then try approval again.
+          </Typography>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" fontWeight={900}>3. Ready for payroll</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Ready for payroll means the manager-confirmed hours are safe to be used as payroll input. Estimated for review means the row is visible for manager review, but is not finalized payroll truth.
+          </Typography>
+          <Typography variant="body2">
+            Example: a full-day sick request shows <strong>8h requested</strong>. If the manager approves <strong>8h</strong>, the request can become ready for payroll when the policy allows it.
+          </Typography>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" fontWeight={900}>4. Adjust balance</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Adjust balance creates a leave balance ledger entry. Use it for HR corrections, opening balances, manual accrual corrections, or year-end corrections. Always enter a clear reason.
+          </Typography>
+          <Typography variant="body2">
+            Example: the employee should receive a vacation opening balance of <strong>40h</strong>. Choose Vacation, enter <strong>+40</strong>, and use reason “Opening balance for 2026 policy year.”
+          </Typography>
+          <Typography variant="body2">
+            Example: an employee was over-credited by <strong>4h</strong>. Choose the leave type, enter <strong>-4</strong>, and explain “Correction for duplicate accrual posting.”
+          </Typography>
+          <Alert severity="warning" variant="outlined">
+            Balance adjustments affect HR leave balances only. They do not pay employees automatically and do not change payroll formulas.
+          </Alert>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" fontWeight={900}>5. Ledger and audit</Typography>
+          <Typography variant="body2" color="text.secondary">
+            The ledger is collapsed by default because it can grow long. Open it when you need to verify deductions, corrections, accrual postings, reversals, or carryover entries.
+          </Typography>
+          <Typography variant="body2">
+            Example: if a manager asks why vacation balance dropped, open the ledger and look for a leave approval deduction or manual adjustment with its timestamp and reason.
+          </Typography>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+        <Stack spacing={1}>
+          <Typography variant="subtitle2" fontWeight={900}>6. Cancel approved leave</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Cancel approved leave when the time off should no longer be active. If the leave came from a shift, the system may offer an option to restore the original shift.
+          </Typography>
+          <Typography variant="body2">
+            Example: a manager cancels approved time off for Friday. If Restore original shift is available and safe, choose it only if the employee should return to that original scheduled shift.
+          </Typography>
+        </Stack>
+      </Paper>
+    </Stack>
+  </Drawer>
+);
+
 const LeaveRequests = () => {
+  const [leaveWorkspaceTab, setLeaveWorkspaceTab] = useState("requests");
   const [requests, setRequests] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -426,6 +550,7 @@ const LeaveRequests = () => {
   const [pageSize, setPageSize] = useState(25);
   const [pagination, setPagination] = useState(normalizeLeavePagination());
   const [selectedLeave, setSelectedLeave] = useState(null);
+  const [leaveDetailsExpanded, setLeaveDetailsExpanded] = useState(false);
   const [reviewDraft, setReviewDraft] = useState(defaultManagerLeaveReviewDraft());
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -438,16 +563,47 @@ const LeaveRequests = () => {
   const [balanceSaving, setBalanceSaving] = useState(false);
   const [balanceDraft, setBalanceDraft] = useState(defaultLeaveBalanceAdjustment());
   const [balanceError, setBalanceError] = useState("");
+  const [requestLedgerOpen, setRequestLedgerOpen] = useState(false);
+  const [requestLedgerPage, setRequestLedgerPage] = useState(1);
+  const [employeeLeaveProfileOpen, setEmployeeLeaveProfileOpen] = useState(false);
+  const [profileEmployee, setProfileEmployee] = useState(null);
+  const [profileBalanceSummary, setProfileBalanceSummary] = useState(() => normalizeLeaveBalanceSummary());
+  const [profileBalanceLoading, setProfileBalanceLoading] = useState(false);
+  const [profileBalanceError, setProfileBalanceError] = useState("");
+  const [profileLedgerOpen, setProfileLedgerOpen] = useState(false);
+  const [profileLedgerPage, setProfileLedgerPage] = useState(1);
   const [bookingConflict, setBookingConflict] = useState(null);
   const [availabilityWarningDetail, setAvailabilityWarningDetail] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, msg: "", error: false, severity: undefined });
+  const [leaveHelpOpen, setLeaveHelpOpen] = useState(false);
 
+  const theme = useTheme();
+  const leaveDetailsMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const leaveDetailsFullScreen = leaveDetailsMobile || leaveDetailsExpanded;
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token()}` }), []);
 
   const filteredEmployees = useMemo(() => {
     if (!filters.department_id) return employees;
     return employees.filter((employee) => String(employee.department_id || "") === String(filters.department_id));
   }, [filters.department_id, employees]);
+
+  const selectedFilterEmployee = useMemo(
+    () => employees.find((employee) => String(employee.id) === String(filters.recruiter_id)) || null,
+    [employees, filters.recruiter_id]
+  );
+
+  const profileLedgerPageSize = 5;
+  const profileLedgerTotalPages = Math.max(1, Math.ceil((profileBalanceSummary.ledger.length || 0) / profileLedgerPageSize));
+  const profileLedgerRows = profileBalanceSummary.ledger.slice(
+    (profileLedgerPage - 1) * profileLedgerPageSize,
+    profileLedgerPage * profileLedgerPageSize
+  );
+  const requestLedgerPageSize = 5;
+  const requestLedgerTotalPages = Math.max(1, Math.ceil((balanceSummary.ledger.length || 0) / requestLedgerPageSize));
+  const requestLedgerRows = balanceSummary.ledger.slice(
+    (requestLedgerPage - 1) * requestLedgerPageSize,
+    requestLedgerPage * requestLedgerPageSize
+  );
 
   const handleDownloadAttachment = async (leave) => {
     if (!leave?.id) return;
@@ -518,12 +674,25 @@ const LeaveRequests = () => {
 
   const openDetails = (row) => {
     setSelectedLeave(row);
+    setLeaveDetailsExpanded(false);
     setReviewDraft(defaultManagerLeaveReviewDraft(row));
     setBalanceDraft(defaultLeaveBalanceAdjustment());
     setBalanceError("");
+    setRequestLedgerOpen(false);
+    setRequestLedgerPage(1);
     setBookingConflict(null);
     setAvailabilityWarningDetail(null);
     setRestoreLinkedShift(false);
+  };
+
+  const closeLeaveDetails = () => {
+    setSelectedLeave(null);
+    setBookingConflict(null);
+    setAvailabilityWarningDetail(null);
+    setRestoreLinkedShift(false);
+    setRequestLedgerOpen(false);
+    setRequestLedgerPage(1);
+    setLeaveDetailsExpanded(false);
   };
 
   const loadLeaveBalancesForEmployee = async (recruiterId) => {
@@ -542,11 +711,42 @@ const LeaveRequests = () => {
         },
       });
       setBalanceSummary(normalizeLeaveBalanceSummary(res.data));
+      setRequestLedgerPage(1);
     } catch {
       setBalanceSummary(normalizeLeaveBalanceSummary());
     } finally {
       setBalanceLoading(false);
     }
+  };
+
+  const loadLeaveProfileBalances = async (recruiterId) => {
+    if (!recruiterId) {
+      setProfileBalanceSummary(normalizeLeaveBalanceSummary());
+      return;
+    }
+    setProfileBalanceLoading(true);
+    setProfileBalanceError("");
+    try {
+      const res = await api.get(`/manager/recruiters/${recruiterId}/leave-balances`, {
+        headers: authHeaders,
+      });
+      setProfileBalanceSummary(normalizeLeaveBalanceSummary(res.data));
+      setProfileLedgerPage(1);
+    } catch (err) {
+      setProfileBalanceSummary(normalizeLeaveBalanceSummary());
+      setProfileBalanceError(err?.response?.data?.error || err?.response?.data?.message || "Could not load employee leave details.");
+    } finally {
+      setProfileBalanceLoading(false);
+    }
+  };
+
+  const openEmployeeLeaveProfile = () => {
+    if (!selectedFilterEmployee) return;
+    setProfileEmployee(selectedFilterEmployee);
+    setEmployeeLeaveProfileOpen(true);
+    setProfileLedgerOpen(false);
+    setProfileLedgerPage(1);
+    loadLeaveProfileBalances(selectedFilterEmployee.id);
   };
 
   useEffect(() => {
@@ -709,18 +909,43 @@ const LeaveRequests = () => {
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
         <Box>
           <Typography variant="h5" gutterBottom>
-            Leave Requests
+            Leave
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Review time off, confirm ready-for-payroll hours, and catch overlap warnings before payroll. Estimated leave stays visible for review but is not finalized payroll truth.
+            Review requests, configure leave policies, monitor operations, and export accountant-ready leave reports from one manager workspace.
           </Typography>
         </Box>
-        <Button variant="outlined" onClick={fetchRequests} disabled={loading}>
-          Refresh
-        </Button>
+        {leaveWorkspaceTab === "requests" && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setLeaveHelpOpen(true)}>
+              Help guide
+            </Button>
+            <Button variant="outlined" onClick={fetchRequests} disabled={loading}>
+              Refresh
+            </Button>
+          </Stack>
+        )}
       </Stack>
 
-      <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+      <Paper variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: "hidden" }}>
+        <Tabs
+          value={leaveWorkspaceTab}
+          onChange={(_, value) => setLeaveWorkspaceTab(value)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ px: 1, borderBottom: 1, borderColor: "divider" }}
+        >
+          <Tab value="requests" label="Leave Requests" />
+          <Tab value="settings" label="Leave Settings" />
+          <Tab value="insights" label="Leave Insights" />
+          <Tab value="operations" label="Leave Operations" />
+          <Tab value="reports" label="Leave Reports" />
+        </Tabs>
+      </Paper>
+
+      {leaveWorkspaceTab === "requests" ? (
+        <>
+          <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
           <TextField
             select
@@ -789,6 +1014,13 @@ const LeaveRequests = () => {
           </Button>
           <Button variant="outlined" onClick={resetFilters}>
             Reset
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!selectedFilterEmployee}
+            onClick={openEmployeeLeaveProfile}
+          >
+            Employee leave details
           </Button>
         </Stack>
         {moreFiltersOpen && (
@@ -906,6 +1138,11 @@ const LeaveRequests = () => {
             <Typography variant="body2" color="text.secondary">
               Change the status, department, or employee filter to review another set.
             </Typography>
+            {selectedFilterEmployee && (
+              <Button variant="outlined" sx={{ mt: 2 }} onClick={openEmployeeLeaveProfile}>
+                Open {employeeDisplayName(selectedFilterEmployee)} leave details
+              </Button>
+            )}
           </Box>
         ) : (
           <>
@@ -989,34 +1226,61 @@ const LeaveRequests = () => {
         )}
       </Paper>
 
-      <Drawer
-        anchor="right"
+      <Dialog
         open={Boolean(selectedLeave)}
-        onClose={() => {
-          setSelectedLeave(null);
-          setBookingConflict(null);
-          setAvailabilityWarningDetail(null);
-          setRestoreLinkedShift(false);
+        onClose={closeLeaveDetails}
+        fullWidth
+        fullScreen={leaveDetailsFullScreen}
+        maxWidth="xl"
+        PaperProps={{
+          sx: {
+            height: leaveDetailsFullScreen ? "100%" : "min(92vh, 980px)",
+            borderRadius: leaveDetailsFullScreen ? 0 : 3,
+            overflow: "hidden",
+          },
         }}
-        PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, p: 2 } }}
       >
-        {selectedLeave && drawerMeta && (
-          <Stack spacing={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-              <Box>
-                <Typography variant="h6">Leave details</Typography>
-                <Typography variant="body2" color="text.secondary">{employeeName(selectedLeave)}</Typography>
-              </Box>
-              <IconButton onClick={() => {
-                setSelectedLeave(null);
-                setBookingConflict(null);
-                setAvailabilityWarningDetail(null);
-                setRestoreLinkedShift(false);
-              }} aria-label="Close leave details">
+        <DialogTitle
+          sx={{
+            py: 1.5,
+            px: { xs: 2, md: 2.5 },
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            bgcolor: "background.paper",
+          }}
+        >
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }}>
+            <Box>
+              <Typography variant="h6" fontWeight={900}>Leave details</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedLeave ? `${employeeName(selectedLeave)} · ${fmtDateRange(selectedLeave)}` : "Review leave request"}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} justifyContent={{ xs: "flex-start", md: "flex-end" }} alignItems="center">
+              {!leaveDetailsMobile && (
+                <Button size="small" variant="outlined" onClick={() => setLeaveDetailsExpanded((expanded) => !expanded)}>
+                  {leaveDetailsExpanded ? "Standard view" : "Full screen"}
+                </Button>
+              )}
+              <Button size="small" variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setLeaveHelpOpen(true)}>
+                Help
+              </Button>
+              <IconButton onClick={closeLeaveDetails} aria-label="Close leave details">
                 <CloseIcon />
               </IconButton>
             </Stack>
-
+          </Stack>
+        </DialogTitle>
+        <DialogContent
+          dividers={false}
+          sx={{
+            p: { xs: 1.5, md: 2.5 },
+            bgcolor: "background.default",
+            overflowY: "auto",
+          }}
+        >
+        {selectedLeave && drawerMeta && (
+          <Stack spacing={2} sx={{ maxWidth: 1320, mx: "auto" }}>
             <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
               <Chip size="small" label={selectedLeave.status || "pending"} sx={readableChipSx(statusChipTone(selectedLeave.status))} />
               <Chip size="small" label={drawerMeta.payLabel} sx={payChipSx(drawerMeta.isPaid)} />
@@ -1278,31 +1542,63 @@ const LeaveRequests = () => {
                 </Stack>
                 <Divider />
                 <Box>
-                  <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 0.75 }}>
-                    Recent balance ledger
-                  </Typography>
+                  <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={800}>
+                        Recent balance ledger
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {balanceSummary.ledger.length} ledger entr{balanceSummary.ledger.length === 1 ? "y" : "ies"}
+                      </Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => setRequestLedgerOpen((open) => !open)}
+                      disabled={balanceLoading || balanceSummary.ledger.length === 0}
+                    >
+                      {requestLedgerOpen ? "Hide ledger" : "Show ledger"}
+                    </Button>
+                  </Stack>
                   {balanceSummary.ledger.length === 0 ? (
                     <Typography variant="body2" color="text.secondary">
                       No balance ledger entries yet.
                     </Typography>
+                  ) : !requestLedgerOpen ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Ledger activity is collapsed by default. Open it when you need audit detail for this employee.
+                    </Typography>
                   ) : (
-                    <Stack spacing={0.75}>
-                      {balanceSummary.ledger.slice(0, 5).map((entry) => (
-                        <Box key={entry.id} sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
-                          <Box>
-                            <Typography variant="body2" fontWeight={700}>
-                              {entry.label} · {formatBalanceHours(entry.delta_hours)}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {entry.reason || "No reason"}{entry.created_by_name ? ` · ${entry.created_by_name}` : ""}
+                    <>
+                      <Stack spacing={0.75}>
+                        {requestLedgerRows.map((entry) => (
+                          <Box key={entry.id} sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                            <Box>
+                              <Typography variant="body2" fontWeight={700}>
+                                {entry.label} · {formatBalanceHours(entry.delta_hours)}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {entry.reason || "No reason"}{entry.created_by_name ? ` · ${entry.created_by_name}` : ""}
+                              </Typography>
+                            </Box>
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+                              {fmtDateTime(entry.created_at)}
                             </Typography>
                           </Box>
-                          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
-                            {fmtDateTime(entry.created_at)}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Stack>
+                        ))}
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mt: 1 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Page {requestLedgerPage} of {requestLedgerTotalPages}
+                        </Typography>
+                        <Pagination
+                          size="small"
+                          page={requestLedgerPage}
+                          count={requestLedgerTotalPages}
+                          onChange={(_, nextPage) => setRequestLedgerPage(nextPage)}
+                        />
+                      </Stack>
+                    </>
                   )}
                 </Box>
               </Stack>
@@ -1476,6 +1772,190 @@ const LeaveRequests = () => {
             )}
           </Stack>
         )}
+        </DialogContent>
+      </Dialog>
+
+      <Drawer
+        anchor="right"
+        open={employeeLeaveProfileOpen}
+        onClose={() => {
+          setEmployeeLeaveProfileOpen(false);
+          setProfileEmployee(null);
+          setProfileBalanceError("");
+          setProfileLedgerOpen(false);
+          setProfileLedgerPage(1);
+        }}
+        PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, p: 2 } }}
+      >
+        {profileEmployee && (
+          <Stack spacing={2}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Box>
+                <Typography variant="h6">Employee leave details</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {employeeDisplayName(profileEmployee)}
+                </Typography>
+              </Box>
+              <IconButton
+                onClick={() => {
+                  setEmployeeLeaveProfileOpen(false);
+                  setProfileEmployee(null);
+                  setProfileBalanceError("");
+                  setProfileLedgerOpen(false);
+                  setProfileLedgerPage(1);
+                }}
+                aria-label="Close employee leave details"
+              >
+                <CloseIcon />
+              </IconButton>
+            </Stack>
+
+            <Alert severity="info" variant="outlined">
+              Use this drawer to view the selected employee&apos;s leave balances and recent ledger activity even when they do not have a visible request row in the current filter.
+            </Alert>
+
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Stack spacing={0.75}>
+                <Typography variant="body2"><strong>Name:</strong> {employeeDisplayName(profileEmployee)}</Typography>
+                <Typography variant="body2"><strong>Email:</strong> {profileEmployee.email || "—"}</Typography>
+                <Typography variant="body2"><strong>Department:</strong> {profileEmployee.department_name || profileEmployee.department || "Unassigned"}</Typography>
+                <Typography variant="body2"><strong>Employee ID:</strong> {profileEmployee.id || "—"}</Typography>
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Stack spacing={1.25}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      Leave balances
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Current ledger-backed balance view. Payroll formulas remain separate.
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={profileBalanceLoading}
+                    onClick={() => loadLeaveProfileBalances(profileEmployee.id)}
+                  >
+                    Refresh
+                  </Button>
+                </Stack>
+
+                {profileBalanceError && <Alert severity="error">{profileBalanceError}</Alert>}
+
+                {profileBalanceLoading ? (
+                  <Box display="flex" justifyContent="center" py={3}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : profileBalanceSummary.balances.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No leave balance records are available for this employee yet.
+                  </Typography>
+                ) : (
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                      gap: 1,
+                    }}
+                  >
+                    {profileBalanceSummary.balances.map((balance) => (
+                      <Box
+                        key={balance.leave_type}
+                        sx={(theme) => ({
+                          p: 1.1,
+                          borderRadius: 1.5,
+                          border: `1px solid ${theme.palette.divider}`,
+                          bgcolor: theme.palette.background.default,
+                        })}
+                      >
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                          {balance.label}
+                        </Typography>
+                        <Typography variant="body2" fontWeight={900}>
+                          {formatBalanceHours(balance.balance_hours)}
+                        </Typography>
+                        {balance.days_equivalent !== null && balance.days_equivalent !== undefined && (
+                          <Typography variant="caption" color="text.secondary">
+                            {Number(balance.days_equivalent).toFixed(2)} day equivalent
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Stack>
+            </Paper>
+
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Stack spacing={1}>
+                <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center">
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      Recent balance ledger
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {profileBalanceSummary.ledger.length} ledger entr{profileBalanceSummary.ledger.length === 1 ? "y" : "ies"}
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => setProfileLedgerOpen((open) => !open)}
+                    disabled={profileBalanceLoading || profileBalanceSummary.ledger.length === 0}
+                  >
+                    {profileLedgerOpen ? "Hide ledger" : "Show ledger"}
+                  </Button>
+                </Stack>
+                {profileBalanceLoading ? (
+                  <Typography variant="body2" color="text.secondary">Loading ledger...</Typography>
+                ) : profileBalanceSummary.ledger.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No recent leave ledger activity.
+                  </Typography>
+                ) : !profileLedgerOpen ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Ledger activity is collapsed by default to keep this drawer focused. Open it when you need audit detail.
+                  </Typography>
+                ) : (
+                  <>
+                    <Stack spacing={0.75}>
+                      {profileLedgerRows.map((entry) => (
+                        <Box key={entry.id} sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                          <Box>
+                            <Typography variant="body2" fontWeight={800}>
+                              {entry.label} · {formatBalanceHours(entry.delta_hours)}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {entry.reason || "No reason"}{entry.created_by_name ? ` · ${entry.created_by_name}` : ""}
+                            </Typography>
+                          </Box>
+                          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+                            {fmtDateTime(entry.created_at)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                      <Typography variant="caption" color="text.secondary">
+                        Page {profileLedgerPage} of {profileLedgerTotalPages}
+                      </Typography>
+                      <Pagination
+                        size="small"
+                        page={profileLedgerPage}
+                        count={profileLedgerTotalPages}
+                        onChange={(_, nextPage) => setProfileLedgerPage(nextPage)}
+                      />
+                    </Stack>
+                  </>
+                )}
+              </Stack>
+            </Paper>
+          </Stack>
+        )}
       </Drawer>
 
       <Dialog
@@ -1591,6 +2071,17 @@ const LeaveRequests = () => {
           {snackbar.msg}
         </Alert>
       </Snackbar>
+      <LeaveWorkspaceHelpDrawer open={leaveHelpOpen} onClose={() => setLeaveHelpOpen(false)} />
+        </>
+      ) : leaveWorkspaceTab === "settings" ? (
+        <SettingsLeaveSettings forcedAreaTab="settings" hideAreaTabs />
+      ) : leaveWorkspaceTab === "insights" ? (
+        <SettingsLeaveInsights onOpenOperations={() => setLeaveWorkspaceTab("operations")} />
+      ) : leaveWorkspaceTab === "operations" ? (
+        <SettingsLeaveInsights mode="operations" />
+      ) : (
+        <SettingsLeaveReports />
+      )}
     </Box>
   );
 };

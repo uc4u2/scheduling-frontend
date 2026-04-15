@@ -64,6 +64,7 @@ import { DateTime } from "luxon";
 import { formatDate, formatTime } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import SmartShiftPlannerPanel from "./management/SmartShiftPlannerPanel";
+import WorkforceCostAnalytics from "./management/WorkforceCostAnalytics";
 
 // ------------------------------------------------------------------------------------
 // Constants & utils
@@ -259,6 +260,7 @@ const parseUtcMillis = (iso) => {
 };
 
 const fmtShiftHours = (value) => `${Number(value || 0).toFixed(1)} h`;
+const fmtShiftMoney = (value) => `$${Number(value || 0).toFixed(2)}`;
 
 const shiftInsightTone = {
   success: { main: "#15803d", soft: "rgba(34, 197, 94, 0.08)", border: "rgba(34, 197, 94, 0.2)" },
@@ -435,6 +437,157 @@ const getShiftInsights = ({ shifts = [], recruiters = [], departments = [], time
   return { summary, trend, departmentsRows, employeeRows, leaveRows, templateRows, pressureRows };
 };
 
+const getRecruiterHourlyRate = (recruiter) => {
+  if (!recruiter) return 0;
+  const raw =
+    recruiter.hourly_rate ??
+    recruiter.pay_rate ??
+    recruiter.rate ??
+    recruiter.base_rate ??
+    recruiter.default_hourly_rate ??
+    recruiter.default_rate;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const getShiftCostBucket = (date, groupBy) => {
+  const parsed = DateTime.fromISO(String(date || ""));
+  if (!parsed.isValid) return date || "Unscheduled";
+  if (groupBy === "week") return parsed.startOf("week").toISODate();
+  if (groupBy === "month") return parsed.startOf("month").toISODate();
+  return parsed.toISODate();
+};
+
+const getShiftCostInsights = ({ shifts = [], recruiters = [], departments = [], groupBy = "day", costSlice = "all" }) => {
+  const recruiterById = new Map(recruiters.map((recruiter) => [String(recruiter.id), recruiter]));
+  const departmentById = new Map(departments.map((department) => [String(department.id), department]));
+  const byDay = new Map();
+  const byDepartment = new Map();
+  const byEmployee = new Map();
+  const activeShifts = shifts.filter((shift) => shift && shift.status !== "deleted");
+  const hoursByEmployee = new Map();
+  activeShifts.forEach((shift) => {
+    if (!shift?.recruiter_id) return;
+    const key = String(shift.recruiter_id);
+    hoursByEmployee.set(key, (hoursByEmployee.get(key) || 0) + getShiftDurationHours(shift));
+  });
+  const summary = {
+    scheduledCost: 0,
+    assignedCost: 0,
+    timeOffCost: 0,
+    cancelledCost: 0,
+    scheduledHours: 0,
+    assignedHours: 0,
+    openHours: 0,
+    timeOffHours: 0,
+    missingRateShifts: 0,
+    unassignedShifts: 0,
+    overtimeExposureHours: 0,
+  };
+
+  const slicedShifts = activeShifts.filter((shift) => {
+    const status = shift.status || "assigned";
+    const recruiter = recruiterById.get(String(shift.recruiter_id));
+    const rate = getRecruiterHourlyRate(recruiter);
+    const isCancelled = status === "cancelled";
+    const isTimeOff = shift.on_leave === true || Boolean(shift.leave_id);
+    const isOpen = !shift.recruiter_id || status === "open" || status === "unassigned" || status === "pending";
+    if (costSlice === "assigned") return !isOpen && !isCancelled;
+    if (costSlice === "time_off") return isTimeOff;
+    if (costSlice === "cancelled") return isCancelled;
+    if (costSlice === "open") return isOpen;
+    if (costSlice === "missing_rates") return Boolean(shift.recruiter_id && !rate);
+    if (costSlice === "overtime_exposure") return shift.recruiter_id && Number(hoursByEmployee.get(String(shift.recruiter_id)) || 0) > 40;
+    return true;
+  });
+
+  slicedShifts.forEach((shift) => {
+    const status = shift.status || "assigned";
+    const hours = getShiftDurationHours(shift);
+    const recruiter = recruiterById.get(String(shift.recruiter_id));
+    const rate = getRecruiterHourlyRate(recruiter);
+    const cost = hours * rate;
+    const isCancelled = status === "cancelled";
+    const isTimeOff = shift.on_leave === true || Boolean(shift.leave_id);
+    const isOpen = !shift.recruiter_id || status === "open" || status === "unassigned" || status === "pending";
+    const isAssigned = !isOpen && !isCancelled;
+    const shiftDate = getShiftCostBucket(getShiftLocalDate(shift) || shift.date || "Unscheduled", groupBy);
+    const employeeName = recruiter?.name || shift.recruiter_name || (shift.recruiter_id ? `Employee ${shift.recruiter_id}` : "Unassigned");
+    const departmentId = shift.department_id || recruiter?.department_id || "unassigned";
+    const departmentName =
+      shift.department_name ||
+      departmentById.get(String(departmentId))?.name ||
+      recruiter?.department_name ||
+      "Unassigned";
+
+    summary.scheduledHours += hours;
+    summary.scheduledCost += cost;
+    summary.assignedHours += isAssigned ? hours : 0;
+    summary.assignedCost += isAssigned ? cost : 0;
+    summary.openHours += isOpen ? hours : 0;
+    summary.timeOffHours += isTimeOff ? hours : 0;
+    summary.timeOffCost += isTimeOff ? cost : 0;
+    summary.cancelledCost += isCancelled ? cost : 0;
+    summary.unassignedShifts += isOpen ? 1 : 0;
+    summary.missingRateShifts += shift.recruiter_id && !rate ? 1 : 0;
+
+    const day = byDay.get(shiftDate) || { date: shiftDate, cost: 0, hours: 0, assignedCost: 0, timeOffCost: 0, openHours: 0 };
+    day.cost += cost;
+    day.hours += hours;
+    day.assignedCost += isAssigned ? cost : 0;
+    day.timeOffCost += isTimeOff ? cost : 0;
+    day.openHours += isOpen ? hours : 0;
+    byDay.set(shiftDate, day);
+
+    const dept = byDepartment.get(String(departmentId)) || {
+      key: String(departmentId),
+      name: departmentName,
+      cost: 0,
+      hours: 0,
+      assignedCost: 0,
+      timeOffCost: 0,
+      openHours: 0,
+      missingRateShifts: 0,
+    };
+    dept.cost += cost;
+    dept.hours += hours;
+    dept.assignedCost += isAssigned ? cost : 0;
+    dept.timeOffCost += isTimeOff ? cost : 0;
+    dept.openHours += isOpen ? hours : 0;
+    dept.missingRateShifts += shift.recruiter_id && !rate ? 1 : 0;
+    byDepartment.set(String(departmentId), dept);
+
+    const employee = byEmployee.get(String(shift.recruiter_id || employeeName)) || {
+      key: String(shift.recruiter_id || employeeName),
+      name: employeeName,
+      departmentName,
+      cost: 0,
+      hours: 0,
+      rate,
+      shiftCount: 0,
+      timeOffHours: 0,
+      missingRate: Boolean(shift.recruiter_id && !rate),
+    };
+    employee.cost += cost;
+    employee.hours += hours;
+    employee.rate = employee.rate || rate;
+    employee.shiftCount += 1;
+    employee.timeOffHours += isTimeOff ? hours : 0;
+    employee.missingRate = employee.missingRate || Boolean(shift.recruiter_id && !rate);
+    byEmployee.set(String(shift.recruiter_id || employeeName), employee);
+  });
+
+  const employeeRows = Array.from(byEmployee.values()).sort((a, b) => b.cost - a.cost || b.hours - a.hours);
+  summary.overtimeExposureHours = employeeRows.reduce((sum, row) => sum + Math.max(Number(row.hours || 0) - 40, 0), 0);
+
+  return {
+    summary,
+    trend: Array.from(byDay.values()).sort((a, b) => String(a.date).localeCompare(String(b.date))),
+    departmentsRows: Array.from(byDepartment.values()).sort((a, b) => b.cost - a.cost || b.hours - a.hours),
+    employeeRows,
+  };
+};
+
 const ShiftInsightKpi = ({ label, value, help, tone = "default" }) => {
   const colors = shiftInsightTone[tone] || shiftInsightTone.default;
   return (
@@ -442,7 +595,7 @@ const ShiftInsightKpi = ({ label, value, help, tone = "default" }) => {
       variant="outlined"
       sx={{
         p: 1.35,
-        borderRadius: 3,
+        borderRadius: "12px",
         height: "100%",
         bgcolor: "rgba(255,255,255,0.92)",
         borderColor: "rgba(148, 163, 184, 0.2)",
@@ -608,6 +761,73 @@ const ShiftCompositionBar = ({ items }) => {
   );
 };
 
+const MiniCostTrend = ({ rows }) => {
+  const visible = rows.slice(0, 14);
+  const max = Math.max(1, ...visible.map((row) => Number(row.cost || 0)));
+  if (!visible.length) {
+    return <ShiftInsightEmptyState>No scheduled cost data in this range.</ShiftInsightEmptyState>;
+  }
+  return (
+    <Stack spacing={1.25}>
+      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+        {[
+          ["Estimated cost", "#2563eb"],
+          ["Time-off cost", "#64748b"],
+          ["Open hours", "#b45309"],
+        ].map(([label, color]) => (
+          <Stack key={label} direction="row" spacing={0.75} alignItems="center">
+            <Box sx={{ width: 9, height: 9, borderRadius: 999, bgcolor: color }} />
+            <Typography variant="caption" color="text.secondary" fontWeight={800}>
+              {label}
+            </Typography>
+          </Stack>
+        ))}
+      </Stack>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${visible.length}, minmax(36px, 1fr))`,
+          gap: 1,
+          alignItems: "end",
+          minHeight: 220,
+        }}
+      >
+        {visible.map((row) => (
+          <Stack key={row.date} spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
+            <Stack
+              justifyContent="flex-end"
+              sx={{
+                height: 156,
+                width: "100%",
+                maxWidth: 44,
+                borderRadius: 2,
+                overflow: "hidden",
+                bgcolor: "rgba(148, 163, 184, 0.13)",
+                border: "1px solid rgba(148, 163, 184, 0.2)",
+              }}
+            >
+              <Box
+                title={`Estimated cost: ${fmtShiftMoney(row.cost)}`}
+                sx={{
+                  height: `${Math.max((Number(row.cost || 0) / max) * 100, row.cost ? 6 : 0)}%`,
+                  minHeight: row.cost ? 6 : 0,
+                  bgcolor: "#2563eb",
+                }}
+              />
+            </Stack>
+            <Typography variant="caption" color="text.secondary" sx={{ writingMode: visible.length > 9 ? "vertical-rl" : "initial", fontWeight: 700 }}>
+              {formatShiftInsightDateLabel(row.date)}
+            </Typography>
+            <Typography variant="caption" fontWeight={900}>
+              {fmtShiftMoney(row.cost)}
+            </Typography>
+          </Stack>
+        ))}
+      </Box>
+    </Stack>
+  );
+};
+
 const ShiftInsightEmptyState = ({ children }) => (
   <Box
     sx={{
@@ -670,7 +890,7 @@ const InsightStrip = ({ insights }) => (
       const colors = shiftInsightTone[item.tone] || shiftInsightTone.default;
       return (
         <Grid item xs={12} md={6} xl={3} key={item.label}>
-          <Paper variant="outlined" sx={{ p: 1.2, borderRadius: 2.5, borderColor: "rgba(148, 163, 184, 0.2)", bgcolor: colors.soft }}>
+          <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px", borderColor: "rgba(148, 163, 184, 0.2)", bgcolor: colors.soft }}>
             <Typography variant="body2" fontWeight={900} sx={{ color: colors.main }}>
               {item.label}
             </Typography>
@@ -778,7 +998,7 @@ const ShiftInsightsPanel = ({
         variant="outlined"
         sx={{
           p: 2,
-          borderRadius: 3,
+          borderRadius: "12px",
           bgcolor: "background.paper",
           borderColor: "rgba(148, 163, 184, 0.32)",
           boxShadow: "0 14px 34px rgba(15, 23, 42, 0.04)",
@@ -1016,6 +1236,254 @@ const ShiftInsightsPanel = ({
   );
 };
 
+const costSliceOptions = [
+  { value: "all", label: "All cost" },
+  { value: "assigned", label: "Assigned cost" },
+  { value: "time_off", label: "Time-off cost" },
+  { value: "cancelled", label: "Cancelled cost" },
+  { value: "open", label: "Open cost exposure" },
+  { value: "missing_rates", label: "Missing rates" },
+  { value: "overtime_exposure", label: "Overtime exposure" },
+];
+
+const costViewOptions = [
+  { value: "department", label: "Department" },
+  { value: "employee", label: "Employee" },
+  { value: "risk", label: "Risk" },
+];
+
+const WorkforceCostInsightsPanel = ({
+  insights,
+  costSlice,
+  setCostSlice,
+  costGroupBy,
+  setCostGroupBy,
+  costViewBy,
+  setCostViewBy,
+  dateRange,
+  selectedMonth,
+  onRangePreset,
+  onDateRangeChange,
+  onResetFilters,
+  onOpenAnalytics,
+}) => {
+  const { summary, trend, departmentsRows, employeeRows } = insights;
+  const selectedSliceLabel = costSliceOptions.find((option) => option.value === costSlice)?.label || "All cost";
+  const selectedViewLabel = costViewOptions.find((option) => option.value === costViewBy)?.label || "Department";
+  const selectedMonthLabel = selectedMonth ? DateTime.fromFormat(selectedMonth, "yyyy-MM").toFormat("LLLL yyyy") : "Current range";
+  const costMixItems = [
+    { label: "Assigned cost", value: summary.assignedCost, color: "#2563eb" },
+    { label: "Time-off cost", value: summary.timeOffCost, color: "#64748b" },
+    { label: "Cancelled cost", value: summary.cancelledCost, color: "#b91c1c" },
+  ];
+  const insightRows = [
+    summary.scheduledCost
+      ? { label: `${fmtShiftMoney(summary.scheduledCost)} scheduled cost`, help: `${fmtShiftHours(summary.scheduledHours)} in the selected schedule view.`, tone: "info" }
+      : { label: "No scheduled cost", help: "No rated scheduled shifts in the selected view.", tone: "muted" },
+    summary.missingRateShifts
+      ? { label: `${summary.missingRateShifts} missing rate${summary.missingRateShifts === 1 ? "" : "s"}`, help: "Cost estimates are incomplete until employee rates are set.", tone: "warning" }
+      : { label: "Rates available", help: "No missing employee rate signal in this slice.", tone: "success" },
+    summary.openHours
+      ? { label: `${fmtShiftHours(summary.openHours)} open`, help: "Open shifts are not fully costed until assigned.", tone: "warning" }
+      : { label: "No open cost exposure", help: "All scheduled hours are assigned in this slice.", tone: "success" },
+    summary.overtimeExposureHours
+      ? { label: `${fmtShiftHours(summary.overtimeExposureHours)} over 40h`, help: "Schedule exposure only; payroll remains source of truth.", tone: "warning" }
+      : { label: "No overtime exposure", help: "No employee exceeds 40 scheduled hours in this slice.", tone: "success" },
+  ];
+  const departmentVisualRows = departmentsRows.map((row) => ({
+    ...row,
+    caption: `${fmtShiftHours(row.hours)} · open ${fmtShiftHours(row.openHours)} · time off ${fmtShiftMoney(row.timeOffCost)}${row.missingRateShifts ? ` · ${row.missingRateShifts} missing rate` : ""}`,
+  }));
+  const employeeVisualRows = employeeRows.map((row) => ({
+    ...row,
+    caption: `${fmtShiftHours(row.hours)} · ${row.shiftCount} shift${row.shiftCount === 1 ? "" : "s"} · rate ${row.rate ? `${fmtShiftMoney(row.rate)}/h` : "not set"}${row.timeOffHours ? ` · off ${fmtShiftHours(row.timeOffHours)}` : ""}`,
+  }));
+  const riskRows = [
+    { key: "missing-rate", name: "Missing employee rates", value: summary.missingRateShifts, caption: "Estimated cost cannot be complete without rates." },
+    { key: "open-hours", name: "Open shift hours", value: summary.openHours, caption: "Open work is not fully costed until assigned." },
+    { key: "overtime-exposure", name: "Over 40 scheduled hours", value: summary.overtimeExposureHours, caption: "Scheduling exposure only, not payroll truth." },
+    { key: "time-off-cost", name: "Time-off cost visibility", value: summary.timeOffCost, caption: "Approved leave with schedule context." },
+  ];
+
+  return (
+    <Stack spacing={2}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2,
+          borderRadius: "12px",
+          borderColor: "rgba(148, 163, 184, 0.28)",
+          bgcolor: "background.paper",
+        }}
+      >
+        <Stack spacing={1.5}>
+          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", md: "center" }} spacing={1.5}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={950}>
+                Cost insight filters
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                These controls affect the schedule-based cost estimate only.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button size="small" onClick={() => onRangePreset("today")}>Today</Button>
+              <Button size="small" onClick={() => onRangePreset("this_week")}>This week</Button>
+              <Button size="small" onClick={() => onRangePreset("next_7")}>Next 7 days</Button>
+              <Button size="small" onClick={() => onRangePreset("this_month")}>This month</Button>
+              <Button size="small" onClick={() => onRangePreset("next_month")}>Next month</Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  setCostSlice("all");
+                  setCostGroupBy("day");
+                  setCostViewBy("department");
+                  onResetFilters();
+                }}
+              >
+                Reset
+              </Button>
+            </Stack>
+          </Stack>
+          <Grid container spacing={1.5}>
+            <Grid item xs={12} md={2.4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="From"
+                type="date"
+                value={dateRange?.start || ""}
+                onChange={(event) => onDateRangeChange("start", event.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={2.4}>
+              <TextField
+                fullWidth
+                size="small"
+                label="To"
+                type="date"
+                value={dateRange?.end || ""}
+                onChange={(event) => onDateRangeChange("end", event.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={2.4}>
+              <TextField select fullWidth size="small" label="Group by" value={costGroupBy} onChange={(event) => setCostGroupBy(event.target.value)}>
+                <MenuItem value="day">Day</MenuItem>
+                <MenuItem value="week">Week</MenuItem>
+                <MenuItem value="month">Month</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2.4}>
+              <TextField select fullWidth size="small" label="Cost slice" value={costSlice} onChange={(event) => setCostSlice(event.target.value)}>
+                {costSliceOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={2.4}>
+              <TextField select fullWidth size="small" label="View by" value={costViewBy} onChange={(event) => setCostViewBy(event.target.value)}>
+                {costViewOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          </Grid>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Chip size="small" label={selectedMonthLabel} variant="outlined" />
+            <Chip size="small" label={`${dateRange?.start || "—"} to ${dateRange?.end || "—"}`} variant="outlined" />
+            <Chip size="small" label={selectedSliceLabel} color={costSlice === "all" ? "default" : "primary"} variant="outlined" />
+            <Chip size="small" label={`Grouped by ${readableShiftLabel(costGroupBy)}`} variant="outlined" />
+            <Chip size="small" label={`View by ${selectedViewLabel}`} variant="outlined" />
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Alert severity="info" variant="outlined" sx={{ py: 0.75 }}>
+        Schedule-based estimate using the current Shift Management filters and employee rate fields already loaded on this page. Payroll formulas and workforce analytics truth are unchanged.
+      </Alert>
+
+      <InsightStrip insights={insightRows} />
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Scheduled cost" value={fmtShiftMoney(summary.scheduledCost)} help={fmtShiftHours(summary.scheduledHours)} tone="info" />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Assigned cost" value={fmtShiftMoney(summary.assignedCost)} help={fmtShiftHours(summary.assignedHours)} tone="success" />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Time-off cost" value={fmtShiftMoney(summary.timeOffCost)} help={fmtShiftHours(summary.timeOffHours)} tone="muted" />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <ShiftInsightKpi label="Missing rates" value={summary.missingRateShifts} help="Set employee rates for cleaner estimates" tone={summary.missingRateShifts ? "warning" : "success"} />
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} lg={8}>
+          <ShiftInsightSection title="Scheduled cost trend" description="Estimated scheduled labor cost by date in the selected range." accent={summary.missingRateShifts ? "warning" : "info"}>
+            <MiniCostTrend rows={trend} />
+          </ShiftInsightSection>
+        </Grid>
+        <Grid item xs={12} lg={4}>
+          <ShiftInsightSection title="Cost health composition" description="Assigned, time-off, and cancelled schedule cost mix." accent="info">
+            <ShiftCompositionBar items={costMixItems} />
+          </ShiftInsightSection>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        {(costViewBy === "department" || costViewBy === "risk") && (
+        <Grid item xs={12} md={costViewBy === "department" ? 6 : 12}>
+          <ShiftInsightSection title="Department cost breakdown" description="Estimated schedule cost concentration by department." accent="info">
+            <RankedBarList rows={departmentVisualRows} valueKey="cost" labelKey="name" valueFormatter={fmtShiftMoney} color="#2563eb" emptyText="No department cost data in this schedule view." />
+          </ShiftInsightSection>
+        </Grid>
+        )}
+        {(costViewBy === "employee" || costViewBy === "department") && (
+        <Grid item xs={12} md={costViewBy === "employee" ? 12 : 6}>
+          <ShiftInsightSection title="Employee cost breakdown" description="Highest scheduled cost and hours by employee." accent={summary.overtimeExposureHours ? "warning" : "success"}>
+            <RankedBarList rows={employeeVisualRows} valueKey="cost" labelKey="name" valueFormatter={fmtShiftMoney} color="#15803d" emptyText="No employee cost data in this schedule view." />
+          </ShiftInsightSection>
+        </Grid>
+        )}
+      </Grid>
+
+      <Grid container spacing={2}>
+        {(costViewBy === "risk" || costViewBy === "department" || costViewBy === "employee") && (
+        <Grid item xs={12} md={8}>
+          <ShiftInsightSection title="Cost risk summary" description="Signals that affect confidence in scheduled cost estimates." accent={summary.missingRateShifts || summary.openHours ? "warning" : "success"}>
+            <RankedBarList
+              rows={riskRows}
+              valueKey="value"
+              labelKey="name"
+              valueFormatter={(value, row) => (row.key === "time-off-cost" ? fmtShiftMoney(value) : row.key.includes("hours") || row.key.includes("exposure") ? fmtShiftHours(value) : value)}
+              color={summary.missingRateShifts || summary.openHours ? "#b45309" : "#15803d"}
+              emptyText="No cost risk signals in this schedule view."
+            />
+          </ShiftInsightSection>
+        </Grid>
+        )}
+        <Grid item xs={12} md={4}>
+          <ShiftInsightSection title="Payroll handoff" description="Use the full workforce cost page when you need payroll-adjacent actuals." accent="muted">
+            <Stack spacing={1.25}>
+              <Typography variant="body2" color="text.secondary">
+                This tab estimates scheduled cost. Actual worked cost, overtime, and paid leave cost remain in Advanced Analytics.
+              </Typography>
+              <Button variant="outlined" onClick={onOpenAnalytics}>
+                Open Workforce Cost
+              </Button>
+            </Stack>
+          </ShiftInsightSection>
+        </Grid>
+      </Grid>
+    </Stack>
+  );
+};
+
 const localPartsToUtcMillis = (date, time, zone) => {
   if (!date || !time) return null;
   try {
@@ -1060,6 +1528,9 @@ const asLocalDate = (ymd) => {
   const [workHoursOnly, setWorkHoursOnly] = useState(false);
   const [compactDensity, setCompactDensity] = useState(false);
   const [shiftManagementTab, setShiftManagementTab] = useState("schedule");
+  const [costInsightGroupBy, setCostInsightGroupBy] = useState("day");
+  const [costInsightSlice, setCostInsightSlice] = useState("all");
+  const [costInsightViewBy, setCostInsightViewBy] = useState("department");
   const [showTimeOffOnCalendar, setShowTimeOffOnCalendar] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("schedulaa.showTimeOffOnShiftCalendar") === "true";
@@ -1408,6 +1879,13 @@ const [formData, setFormData] = useState({
 
   const handleShiftInsightRangePreset = useCallback((preset) => {
     const today = new Date();
+    if (preset === "today") {
+      const start = format(today, "yyyy-MM-dd");
+      setSelectedMonth(format(today, "yyyy-MM"));
+      setDateRange({ start, end: start });
+      setSelectedDate(start);
+      return;
+    }
     if (preset === "this_month") {
       handleMonthChange(format(today, "yyyy-MM"));
       return;
@@ -1446,6 +1924,18 @@ const [formData, setFormData] = useState({
       end: format(addDays(today, 30), "yyyy-MM-dd"),
     });
     setSelectedDate(start);
+  }, []);
+
+  const handleShiftInsightDateRangeChange = useCallback((field, value) => {
+    setDateRange((prev) => {
+      const next = { ...prev, [field]: value };
+      const anchor = field === "start" ? value : next.start;
+      if (anchor) {
+        setSelectedMonth(format(asLocalDate(anchor), "yyyy-MM"));
+        setSelectedDate(anchor);
+      }
+      return next;
+    });
   }, []);
 
   /* -------------------------------- helpers --------------------------------- */
@@ -1930,6 +2420,16 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
   const shiftInsights = useMemo(
     () => getShiftInsights({ shifts: filteredShifts, recruiters, departments, timeEntriesMap, rosterMap }),
     [filteredShifts, recruiters, departments, timeEntriesMap, rosterMap]
+  );
+  const shiftCostInsights = useMemo(
+    () => getShiftCostInsights({
+      shifts: filteredShifts,
+      recruiters,
+      departments,
+      groupBy: costInsightGroupBy,
+      costSlice: costInsightSlice,
+    }),
+    [filteredShifts, recruiters, departments, costInsightGroupBy, costInsightSlice]
   );
 
   const canLinkAvailability = Boolean(editingShift) || selectedRecruiters.length === 1;
@@ -3417,6 +3917,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 	        >
 	          <Tab value="schedule" label="Schedule" />
 	          <Tab value="insights" label="Shift Insights" />
+	          <Tab value="workforce-cost" label="Workforce Cost" />
+	          <Tab value="workforce-cost-insights" label="Cost Insights" />
 	        </Tabs>
 	      </Paper>
 	
@@ -5147,7 +5649,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         </Menu>
       </Box>
       </>
-      ) : (
+      ) : shiftManagementTab === "insights" ? (
         <ShiftInsightsPanel
           insights={shiftInsights}
           departments={departments}
@@ -5167,6 +5669,24 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             fetchShifts();
             fetchTimeEntries();
           }}
+        />
+      ) : shiftManagementTab === "workforce-cost" ? (
+        <WorkforceCostAnalytics compact />
+      ) : (
+        <WorkforceCostInsightsPanel
+          insights={shiftCostInsights}
+          costSlice={costInsightSlice}
+          setCostSlice={setCostInsightSlice}
+          costGroupBy={costInsightGroupBy}
+          setCostGroupBy={setCostInsightGroupBy}
+          costViewBy={costInsightViewBy}
+          setCostViewBy={setCostInsightViewBy}
+          dateRange={dateRange}
+          selectedMonth={selectedMonth}
+          onRangePreset={handleShiftInsightRangePreset}
+          onDateRangeChange={handleShiftInsightDateRangeChange}
+          onResetFilters={resetShiftInsightFilters}
+          onOpenAnalytics={() => navigate("/manager/analytics?view=workforce-cost")}
         />
       )}
     </Box>

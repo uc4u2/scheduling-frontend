@@ -49,7 +49,6 @@ import SettingsBillingSubscription from "./SettingsBillingSubscription";
 import IntegrationActivityCard from "./IntegrationActivityCard";
 import ProfessionSettings from "./ProfessionSetting";
 import SettingsTimeTracking from "./SettingsTimeTracking";
-import SettingsLeaveSettings from "./SettingsLeaveSettings";
 import SettingsBookingReminders from "./SettingsBookingReminders";
 import EasyPostShippingSettingsPanel from "./management/EasyPostShippingSettingsPanel";
 
@@ -89,26 +88,20 @@ const Settings = () => {
       artist: 4,
       'client-video': 5,
       client: 5,
-      leave: 6,
-      'leave-settings': 6,
-      'leave-insights': 6,
-      insights: 6,
-      timeoff: 6,
-      pto: 6,
-      billing: 7,
-      subscription: 7,
-      stripe: 7,
-      'stripe-hub': 7,
-      checkout: 7,
-      payments: 7,
-      'checkout-pro': 7,
-      zapier: 8,
-      xero: 8,
-      quickbooks: 8,
-      qb: 8,
-      easypost: 8,
-      'integration-activity': 8,
-      activity: 8,
+      billing: 6,
+      subscription: 6,
+      stripe: 6,
+      'stripe-hub': 6,
+      checkout: 6,
+      payments: 6,
+      'checkout-pro': 6,
+      zapier: 7,
+      xero: 7,
+      quickbooks: 7,
+      qb: 7,
+      easypost: 7,
+      'integration-activity': 7,
+      activity: 7,
     };
     return map[tabParam] ?? 0;
   }, [tabParam]);
@@ -774,10 +767,6 @@ const Settings = () => {
     {
       label: t("settings.tabs.clientVideo"),
       content: <SettingsClientVideo />,
-    },
-    {
-      label: t("settings.tabs.leaveSettings", "Leave Settings"),
-      content: <SettingsLeaveSettings />,
     },
     {
       label: t("settings.tabs.billing", "Billing"),
