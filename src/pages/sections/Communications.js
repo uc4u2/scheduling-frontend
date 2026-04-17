@@ -144,15 +144,47 @@ const fileStatusTone = (status) => {
   return "warning";
 };
 
-const FileSummary = ({ file }) => {
+const fileName = (file) => file?.file_name || file?.original_filename || "Uploaded file";
+
+const downloadStatusText = (file) => {
+  const status = String(file?.download_status || "").toLowerCase();
+  if (status === "ready" || file?.is_download_ready) return "Ready";
+  if (status === "blocked" || String(file?.scan_status || "").toLowerCase() === "blocked") return "Blocked";
+  return "Processing";
+};
+
+const FileSummary = ({ file, label = "File" }) => {
   const theme = useTheme();
   if (!file) return null;
+  const scanStatus = String(file.scan_status || "").toLowerCase();
   return (
-    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-      <Chip size="small" label="Uploaded file" {...readableChipProps(theme, "primary")} />
-      {file.file_name && <Chip size="small" label={file.file_name} {...readableChipProps(theme, "neutral")} />}
-      {file.scan_status && <Chip size="small" label={`Scan: ${file.scan_status}`} {...readableChipProps(theme, fileStatusTone(file.scan_status))} />}
-    </Stack>
+    <Box
+      sx={{
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.14)}`,
+        bgcolor: alpha(theme.palette.background.paper, 0.62),
+        borderRadius: 1,
+        px: 1,
+        py: 0.85,
+      }}
+    >
+      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+        <Stack direction="row" spacing={0.9} alignItems="center" sx={{ minWidth: 0 }}>
+          <ArticleIcon sx={{ fontSize: 18, color: theme.palette.primary.main, flexShrink: 0 }} />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {label}
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 900, ...lineClampSx(1) }}>
+              {fileName(file)}
+            </Typography>
+          </Box>
+        </Stack>
+        <Stack direction="row" spacing={0.6} alignItems="center" flexWrap="wrap" justifyContent="flex-end" useFlexGap>
+          {file.file_size ? <Chip size="small" label={formatBytes(file.file_size)} {...readableChipProps(theme, "neutral")} /> : null}
+          <Chip size="small" label={downloadStatusText(file)} {...readableChipProps(theme, fileStatusTone(scanStatus))} />
+        </Stack>
+      </Stack>
+    </Box>
   );
 };
 
@@ -235,6 +267,7 @@ const CommunicationCard = ({ type, row, onEdit, onArchive, onView, onDelete }) =
   const isAnnouncement = type === "announcement";
   const title = row.title;
   const description = isAnnouncement ? row.body : row.description;
+  const attachedFile = isAnnouncement ? row.attachment_file : row.file;
   return (
     <Card
       variant="outlined"
@@ -295,8 +328,7 @@ const CommunicationCard = ({ type, row, onEdit, onArchive, onView, onDelete }) =
             <Chip size="small" label={row.audience_summary || "No audience"} {...readableChipProps(theme, "neutral")} />
             {row.targeted_employee_count !== undefined && <Chip size="small" label={`${row.targeted_employee_count} targeted`} {...readableChipProps(theme, "info")} />}
           </Stack>
-          {!isAnnouncement && <FileSummary file={row.file} />}
-          {isAnnouncement && row.attachment_file && <FileSummary file={row.attachment_file} />}
+          {attachedFile && <FileSummary file={attachedFile} label={isAnnouncement ? "Attachment" : "Shared file"} />}
           <Stack direction="row" spacing={1} color="text.secondary" flexWrap="wrap" useFlexGap>
             <Typography variant="caption">By {row.created_by || "Unknown"}</Typography>
             {row.created_at && <Typography variant="caption">Created {formatDate(row.created_at)}</Typography>}
@@ -683,51 +715,65 @@ const Communications = () => {
     { key: "files", label: "Shared Files" },
   ];
 
+  const switchTab = (tabKey) => {
+    setActiveTab(tabKey);
+    if (tabKey === "announcements") {
+      setCategoryFilter("");
+      setScanFilter("");
+      setAnnouncementPage(1);
+    } else {
+      setPriorityFilter("");
+      setFilePage(1);
+    }
+  };
+
   return (
     <ManagementFrame
-      title="Communications"
-      subtitle="Publish internal updates and share company files with targeted employees."
       fullWidth
       contentVariant={false}
       sx={{ px: { xs: 1, md: 2 } }}
     >
       <Stack spacing={2}>
-        <Grid container spacing={1.25}>
-          {[
-            ["Announcements", summary.total_announcements || 0, "warning"],
-            ["Shared files", summary.total_shared_files || 0, "primary"],
-            ["Pending scans", summary.pending_scan_files || 0, "warning"],
-            ["Blocked files", summary.blocked_files || 0, "error"],
-          ].map(([label, value, tone]) => (
-            <Grid item xs={6} md={3} key={label}>
-              <Card variant="outlined" sx={{ borderRadius: 1, borderColor: alpha(theme.palette[tone]?.main || theme.palette.primary.main, 0.18), background: alpha(theme.palette.background.paper, 0.72) }}>
-                <CardContent sx={{ p: 1.25 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>{value}</Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between">
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 950, letterSpacing: "-0.02em" }}>Communications</Typography>
+            <Typography variant="body2" color="text.secondary">Publish internal updates and share company files.</Typography>
+          </Box>
+          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }}>
+            {[
+              ["Announcements", summary.total_announcements || 0, "warning"],
+              ["Shared files", summary.total_shared_files || 0, "primary"],
+              ["Pending scans", summary.pending_scan_files || 0, "warning"],
+              ["Blocked", summary.blocked_files || 0, "error"],
+            ].map(([label, value, tone]) => (
+              <Chip
+                key={label}
+                label={`${label}: ${value}`}
+                {...readableChipProps(theme, tone)}
+                sx={{ ...readableChipProps(theme, tone).sx, height: 30, px: 0.5 }}
+              />
+            ))}
+          </Stack>
+        </Stack>
 
         <Card variant="outlined" sx={{ borderRadius: 1, borderColor: alpha(theme.palette.primary.main, 0.14), background: alpha(theme.palette.background.paper, 0.8) }}>
-          <CardContent sx={{ p: 1.25 }}>
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "stretch", md: "center" }} justifyContent="space-between">
-              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+          <CardContent sx={{ p: 1 }}>
+            <Stack direction={{ xs: "column", lg: "row" }} spacing={1} alignItems={{ xs: "stretch", lg: "center" }} justifyContent="space-between">
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                 {tabs.map((tab) => (
                   <Button
                     key={tab.key}
                     size="small"
                     variant={activeTab === tab.key ? "contained" : "outlined"}
-                    onClick={() => setActiveTab(tab.key)}
+                    onClick={() => switchTab(tab.key)}
                     sx={{ fontWeight: 900 }}
                   >
                     {tab.label}
                   </Button>
                 ))}
               </Stack>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-                <TextField size="small" label="Search" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") refreshSearch(); }} />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={0.75} alignItems={{ xs: "stretch", sm: "center" }} flexWrap="wrap" useFlexGap justifyContent="flex-end">
+                <TextField size="small" label="Search" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") refreshSearch(); }} sx={{ minWidth: 190 }} />
                 <FormControl size="small" sx={{ minWidth: 150 }}>
                   <InputLabel>Status</InputLabel>
                   <Select label="Status" value={statusFilter} onChange={(event) => { resetPaginationForFilters(); setStatusFilter(event.target.value); }}>
@@ -790,7 +836,7 @@ const Communications = () => {
                   }}
                 />
                 <Tooltip title="Remove stale uploaded files that were never attached to an announcement or shared file.">
-                  <Button variant="outlined" color="warning" onClick={() => setCleanupDialogOpen(true)}>Cleanup</Button>
+                  <Button size="small" variant="text" color="warning" onClick={() => setCleanupDialogOpen(true)}>Maintenance</Button>
                 </Tooltip>
                 <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData}>Refresh</Button>
                 <Button
@@ -1084,14 +1130,14 @@ const Communications = () => {
                 return (
                   <Stack spacing={1}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 950 }}>File</Typography>
-                    <FileSummary file={file} />
+                    <FileSummary file={file} label={detailType === "announcement" ? "Announcement attachment" : "Shared file"} />
                     <Grid container spacing={1.5}>
-                      <Grid item xs={6}><DetailRow label="File name" value={file.file_name} /></Grid>
+                      <Grid item xs={6}><DetailRow label="File name" value={fileName(file)} /></Grid>
                       <Grid item xs={6}><DetailRow label="Size" value={formatBytes(file.file_size)} /></Grid>
                       <Grid item xs={6}><DetailRow label="Type" value={file.content_type} /></Grid>
                       <Grid item xs={6}><DetailRow label="Scan status" value={file.scan_status} /></Grid>
                       <Grid item xs={6}><DetailRow label="Uploaded" value={formatDateTime(file.created_at)} /></Grid>
-                      <Grid item xs={6}><DetailRow label="Download ready" value={file.is_download_ready ? "Yes" : "No"} /></Grid>
+                      <Grid item xs={6}><DetailRow label="Download" value={downloadStatusText(file)} /></Grid>
                     </Grid>
                     {file.scan_status === "blocked" && <Alert severity="error">This file was blocked by security scanning. Replace or remove it before employees can access it.</Alert>}
                     {["pending", "scanning"].includes(String(file.scan_status || "").toLowerCase()) && <Alert severity="warning">Security scanning is still in progress. Employees cannot download this file yet.</Alert>}

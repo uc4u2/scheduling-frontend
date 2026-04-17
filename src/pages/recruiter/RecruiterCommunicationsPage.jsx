@@ -69,11 +69,28 @@ const readableChipProps = (theme, tone = "neutral") => {
 
 const priorityTone = (priority) => ({ urgent: "error", important: "warning", normal: "info" }[priority] || "info");
 
+const fileStatusTone = (file) => {
+  const status = String(file?.download_status || file?.scan_status || "").toLowerCase();
+  if (status === "ready" || status === "clean" || file?.is_download_ready) return "success";
+  if (status === "blocked") return "error";
+  return "warning";
+};
+
+const fileName = (file) => file?.file_name || file?.original_filename || "Attachment";
+
+const fileActionText = (file) => {
+  const status = String(file?.download_status || "").toLowerCase();
+  if (status === "blocked" || String(file?.scan_status || "").toLowerCase() === "blocked") return "Blocked by scan";
+  if (status === "processing" || ["pending", "scanning"].includes(String(file?.scan_status || "").toLowerCase())) return "Processing";
+  return "Download";
+};
+
 const CommunicationEmployeeCard = ({ kind, item, onOpen, loadingKey }) => {
   const theme = useTheme();
   const isAnnouncement = kind === "announcement";
   const file = isAnnouncement ? item.attachment_file : item.file;
   const hasAction = Boolean(file);
+  const isDownloadReady = !file || Boolean(file.is_download_ready || String(file.download_status || "").toLowerCase() === "ready");
   return (
     <Card
       variant="outlined"
@@ -114,22 +131,27 @@ const CommunicationEmployeeCard = ({ kind, item, onOpen, loadingKey }) => {
           <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
             {isAnnouncement && <Chip size="small" icon={item.priority === "urgent" ? <PriorityHighIcon /> : undefined} label={item.priority || "normal"} {...readableChipProps(theme, priorityTone(item.priority))} />}
             {!isAnnouncement && item.category && <Chip size="small" label={item.category} {...readableChipProps(theme, "primary")} />}
-            {file && <Chip size="small" label={file.file_name || "Attachment"} {...readableChipProps(theme, "neutral")} />}
-            {file?.scan_status && <Chip size="small" label={`Scan: ${file.scan_status}`} {...readableChipProps(theme, file.scan_status === "clean" ? "success" : file.scan_status === "blocked" ? "error" : "warning")} />}
+            {file && <Chip size="small" label={fileName(file)} {...readableChipProps(theme, "neutral")} />}
+            {file && <Chip size="small" label={fileActionText(file)} {...readableChipProps(theme, fileStatusTone(file))} />}
             {item.shared_by && <Chip size="small" label={`Shared by ${item.shared_by}`} {...readableChipProps(theme, "neutral")} />}
             {item.shared_date && <Chip size="small" label={formatDate(item.shared_date)} {...readableChipProps(theme, "neutral")} />}
           </Stack>
+          {file && !isDownloadReady && (
+            <Alert severity={fileStatusTone(file) === "error" ? "error" : "warning"} variant="outlined" sx={{ py: 0.25 }}>
+              {fileStatusTone(file) === "error" ? "This attachment was blocked by security scanning." : "Attachment is still processing."}
+            </Alert>
+          )}
           <Box sx={{ flex: 1 }} />
           {hasAction && (
             <Button
               size="small"
               variant="outlined"
               startIcon={<DownloadIcon />}
-              disabled={loadingKey === `${kind}-${item.id}`}
+              disabled={!isDownloadReady || loadingKey === `${kind}-${item.id}`}
               onClick={() => onOpen(kind, item)}
               sx={{ alignSelf: "flex-start", fontWeight: 900 }}
             >
-              Download
+              {fileActionText(file)}
             </Button>
           )}
         </Stack>
@@ -189,6 +211,10 @@ const RecruiterCommunicationsPage = () => {
   const openItem = async (kind, item) => {
     const file = kind === "announcement" ? item.attachment_file : item.file;
     if (!file) return;
+    if (!(file.is_download_ready || String(file.download_status || "").toLowerCase() === "ready")) {
+      setError(fileActionText(file) === "Blocked by scan" ? "This file was blocked by security scanning." : "This file is still processing.");
+      return;
+    }
     setActionLoading(`${kind}-${item.id}`);
     setError("");
     try {
