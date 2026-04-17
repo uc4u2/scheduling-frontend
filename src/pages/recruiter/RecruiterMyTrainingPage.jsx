@@ -127,6 +127,21 @@ const documentKind = (trainingItem) => {
   return "document";
 };
 
+const documentSecurityWaiting = (asset) => {
+  const status = String(asset?.scan_status || asset?.download_status || "").toLowerCase();
+  return status === "pending" || status === "scanning" || status === "processing";
+};
+
+const documentDownloadReady = (asset) => !asset?.has_file || Boolean(asset?.is_download_ready || String(asset?.download_status || "").toLowerCase() === "ready");
+
+const documentSecurityLabel = (asset) => {
+  if (!asset?.has_file) return "";
+  const status = String(asset?.download_status || asset?.scan_status || "").toLowerCase();
+  if (asset?.is_download_ready || status === "ready" || status === "clean") return "Ready";
+  if (status === "blocked") return "Blocked";
+  return "Security check";
+};
+
 const loadYouTubeApi = () => new Promise((resolve, reject) => {
   if (window.YT?.Player) {
     resolve(window.YT);
@@ -706,6 +721,7 @@ const RecruiterMyTrainingPage = ({ token }) => {
   const [quizAnswers, setQuizAnswers] = useState({});
   const [quizResult, setQuizResult] = useState(null);
   const [videoDialog, setVideoDialog] = useState(null);
+  const [scanRefreshUntil, setScanRefreshUntil] = useState(0);
   const role = typeof window !== "undefined" ? (localStorage.getItem("role") || "").toLowerCase() : "";
   const managerViewingEmployee = role === "manager" && location.pathname.startsWith("/employee");
 
@@ -721,9 +737,9 @@ const RecruiterMyTrainingPage = ({ token }) => {
     });
   };
 
-  const loadTraining = () => {
+  const loadTraining = (silent = false) => {
     let alive = true;
-    setLoading(true);
+    if (!silent) setLoading(true);
     Promise.all([
       api.get("/employee/my-training", { params: { page: trainingPage, page_size: 6 } }),
       api.get("/employee/training/resources", { params: { page: resourcePage, page_size: 6 } }),
@@ -737,10 +753,10 @@ const RecruiterMyTrainingPage = ({ token }) => {
         }
       })
       .catch((err) => {
-        if (alive) setError(err?.response?.data?.error || "Unable to load training.");
+        if (alive && !silent) setError(err?.response?.data?.error || "Unable to load training.");
       })
       .finally(() => {
-        if (alive) setLoading(false);
+        if (alive && !silent) setLoading(false);
       });
     return () => { alive = false; };
   };
@@ -883,6 +899,24 @@ const RecruiterMyTrainingPage = ({ token }) => {
   const capabilities = data?.capabilities || {};
   const items = Array.isArray(data?.items) ? data.items : [];
   const trainingPagination = data?.pagination || null;
+  const hasDocumentWaiting = items.some((assignment) => (
+    assignment.items || []
+  ).some((trainingItem) => trainingItem.item_type === "document" && documentSecurityWaiting(trainingItem.asset)))
+    || learningResources.some((resource) => resource.asset?.asset_type === "document" && documentSecurityWaiting(resource.asset));
+
+  useEffect(() => {
+    if (!hasDocumentWaiting) return undefined;
+    if (!scanRefreshUntil) {
+      setScanRefreshUntil(Date.now() + 120000);
+      return undefined;
+    }
+    if (Date.now() > scanRefreshUntil) return undefined;
+    const timer = window.setTimeout(() => {
+      loadTraining(true);
+    }, 7000);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasDocumentWaiting, scanRefreshUntil, items, learningResources]);
 
   const assignmentProgressPercent = (assignment) => {
     const rows = Array.isArray(assignment?.items) ? assignment.items : [];
@@ -950,20 +984,38 @@ const RecruiterMyTrainingPage = ({ token }) => {
       );
     }
     if (trainingItem.item_type === "document") {
+      const asset = trainingItem.asset || {};
+      const ready = Boolean(asset.has_file) && documentDownloadReady(asset);
+      const waiting = documentSecurityWaiting(asset);
+      const blocked = String(asset.scan_status || "").toLowerCase() === "blocked";
       return (
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Button size="small" variant="outlined" disabled={busy} onClick={() => openDocument(assignment.assignment_id, trainingItem.id)} sx={{ fontWeight: 850 }}>
-            Open document
-          </Button>
-          <Button
-            size="small"
-            variant={isDone ? "outlined" : "contained"}
-            disabled={isDone || busy}
-            onClick={() => confirmItem(assignment.assignment_id, trainingItem.id)}
-            sx={{ fontWeight: 850 }}
-          >
-            {isDone ? "Reviewed" : "I reviewed this document"}
-          </Button>
+        <Stack spacing={0.75} alignItems={{ xs: "flex-start", md: "flex-end" }}>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={waiting ? <CircularProgress size={13} thickness={5} /> : undefined}
+              disabled={busy || !ready}
+              onClick={() => openDocument(assignment.assignment_id, trainingItem.id)}
+              sx={{ fontWeight: 850 }}
+            >
+              {waiting ? "Checking file" : blocked ? "Blocked" : "Open document"}
+            </Button>
+            <Button
+              size="small"
+              variant={isDone ? "outlined" : "contained"}
+              disabled={isDone || busy}
+              onClick={() => confirmItem(assignment.assignment_id, trainingItem.id)}
+              sx={{ fontWeight: 850 }}
+            >
+              {isDone ? "Reviewed" : "I reviewed this document"}
+            </Button>
+          </Stack>
+          {asset.has_file && !ready && (
+            <Typography variant="caption" color={blocked ? "error" : "text.secondary"}>
+              {blocked ? "This file was blocked by security scanning." : "Uploaded. Security check in progress."}
+            </Typography>
+          )}
         </Stack>
       );
     }
@@ -1209,6 +1261,21 @@ const RecruiterMyTrainingPage = ({ token }) => {
                                     {trainingItem.item_type === "video" && trainingItem.asset?.tracking_mode !== "tracked_embed" && (
                                       <Chip size="small" label={videoActionLabel(trainingItem.asset) || "View only"} {...readableChipProps(theme, "neutral")} />
                                     )}
+                                    {trainingItem.item_type === "document" && trainingItem.asset?.has_file && (
+                                      <Chip
+                                        size="small"
+                                        icon={documentSecurityWaiting(trainingItem.asset) ? <CircularProgress size={12} thickness={5} color="inherit" /> : undefined}
+                                        label={documentSecurityLabel(trainingItem.asset)}
+                                        {...readableChipProps(
+                                          theme,
+                                          String(trainingItem.asset?.scan_status || "").toLowerCase() === "blocked"
+                                            ? "warning"
+                                            : documentDownloadReady(trainingItem.asset)
+                                              ? "success"
+                                              : "info",
+                                        )}
+                                      />
+                                    )}
                                   </Stack>
                                   {trainingItem.display_description && (
                                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.35, ...lineClampSx(2) }}>{compactText(trainingItem.display_description, 170)}</Typography>
@@ -1267,6 +1334,9 @@ const RecruiterMyTrainingPage = ({ token }) => {
                         const asset = resource.asset || {};
                         const isDocument = asset.asset_type === "document";
                         const busy = actionLoading === `resource-${resource.id}`;
+                        const resourceReady = !isDocument || (Boolean(asset.has_file) && documentDownloadReady(asset));
+                        const resourceWaiting = isDocument && documentSecurityWaiting(asset);
+                        const resourceBlocked = isDocument && String(asset.scan_status || "").toLowerCase() === "blocked";
                         return (
                           <Stack
                             key={resource.id}
@@ -1291,6 +1361,14 @@ const RecruiterMyTrainingPage = ({ token }) => {
                                 {resource.category && <Chip size="small" label={resource.category} {...readableChipProps(theme, "primary")} />}
                                 {resource.shared_by && <Chip size="small" label={`Shared by ${resource.shared_by}`} variant="outlined" />}
                                 {resource.shared_date && <Chip size="small" label={formatTrainingDate(resource.shared_date)} variant="outlined" />}
+                                {isDocument && asset.has_file && (
+                                  <Chip
+                                    size="small"
+                                    icon={resourceWaiting ? <CircularProgress size={12} thickness={5} color="inherit" /> : undefined}
+                                    label={documentSecurityLabel(asset)}
+                                    {...readableChipProps(theme, resourceBlocked ? "warning" : resourceReady ? "success" : "info")}
+                                  />
+                                )}
                               </Stack>
                               {resource.description && (
                                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.45, ...lineClampSx(2) }}>
@@ -1301,12 +1379,12 @@ const RecruiterMyTrainingPage = ({ token }) => {
                             <Button
                               size="small"
                               variant="outlined"
-                              startIcon={isDocument ? <DownloadIcon /> : <OpenInNewIcon />}
-                              disabled={busy || asset.asset_type === "video_hosted"}
+                              startIcon={resourceWaiting ? <CircularProgress size={13} thickness={5} /> : isDocument ? <DownloadIcon /> : <OpenInNewIcon />}
+                              disabled={busy || asset.asset_type === "video_hosted" || !resourceReady}
                               onClick={() => openLearningResource(resource)}
                               sx={{ alignSelf: { xs: "flex-start", md: "center" }, fontWeight: 900, minWidth: 128 }}
                             >
-                              {isDocument ? "Download" : "Open"}
+                              {resourceWaiting ? "Checking file" : resourceBlocked ? "Blocked" : isDocument ? "Download" : "Open"}
                             </Button>
                           </Stack>
                         );

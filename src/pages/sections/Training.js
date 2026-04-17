@@ -321,6 +321,18 @@ const documentPreviewKind = (asset, contentType = "") => {
   if (type.startsWith("image/") || [".png", ".jpg", ".jpeg"].some((ext) => name.endsWith(ext))) return "image";
   return "download";
 };
+const documentSecurityWaiting = (asset) => {
+  const status = String(asset?.scan_status || asset?.download_status || "").toLowerCase();
+  return status === "pending" || status === "scanning" || status === "processing";
+};
+const documentDownloadReady = (asset) => !asset?.has_file || Boolean(asset?.is_download_ready || String(asset?.download_status || "").toLowerCase() === "ready");
+const documentSecurityLabel = (asset) => {
+  if (!asset?.has_file) return "";
+  const status = String(asset?.download_status || asset?.scan_status || "").toLowerCase();
+  if (asset?.is_download_ready || status === "ready" || status === "clean") return "Ready";
+  if (status === "blocked") return "Blocked";
+  return "Security check";
+};
 const formatBytesAsMb = (bytes) => {
   const numeric = Number(bytes || 0);
   if (!numeric) return "";
@@ -499,6 +511,8 @@ const AssetCard = ({ asset, onEdit, onUpload, onDownload, onArchiveToggle, onPre
   const thumbnailUrl = asset.asset_type === "video_link" ? getVideoThumbnailUrl(asset.external_url) : "";
   const docKind = asset.asset_type === "document" ? documentPreviewKind(asset) : "";
   const ext = fileExtension(asset);
+  const docWaiting = asset.asset_type === "document" && documentSecurityWaiting(asset);
+  const docReady = asset.asset_type !== "document" || documentDownloadReady(asset);
   return (
     <Card
       variant="outlined"
@@ -595,6 +609,14 @@ const AssetCard = ({ asset, onEdit, onUpload, onDownload, onArchiveToggle, onPre
             {videoSource && <Chip size="small" label={videoSource} variant="outlined" />}
             {asset.duration_seconds ? <Chip size="small" label={`${minutesFromSeconds(asset.duration_seconds)} min`} /> : null}
             {asset.file_name && <Chip size="small" label={compactText(asset.file_name, 34)} />}
+            {asset.asset_type === "document" && asset.has_file && (
+              <Chip
+                size="small"
+                icon={docWaiting ? <CircularProgress size={12} thickness={5} color="inherit" /> : undefined}
+                label={documentSecurityLabel(asset)}
+                {...readableChipProps(theme, asset.scan_status === "blocked" ? "error" : docReady ? "success" : "warning")}
+              />
+            )}
           </Stack>
           {asset.asset_type === "video_link" && asset.external_url && (
             <Stack spacing={0.5}>
@@ -615,12 +637,22 @@ const AssetCard = ({ asset, onEdit, onUpload, onDownload, onArchiveToggle, onPre
               Hosted upload is not active yet. Use an external video link for now.
             </Alert>
           )}
+          {asset.asset_type === "document" && asset.has_file && docWaiting && (
+            <Alert severity="info" variant="outlined" sx={{ py: 0.5 }}>
+              Uploaded. Security check in progress. Available after scan completes.
+            </Alert>
+          )}
+          {asset.asset_type === "document" && asset.has_file && asset.scan_status === "blocked" && (
+            <Alert severity="error" variant="outlined" sx={{ py: 0.5 }}>
+              Blocked by security scan. Replace this document before employees can access it.
+            </Alert>
+          )}
           <Divider />
           <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
             <Button
               size="small"
               startIcon={<VisibilityIcon />}
-              disabled={(asset.asset_type === "document" && !asset.has_file) || isHosted}
+              disabled={(asset.asset_type === "document" && (!asset.has_file || !docReady)) || isHosted}
               onClick={() => onPreview(asset)}
             >
               Preview
@@ -628,7 +660,7 @@ const AssetCard = ({ asset, onEdit, onUpload, onDownload, onArchiveToggle, onPre
             {asset.asset_type === "document" && (
               <>
                 <Button size="small" startIcon={<UploadFileIcon />} onClick={() => onUpload(asset)}>Upload</Button>
-                <Button size="small" startIcon={<DownloadIcon />} disabled={!asset.has_file} onClick={() => onDownload(asset)}>Download</Button>
+                <Button size="small" startIcon={<DownloadIcon />} disabled={!asset.has_file || !docReady} onClick={() => onDownload(asset)}>Download</Button>
               </>
             )}
             <Button size="small" color={asset.is_active ? "warning" : "success"} onClick={() => onArchiveToggle(asset)}>
@@ -991,6 +1023,7 @@ const Training = () => {
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewKind, setPreviewKind] = useState("");
   const [previewObjectUrl, setPreviewObjectUrl] = useState("");
+  const [trainingScanRefreshUntil, setTrainingScanRefreshUntil] = useState(0);
 
   const loadOverview = () => {
     setLoading(true);
@@ -1000,7 +1033,7 @@ const Training = () => {
       .finally(() => setLoading(false));
   };
 
-  const loadTab = (tab = activeTab, force = false) => {
+  const loadTab = (tab = activeTab, force = false, silent = false) => {
     if (tab === "overview") return Promise.resolve();
     if (!force && tabData[tab]) return Promise.resolve();
     const endpoint = {
@@ -1013,7 +1046,7 @@ const Training = () => {
       progress: "/manager/training/progress",
     }[tab];
     if (!endpoint) return Promise.resolve();
-    setTabLoading(true);
+    if (!silent) setTabLoading(true);
     const pageParams = {
       page: trainingPages[tab] || 1,
       page_size: trainingPageSizes[tab] || TRAINING_PAGE_SIZES[tab] || 12,
@@ -1034,8 +1067,12 @@ const Training = () => {
       : pageParams;
     return api.get(endpoint, { params })
       .then((res) => setTabData((prev) => ({ ...prev, [tab]: res.data || {} })))
-      .catch((err) => setError(err?.response?.data?.error || "Unable to load training section."))
-      .finally(() => setTabLoading(false));
+      .catch((err) => {
+        if (!silent) setError(err?.response?.data?.error || "Unable to load training section.");
+      })
+      .finally(() => {
+        if (!silent) setTabLoading(false);
+      });
   };
 
   const updateTrainingPage = (tab, page) => {
@@ -1121,6 +1158,7 @@ const Training = () => {
   const activeData = activeTab === "overview" ? overview : tabData[activeTab];
   const activePagination = activeData?.pagination || null;
   const assets = tabData.library?.items || [];
+  const hasLibraryDocumentWaiting = assets.some((asset) => asset.asset_type === "document" && asset.has_file && documentSecurityWaiting(asset));
   const resources = tabData.resources?.items || [];
   const collections = tabData.collections?.items || [];
   const quizzes = tabData.quizzes?.items || [];
@@ -1221,6 +1259,15 @@ const Training = () => {
     });
     return Object.values(groups).sort((a, b) => String(a.department_name || "").localeCompare(String(b.department_name || "")));
   }, [departmentAssignments.items]);
+
+  useEffect(() => {
+    if (!hasLibraryDocumentWaiting || !trainingScanRefreshUntil || Date.now() > trainingScanRefreshUntil) return undefined;
+    const timer = window.setTimeout(() => {
+      loadTab("library", true, true);
+    }, 7000);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLibraryDocumentWaiting, trainingScanRefreshUntil, assets]);
 
   const insightText = useMemo(() => {
     if (!summary.assignments) return "Create library assets and reusable quizzes first. Training sets and assignments are intentionally deferred to keep this phase focused.";
@@ -1373,7 +1420,8 @@ const Training = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setUploadAsset(null);
-      setSuccess("Training document uploaded.");
+      setTrainingScanRefreshUntil(Date.now() + 120000);
+      setSuccess("Training document uploaded. It will become available after the security check.");
       await refreshAfterMutation("library");
     } catch (err) {
       setError(err?.response?.data?.error || "Unable to upload training document.");
