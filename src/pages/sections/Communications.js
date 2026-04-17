@@ -150,7 +150,13 @@ const downloadStatusText = (file) => {
   const status = String(file?.download_status || "").toLowerCase();
   if (status === "ready" || file?.is_download_ready) return "Ready";
   if (status === "blocked" || String(file?.scan_status || "").toLowerCase() === "blocked") return "Blocked";
-  return "Processing";
+  return "Security check";
+};
+
+const fileIsWaitingForScan = (file) => {
+  if (!file) return false;
+  const status = String(file.scan_status || file.download_status || "").toLowerCase();
+  return status === "pending" || status === "scanning" || status === "processing";
 };
 
 const FileSummary = ({ file, label = "File" }) => {
@@ -402,15 +408,16 @@ const Communications = () => {
   const [draftUploadIds, setDraftUploadIds] = useState([]);
   const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [scanRefreshUntil, setScanRefreshUntil] = useState(0);
 
   const context = activeTab === "announcements" ? announcements.context || {} : files.context || announcements.context || {};
   const departments = context.departments || [];
   const employees = context.employees || [];
   const categories = Array.from(new Set(context.categories || [])).sort((a, b) => a.localeCompare(b));
 
-  const loadData = async () => {
-    setLoading(true);
-    setError("");
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setError("");
     const baseParams = {
       status: statusFilter === "active" ? undefined : statusFilter,
       audience_type: audienceFilter || undefined,
@@ -439,9 +446,9 @@ const Communications = () => {
       setAnnouncements(announcementRes.data || { items: [], context: {} });
       setFiles(fileRes.data || { items: [], context: {} });
     } catch (err) {
-      setError(err?.response?.data?.error || "Unable to load communications.");
+      if (!silent) setError(err?.response?.data?.error || "Unable to load communications.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -460,6 +467,16 @@ const Communications = () => {
   const filteredRows = activeTab === "announcements" ? announcements.items || [] : files.items || [];
   const activePagination = activeTab === "announcements" ? announcements.pagination : files.pagination;
   const summary = activeTab === "announcements" ? announcements.summary || files.summary || {} : files.summary || announcements.summary || {};
+  const hasVisiblePendingScan = (announcements.items || []).some((row) => fileIsWaitingForScan(row.attachment_file))
+    || (files.items || []).some((row) => fileIsWaitingForScan(row.file));
+
+  useEffect(() => {
+    if (!hasVisiblePendingScan || !scanRefreshUntil || Date.now() > scanRefreshUntil) return undefined;
+    const timer = window.setTimeout(() => {
+      loadData(true);
+    }, 7000);
+    return () => window.clearTimeout(timer);
+  }, [hasVisiblePendingScan, scanRefreshUntil, announcements.items, files.items]);
 
   const refreshSearch = () => {
     setAnnouncementPage(1);
@@ -589,7 +606,8 @@ const Communications = () => {
         rememberDraftUpload(uploaded);
         onUploaded(uploaded);
       }
-      setSuccess("File uploaded. Choose an audience and click Save to share it.");
+      setScanRefreshUntil(Date.now() + 120000);
+      setSuccess("File uploaded. Security check is running. Choose an audience and click Save to share it.");
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Unable to upload file.");
     } finally {
@@ -616,7 +634,8 @@ const Communications = () => {
       await cleanupDraftUploads([announcementForm.attachment_file_id]);
       setDraftUploadIds((prev) => prev.filter((id) => id !== String(announcementForm.attachment_file_id || "")));
       setAnnouncementDialogOpen(false);
-      setSuccess("Announcement saved.");
+      if (announcementForm.attachment_file_id) setScanRefreshUntil(Date.now() + 120000);
+      setSuccess(announcementForm.attachment_file_id ? "Announcement saved. Attachment will become available after the security check." : "Announcement saved.");
       loadData();
     } catch (err) {
       setError(err?.response?.data?.error || "Unable to save announcement.");
@@ -648,7 +667,8 @@ const Communications = () => {
       setFileDialogOpen(false);
       setActiveTab("files");
       setFilePage(1);
-      setSuccess("Shared file saved.");
+      if (fileForm.file_id) setScanRefreshUntil(Date.now() + 120000);
+      setSuccess("Shared file saved. File will become available after the security check.");
       loadData();
     } catch (err) {
       setError(err?.response?.data?.error || "Unable to save shared file.");
@@ -944,7 +964,7 @@ const Communications = () => {
                   )}
                   {announcementForm.attachment_file && draftUploadIds.includes(String(announcementForm.attachment_file_id || "")) && (
                     <Alert severity="info" sx={{ py: 0.5 }}>
-                      Attachment uploaded. It will not be sent until you save this announcement.
+                      Uploaded. Security check in progress. It will not be sent until you save this announcement.
                     </Alert>
                   )}
                 </Stack>
@@ -1032,7 +1052,7 @@ const Communications = () => {
               )}
               {fileForm.file && draftUploadIds.includes(String(fileForm.file_id || "")) && (
                 <Alert severity="info" sx={{ py: 0.5 }}>
-                  File uploaded. It will not appear in Shared Files or employee Communications until you save this share.
+                  Uploaded. Security check in progress. It will not appear in Shared Files or employee Communications until you save this share.
                 </Alert>
               )}
             </Stack>
@@ -1139,8 +1159,8 @@ const Communications = () => {
                       <Grid item xs={6}><DetailRow label="Uploaded" value={formatDateTime(file.created_at)} /></Grid>
                       <Grid item xs={6}><DetailRow label="Download" value={downloadStatusText(file)} /></Grid>
                     </Grid>
-                    {file.scan_status === "blocked" && <Alert severity="error">This file was blocked by security scanning. Replace or remove it before employees can access it.</Alert>}
-                    {["pending", "scanning"].includes(String(file.scan_status || "").toLowerCase()) && <Alert severity="warning">Security scanning is still in progress. Employees cannot download this file yet.</Alert>}
+                    {file.scan_status === "blocked" && <Alert severity="error">Blocked by security scan. Replace or remove it before employees can access it.</Alert>}
+                    {["pending", "scanning"].includes(String(file.scan_status || "").toLowerCase()) && <Alert severity="warning">Uploaded. Security check in progress. Available after scan completes.</Alert>}
                   </Stack>
                 );
               })()}

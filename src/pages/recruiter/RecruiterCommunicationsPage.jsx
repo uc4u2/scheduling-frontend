@@ -81,8 +81,14 @@ const fileName = (file) => file?.file_name || file?.original_filename || "Attach
 const fileActionText = (file) => {
   const status = String(file?.download_status || "").toLowerCase();
   if (status === "blocked" || String(file?.scan_status || "").toLowerCase() === "blocked") return "Blocked by scan";
-  if (status === "processing" || ["pending", "scanning"].includes(String(file?.scan_status || "").toLowerCase())) return "Processing";
+  if (status === "processing" || ["pending", "scanning"].includes(String(file?.scan_status || "").toLowerCase())) return "Security check";
   return "Download";
+};
+
+const fileIsWaitingForScan = (file) => {
+  if (!file) return false;
+  const status = String(file.scan_status || file.download_status || "").toLowerCase();
+  return status === "pending" || status === "scanning" || status === "processing";
 };
 
 const CommunicationEmployeeCard = ({ kind, item, onOpen, loadingKey }) => {
@@ -138,7 +144,7 @@ const CommunicationEmployeeCard = ({ kind, item, onOpen, loadingKey }) => {
           </Stack>
           {file && !isDownloadReady && (
             <Alert severity={fileStatusTone(file) === "error" ? "error" : "warning"} variant="outlined" sx={{ py: 0.25 }}>
-              {fileStatusTone(file) === "error" ? "This attachment was blocked by security scanning." : "Attachment is still processing."}
+              {fileStatusTone(file) === "error" ? "This attachment was blocked by security scanning." : "Uploaded. Security check in progress. Available after scan completes."}
             </Alert>
           )}
           <Box sx={{ flex: 1 }} />
@@ -177,9 +183,9 @@ const RecruiterCommunicationsPage = () => {
   const role = typeof window !== "undefined" ? (localStorage.getItem("role") || "").toLowerCase() : "";
   const managerViewingEmployee = role === "manager" && location.pathname.startsWith("/employee");
 
-  const loadCommunications = () => {
+  const loadCommunications = (silent = false) => {
     let alive = true;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError("");
     Promise.all([
       api.get("/employee/communications/announcements", { params: { page: announcementPage, page_size: 6 } }),
@@ -193,15 +199,24 @@ const RecruiterCommunicationsPage = () => {
         setFilePagination(fileRes.data?.pagination || null);
       })
       .catch((err) => {
-        if (alive) setError(err?.response?.data?.error || "Unable to load communications.");
+        if (alive && !silent) setError(err?.response?.data?.error || "Unable to load communications.");
       })
       .finally(() => {
-        if (alive) setLoading(false);
+        if (alive && !silent) setLoading(false);
       });
     return () => { alive = false; };
   };
 
   useEffect(() => loadCommunications(), [announcementPage, filePage]);
+
+  const hasPendingScan = announcements.some((item) => fileIsWaitingForScan(item.attachment_file))
+    || files.some((item) => fileIsWaitingForScan(item.file));
+
+  useEffect(() => {
+    if (!hasPendingScan) return undefined;
+    const timer = window.setTimeout(() => loadCommunications(true), 8000);
+    return () => window.clearTimeout(timer);
+  }, [hasPendingScan, announcements, files]);
 
   const handleLocalTabChange = (value) => {
     const basePath = location.pathname.startsWith("/recruiter") ? "/recruiter/dashboard" : "/employee/dashboard";
@@ -212,7 +227,7 @@ const RecruiterCommunicationsPage = () => {
     const file = kind === "announcement" ? item.attachment_file : item.file;
     if (!file) return;
     if (!(file.is_download_ready || String(file.download_status || "").toLowerCase() === "ready")) {
-      setError(fileActionText(file) === "Blocked by scan" ? "This file was blocked by security scanning." : "This file is still processing.");
+      setError(fileActionText(file) === "Blocked by scan" ? "This file was blocked by security scanning." : "Uploaded. Security check in progress. Available after scan completes.");
       return;
     }
     setActionLoading(`${kind}-${item.id}`);
