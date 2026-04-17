@@ -163,6 +163,7 @@ const FileSummary = ({ file, label = "File" }) => {
   const theme = useTheme();
   if (!file) return null;
   const scanStatus = String(file.scan_status || "").toLowerCase();
+  const waitingForScan = fileIsWaitingForScan(file);
   return (
     <Box
       sx={{
@@ -187,7 +188,12 @@ const FileSummary = ({ file, label = "File" }) => {
         </Stack>
         <Stack direction="row" spacing={0.6} alignItems="center" flexWrap="wrap" justifyContent="flex-end" useFlexGap>
           {file.file_size ? <Chip size="small" label={formatBytes(file.file_size)} {...readableChipProps(theme, "neutral")} /> : null}
-          <Chip size="small" label={downloadStatusText(file)} {...readableChipProps(theme, fileStatusTone(scanStatus))} />
+          <Chip
+            size="small"
+            icon={waitingForScan ? <CircularProgress size={12} thickness={5} color="inherit" /> : undefined}
+            label={downloadStatusText(file)}
+            {...readableChipProps(theme, fileStatusTone(scanStatus))}
+          />
         </Stack>
       </Stack>
     </Box>
@@ -928,8 +934,13 @@ const Communications = () => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <Stack spacing={0.75}>
-                  <Button variant="outlined" component="label" startIcon={<ArticleIcon />} disabled={Boolean(uploadingKey)}>
-                    {announcementForm.attachment_file_id ? "Replace attachment" : "Upload attachment"}
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={uploadingKey ? <CircularProgress size={16} thickness={5} /> : <ArticleIcon />}
+                    disabled={Boolean(uploadingKey)}
+                  >
+                    {uploadingKey ? "Uploading..." : announcementForm.attachment_file_id ? "Replace attachment" : "Upload attachment"}
                     <input
                       hidden
                       type="file"
@@ -1015,8 +1026,13 @@ const Communications = () => {
         <DialogContent dividers>
           <Stack spacing={1.5} sx={{ pt: 0.5 }}>
             <Stack spacing={0.75}>
-              <Button variant="outlined" component="label" startIcon={<ArticleIcon />} disabled={Boolean(uploadingKey)}>
-                {fileForm.file_id ? "Replace file" : "Upload file"}
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={uploadingKey ? <CircularProgress size={16} thickness={5} /> : <ArticleIcon />}
+                disabled={Boolean(uploadingKey)}
+              >
+                {uploadingKey ? "Uploading..." : fileForm.file_id ? "Replace file" : "Upload file"}
                 <input
                   hidden
                   type="file"

@@ -2880,16 +2880,25 @@ const Training = () => {
             <Typography variant="body2" color="text.secondary">
               Upload a private/internal document for {uploadAsset?.title}. Supported: {documentAllowedLabel}. Maximum size: {documentMaxLabel}.
             </Typography>
+            {uploading && (
+              <Box>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+                  <CircularProgress size={16} thickness={5} />
+                  <Typography variant="body2" sx={{ fontWeight: 850 }}>Uploading document...</Typography>
+                </Stack>
+                <LinearProgress />
+              </Box>
+            )}
             <Alert severity="info" variant="outlined" sx={{ py: 0.75 }}>
               Documents are stored privately and downloaded through Schedulaa access controls.
             </Alert>
             <Button component="label" variant="contained" startIcon={uploading ? <CircularProgress size={16} /> : <UploadFileIcon />} disabled={uploading}>
-              Choose file
+              {uploading ? "Uploading..." : "Choose file"}
               <input hidden type="file" accept={documentAccept} onChange={uploadDocument} />
             </Button>
           </Stack>
         </DialogContent>
-        <DialogActions><Button onClick={() => setUploadAsset(null)}>Close</Button></DialogActions>
+        <DialogActions><Button onClick={() => setUploadAsset(null)} disabled={uploading}>Close</Button></DialogActions>
       </Dialog>
 
       <Dialog open={previewDialogOpen} onClose={closeAssetPreview} fullWidth maxWidth="lg" PaperProps={{ sx: trainingDialogPaperSx }}>
