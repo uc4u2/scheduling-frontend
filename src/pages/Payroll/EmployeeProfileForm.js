@@ -816,7 +816,7 @@ const FRONTEND_ORIGIN =
                     variant="outlined"
                     sx={{
                       p: 1,
-                      borderRadius: 2,
+                      borderRadius: 1,
                       bgcolor: item.missing ? "rgba(245, 158, 11, 0.06)" : "rgba(15, 23, 42, 0.018)",
                       borderColor: item.missing ? "rgba(245, 158, 11, 0.22)" : "rgba(148, 163, 184, 0.2)",
                     }}
@@ -893,7 +893,7 @@ const FRONTEND_ORIGIN =
           </AccordionDetails>
         </Accordion>
 
-        <Paper sx={{ p: 3, mt: 2, borderRadius: 3 }} variant="outlined">
+        <Paper sx={{ p: 3, mt: 2, borderRadius: 1.5 }} variant="outlined">
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <TextField
@@ -1159,7 +1159,7 @@ const FRONTEND_ORIGIN =
             )}
           </Grid>
 
-          <Paper variant="outlined" sx={{ p: 2, mt: 3, borderRadius: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, mt: 3, borderRadius: 1 }}>
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
               Public booking link
             </Typography>
@@ -1191,7 +1191,7 @@ const FRONTEND_ORIGIN =
                 display: "flex",
                 alignItems: "center",
                 gap: 2,
-                borderRadius: 2,
+                borderRadius: 1,
                 mb: 2,
               }}
             >
@@ -1308,7 +1308,7 @@ const FRONTEND_ORIGIN =
             )}
           </Paper>
 
-          <Paper variant="outlined" sx={{ p: 2, mt: 3, borderRadius: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, mt: 3, borderRadius: 1 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
               <Stack spacing={0.5}>
                 <Stack direction="row" spacing={1} alignItems="center">
@@ -1374,7 +1374,7 @@ const FRONTEND_ORIGIN =
             {showImageHelp && (
               <Paper
                 variant="outlined"
-                sx={{ p: 2, mb: 2, borderRadius: 2, backgroundColor: (t) => t.palette.grey[showImageHelp ? 100 : 50] }}
+                sx={{ p: 2, mb: 2, borderRadius: 1, backgroundColor: (t) => t.palette.grey[showImageHelp ? 100 : 50] }}
               >
                 <Stack spacing={1}>
                   <Typography variant="subtitle2" fontWeight={600}>
@@ -1511,7 +1511,7 @@ const FRONTEND_ORIGIN =
             <Accordion
               expanded={payrollExpanded}
               onChange={(_, expanded) => setPayrollExpanded(expanded)}
-              sx={{ mt: 3, borderRadius: 2 }}
+              sx={{ mt: 3, borderRadius: 1 }}
             >
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Stack spacing={0.25}>
@@ -1525,7 +1525,7 @@ const FRONTEND_ORIGIN =
               </AccordionSummary>
               <AccordionDetails>
               {isManager && (
-                <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 1 }}>
                   <Typography fontWeight={700} gutterBottom>
                     TL;DR (When should I use this?)
                   </Typography>

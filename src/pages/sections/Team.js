@@ -65,6 +65,7 @@ import { formatDate, formatTime } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import SmartShiftPlannerPanel from "./management/SmartShiftPlannerPanel";
 import WorkforceCostAnalytics from "./management/WorkforceCostAnalytics";
+import ThemedDateField, { ThemedMonthField, ThemedTimeField } from "../../components/ui/ThemedDateField";
 
 // ------------------------------------------------------------------------------------
 // Constants & utils
@@ -595,7 +596,7 @@ const ShiftInsightKpi = ({ label, value, help, tone = "default" }) => {
       variant="outlined"
       sx={{
         p: 1.35,
-        borderRadius: "12px",
+        borderRadius: "6px",
         height: "100%",
         bgcolor: "rgba(255,255,255,0.92)",
         borderColor: "rgba(148, 163, 184, 0.2)",
@@ -630,7 +631,7 @@ const ShiftInsightSection = ({ title, description, children, accent = "default" 
       variant="outlined"
       sx={{
         p: 2,
-        borderRadius: 3,
+        borderRadius: 1,
         height: "100%",
         bgcolor: "background.paper",
         borderColor: accent === "warning" ? colors.border : "rgba(148, 163, 184, 0.2)",
@@ -695,7 +696,7 @@ const MiniCoverageTrend = ({ rows }) => {
               height: 162,
               width: "100%",
               maxWidth: 42,
-              borderRadius: 2,
+              borderRadius: 1,
               overflow: "hidden",
               bgcolor: "rgba(148, 163, 184, 0.14)",
               border: "1px solid rgba(148, 163, 184, 0.2)",
@@ -735,7 +736,7 @@ const ShiftCompositionBar = ({ items }) => {
   const total = Math.max(1, items.reduce((sum, item) => sum + Number(item.value || 0), 0));
   return (
     <Stack spacing={1.1}>
-      <Stack direction="row" sx={{ height: 16, borderRadius: 999, overflow: "hidden", bgcolor: "rgba(148, 163, 184, 0.13)" }}>
+      <Stack direction="row" sx={{ height: 16, borderRadius: 1, overflow: "hidden", bgcolor: "rgba(148, 163, 184, 0.13)" }}>
         {items
           .filter((item) => item.value > 0)
           .map((item) => (
@@ -800,7 +801,7 @@ const MiniCostTrend = ({ rows }) => {
                 height: 156,
                 width: "100%",
                 maxWidth: 44,
-                borderRadius: 2,
+                borderRadius: 1,
                 overflow: "hidden",
                 bgcolor: "rgba(148, 163, 184, 0.13)",
                 border: "1px solid rgba(148, 163, 184, 0.2)",
@@ -833,7 +834,7 @@ const ShiftInsightEmptyState = ({ children }) => (
     sx={{
       py: 1,
       px: 1.25,
-      borderRadius: 2,
+      borderRadius: 1,
       bgcolor: "rgba(148, 163, 184, 0.08)",
       color: "text.secondary",
     }}
@@ -869,7 +870,7 @@ const RankedBarList = ({
                 {valueFormatter(value, row)}
               </Typography>
             </Stack>
-            <Box sx={{ mt: 0.55, height: 9, borderRadius: 999, bgcolor: "rgba(148, 163, 184, 0.16)", overflow: "hidden" }}>
+            <Box sx={{ mt: 0.55, height: 9, borderRadius: 1, bgcolor: "rgba(148, 163, 184, 0.16)", overflow: "hidden" }}>
               <Box sx={{ width: `${Math.max((value / max) * 100, value ? 6 : 0)}%`, height: "100%", bgcolor: color }} />
             </Box>
             {row.caption && (
@@ -890,7 +891,7 @@ const InsightStrip = ({ insights }) => (
       const colors = shiftInsightTone[item.tone] || shiftInsightTone.default;
       return (
         <Grid item xs={12} md={6} xl={3} key={item.label}>
-          <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "12px", borderColor: "rgba(148, 163, 184, 0.2)", bgcolor: colors.soft }}>
+          <Paper variant="outlined" sx={{ p: 1.2, borderRadius: "6px", borderColor: "rgba(148, 163, 184, 0.2)", bgcolor: colors.soft }}>
             <Typography variant="body2" fontWeight={900} sx={{ color: colors.main }}>
               {item.label}
             </Typography>
@@ -998,7 +999,7 @@ const ShiftInsightsPanel = ({
         variant="outlined"
         sx={{
           p: 2,
-          borderRadius: "12px",
+          borderRadius: "6px",
           bgcolor: "background.paper",
           borderColor: "rgba(148, 163, 184, 0.32)",
           boxShadow: "0 14px 34px rgba(15, 23, 42, 0.04)",
@@ -1039,12 +1040,10 @@ const ShiftInsightsPanel = ({
           </Stack>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={2.5}>
-              <TextField
-                type="month"
+              <ThemedMonthField
                 label="Month"
                 value={selectedMonth}
                 onChange={(event) => handleMonthChange(event.target.value)}
-                InputLabelProps={{ shrink: true }}
                 fullWidth
               />
             </Grid>
@@ -1311,7 +1310,7 @@ const WorkforceCostInsightsPanel = ({
         variant="outlined"
         sx={{
           p: 2,
-          borderRadius: "12px",
+          borderRadius: "6px",
           borderColor: "rgba(148, 163, 184, 0.28)",
           bgcolor: "background.paper",
         }}
@@ -1348,25 +1347,21 @@ const WorkforceCostInsightsPanel = ({
           </Stack>
           <Grid container spacing={1.5}>
             <Grid item xs={12} md={2.4}>
-              <TextField
+              <ThemedDateField
                 fullWidth
                 size="small"
                 label="From"
-                type="date"
                 value={dateRange?.start || ""}
                 onChange={(event) => onDateRangeChange("start", event.target.value)}
-                InputLabelProps={{ shrink: true }}
               />
             </Grid>
             <Grid item xs={12} md={2.4}>
-              <TextField
+              <ThemedDateField
                 fullWidth
                 size="small"
                 label="To"
-                type="date"
                 value={dateRange?.end || ""}
                 onChange={(event) => onDateRangeChange("end", event.target.value)}
-                InputLabelProps={{ shrink: true }}
               />
             </Grid>
             <Grid item xs={12} md={2.4}>
@@ -3300,7 +3295,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             borderLeft: `4px solid ${ui.leave.border}`,
             lineHeight: 1.18,
             background: `repeating-linear-gradient(135deg, ${ui.leave.bg}, ${ui.leave.bg} 8px, ${alpha(theme.palette.grey[300], 0.62)} 8px, ${alpha(theme.palette.grey[300], 0.62)} 12px)`,
-            borderRadius: 10,
+            borderRadius: 1.25,
             height: "100%",
             overflow: "hidden",
           }}
@@ -3312,7 +3307,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 textTransform: "uppercase",
                 letterSpacing: 0.35,
                 padding: "2px 6px",
-                borderRadius: 8,
+                borderRadius: 1,
                 background: alpha(theme.palette.grey[900], 0.08),
                 border: `1px dashed ${ui.leave.border}`,
                 color: ui.leave.text,
@@ -3356,7 +3351,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             borderLeft: `3px solid ${accent}`,
             lineHeight: 1.15,
             background: alpha(accent, 0.1),
-            borderRadius: 8,
+            borderRadius: 1,
             height: "100%",
             overflow: "hidden",
           }}
@@ -3368,7 +3363,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 textTransform: "uppercase",
                 letterSpacing: 0.25,
                 padding: "1px 4px",
-                borderRadius: 7,
+                borderRadius: 1,
                 background: statusUi.bg,
                 border: `1px solid ${statusUi.border}`,
                 color: statusUi.text,
@@ -3425,7 +3420,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             borderLeft: `4px solid ${accent}`,
             lineHeight: 1.18,
             background: alpha(accent, 0.12),
-            borderRadius: 10,
+            borderRadius: 1.25,
             height: "100%",
             overflow: "hidden",
           }}
@@ -3437,7 +3432,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 textTransform: "uppercase",
                 letterSpacing: 0.3,
                 padding: "2px 6px",
-                borderRadius: 8,
+                borderRadius: 1,
                 background: statusUi.bg,
                 border: `1px solid ${statusUi.border}`,
                 color: statusUi.text,
@@ -3494,7 +3489,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           borderLeft: `4px solid ${accent}`,
           lineHeight: 1.2,
           background: alpha(accent, 0.12),
-          borderRadius: 10,
+          borderRadius: 1.25,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
@@ -3504,7 +3499,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               textTransform: "uppercase",
               letterSpacing: 0.3,
               padding: "2px 6px",
-              borderRadius: 8,
+              borderRadius: 1,
               background: statusUi.bg,
               border: `1px solid ${statusUi.border}`,
               color: statusUi.text,
@@ -3518,7 +3513,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 fontSize: 10,
                 textTransform: "uppercase",
                 padding: "2px 6px",
-                borderRadius: 8,
+                borderRadius: 1,
                 background: alpha(theme.palette.success.light, 0.3),
                 border: `1px solid ${theme.palette.success.main}`,
                 color: theme.palette.text.primary,
@@ -3533,7 +3528,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 fontSize: 10,
                 textTransform: "uppercase",
                 padding: "2px 6px",
-                borderRadius: 8,
+                borderRadius: 1,
                 background: alpha(theme.palette.warning.light, 0.35),
                 border: `1px solid ${theme.palette.warning.main}`,
                 color: theme.palette.text.primary,
@@ -3548,7 +3543,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 fontSize: 10,
                 textTransform: "uppercase",
                 padding: "2px 6px",
-                borderRadius: 8,
+                borderRadius: 1,
                 background: alpha(theme.palette.error.light, 0.3),
                 border: `1px solid ${theme.palette.error.main}`,
                 color: theme.palette.text.primary,
@@ -3618,7 +3613,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 fontSize: 10,
                 textTransform: "uppercase",
                 padding: "2px 6px",
-                borderRadius: 8,
+                borderRadius: 1,
                 background: alpha(theme.palette.warning.light, 0.35),
                 border: `1px solid ${theme.palette.warning.main}`,
                 color: theme.palette.text.primary,
@@ -3633,7 +3628,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 fontSize: 10,
                 textTransform: "uppercase",
                 padding: "2px 6px",
-                borderRadius: 8,
+                borderRadius: 1,
                 background: alpha(theme.palette.error.light, 0.3),
                 border: `1px solid ${theme.palette.error.main}`,
                 color: theme.palette.text.primary,
@@ -3648,7 +3643,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 fontSize: 10,
                 textTransform: "uppercase",
                 padding: "2px 6px",
-                borderRadius: 8,
+                borderRadius: 1,
                 background: alpha(theme.palette.error.light, 0.18),
                 border: `1px solid ${theme.palette.error.main}`,
                 color: theme.palette.text.primary,
@@ -3781,7 +3776,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             color: theme.palette.text.secondary,
           },
           ".fc .fc-timegrid-event": {
-            borderRadius: 8,
+            borderRadius: 1,
             boxShadow: theme.shadows[1],
           },
           ".fc .shift-leave": {
@@ -3866,7 +3861,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               py: 0.25,
               border: "1px solid",
               borderColor: showTimeOffOnCalendar ? "primary.main" : "divider",
-              borderRadius: 999,
+              borderRadius: 1,
               bgcolor: showTimeOffOnCalendar ? alpha(theme.palette.primary.main, 0.06) : "background.paper",
             }}
             control={
@@ -3900,7 +3895,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 	        elevation={0}
 	        sx={{
 	          mb: 2,
-	          borderRadius: 3,
+	          borderRadius: 1,
 	          border: `1px solid ${theme.palette.divider}`,
 	          overflow: "hidden",
 	          bgcolor: "background.paper",
@@ -3946,7 +3941,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         />
       )}
 
-      <Paper sx={{ p: 2, mb: 2, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }} elevation={0}>
+      <Paper sx={{ p: 2, mb: 2, borderRadius: 1, border: `1px solid ${theme.palette.divider}` }} elevation={0}>
       {isMdDown ? (
         <Accordion disableGutters sx={{ mb: 2 }} defaultExpanded={false}>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -4027,12 +4022,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               </Grid>
 
               <Grid item xs={12}>
-                <TextField
-                  type="month"
-	                  label="Month"
-	                  value={selectedMonth}
-	                  onChange={(e) => handleMonthChange(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
+                <ThemedMonthField
+                  label="Month"
+                  value={selectedMonth}
+                  onChange={(e) => handleMonthChange(e.target.value)}
                   fullWidth
                 />
               </Grid>
@@ -4141,12 +4134,10 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
           </Grid>
 
           <Grid item xs={12} md={2}>
-            <TextField
-              type="month"
-	              label="Month"
-	              value={selectedMonth}
-	              onChange={(e) => handleMonthChange(e.target.value)}
-              InputLabelProps={{ shrink: true }}
+            <ThemedMonthField
+              label="Month"
+              value={selectedMonth}
+              onChange={(e) => handleMonthChange(e.target.value)}
               fullWidth
             />
           </Grid>
@@ -4192,7 +4183,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               maxWidth: "100%",
               overflow: "hidden",
               border: `1px solid ${theme.palette.divider}`,
-              borderRadius: 3,
+              borderRadius: 1,
               boxShadow: "none",
               bgcolor: "background.paper",
             }}
@@ -4238,7 +4229,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 zIndex: 1300,
                 background: theme.palette.background.paper,
                 p: 2,
-                borderRadius: 2,
+                borderRadius: 1,
                 boxShadow: theme.shadows[4],
               }}
             >
@@ -4342,7 +4333,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             maxWidth: 640,
             mx: "auto",
             mt: { xs: "6vh", sm: "10%" },
-            borderRadius: 3,
+            borderRadius: 1,
             boxShadow: 8,
             outline: "none",
           }}
@@ -4373,13 +4364,13 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
             <Grid container spacing={1.5}>
               <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
                   <Typography variant="caption" color="text.secondary">Employee</Typography>
                   <Typography variant="body2" fontWeight={800}>{selectedLeaveDetail?.employeeName || "—"}</Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
                   <Typography variant="caption" color="text.secondary">Paid status</Typography>
                   <Typography variant="body2" fontWeight={800}>
                     {selectedLeaveDetail?.leavePaid === false ? "Unpaid time off" : "Paid time off"}
@@ -4387,19 +4378,19 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
                   <Typography variant="caption" color="text.secondary">Canonical leave type</Typography>
                   <Typography variant="body2" fontWeight={800}>{selectedLeaveDetail?.leaveType || "—"}</Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
                   <Typography variant="caption" color="text.secondary">Subtype</Typography>
                   <Typography variant="body2" fontWeight={800}>{selectedLeaveDetail?.leaveSubtype || "None"}</Typography>
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
                   <Typography variant="caption" color="text.secondary">Approved hours</Typography>
                   <Typography variant="body2" fontWeight={800}>
                     {selectedLeaveDetail?.approvedHours != null ? `${selectedLeaveDetail.approvedHours}h` : "—"}
@@ -4407,7 +4398,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
                   <Typography variant="caption" color="text.secondary">Leave source</Typography>
                   <Typography variant="body2" fontWeight={800}>
                     {String(selectedLeaveDetail?.leaveSource || "shift_linked").replace(/_/g, " ")}
@@ -4476,7 +4467,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             maxWidth: 640,
             mx: "auto",
             mt: { xs: "5vh", sm: "10%" },
-            borderRadius: 2,
+            borderRadius: 1,
             boxShadow: 6,
             maxHeight: "90vh",
             display: "flex",
@@ -4489,7 +4480,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 position: "absolute",
                 inset: 0,
                 zIndex: 3,
-                borderRadius: 2,
+                borderRadius: 1,
                 backgroundColor: "rgba(255,255,255,0.82)",
                 backdropFilter: "blur(2px)",
                 display: "flex",
@@ -4504,7 +4495,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   width: "100%",
                   maxWidth: 360,
                   p: 2.5,
-                  borderRadius: 3,
+                  borderRadius: 1,
                   border: "1px solid",
                   borderColor: "primary.light",
                   boxShadow: "0 18px 40px rgba(37,99,235,0.12)",
@@ -4531,37 +4522,31 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
             <Grid container spacing={2}>
               <Grid item xs={12} sm={4}>
-                <TextField
+                <ThemedDateField
                   fullWidth
                   label="Date"
-                  type="date"
                   margin="normal"
                   name="date"
-                  InputLabelProps={{ shrink: true }}
                   value={formData.date}
                   onChange={handleFormChange}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <TextField
+                <ThemedTimeField
                   fullWidth
                   label="Start Time"
-                  type="time"
                   margin="normal"
                   name="startTime"
-                  InputLabelProps={{ shrink: true }}
                   value={formData.startTime}
                   onChange={handleFormChange}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <TextField
+                <ThemedTimeField
                   fullWidth
                   label="End Time"
-                  type="time"
                   margin="normal"
                   name="endTime"
-                  InputLabelProps={{ shrink: true }}
                   value={formData.endTime}
                   onChange={handleFormChange}
                 />
@@ -4616,25 +4601,21 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
               {formData.breakMode === "fixed" && (
                 <Grid container spacing={2} sx={{ mt: 1 }}>
                   <Grid item xs={12} sm={6}>
-                    <TextField
+                    <ThemedTimeField
                       fullWidth
                       label="Break start"
-                      type="time"
                       margin="normal"
                       name="breakStart"
-                      InputLabelProps={{ shrink: true }}
                       value={formData.breakStart}
                       onChange={handleFormChange}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField
+                    <ThemedTimeField
                       fullWidth
                       label="Break end"
-                      type="time"
                       margin="normal"
                       name="breakEnd"
-                      InputLabelProps={{ shrink: true }}
                       value={formData.breakEnd}
                       onChange={handleFormChange}
                     />
@@ -4657,25 +4638,21 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   {(formData.breakMode === "window" || formData.breakMode === "stagger") && (
                     <>
                       <Grid item xs={12} sm={6}>
-                        <TextField
+                        <ThemedTimeField
                           fullWidth
                           label="Window start"
-                          type="time"
                           margin="normal"
                           name="breakWindowStart"
-                          InputLabelProps={{ shrink: true }}
                           value={formData.breakWindowStart}
                           onChange={handleFormChange}
                         />
                       </Grid>
                       <Grid item xs={12} sm={6}>
-                        <TextField
+                        <ThemedTimeField
                           fullWidth
                           label="Window end"
-                          type="time"
                           margin="normal"
                           name="breakWindowEnd"
-                          InputLabelProps={{ shrink: true }}
                           value={formData.breakWindowEnd}
                           onChange={handleFormChange}
                         />
@@ -4684,14 +4661,12 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   )}
                   {formData.breakMode === "window" && (
                     <Grid item xs={12} sm={6}>
-                      <TextField
+                      <ThemedTimeField
                         fullWidth
                         label="Must start by"
                         helperText="Latest time an employee can begin their break."
-                        type="time"
                         margin="normal"
                         name="breakLatestStart"
-                        InputLabelProps={{ shrink: true }}
                         value={formData.breakLatestStart}
                         onChange={handleFormChange}
                       />
@@ -4799,7 +4774,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 sx={{
                   border: "1px solid",
                   borderColor: "divider",
-                  borderRadius: 2,
+                  borderRadius: 1,
                   p: 1.5,
                   bgcolor: "rgba(248,250,252,0.72)",
                 }}
@@ -4932,15 +4907,15 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                     {shiftTimeOffPreviewError && <Alert severity="error">{shiftTimeOffPreviewError}</Alert>}
                     {shiftTimeOffPreview?.balance_impact?.balance_managed && shiftTimeOffPreview?.is_paid_leave && (
                       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 1 }}>
-                        <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+                        <Paper variant="outlined" sx={{ p: 1, borderRadius: 1 }}>
                           <Typography variant="caption" color="text.secondary">Current balance</Typography>
                           <Typography variant="body2" fontWeight={800}>{shiftTimeOffPreview.balance_impact.current_balance_hours}h</Typography>
                         </Paper>
-                        <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+                        <Paper variant="outlined" sx={{ p: 1, borderRadius: 1 }}>
                           <Typography variant="caption" color="text.secondary">Hours to deduct</Typography>
                           <Typography variant="body2" fontWeight={800}>{shiftTimeOffPreview.balance_impact.deduction_hours}h</Typography>
                         </Paper>
-                        <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+                        <Paper variant="outlined" sx={{ p: 1, borderRadius: 1 }}>
                           <Typography variant="caption" color="text.secondary">Projected balance</Typography>
                           <Typography variant="body2" fontWeight={800}>{shiftTimeOffPreview.balance_impact.projected_balance_hours}h</Typography>
                         </Paper>
@@ -5042,10 +5017,8 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
                     {/* End date */}
                     {formData.repeatMode === "until" && (
-                      <TextField
+                      <ThemedDateField
                         label="End date"
-                        type="date"
-                        InputLabelProps={{ shrink: true }}
                         value={formData.repeatUntil}
                         onChange={(e) => setFormData((p) => ({ ...p, repeatUntil: e.target.value }))}
                         fullWidth
@@ -5112,11 +5085,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
         <Box
           sx={{
             p: 4,
-            bgcolor: "white",
+            bgcolor: "background.paper",
             width: 500,
             mx: "auto",
             mt: "8%",
-            borderRadius: 2,
+            borderRadius: 1,
             boxShadow: 6,
           }}
         >
@@ -5132,23 +5105,19 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             value={templateFormData.label}
             onChange={handleTemplateFormChange}
           />
-          <TextField
+          <ThemedTimeField
             fullWidth
             label="Start Time"
-            type="time"
             margin="normal"
             name="start"
-            InputLabelProps={{ shrink: true }}
             value={templateFormData.start}
             onChange={handleTemplateFormChange}
           />
-          <TextField
+          <ThemedTimeField
             fullWidth
             label="End Time"
-            type="time"
             margin="normal"
             name="end"
-            InputLabelProps={{ shrink: true }}
             value={templateFormData.end}
             onChange={handleTemplateFormChange}
           />
@@ -5172,26 +5141,22 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
             {templateFormData.breakMode === "fixed" && (
               <Grid container spacing={2} sx={{ mt: 1 }}>
                 <Grid item xs={12} sm={6}>
-                  <TextField
+                  <ThemedTimeField
                     fullWidth
                     label="Break start"
-                    type="time"
                     margin="normal"
                     name="breakStart"
-                    InputLabelProps={{ shrink: true }}
                     value={templateFormData.breakStart}
                     onChange={handleTemplateFormChange}
                     helperText="Optional default pause"
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField
+                  <ThemedTimeField
                     fullWidth
                     label="Break end"
-                    type="time"
                     margin="normal"
                     name="breakEnd"
-                    InputLabelProps={{ shrink: true }}
                     value={templateFormData.breakEnd}
                     onChange={handleTemplateFormChange}
                   />
@@ -5216,25 +5181,21 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   templateFormData.breakMode === "stagger") && (
                   <>
                     <Grid item xs={12} sm={6}>
-                      <TextField
+                      <ThemedTimeField
                         fullWidth
                         label="Window start"
-                        type="time"
                         margin="normal"
                         name="breakWindowStart"
-                        InputLabelProps={{ shrink: true }}
                         value={templateFormData.breakWindowStart}
                         onChange={handleTemplateFormChange}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <TextField
+                      <ThemedTimeField
                         fullWidth
                         label="Window end"
-                        type="time"
                         margin="normal"
                         name="breakWindowEnd"
-                        InputLabelProps={{ shrink: true }}
                         value={templateFormData.breakWindowEnd}
                         onChange={handleTemplateFormChange}
                       />
@@ -5243,13 +5204,11 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                 )}
                 {templateFormData.breakMode === "window" && (
                   <Grid item xs={12} sm={6}>
-                    <TextField
+                    <ThemedTimeField
                       fullWidth
                       label="Must start by"
-                      type="time"
                       margin="normal"
                       name="breakLatestStart"
-                      InputLabelProps={{ shrink: true }}
                       value={templateFormData.breakLatestStart}
                       onChange={handleTemplateFormChange}
                     />
@@ -5416,7 +5375,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
 
       {/* ======================= Employee Shift Summary — Accordion per Employee ====================== */}
       <Box mt={4}>
-        <Paper elevation={0} sx={{ mb: 2, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
+        <Paper elevation={0} sx={{ mb: 2, borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}>
           <Toolbar sx={{ gap: 2, flexWrap: "wrap" }}>
             {selectedShiftIds.length > 0 ? (
               <>
@@ -5545,7 +5504,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   </AccordionSummary>
 
                   <AccordionDetails>
-                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
                       <Table size={compact ? "small" : "medium"} stickyHeader>
                         <TableHead>
                           <TableRow>

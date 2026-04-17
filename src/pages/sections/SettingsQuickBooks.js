@@ -916,7 +916,7 @@ const SettingsQuickBooks = () => {
           </Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
             <Typography variant="body2" color="text.secondary" paragraph>
               Use QuickBooks for official accounting, and Zapier for real-time analytics and operational automation.
             </Typography>

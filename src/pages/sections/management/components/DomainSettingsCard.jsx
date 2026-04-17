@@ -1251,7 +1251,7 @@ const DomainSettingsCard = ({
             </Stack>
           </Alert>
 
-          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2.25 }}>
+          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1, p: 2.25 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
               {t("management.domainSettings.cards.overviewTitle", {
                 defaultValue: "Custom domain setup",
@@ -1323,7 +1323,7 @@ const DomainSettingsCard = ({
             </Stack>
           </Box>
 
-          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2.25 }}>
+          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1, p: 2.25 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
               {t("management.domainSettings.cards.progressTitle", {
                 defaultValue: "Setup progress",
@@ -1664,7 +1664,7 @@ const DomainSettingsCard = ({
             )}
           </Stack>
 
-          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2.25 }}>
+          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1, p: 2.25 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
               {t("management.domainSettings.cards.dnsTitle", {
                 defaultValue: "DNS records to add",
@@ -1684,7 +1684,7 @@ const DomainSettingsCard = ({
             )}
           </Box>
 
-          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2.25 }}>
+          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1, p: 2.25 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
               {t("management.domainSettings.cards.workerRouteTitle", {
                 defaultValue: "Edge routing",
@@ -1793,7 +1793,7 @@ const DomainSettingsCard = ({
             </Stack>
           </Box>
 
-          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2.25 }}>
+          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1, p: 2.25 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
               {t("management.domainSettings.cards.liveTitle", {
                 defaultValue: "Live website",
@@ -1847,7 +1847,7 @@ const DomainSettingsCard = ({
             </Stack>
           </Box>
 
-          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2.25 }}>
+          <Box sx={{ border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1, p: 2.25 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
               {t("management.domainSettings.cards.rootRedirectTitle", {
                 defaultValue: "Recommended: Redirect root domain to www",
@@ -1882,7 +1882,7 @@ const DomainSettingsCard = ({
 
           <Divider />
 
-          <Accordion disableGutters sx={{ boxShadow: "none", border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
+          <Accordion disableGutters sx={{ boxShadow: "none", border: (theme) => `1px solid ${theme.palette.divider}`, borderRadius: 1 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                 {t("management.domainSettings.cards.advancedTitle", {

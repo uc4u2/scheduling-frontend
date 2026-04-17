@@ -51,6 +51,7 @@ import "./manager-calendar.css";
 // Timezone-safe utilities (use these for the TZ rules)
 import { isoFromParts } from "../../utils/datetime";
 import { formatSlotWithTZ } from "../../utils/timezone-wrapper";
+import ThemedDateField, { ThemedTimeField } from "../../components/ui/ThemedDateField";
 
 const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
   const theme = useTheme();
@@ -916,7 +917,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
               textTransform: "uppercase",
               letterSpacing: 0.3,
               padding: "2px 6px",
-              borderRadius: 8,
+              borderRadius: 1,
               background: visuals.bg,
               border: `1px solid ${visuals.border}`,
               color: theme.palette.text.primary,
@@ -1047,8 +1048,15 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             fontSize: 12,
           },
           ".fc .fc-timegrid-event": {
-            borderRadius: 8,
+            borderRadius: 1,
             boxShadow: theme.shadows[1],
+          },
+          ".fc .fc-event, .fc .fc-daygrid-event, .fc .fc-daygrid-dot-event, .fc .fc-daygrid-block-event, .fc .fc-timegrid-event": {
+            borderRadius: "6px !important",
+          },
+          ".fc .fc-event-main, .fc .fc-event-main-frame": {
+            borderRadius: "6px !important",
+            overflow: "hidden",
           },
           ".fc .fc-timegrid-event .fc-event-time": {
             fontWeight: 700,
@@ -1150,7 +1158,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         sx={{
           p: 2,
           mb: 2,
-          borderRadius: 3,
+          borderRadius: 1,
           border: `1px solid ${theme.palette.divider}`,
         }}
         elevation={0}
@@ -1259,7 +1267,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             p: compactDensity ? 1 : 2,
             flex: "1 1 auto",
             minHeight: 520,
-            borderRadius: 3,
+            borderRadius: 1,
             border: `1px solid ${theme.palette.divider}`,
             overflow: "hidden",
             width: "100%",
@@ -1423,7 +1431,7 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
           sx={{
             p: 3,
             bgcolor: "background.paper",
-            borderRadius: 2,
+            borderRadius: 1,
             maxWidth: 520,
             mx: "auto",
             mt: 6,
@@ -1436,10 +1444,10 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
 
           <Stack spacing={2}>
             <TextField label="Title" name="title" value={form.title} onChange={handleFormChange} fullWidth />
-            <TextField label="Date" name="date" type="date" value={form.date} onChange={handleFormChange} fullWidth />
+            <ThemedDateField label="Date" name="date" value={form.date} onChange={handleFormChange} fullWidth />
             <Stack direction="row" spacing={2}>
-              <TextField label="Start" name="start" type="time" value={form.start} onChange={handleFormChange} fullWidth />
-              <TextField label="End" name="end" type="time" value={form.end} onChange={handleFormChange} fullWidth />
+              <ThemedTimeField label="Start" name="start" value={form.start} onChange={handleFormChange} fullWidth />
+              <ThemedTimeField label="End" name="end" value={form.end} onChange={handleFormChange} fullWidth />
             </Stack>
             <FormControl fullWidth>
               <InputLabel>Employees</InputLabel>
@@ -1575,25 +1583,22 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         <DialogTitle>Reschedule booking</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
-            <TextField
+            <ThemedDateField
               label="Date"
-              type="date"
               value={bookingRescheduleForm.date}
               onChange={(e) => setBookingRescheduleForm((p) => ({ ...p, date: e.target.value }))}
               fullWidth
             />
             <Stack direction="row" spacing={2}>
-              <TextField
+              <ThemedTimeField
                 label="Start"
-                type="time"
                 value={bookingRescheduleForm.start}
                 onChange={(e) => setBookingRescheduleForm((p) => ({ ...p, start: e.target.value }))}
                 fullWidth
                 inputProps={{ step: 300 }}
               />
-              <TextField
+              <ThemedTimeField
                 label="End"
-                type="time"
                 value={bookingRescheduleForm.end}
                 onChange={(e) => setBookingRescheduleForm((p) => ({ ...p, end: e.target.value }))}
                 fullWidth
@@ -1648,10 +1653,10 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         <DialogTitle>Edit availability slot</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
-            <TextField label="Date" type="date" value={slotEditForm.date} onChange={(e) => setSlotEditForm(p => ({ ...p, date: e.target.value }))} fullWidth />
+            <ThemedDateField label="Date" value={slotEditForm.date} onChange={(e) => setSlotEditForm(p => ({ ...p, date: e.target.value }))} fullWidth />
             <Stack direction="row" spacing={2}>
-              <TextField label="Start" type="time" value={slotEditForm.start} onChange={(e) => setSlotEditForm(p => ({ ...p, start: e.target.value }))} fullWidth inputProps={{ step: 300 }} />
-              <TextField label="End" type="time" value={slotEditForm.end} onChange={(e) => setSlotEditForm(p => ({ ...p, end: e.target.value }))} fullWidth inputProps={{ step: 300 }} />
+              <ThemedTimeField label="Start" value={slotEditForm.start} onChange={(e) => setSlotEditForm(p => ({ ...p, start: e.target.value }))} fullWidth inputProps={{ step: 300 }} />
+              <ThemedTimeField label="End" value={slotEditForm.end} onChange={(e) => setSlotEditForm(p => ({ ...p, end: e.target.value }))} fullWidth inputProps={{ step: 300 }} />
             </Stack>
           </Stack>
         </DialogContent>
@@ -1686,9 +1691,8 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
         <DialogContent dividers>
           <Stack spacing={2}>
             {(dayMode === "close-after" || dayMode === "close-before") && (
-              <TextField
+              <ThemedTimeField
                 label={dayMode === "close-after" ? "From time" : "Until time"}
-                type="time"
                 value={dayTimeA}
                 onChange={(e) => setDayTimeA(e.target.value)}
                 inputProps={{ step: 300 }}
@@ -1697,8 +1701,8 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             )}
             {dayMode === "keep-range" && (
               <Stack direction="row" spacing={2}>
-                <TextField label="Start time" type="time" value={dayTimeA} onChange={(e) => setDayTimeA(e.target.value)} inputProps={{ step: 300 }} fullWidth />
-                <TextField label="End time"   type="time" value={dayTimeB} onChange={(e) => setDayTimeB(e.target.value)} inputProps={{ step: 300 }} fullWidth />
+                <ThemedTimeField label="Start time" value={dayTimeA} onChange={(e) => setDayTimeA(e.target.value)} inputProps={{ step: 300 }} fullWidth />
+                <ThemedTimeField label="End time" value={dayTimeB} onChange={(e) => setDayTimeB(e.target.value)} inputProps={{ step: 300 }} fullWidth />
               </Stack>
             )}
             <Alert severity="info">
@@ -1808,17 +1812,15 @@ const AllEmployeeSlotsCalendar = ({ token, timezone: propTimezone }) => {
             </Typography>
 
             <Stack direction="row" spacing={2}>
-              <TextField
+              <ThemedTimeField
                 label="Start"
-                type="time"
                 value={dayWindow.start}
                 onChange={(e) => setDayWindow((w) => ({ ...w, start: e.target.value }))}
                 inputProps={{ step: 300 }}
                 fullWidth
               />
-              <TextField
+              <ThemedTimeField
                 label="End"
-                type="time"
                 value={dayWindow.end}
                 onChange={(e) => setDayWindow((w) => ({ ...w, end: e.target.value }))}
                 inputProps={{ step: 300 }}

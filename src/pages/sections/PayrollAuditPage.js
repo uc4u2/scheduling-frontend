@@ -33,6 +33,7 @@ import { formatDateTimeInTz } from "../../utils/datetime";
 import { getUserTimezone } from "../../utils/timezone";
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 import { extractApiErrorMessage } from "../../utils/apiError";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 
 export default function PayrollAuditPage() {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : "";
@@ -218,23 +219,19 @@ export default function PayrollAuditPage() {
           </FormControl>
         </Grid>
         <Grid item xs={12} md={2}>
-          <TextField
-            type="date"
+          <ThemedDateField
             label="Start date"
             fullWidth
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
           />
         </Grid>
         <Grid item xs={12} md={2}>
-          <TextField
-            type="date"
+          <ThemedDateField
             label="End date"
             fullWidth
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
           />
         </Grid>
         <Grid item xs={12} md={2}>

@@ -32,6 +32,7 @@ import { getUserTimezone } from "../../utils/timezone";
 import { formatCurrency } from "../../utils/formatters";
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 import { extractApiErrorMessage } from "../../utils/apiError";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 
 const NO_STATE_INCOME_TAX_STATES = new Set(["AK", "FL", "NV", "SD", "TX", "WA", "WY", "TN", "NH"]);
 
@@ -288,23 +289,19 @@ export default function PayrollRawPage() {
           </FormControl>
         </Grid>
         <Grid item xs={6} sm={2}>
-          <TextField
+          <ThemedDateField
             label="Start date"
-            type="date"
             size="small"
             fullWidth
-            InputLabelProps={{ shrink: true }}
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
         </Grid>
         <Grid item xs={6} sm={2}>
-          <TextField
+          <ThemedDateField
             label="End date"
-            type="date"
             size="small"
             fullWidth
-            InputLabelProps={{ shrink: true }}
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />

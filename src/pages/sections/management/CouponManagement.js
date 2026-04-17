@@ -24,6 +24,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import { Add, Edit, Delete } from "@mui/icons-material";
 import api from "../../../utils/api";
 import { useTranslation } from "react-i18next";
+import ThemedDateField from "../../../components/ui/ThemedDateField";
 
 /** ------------------------------------------------------------------
  * Normalizers & helpers
@@ -428,11 +429,9 @@ const CouponManagement = ({ token }) => {
             </Grid>
 
             <Grid item xs={6}>
-              <TextField
+              <ThemedDateField
                 label="Expires"
-                type="date"
                 fullWidth
-                InputLabelProps={{ shrink: true }}
                 value={form.expires}
                 onChange={(e) => setForm({ ...form, expires: e.target.value })}
                 helperText="Leave blank for no expiration"
@@ -511,5 +510,4 @@ const CouponManagement = ({ token }) => {
 };
 
 export default CouponManagement;
-
 

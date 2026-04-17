@@ -7,7 +7,7 @@ export default function ElevatedCard(props) {
       {...props}
       sx={{
         p: 3,
-        borderRadius: 3,
+        borderRadius: 1,
         boxShadow: "0 6px 24px rgba(0,0,0,0.06)",
         transition: "transform 0.1s ease, boxShadow 0.2s ease",
         "&:hover": {

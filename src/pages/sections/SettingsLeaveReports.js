@@ -35,6 +35,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import SectionCard from "../../components/ui/SectionCard";
 import api, { leaveSettings } from "../../utils/api";
 import { LEAVE_TYPE_OPTIONS, formatLeaveTypeLabel } from "./utils/leaveSettings";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 
 const REPORT_TYPES = [
   { value: "activity", label: "Activity", description: "Leave request history and payroll-readiness context." },
@@ -350,7 +351,7 @@ const SummaryCard = ({ label, value, helper, tone = "default" }) => {
       variant="outlined"
       sx={{
         height: "100%",
-        borderRadius: 3,
+        borderRadius: 1,
         borderColor: "rgba(148, 163, 184, 0.35)",
         background: "linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.92))",
         boxShadow: "0 14px 34px rgba(15, 23, 42, 0.05)",
@@ -418,7 +419,7 @@ const LeaveReportsHelpDrawer = ({ open, onClose }) => (
             key={report.title}
             sx={{
               border: "1px solid rgba(148, 163, 184, 0.32)",
-              borderRadius: 2,
+              borderRadius: 1,
               p: 1.25,
               bgcolor: "rgba(248,250,252,0.72)",
             }}
@@ -512,7 +513,7 @@ const CarryoverHelpDrawer = ({ open, onClose }) => (
       <Divider />
 
       <HelpSection title="Simple example">
-        <Box sx={{ border: "1px solid rgba(148, 163, 184, 0.32)", borderRadius: 2, p: 1.25, bgcolor: "rgba(248,250,252,0.72)" }}>
+        <Box sx={{ border: "1px solid rgba(148, 163, 184, 0.32)", borderRadius: 1, p: 1.25, bgcolor: "rgba(248,250,252,0.72)" }}>
           <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
             Employee balance = <strong>15h</strong>. Carryover cap = <strong>10h</strong>. Result: <strong>10h carried</strong>, <strong>5h not carried</strong>, and the next period opening estimate is <strong>10h</strong>.
           </Typography>
@@ -847,34 +848,28 @@ export default function SettingsLeaveReports({ canApplyCarryover = true }) {
               </TextField>
             </Grid>
             <Grid item xs={12} md={2}>
-              <TextField
+              <ThemedDateField
                 fullWidth
                 size="small"
-                type="date"
                 label="From"
-                InputLabelProps={{ shrink: true }}
                 value={filters.start_date}
                 onChange={(event) => updateFilter("start_date", event.target.value)}
               />
             </Grid>
             <Grid item xs={12} md={2}>
-              <TextField
+              <ThemedDateField
                 fullWidth
                 size="small"
-                type="date"
                 label="To"
-                InputLabelProps={{ shrink: true }}
                 value={filters.end_date}
                 onChange={(event) => updateFilter("end_date", event.target.value)}
               />
             </Grid>
             <Grid item xs={12} md={2}>
-              <TextField
+              <ThemedDateField
                 fullWidth
                 size="small"
-                type="date"
                 label="As of"
-                InputLabelProps={{ shrink: true }}
                 value={filters.as_of_date}
                 onChange={(event) => updateFilter("as_of_date", event.target.value)}
               />
@@ -1149,7 +1144,7 @@ export default function SettingsLeaveReports({ canApplyCarryover = true }) {
             <Typography variant="body2" color="text.secondary">Loading report...</Typography>
           </Stack>
         ) : rows.length === 0 ? (
-          <Box sx={{ border: "1px dashed", borderColor: "divider", borderRadius: 2, p: 2, bgcolor: "rgba(15,23,42,0.02)" }}>
+          <Box sx={{ border: "1px dashed", borderColor: "divider", borderRadius: 1, p: 2, bgcolor: "rgba(15,23,42,0.02)" }}>
             <Typography variant="body2" color="text.secondary">{tableEmptyMessage(filters.report_type)}</Typography>
           </Box>
         ) : (
@@ -1212,7 +1207,7 @@ export default function SettingsLeaveReports({ canApplyCarryover = true }) {
                 <SummaryCard label="Payout review" value={`$${fmtNumber(reportSummary.total_estimated_excess_value)}`} helper="Manual payroll review only" tone={reportSummary.total_estimated_excess_value ? "warning" : "default"} />
               </Grid>
             </Grid>
-            <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 1.5, bgcolor: "rgba(248,250,252,0.72)" }}>
+            <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 1.5, bgcolor: "rgba(248,250,252,0.72)" }}>
               <Typography variant="subtitle2" fontWeight={900} gutterBottom>This will</Typography>
               <Typography variant="body2" color="text.secondary">Update leave balances through ledger entries, carry eligible hours into the next policy year, remove hours above carryover caps from leave balances, and create an audit run.</Typography>
               <Typography variant="subtitle2" fontWeight={900} sx={{ mt: 1.25 }} gutterBottom>This will not</Typography>

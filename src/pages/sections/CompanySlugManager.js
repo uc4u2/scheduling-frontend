@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { Box, TextField, Button, Typography, CircularProgress, Alert } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import api from "../../utils/api";
 
 export default function CompanySlugManager({ slug, onSlugChange, token, readOnly }) {
+  const theme = useTheme();
   const [value, setValue] = useState(slug || "");
   const [checking, setChecking] = useState(false);
   const [available, setAvailable] = useState(null);
@@ -65,7 +67,20 @@ export default function CompanySlugManager({ slug, onSlugChange, token, readOnly
   };
 
   return (
-    <Box sx={{ mt: 2, mb: 2, p: 2, background: "#fafbfc", borderRadius: 2 }}>
+    <Box
+      sx={{
+        mt: 2,
+        mb: 2,
+        p: 2,
+        borderRadius: "6px",
+        border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.12)}`,
+        backgroundColor: theme.palette.background.paper,
+        backgroundImage:
+          theme.palette.mode === "dark"
+            ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.12)}, ${alpha(theme.palette.background.paper, 0.9)} 64%)`
+            : `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.07)}, ${alpha(theme.palette.background.paper, 0.96)} 64%)`,
+      }}
+    >
       <Typography variant="subtitle1" sx={{ mb: 1 }}>
         Company Public Slug / Friendly URL
       </Typography>

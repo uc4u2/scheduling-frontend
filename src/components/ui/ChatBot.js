@@ -224,7 +224,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
           alignItems: "center",
           px: 1.5,
           py: 1,
-          borderRadius: "8px",
+          borderRadius: "6px",
           bgcolor: shell.botBubble,
           border: shell.botBubbleBorder,
         }}
@@ -268,7 +268,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
               minWidth: "auto",
               px: 2,
               py: 1.2,
-              borderRadius: "8px",
+              borderRadius: "6px",
               textTransform: "none",
               fontWeight: 700,
               color: isTenant ? "#ffffff" : "#d9f99d",
@@ -300,7 +300,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
             maxHeight: { xs: "78vh", md: "74vh" },
             display: "flex",
             flexDirection: "column",
-            borderRadius: 2,
+            borderRadius: 1,
             zIndex: 3000,
             overflow: "hidden",
             background: shell.panelBg,
@@ -352,7 +352,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                     sx={{
                       height: 24,
                       fontWeight: 700,
-                      borderRadius: "8px",
+                      borderRadius: "6px",
                       color: isTenant ? tenantAccent : "#d9f99d",
                       bgcolor: isTenant
                         ? "rgba(255,255,255,0.88)"
@@ -457,7 +457,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                         maxWidth: "82%",
                         px: 1.85,
                         py: 1.35,
-                        borderRadius: "8px",
+                        borderRadius: "6px",
                         background: isUser ? shell.userBubble : shell.botBubble,
                         color: isUser ? (isTenant ? "#ffffff" : "#eff6ff") : shell.headingText,
                         border: isUser ? "none" : shell.botBubbleBorder,
@@ -496,7 +496,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                             height: "auto",
                             minHeight: 36,
                             px: 0.25,
-                            borderRadius: "8px",
+                            borderRadius: "6px",
                             background:
                               !isTenant && chipIndex < 2 ? undefined : shell.chipBg,
                             color: !isTenant && chipIndex < 2 ? undefined : shell.chipText,
@@ -541,7 +541,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                     size="small"
                     onClick={() => goToCta(primaryCta.href)}
                     sx={{
-                      borderRadius: "8px",
+                      borderRadius: "6px",
                       textTransform: "none",
                       fontWeight: 700,
                       backgroundColor: isTenant ? tenantAccent : "#2563eb",
@@ -559,7 +559,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                     size="small"
                     onClick={() => goToCta(secondaryCta.href)}
                     sx={{
-                      borderRadius: "8px",
+                      borderRadius: "6px",
                       textTransform: "none",
                       fontWeight: 700,
                       borderColor: isTenant ? tenantAccent : "rgba(147,197,253,0.24)",
@@ -590,7 +590,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                 alignItems: "center",
                 gap: 1,
                 p: 0.8,
-                borderRadius: "8px",
+                borderRadius: "6px",
                 background: shell.composerBg,
                 border: isTenant
                   ? "1px solid rgba(226,232,240,0.92)"
@@ -618,7 +618,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                     </InputAdornment>
                   ),
                   sx: {
-                    borderRadius: "8px",
+                    borderRadius: "6px",
                     background: shell.composerInputBg,
                     color: shell.headingText,
                     "& fieldset": {
@@ -628,7 +628,7 @@ const ChatBot = ({ companySlug, config, onOpenChange }) => {
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
-                    borderRadius: "8px",
+                    borderRadius: "6px",
                     "& fieldset": {
                       border: "none",
                     },

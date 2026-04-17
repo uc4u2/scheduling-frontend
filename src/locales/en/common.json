@@ -694,6 +694,7 @@
       "recentBookings": "Recent Bookings",
       "addMember": "Add team member",
       "teamMeetings": "Team Meetings",
+      "training": "Training",
       "shiftMonitoring": "Shift Monitoring",
       "fraudAnomalies": "Fraud / Anomalies",
       "servicesBookings": "Services & Bookings",
@@ -6893,6 +6894,7 @@
       "questionnaires": "Questionnaires",
       "upcomingMeetings": "Upcoming Meetings",
       "myTime": "My Time",
+      "myTraining": "My Training",
       "candidateSearch": "Candidate Search",
       "publicLink": "Public Booking Link",
       "jobPostings": "Job Postings"

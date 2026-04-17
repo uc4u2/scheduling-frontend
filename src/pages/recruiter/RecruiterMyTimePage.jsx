@@ -57,7 +57,7 @@ const RecruiterMyTimePage = ({ token }) => {
             Viewing Employee Workspace (Manager Mode)
           </Alert>
         )}
-        <SecondEmployeeShiftView />
+        <SecondEmployeeShiftView employeePolish />
       </Stack>
     </ManagementFrame>
   );

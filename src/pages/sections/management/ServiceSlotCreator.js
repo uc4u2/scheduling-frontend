@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import api from "../../../utils/api";
+import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedDateField";
 
 const ServiceSlotCreator = ({ token }) => {
   const theme = useTheme();
@@ -207,11 +208,9 @@ const ServiceSlotCreator = ({ token }) => {
 
         {/* Date */}
         <Grid item xs={12} sm={3}>
-          <TextField
+          <ThemedDateField
             label="Date"
-            type="date"
             fullWidth
-            InputLabelProps={{ shrink: true }}
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
@@ -219,11 +218,9 @@ const ServiceSlotCreator = ({ token }) => {
 
         {/* Start Time */}
         <Grid item xs={12} sm={3}>
-          <TextField
+          <ThemedTimeField
             label="Start Time"
-            type="time"
             fullWidth
-            InputLabelProps={{ shrink: true }}
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
           />

@@ -431,7 +431,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
               sx={{
                 height: 20,
                 fontSize: 10,
-                borderRadius: 10,
+                borderRadius: 1,
                 bgcolor: ui.availability.bg,
                 color: ui.availability.text,
                 border: `1px solid ${ui.availability.border}`,
@@ -933,6 +933,16 @@ export default function MySetmoreCalendar({ token, initialDate }) {
             borderRadius: theme.shape.borderRadius,
             boxShadow: theme.shadows[1],
           },
+          ".fc .fc-event, .fc .fc-daygrid-event, .fc .fc-daygrid-dot-event, .fc .fc-daygrid-block-event, .fc .fc-timegrid-event": {
+            borderRadius: "6px !important",
+          },
+          ".fc .fc-event-main, .fc .fc-event-main-frame, .fc .fc-event-title-container": {
+            borderRadius: "6px !important",
+            overflow: "hidden",
+          },
+          ".fc .MuiChip-root": {
+            borderRadius: "6px !important",
+          },
           ".fc .fc-timegrid-event .fc-event-main, .fc .fc-timegrid-event .fc-event-main-frame, .fc .fc-timegrid-event .fc-event-title-container": {
             width: "100%",
             textAlign: "left",
@@ -1102,7 +1112,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
         <Paper
           sx={{
             p: { xs: 2, md: 3 },
-            borderRadius: 3,
+            borderRadius: 1,
             border: `1px solid ${theme.palette.divider}`,
             display: "flex",
             flexDirection: "column",
@@ -1190,7 +1200,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
                         flex: 1,
                         textAlign: "center",
                         py: 0.5,
-                        borderRadius: 2,
+                        borderRadius: 1,
                         cursor: "pointer",
                         background: isActive ? alpha(theme.palette.primary.main, 0.12) : "transparent",
                         color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
@@ -1377,8 +1387,8 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           onClose={() => setDetailOpen(false)}
           PaperProps={{
             sx: {
-              borderTopLeftRadius: theme.shape.borderRadius * 2,
-              borderTopRightRadius: theme.shape.borderRadius * 2,
+              borderTopLeftRadius: theme.shape.borderRadius,
+              borderTopRightRadius: theme.shape.borderRadius,
               p: 2.5,
               background: theme.palette.background.paper,
               boxShadow: theme.shadows[6],
@@ -1386,7 +1396,7 @@ export default function MySetmoreCalendar({ token, initialDate }) {
           }}
         >
           <Box sx={{ width: "100%", mb: 1 }}>
-            <Box sx={{ width: 44, height: 4, bgcolor: theme.palette.divider, borderRadius: 2, mx: "auto", mb: 1 }} />
+            <Box sx={{ width: 44, height: 4, bgcolor: theme.palette.divider, borderRadius: 1, mx: "auto", mb: 1 }} />
             {renderDetailBody()}
             <Button sx={{ mt: 2 }} fullWidth variant="contained" onClick={() => setDetailOpen(false)}>
               Close

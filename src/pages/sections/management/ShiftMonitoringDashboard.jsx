@@ -21,7 +21,7 @@ const formatRangeLabel = (startIso, endIso, tz) => {
 };
 
 const KPI = ({ icon, label, value, sub }) => (
-  <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
+  <Paper elevation={0} sx={{ p: 2.5, borderRadius: 1, border: "1px solid", borderColor: "divider" }}>
     <Stack direction="row" spacing={1.5} alignItems="center">
       <Box
         sx={(theme) => ({
@@ -123,7 +123,7 @@ const ShiftMonitoringDashboard = ({ token }) => {
   return (
     <ManagementFrame title="Shift Monitoring" subtitle="Who is on, who is off, and coverage at a glance.">
       {error && (
-        <Paper sx={{ p: 2, mb: 2, borderRadius: 2, border: "1px solid", borderColor: "error.light", bgcolor: alpha(theme.palette.error.main, 0.06) }}>
+        <Paper sx={{ p: 2, mb: 2, borderRadius: 1, border: "1px solid", borderColor: "error.light", bgcolor: alpha(theme.palette.error.main, 0.06) }}>
           <Typography color="error">{error}</Typography>
         </Paper>
       )}
@@ -142,7 +142,7 @@ const ShiftMonitoringDashboard = ({ token }) => {
         </Grid>
       </Grid>
 
-      <Paper sx={{ p: 3, borderRadius: 3, border: "1px solid", borderColor: "divider", mb: 3 }}>
+      <Paper sx={{ p: 3, borderRadius: 1, border: "1px solid", borderColor: "divider", mb: 3 }}>
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
           Leave spotlight (today)
         </Typography>
@@ -157,7 +157,7 @@ const ShiftMonitoringDashboard = ({ token }) => {
         )}
       </Paper>
 
-      <Paper sx={{ p: 3, borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
+      <Paper sx={{ p: 3, borderRadius: 1, border: "1px solid", borderColor: "divider" }}>
         <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
           Working now
         </Typography>

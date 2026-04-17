@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import api from "../../../utils/api";
 import SectionCard from "../../../components/ui/SectionCard";
+import ThemedDateField from "../../../components/ui/ThemedDateField";
 
 dayjs.extend(quarterOfYear);
 
@@ -181,10 +182,10 @@ export default function WorkforceCostAnalytics({ compact = false } = {}) {
       >
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={2}>
-            <TextField label="From" type="date" fullWidth value={from} onChange={(e) => setFrom(e.target.value)} />
+            <ThemedDateField label="From" fullWidth value={from} onChange={(e) => setFrom(e.target.value)} />
           </Grid>
           <Grid item xs={12} md={2}>
-            <TextField label="To" type="date" fullWidth value={to} onChange={(e) => setTo(e.target.value)} />
+            <ThemedDateField label="To" fullWidth value={to} onChange={(e) => setTo(e.target.value)} />
           </Grid>
           <Grid item xs={12} md={2}>
             <TextField select label="Group" fullWidth value={group} onChange={(e) => setGroup(e.target.value)}>
@@ -269,7 +270,7 @@ export default function WorkforceCostAnalytics({ compact = false } = {}) {
               <Grid container spacing={1.5}>
                 {series.map((row) => (
                   <Grid item xs={12} md={6} key={row.bucket_start}>
-                    <Box sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
+                    <Box sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="subtitle2">{row.bucket}</Typography>
                         <MetricChip tone="primary" label={fmtMoney(row.labor_cost)} />
@@ -294,7 +295,7 @@ export default function WorkforceCostAnalytics({ compact = false } = {}) {
                   <Typography variant="body2" color="text.secondary">No overtime risk in the selected range.</Typography>
                 ) : (
                   risk.map((row) => (
-                    <Box key={`${row.recruiter_id}-${row.week}`} sx={{ mb: 1.25, p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
+                    <Box key={`${row.recruiter_id}-${row.week}`} sx={{ mb: 1.25, p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="subtitle2">{row.employee}</Typography>
                         <MetricChip tone={row.status === "overtime" ? "error" : "warning"} label={row.status === "overtime" ? "In overtime" : "Close to overtime"} />
@@ -304,7 +305,7 @@ export default function WorkforceCostAnalytics({ compact = false } = {}) {
                         variant="determinate"
                         value={Math.min(100, Math.round((100 * Number(row.hours || 0)) / Math.max(1, Number(row.threshold || 0))))}
                         color={row.status === "overtime" ? "error" : "warning"}
-                        sx={{ mt: 1, height: 8, borderRadius: 999 }}
+                        sx={{ mt: 1, height: 8, borderRadius: 1 }}
                       />
                       <Typography variant="body2" sx={{ mt: 1 }}>{fmtHours(row.hours)} against a {fmtHours(row.threshold)} threshold</Typography>
                     </Box>
@@ -345,7 +346,7 @@ export default function WorkforceCostAnalytics({ compact = false } = {}) {
                       <LinearProgress
                         variant="determinate"
                         value={Math.min(100, Math.round((100 * Number(row.total_cost || 0)) / Math.max(1, Number(departmentBreakdown[0]?.total_cost || 0))))}
-                        sx={{ mt: 0.75, height: 7, borderRadius: 999 }}
+                        sx={{ mt: 0.75, height: 7, borderRadius: 1 }}
                       />
                     </Box>
                   ))

@@ -861,7 +861,7 @@ const EmployeeShiftView = () => {
 
       {/* Floating panel for pending drag/resize updates */}
       {pendingUpdate && (
-        <Box sx={{ position: "fixed", bottom: 20, right: 20, bgcolor: "white", p: 2, borderRadius: 2, boxShadow: 4 }}>
+        <Box sx={{ position: "fixed", bottom: 20, right: 20, bgcolor: "background.paper", p: 2, borderRadius: 1, boxShadow: 4 }}>
           <Typography>Save drag/update to shift?</Typography>
           <Grid container spacing={2} mt={1}>
             <Grid item>
@@ -876,7 +876,7 @@ const EmployeeShiftView = () => {
 
       {/* Modal for Create/Update Shift */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-        <Box sx={{ p: 4, bgcolor: "white", width: 400, mx: "auto", mt: 10, borderRadius: 2 }}>
+        <Box sx={{ p: 4, bgcolor: "background.paper", width: 400, mx: "auto", mt: 10, borderRadius: 1 }}>
           <Typography variant="h6" gutterBottom>
             {selectedShift ? "Edit Shift" : "Create Shift"}
           </Typography>

@@ -147,7 +147,7 @@ export default function EmployeeAvailabilityCalendar({
     color: accentContrast,
     textTransform: "none",
     fontWeight: 700,
-    borderRadius: "var(--page-btn-radius, 12px)",
+    borderRadius: "var(--page-btn-radius, 6px)",
     boxShadow: buttonShadow,
     "&:hover": {
       backgroundColor: `var(--page-btn-bg-hover, ${accentColor})`,
@@ -169,7 +169,7 @@ export default function EmployeeAvailabilityCalendar({
     "& .MuiAlert-icon": { color: accentColor },
   };
   const timeChipSx = (selected, variant = "inline") => ({
-    borderRadius: 999,
+    borderRadius: 1,
     textTransform: "none",
     fontWeight: 700,
     border: `1px solid ${selected ? accentColor : borderColor}`,
@@ -466,7 +466,7 @@ export default function EmployeeAvailabilityCalendar({
           p: 0.75,
           textAlign: "center",
           cursor: isPast ? "default" : "pointer",
-          borderRadius: 1.25,
+          borderRadius: 1,
           border: "1px solid",
           borderColor: isSelected ? accentColor : borderColor,
           bgcolor: isSelected ? accentColor : hasAvail ? softBg : "transparent",
@@ -588,7 +588,7 @@ export default function EmployeeAvailabilityCalendar({
             sx={{
               textTransform: "none",
               fontWeight: 600,
-              borderRadius: 999,
+              borderRadius: 1,
               border: `1px solid ${selectedTime === s.start_time ? accentColor : borderColor}`,
               backgroundColor: selectedTime === s.start_time ? accentColor : "transparent",
               color: selectedTime === s.start_time ? accentContrast : bodyColor,
@@ -622,7 +622,7 @@ export default function EmployeeAvailabilityCalendar({
         elevation={0}
         sx={{
           p: { xs: 2, md: 3 },
-          borderRadius: 4,
+          borderRadius: 1,
           border: `1px solid ${borderColor}`,
           background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,246,248,0.98) 100%)",
           boxShadow: "var(--page-card-shadow, 0 20px 48px rgba(124,72,92,0.08))",
@@ -652,7 +652,7 @@ export default function EmployeeAvailabilityCalendar({
                 size="small"
                 label={`TZ: ${displayTimezone}`}
                 sx={{
-                  borderRadius: 999,
+                  borderRadius: 1,
                   fontWeight: 500,
                   backgroundColor: softBg,
                   color: bodyColor,
@@ -664,7 +664,7 @@ export default function EmployeeAvailabilityCalendar({
                   size="small"
                   label={`Base ${money(priceInfo.base_price)}`}
                   sx={{
-                    borderRadius: 999,
+                    borderRadius: 1,
                     fontWeight: 600,
                     backgroundColor: accentColor,
                     color: accentContrast,
@@ -676,7 +676,7 @@ export default function EmployeeAvailabilityCalendar({
                   size="small"
                   label={`${slots.length} slot(s) today`}
                   sx={{
-                    borderRadius: 999,
+                    borderRadius: 1,
                     fontWeight: 500,
                     backgroundColor: softBg,
                     color: bodyColor,
@@ -687,7 +687,7 @@ export default function EmployeeAvailabilityCalendar({
                   size="small"
                   label="No slots for selected day"
                   sx={{
-                    borderRadius: 999,
+                    borderRadius: 1,
                     fontWeight: 500,
                     backgroundColor: softBg,
                     color: bodyColor,
@@ -704,7 +704,7 @@ export default function EmployeeAvailabilityCalendar({
         sx={{
           p: 2,
           mb: 2.5,
-          borderRadius: 2,
+          borderRadius: 1,
           border: `1px solid ${borderColor}`,
           backgroundColor: surfaceColor,
           backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0) 100%)",

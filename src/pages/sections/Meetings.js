@@ -25,6 +25,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import api from "../../utils/api";
+import ThemedDateField, { ThemedTimeField } from "../../components/ui/ThemedDateField";
 
 const Meetings = ({ token }) => {
   const [meetings, setMeetings] = useState([]);
@@ -293,13 +294,13 @@ const Meetings = ({ token }) => {
               <TextField label="Description" name="description" fullWidth multiline rows={2} value={form.description} onChange={handleInputChange} />
             </Grid>
             <Grid item xs={6}>
-              <TextField type="date" label="Date" name="date" fullWidth InputLabelProps={{ shrink: true }} value={form.date} onChange={handleInputChange} />
+              <ThemedDateField label="Date" name="date" fullWidth value={form.date} onChange={handleInputChange} />
             </Grid>
             <Grid item xs={3}>
-              <TextField type="time" label="Start Time" name="start_time" fullWidth InputLabelProps={{ shrink: true }} value={form.start_time} onChange={handleInputChange} />
+              <ThemedTimeField label="Start Time" name="start_time" fullWidth value={form.start_time} onChange={handleInputChange} />
             </Grid>
             <Grid item xs={3}>
-              <TextField type="time" label="End Time" name="end_time" fullWidth InputLabelProps={{ shrink: true }} value={form.end_time} onChange={handleInputChange} />
+              <ThemedTimeField label="End Time" name="end_time" fullWidth value={form.end_time} onChange={handleInputChange} />
             </Grid>
             <Grid item xs={12}>
               <FormControl fullWidth>

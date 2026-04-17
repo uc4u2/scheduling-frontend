@@ -34,6 +34,7 @@ import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { alpha } from "@mui/material/styles";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import api from "../../utils/api";
 import { useTranslation } from "react-i18next";
@@ -1103,7 +1104,18 @@ export default function CompanyProfile({ token }) {
       </Paper>
 
       {/* Public site / slug controls */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper
+        sx={(theme) => ({
+          p: 2,
+          mb: 3,
+          borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.12),
+          backgroundColor: theme.palette.background.paper,
+          backgroundImage:
+            theme.palette.mode === "dark"
+              ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.12)}, ${alpha(theme.palette.background.paper, 0.9)} 72%)`
+              : `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.065)}, ${alpha(theme.palette.background.paper, 0.96)} 72%)`,
+        })}
+      >
         <CompanySlugManager slug={form.slug} onSlugChange={handleSlugChange} token={token} />
 
         <Box sx={{ mt: 2 }}>
@@ -1172,7 +1184,18 @@ export default function CompanyProfile({ token }) {
       </Paper>
 
       {/* Website contact form recipients */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper
+        sx={(theme) => ({
+          p: 2,
+          mb: 3,
+          borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.12),
+          backgroundColor: theme.palette.background.paper,
+          backgroundImage:
+            theme.palette.mode === "dark"
+              ? `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.12)}, ${alpha(theme.palette.background.paper, 0.9)} 72%)`
+              : `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.065)}, ${alpha(theme.palette.background.paper, 0.96)} 72%)`,
+        })}
+      >
         <Stack spacing={1.5}>
           <Stack direction="row" spacing={1} alignItems="center">
             <Typography variant="subtitle1" fontWeight={600}>

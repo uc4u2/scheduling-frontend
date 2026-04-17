@@ -142,7 +142,7 @@ export default function SettingsArtistVisibility() {
 
     return (
       <Box sx={{
-        p: 2, border: "1px solid", borderColor: "divider", borderRadius: 2,
+        p: 2, border: "1px solid", borderColor: "divider", borderRadius: 1,
         typography: "body2", bgcolor: "background.default"
       }}>
         <Typography variant="subtitle2" sx={{ mb: 1 }}>{t("settings.artist.preview.title")}</Typography>

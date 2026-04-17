@@ -60,7 +60,7 @@ const SectionCard = ({ title, description, children, accent = "neutral", action 
       variant="outlined"
       sx={{
         p: { xs: 2, md: 2.5 },
-        borderRadius: 2,
+        borderRadius: 1,
         borderColor: "rgba(148, 163, 184, 0.28)",
         bgcolor: "rgba(255,255,255,0.92)",
         boxShadow: "0 18px 45px rgba(15, 23, 42, 0.05)",
@@ -95,7 +95,7 @@ const ExecutivePanel = ({ icon, title, value, subtitle, tone = "neutral", onClic
       sx={{
         height: "100%",
         p: 2,
-        borderRadius: 2,
+        borderRadius: 1,
         border: `1px solid ${palette.border}`,
         bgcolor: palette.bg,
         cursor: onClick ? "pointer" : "default",
@@ -155,7 +155,7 @@ const InsightStrip = ({ insights }) => (
     variant="outlined"
     sx={{
       p: 1.25,
-      borderRadius: 1.5,
+      borderRadius: 1,
       borderColor: "rgba(37, 99, 235, 0.18)",
       background: "linear-gradient(135deg, rgba(239,246,255,0.88), rgba(255,255,255,0.92))",
     }}
@@ -189,7 +189,7 @@ const CompositionBar = ({ items }) => {
   const total = items.reduce((sum, item) => sum + Number(item.value || 0), 0);
   return (
     <Stack spacing={1.25}>
-      <Box sx={{ display: "flex", height: 14, borderRadius: 999, overflow: "hidden", bgcolor: "rgba(226,232,240,0.9)" }}>
+      <Box sx={{ display: "flex", height: 14, borderRadius: 1, overflow: "hidden", bgcolor: "rgba(226,232,240,0.9)" }}>
         {items.map((item) => {
           const width = total ? `${Math.max(percent(item.value, total), item.value ? 4 : 0)}%` : "0%";
           return <Box key={item.label} sx={{ width, bgcolor: item.color, transition: "width 180ms ease" }} />;
@@ -215,7 +215,7 @@ const CompositionBar = ({ items }) => {
 const MetricTile = ({ label, value, helper, tone = "neutral" }) => {
   const palette = toneMap[tone] || toneMap.neutral;
   return (
-    <Box sx={{ p: 1.4, borderRadius: 1.5, bgcolor: palette.bg, border: `1px solid ${palette.border}` }}>
+    <Box sx={{ p: 1.4, borderRadius: 1, bgcolor: palette.bg, border: `1px solid ${palette.border}` }}>
       <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 850 }}>
         {label}
       </Typography>
@@ -238,9 +238,9 @@ const ProgressRow = ({ label, value, total, color = "#2563eb", helper }) => (
       value={percent(value, total)}
       sx={{
         height: 8,
-        borderRadius: 999,
+        borderRadius: 1,
         bgcolor: "rgba(226,232,240,0.9)",
-        "& .MuiLinearProgress-bar": { bgcolor: color, borderRadius: 999 },
+        "& .MuiLinearProgress-bar": { bgcolor: color, borderRadius: 1 },
       }}
     />
     {helper && <Typography variant="caption" color="text.secondary">{helper}</Typography>}

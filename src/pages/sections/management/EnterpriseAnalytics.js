@@ -35,6 +35,7 @@ import SegmentsPanel from "./SegmentsPanel";
 import WorkforceCostAnalytics from "./WorkforceCostAnalytics";
 import UpgradeNoticeBanner from "../../../components/billing/UpgradeNoticeBanner";
 import useBillingStatus from "../../../components/billing/useBillingStatus";
+import ThemedDateField from "../../../components/ui/ThemedDateField";
 
 dayjs.extend(quarterOfYear);
 
@@ -297,18 +298,16 @@ export default function EnterpriseAnalytics({ defaultTab } = {}) {
     >
       <Grid container spacing={2} alignItems="center">
         <Grid item xs={12} md={2}>
-          <TextField
+          <ThemedDateField
             label="From"
-            type="date"
             fullWidth
             value={from}
             onChange={(e) => setFrom(e.target.value)}
           />
         </Grid>
         <Grid item xs={12} md={2}>
-          <TextField
+          <ThemedDateField
             label="To"
-            type="date"
             fullWidth
             value={to}
             onChange={(e) => setTo(e.target.value)}
@@ -713,18 +712,16 @@ const ClientsTab = (
       >
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={2}>
-            <TextField
+            <ThemedDateField
               label="From"
-              type="date"
               fullWidth
               value={from}
               onChange={(e) => setFrom(e.target.value)}
             />
           </Grid>
           <Grid item xs={12} md={2}>
-            <TextField
+            <ThemedDateField
               label="To"
-              type="date"
               fullWidth
               value={to}
               onChange={(e) => setTo(e.target.value)}
@@ -923,7 +920,7 @@ const ClientsTab = (
                         p: 1.25,
                         border: "1px solid",
                         borderColor: "divider",
-                        borderRadius: 1.5,
+                        borderRadius: 1,
                       }}
                     >
                       <Stack
@@ -988,7 +985,7 @@ const ClientsTab = (
                         p: 1.25,
                         border: "1px solid",
                         borderColor: "error.light",
-                        borderRadius: 1.5,
+                        borderRadius: 1,
                         bgcolor: "rgba(211, 47, 47, 0.04)",
                       }}
                     >

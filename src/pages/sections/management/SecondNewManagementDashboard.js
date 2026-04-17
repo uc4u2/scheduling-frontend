@@ -635,7 +635,7 @@ const panels = useMemo(
 
             p: 3,
 
-            borderRadius: 3,
+            borderRadius: 1,
 
             background:
 
@@ -786,7 +786,7 @@ const panels = useMemo(
 
           mb: 2,
 
-          borderRadius: 3,
+          borderRadius: 1,
 
           background:
 
@@ -1018,7 +1018,7 @@ const panels = useMemo(
 
         sx={{
 
-          borderRadius: 3,
+          borderRadius: 1,
 
           border: "1px solid",
 
@@ -1130,7 +1130,7 @@ const panels = useMemo(
                     textTransform: "none",
                     fontWeight: 600,
                     color: "text.secondary",
-                    borderRadius: 2,
+                    borderRadius: 1,
                     px: 1.25,
                     minHeight: 40,
                   }}
@@ -1270,7 +1270,7 @@ const panels = useMemo(
 
               borderColor: "divider",
 
-              borderRadius: 999,
+              borderRadius: 1,
 
               p: 0.5,
 
@@ -1365,7 +1365,7 @@ const panels = useMemo(
             },
             "&::-webkit-scrollbar-thumb": {
               backgroundColor: "rgba(15, 23, 42, 0.16)",
-              borderRadius: 999,
+              borderRadius: 1,
               border: "2px solid transparent",
               backgroundClip: "padding-box",
             },

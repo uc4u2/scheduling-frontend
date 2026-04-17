@@ -897,7 +897,7 @@ const ServiceManagement = ({ token }) => {
             )}
           </Typography>
 
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
             <Stack spacing={1}>
               <Typography variant="subtitle1" fontWeight={700}>
                 {t("manager.service.packages.helpExampleTitle", "Live example")}
@@ -935,7 +935,7 @@ const ServiceManagement = ({ token }) => {
             </Stack>
           </Paper>
 
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
             <Stack spacing={1}>
               <Typography variant="subtitle1" fontWeight={700}>
                 {t("manager.service.packages.helpGroupTitle", "If 5 students each need a spot")}
@@ -949,7 +949,7 @@ const ServiceManagement = ({ token }) => {
             </Stack>
           </Paper>
 
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
             <Stack spacing={1}>
               <Typography variant="subtitle1" fontWeight={700}>
                 {t("manager.service.packages.helpRulesTitle", "Important rules")}
@@ -1148,7 +1148,7 @@ const ServiceManagement = ({ token }) => {
                       sx={{
                         position: "relative",
                         pb: "100%",
-                        borderRadius: 2,
+                        borderRadius: 1,
                         overflow: "hidden",
                         mb: 1,
                       }}

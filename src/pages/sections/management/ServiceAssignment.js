@@ -27,6 +27,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { DataGrid } from "@mui/x-data-grid";
 import { Add, Edit, Delete } from "@mui/icons-material";
 import api from "../../../utils/api";
+import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedDateField";
 
 /* =================================================================
    COMPONENT
@@ -415,22 +416,18 @@ const ServiceAssignment = ({ token }) => {
                 Add Service Slot&nbsp;(optional)
               </Typography>
 
-              <TextField
+              <ThemedDateField
                 label="Slot Date"
-                type="date"
                 fullWidth
                 margin="dense"
-                InputLabelProps={{ shrink: true }}
                 value={slotDate}
                 onChange={e => setSlotDate(e.target.value)}
               />
 
-              <TextField
+              <ThemedTimeField
                 label="Slot Start Time"
-                type="time"
                 fullWidth
                 margin="dense"
-                InputLabelProps={{ shrink: true }}
                 value={slotStartTime}
                 onChange={e => setSlotStartTime(e.target.value)}
               />

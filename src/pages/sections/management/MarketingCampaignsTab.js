@@ -16,6 +16,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import ExportClientsCard from "./ExportClientsCard";
 import UpgradeNoticeBanner from "../../../components/billing/UpgradeNoticeBanner";
 import useBillingStatus from "../../../components/billing/useBillingStatus";
+import ThemedDateField from "../../../components/ui/ThemedDateField";
 function useAuth() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
   const auth  = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
@@ -194,6 +195,14 @@ function CampaignCard({
                     />
                   )}
                 />
+              ) : fd.type === "date" ? (
+                <ThemedDateField
+                  label={fd.label}
+                  fullWidth
+                  value={params[fd.name] ?? ""}
+                  onChange={e => onChangeParam(fd.name, e.target.value)}
+                  helperText={fd.helperText || ""}
+                />
               ) : (
                 <TextField
                   type={fd.type || "text"}
@@ -202,7 +211,6 @@ function CampaignCard({
                   value={params[fd.name] ?? ""}
                   onChange={e => onChangeParam(fd.name, e.target.value)}
                   helperText={fd.helperText || ""}
-                  InputLabelProps={fd.type === "date" ? { shrink: true } : undefined}
                   multiline={!!fd.multiline}
                   minRows={fd.multiline ? (fd.rows || 3) : undefined}
                 />

@@ -288,7 +288,7 @@ const SmartShiftAvailabilityTab = () => {
         "& .MuiTextField-root": { width: "100%" },
       }}
     >
-      <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
+      <Paper sx={{ p: 2, borderRadius: 1 }} variant="outlined">
         <Typography variant="h6" fontWeight={700}>
           Shift Availability
         </Typography>
@@ -307,7 +307,7 @@ const SmartShiftAvailabilityTab = () => {
       {success ? <Alert severity="success">{success}</Alert> : null}
       {loading ? <Alert severity="info">Loading…</Alert> : null}
 
-      <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
+      <Paper sx={{ p: 2, borderRadius: 1 }} variant="outlined">
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
           Add recurring rule
         </Typography>
@@ -410,7 +410,7 @@ const SmartShiftAvailabilityTab = () => {
         </Box>
       </Paper>
 
-      <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
+      <Paper sx={{ p: 2, borderRadius: 1 }} variant="outlined">
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
           Add exception
         </Typography>
@@ -511,7 +511,7 @@ const SmartShiftAvailabilityTab = () => {
         </Box>
       </Paper>
 
-      <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
+      <Paper sx={{ p: 2, borderRadius: 1 }} variant="outlined">
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>
           Scheduling preferences
         </Typography>

@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import SectionCard from "../../components/ui/SectionCard";
 import api from "../../utils/api";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 
 const fmtHours = (value) => `${Number(value || 0).toFixed(1)} h`;
 
@@ -135,7 +136,7 @@ const formatGroupDateSummary = (group) => {
 
 const kpiCardSx = {
   height: "100%",
-  borderRadius: 3,
+  borderRadius: 1,
   border: "1px solid",
   borderColor: "divider",
   background:
@@ -213,7 +214,7 @@ const EmptyState = ({ children }) => (
     sx={{
       border: "1px dashed",
       borderColor: "divider",
-      borderRadius: 2,
+      borderRadius: 1,
       p: 2,
       bgcolor: "rgba(15, 23, 42, 0.02)",
     }}
@@ -227,7 +228,7 @@ const EmptyState = ({ children }) => (
 const StackedBar = ({ segments, total, height = 12 }) => {
   const safeTotal = Math.max(Number(total || 0), 0.0001);
   return (
-    <Stack direction="row" sx={{ width: "100%", height, borderRadius: 999, overflow: "hidden", bgcolor: "grey.100" }}>
+    <Stack direction="row" sx={{ width: "100%", height, borderRadius: 1, overflow: "hidden", bgcolor: "grey.100" }}>
       {segments
         .filter((segment) => Number(segment.value || 0) > 0)
         .map((segment) => (
@@ -350,7 +351,7 @@ const TrendChart = ({ rows }) => {
                   height,
                   width: "100%",
                   minWidth: 28,
-                  borderRadius: 1.5,
+                  borderRadius: 1,
                   overflow: "hidden",
                   display: "flex",
                   flexDirection: "column-reverse",
@@ -449,7 +450,7 @@ const AttentionList = ({ rows }) => {
             <Box
               sx={{
                 p: 1.5,
-                borderRadius: 2,
+                borderRadius: 1,
                 border: "1px solid",
                 borderColor: blocked ? "error.light" : "divider",
                 bgcolor: blocked ? "rgba(220, 38, 38, 0.04)" : "background.paper",
@@ -495,7 +496,7 @@ const QueuePanel = ({ rows }) => (
         key={row.key}
         sx={{
           p: 1.45,
-          borderRadius: 2,
+          borderRadius: 1,
           border: "1px solid",
           borderColor: row.tone === "danger" ? "error.light" : "divider",
           bgcolor: row.tone === "danger" ? "rgba(220, 38, 38, 0.04)" : "background.paper",
@@ -522,7 +523,7 @@ const GroupDetailRows = ({ rows }) => {
           key={`${row.availability_id || row.appointment_id || row.booking_id || row.leave_id || idx}`}
           sx={{
             p: 0.9,
-            borderRadius: 1.5,
+            borderRadius: 1,
             bgcolor: "rgba(255, 255, 255, 0.76)",
             border: "1px solid",
             borderColor: "rgba(226, 232, 240, 0.9)",
@@ -555,7 +556,7 @@ const OperationGroupCard = ({ group, expanded, onToggle, action }) => (
   <Box
     sx={{
       p: 1.15,
-      borderRadius: 2,
+      borderRadius: 1,
       border: "1px solid",
       borderColor: group.tone === "danger" ? "error.light" : group.tone === "warning" ? "warning.light" : "divider",
       bgcolor:
@@ -669,7 +670,7 @@ const OperationsSummaryStrip = ({ items, onOpenOperations }) => (
             key={item.key}
             sx={{
               p: 1.2,
-              borderRadius: 2,
+              borderRadius: 1,
               border: "1px solid",
               borderColor: "divider",
               bgcolor: "rgba(248, 250, 252, 0.72)",
@@ -738,10 +739,10 @@ const RiskSummaryPanel = ({ rows }) => (
           value={Math.min(100, Math.max(0, row.percent))}
           sx={{
             height: 8,
-            borderRadius: 999,
+            borderRadius: 1,
             bgcolor: "rgba(148, 163, 184, 0.18)",
             "& .MuiLinearProgress-bar": {
-              borderRadius: 999,
+              borderRadius: 1,
               bgcolor: row.color,
             },
           }}
@@ -776,7 +777,7 @@ const LeaveTypeDistribution = ({ attention, blockers }) => {
             <Typography variant="body2" fontWeight={850}>{readableReason(row.leave_type)}</Typography>
             <Typography variant="body2" fontWeight={850}>{row.count} item(s)</Typography>
           </Stack>
-          <Box sx={{ mt: 0.55, height: 10, borderRadius: 999, bgcolor: "rgba(148, 163, 184, 0.18)", overflow: "hidden" }}>
+          <Box sx={{ mt: 0.55, height: 10, borderRadius: 1, bgcolor: "rgba(148, 163, 184, 0.18)", overflow: "hidden" }}>
             <Box sx={{ width: `${Math.max((row.count / maxCount) * 100, 6)}%`, height: "100%", bgcolor: palette.approved }} />
           </Box>
           <Typography variant="caption" color="text.secondary">{fmtHours(row.hours)} represented in attention/blocker rows</Typography>
@@ -1105,10 +1106,10 @@ const SettingsLeaveInsights = ({ mode = "insights", onOpenOperations }) => {
           </Stack>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={2}>
-            <TextField label="From" type="date" fullWidth value={from} onChange={(e) => setFrom(e.target.value)} />
+            <ThemedDateField label="From" fullWidth value={from} onChange={(e) => setFrom(e.target.value)} />
           </Grid>
           <Grid item xs={12} md={2}>
-            <TextField label="To" type="date" fullWidth value={to} onChange={(e) => setTo(e.target.value)} />
+            <ThemedDateField label="To" fullWidth value={to} onChange={(e) => setTo(e.target.value)} />
           </Grid>
           <Grid item xs={12} md={2}>
             <TextField select label="Group by" fullWidth value={group} onChange={(e) => setGroup(e.target.value)}>
@@ -1369,7 +1370,7 @@ const SettingsLeaveInsights = ({ mode = "insights", onOpenOperations }) => {
                     key={`${row.leave_id}-${idx}`}
                     sx={{
                       p: 1.5,
-                      borderRadius: 2,
+                      borderRadius: 1,
                       border: "1px solid",
                       borderColor: "error.light",
                       bgcolor: "rgba(220, 38, 38, 0.04)",

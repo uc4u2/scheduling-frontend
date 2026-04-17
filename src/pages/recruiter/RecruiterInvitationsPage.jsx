@@ -86,7 +86,7 @@ const RecruiterInvitationsPage = ({ token }) => {
           elevation={0}
           sx={{
             p: { xs: 2.5, md: 3 },
-            borderRadius: 3,
+            borderRadius: 1.5,
             border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
             background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.015)} 100%)`,
           }}
@@ -105,7 +105,7 @@ const RecruiterInvitationsPage = ({ token }) => {
           </Stack>
         </Paper>
 
-        <Paper sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }} elevation={0}>
+        <Paper sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 1.5 }} elevation={0}>
           <Stack spacing={2.5}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -152,7 +152,7 @@ const RecruiterInvitationsPage = ({ token }) => {
         <Paper
           id="section-candidate-forms"
           elevation={0}
-          sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}
+          sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 1.5 }}
         >
           <Stack spacing={2.5}>
             <Box>

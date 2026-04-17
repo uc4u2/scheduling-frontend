@@ -21,6 +21,7 @@ import {
   Typography,
 } from "@mui/material";
 import dayjs from "dayjs";
+import ThemedDateField from "../../../components/ui/ThemedDateField";
 
 /* ────────────────────────────────────────────────────────── */
 /*                           CONFIG                           */
@@ -425,18 +426,16 @@ const ProviderTop10 = ({ token: tokenProp }) => {
       <CardContent>
         <Grid container spacing={2} alignItems="center" sx={{ mb: 1 }}>
           <Grid item xs={12} md={2}>
-            <TextField
+            <ThemedDateField
               label="From"
-              type="date"
               fullWidth
               value={from}
               onChange={(e) => setFrom(e.target.value)}
             />
           </Grid>
           <Grid item xs={12} md={2}>
-            <TextField
+            <ThemedDateField
               label="To"
-              type="date"
               fullWidth
               value={to}
               onChange={(e) => setTo(e.target.value)}

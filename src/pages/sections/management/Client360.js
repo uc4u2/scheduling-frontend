@@ -5,6 +5,7 @@ import {
   Grid, LinearProgress, Stack, TextField, Typography
 } from "@mui/material";
 import dayjs from "dayjs";
+import ThemedDateField from "../../../components/ui/ThemedDateField";
 
 // Toggle this if you want the messaging block visible
 const SHOW_MESSAGING = false;
@@ -126,10 +127,10 @@ export default function Client360({
               />
             </Grid>
             <Grid item xs={12} md={2}>
-              <TextField label="From" type="date" fullWidth value={from} onChange={(e)=>setFrom(e.target.value)} />
+              <ThemedDateField label="From" fullWidth value={from} onChange={(e)=>setFrom(e.target.value)} />
             </Grid>
             <Grid item xs={12} md={2}>
-              <TextField label="To" type="date" fullWidth value={to} onChange={(e)=>setTo(e.target.value)} />
+              <ThemedDateField label="To" fullWidth value={to} onChange={(e)=>setTo(e.target.value)} />
             </Grid>
             <Grid item xs={12} md={2}>
               <TextField label="Timezone" fullWidth value={tz} onChange={(e)=>setTz(e.target.value)} />

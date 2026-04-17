@@ -1521,7 +1521,7 @@ const handleRecalculate = () => {
             p: 2,
             border: "1px solid",
             borderColor: leaveFinalizeBlocked ? "error.light" : "divider",
-            borderRadius: 2,
+            borderRadius: 1,
             bgcolor: leaveFinalizeBlocked ? "rgba(211, 47, 47, 0.04)" : "background.paper",
           }}
         >

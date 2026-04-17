@@ -556,7 +556,7 @@ export default function WebsiteTemplates({ companyId: companyIdProp }) {
                     width: deviceWidth,
                     maxWidth: "100%",
                     border: "1px solid rgba(0,0,0,0.12)",
-                    borderRadius: 2,
+                    borderRadius: 1,
                     bgcolor: "background.paper",
                     overflow: "hidden",
                   }}

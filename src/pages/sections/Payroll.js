@@ -43,6 +43,7 @@ import PayrollFilters from "./PayrollFilters";
 import PayrollPreview from "./PayrollPreview";
 import PayslipModal from "./PayslipModal";
 import { savePayroll, exportPayroll } from "./netpay";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 import { vacationIncludedByDefault, defaultVacationPercent } from "./utils/payrollRules";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import PayrollScenarios from "./PayrollScenarios";
@@ -1420,11 +1421,9 @@ return (
               </FormControl>
             </Grid>
             <Grid item xs={12} md={3}>
-              <TextField
+              <ThemedDateField
                 fullWidth
-                type="date"
                 label="Start date"
-                InputLabelProps={{ shrink: true }}
                 value={expenseStartDate}
                 onChange={(e) => {
                   setExpensePreset("custom");
@@ -1433,11 +1432,9 @@ return (
               />
             </Grid>
             <Grid item xs={12} md={3}>
-              <TextField
+              <ThemedDateField
                 fullWidth
-                type="date"
                 label="End date"
-                InputLabelProps={{ shrink: true }}
                 value={expenseEndDate}
                 onChange={(e) => {
                   setExpensePreset("custom");

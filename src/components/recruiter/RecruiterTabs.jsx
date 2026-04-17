@@ -13,6 +13,8 @@ const TAB_CONFIG = [
   { value: "questionnaires", labelKey: "recruiter.tabs.questionnaires", path: "/recruiter/questionnaires" },
   { value: "upcoming-meetings", labelKey: "recruiter.tabs.upcomingMeetings", path: "/recruiter/upcoming-meetings" },
   { value: "my-time", labelKey: "recruiter.tabs.myTime", path: "/recruiter/my-time" },
+  { value: "my-training", labelKey: "recruiter.tabs.myTraining", path: "/recruiter/my-training" },
+  { value: "communications", label: "Communications", path: "/recruiter/communications" },
   { value: "candidate-search", labelKey: "recruiter.tabs.candidateSearch", path: "/employee/candidate-search" },
   { value: "public-link", labelKey: "recruiter.tabs.publicLink", path: "/recruiter/public-link" },
   { value: "job-postings", labelKey: "recruiter.tabs.jobPostings", path: "/manager/job-openings" },
@@ -31,8 +33,14 @@ const getPathValue = (locationPathname, searchParams, fallback) => {
   if (locationPathname.startsWith("/recruiter/upcoming-meetings")) {
     return "upcoming-meetings";
   }
-  if (locationPathname.startsWith("/recruiter/my-time")) {
+  if (locationPathname.startsWith("/recruiter/my-time") || locationPathname.startsWith("/employee/my-time")) {
     return "my-time";
+  }
+  if (locationPathname.startsWith("/recruiter/my-training") || locationPathname.startsWith("/employee/my-training")) {
+    return "my-training";
+  }
+  if (locationPathname.startsWith("/recruiter/communications") || locationPathname.startsWith("/employee/communications")) {
+    return "communications";
   }
   if (locationPathname.startsWith("/recruiter/candidate-search") || locationPathname.startsWith("/employee/candidate-search")) {
     return "candidate-search";
@@ -70,7 +78,7 @@ const RecruiterTabs = ({
   const tabs = useMemo(() => {
     if (hrAccess) return TAB_CONFIG;
     return TAB_CONFIG.filter((tab) =>
-      ["calendar", "my-time"].includes(tab.value)
+      ["calendar", "my-time", "my-training", "communications"].includes(tab.value)
     );
   }, [hrAccess]);
 
@@ -116,9 +124,13 @@ const RecruiterTabs = ({
       sx={{
         mb: 3,
         p: 0.75,
-        borderRadius: 999,
-        border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
-        backgroundColor: alpha(theme.palette.background.paper, 0.8),
+        borderRadius: "6px",
+        border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.14)}`,
+        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.16 : 0.06)}, ${alpha(
+          theme.palette.background.paper,
+          theme.palette.mode === "dark" ? 0.9 : 0.96
+        )})`,
+        boxShadow: `0 12px 30px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.22 : 0.05)}`,
       }}
     >
       <Tabs
@@ -152,15 +164,17 @@ const RecruiterTabs = ({
             minHeight: 36,
             minWidth: "auto",
             px: 2.5,
-            borderRadius: 999,
+            borderRadius: "6px",
             textTransform: "none",
             fontWeight: 600,
             color: theme.palette.text.primary,
-            border: `1px solid ${alpha(theme.palette.text.primary, 0.2)}`,
+            border: `1px solid ${alpha(theme.palette.text.primary, 0.14)}`,
+            backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.22 : 0.58),
             "&.Mui-selected": {
-              color: theme.palette.primary.main,
-              borderColor: alpha(theme.palette.primary.main, 0.45),
-              backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.32 : 0.14),
+              color: theme.palette.mode === "dark" ? theme.palette.primary.light : theme.palette.primary.dark || theme.palette.primary.main,
+              borderColor: alpha(theme.palette.primary.main, 0.5),
+              backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.28 : 0.13),
+              boxShadow: `inset 0 -2px 0 ${alpha(theme.palette.primary.main, 0.75)}`,
               fontWeight: 700,
             },
             "&:hover": {

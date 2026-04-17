@@ -240,7 +240,7 @@ const readableChipSx = (tone = "default") => {
 const enterpriseCardSx = {
   border: "1px solid",
   borderColor: "rgba(148, 163, 184, 0.45)",
-  borderRadius: 3,
+  borderRadius: 1,
   p: 2.25,
   height: "100%",
   background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.86))",
@@ -250,7 +250,7 @@ const enterpriseCardSx = {
 const policyGroupSx = {
   border: "1px solid",
   borderColor: "rgba(148, 163, 184, 0.24)",
-  borderRadius: 2,
+  borderRadius: 1,
   p: 1.5,
   bgcolor: "rgba(248, 250, 252, 0.52)",
 };
@@ -258,7 +258,7 @@ const policyGroupSx = {
 const metricCellSx = {
   border: "1px solid",
   borderColor: "divider",
-  borderRadius: 2,
+  borderRadius: 1,
   p: 1.25,
   bgcolor: "background.paper",
 };
@@ -1309,7 +1309,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
           onChange={(_, expanded) => setSetupProfileOpen(expanded)}
           variant="outlined"
           sx={{
-            borderRadius: 2,
+            borderRadius: 1,
             "&:before": { display: "none" },
           }}
         >
@@ -1351,7 +1351,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
                         sx={{
                           border: "1px solid",
                           borderColor: selected ? "primary.main" : "divider",
-                          borderRadius: 2,
+                          borderRadius: 1,
                           p: 1.5,
                           height: "100%",
                           cursor: "pointer",
@@ -1700,7 +1700,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
                     sx={{
                       px: 1.25,
                       py: 1.15,
-                      borderRadius: 2,
+                      borderRadius: 1,
                       bgcolor: "rgba(248, 250, 252, 0.72)",
                       border: "1px solid",
                       borderColor: "rgba(226, 232, 240, 0.9)",
@@ -2010,7 +2010,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
                   </Grid>
                   </Box>
 
-                  <Accordion disableGutters elevation={0} sx={{ border: "1px solid", borderColor: "rgba(148, 163, 184, 0.36)", borderRadius: 2, overflow: "hidden", "&:before": { display: "none" } }}>
+                  <Accordion disableGutters elevation={0} sx={{ border: "1px solid", borderColor: "rgba(148, 163, 184, 0.36)", borderRadius: 1, overflow: "hidden", "&:before": { display: "none" } }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Box>
                         <Typography variant="body2" fontWeight={850}>Advanced balance mechanics</Typography>
@@ -2136,7 +2136,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
 
         <Divider />
 
-        <Box sx={{ border: "1px solid", borderColor: "rgba(148, 163, 184, 0.42)", borderRadius: 3, p: 2, bgcolor: "rgba(248, 250, 252, 0.62)" }}>
+        <Box sx={{ border: "1px solid", borderColor: "rgba(148, 163, 184, 0.42)", borderRadius: 1, p: 2, bgcolor: "rgba(248, 250, 252, 0.62)" }}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5} alignItems={{ xs: "stretch", md: "flex-start" }} sx={{ mb: 1.5 }}>
             <Box>
               <Typography variant="subtitle1" fontWeight={900}>Preview employee balance impact</Typography>
@@ -2304,7 +2304,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
                 </Alert>
               )}
               {entitlementPreviewResult.rows?.length ? (
-                <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+                <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                   <Table size="small">
                     <TableHead sx={{ bgcolor: "rgba(15, 23, 42, 0.035)" }}>
                       <TableRow>
@@ -2556,7 +2556,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
           </Grid>
 
           {previewResult.rows?.length ? (
-            <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+            <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -2610,7 +2610,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
               : `Posted ${formatHours(postResult.summary?.total_posted_accrual_hours)} across ${postResult.summary?.employees_posted || 0} employee(s). Payroll formulas were not changed.`}
           </Alert>
           {postResult.rows?.length ? (
-            <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+            <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -2665,7 +2665,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
           <CircularProgress size={24} />
         </Box>
       ) : accrualRuns.length ? (
-        <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+        <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -2735,13 +2735,13 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
       </Stack>
       <Grid container spacing={1.5}>
         <Grid item xs={12} sm={4}>
-          <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 1.5 }}>
+          <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 1.5 }}>
             <Typography variant="caption" color="text.secondary" display="block">Recent runs loaded</Typography>
             <Typography variant="h6" fontWeight={800}>{accrualRunsLoading ? "..." : accrualRuns.length}</Typography>
           </Box>
         </Grid>
         <Grid item xs={12} sm={4}>
-          <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 1.5 }}>
+          <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 1.5 }}>
             <Typography variant="caption" color="text.secondary" display="block">Last run</Typography>
             <Typography variant="body2" fontWeight={700}>
               {latestAccrualRun ? formatDateTime(latestAccrualRun.completed_at || latestAccrualRun.started_at) : "No runs yet"}
@@ -2749,7 +2749,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
           </Box>
         </Grid>
         <Grid item xs={12} sm={4}>
-          <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, p: 1.5 }}>
+          <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, p: 1.5 }}>
             <Typography variant="caption" color="text.secondary" display="block">Last trigger</Typography>
             <Typography variant="body2" fontWeight={700}>
               {latestAccrualRun ? formatAccrualTriggerLabel(latestAccrualRun.trigger_type) : "Not available"}
@@ -2851,7 +2851,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
             bottom: { xs: 12, md: 24 },
             zIndex: (theme) => theme.zIndex.snackbar + 2,
             width: { xs: "calc(100% - 24px)", sm: 430, md: 540 },
-            borderRadius: 3,
+            borderRadius: 1,
             boxShadow: "0 22px 54px rgba(15, 23, 42, 0.28)",
             "& .MuiAlert-message": { width: "100%" },
             "& .MuiAlert-action": { alignItems: "flex-start", pt: 0.25 },
@@ -3095,7 +3095,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
                 </Grid>
               </Grid>
               {selectedRun.rows?.length ? (
-                <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+                <TableContainer sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
@@ -3660,7 +3660,7 @@ const SettingsLeaveSettings = ({ forcedAreaTab = null, hideAreaTabs = false, onO
                 sx={{
                   border: "1px solid",
                   borderColor: "divider",
-                  borderRadius: 2,
+                  borderRadius: 1,
                   p: 1.5,
                   backgroundColor: "background.paper",
                 }}

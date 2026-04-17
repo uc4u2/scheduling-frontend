@@ -328,7 +328,7 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
         elevation={0}
         sx={{
           p: { xs: 2.5, md: 3 },
-          borderRadius: 3,
+          borderRadius: 1.5,
           border: `1px solid ${alpha(theme.palette.grey[400], 0.4)}`,
           background: alpha(theme.palette.background.paper, 0.7),
           mb: 2,
@@ -381,7 +381,7 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
             elevation={0}
             sx={{
               p: { xs: 2.5, md: 3 },
-              borderRadius: 3,
+              borderRadius: 1.5,
               border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
               background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.primary.main, 0.02)} 100%)`,
             }}
@@ -435,7 +435,7 @@ const RecruiterUpcomingMeetingsPage = ({ token }) => {
             elevation={0}
             sx={{
               p: { xs: 2.5, md: 3 },
-              borderRadius: 3,
+              borderRadius: 1.5,
               border: `1px solid ${alpha(theme.palette.secondary.main, 0.18)}`,
               background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.main, 0.08)} 0%, ${alpha(theme.palette.secondary.main, 0.02)} 100%)`,
             }}

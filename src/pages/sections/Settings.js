@@ -568,7 +568,7 @@ const Settings = () => {
                 width: 48,
                 height: 36,
                 border: "1px solid rgba(0,0,0,0.12)",
-                borderRadius: 6,
+                borderRadius: 1,
                 cursor: "pointer",
                 padding: 0,
                 background: "transparent",
@@ -649,7 +649,7 @@ const Settings = () => {
             mt: 2,
             border: "1px solid",
             borderColor: "divider",
-            borderRadius: 2,
+            borderRadius: 1,
             overflow: "hidden",
           }}
         >

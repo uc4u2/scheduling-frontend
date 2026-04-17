@@ -83,6 +83,7 @@ import {
 import { formatLeaveApiError } from "./utils/leaveErrors";
 import { LEAVE_TYPE_OPTIONS, formatLeaveTypeLabel } from "./utils/leaveSettings";
 import { formatBalanceHours, normalizeLeaveBalanceSummary } from "./utils/leaveBalances";
+import ThemedDateField, { ThemedTimeField } from "../../components/ui/ThemedDateField";
 
 const statusColor = {
   assigned: "default",
@@ -125,7 +126,7 @@ const balanceCardSx = (tone = "default") => (theme) => {
   const selected = colors[tone] || colors.default;
   return {
     p: 1.4,
-    borderRadius: 2.5,
+    borderRadius: 1,
     border: `1px solid ${selected.border}`,
     bgcolor: theme.palette.background.paper,
     background: selected.bg,
@@ -210,7 +211,7 @@ const readableLightChipSx = (theme) => ({
 
 /* eslint-disable react-hooks/exhaustive-deps */
 
-const SecondEmployeeShiftView = () => {
+const SecondEmployeeShiftView = ({ employeePolish = false }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const userId = localStorage.getItem("userId");
@@ -1487,6 +1488,29 @@ const breakTimelineMeta = useMemo(() => {
   }
 }, [breakStartDt, breakEndDt, breakTargetMinutes, shiftTimezone]);
 
+const polishedWorkspaceSx = employeePolish
+  ? {
+      maxWidth: 1480,
+      mx: "auto",
+      width: "100%",
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+    }
+  : {};
+
+const polishedPanelSx = employeePolish
+  ? {
+      borderRadius: 1,
+      border: (theme) => `1px solid ${theme.palette.divider}`,
+      background: (theme) =>
+        theme.palette.mode === "light"
+          ? `linear-gradient(145deg, ${theme.palette.background.paper} 0%, ${theme.palette.action.hover} 100%)`
+          : theme.palette.background.paper,
+      boxShadow: "0 18px 44px rgba(15, 23, 42, 0.08)",
+    }
+  : {};
+
   const handleBreakAction = async (action) => {
     if (!todayShift) return;
     setBreakSubmitting(true);
@@ -1514,14 +1538,23 @@ const breakTimelineMeta = useMemo(() => {
 // ───────────────────────────────────────────────────────
   return (
   <>
+    <Box sx={polishedWorkspaceSx}>
     <Paper
       elevation={0}
       sx={{
-        mb: 2,
+        mb: employeePolish ? 0 : 2,
         p: 3,
-        borderRadius: 3,
+        order: employeePolish ? 0 : "initial",
+        borderRadius: 1,
         border: (theme) => `1px solid ${theme.palette.divider}`,
         background: (theme) => theme.palette.background.paper,
+        ...(employeePolish
+          ? {
+              background: (theme) =>
+                `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.action.hover} 100%)`,
+              boxShadow: "0 14px 34px rgba(15, 23, 42, 0.06)",
+            }
+          : {}),
       }}
     >
       <Stack
@@ -1580,11 +1613,13 @@ const breakTimelineMeta = useMemo(() => {
     <Paper
       elevation={0}
       sx={{
-        mb: 2,
-        p: 3,
-        borderRadius: 3,
+        mb: employeePolish ? 0 : 2,
+        p: employeePolish ? { xs: 2, md: 2.5 } : 3,
+        order: employeePolish ? 2 : "initial",
+        borderRadius: 1,
         border: (theme) => `1px solid ${theme.palette.divider}`,
         background: (theme) => theme.palette.background.paper,
+        ...polishedPanelSx,
       }}
     >
       <Stack
@@ -1604,11 +1639,13 @@ const breakTimelineMeta = useMemo(() => {
             <Grid item xs={12} sm={4} key={metric.label}>
               <Box
                 sx={(theme) => ({
-                  p: 2,
-                  borderRadius: 2,
+                  p: employeePolish ? 1.75 : 2,
+                  borderRadius: 1,
                   border: `1px solid ${theme.palette.divider}`,
-                  background: theme.palette.background.default,
-                  boxShadow: theme.shadows[1],
+                  background: employeePolish
+                    ? `linear-gradient(145deg, ${theme.palette.background.paper} 0%, ${theme.palette.action.hover} 100%)`
+                    : theme.palette.background.default,
+                  boxShadow: employeePolish ? "0 12px 26px rgba(15, 23, 42, 0.07)" : theme.shadows[1],
                   height: "100%",
                 })}
               >
@@ -1617,7 +1654,7 @@ const breakTimelineMeta = useMemo(() => {
                     sx={(theme) => ({
                       width: 36,
                       height: 36,
-                      borderRadius: 2,
+                      borderRadius: 1,
                       bgcolor: `${theme.palette.primary.main}1f`,
                       color: theme.palette.primary.main,
                       display: "inline-flex",
@@ -1643,7 +1680,7 @@ const breakTimelineMeta = useMemo(() => {
                   <LinearProgress
                     variant="determinate"
                     value={metric.progress}
-                    sx={{ mt: 1.5, height: 6, borderRadius: 999 }}
+                    sx={{ mt: 1.5, height: 6, borderRadius: 1 }}
                   />
                 )}
               </Box>
@@ -1660,11 +1697,13 @@ const breakTimelineMeta = useMemo(() => {
     <Paper
       elevation={0}
       sx={{
-        mb: 3,
-        p: 3,
-        borderRadius: 3,
+        mb: employeePolish ? 0 : 3,
+        p: employeePolish ? { xs: 2, md: 2.5 } : 3,
+        order: employeePolish ? 3 : "initial",
+        borderRadius: 1,
         border: (theme) => `1px solid ${theme.palette.divider}`,
         background: (theme) => theme.palette.background.paper,
+        ...polishedPanelSx,
       }}
     >
       <Stack
@@ -1687,22 +1726,28 @@ const breakTimelineMeta = useMemo(() => {
           spacing={1}
           useFlexGap
           alignItems="center"
-          sx={{ width: { xs: "100%", sm: "auto" } }}
+          sx={{
+            width: { xs: "100%", sm: "auto" },
+            ...(employeePolish
+              ? {
+                  p: 1,
+                  borderRadius: 1,
+                  bgcolor: "action.hover",
+                  border: (theme) => `1px solid ${theme.palette.divider}`,
+                }
+              : {}),
+          }}
         >
-          <TextField
-            type="date"
+          <ThemedDateField
             size="small"
             label="From"
-            InputLabelProps={{ shrink: true }}
             value={historyFilters.startDate}
             onChange={handleHistoryChange("startDate")}
             fullWidth={isSmDown}
           />
-          <TextField
-            type="date"
+          <ThemedDateField
             size="small"
             label="To"
-            InputLabelProps={{ shrink: true }}
             value={historyFilters.endDate}
             onChange={handleHistoryChange("endDate")}
             fullWidth={isSmDown}
@@ -1793,7 +1838,30 @@ const breakTimelineMeta = useMemo(() => {
             No shifts found for this range.
           </Typography>
         ) : (
-          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+          <TableContainer
+            component={Paper}
+            variant="outlined"
+            sx={{
+              borderRadius: 1,
+              overflow: "hidden",
+              ...(employeePolish
+                ? {
+                    borderColor: "divider",
+                    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.05)",
+                    "& .MuiTableHead-root .MuiTableCell-root": {
+                      bgcolor: "action.hover",
+                      fontWeight: 800,
+                    },
+                    "& .MuiTableBody-root .MuiTableRow-root:nth-of-type(even)": {
+                      bgcolor: "rgba(148, 163, 184, 0.045)",
+                    },
+                    "& .MuiTableCell-root": {
+                      py: 1.25,
+                    },
+                  }
+                : {}),
+            }}
+          >
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
@@ -1867,11 +1935,20 @@ const breakTimelineMeta = useMemo(() => {
     <Paper
       elevation={0}
       sx={{
-        mb: 3,
-        p: 3,
-        borderRadius: 3,
+        mb: employeePolish ? 0 : 3,
+        p: employeePolish ? { xs: 2.25, md: 3 } : 3,
+        order: employeePolish ? 1 : "initial",
+        borderRadius: 1,
         border: (theme) => `1px solid ${theme.palette.divider}`,
         background: (theme) => theme.palette.background.paper,
+        ...(employeePolish
+          ? {
+              borderColor: (theme) => `${theme.palette.primary.main}55`,
+              background: (theme) =>
+                `radial-gradient(circle at top right, ${theme.palette.primary.main}16, transparent 34%), linear-gradient(145deg, ${theme.palette.background.paper} 0%, ${theme.palette.action.hover} 100%)`,
+              boxShadow: "0 22px 52px rgba(15, 23, 42, 0.1)",
+            }
+          : {}),
       }}
     >
       <Stack
@@ -1896,7 +1973,7 @@ const breakTimelineMeta = useMemo(() => {
             )}
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            Live clock & break guidance
+            Your live clock, break window, and shift timeline.
           </Typography>
         </Stack>
         <Stack direction="row" spacing={1} alignItems="center">
@@ -1912,7 +1989,7 @@ const breakTimelineMeta = useMemo(() => {
           {todayShift ? (
             <>
               <Typography
-                variant="h6"
+                variant={employeePolish ? "h5" : "h6"}
                 fontWeight={700}
                 sx={{ textAlign: { xs: "center", sm: "left" } }}
               >
@@ -1974,16 +2051,25 @@ const breakTimelineMeta = useMemo(() => {
               )}
               {timelineMeta && (
                 <Box mt={2} sx={{ textAlign: { xs: "center", sm: "left" } }}>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                    Shift timeline
-                  </Typography>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.75 }}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={800} sx={{ letterSpacing: 0.4, textTransform: "uppercase" }}>
+                      Shift timeline
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {Math.round(timelineMeta.progressPct)}% through shift
+                    </Typography>
+                  </Stack>
                   <Box
                     sx={(theme) => ({
                       position: "relative",
-                      height: 10,
-                      borderRadius: 999,
-                      background: theme.palette.action.hover,
+                      height: employeePolish ? 14 : 10,
+                      borderRadius: 1,
+                      background: employeePolish
+                        ? `linear-gradient(90deg, ${theme.palette.action.hover}, ${theme.palette.background.default})`
+                        : theme.palette.action.hover,
                       mt: 0.5,
+                      border: employeePolish ? `1px solid ${theme.palette.divider}` : "none",
+                      overflow: "hidden",
                     })}
                   >
                     <Box
@@ -1993,8 +2079,10 @@ const breakTimelineMeta = useMemo(() => {
                         bottom: 0,
                         left: 0,
                         width: `${timelineMeta.progressPct}%`,
-                        borderRadius: 999,
-                        background: theme.palette.primary.main,
+                        borderRadius: 1,
+                        background: employeePolish
+                          ? `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.info.main})`
+                          : theme.palette.primary.main,
                       })}
                     />
                     {timelineMeta.breakSegment && (
@@ -2005,7 +2093,7 @@ const breakTimelineMeta = useMemo(() => {
                           bottom: 0,
                           left: `${timelineMeta.breakSegment.left}%`,
                           width: `${timelineMeta.breakSegment.width}%`,
-                          borderRadius: 999,
+                          borderRadius: 1,
                           background: theme.palette.warning.light,
                           opacity: 0.9,
                         })}
@@ -2014,12 +2102,13 @@ const breakTimelineMeta = useMemo(() => {
                     <Box
                       sx={(theme) => ({
                         position: "absolute",
-                        top: -4,
-                        width: 8,
-                        height: 18,
+                        top: employeePolish ? -5 : -4,
+                        width: employeePolish ? 10 : 8,
+                        height: employeePolish ? 22 : 18,
                         borderRadius: 1,
                         left: `calc(${timelineMeta.progressPct}% - 4px)`,
                         background: theme.palette.text.primary,
+                        boxShadow: employeePolish ? "0 0 0 3px rgba(255,255,255,0.72)" : "none",
                       })}
                     />
                   </Box>
@@ -2060,6 +2149,7 @@ const breakTimelineMeta = useMemo(() => {
                   disabled={!canClockIn || clocking}
                   onClick={() => handleClockAction("in")}
                   fullWidth={isSmDown}
+                  sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
                 >
                   Clock In
                 </Button>
@@ -2080,6 +2170,7 @@ const breakTimelineMeta = useMemo(() => {
                       disabled={!canClockOut || clocking}
                       onClick={() => handleClockAction("out")}
                       fullWidth={isSmDown}
+                      sx={employeePolish ? { minHeight: 42, px: 3, fontWeight: 800 } : undefined}
                     >
                       Clock Out
                     </Button>
@@ -2130,7 +2221,7 @@ const breakTimelineMeta = useMemo(() => {
                 <Box
                   sx={(theme) => ({
                     p: 2,
-                    borderRadius: 2,
+                    borderRadius: 1,
                     border: `1px solid ${theme.palette.divider}`,
                     background: theme.palette.mode === "light" ? theme.palette.grey[50] : theme.palette.background.default,
                   })}
@@ -2153,7 +2244,7 @@ const breakTimelineMeta = useMemo(() => {
                     position: "relative",
                     mt: 1,
                     height: 8,
-                    borderRadius: 999,
+                    borderRadius: 1,
                     background: (theme) => theme.palette.action.hover,
                     }}
                   >
@@ -2164,7 +2255,7 @@ const breakTimelineMeta = useMemo(() => {
                         bottom: 0,
                         left: 0,
                         width: `${breakTimelineMeta.progressPct}%`,
-                        borderRadius: 999,
+                        borderRadius: 1,
                         background: breakTimelineMeta.active
                           ? theme.palette.warning.main
                           : theme.palette.success.main,
@@ -2184,6 +2275,7 @@ const breakTimelineMeta = useMemo(() => {
         </Box>
       </Collapse>
     </Paper>
+    </Box>
     
     {/* Manager-only toggle for approvals */}
     {isManager && (
@@ -2388,7 +2480,7 @@ const breakTimelineMeta = useMemo(() => {
 
             return (
               <Grid item xs={12} key={shift.id}>
-                <Card elevation={2} sx={{ borderRadius: 2 }}>
+                <Card elevation={2} sx={{ borderRadius: 1 }}>
                   <CardContent>
                     <Typography variant="subtitle2" color="text.secondary">
                       {shift.date
@@ -2535,7 +2627,7 @@ const breakTimelineMeta = useMemo(() => {
                   <Card
                     elevation={2}
                     sx={{
-                      borderRadius: 2,
+                      borderRadius: 1,
                       borderLeft: "4px solid",
                       borderColor: (theme) => theme.palette.success.main,
                     }}
@@ -2718,7 +2810,7 @@ const breakTimelineMeta = useMemo(() => {
                     ? "default"
                     : "error";
                 return (
-                  <Paper key={leave.id} variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                  <Paper key={leave.id} variant="outlined" sx={{ p: 1.25, borderRadius: 1 }}>
                     <Stack spacing={0.75}>
                       <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
                         <Typography variant="body2" fontWeight={800}>
@@ -2860,7 +2952,7 @@ const breakTimelineMeta = useMemo(() => {
               Ready for payroll means your manager has confirmed the approved hours for payroll. Uploading a supporting document does not change approval or payroll status.
             </Alert>
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={0.75}>
                 <Typography variant="body2">
                   <strong>Dates:</strong> {selectedEmployeeLeave.start_date || "—"}
@@ -2894,7 +2986,7 @@ const breakTimelineMeta = useMemo(() => {
             </Paper>
 
             {selectedEmployeeLeave.balance_impact && (
-              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
                     <Typography variant="subtitle2" fontWeight={800}>
@@ -2950,7 +3042,7 @@ const breakTimelineMeta = useMemo(() => {
               </Paper>
             )}
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={1}>
                 <Box>
                   <Typography variant="subtitle2" fontWeight={800}>
@@ -3016,7 +3108,7 @@ const breakTimelineMeta = useMemo(() => {
               </Stack>
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={0.75}>
                 <Typography variant="body2">
                   <strong>Manager comment:</strong> {selectedEmployeeLeave.review_comment || "—"}
@@ -3146,24 +3238,20 @@ const breakTimelineMeta = useMemo(() => {
 
           {!selectedShift && (
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <TextField
+              <ThemedDateField
                 label="Start date"
-                type="date"
                 fullWidth
                 margin="normal"
-                InputLabelProps={{ shrink: true }}
                 value={leaveForm.start_date}
                 onChange={(e) => {
                   setLeaveFormError("");
                   setLeaveForm(applyEmployeeLeaveStartDate(leaveForm, e.target.value));
                 }}
               />
-              <TextField
+              <ThemedDateField
                 label="End date"
-                type="date"
                 fullWidth
                 margin="normal"
-                InputLabelProps={{ shrink: true }}
                 disabled={leaveForm.duration_mode === "partial_day" || leaveForm.duration_mode === "hourly"}
                 value={leaveForm.duration_mode === "partial_day" || leaveForm.duration_mode === "hourly" ? leaveForm.start_date : leaveForm.end_date}
                 helperText={leaveForm.duration_mode === "partial_day" || leaveForm.duration_mode === "hourly" ? "Same-day request" : ""}
@@ -3178,24 +3266,20 @@ const breakTimelineMeta = useMemo(() => {
           {leaveForm.duration_mode === "partial_day" && !selectedShift && (
             <>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                <TextField
+                <ThemedTimeField
                   label="Start time"
-                  type="time"
                   fullWidth
                   margin="normal"
-                  InputLabelProps={{ shrink: true }}
                   value={leaveForm.start_time}
                   onChange={(e) => {
                     setLeaveFormError("");
                     setLeaveForm({ ...leaveForm, start_time: e.target.value });
                   }}
                 />
-                <TextField
+                <ThemedTimeField
                   label="End time"
-                  type="time"
                   fullWidth
                   margin="normal"
-                  InputLabelProps={{ shrink: true }}
                   value={leaveForm.end_time}
                   onChange={(e) => {
                     setLeaveFormError("");
@@ -3304,7 +3388,7 @@ const breakTimelineMeta = useMemo(() => {
                 variant="outlined"
                 sx={{
                   p: 2,
-                  borderRadius: 3,
+                  borderRadius: 1,
                   mt: 1.5,
                   borderColor: shortageHours > 0 ? "warning.light" : "rgba(148, 163, 184, 0.45)",
                   bgcolor: shortageHours > 0 ? "rgba(245, 158, 11, 0.08)" : "rgba(248, 250, 252, 0.86)",
@@ -3346,19 +3430,19 @@ const breakTimelineMeta = useMemo(() => {
                   </Stack>
 
                   <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(128px, 1fr))", gap: 1 }}>
-                    <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                    <Box sx={{ p: 1.1, borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                       <Typography variant="caption" color="text.secondary">Current balance</Typography>
                       <Typography variant="body2" fontWeight={850}>{formatBalanceHours(selectedBalance.balance_hours)}</Typography>
                     </Box>
-                    <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                    <Box sx={{ p: 1.1, borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                       <Typography variant="caption" color="text.secondary">Available on start</Typography>
                       <Typography variant="body2" fontWeight={850}>{formatBalanceHours(availableOnStart)}</Typography>
                     </Box>
-                    <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                    <Box sx={{ p: 1.1, borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                       <Typography variant="caption" color="text.secondary">Requested hours</Typography>
                       <Typography variant="body2" fontWeight={850}>{estimatedLeaveRequestHours ? formatBalanceHours(estimatedLeaveRequestHours) : "—"}</Typography>
                     </Box>
-                    <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: shortageHours > 0 ? "warning.light" : "divider", bgcolor: "background.paper" }}>
+                    <Box sx={{ p: 1.1, borderRadius: 1, border: "1px solid", borderColor: shortageHours > 0 ? "warning.light" : "divider", bgcolor: "background.paper" }}>
                       <Typography variant="caption" color="text.secondary">Projected remaining</Typography>
                       <Typography variant="body2" fontWeight={850}>{formatBalanceHours(projectedRemaining)}</Typography>
                     </Box>
@@ -3429,7 +3513,7 @@ const breakTimelineMeta = useMemo(() => {
           sx={{
             p: 3,
             bgcolor: "background.paper",
-            borderRadius: 2,
+            borderRadius: 1,
             mx: "auto",
             my: isSmDown ? 2 : "10%",
             width: isSmDown ? "94vw" : 420,

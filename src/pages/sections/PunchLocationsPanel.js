@@ -22,6 +22,7 @@ import { alpha } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import api, { timeTracking } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 
 const formatDateTime = (value, timezone) => {
   if (!value) return "—";
@@ -237,7 +238,7 @@ const PunchLocationsPanel = () => {
 
   return (
     <Stack spacing={2.5}>
-      <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: (theme) => `1px solid ${theme.palette.divider}` }}>
+      <Paper elevation={0} sx={{ p: 2, borderRadius: 1, border: (theme) => `1px solid ${theme.palette.divider}` }}>
         <Stack spacing={2}>
           <Box>
             <Typography variant="h6" fontWeight={800}>
@@ -289,18 +290,15 @@ const PunchLocationsPanel = () => {
               </TextField>
             </Grid>
             <Grid item xs={12} md={3}>
-              <TextField
-                type="date"
+              <ThemedDateField
                 fullWidth
                 label="From"
                 value={filters.start_date}
                 onChange={handleFilter("start_date")}
-                InputLabelProps={{ shrink: true }}
               />
             </Grid>
             <Grid item xs={12} md={3}>
-              <TextField
-                type="date"
+              <ThemedDateField
                 fullWidth
                 label="To"
                 value={filters.end_date}
@@ -340,7 +338,7 @@ const PunchLocationsPanel = () => {
           ["Permission denied", summary?.permission_denied ?? 0],
         ].map(([label, value]) => (
           <Grid item xs={12} sm={6} md={3} key={label}>
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: (theme) => `1px solid ${theme.palette.divider}` }}>
+            <Paper elevation={0} sx={{ p: 2, borderRadius: 1, border: (theme) => `1px solid ${theme.palette.divider}` }}>
               <Typography variant="body2" color="text.secondary">
                 {label}
               </Typography>
@@ -352,7 +350,7 @@ const PunchLocationsPanel = () => {
         ))}
       </Grid>
 
-      <Paper elevation={0} sx={{ borderRadius: 3, overflow: "hidden", border: (theme) => `1px solid ${theme.palette.divider}` }}>
+      <Paper elevation={0} sx={{ borderRadius: 1, overflow: "hidden", border: (theme) => `1px solid ${theme.palette.divider}` }}>
         {loading ? (
           <Box display="flex" justifyContent="center" py={5}>
             <CircularProgress size={26} />

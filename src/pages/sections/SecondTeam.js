@@ -754,7 +754,7 @@ const calendarEvents = filteredShifts.map(s => ({
 
       {/* Floating panel for pending event update */}
       {pendingEventUpdate && (
-  <Box sx={{ position: "fixed", bottom: 16, right: 16, zIndex: 1300, background: "white", p: 2, borderRadius: 2, boxShadow: 3 }}>
+  <Box sx={{ position: "fixed", bottom: 16, right: 16, zIndex: 1300, background: "background.paper", p: 2, borderRadius: 1, boxShadow: 3 }}>
     <Typography variant="body1" gutterBottom>Unsaved shift update</Typography>
     <Button onClick={handleSavePendingEventUpdate} variant="contained" sx={{ mr: 1 }}>Save</Button>
     <Button onClick={handleCancelPendingEventUpdate} color="secondary" sx={{ mr: 1 }}>Cancel</Button>
@@ -816,7 +816,7 @@ const calendarEvents = filteredShifts.map(s => ({
           maxWidth: 620,
           mx: "auto",
           mt: { xs: "5vh", sm: "10%" },
-          borderRadius: 2,
+          borderRadius: 1,
           boxShadow: 6,
           maxHeight: "90vh",
           display: "flex",
@@ -943,11 +943,11 @@ const calendarEvents = filteredShifts.map(s => ({
       <Modal open={templateModalOpen} onClose={() => setTemplateModalOpen(false)}>
         <Box sx={{
           p: 4,
-          bgcolor: "white",
+          bgcolor: "background.paper",
           width: 500,
           mx: "auto",
           mt: "8%",
-          borderRadius: 2,
+          borderRadius: 1,
           boxShadow: 6
         }}>
           <Typography variant="h6" gutterBottom>

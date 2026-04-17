@@ -20,6 +20,7 @@ import {
 import TodayIcon from "@mui/icons-material/Today";
 import dayjs from "dayjs";
 import api from "../../utils/api";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 
 /* ───────────────────────────────
    Region-specific option lists
@@ -294,8 +295,7 @@ export default function PayrollFilters({
 
         {/* ───── Dates ───── */}
         <Grid item xs={12} md={3}>
-          <TextField
-            type="date"
+          <ThemedDateField
             label="Start Date"
             fullWidth
             value={startDate || ""}
@@ -306,12 +306,10 @@ export default function PayrollFilters({
                 p ? { ...p, start_date: e.target.value } : p
               );
             }}
-            InputLabelProps={{ shrink: true }}
           />
         </Grid>
         <Grid item xs={12} md={3}>
-          <TextField
-            type="date"
+          <ThemedDateField
             label="End Date"
             fullWidth
             value={endDate || ""}
@@ -322,7 +320,6 @@ export default function PayrollFilters({
                 p ? { ...p, end_date: e.target.value } : p
               );
             }}
-            InputLabelProps={{ shrink: true }}
           />
         </Grid>
         <Grid

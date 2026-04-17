@@ -40,6 +40,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { DateTime } from "luxon";
 import { timeTracking } from "../../utils/api";
 import { getUserTimezone } from "../../utils/timezone";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -69,7 +70,7 @@ const SummaryCard = ({ label, value, icon }) => {
       elevation={0}
       sx={{
         p: 2,
-        borderRadius: 3,
+        borderRadius: 1,
         border: `1px solid ${theme.palette.divider}`,
         background: `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.95)}, ${alpha(theme.palette.background.default, 0.9)})`,
         flex: 1,
@@ -81,7 +82,7 @@ const SummaryCard = ({ label, value, icon }) => {
           sx={{
             width: 40,
             height: 40,
-            borderRadius: "14px",
+            borderRadius: "6px",
             bgcolor: alpha(theme.palette.primary.main, 0.12),
             color: theme.palette.primary.main,
             display: "inline-flex",
@@ -139,7 +140,7 @@ const TimeInsightCard = ({ label, value, help, tone = "default" }) => {
       variant="outlined"
       sx={{
         p: 1.45,
-        borderRadius: 3,
+        borderRadius: 1,
         height: "100%",
         borderColor: "rgba(148, 163, 184, 0.22)",
         background: `linear-gradient(145deg, ${colors.soft}, rgba(255,255,255,0.96))`,
@@ -167,7 +168,7 @@ const TimeInsightSection = ({ title, description, children, attention = false })
     variant="outlined"
     sx={{
       p: 2,
-      borderRadius: 3,
+      borderRadius: 1,
       height: "100%",
       borderColor: attention ? "rgba(245, 158, 11, 0.24)" : "rgba(148, 163, 184, 0.22)",
       boxShadow: attention ? "0 16px 38px rgba(180, 83, 9, 0.07)" : "0 12px 30px rgba(15, 23, 42, 0.035)",
@@ -185,7 +186,7 @@ const TimeInsightSection = ({ title, description, children, attention = false })
 );
 
 const TimeInsightEmpty = ({ children }) => (
-  <Box sx={{ py: 1, px: 1.25, borderRadius: 2, bgcolor: "rgba(148, 163, 184, 0.08)", color: "text.secondary" }}>
+  <Box sx={{ py: 1, px: 1.25, borderRadius: 1, bgcolor: "rgba(148, 163, 184, 0.08)", color: "text.secondary" }}>
     <Typography variant="caption">{children}</Typography>
   </Box>
 );
@@ -204,7 +205,7 @@ const TimeRankedBars = ({ rows, valueKey = "value", valueFormatter = (value) => 
               <Typography variant="body2" fontWeight={850} noWrap>{row.label}</Typography>
               <Typography variant="body2" fontWeight={900}>{valueFormatter(value, row)}</Typography>
             </Stack>
-            <Box sx={{ mt: 0.5, height: 9, borderRadius: 999, bgcolor: "rgba(148, 163, 184, 0.16)", overflow: "hidden" }}>
+            <Box sx={{ mt: 0.5, height: 9, borderRadius: 1, bgcolor: "rgba(148, 163, 184, 0.16)", overflow: "hidden" }}>
               <Box sx={{ width: `${Math.max((value / max) * 100, value ? 6 : 0)}%`, height: "100%", bgcolor: color }} />
             </Box>
             {row.caption && <Typography variant="caption" color="text.secondary">{row.caption}</Typography>}
@@ -237,7 +238,7 @@ const TimeTrendChart = ({ rows }) => {
       <Box sx={{ display: "grid", gridTemplateColumns: `repeat(${visible.length}, minmax(36px, 1fr))`, gap: 1, alignItems: "end", minHeight: 210 }}>
         {visible.map((row) => (
           <Stack key={row.date} spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
-            <Stack justifyContent="flex-end" sx={{ height: 160, width: "100%", maxWidth: 44, borderRadius: 2, overflow: "hidden", bgcolor: "rgba(148, 163, 184, 0.13)", border: "1px solid rgba(148, 163, 184, 0.18)" }}>
+            <Stack justifyContent="flex-end" sx={{ height: 160, width: "100%", maxWidth: 44, borderRadius: 1, overflow: "hidden", bgcolor: "rgba(148, 163, 184, 0.13)", border: "1px solid rgba(148, 163, 184, 0.18)" }}>
               {[
                 ["worked", row.workedHours, "#2563eb"],
                 ["approved", row.approvedHours, "#15803d"],
@@ -382,7 +383,7 @@ const TimeInsightsPanel = ({
 
   return (
     <Stack spacing={2} sx={{ mt: 2 }}>
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: "rgba(148, 163, 184, 0.24)", boxShadow: "0 14px 34px rgba(15, 23, 42, 0.04)" }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1, borderColor: "rgba(148, 163, 184, 0.24)", boxShadow: "0 14px 34px rgba(15, 23, 42, 0.04)" }}>
         <Stack spacing={1.75}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
             <Box>
@@ -422,10 +423,10 @@ const TimeInsightsPanel = ({
               </TextField>
             </Grid>
             <Grid item xs={12} md={1.8}>
-              <TextField type="date" fullWidth label="From" InputLabelProps={{ shrink: true }} value={filters.startDate} onChange={handleChange("startDate")} />
+              <ThemedDateField fullWidth label="From" value={filters.startDate} onChange={handleChange("startDate")} />
             </Grid>
             <Grid item xs={12} md={1.8}>
-              <TextField type="date" fullWidth label="To" InputLabelProps={{ shrink: true }} value={filters.endDate} onChange={handleChange("endDate")} />
+              <ThemedDateField fullWidth label="To" value={filters.endDate} onChange={handleChange("endDate")} />
             </Grid>
             <Grid item xs={12} md={1.2}>
               <FormControlLabel control={<Switch checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />} label="Archived" />
@@ -1365,7 +1366,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
 
   return (
     <>
-      <Paper variant="outlined" sx={{ mt: 2, borderRadius: 3, overflow: "hidden" }}>
+      <Paper variant="outlined" sx={{ mt: 2, borderRadius: 1, overflow: "hidden" }}>
         <Tabs
           value={activeTab}
           onChange={(_, value) => setActiveTab(value)}
@@ -1390,7 +1391,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         </Grid>
 
         <Grid item xs={12}>
-          <Paper elevation={1} sx={{ p: 3, borderRadius: 3 }}>
+          <Paper elevation={1} sx={{ p: 3, borderRadius: 1 }}>
             <Stack
               direction={{ xs: "column", md: "row" }}
               spacing={2}
@@ -1485,21 +1486,17 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                 />
               </Grid>
               <Grid item xs={12} md={3}>
-                <TextField
-                  type="date"
+                <ThemedDateField
                   fullWidth
                   label="From"
-                  InputLabelProps={{ shrink: true }}
                   value={filters.startDate}
                   onChange={handleChange("startDate")}
                 />
               </Grid>
               <Grid item xs={12} md={3}>
-                <TextField
-                  type="date"
+                <ThemedDateField
                   fullWidth
                   label="To"
-                  InputLabelProps={{ shrink: true }}
                   value={filters.endDate}
                   onChange={handleChange("endDate")}
                 />
@@ -1525,7 +1522,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                 sx={{
                   mt: 2,
                   p: 1.5,
-                  borderRadius: 2,
+                  borderRadius: 1,
                   display: "flex",
                   flexWrap: "wrap",
                   gap: 1,
@@ -1567,7 +1564,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
               ) : entries.length === 0 ? (
                 <Typography color="text.secondary">No time entries found for this filter.</Typography>
               ) : (
-                <TableContainer component={Paper} variant="outlined" sx={{ mt: 1, borderRadius: 2 }}>
+                <TableContainer component={Paper} variant="outlined" sx={{ mt: 1, borderRadius: 1 }}>
                   <Table size="small" stickyHeader>
                     <TableHead>
                       <TableRow>
@@ -2029,7 +2026,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         sx={{
           mt: 4,
           p: 3,
-          borderRadius: 3,
+          borderRadius: 1,
           border: (theme) => `1px solid ${theme.palette.divider}`,
           background: (theme) => theme.palette.background.paper,
         }}
@@ -2095,7 +2092,7 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
                     variant="outlined"
                     sx={{
                       p: 2,
-                      borderRadius: 2,
+                      borderRadius: 1,
                       height: "100%",
                       borderColor: (theme) =>
                         active.break_in_progress
@@ -2223,21 +2220,17 @@ const TimeEntriesPanel = ({ recruiters = [] }) => {
         <DialogContent dividers>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} sm={4}>
-              <TextField
-                type="date"
+              <ThemedDateField
                 label="From"
                 fullWidth
-                InputLabelProps={{ shrink: true }}
                 value={detailFilters.startDate}
                 onChange={handleDetailFilterChange("startDate")}
               />
             </Grid>
             <Grid item xs={12} sm={4}>
-              <TextField
-                type="date"
+              <ThemedDateField
                 label="To"
                 fullWidth
-                InputLabelProps={{ shrink: true }}
                 value={detailFilters.endDate}
                 onChange={handleDetailFilterChange("endDate")}
               />

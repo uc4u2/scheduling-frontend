@@ -87,7 +87,7 @@ export default function OnboardingPage() {
       {loading ? (
         <Typography>Loading...</Typography>
       ) : !plan ? (
-        <Paper sx={{ p: 3, borderRadius: 3 }}>
+        <Paper sx={{ p: 3, borderRadius: 1 }}>
           <Typography variant="body1" sx={{ mb: 1 }}>
             No rollout plan yet. Generate one now to get a task list for the next
             2–3 weeks.
@@ -102,7 +102,7 @@ export default function OnboardingPage() {
             <Paper
               key={category}
               variant="outlined"
-              sx={{ p: 3, borderRadius: 3 }}
+              sx={{ p: 3, borderRadius: 1 }}
             >
               <Typography variant="h6" sx={{ textTransform: "capitalize", mb: 1 }}>
                 {category}

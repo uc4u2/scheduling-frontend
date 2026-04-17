@@ -18,6 +18,7 @@ import {
   Snackbar,
 } from "@mui/material";
 import api from "./utils/api";
+import ThemedDateField, { ThemedTimeField } from "./components/ui/ThemedDateField";
 
 const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -150,7 +151,7 @@ const RecurringAvailabilityForm = ({ token, onSuccess }) => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
 
-      <TextField label="Start Date" type="date" fullWidth margin="normal" InputLabelProps={{ shrink: true }}
+      <ThemedDateField label="Start Date" fullWidth margin="normal"
         value={startDate} onChange={(e) => setStartDate(e.target.value)} />
 
       <Box sx={{ mt: 2 }}>
@@ -209,33 +210,29 @@ const RecurringAvailabilityForm = ({ token, onSuccess }) => {
         )}
 
         {repeatMode === "until" && (
-          <TextField
+          <ThemedDateField
             label="End Date"
-            type="date"
             fullWidth
             margin="normal"
-            InputLabelProps={{ shrink: true }}
             value={repeatUntil}
             onChange={(e) => setRepeatUntil(e.target.value)}
           />
         )}
 
-        <TextField
+        <ThemedDateField
           label="End Date (optional)"
-          type="date"
           fullWidth
           margin="normal"
-          InputLabelProps={{ shrink: true }}
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
           helperText="Optional: if you leave this blank, repeat options above control the range."
         />
       </Box>
 
-      <TextField label="Start Time" type="time" fullWidth margin="normal" InputLabelProps={{ shrink: true }}
+      <ThemedTimeField label="Start Time" fullWidth margin="normal"
         value={startTime} onChange={(e) => setStartTime(e.target.value)} />
 
-      <TextField label="End Time" type="time" fullWidth margin="normal" InputLabelProps={{ shrink: true }}
+      <ThemedTimeField label="End Time" fullWidth margin="normal"
         value={endTime} onChange={(e) => setEndTime(e.target.value)} />
 
       <TextField
@@ -249,10 +246,10 @@ const RecurringAvailabilityForm = ({ token, onSuccess }) => {
         inputProps={{ min: 5, max: 480 }}
       />
 
-      <TextField label="Break Start Time (optional)" type="time" fullWidth margin="normal" InputLabelProps={{ shrink: true }}
+      <ThemedTimeField label="Break Start Time (optional)" fullWidth margin="normal"
         value={breakStartTime} onChange={(e) => setBreakStartTime(e.target.value)} />
 
-      <TextField label="Break End Time (optional)" type="time" fullWidth margin="normal" InputLabelProps={{ shrink: true }}
+      <ThemedTimeField label="Break End Time (optional)" fullWidth margin="normal"
         value={breakEndTime} onChange={(e) => setBreakEndTime(e.target.value)} />
 
       {/* Cooling Time */}

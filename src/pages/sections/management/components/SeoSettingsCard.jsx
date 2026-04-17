@@ -804,7 +804,7 @@ const SeoSettingsCard = ({
             sx={{
               border: "1px solid",
               borderColor: "divider",
-              borderRadius: 2,
+              borderRadius: 1,
               p: 2,
               bgcolor: "background.paper",
             }}
@@ -1023,7 +1023,7 @@ const SeoSettingsCard = ({
                 {tt("management.domainSettings.seo.buttons.testOgSlug", "Test slug preview")}
               </Button>
             </Stack>
-            <Accordion sx={{ borderRadius: 2 }} variant="outlined">
+            <Accordion sx={{ borderRadius: 1 }} variant="outlined">
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle2">
                   {tt("management.domainSettings.seo.sections.help", "How social previews work")}
@@ -1088,7 +1088,7 @@ const SeoSettingsCard = ({
             spacing={2.5}
             sx={{
               p: { xs: 1.5, sm: 2 },
-              borderRadius: 2,
+              borderRadius: 1,
               border: "1px solid",
               borderColor: "divider",
               bgcolor: "background.paper",
@@ -1117,11 +1117,11 @@ const SeoSettingsCard = ({
                 sx={{
                   mt: 1,
                   bgcolor: "action.hover",
-                  borderRadius: 999,
+                  borderRadius: 1,
                   p: 0.25,
                   "& .MuiToggleButton-root": {
                     border: 0,
-                    borderRadius: 999,
+                    borderRadius: 1,
                     px: 1.5,
                     textTransform: "none",
                     fontWeight: 600,

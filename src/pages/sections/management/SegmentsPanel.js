@@ -8,6 +8,7 @@ import {
   TableContainer, TableHead, TableRow, TextField, Tooltip, Typography
 } from "@mui/material";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import ThemedDateField from "../../../components/ui/ThemedDateField";
 
 export default function SegmentsPanel() {
   const token = useMemo(() => localStorage.getItem("token") || "", []);
@@ -79,9 +80,8 @@ export default function SegmentsPanel() {
         {/* Filters (light) */}
         <Grid container spacing={2} alignItems="center" sx={{ mb: 1 }}>
           <Grid item xs={12} sm={4} md={2.5}>
-            <TextField
+            <ThemedDateField
               label="As of"
-              type="date"
               value={asOf}
               onChange={(e)=>setAsOf(e.target.value)}
               onBlur={load}

@@ -26,6 +26,7 @@ import SecondEmployeeShiftView from "./pages/sections/SecondEmployeeShiftView";
 import MySetmoreCalendar from "./MySetmoreCalendar";
 import ManagementFrame from "./components/ui/ManagementFrame";
 import RecruiterTabs from "./components/recruiter/RecruiterTabs";
+import ThemedDateField, { ThemedTimeField } from "./components/ui/ThemedDateField";
 const LOCAL_TABS = ["calendar", "availability"];
 
 const RecruiterDashboard = ({ token }) => {
@@ -280,26 +281,20 @@ const RecruiterDashboard = ({ token }) => {
                   {oneTimeMessage && <Alert severity="success" sx={{ mb: 2 }}>{oneTimeMessage}</Alert>}
                   {oneTimeError && <Alert severity="error" sx={{ mb: 2 }}>{oneTimeError}</Alert>}
                   <Stack spacing={2}>
-                    <TextField
+                    <ThemedDateField
                       label="Date"
-                      type="date"
-                      InputLabelProps={{ shrink: true }}
                       fullWidth
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                     />
-                    <TextField
+                    <ThemedTimeField
                       label="Start Time"
-                      type="time"
-                      InputLabelProps={{ shrink: true }}
                       fullWidth
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
                     />
-                    <TextField
+                    <ThemedTimeField
                       label="End Time"
-                      type="time"
-                      InputLabelProps={{ shrink: true }}
                       fullWidth
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
@@ -322,31 +317,25 @@ const RecruiterDashboard = ({ token }) => {
                   {dailyError && <Alert severity="error" sx={{ mb: 2 }}>{dailyError}</Alert>}
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
-                      <TextField
+                      <ThemedDateField
                         label="Date"
-                        type="date"
                         fullWidth
-                        InputLabelProps={{ shrink: true }}
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
                       />
                     </Grid>
                     <Grid item xs={6}>
-                      <TextField
+                      <ThemedTimeField
                         label="Start Time"
-                        type="time"
                         fullWidth
-                        InputLabelProps={{ shrink: true }}
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
                       />
                     </Grid>
                     <Grid item xs={6}>
-                      <TextField
+                      <ThemedTimeField
                         label="End Time"
-                        type="time"
                         fullWidth
-                        InputLabelProps={{ shrink: true }}
                         value={endTime}
                         onChange={(e) => setEndTime(e.target.value)}
                       />

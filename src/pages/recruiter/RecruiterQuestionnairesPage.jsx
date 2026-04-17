@@ -30,7 +30,7 @@ const RecruiterQuestionnairesPage = ({ token }) => {
       <RecruiterTabs localTab="questionnaires" allowHrAccess={allowHrAccess} isLoading={isLoading} />
 
       <Stack spacing={3}>
-        <Paper sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }} elevation={0}>
+        <Paper sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 1.5 }} elevation={0}>
           <Stack spacing={1.5}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               Storage Limits & Antivirus
@@ -77,7 +77,7 @@ const RecruiterQuestionnairesPage = ({ token }) => {
           </Stack>
         </Paper>
 
-        <Paper sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }} elevation={0}>
+        <Paper sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 1.5 }} elevation={0}>
           <ProfessionSettings variant="embedded" />
         </Paper>
 

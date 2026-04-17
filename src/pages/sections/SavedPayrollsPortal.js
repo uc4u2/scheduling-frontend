@@ -27,6 +27,7 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import api from "../../utils/api";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
+import ThemedDateField, { ThemedMonthField } from "../../components/ui/ThemedDateField";
 
 const SavedPayrollsPortal = ({ token, currentUser }) => {
   // ─────────────────────────── helper flags ────────────────────────────
@@ -226,28 +227,22 @@ const SavedPayrollsPortal = ({ token, currentUser }) => {
 
       {/* ─────────────── filter row ─────────────── */}
       <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
-        <TextField
+        <ThemedMonthField
           label="Month"
-          type="month"
           value={monthFilter}
           onChange={(e) => setMonthFilter(e.target.value)}
-          InputLabelProps={{ shrink: true }}
           size="small"
         />
-        <TextField
+        <ThemedDateField
           label="Start Date"
-          type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
           size="small"
         />
-        <TextField
+        <ThemedDateField
           label="End Date"
-          type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
           size="small"
         />
 

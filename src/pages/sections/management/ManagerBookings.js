@@ -33,6 +33,7 @@ import {
 import { DataGrid } from "@mui/x-data-grid";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
+import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedDateField";
 import { api } from "../../../utils/api";
 import { DateTime } from "luxon";
 import { isoFromParts } from "../../../utils/datetime";
@@ -1242,35 +1243,29 @@ const RowActions = ({ row }) => {
             <DialogTitle>{t("manager.bookings.dialog.edit.title")}</DialogTitle>
             <DialogContent>
               {saving && <LinearProgress sx={{ mb: 2 }} />}
-              <TextField
+              <ThemedDateField
                 fullWidth
                 label={t("manager.bookings.dialog.edit.date")}
-                type="date"
                 value={editLocalDate}
                 onChange={(e) => setEditLocalDate(e.target.value)}
                 sx={{ my: 1 }}
-                InputLabelProps={{ shrink: true }}
                 disabled={saving}
               />
               <Stack direction="row" spacing={2}>
-                <TextField
+                <ThemedTimeField
                   fullWidth
                   label={t("manager.bookings.dialog.edit.start")}
-                  type="time"
                   value={editLocalStart}
                   onChange={(e) => setEditLocalStart(e.target.value)}
                   sx={{ my: 1 }}
-                  InputLabelProps={{ shrink: true }}
                   disabled={saving}
                 />
-                <TextField
+                <ThemedTimeField
                   fullWidth
                   label={t("manager.bookings.dialog.edit.end")}
-                  type="time"
                   value={editLocalEnd}
                   onChange={(e) => setEditLocalEnd(e.target.value)}
                   sx={{ my: 1 }}
-                  InputLabelProps={{ shrink: true }}
                   disabled={saving}
                 />
               </Stack>
@@ -1631,7 +1626,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
 
 
 

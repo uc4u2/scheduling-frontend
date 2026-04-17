@@ -26,6 +26,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { DateTime } from "luxon";
 import api from "../../utils/api";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 
 const palette = {
   accent: "#FF7A3C",
@@ -39,7 +40,7 @@ const SummaryCard = ({ label, value, color }) => (
     elevation={0}
     sx={{
       p: 2,
-      borderRadius: 3,
+      borderRadius: 1,
       border: (theme) => `1px solid ${theme.palette.divider}`,
       background: "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,247,250,0.9))",
       minWidth: 180,
@@ -292,7 +293,7 @@ const FraudAnomaliesPanel = () => {
           elevation={0}
           sx={{
             p: 2,
-            borderRadius: 3,
+            borderRadius: 1,
             border: (theme) => `1px solid ${theme.palette.divider}`,
             background: (theme) => theme.palette.action.hover,
           }}
@@ -388,23 +389,19 @@ const FraudAnomaliesPanel = () => {
           </TextField>
         </Grid>
         <Grid item xs={12} md={3}>
-          <TextField
+          <ThemedDateField
             label="From"
-            type="date"
             fullWidth
             value={filters.start_date}
             onChange={(e) => setFilters((f) => ({ ...f, start_date: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
           />
         </Grid>
         <Grid item xs={12} md={3}>
-          <TextField
+          <ThemedDateField
             label="To"
-            type="date"
             fullWidth
             value={filters.end_date}
             onChange={(e) => setFilters((f) => ({ ...f, end_date: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
           />
         </Grid>
         <Grid item xs={12} md={3}>
@@ -453,7 +450,7 @@ const FraudAnomaliesPanel = () => {
           elevation={0}
           sx={{
             p: 2,
-            borderRadius: 3,
+            borderRadius: 1,
             border: (theme) => `1px solid ${theme.palette.divider}`,
           }}
         >
@@ -465,7 +462,7 @@ const FraudAnomaliesPanel = () => {
               <Paper
                 key={d.date}
                 variant="outlined"
-                sx={{ p: 1.5, borderRadius: 2, minWidth: 140 }}
+                sx={{ p: 1.5, borderRadius: 1, minWidth: 140 }}
               >
                 <Typography fontWeight={700}>{d.date}</Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -484,7 +481,7 @@ const FraudAnomaliesPanel = () => {
         elevation={0}
         sx={{
           p: 2,
-          borderRadius: 3,
+          borderRadius: 1,
           border: (theme) => `1px solid ${theme.palette.divider}`,
         }}
       >
@@ -547,7 +544,7 @@ const FraudAnomaliesPanel = () => {
         elevation={0}
         sx={{
           p: 2,
-          borderRadius: 3,
+          borderRadius: 1,
           border: (theme) => `1px solid ${theme.palette.divider}`,
         }}
       >

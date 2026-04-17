@@ -273,7 +273,7 @@ export default function ManagerManualPayments() {
           sx={{
             border: 1,
             borderColor: "divider",
-            borderRadius: 2,
+            borderRadius: 1,
             p: 3,
             mb: 3,
             backgroundColor: (t) => t.palette.background.paper,
@@ -438,7 +438,7 @@ export default function ManagerManualPayments() {
           </Stack>
         </Box>
 
-        <Box sx={{ border: 1, borderColor: "divider", borderRadius: 2, p: 2 }}>
+        <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 2 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
             <Typography variant="subtitle1" fontWeight={600}>
               Recent manual invoices

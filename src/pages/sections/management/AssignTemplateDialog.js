@@ -16,6 +16,7 @@ import {
   Alert,
 } from "@mui/material";
 import api from "../../../utils/api";
+import ThemedDateField from "../../../components/ui/ThemedDateField";
 
 export default function AssignTemplateDialog({ token, template, onClose }) {
   const [employees, setEmployees] = useState([]);
@@ -109,18 +110,14 @@ export default function AssignTemplateDialog({ token, template, onClose }) {
         />
 
         <Box sx={{ display: "flex", gap: 2 }}>
-          <TextField
+          <ThemedDateField
             label="Start date"
-            type="date"
-            InputLabelProps={{ shrink: true }}
             value={range.from}
             onChange={(e) => setRange({ ...range, from: e.target.value })}
             sx={{ flex: 1 }}
           />
-          <TextField
+          <ThemedDateField
             label="End date"
-            type="date"
-            InputLabelProps={{ shrink: true }}
             value={range.to}
             onChange={(e) => setRange({ ...range, to: e.target.value })}
             sx={{ flex: 1 }}

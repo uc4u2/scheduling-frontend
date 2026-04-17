@@ -38,6 +38,7 @@ import { Viewer } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import AuditHistory from "../../components/Stubs/AuditHistory";
 import ManagementFrame from "../../components/ui/ManagementFrame";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 import UpgradeNoticeBanner from "../../components/billing/UpgradeNoticeBanner";
 
 /* ───────────────────────────────────────────────────────────── */
@@ -551,13 +552,11 @@ const ROE = ({ token }) => {
             </Grid>
 
             <Grid item xs={12} sm={6} md={3}>
-              <TextField
+              <ThemedDateField
                 label="Last Day"
-                type="date"
                 name="last_day"
                 value={form.last_day}
                 onChange={handleChange}
-                InputLabelProps={{ shrink: true }}
                 fullWidth
                 required
               />

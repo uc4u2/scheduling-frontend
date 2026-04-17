@@ -23,6 +23,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedDateField";
 import api from "../../../utils/api";
 import { pad } from "../../../utils/datetime";
 import { DateTime } from "luxon";
@@ -674,11 +675,9 @@ useEffect(() => {
       {tab === 0 && (
         <Grid container spacing={2}>
           <Grid item xs={6}>
-            <TextField
+            <ThemedDateField
               label="Start date"
-              type="date"
               fullWidth
-              InputLabelProps={{ shrink: true }}
               value={wDayFrom}
               onChange={(e) => setWDayFrom(e.target.value)}
             />
@@ -697,11 +696,9 @@ useEffect(() => {
 
           {!wRecurring && (
             <Grid item xs={6}>
-              <TextField
+              <ThemedDateField
                 label="End date"
-                type="date"
                 fullWidth
-                InputLabelProps={{ shrink: true }}
                 value={wDayTo}
                 onChange={(e) => setWDayTo(e.target.value)}
               />
@@ -737,21 +734,17 @@ useEffect(() => {
           </Grid>
 
           <Grid item xs={6}>
-            <TextField
+            <ThemedTimeField
               label="Start Time"
-              type="time"
               fullWidth
-              InputLabelProps={{ shrink: true }}
               value={wStart}
               onChange={(e) => setWStart(e.target.value)}
             />
           </Grid>
           <Grid item xs={6}>
-            <TextField
+            <ThemedTimeField
               label="End Time"
-              type="time"
               fullWidth
-              InputLabelProps={{ shrink: true }}
               value={wEnd}
               onChange={(e) => setWEnd(e.target.value)}
             />
@@ -811,12 +804,10 @@ useEffect(() => {
                 )}
 
                 {wRepeatMode === "until" && (
-                  <TextField
+                  <ThemedDateField
                     label="End date"
-                    type="date"
                     fullWidth
                     margin="dense"
-                    InputLabelProps={{ shrink: true }}
                     value={wRepeatUntil}
                     onChange={(e) => setWRepeatUntil(e.target.value)}
                   />
@@ -860,45 +851,37 @@ useEffect(() => {
       {tab === 1 && (
         <Grid container spacing={2}>
           <Grid item xs={6}>
-            <TextField
+            <ThemedDateField
               label="Start Date"
-              type="date"
               fullWidth
               margin="dense"
-              InputLabelProps={{ shrink: true }}
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
             />
           </Grid>
           <Grid item xs={6}>
-            <TextField
+            <ThemedDateField
               label="End Date"
-              type="date"
               fullWidth
               margin="dense"
-              InputLabelProps={{ shrink: true }}
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
           </Grid>
           <Grid item xs={6}>
-            <TextField
+            <ThemedTimeField
               label="Start Time"
-              type="time"
               fullWidth
               margin="dense"
-              InputLabelProps={{ shrink: true }}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
             />
           </Grid>
           <Grid item xs={6}>
-            <TextField
+            <ThemedTimeField
               label="End Time"
-              type="time"
               fullWidth
               margin="dense"
-              InputLabelProps={{ shrink: true }}
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
             />
@@ -914,23 +897,19 @@ useEffect(() => {
             />
           </Grid>
           <Grid item xs={6}>
-            <TextField
+            <ThemedTimeField
               label="Break Start Time"
-              type="time"
               fullWidth
               margin="dense"
-              InputLabelProps={{ shrink: true }}
               value={breakStartTime}
               onChange={(e) => setBreakStartTime(e.target.value)}
             />
           </Grid>
           <Grid item xs={6}>
-            <TextField
+            <ThemedTimeField
               label="Break End Time"
-              type="time"
               fullWidth
               margin="dense"
-              InputLabelProps={{ shrink: true }}
               value={breakEndTime}
               onChange={(e) => setBreakEndTime(e.target.value)}
             />
@@ -970,21 +949,17 @@ useEffect(() => {
             </TextField>
           </Grid>
           <Grid item xs={6}>
-            <TextField
+            <ThemedDateField
               label="Date"
-              type="date"
               fullWidth
-              InputLabelProps={{ shrink: true }}
               value={slotDate}
               onChange={(e) => setSlotDate(e.target.value)}
             />
           </Grid>
           <Grid item xs={6}>
-            <TextField
+            <ThemedTimeField
               label="Start Time"
-              type="time"
               fullWidth
-              InputLabelProps={{ shrink: true }}
               value={slotStartTime}
               onChange={(e) => setSlotStartTime(e.target.value)}
             />
@@ -1053,7 +1028,7 @@ useEffect(() => {
                           gap: 1,
                           alignItems: "center",
                           p: blockedByLeave ? 1 : 0,
-                          borderRadius: 2,
+                          borderRadius: 1,
                           border: blockedByLeave ? "1px solid" : "none",
                           borderColor: blockedByLeave ? "warning.light" : "transparent",
                           bgcolor: blockedByLeave ? "rgba(245, 158, 11, 0.08)" : "transparent",

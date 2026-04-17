@@ -174,7 +174,7 @@ const CollapsibleSection = ({
     id={id}
     {...accordionProps}
     sx={{
-      borderRadius: 3,
+      borderRadius: 1,
       border: (theme) => `1px solid ${theme.palette.divider}`,
       boxShadow: "none",
       overflow: "hidden",
@@ -1303,7 +1303,7 @@ function PageStyleCard({
     return (
       <Box
         sx={{
-          borderRadius: 2,
+          borderRadius: 1,
           overflow: "hidden",
           border: "1px solid rgba(15,23,42,0.08)",
           boxShadow: "0 6px 18px rgba(15,23,42,0.08)",
@@ -1352,7 +1352,7 @@ function PageStyleCard({
         {renderThemePresetPreview(preset)}
         <Box
           sx={{
-            borderRadius: 2,
+            borderRadius: 1,
             overflow: "hidden",
             border: "1px solid rgba(15,23,42,0.08)",
             boxShadow: "0 6px 18px rgba(15,23,42,0.08)",
@@ -1488,7 +1488,7 @@ function PageStyleCard({
 
       {pageStyleTab === "style" && (
         <Stack spacing={1.25}>
-          <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+          <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1, borderColor: "divider" }}>
             <Stack spacing={1}>
               <Stack
                 direction={{ xs: "column", sm: "row" }}
@@ -1551,7 +1551,7 @@ function PageStyleCard({
           <Grid container spacing={1}>
             {INDUSTRY_STARTER_PACKS.map((pack) => (
               <Grid item xs={12} sm={6} key={pack.key}>
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1, borderColor: "divider" }}>
                   <Stack spacing={1}>
                     {renderIndustryPackPreview(pack)}
                     <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
@@ -1595,7 +1595,7 @@ function PageStyleCard({
                   variant="outlined"
                   sx={{
                     p: 1.25,
-                    borderRadius: 2,
+                    borderRadius: 1,
                     borderColor: "divider",
                     background:
                       preset.pageStyle.secondaryBackground || preset.pageStyle.backgroundColor,
@@ -1850,7 +1850,7 @@ function PageStyleCard({
           <Grid container spacing={1}>
             {BUTTON_STYLE_PRESET_LIBRARY.map((preset) => (
               <Grid item xs={12} sm={6} key={preset.key}>
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2, borderColor: "divider" }}>
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1, borderColor: "divider" }}>
                   <Stack spacing={1}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                       {preset.label}
@@ -4423,7 +4423,7 @@ const autoProvisionIfEmpty = useCallback(
             sx={{
               width: 104,
               height: 68,
-              borderRadius: 1.5,
+              borderRadius: 1,
               overflow: "hidden",
               border: "1px solid",
               borderColor: "divider",
@@ -6080,7 +6080,7 @@ const CanvasColumn = (
                         ref={fi.anchorRef(idx)}
                         sx={{
                           position: "relative",
-                          borderRadius: 2,
+                          borderRadius: 1,
                           border: "1px dashed",
                           borderColor: isSelected ? "primary.main" : "divider",
                           backgroundColor: "transparent",
@@ -7405,7 +7405,7 @@ function InspectorColumn() {
                             mt: 2,
                             p: 1,
                             height: 80,
-                            borderRadius: 1.5,
+                            borderRadius: 1,
                             background:
                               overlayGradientValue ||
                               "linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.6))",
@@ -7635,7 +7635,7 @@ if (authError) {
           <Paper
             elevation={8}
             sx={{
-              borderRadius: 999,
+              borderRadius: 1,
               px: 2,
               py: 1,
               display: "flex",
@@ -7683,7 +7683,7 @@ if (authError) {
           <Paper
             elevation={8}
             sx={{
-              borderRadius: 999,
+              borderRadius: 1,
               px: 2,
               py: 1,
               display: "flex",
@@ -7835,7 +7835,7 @@ if (authError) {
               sx={{
                 width: "100%",
                 height: "auto",
-                borderRadius: 2,
+                borderRadius: 1,
                 border: "1px solid",
                 borderColor: "divider",
               }}

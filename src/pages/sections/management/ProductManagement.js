@@ -889,7 +889,7 @@ const ProductManagement = ({ token }) => {
                       sx={{
                         position: "relative",
                         pb: "100%",
-                        borderRadius: 2,
+                        borderRadius: 1,
                         overflow: "hidden",
                         mb: 1,
                       }}

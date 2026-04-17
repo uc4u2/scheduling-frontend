@@ -36,6 +36,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import ThemedDateField from "../../components/ui/ThemedDateField";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { useTheme } from "@mui/material/styles";
 import { format } from "date-fns";
@@ -217,7 +218,7 @@ const DecisionMetric = ({ label, value, tone = "default" }) => {
   }[tone] || {};
 
   return (
-    <Box sx={{ p: 1.15, borderRadius: 2, border: "1px solid", borderColor: "divider", ...toneSx }}>
+    <Box sx={{ p: 1.15, borderRadius: 1, border: "1px solid", borderColor: "divider", ...toneSx }}>
       <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
         {label}
       </Typography>
@@ -246,7 +247,7 @@ const LeaveDecisionSummary = ({ leave, meta, balanceSummary, bookingConflict, av
       variant="outlined"
       sx={{
         p: 1.75,
-        borderRadius: 3,
+        borderRadius: 1,
         borderColor: bookingConflict ? "error.light" : "rgba(148, 163, 184, 0.45)",
         bgcolor: bookingConflict ? "rgba(220, 38, 38, 0.04)" : "rgba(248, 250, 252, 0.86)",
       }}
@@ -298,7 +299,7 @@ const BookingConflictAlert = ({ conflict }) => {
   if (!conflict) return null;
   const bookings = Array.isArray(conflict.bookings) ? conflict.bookings : [];
   return (
-    <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>
+    <Alert severity="error" variant="outlined" sx={{ borderRadius: 1 }}>
       <Stack spacing={1.2}>
         <Box>
           <Typography variant="subtitle2" fontWeight={900}>
@@ -317,7 +318,7 @@ const BookingConflictAlert = ({ conflict }) => {
           sx={{ alignSelf: "flex-start", fontWeight: 800 }}
         />
         {bookings.length > 0 && (
-          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+          <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -354,7 +355,7 @@ const ShiftRestorationPanel = ({ restoration }) => {
   if (!restoration?.linked_shift_id && !restoration?.has_linked_shift) return null;
   const shift = restoration.original_shift || {};
   return (
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
       <Stack spacing={1}>
         <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
           <Typography variant="subtitle2" fontWeight={900}>Original shift</Typography>
@@ -399,7 +400,7 @@ const AvailabilityWarningAlert = ({ warning }) => {
   if (!warning?.availability_warning) return null;
   const slots = Array.isArray(warning.availability_slots) ? warning.availability_slots : [];
   return (
-    <Alert severity="warning" variant="outlined" sx={{ borderRadius: 2 }}>
+    <Alert severity="warning" variant="outlined" sx={{ borderRadius: 1 }}>
       <Stack spacing={1}>
         <Box>
           <Typography variant="subtitle2" fontWeight={900}>
@@ -454,7 +455,7 @@ const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
         Payroll formulas are not changed here. Managers confirm leave records and HR balance ledger entries; payroll still uses the existing payroll workflow.
       </Alert>
 
-      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
         <Stack spacing={1}>
           <Typography variant="subtitle2" fontWeight={900}>1. Start with the request list</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -466,7 +467,7 @@ const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
         <Stack spacing={1}>
           <Typography variant="subtitle2" fontWeight={900}>2. Manager review</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -481,7 +482,7 @@ const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
         <Stack spacing={1}>
           <Typography variant="subtitle2" fontWeight={900}>3. Ready for payroll</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -493,7 +494,7 @@ const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
         <Stack spacing={1}>
           <Typography variant="subtitle2" fontWeight={900}>4. Adjust balance</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -511,7 +512,7 @@ const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
         <Stack spacing={1}>
           <Typography variant="subtitle2" fontWeight={900}>5. Ledger and audit</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -523,7 +524,7 @@ const LeaveWorkspaceHelpDrawer = ({ open, onClose }) => (
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+      <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
         <Stack spacing={1}>
           <Typography variant="subtitle2" fontWeight={900}>6. Cancel approved leave</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -948,7 +949,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
         )}
       </Stack>
 
-      <Paper variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: "hidden" }}>
+      <Paper variant="outlined" sx={{ mb: 2, borderRadius: 1, overflow: "hidden" }}>
         <Tabs
           value={leaveWorkspaceTab}
           onChange={(_, value) => setLeaveWorkspaceTab(value)}
@@ -966,7 +967,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
 
       {leaveWorkspaceTab === "requests" ? (
         <>
-          <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 1 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
           <TextField
             select
@@ -1048,22 +1049,18 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
           <>
             <Divider sx={{ my: 2 }} />
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }} flexWrap="wrap" useFlexGap>
-              <TextField
+              <ThemedDateField
                 size="small"
                 label="Start date"
-                type="date"
                 value={filters.start_date}
                 onChange={setFilterValue("start_date")}
-                InputLabelProps={{ shrink: true }}
                 sx={{ minWidth: 170 }}
               />
-              <TextField
+              <ThemedDateField
                 size="small"
                 label="End date"
-                type="date"
                 value={filters.end_date}
                 onChange={setFilterValue("end_date")}
-                InputLabelProps={{ shrink: true }}
                 sx={{ minWidth: 170 }}
               />
               <TextField
@@ -1148,7 +1145,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
         )}
       </Paper>
 
-      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
+      <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
         {loading ? (
           <Box py={6} display="flex" justifyContent="center">
             <CircularProgress />
@@ -1331,7 +1328,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
 
             <ShiftRestorationPanel restoration={drawerShiftRestoration} />
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={0.75}>
                 <Typography variant="body2"><strong>Type:</strong> {selectedLeave.leave_type || "Leave"}{selectedLeave.leave_subtype ? ` · ${selectedLeave.leave_subtype}` : ""}</Typography>
                 <Typography variant="body2"><strong>Dates:</strong> {fmtDateRange(selectedLeave)}</Typography>
@@ -1343,7 +1340,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
             </Paper>
 
             {selectedLeave.balance_impact && (
-              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
                     <Typography variant="subtitle2" fontWeight={800}>
@@ -1417,7 +1414,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
                   variant="outlined"
                   sx={{
                     p: 1.75,
-                    borderRadius: 3,
+                    borderRadius: 1,
                     borderColor: "rgba(148, 163, 184, 0.45)",
                     bgcolor: "rgba(248, 250, 252, 0.72)",
                   }}
@@ -1432,19 +1429,19 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
                       </Typography>
                     </Box>
                     <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 1 }}>
-                      <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                      <Box sx={{ p: 1.1, borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                         <Typography variant="caption" color="text.secondary">Usable now</Typography>
                         <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.usable_now_hours ?? selectedBalance?.balance_hours)}</Typography>
                       </Box>
-                      <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                      <Box sx={{ p: 1.1, borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                         <Typography variant="caption" color="text.secondary">Expected before leave</Typography>
                         <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.expected_before_leave_start_hours)}</Typography>
                       </Box>
-                      <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                      <Box sx={{ p: 1.1, borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                         <Typography variant="caption" color="text.secondary">Available on start</Typography>
                         <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.available_on_leave_start_hours ?? selectedBalance?.balance_hours)}</Typography>
                       </Box>
-                      <Box sx={{ p: 1.1, borderRadius: 2, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+                      <Box sx={{ p: 1.1, borderRadius: 1, border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
                         <Typography variant="caption" color="text.secondary">Projected remaining</Typography>
                         <Typography variant="body2" fontWeight={800}>{formatBalanceHours(future?.projected_remaining_hours)}</Typography>
                       </Box>
@@ -1467,7 +1464,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
               );
             })()}
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={1.25}>
                 <Box>
                   <Typography variant="subtitle2" fontWeight={800}>
@@ -1494,7 +1491,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
                         key={balance.leave_type}
                         sx={(theme) => ({
                           p: 1,
-                          borderRadius: 1.5,
+                          borderRadius: 1,
                           border: `1px solid ${theme.palette.divider}`,
                           bgcolor: theme.palette.background.default,
                         })}
@@ -1633,7 +1630,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
               </Stack>
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={1}>
                 <Box>
                   <Typography variant="subtitle2" fontWeight={800}>
@@ -1666,7 +1663,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
               </Stack>
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={0.75}>
                 <Typography variant="body2"><strong>Reviewed by:</strong> {selectedLeave.reviewer_name || "—"}</Typography>
                 <Typography variant="body2"><strong>Reviewed at:</strong> {fmtDateTime(selectedLeave.reviewed_at)}</Typography>
@@ -1843,7 +1840,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
               Use this drawer to view the selected employee&apos;s leave balances and recent ledger activity even when they do not have a visible request row in the current filter.
             </Alert>
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={0.75}>
                 <Typography variant="body2"><strong>Name:</strong> {employeeDisplayName(profileEmployee)}</Typography>
                 <Typography variant="body2"><strong>Email:</strong> {profileEmployee.email || "—"}</Typography>
@@ -1852,7 +1849,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
               </Stack>
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={1.25}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
                   <Box>
@@ -1896,7 +1893,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
                         key={balance.leave_type}
                         sx={(theme) => ({
                           p: 1.1,
-                          borderRadius: 1.5,
+                          borderRadius: 1,
                           border: `1px solid ${theme.palette.divider}`,
                           bgcolor: theme.palette.background.default,
                         })}
@@ -1919,7 +1916,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
               </Stack>
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
               <Stack spacing={1}>
                 <Stack direction="row" justifyContent="space-between" spacing={1} alignItems="center">
                   <Box>
@@ -2004,7 +2001,7 @@ const LeaveRequests = ({ currentUserInfo = null }) => {
             Cancelling approved leave may affect scheduling and payroll preview. If this leave was already used in finalized payroll, the backend will block cancellation.
           </Alert>
           {drawerShiftRestoration?.has_linked_shift && (
-            <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 2 }}>
+            <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 1 }}>
               <Stack spacing={1}>
                 <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
                   <Typography variant="subtitle2" fontWeight={900}>

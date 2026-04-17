@@ -768,7 +768,7 @@ export default function LayoutTuningLab() {
         sx={{
           p: { xs: 1.5, md: 3 },
           bgcolor: (t) => t.palette.mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
-          borderRadius: 2,
+          borderRadius: 1,
           border: (t) => `1px dashed ${t.palette.divider}`,
         }}
       >
@@ -776,7 +776,7 @@ export default function LayoutTuningLab() {
           <Box
             sx={{
               width: frameWidth, maxWidth: "100%", bgcolor: "background.paper",
-              borderRadius: 2, boxShadow: 3, overflow: "hidden",
+              borderRadius: 1, boxShadow: 3, overflow: "hidden",
               border: (t) => `1px solid ${t.palette.divider}`,
               transform: `scale(${zoom})`, transformOrigin: "top center",
             }}
@@ -858,7 +858,7 @@ export default function LayoutTuningLab() {
             <Box
               sx={{
                 width: deviceWidths[device] || 1200, maxWidth: "100%", bgcolor: "background.paper",
-                borderRadius: 2, boxShadow: 6, overflow: "hidden",
+                borderRadius: 1, boxShadow: 6, overflow: "hidden",
                 border: (t) => `1px solid ${t.palette.divider}`,
                 transform: `scale(${zoom})`, transformOrigin: "top center",
               }}

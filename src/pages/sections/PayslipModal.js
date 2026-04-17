@@ -126,7 +126,7 @@ export default function PayslipModal({ open, onClose, payroll = {}, month }) {
             sx={{
               mt: 1,
               p: 2,
-              borderRadius: 2,
+              borderRadius: 1,
               backgroundColor: "background.paper",
               border: (theme) => `1px solid ${theme.palette.divider}`,
             }}

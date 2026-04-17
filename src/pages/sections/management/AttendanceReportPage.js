@@ -47,7 +47,7 @@ export default function AttendanceReportPage() {
             <Paper
               key={row.id}
               variant="outlined"
-              sx={{ p: 3, borderRadius: 3 }}
+              sx={{ p: 3, borderRadius: 1 }}
             >
               <Typography variant="subtitle2" color="text.secondary">
                 {row.period_start} → {row.period_end}

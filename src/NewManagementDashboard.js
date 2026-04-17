@@ -1,5 +1,5 @@
 // src/pages/NewManagementDashboard.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AppBar,
@@ -103,6 +103,8 @@ import FraudAnomaliesPanel from "./pages/sections/FraudAnomaliesPanel";
 import PunchLocationsPanel from "./pages/sections/PunchLocationsPanel";
 import LeaveRequests from "./pages/sections/LeaveRequests";
 import Meetings from "./pages/sections/Meetings";
+import Training from "./pages/sections/Training";
+import Communications from "./pages/sections/Communications";
 import ROE from "./pages/sections/ROE";
 import T4 from "./pages/sections/T4";
 import W2 from "./pages/sections/W2";
@@ -175,6 +177,8 @@ const menuConfig = [
       { labelKey: "manager.menu.employeeProfiles", key: "employee-profiles", icon: <FolderShared /> },
       { labelKey: "manager.menu.addMember", key: "add-member", icon: <PersonAddAltIcon /> },
       { labelKey: "manager.menu.teamMeetings", key: "meetings", icon: <EventAvailable /> },
+      { labelKey: "manager.menu.training", key: "training", icon: <Assignment /> },
+      { label: "Communications", key: "communications", icon: <Article /> },
     ],
   },
 
@@ -753,7 +757,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
   const pillButtonSx = (active) => ({
     textTransform: "none",
     fontWeight: active ? 700 : 600,
-    borderRadius: 999,
+    borderRadius: "6px",
     px: 2,
     border: "1px solid",
     borderColor: active
@@ -1191,7 +1195,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
         <Paper
           sx={{
             p: 2,
-            borderRadius: 3,
+            borderRadius: 1,
             border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
           }}
@@ -1260,7 +1264,7 @@ const BookingCheckoutPanel = ({ token, currentUserInfo }) => {
           className="booking-checkout-calendar"
           sx={{
             p: 2,
-            borderRadius: 3,
+            borderRadius: 1,
             border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
             overflow: "hidden",
@@ -1710,13 +1714,18 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     keys.add("available-shifts-fullscreen");
     return Array.from(keys);
   }, [filteredMenuConfig, supportMode]);
+  const getInitialSelectedView = () => initialView || localStorage.getItem("manager_selected_view") || "__landing__";
+  const getParentGroupKeyForView = (viewKey) =>
+    menuItems.find((item) => Array.isArray(item.children) && item.children.some((child) => child.key === viewKey))?.key;
+
   // Sidebar state
-  const [selectedView, setSelectedView] = useState(() => {
-    return initialView || localStorage.getItem("manager_selected_view") || "__landing__";
-  });
+  const [selectedView, setSelectedView] = useState(getInitialSelectedView);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
   const [overviewOpen, setOverviewOpen] = useState(false); // legacy for overview; kept for compatibility
-  const [openGroups, setOpenGroups] = useState({});
+  const [openGroups, setOpenGroups] = useState(() => {
+    const parentKey = getParentGroupKeyForView(getInitialSelectedView());
+    return parentKey ? { [parentKey]: true } : {};
+  });
   const [swapRequests, setSwapRequests] = useState([]);
   const [swapError, setSwapError] = useState("");
   const [currentTimezone, setCurrentTimezone] = useState(getUserTimezone());
@@ -1795,6 +1804,17 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialView]);
+
+  useLayoutEffect(() => {
+    const parentGroup = menuItems.find((item) =>
+      Array.isArray(item.children) && item.children.some((child) => child.key === selectedView)
+    );
+    if (parentGroup) {
+      setOpenGroups((prev) => (prev[parentGroup.key] && Object.keys(prev).length === 1 ? prev : { [parentGroup.key]: true }));
+    } else if (!Array.isArray(menuItems.find((item) => item.key === selectedView)?.children)) {
+      setOpenGroups((prev) => (Object.keys(prev).length ? {} : prev));
+    }
+  }, [menuItems, selectedView]);
 
   useEffect(() => {
     if (supportMode) return;
@@ -2165,12 +2185,22 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     if (viewKey === "billing") {
       navigate("/manager/settings?tab=billing");
       setSelectedView("settings");
+      setOpenGroups({});
       if (isMobileViewport) {
         setMobileDrawerOpen(false);
       }
       return;
     }
     setSelectedView(viewKey);
+    const parentGroup = menuItems.find((item) =>
+      Array.isArray(item.children) && item.children.some((child) => child.key === viewKey)
+    );
+    setOpenGroups((prev) => {
+      if (parentGroup) {
+        return prev[parentGroup.key] && Object.keys(prev).length === 1 ? prev : { [parentGroup.key]: true };
+      }
+      return Object.keys(prev).length ? {} : prev;
+    });
     navigate(viewToPath(viewKey));
     if (isMobileViewport) {
       setMobileDrawerOpen(false);
@@ -2358,7 +2388,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                 sx={{
                   p: 2,
                   mb: 2,
-                  borderRadius: 2,
+                  borderRadius: 1,
                   border: (theme) => `1px dashed ${theme.palette.divider}`,
                   backgroundColor: (theme) => theme.palette.background.default,
                 }}
@@ -2552,7 +2582,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                         <Accordion
                           elevation={1}
                           sx={{
-                            borderRadius: 2,
+                            borderRadius: 1,
                             "&:before": { display: "none" },
                           }}
                         >
@@ -2831,7 +2861,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                 sx={{
                   p: 2,
                   mb: 2.5,
-                  borderRadius: 2,
+                  borderRadius: 1,
                   border: (t) => `1px solid ${t.palette.divider}`,
                   backgroundColor: (t) => t.palette.background.paper,
                 }}
@@ -3148,7 +3178,7 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
             <Paper
               sx={{
                 p: 4,
-                borderRadius: 3,
+                borderRadius: 1,
                 border: "1px dashed",
                 borderColor: "divider",
                 bgcolor: "action.hover",
@@ -3279,6 +3309,12 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
       case "meetings":
         return <Meetings token={token} />;
 
+      case "training":
+        return <Training token={token} />;
+
+      case "communications":
+        return <Communications token={token} />;
+
       case "leaves":
         return <LeaveRequests token={token} currentUserInfo={currentUserInfo} />;
 
@@ -3353,6 +3389,66 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
     }
   };
 
+  const navItemSx = (active = false, depth = 0) => ({
+    position: "relative",
+    justifyContent: drawerExpanded ? "flex-start" : "center",
+    mx: 1,
+    my: 0.35,
+    px: drawerExpanded ? 1.5 : 1,
+    pl: drawerExpanded ? 1.5 + depth * 1.5 : 1,
+    minHeight: 42,
+    borderRadius: "6px",
+    color: active ? "primary.main" : "text.primary",
+    border: "1px solid",
+    borderColor: active ? alpha(theme.palette.primary.main, 0.24) : "transparent",
+    backgroundColor: active
+      ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.09)
+      : "transparent",
+    boxShadow: active ? `0 10px 26px ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.1)}` : "none",
+    transition: "background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease",
+    "&:before": {
+      content: active ? '""' : "none",
+      position: "absolute",
+      left: 0,
+      top: 9,
+      bottom: 9,
+      width: 3,
+      borderRadius: "0 8px 8px 0",
+      backgroundColor: "primary.main",
+    },
+    "&:hover": {
+      backgroundColor: active
+        ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.22 : 0.12)
+        : alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.12 : 0.055),
+      borderColor: active ? alpha(theme.palette.primary.main, 0.3) : alpha(theme.palette.primary.main, 0.12),
+    },
+    "&.Mui-selected": {
+      backgroundColor: active
+        ? alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.09)
+        : undefined,
+      "&:hover": {
+        backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.22 : 0.12),
+      },
+    },
+  });
+
+  const navIconSx = (active = false) => ({
+    minWidth: 36,
+    mr: drawerExpanded ? 1.5 : 0,
+    justifyContent: "center",
+    color: active ? "primary.main" : "text.secondary",
+    "& .MuiSvgIcon-root": { fontSize: 20 },
+  });
+
+  const drawerPaperSx = {
+    boxSizing: "border-box",
+    top: headerOffset,
+    height: `calc(100vh - ${headerOffset}px)`,
+    borderRight: "1px solid",
+    borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.2 : 0.1),
+    background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.12 : 0.045)} 0%, ${theme.palette.background.paper} 24%, ${theme.palette.background.paper} 100%)`,
+  };
+
   const drawerContent = (
     <>
       <Toolbar
@@ -3371,11 +3467,12 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
           </IconButton>
         )}
       </Toolbar>
-      <Divider />
+      <Divider sx={{ borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.1) }} />
       <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", pt: 0.75 }}>
         <List>
           {menuItems.map((item) => {
             const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+            const itemActive = selectedView === item.key;
             if (!hasChildren) {
               return (
                 <Tooltip
@@ -3385,23 +3482,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                   arrow
                 >
                   <ListItemButton
-                    selected={selectedView === item.key}
+                    selected={itemActive}
                     onClick={() => handleNavSelect(item.key)}
-                    sx={{
-                      justifyContent: drawerExpanded ? "flex-start" : "center",
-                      px: 2,
-                      "&:hover": { backgroundColor: (t) => t.palette.action.hover },
-                    }}
+                    sx={navItemSx(itemActive)}
                   >
-                    <ListItemIcon
-                      sx={{
-                        minWidth: 36,
-                        mr: drawerExpanded ? 2 : 0,
-                        justifyContent: "center",
-                        color: "text.secondary",
-                        "& .MuiSvgIcon-root": { fontSize: 20 },
-                      }}
-                    >
+                    <ListItemIcon sx={navIconSx(itemActive)}>
                       {item.icon}
                     </ListItemIcon>
                     {drawerExpanded && (
@@ -3417,11 +3502,12 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
             }
 
             const isOpen = Boolean(openGroups[item.key]);
+            const groupActive = selectedView === item.key || isOpen || item.children.some((child) => child.key === selectedView);
             return (
               <Box key={item.key}>
                 <Tooltip title={item.tooltip || item.label} placement="right" arrow>
                   <ListItemButton
-                    selected={selectedView === item.key || isOpen}
+                    selected={groupActive}
                     onClick={() => {
                       let defaultView = selectedView;
                       if (item.key === "employee-group") defaultView = "employee-management";
@@ -3429,23 +3515,11 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                       else if (item.key === "shifts-group") defaultView = "available-slots";
                       else if (item.key === "overview") defaultView = "overview";
                       setSelectedView(defaultView);
-                      setOpenGroups((prev) => ({ ...prev, [item.key]: !isOpen }));
+                      setOpenGroups({ [item.key]: !isOpen });
                     }}
-                    sx={{
-                      justifyContent: "flex-start",
-                      px: 2,
-                      "&:hover": { backgroundColor: (t) => t.palette.action.hover },
-                    }}
+                    sx={navItemSx(groupActive)}
                   >
-                    <ListItemIcon
-                      sx={{
-                        minWidth: 36,
-                        mr: drawerExpanded ? 2 : 0,
-                        justifyContent: "center",
-                        color: "text.secondary",
-                        "& .MuiSvgIcon-root": { fontSize: 20 },
-                      }}
-                    >
+                    <ListItemIcon sx={navIconSx(groupActive)}>
                       {item.icon}
                     </ListItemIcon>
                     {drawerExpanded && (
@@ -3469,25 +3543,16 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
                         key={child.key}
                         selected={selectedView === child.key}
                         disabled={child.key === "shift-monitoring"}
-                        onClick={() => {
+                        onClick={(event) => {
+                          event.stopPropagation();
                           if (child.key === "shift-monitoring") return;
                           const empKeys = ["emp-active", "emp-add", "emp-compare"];
                           const next = empKeys.includes(child.key) ? "employee-management" : child.key;
                           handleNavSelect(next);
                         }}
-                        sx={{
-                          pl: drawerExpanded ? 4 : 2,
-                          "&:hover": { backgroundColor: (t) => t.palette.action.hover },
-                        }}
+                        sx={navItemSx(selectedView === child.key, 1)}
                       >
-                        <ListItemIcon
-                          sx={{
-                            minWidth: 36,
-                            mr: drawerExpanded ? 2 : 0,
-                            color: "text.secondary",
-                            "& .MuiSvgIcon-root": { fontSize: 20 },
-                          }}
-                        >
+                        <ListItemIcon sx={navIconSx(selectedView === child.key)}>
                           {child.icon}
                         </ListItemIcon>
                         {drawerExpanded && (
@@ -3550,10 +3615,8 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
             sx={{
               display: { xs: "block", lg: "none" },
               "& .MuiDrawer-paper": {
+                ...drawerPaperSx,
                 width: drawerWidth,
-                boxSizing: "border-box",
-                top: headerOffset,
-                height: `calc(100vh - ${headerOffset}px)`,
               },
             }}
           >
@@ -3568,12 +3631,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
               flexShrink: 0,
               whiteSpace: "nowrap",
               [`& .MuiDrawer-paper`]: {
+                ...drawerPaperSx,
                 width: drawerWidthCurrent,
                 overflowX: "hidden",
                 transition: "width 0.3s",
-                boxSizing: "border-box",
-                top: headerOffset,
-                height: `calc(100vh - ${headerOffset}px)`,
               },
             }}
           >
@@ -3587,6 +3648,10 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
           flexGrow: 1,
           p: { xs: 2, md: 3 },
           backgroundColor: (theme) => theme.palette.background.default,
+          backgroundImage: (theme) =>
+            theme.palette.mode === "dark"
+              ? `radial-gradient(circle at top left, ${alpha(theme.palette.primary.main, 0.12)}, transparent 34%)`
+              : `radial-gradient(circle at top left, ${alpha(theme.palette.primary.main, 0.08)}, transparent 34%), linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.025)}, transparent 260px)`,
           minWidth: 0,
           width: "100%",
           maxWidth: "none",

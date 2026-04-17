@@ -1411,7 +1411,7 @@ export default function ManagerPaymentsView({ connect }) {
           variant="outlined"
           sx={{
             p: 1.5,
-            borderRadius: 3,
+            borderRadius: 1,
             mb: 2,
             backgroundColor: (t) => t.palette.background.paper,
           }}
@@ -1431,7 +1431,7 @@ export default function ManagerPaymentsView({ connect }) {
                     setPage(0);
                   }}
                   sx={(t) => ({
-                    borderRadius: 999,
+                    borderRadius: 1,
                     fontWeight: 600,
                     borderColor: active
                       ? alpha(
@@ -1468,7 +1468,7 @@ export default function ManagerPaymentsView({ connect }) {
               <Paper
                 key={`skeleton-${idx}`}
                 variant="outlined"
-                sx={{ p: 2, borderRadius: 3 }}
+                sx={{ p: 2, borderRadius: 1 }}
               >
                 <Stack spacing={1}>
                   <Skeleton variant="text" width="40%" />
@@ -1484,7 +1484,7 @@ export default function ManagerPaymentsView({ connect }) {
             variant="outlined"
             sx={{
               p: 3,
-              borderRadius: 3,
+              borderRadius: 1,
               textAlign: "center",
               color: "text.secondary",
             }}
@@ -1552,7 +1552,7 @@ export default function ManagerPaymentsView({ connect }) {
                   variant="outlined"
                   sx={(t) => ({
                     p: 2,
-                    borderRadius: 3,
+                    borderRadius: 1,
                     transition: "transform 120ms ease, box-shadow 120ms ease",
                     "&:hover": {
                       transform: "translateY(-1px)",
@@ -1664,7 +1664,7 @@ export default function ManagerPaymentsView({ connect }) {
           variant="outlined"
           sx={{
             mt: 2,
-            borderRadius: 3,
+            borderRadius: 1,
             position: "sticky",
             bottom: 16,
             zIndex: 1,
@@ -1733,7 +1733,7 @@ export default function ManagerPaymentsView({ connect }) {
                   <Paper
                     key={p.id || `${p.type}-${p.provider_ref || p.timestamp}`}
                     variant="outlined"
-                    sx={{ p: 1.5, borderRadius: 2 }}
+                    sx={{ p: 1.5, borderRadius: 1 }}
                   >
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Typography fontWeight={600}>

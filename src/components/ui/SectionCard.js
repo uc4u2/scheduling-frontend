@@ -20,7 +20,7 @@ export default function SectionCard({
     <Card
       elevation={0}
       sx={{
-        borderRadius: 3,
+        borderRadius: 1,
         border: (theme) => `1px solid ${theme.palette.divider}`,
         overflow: "hidden",
         ...sx,

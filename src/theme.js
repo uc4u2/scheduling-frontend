@@ -1,9 +1,5 @@
 // src/theme.js
-import { createTheme } from "@mui/material/styles";
-
-const PRIMARY_COLOR = "#4f7dff";
-const PRIMARY_TEXT_DARK = "#2a3c68";
-
+import { createTheme, alpha } from "@mui/material/styles";
 
 const marketingTokens = {
   radius: {
@@ -104,46 +100,112 @@ const commonSettings = {
     },
   },
   shape: {
-    borderRadius: 16,
+    borderRadius: 6,
   },
   marketing: marketingTokens,
   customShadows: marketingTokens.shadows,
   components: {
+    MuiCssBaseline: {
+      styleOverrides: (theme) => ({
+        'input[type="date"], input[type="time"], input[type="datetime-local"]': {
+          colorScheme: theme.palette.mode,
+          accentColor: theme.palette.primary.main,
+        },
+        'input[type="date"]::-webkit-calendar-picker-indicator, input[type="time"]::-webkit-calendar-picker-indicator, input[type="datetime-local"]::-webkit-calendar-picker-indicator': {
+          borderRadius: 6,
+          cursor: "pointer",
+          opacity: 0.8,
+          padding: 4,
+          filter: theme.palette.mode === "dark" ? "invert(1)" : "none",
+        },
+        'input[type="date"]::-webkit-calendar-picker-indicator:hover, input[type="time"]::-webkit-calendar-picker-indicator:hover, input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover': {
+          backgroundColor: alpha(theme.palette.primary.main, 0.12),
+          opacity: 1,
+        },
+      }),
+    },
     MuiButton: {
       styleOverrides: {
-        root: {
-          borderRadius: 10,
+        root: ({ theme }) => ({
+          borderRadius: 6,
           paddingLeft: 18,
           paddingRight: 18,
           minHeight: 40,
           transition: 'transform 0.1s ease, box-shadow 0.2s ease, background-color 0.2s',
           '&:hover': {
             transform: 'translateY(-1px)',
-            boxShadow: '0 10px 24px rgba(79,125,255,0.14)',
+            boxShadow: `0 10px 24px ${alpha(theme.palette.primary.main, 0.16)}`,
           },
           '&:focus-visible': {
-            boxShadow: '0 0 0 3px rgba(79,125,255,0.25)',
+            boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.24)}`,
             outline: 'none',
           },
-        },
+        }),
       },
     },
     MuiPaper: {
       styleOverrides: {
-        root: {
-          borderRadius: 16,
-          boxShadow: '0 4px 20px rgba(15,23,42,0.04)',
-        },
+        root: ({ theme }) => ({
+          borderRadius: 6,
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.14 : 0.07)}`,
+          backgroundColor:
+            theme.palette.mode === "dark"
+              ? alpha(theme.palette.primary.main, 0.08)
+              : alpha(theme.palette.primary.main, 0.018),
+          backgroundImage:
+            theme.palette.mode === "dark"
+              ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.12)}, ${alpha(theme.palette.background.paper, 0.86)} 190px)`
+              : `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.07)}, ${alpha(theme.palette.background.paper, 0.93)} 190px)`,
+          boxShadow: `0 10px 30px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.26 : 0.055)}`,
+        }),
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          borderRadius: 6,
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.14 : 0.08)}`,
+          backgroundColor:
+            theme.palette.mode === "dark"
+              ? alpha(theme.palette.primary.main, 0.08)
+              : alpha(theme.palette.primary.main, 0.018),
+          backgroundImage:
+            theme.palette.mode === "dark"
+              ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.12)}, ${alpha(theme.palette.background.paper, 0.86)} 180px)`
+              : `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.065)}, ${alpha(theme.palette.background.paper, 0.93)} 180px)`,
+          boxShadow: `0 10px 30px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.24 : 0.05)}`,
+        }),
+      },
+    },
+    MuiAccordion: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          borderRadius: 6,
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.14 : 0.07)}`,
+          backgroundColor:
+            theme.palette.mode === "dark"
+              ? alpha(theme.palette.primary.main, 0.08)
+              : alpha(theme.palette.primary.main, 0.018),
+          backgroundImage:
+            theme.palette.mode === "dark"
+              ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.background.paper, 0.88)} 150px)`
+              : `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.055)}, ${alpha(theme.palette.background.paper, 0.94)} 150px)`,
+          boxShadow: `0 8px 24px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.22 : 0.045)}`,
+          "&:before": { display: "none" },
+        }),
       },
     },
     MuiChip: {
       styleOverrides: {
-        root: {
-          borderRadius: 999,
+        root: ({ theme }) => ({
+          borderRadius: 6,
           fontWeight: 600,
-          border: '1px solid rgba(15, 23, 42, 0.06)',
-          backgroundColor: '#f8fafc',
-        },
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.2 : 0.11)}`,
+          backgroundColor:
+            theme.palette.mode === "dark"
+              ? alpha(theme.palette.primary.main, 0.14)
+              : alpha(theme.palette.primary.main, 0.07),
+        }),
         label: {
           paddingLeft: 10,
           paddingRight: 10,
@@ -153,7 +215,7 @@ const commonSettings = {
     MuiAlert: {
       styleOverrides: {
         root: {
-          borderRadius: 14,
+          borderRadius: 6,
         },
         standardInfo: {
           backgroundColor: 'rgba(59, 130, 246, 0.08)',
@@ -171,60 +233,149 @@ const commonSettings = {
     },
     MuiTab: {
       styleOverrides: {
-        root: {
-          borderRadius: 10,
+        root: ({ theme }) => ({
+          borderRadius: 6,
           textTransform: 'none',
           fontWeight: 600,
           '&.Mui-selected': {
-            backgroundColor: 'rgba(79,125,255,0.08)',
-            color: PRIMARY_COLOR,
+            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            color: theme.palette.primary.main,
           },
           '&:hover': {
-            backgroundColor: 'rgba(79,125,255,0.05)',
+            backgroundColor: alpha(theme.palette.primary.main, 0.07),
           },
-        },
+        }),
       },
     },
     MuiOutlinedInput: {
       styleOverrides: {
-        root: {
-          borderRadius: 12,
-          backgroundColor: 'white',
-          boxShadow: '0 1px 2px rgba(15,23,42,0.02)',
+        root: ({ theme }) => ({
+          borderRadius: 6,
+          backgroundColor:
+            theme.palette.mode === "dark"
+              ? alpha(theme.palette.primary.main, 0.12)
+              : alpha(theme.palette.primary.main, 0.055),
+          backgroundImage: `linear-gradient(180deg, ${alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.08 : 0.72)}, ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.08 : 0.035)})`,
+          boxShadow: `inset 0 1px 0 ${alpha(theme.palette.common.white, theme.palette.mode === "dark" ? 0.04 : 0.7)}, 0 1px 2px ${alpha(theme.palette.common.black, 0.025)}`,
           transition: 'box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease',
+          '& .MuiInputBase-input, & .MuiSelect-select': {
+            backgroundColor: 'transparent !important',
+          },
           '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: PRIMARY_COLOR,
+            borderColor: theme.palette.primary.main,
             boxShadow: 'none',
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: PRIMARY_COLOR,
+            borderColor: theme.palette.primary.main,
             borderWidth: 1,
           },
-        },
-        notchedOutline: {
-          borderColor: '#e5e7eb',
+        }),
+        notchedOutline: ({ theme }) => ({
+          borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.13),
           borderWidth: 1,
-        },
+        }),
       },
     },
     MuiInputLabel: {
       styleOverrides: {
-        root: {
+        root: ({ theme }) => ({
           fontWeight: 600,
-          color: PRIMARY_TEXT_DARK,
+          color: theme.palette.text.primary,
           '&.Mui-focused': {
-            color: PRIMARY_COLOR,
+            color: theme.palette.primary.main,
           },
-        },
+        }),
       },
     },
     MuiSelect: {
       styleOverrides: {
-        outlined: {
-          borderRadius: 12,
-          backgroundColor: 'white',
+        outlined: ({ theme }) => ({
+          borderRadius: 6,
+          backgroundColor: 'transparent',
           boxShadow: '0 1px 2px rgba(15,23,42,0.02)',
-        },
+        }),
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          backgroundImage:
+            theme.palette.mode === "dark"
+              ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.16)}, ${theme.palette.background.paper} 220px)`
+              : `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.08)}, ${theme.palette.background.paper} 220px)`,
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.2 : 0.12)}`,
+          boxShadow: `0 28px 72px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.55 : 0.24)}`,
+        }),
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          backgroundImage:
+            theme.palette.mode === "dark"
+              ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.12)}, ${theme.palette.background.paper} 260px)`
+              : `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.065)}, ${theme.palette.background.paper} 260px)`,
+          borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.2 : 0.12),
+        }),
+      },
+    },
+    MuiMenu: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          backgroundImage: "none",
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.12)}`,
+          boxShadow: `0 18px 44px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.36 : 0.14)}`,
+        }),
+        list: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+        }),
+      },
+    },
+    MuiPopover: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          backgroundImage: "none",
+        }),
+      },
+    },
+    MuiPickersPopper: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          backgroundColor: theme.palette.background.paper,
+          backgroundImage:
+            theme.palette.mode === "dark"
+              ? `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.16)}, ${theme.palette.background.paper} 190px)`
+              : `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.08)}, ${theme.palette.background.paper} 190px)`,
+          border: `1px solid ${alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.22 : 0.14)}`,
+          boxShadow: `0 22px 56px ${alpha(theme.palette.common.black, theme.palette.mode === "dark" ? 0.48 : 0.2)}`,
+        }),
+      },
+    },
+    MuiCalendarPicker: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          backgroundColor: "transparent",
+          color: theme.palette.text.primary,
+        }),
+      },
+    },
+    MuiPickersDay: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          borderRadius: 6,
+          fontWeight: 600,
+          "&.Mui-selected": {
+            backgroundColor: theme.palette.primary.main,
+            color: theme.palette.primary.contrastText,
+          },
+          "&.MuiPickersDay-today": {
+            borderColor: alpha(theme.palette.primary.main, 0.5),
+          },
+        }),
       },
     },
   },
@@ -236,10 +387,16 @@ export const coolTheme = createTheme({
   ...commonSettings,
   palette: {
     mode: "light",
-    primary: { main: PRIMARY_COLOR },
-    secondary: { main: "#34d0b5" },
-    background: { default: "#f5f7ff", paper: "#ffffff" },
-    text: { primary: "#1f2d47", secondary: "#4f5d77" },
+    primary: { main: "#3F6FF3", dark: "#274EA8", light: "#7EA2FF", contrastText: "#FFFFFF" },
+    secondary: { main: "#22B8A7", dark: "#0F766E", light: "#8CE6DB", contrastText: "#062A2A" },
+    divider: "rgba(63, 111, 243, 0.14)",
+    background: { default: "#EAF2FF", paper: "#F1F6FF" },
+    text: { primary: "#12213F", secondary: "#40516F" },
+    action: {
+      hover: "rgba(63, 111, 243, 0.07)",
+      selected: "rgba(63, 111, 243, 0.12)",
+      focus: "rgba(63, 111, 243, 0.16)",
+    },
   },
 });
 
@@ -369,10 +526,16 @@ export const sunsetTheme = createTheme({
   ...commonSettings,
   palette: {
     mode: "light",
-    primary: { main: "#ff7043" },
-    secondary: { main: "#ffccbc" },
-    background: { default: "#fff3e0", paper: "#ffffff" },
-    text: { primary: "#4e342e", secondary: "#6d4c41" },
+    primary: { main: "#E85D35", dark: "#A5371E", light: "#FF9A73", contrastText: "#FFFFFF" },
+    secondary: { main: "#F4A261", dark: "#B85F14", light: "#FFD0A3", contrastText: "#3A1D0C" },
+    divider: "rgba(232, 93, 53, 0.15)",
+    background: { default: "#FFF0E6", paper: "#FFF2EA" },
+    text: { primary: "#3F241C", secondary: "#76503F" },
+    action: {
+      hover: "rgba(232, 93, 53, 0.07)",
+      selected: "rgba(232, 93, 53, 0.12)",
+      focus: "rgba(232, 93, 53, 0.16)",
+    },
   },
 });
 
@@ -982,10 +1145,3 @@ export const plumMistTheme = createTheme({
     },
   },
 });
-
-
-
-
-
-
-

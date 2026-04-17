@@ -32,6 +32,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { DateTime } from "luxon";
 import { api, smartShifts } from "../../../utils/api";
 import { isoFromParts } from "../../../utils/datetime";
+import ThemedDateField, { ThemedTimeField } from "../../../components/ui/ThemedDateField";
 
 const ALL_EMPLOYEES_VALUE = "__ALL_EMPLOYEES__";
 const DEFAULT_VISIBLE_SUGGESTIONS = 50;
@@ -1224,12 +1225,12 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
 
   const shellCardSx = {
     p: { xs: 2, md: 3 },
-    borderRadius: 4,
+    borderRadius: 1,
   };
 
   const subCardSx = {
     p: 2,
-    borderRadius: 3,
+    borderRadius: 1,
     border: "1px solid",
     borderColor: "divider",
     boxShadow: "0 4px 18px rgba(15,23,42,0.04)",
@@ -1335,20 +1336,16 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               useFlexGap
               sx={{ alignContent: "flex-start" }}
             >
-              <TextField
+              <ThemedDateField
                 fullWidth
                 label="Start date"
-                type="date"
-                InputLabelProps={{ shrink: true }}
                 value={range.start_date}
                 onChange={(e) => setRange((p) => ({ ...p, start_date: e.target.value }))}
                 sx={{ width: { xs: "100%", md: "auto" } }}
               />
-              <TextField
+              <ThemedDateField
                 fullWidth
                 label="End date"
-                type="date"
-                InputLabelProps={{ shrink: true }}
                 value={range.end_date}
                 onChange={(e) => setRange((p) => ({ ...p, end_date: e.target.value }))}
                 sx={{ width: { xs: "100%", md: "auto" } }}
@@ -1560,7 +1557,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
             </Stack>
 
             <Collapse in={showUnscheduled}>
-              <Paper sx={{ p: 1.25, mt: 1.1, borderRadius: 1.5 }} variant="outlined">
+              <Paper sx={{ p: 1.25, mt: 1.1, borderRadius: 1 }} variant="outlined">
                 {availabilityLoading ? (
                   <Typography variant="body2" color="text.secondary">Loading availability status...</Typography>
                 ) : unscheduledRecruiters.length === 0 ? (
@@ -1629,7 +1626,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
               key={`cov-${idx}`}
               sx={{
                 p: 1.35,
-                borderRadius: 2.5,
+                borderRadius: 1.25,
                 border: "1px solid",
                 borderColor: "divider",
                 backgroundColor: "background.paper",
@@ -1763,21 +1760,17 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                     flexWrap="wrap"
                     useFlexGap
                   >
-                    <TextField
+                    <ThemedTimeField
                       size="small"
                       label="Start"
-                      type="time"
-                      InputLabelProps={{ shrink: true }}
                       value={c.start_time}
                       onChange={(e) =>
                         setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, start_time: e.target.value } : it)))
                       }
                     />
-                    <TextField
+                    <ThemedTimeField
                       size="small"
                       label="End"
-                      type="time"
-                      InputLabelProps={{ shrink: true }}
                       value={c.end_time}
                       onChange={(e) =>
                         setCoverage((prev) => prev.map((it, i) => (i === idx ? { ...it, end_time: e.target.value } : it)))
@@ -1912,7 +1905,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         </Stack>
       </Paper>
 
-      <Paper sx={{ p: 2, borderRadius: 2 }} variant="outlined">
+      <Paper sx={{ p: 2, borderRadius: 1 }} variant="outlined">
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Suggestions</Typography>
         {unscheduledCount > 0 ? (
           <Alert severity="warning" sx={{ mb: 1 }}>
@@ -1996,7 +1989,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                 expanded={Boolean(expandedGroups[group.key])}
                 onChange={(_, expanded) => setExpandedGroups((prev) => ({ ...prev, [group.key]: expanded }))}
                 disableGutters
-                sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1.5, overflow: "hidden" }}
+                sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, overflow: "hidden" }}
               >
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
@@ -2018,7 +2011,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                           spacing={1.25}
                           justifyContent="space-between"
                           alignItems={{ xs: "flex-start", md: "center" }}
-                          sx={{ p: 1.25, border: "1px solid", borderColor: warnings ? "warning.main" : "divider", borderRadius: 1.5 }}
+                          sx={{ p: 1.25, border: "1px solid", borderColor: warnings ? "warning.main" : "divider", borderRadius: 1 }}
                         >
                           <Stack direction={{ xs: "column", md: "row" }} spacing={1.25} alignItems={{ md: "center" }}>
                             <Checkbox
@@ -2081,7 +2074,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
         disableGutters
         expanded={runsExpanded}
         onChange={(_, expanded) => setRunsExpanded(expanded)}
-        sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, overflow: "hidden" }}
+        sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, overflow: "hidden" }}
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Stack
@@ -2172,7 +2165,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
                   direction={{ xs: "column", md: "row" }}
                   justifyContent="space-between"
                   alignItems={{ xs: "flex-start", md: "center" }}
-                  sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}
+                  sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1 }}
                 >
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
                     <Checkbox
@@ -2214,7 +2207,7 @@ const SmartShiftPlannerPanel = ({ recruiters = [], departments = [], shifts = []
           ) : null}
 
           {runDetail?.run ? (
-            <Box sx={{ mt: 1.5, p: 1.25, border: "1px dashed", borderColor: "divider", borderRadius: 1.5 }}>
+            <Box sx={{ mt: 1.5, p: 1.25, border: "1px dashed", borderColor: "divider", borderRadius: 1 }}>
               <Typography variant="body2" fontWeight={700}>Active run: {runDetail.run.run_id}</Typography>
               <Typography variant="caption" color="text.secondary">
                 suggested {runDetail.run.suggested_count} • applied {runDetail.run.applied_count} • failed {runDetail.run.failed_count}

@@ -9,6 +9,7 @@ import {
 import { Delete, Edit, Assignment } from "@mui/icons-material";
 import api from "../../../utils/api";
 import AssignTemplateDialog from "./AssignTemplateDialog";
+import { ThemedTimeField } from "../../../components/ui/ThemedDateField";
 
 export default function ShiftTemplateManager({ token }) {
   const [rows, setRows] = useState([]);
@@ -147,12 +148,12 @@ function TemplateForm({ token, initial, onClose, onSave }) {
         <TextField label="Name" fullWidth sx={{ mt:1 }}
                    value={form.name} onChange={handle("name")} />
         <Box sx={{ display:"flex", gap:2, mt:2 }}>
-          <TextField label="Start" type="time" sx={{ flex:1 }}
+          <ThemedTimeField label="Start" sx={{ flex:1 }}
                      value={form.start_time} onChange={handle("start_time")}
-                     InputLabelProps={{ shrink:true }} />
-          <TextField label="End" type="time" sx={{ flex:1 }}
+                     />
+          <ThemedTimeField label="End" sx={{ flex:1 }}
                      value={form.end_time} onChange={handle("end_time")}
-                     InputLabelProps={{ shrink:true }} />
+                     />
         </Box>
         <Box sx={{ mt:2 }}>
           {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((lbl,i)=>(
