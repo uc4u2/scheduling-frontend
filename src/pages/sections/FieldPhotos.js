@@ -37,6 +37,7 @@ import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import RestoreIcon from "@mui/icons-material/Restore";
 import { useLocation, useNavigate } from "react-router-dom";
+import FieldPhotosBillingModal from "../../components/billing/FieldPhotosBillingModal";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import api from "../../utils/api";
 
@@ -121,6 +122,48 @@ const storagePercent = (summary) => {
 
 const statusLabel = (row) => row?.security_status_label || (row?.is_download_ready ? "Ready" : fileIsWaitingForScan(row) ? "Security check in progress" : "Blocked");
 
+const sessionKeyForPhoto = (row) => {
+  const shift = row?.shift || {};
+  const shiftKey = row?.related_shift_log_id
+    ? `log-${row.related_shift_log_id}`
+    : row?.related_shift_id
+    ? `appointment-${row.related_shift_id}`
+    : shift?.id
+    ? `${shift.type || "shift"}-${shift.id}`
+    : `date-${shift.date || "unknown"}-${shift.start_time || ""}-${shift.end_time || ""}`;
+  return `${row?.uploaded_by_employee_id || row?.uploaded_by || "employee"}::${shiftKey}`;
+};
+
+const buildPhotoGroups = (items = []) => {
+  const map = new Map();
+  items.forEach((row) => {
+    const key = sessionKeyForPhoto(row);
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        primary: row,
+        photos: [],
+        totalSize: 0,
+        readyCount: 0,
+        waitingCount: 0,
+        blockedCount: 0,
+        latestAt: row.created_at,
+      });
+    }
+    const group = map.get(key);
+    group.photos.push(row);
+    group.totalSize += Number(row.file_size || 0);
+    if (row.is_download_ready) group.readyCount += 1;
+    if (fileIsWaitingForScan(row)) group.waitingCount += 1;
+    if (String(row.scan_status || "").toLowerCase() === "blocked") group.blockedCount += 1;
+    if (new Date(row.created_at || 0).getTime() > new Date(group.latestAt || 0).getTime()) {
+      group.latestAt = row.created_at;
+      group.primary = row;
+    }
+  });
+  return Array.from(map.values());
+};
+
 const shiftLabel = (row) => {
   const shift = row?.shift || {};
   if (!shift.date) return "Shift";
@@ -154,9 +197,14 @@ const PaginationBar = ({ pagination, onChange }) => {
   );
 };
 
-const FieldPhotoCard = ({ row, previewUrl, onOpen, onArchive, onDelete, onDownload }) => {
+const FieldPhotoCard = ({ group, previewUrl, onOpen, onArchive, onDelete, onDownload }) => {
   const theme = useTheme();
+  const row = group?.primary || group;
+  const photos = group?.photos || [row];
+  const photoCount = photos.length;
   const waiting = fileIsWaitingForScan(row);
+  const hasBlocked = group?.blockedCount > 0 || String(row.scan_status || "").toLowerCase() === "blocked";
+  const hasWaiting = group?.waitingCount > 0 || waiting;
   return (
     <Card
       variant="outlined"
@@ -176,8 +224,8 @@ const FieldPhotoCard = ({ row, previewUrl, onOpen, onArchive, onDelete, onDownlo
               onClick={() => onOpen(row)}
               onKeyDown={(event) => { if (event.key === "Enter") onOpen(row); }}
               sx={{
-                width: 72,
-                height: 72,
+                width: { xs: 104, sm: 120 },
+                height: { xs: 104, sm: 120 },
                 borderRadius: 1,
                 overflow: "hidden",
                 display: "grid",
@@ -185,12 +233,27 @@ const FieldPhotoCard = ({ row, previewUrl, onOpen, onArchive, onDelete, onDownlo
                 bgcolor: alpha(theme.palette.info.main, 0.13),
                 color: theme.palette.info.dark,
                 cursor: "pointer",
+                position: "relative",
               }}
             >
               {previewUrl ? (
                 <Box component="img" src={previewUrl} alt={row.file_name || "Field photo"} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <PhotoCameraIcon />
+              )}
+              {photoCount > 1 && (
+                <Chip
+                  size="small"
+                  label={`${photoCount} photos`}
+                  sx={{
+                    position: "absolute",
+                    right: 6,
+                    bottom: 6,
+                    fontWeight: 900,
+                    bgcolor: alpha(theme.palette.common.black, 0.72),
+                    color: theme.palette.common.white,
+                  }}
+                />
               )}
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -208,12 +271,12 @@ const FieldPhotoCard = ({ row, previewUrl, onOpen, onArchive, onDelete, onDownlo
                   </IconButton>
                 </span>
               </Tooltip>
-              <Tooltip title={row.is_archived ? "Restore" : "Archive"}>
+              <Tooltip title={photoCount > 1 ? "Archive first photo" : row.is_archived ? "Restore" : "Archive"}>
                 <IconButton size="small" onClick={() => onArchive(row)}>
                   {row.is_archived ? <RestoreIcon fontSize="small" /> : <ArchiveIcon fontSize="small" />}
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Delete">
+              <Tooltip title={photoCount > 1 ? "Delete first photo" : "Delete"}>
                 <IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon fontSize="small" /></IconButton>
               </Tooltip>
             </Stack>
@@ -222,17 +285,20 @@ const FieldPhotoCard = ({ row, previewUrl, onOpen, onArchive, onDelete, onDownlo
             <Chip
               size="small"
               icon={waiting ? <CircularProgress size={12} thickness={5} color="inherit" /> : undefined}
-              label={statusLabel(row)}
-              {...readableChipProps(theme, fileStatusTone(row.scan_status))}
+              label={hasBlocked ? "Blocked" : hasWaiting ? "Security check in progress" : "Ready"}
+              {...readableChipProps(theme, hasBlocked ? "error" : hasWaiting ? "warning" : "success")}
             />
             {row.location?.label && <Chip size="small" label={row.location.label} {...readableChipProps(theme, row.location.has_location ? "success" : "neutral")} />}
-            {row.file_size ? <Chip size="small" label={formatBytes(row.file_size)} {...readableChipProps(theme, "neutral")} /> : null}
+            {photoCount > 1 ? <Chip size="small" label={`${photoCount} photos`} {...readableChipProps(theme, "info")} /> : null}
+            {group?.totalSize || row.file_size ? <Chip size="small" label={formatBytes(group?.totalSize || row.file_size)} {...readableChipProps(theme, "neutral")} /> : null}
             {row.is_archived ? <Chip size="small" label="Archived" {...readableChipProps(theme, "neutral")} /> : null}
           </Stack>
           {row.note && <Typography variant="body2" color="text.secondary" sx={lineClampSx(2)}>{row.note}</Typography>}
-          <Typography variant="caption" color="text.secondary">Uploaded {formatDateTime(row.created_at)}</Typography>
-          {waiting && <Alert severity="info" sx={{ py: 0.3 }}>Uploaded. Security check in progress.</Alert>}
-          {String(row.scan_status || "").toLowerCase() === "blocked" && (
+          <Typography variant="caption" color="text.secondary">
+            {photoCount > 1 ? `Latest upload ${formatDateTime(group.latestAt)}` : `Uploaded ${formatDateTime(row.created_at)}`}
+          </Typography>
+          {hasWaiting && <Alert severity="info" sx={{ py: 0.3 }}>Uploaded. Security check in progress.</Alert>}
+          {hasBlocked && (
             <Alert severity="error" sx={{ py: 0.3 }}>
               Blocked by security check. Ask the employee to upload another photo or remove this one.
             </Alert>
@@ -352,10 +418,11 @@ const FieldPhotos = () => {
   const [billingStatus, setBillingStatus] = useState(null);
   const [previewUrls, setPreviewUrls] = useState({});
   const [selectedPhotoId, setSelectedPhotoId] = useState(null);
+  const [selectedPhotoGroupKey, setSelectedPhotoGroupKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [activating, setActivating] = useState(false);
+  const [billingModal, setBillingModal] = useState(null);
   const [search, setSearch] = useState("");
   const [readiness, setReadiness] = useState("");
   const [locationStatus, setLocationStatus] = useState("");
@@ -372,6 +439,11 @@ const FieldPhotos = () => {
   const summary = data.summary || billingStatus?.field_photos || {};
   const visible = Boolean(summary.addon_active || summary.read_only);
   const rows = data.items || [];
+  const photoGroups = useMemo(() => buildPhotoGroups(rows), [rows]);
+  const selectedGalleryRows = useMemo(() => {
+    if (!selectedPhotoGroupKey) return rows;
+    return photoGroups.find((group) => group.key === selectedPhotoGroupKey)?.photos || rows;
+  }, [photoGroups, rows, selectedPhotoGroupKey]);
   const departments = data.context?.departments || [];
   const employees = data.context?.employees || [];
 
@@ -437,34 +509,11 @@ const FieldPhotos = () => {
 
   const resetPage = () => setPage(1);
 
-  const activateFieldPhotos = async () => {
-    setActivating(true);
-    setError("");
-    setSuccess("");
-    try {
-      const res = await api.post("/billing/field-photos/activate", {});
-      setBillingStatus(res.data || null);
-      setSuccess("Field Photos activated.");
-      loadData(true);
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to activate Field Photos.");
-    } finally {
-      setActivating(false);
-    }
-  };
-
-  const addStorage = async () => {
-    setError("");
-    setSuccess("");
-    try {
-      const currentQty = Number(summary?.storage_addon_qty || 0);
-      const res = await api.post("/billing/field-photos/storage/set", { addon_qty: currentQty + 1 });
-      setBillingStatus(res.data || null);
-      setSuccess("Field Photos storage updated.");
-      loadData(true);
-    } catch (err) {
-      setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to update Field Photos storage.");
-    }
+  const handleBillingSuccess = (nextStatus, message) => {
+    setBillingStatus(nextStatus || null);
+    setSuccess(message);
+    setBillingModal(null);
+    loadData(true);
   };
 
   const downloadPhoto = async (row) => {
@@ -515,7 +564,8 @@ const FieldPhotos = () => {
           </Box>
           <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }}>
             <Chip label={`Storage used: ${storagePercent(summary)}%`} {...readableChipProps(theme, "primary")} />
-            <Chip label={`Photos: ${data.pagination?.total || 0}`} {...readableChipProps(theme, "info")} />
+            <Chip label={`Sessions: ${photoGroups.length}`} {...readableChipProps(theme, "info")} />
+            <Chip label={`Photos: ${data.pagination?.total || 0}`} {...readableChipProps(theme, "neutral")} />
             <Chip label={`Security check: ${rows.filter((row) => fileIsWaitingForScan(row)).length}`} {...readableChipProps(theme, "warning")} />
             <Chip label={`Blocked: ${rows.filter((row) => String(row.scan_status || "").toLowerCase() === "blocked").length}`} {...readableChipProps(theme, "error")} />
           </Stack>
@@ -544,8 +594,8 @@ const FieldPhotos = () => {
                 </Stack>
                 <Typography variant="h6" sx={{ fontWeight: 950 }}>$29/month</Typography>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-                  <Button variant="contained" onClick={activateFieldPhotos} disabled={activating} startIcon={activating ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}>
-                    {activating ? "Activating..." : "Activate Field Photos"}
+                  <Button variant="contained" onClick={() => setBillingModal("activate")} startIcon={<AddIcon />}>
+                    Activate Field Photos
                   </Button>
                   <Typography variant="body2" color="text.secondary">Need more storage later? You can upgrade anytime.</Typography>
                 </Stack>
@@ -570,7 +620,7 @@ const FieldPhotos = () => {
                         {formatBytes(summary?.storage_used_bytes)} of {formatBytes(summary?.storage_quota_bytes)} used · Photos are stored for {summary?.retention_days || 90} days.
                       </Typography>
                     </Box>
-                    {storagePercent(summary) >= 80 && <Button size="small" variant="outlined" onClick={addStorage}>Add 10 GB</Button>}
+                    {storagePercent(summary) >= 80 && <Button size="small" variant="outlined" onClick={() => setBillingModal("storage")}>Add 10 GB</Button>}
                   </Stack>
                   <LinearProgress variant="determinate" value={storagePercent(summary)} sx={{ height: 7, borderRadius: 1 }} />
                   {storagePercent(summary) >= 100 && <Alert severity="error">Photo storage is full. New uploads are paused until storage is upgraded or older photos are removed.</Alert>}
@@ -656,12 +706,15 @@ const FieldPhotos = () => {
             ) : rows.length ? (
               <Stack spacing={1.5}>
                 <Grid container spacing={2}>
-                  {rows.map((row) => (
-                    <Grid key={`field-photo-${row.id}`} item xs={12} md={6} lg={4}>
+                  {photoGroups.map((group) => (
+                    <Grid key={`field-photo-group-${group.key}`} item xs={12} md={6}>
                       <FieldPhotoCard
-                        row={row}
-                        previewUrl={previewUrls[row.id]}
-                        onOpen={(photo) => setSelectedPhotoId(photo.id)}
+                        group={group}
+                        previewUrl={previewUrls[group.primary?.id]}
+                        onOpen={(photo) => {
+                          setSelectedPhotoGroupKey(group.key);
+                          setSelectedPhotoId(photo.id);
+                        }}
                         onArchive={archivePhoto}
                         onDelete={deletePhoto}
                         onDownload={downloadPhoto}
@@ -682,12 +735,25 @@ const FieldPhotos = () => {
         )}
       </Stack>
       <GalleryDialog
-        rows={rows}
+        rows={selectedGalleryRows}
         selectedId={selectedPhotoId}
         previewUrls={previewUrls}
-        onClose={() => setSelectedPhotoId(null)}
+        onClose={() => {
+          setSelectedPhotoId(null);
+          setSelectedPhotoGroupKey("");
+        }}
         onSelect={setSelectedPhotoId}
         onDownload={downloadPhoto}
+      />
+      <FieldPhotosBillingModal
+        open={Boolean(billingModal)}
+        mode={billingModal || "activate"}
+        currentStorageQty={Number(summary?.storage_addon_qty || 0)}
+        onClose={() => setBillingModal(null)}
+        onSuccess={(nextStatus) => handleBillingSuccess(
+          nextStatus,
+          billingModal === "storage" ? "Field Photos storage updated." : "Field Photos activated."
+        )}
       />
     </ManagementFrame>
   );

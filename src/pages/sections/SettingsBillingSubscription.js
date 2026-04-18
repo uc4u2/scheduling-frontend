@@ -6,6 +6,7 @@ import useBillingStatus from "../../components/billing/useBillingStatus";
 import { openBillingPortal } from "../../components/billing/billingHelpers";
 import api from "../../utils/api";
 import { formatBillingNextDateLabel } from "../../components/billing/billingLabels";
+import FieldPhotosBillingModal from "../../components/billing/FieldPhotosBillingModal";
 import { buildMarketingUrl } from "../../config/origins";
 import { isMobileComplianceMode, MOBILE_PAYMENTS_MESSAGE } from "../../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../../components/mobile/MobileWebOnlyNotice";
@@ -28,11 +29,19 @@ const formatDate = (value, t) => {
   }
 };
 
+const formatBytes = (value) => {
+  const size = Number(value || 0);
+  if (!size) return "0 MB";
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+};
+
 const SettingsBillingSubscription = () => {
   const BILLING_SETTINGS_URL = "/manager/settings?tab=billing";
   const MARKETING_PRICING_URL = `${buildMarketingUrl("/en/pricing")}?from=app`;
   const { t } = useTranslation();
-  const { status, loading, error } = useBillingStatus();
+  const { status, loading, error, refetch } = useBillingStatus();
   const seatAllowed = Number(status?.seats_allowed || 0);
   const seatIncluded = Number(status?.seats_included || 0);
   const seatAddon = Number(status?.seats_addon_qty || 0);
@@ -41,7 +50,10 @@ const SettingsBillingSubscription = () => {
   const [syncState, setSyncState] = useState({ loading: false, error: "", message: "" });
   const [portalError, setPortalError] = useState("");
   const [modeMismatchDismissed, setModeMismatchDismissed] = useState(false);
+  const [fieldPhotosModal, setFieldPhotosModal] = useState(null);
+  const [fieldPhotosNotice, setFieldPhotosNotice] = useState("");
   const mobileComplianceMode = isMobileComplianceMode();
+  const fieldPhotos = status?.field_photos || {};
 
   const handleAddSeats = () => {
     if (mobileComplianceMode) {
@@ -74,6 +86,25 @@ const SettingsBillingSubscription = () => {
         err?.message ||
         "Unable to open billing portal.";
       setPortalError(message);
+    }
+  };
+
+  const openFieldPhotosBilling = (mode) => {
+    if (mobileComplianceMode) {
+      setPortalError(MOBILE_PAYMENTS_MESSAGE);
+      return;
+    }
+    setFieldPhotosNotice("");
+    setFieldPhotosModal(mode);
+  };
+
+  const handleFieldPhotosSuccess = async (_nextStatus, message) => {
+    setFieldPhotosNotice(message || "Field Photos billing updated.");
+    setFieldPhotosModal(null);
+    try {
+      await refetch();
+    } catch (err) {
+      // The billing action already succeeded; avoid replacing the success state with a refresh warning.
     }
   };
 
@@ -231,6 +262,52 @@ const SettingsBillingSubscription = () => {
                 <strong>{t("billing.labels.activeStaff")}:</strong> {activeStaff}
               </Typography>
             </Stack>
+            <Divider sx={{ my: 1 }} />
+            <Stack spacing={1}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>Field Photos</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Proof-of-work photo uploads for shift-based teams.
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {!fieldPhotos.addon_active && !fieldPhotos.read_only && (
+                    <Button size="small" variant="contained" onClick={() => openFieldPhotosBilling("activate")}>
+                      Activate
+                    </Button>
+                  )}
+                  {(fieldPhotos.addon_active || fieldPhotos.read_only) && (
+                    <Button size="small" variant="outlined" onClick={() => openFieldPhotosBilling("storage")}>
+                      Add 10 GB
+                    </Button>
+                  )}
+                </Stack>
+              </Stack>
+              {fieldPhotosNotice && <Alert severity="success">{fieldPhotosNotice}</Alert>}
+              {fieldPhotos.read_only && (
+                <Alert severity="warning">
+                  Field Photos is read-only. New uploads are disabled; existing photos remain available during the grace period.
+                </Alert>
+              )}
+              <Stack direction="row" spacing={3} flexWrap="wrap">
+                <Typography variant="body2">
+                  <strong>Status:</strong> {fieldPhotos.addon_active ? "Active" : fieldPhotos.read_only ? "Read-only grace" : "Inactive"}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Storage expansions:</strong> {Number(fieldPhotos.storage_addon_qty || 0)}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Storage:</strong> {formatBytes(fieldPhotos.storage_used_bytes)} of {formatBytes(fieldPhotos.storage_quota_bytes)}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Retention:</strong> {fieldPhotos.retention_days || 90} days
+                </Typography>
+              </Stack>
+              {!fieldPhotos.price_configured && (
+                <Alert severity="info">Field Photos billing is not configured yet. Contact support to activate this add-on.</Alert>
+              )}
+            </Stack>
             <Stack direction="row" spacing={1} flexWrap="wrap">
               {status.latest_invoice_url && (
                 <Button
@@ -248,6 +325,16 @@ const SettingsBillingSubscription = () => {
           </Stack>
         )}
       </SectionCard>
+      <FieldPhotosBillingModal
+        open={Boolean(fieldPhotosModal)}
+        mode={fieldPhotosModal || "activate"}
+        currentStorageQty={Number(fieldPhotos.storage_addon_qty || 0)}
+        onClose={() => setFieldPhotosModal(null)}
+        onSuccess={(nextStatus) => handleFieldPhotosSuccess(
+          nextStatus,
+          fieldPhotosModal === "storage" ? "Field Photos storage updated." : "Field Photos activated."
+        )}
+      />
     </Box>
   );
 };

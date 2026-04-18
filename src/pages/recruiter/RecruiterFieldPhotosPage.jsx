@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import DownloadIcon from "@mui/icons-material/Download";
+import DeleteIcon from "@mui/icons-material/Delete";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import { useLocation, useNavigate } from "react-router-dom";
 import RecruiterTabs from "../../components/recruiter/RecruiterTabs";
@@ -86,7 +87,7 @@ const shiftLabel = (row) => {
   return `${formatDate(shift.date)}${time}`;
 };
 
-const EmployeePhotoCard = ({ row, onOpen, loading }) => {
+const EmployeePhotoCard = ({ row, onOpen, onDelete, loading }) => {
   const theme = useTheme();
   return (
     <Card
@@ -121,16 +122,29 @@ const EmployeePhotoCard = ({ row, onOpen, loading }) => {
                 : "Security check in progress."}
             </Alert>
           )}
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            disabled={!row.is_download_ready || loading === row.id}
-            onClick={() => onOpen(row)}
-            sx={{ alignSelf: "flex-start", fontWeight: 900 }}
-          >
-            {row.is_download_ready ? "Open" : "Not ready yet"}
-          </Button>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              disabled={!row.is_download_ready || loading === row.id}
+              onClick={() => onOpen(row)}
+              sx={{ fontWeight: 900 }}
+            >
+              {row.is_download_ready ? "Open" : "Not ready yet"}
+            </Button>
+            <Button
+              size="small"
+              color="error"
+              variant="outlined"
+              startIcon={<DeleteIcon />}
+              disabled={loading === row.id}
+              onClick={() => onDelete(row)}
+              sx={{ fontWeight: 900 }}
+            >
+              Delete
+            </Button>
+          </Stack>
         </Stack>
       </CardContent>
     </Card>
@@ -201,6 +215,20 @@ const RecruiterFieldPhotosPage = () => {
     }
   };
 
+  const deletePhoto = async (row) => {
+    if (!window.confirm("Delete this photo? You can upload another photo from the shift card if needed.")) return;
+    setActionLoading(row.id);
+    setError("");
+    try {
+      await api.delete(`/employee/field-photos/${row.id}`);
+      loadPhotos(true);
+    } catch (err) {
+      setError(err?.response?.data?.error || "Unable to delete this photo.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   return (
     <ManagementFrame
       title="Field Photos"
@@ -238,7 +266,7 @@ const RecruiterFieldPhotosPage = () => {
             <Grid container spacing={1.5}>
               {rows.map((row) => (
                 <Grid item xs={12} md={6} lg={4} key={row.id}>
-                  <EmployeePhotoCard row={row} onOpen={openPhoto} loading={actionLoading} />
+                  <EmployeePhotoCard row={row} onOpen={openPhoto} onDelete={deletePhoto} loading={actionLoading} />
                 </Grid>
               ))}
             </Grid>
