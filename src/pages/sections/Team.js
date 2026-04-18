@@ -53,7 +53,7 @@ import { KeyboardArrowDown, KeyboardArrowUp, InfoOutlined } from "@mui/icons-mat
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { format, endOfMonth, addDays, startOfWeek, endOfWeek } from "date-fns";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, MoreVert as MoreVertIcon, PhotoCamera as PhotoCameraIcon } from "@mui/icons-material";
 import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
@@ -1515,6 +1515,7 @@ const localPartsToUtcMillis = (date, time, zone) => {
    ========================================================================== */
 const SecondTeam = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down("sm"));
   const isMdDown = useMediaQuery(theme.breakpoints.down("md"));
@@ -1878,6 +1879,31 @@ const [formData, setFormData] = useState({
     start: format(new Date(), "yyyy-MM-dd"),
     end: format(addDays(new Date(), 30), "yyyy-MM-dd"),
   });
+  const openedShiftDeepLinkRef = useRef("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || "");
+    const shiftDate = params.get("shift_date");
+    if (!shiftDate) return;
+    if (shiftDate < dateRange.start || shiftDate > dateRange.end) {
+      setSelectedDate(shiftDate);
+      setSelectedMonth(shiftDate.slice(0, 7));
+      setDateRange({
+        start: shiftDate,
+        end: format(addDays(asLocalDate(shiftDate), 7), "yyyy-MM-dd"),
+      });
+    }
+  }, [dateRange.end, dateRange.start, location.search]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || "");
+    const shiftId = params.get("shift_id");
+    if (!shiftId || openedShiftDeepLinkRef.current === shiftId || !shifts.length) return;
+    const shift = shifts.find((item) => String(item.id) === String(shiftId));
+    if (!shift) return;
+    openedShiftDeepLinkRef.current = shiftId;
+    openEditShiftById(shiftId);
+  }, [location.search, shifts]);
 
   const handleMonthChange = useCallback((month) => {
     if (!month) return;

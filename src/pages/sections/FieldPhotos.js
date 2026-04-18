@@ -122,6 +122,32 @@ const storagePercent = (summary) => {
 
 const statusLabel = (row) => row?.security_status_label || (row?.is_download_ready ? "Ready" : fileIsWaitingForScan(row) ? "Security check in progress" : "Blocked");
 
+const parseShiftDateTime = (shift, time) => {
+  if (!shift?.date || !time) return null;
+  const parsed = new Date(`${shift.date}T${time}`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const uploadTimingLabel = (row) => {
+  const shift = row?.shift || {};
+  const uploaded = row?.created_at ? new Date(row.created_at) : null;
+  const start = parseShiftDateTime(shift, shift.start_time);
+  let end = parseShiftDateTime(shift, shift.end_time);
+  if (!uploaded || Number.isNaN(uploaded.getTime()) || !shift.date) return "Shift-linked";
+  if (!start || !end) {
+    const uploadDate = uploaded.toISOString().slice(0, 10);
+    return uploadDate === shift.date ? "Uploaded on shift date" : "Uploaded outside shift";
+  }
+  if (end <= start) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+  return uploaded >= start && uploaded <= end ? "Uploaded during shift" : "Uploaded outside shift";
+};
+
+const uploadTimingTone = (label) => {
+  if (label === "Uploaded during shift" || label === "Uploaded on shift date") return "success";
+  if (label === "Uploaded outside shift") return "warning";
+  return "neutral";
+};
+
 const sessionKeyForPhoto = (row) => {
   const shift = row?.shift || {};
   const shiftKey = row?.related_shift_log_id
@@ -161,7 +187,12 @@ const buildPhotoGroups = (items = []) => {
       group.primary = row;
     }
   });
-  return Array.from(map.values());
+  return Array.from(map.values())
+    .map((group) => ({
+      ...group,
+      photos: [...group.photos].sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()),
+    }))
+    .sort((a, b) => new Date(b.latestAt || 0).getTime() - new Date(a.latestAt || 0).getTime());
 };
 
 const shiftLabel = (row) => {
@@ -197,7 +228,7 @@ const PaginationBar = ({ pagination, onChange }) => {
   );
 };
 
-const FieldPhotoCard = ({ group, previewUrl, onOpen, onArchive, onDelete, onDownload }) => {
+const FieldPhotoCard = ({ group, previewUrl, onOpen, onArchive, onDelete, onDownload, onOpenShift }) => {
   const theme = useTheme();
   const row = group?.primary || group;
   const photos = group?.photos || [row];
@@ -205,6 +236,7 @@ const FieldPhotoCard = ({ group, previewUrl, onOpen, onArchive, onDelete, onDown
   const waiting = fileIsWaitingForScan(row);
   const hasBlocked = group?.blockedCount > 0 || String(row.scan_status || "").toLowerCase() === "blocked";
   const hasWaiting = group?.waitingCount > 0 || waiting;
+  const timingLabel = uploadTimingLabel(row);
   return (
     <Card
       variant="outlined"
@@ -264,6 +296,11 @@ const FieldPhotoCard = ({ group, previewUrl, onOpen, onArchive, onDelete, onDown
               {row.department?.name && <Typography variant="caption" color="text.secondary">{row.department.name}</Typography>}
             </Box>
             <Stack direction="row" spacing={0.25}>
+              <Tooltip title="Open shift">
+                <IconButton size="small" onClick={() => onOpenShift(row)}>
+                  <ArticleIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
               <Tooltip title="Download">
                 <span>
                   <IconButton size="small" disabled={!row.is_download_ready} onClick={() => onDownload(row)}>
@@ -289,10 +326,16 @@ const FieldPhotoCard = ({ group, previewUrl, onOpen, onArchive, onDelete, onDown
               {...readableChipProps(theme, hasBlocked ? "error" : hasWaiting ? "warning" : "success")}
             />
             {row.location?.label && <Chip size="small" label={row.location.label} {...readableChipProps(theme, row.location.has_location ? "success" : "neutral")} />}
+            <Chip size="small" label={timingLabel} {...readableChipProps(theme, uploadTimingTone(timingLabel))} />
             {photoCount > 1 ? <Chip size="small" label={`${photoCount} photos`} {...readableChipProps(theme, "info")} /> : null}
             {group?.totalSize || row.file_size ? <Chip size="small" label={formatBytes(group?.totalSize || row.file_size)} {...readableChipProps(theme, "neutral")} /> : null}
             {row.is_archived ? <Chip size="small" label="Archived" {...readableChipProps(theme, "neutral")} /> : null}
           </Stack>
+          {photoCount > 1 && (
+            <Typography variant="caption" color="text.secondary">
+              {group.readyCount} ready · {group.waitingCount} in security check · {group.blockedCount} blocked
+            </Typography>
+          )}
           {row.note && <Typography variant="body2" color="text.secondary" sx={lineClampSx(2)}>{row.note}</Typography>}
           <Typography variant="caption" color="text.secondary">
             {photoCount > 1 ? `Latest upload ${formatDateTime(group.latestAt)}` : `Uploaded ${formatDateTime(row.created_at)}`}
@@ -383,6 +426,7 @@ const GalleryDialog = ({ rows, selectedId, previewUrls, onClose, onSelect, onDow
               <Chip size="small" label={statusLabel(row)} {...readableChipProps(theme, fileStatusTone(row.scan_status))} sx={{ alignSelf: "flex-start", ...readableChipProps(theme, fileStatusTone(row.scan_status)).sx }} />
               <Typography variant="h6" sx={{ fontWeight: 950 }}>{row.uploaded_by || "Employee photo"}</Typography>
               <Typography variant="body2" color="text.secondary">{shiftLabel(row)}</Typography>
+              <Chip size="small" label={uploadTimingLabel(row)} {...readableChipProps(theme, uploadTimingTone(uploadTimingLabel(row)))} sx={{ alignSelf: "flex-start", ...readableChipProps(theme, uploadTimingTone(uploadTimingLabel(row))).sx }} />
               {row.note && <Typography variant="body2">{row.note}</Typography>}
               <Typography variant="body2" color="text.secondary">Uploaded {formatDateTime(row.created_at)}</Typography>
               <Typography variant="body2" color="text.secondary">{row.file_name || row.original_filename} · {formatBytes(row.file_size)}</Typography>
@@ -554,6 +598,16 @@ const FieldPhotos = () => {
     navigate("/manager/field-photos", { replace: true });
   };
 
+  const openShift = (row) => {
+    const id = row?.related_shift_log_id || row?.related_shift_id || row?.shift?.id;
+    const date = row?.shift?.date;
+    const params = new URLSearchParams();
+    params.set("view", "team");
+    if (id) params.set("shift_id", String(id));
+    if (date) params.set("shift_date", date);
+    navigate(`/manager/dashboard?${params.toString()}`);
+  };
+
   return (
     <ManagementFrame fullWidth contentVariant={false} sx={{ px: { xs: 1, md: 2 } }}>
       <Stack spacing={2}>
@@ -718,6 +772,7 @@ const FieldPhotos = () => {
                         onArchive={archivePhoto}
                         onDelete={deletePhoto}
                         onDownload={downloadPhoto}
+                        onOpenShift={openShift}
                       />
                     </Grid>
                   ))}
