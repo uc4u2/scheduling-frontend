@@ -372,6 +372,16 @@ const estimatedLeaveRequestHours = useMemo(
 
 const loadShifts = async () => {
   try {
+    let photoStatus = fieldPhotosStatus;
+    if (!photoStatus) {
+      try {
+        const statusRes = await api.get("/employee/field-photos/status", { headers: authHeader });
+        photoStatus = statusRes.data?.field_photos || null;
+        setFieldPhotosStatus(photoStatus);
+      } catch {
+        photoStatus = null;
+      }
+    }
     const [res, leaveRes] = await Promise.all([
       api.get("/recruiter/calendar", {
         params: { start_date: shiftRange.startDate, end_date: shiftRange.endDate },
@@ -442,6 +452,7 @@ const loadShifts = async () => {
         }
         return {
           id: e.shift_id,
+          recruiter_id: e.recruiter_id || e.employee_id || e.recruiter?.id || null,
           clock_in: e.start,
           clock_out: e.end,
           clock_source: e.clock_source || "schedule",
@@ -500,7 +511,17 @@ const loadShifts = async () => {
     });
 
     setShifts(combined);
-    const realShiftIds = combined.filter((row) => row.id && !row.on_leave && !row.is_leave_entry).slice(0, 30).map((row) => row.id);
+    const shouldLoadPhotoSummaries = Boolean(photoStatus?.addon_active || photoStatus?.read_only);
+    const realShiftIds = shouldLoadPhotoSummaries
+      ? combined
+          .filter((row) => {
+            if (!row.id || row.on_leave || row.is_leave_entry) return false;
+            if (row.recruiter_id && userId && String(row.recruiter_id) !== String(userId)) return false;
+            return true;
+          })
+          .slice(0, 30)
+          .map((row) => row.id)
+      : [];
     const summaries = {};
     await Promise.allSettled(realShiftIds.map(async (id) => {
       const photoRes = await api.get(`/employee/shifts/${id}/field-photos`, { headers: authHeader });
@@ -526,6 +547,7 @@ const loadFieldPhotosStatus = async () => {
 const canUploadFieldPhotoForShift = (shift) => {
   if (!fieldPhotosStatus?.addon_active || !fieldPhotosStatus?.upload_enabled || fieldPhotosStatus?.read_only) return false;
   if (!shift?.date || shift.on_leave || shift.is_leave_entry) return false;
+  if (shift.recruiter_id && userId && String(shift.recruiter_id) !== String(userId)) return false;
   const shiftDay = startOfDay(parseISO(shift.date));
   const today = startOfDay(new Date());
   return shiftDay >= addDays(today, -14) && shiftDay <= addDays(today, 7);
@@ -556,9 +578,12 @@ const submitFieldPhotoUpload = async () => {
     setPhotoUploadNote("");
     await loadShifts();
   } catch (err) {
+    const backendMessage = err?.response?.data?.error || "";
     setSnackbar({
       open: true,
-      msg: err?.response?.data?.error || "Unable to upload photo.",
+      msg: backendMessage === "Shift not found."
+        ? "Photos can only be uploaded by the employee assigned to this shift."
+        : backendMessage || "Unable to upload photo.",
       error: true,
     });
   } finally {
