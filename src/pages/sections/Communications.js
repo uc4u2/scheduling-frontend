@@ -153,7 +153,7 @@ const downloadStatusText = (file) => {
   const status = String(file?.download_status || "").toLowerCase();
   if (status === "ready" || file?.is_download_ready) return "Ready";
   if (status === "blocked" || String(file?.scan_status || "").toLowerCase() === "blocked") return "Blocked";
-  return "Security check";
+  return "Security check in progress";
 };
 
 const fileIsWaitingForScan = (file) => {
@@ -521,6 +521,8 @@ const Communications = () => {
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [scanRefreshUntil, setScanRefreshUntil] = useState(0);
   const [activatingFieldPhotos, setActivatingFieldPhotos] = useState(false);
+  const fieldPhotosEntitlement = billingStatus?.field_photos || fieldPhotos.summary || {};
+  const fieldPhotosVisible = Boolean(fieldPhotosEntitlement.addon_active || fieldPhotosEntitlement.read_only);
 
   const context = activeTab === "announcements" ? announcements.context || {} : files.context || announcements.context || {};
   const departments = context.departments || [];
@@ -981,7 +983,7 @@ const Communications = () => {
             {(activeTab === "field_photos" ? [
               ["Storage used", `${storagePercent(summary)}%`, "primary"],
               ["Photos", fieldPhotos.pagination?.total || 0, "info"],
-              ["Security checks", (fieldPhotos.items || []).filter((row) => fileIsWaitingForScan(row)).length, "warning"],
+              ["Security check", (fieldPhotos.items || []).filter((row) => fileIsWaitingForScan(row)).length, "warning"],
               ["Blocked", (fieldPhotos.items || []).filter((row) => String(row.scan_status || "").toLowerCase() === "blocked").length, "error"],
             ] : [
               ["Announcements", summary.total_announcements || 0, "warning"],
@@ -1070,8 +1072,8 @@ const Communications = () => {
                     <InputLabel>Readiness</InputLabel>
                     <Select label="Readiness" value={scanFilter} onChange={(event) => { resetPaginationForFilters(); setScanFilter(event.target.value); }}>
                       <MenuItem value="">All photos</MenuItem>
-                      <MenuItem value="pending">Security check</MenuItem>
-                      <MenuItem value="scanning">Security check</MenuItem>
+                      <MenuItem value="pending">Security check in progress</MenuItem>
+                      <MenuItem value="scanning">Security check in progress</MenuItem>
                       <MenuItem value="clean">Ready</MenuItem>
                       <MenuItem value="blocked">Blocked</MenuItem>
                     </Select>
@@ -1116,7 +1118,7 @@ const Communications = () => {
         {error && <Alert severity="error" onClose={() => setError("")}>{error}</Alert>}
         {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
 
-        {activeTab === "field_photos" && !(billingStatus?.field_photos?.addon_active || summary?.addon_active) ? (
+        {activeTab === "field_photos" && !fieldPhotosVisible ? (
           <Card variant="outlined" sx={{ borderRadius: 1, borderColor: alpha(theme.palette.primary.main, 0.18), background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)}, ${alpha(theme.palette.background.paper, 0.98)})` }}>
             <CardContent sx={{ p: { xs: 2, md: 3 } }}>
               <Stack spacing={2} alignItems="flex-start">
