@@ -30,6 +30,7 @@ import ArticleIcon from "@mui/icons-material/Article";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import MapIcon from "@mui/icons-material/Map";
 import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
@@ -40,6 +41,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import FieldPhotosBillingModal from "../../components/billing/FieldPhotosBillingModal";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import api from "../../utils/api";
+import FieldPhotosHelpDrawer from "./FieldPhotosHelpDrawer";
 
 const formatDateTime = (value) => {
   if (!value) return "—";
@@ -467,6 +469,7 @@ const FieldPhotos = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [billingModal, setBillingModal] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [readiness, setReadiness] = useState("");
   const [locationStatus, setLocationStatus] = useState("");
@@ -617,6 +620,9 @@ const FieldPhotos = () => {
             <Typography variant="body2" color="text.secondary">Review shift-linked proof-of-work photos from your team.</Typography>
           </Box>
           <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }}>
+            <Button size="small" variant="outlined" startIcon={<HelpOutlineIcon />} onClick={() => setHelpOpen(true)}>
+              Guide
+            </Button>
             <Chip label={`Storage used: ${storagePercent(summary)}%`} {...readableChipProps(theme, "primary")} />
             <Chip label={`Sessions: ${photoGroups.length}`} {...readableChipProps(theme, "info")} />
             <Chip label={`Photos: ${data.pagination?.total || 0}`} {...readableChipProps(theme, "neutral")} />
@@ -810,6 +816,7 @@ const FieldPhotos = () => {
           billingModal === "storage" ? "Field Photos storage updated." : "Field Photos activated."
         )}
       />
+      <FieldPhotosHelpDrawer open={helpOpen} onClose={() => setHelpOpen(false)} />
     </ManagementFrame>
   );
 };
