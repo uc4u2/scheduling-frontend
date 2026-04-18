@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -10,6 +12,9 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
+import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import api from "../../utils/api";
 import { openBillingPortal } from "./billingHelpers";
 import { formatBillingNextDateLabel } from "./billingLabels";
@@ -17,14 +22,14 @@ import { isMobileComplianceMode } from "../../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../mobile/MobileWebOnlyNotice";
 
 const PREVIEW_ERROR_COPY = {
-  subscription_missing: "No active subscription. Start a plan before activating Field Photos.",
+  subscription_missing: "A company subscription is required before Field Photos can be activated.",
   field_photos_price_missing: "Field Photos billing is not configured yet. Contact support.",
   field_photos_storage_price_missing: "Field Photos storage billing is not configured yet. Contact support.",
-  preview_failed: "Estimate unavailable. You can still continue.",
+  preview_failed: "We could not load an estimate right now. You can still continue.",
 };
 
 const ACTION_ERROR_COPY = {
-  subscription_missing: "No active subscription. Start a plan before changing Field Photos.",
+  subscription_missing: "A company subscription is required before Field Photos can be changed.",
   field_photos_price_missing: "Field Photos billing is not configured yet. Contact support.",
   field_photos_storage_price_missing: "Field Photos storage billing is not configured yet. Contact support.",
   field_photos_activation_failed: "Unable to activate Field Photos. Please try again or contact support.",
@@ -43,6 +48,7 @@ const FieldPhotosBillingModal = ({
   onClose,
   onSuccess,
 }) => {
+  const theme = useTheme();
   const mobileComplianceMode = isMobileComplianceMode();
   const [preview, setPreview] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -55,7 +61,11 @@ const FieldPhotosBillingModal = ({
   const targetStorageQty = Math.max(0, Number(currentStorageQty || 0)) + 1;
   const title = isStorage ? "Add Field Photos storage" : "Activate Field Photos";
   const itemLabel = isStorage ? "Field Photos Storage Expansion" : "Field Photos Add-on";
-  const monthlyLabel = isStorage ? "+10 GB · $10/month" : "$29/month";
+  const monthlyLabel = isStorage ? "$10/month" : "$29/month";
+  const modalSubtitle = isStorage
+    ? "Add another 10 GB to keep employee photo uploads running without interruption."
+    : "Enable secure, shift-linked proof photos for your team.";
+  const Icon = isStorage ? StorageOutlinedIcon : PhotoCameraIcon;
   const nextBillingLabel = formatBillingNextDateLabel({
     nextBillingDate: preview?.next_billing_date,
   });
@@ -93,7 +103,7 @@ const FieldPhotosBillingModal = ({
       .catch((err) => {
         if (!active) return;
         setPreview(null);
-        setPreviewError(apiMessage(err, "Estimate unavailable. You can still continue.", PREVIEW_ERROR_COPY));
+        setPreviewError(apiMessage(err, "We could not load an estimate right now. You can still continue.", PREVIEW_ERROR_COPY));
       })
       .finally(() => {
         if (!active) return;
@@ -139,56 +149,87 @@ const FieldPhotosBillingModal = ({
   }
 
   return (
-    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent sx={{ pt: 1 }}>
-        <Stack spacing={1.4}>
-          <Typography variant="body2" color="text.secondary">
-            Review the billing change before continuing.
-          </Typography>
-          <Stack spacing={0.4}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{itemLabel}</Typography>
-            <Typography variant="body2">{monthlyLabel}</Typography>
+    <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ pb: 1.25 }}>
+        <Stack direction="row" spacing={1.25} alignItems="center">
+          <Box
+            sx={{
+              width: 42,
+              height: 42,
+              borderRadius: 1.5,
+              display: "grid",
+              placeItems: "center",
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              color: theme.palette.primary.main,
+            }}
+          >
+            <Icon fontSize="small" />
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 950 }}>{title}</Typography>
+            <Typography variant="body2" color="text.secondary">{modalSubtitle}</Typography>
+          </Box>
+        </Stack>
+      </DialogTitle>
+      <DialogContent sx={{ pt: 1.5 }}>
+        <Stack spacing={1.75}>
+          <Box
+            sx={{
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.16)}`,
+              borderRadius: 1.5,
+              p: 1.75,
+              bgcolor: alpha(theme.palette.primary.main, 0.035),
+            }}
+          >
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between">
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 950 }}>{itemLabel}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {isStorage ? "Additional secure photo storage" : "Secure proof-of-work photo uploads"}
+                </Typography>
+              </Box>
+              <Chip label={monthlyLabel} color="primary" variant="outlined" sx={{ fontWeight: 900 }} />
+            </Stack>
             {isStorage && (
-              <Typography variant="caption" color="text.secondary">
-                New storage expansion total: {targetStorageQty} pack{targetStorageQty === 1 ? "" : "s"}.
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                Storage expansion total after this change: {targetStorageQty} pack{targetStorageQty === 1 ? "" : "s"}.
               </Typography>
             )}
-          </Stack>
+          </Box>
           {loadingPreview && (
             <Stack direction="row" spacing={1} alignItems="center">
               <CircularProgress size={16} />
-              <Typography variant="caption">Fetching estimate...</Typography>
+              <Typography variant="body2" color="text.secondary">Loading billing estimate...</Typography>
             </Stack>
           )}
           {preview && (
-            <Stack spacing={0.4}>
-              <Typography variant="caption">
+            <Stack spacing={0.5}>
+              <Typography variant="body2" sx={{ fontWeight: 850 }}>
                 Estimated charge today: {preview.amount_due_today_formatted || "—"}
               </Typography>
-              {preview.next_billing_date && <Typography variant="caption">{nextBillingLabel}</Typography>}
+              {preview.next_billing_date && <Typography variant="caption" color="text.secondary">{nextBillingLabel}</Typography>}
             </Stack>
           )}
           {!loadingPreview && !preview && (
-            <Typography variant="caption" color={blocksConfirm ? "error" : "text.secondary"}>
-              {previewError || "Estimate unavailable. You can still continue."}
+            <Typography variant="body2" color={blocksConfirm ? "error" : "text.secondary"}>
+              {previewError || "We could not load an estimate right now. You can still continue."}
             </Typography>
           )}
-          <Typography variant="caption" color="text.secondary">
-            Changes are applied to the company subscription.
+          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+            This change applies to your company subscription. You can review subscription details from Billing Settings.
           </Typography>
           {error && <Alert severity="error">{error}</Alert>}
           {success && <Alert severity="success">{success}</Alert>}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, flexWrap: "wrap" }}>
         <Button onClick={onClose} disabled={submitting}>{success ? "Close" : "Cancel"}</Button>
-        <Button variant="outlined" onClick={() => openBillingPortal()} disabled={submitting}>
+        <Button variant="outlined" onClick={() => openBillingPortal()} disabled={submitting} sx={{ ml: { xs: 0, sm: "auto" } }}>
           Billing portal
         </Button>
         {!success && (
           <Button variant="contained" onClick={handleConfirm} disabled={submitting || blocksConfirm}>
-            {submitting ? "Saving..." : "Confirm"}
+            {submitting ? "Saving..." : isStorage ? "Confirm storage" : "Confirm activation"}
           </Button>
         )}
       </DialogActions>

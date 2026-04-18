@@ -635,30 +635,36 @@ const FieldPhotos = () => {
         {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
 
         {!visible ? (
-          <Card variant="outlined" sx={{ borderRadius: 1, borderColor: alpha(theme.palette.primary.main, 0.18), background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)}, ${alpha(theme.palette.background.paper, 0.98)})` }}>
-            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-              <Stack spacing={2} alignItems="flex-start">
-                <Box sx={{ width: 46, height: 46, borderRadius: 1, display: "grid", placeItems: "center", bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main }}>
-                  <PhotoCameraIcon />
-                </Box>
-                <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 950 }}>Field Photos</Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ mt: 0.75, maxWidth: 680 }}>
-                    Let staff upload proof-of-work photos from their phone so managers can review them in one place.
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                  {["Mobile photo upload", "Secure private storage", "Manager review page", "Shift-linked photos"].map((label) => (
-                    <Chip key={label} label={label} {...readableChipProps(theme, "primary")} />
-                  ))}
+          <Card
+            variant="outlined"
+            sx={{
+              borderRadius: 1.5,
+              borderColor: alpha(theme.palette.primary.main, 0.16),
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.055)}, ${alpha(theme.palette.background.paper, 0.98)})`,
+              overflow: "hidden",
+            }}
+          >
+            <CardContent sx={{ p: { xs: 2.25, md: 3.25 } }}>
+              <Stack direction={{ xs: "column", md: "row" }} spacing={2.25} alignItems={{ xs: "flex-start", md: "center" }} justifyContent="space-between">
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.6} alignItems={{ xs: "flex-start", sm: "center" }}>
+                  <Box sx={{ width: 50, height: 50, borderRadius: 1.5, display: "grid", placeItems: "center", bgcolor: alpha(theme.palette.primary.main, 0.11), color: theme.palette.primary.main }}>
+                    <PhotoCameraIcon />
+                  </Box>
+                  <Box>
+                    <Typography variant="h5" sx={{ fontWeight: 950, letterSpacing: "-0.02em" }}>Field Photos</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.65, maxWidth: 660, lineHeight: 1.65 }}>
+                      Enable shift-linked proof photos so managers can review uploaded work images securely in one place.
+                    </Typography>
+                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1.25 }}>
+                      {["Shift-linked", "Private storage", "Security checked"].map((label) => (
+                        <Chip key={label} size="small" label={label} {...readableChipProps(theme, "primary")} />
+                      ))}
+                    </Stack>
+                  </Box>
                 </Stack>
-                <Typography variant="h6" sx={{ fontWeight: 950 }}>$29/month</Typography>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-                  <Button variant="contained" onClick={() => setBillingModal("activate")} startIcon={<AddIcon />}>
-                    Activate Field Photos
-                  </Button>
-                  <Typography variant="body2" color="text.secondary">Need more storage later? You can upgrade anytime.</Typography>
-                </Stack>
+                <Button variant="contained" onClick={() => setBillingModal("activate")} startIcon={<AddIcon />} sx={{ alignSelf: { xs: "stretch", md: "center" }, px: 2.5 }}>
+                  Activate Field Photos
+                </Button>
               </Stack>
             </CardContent>
           </Card>
