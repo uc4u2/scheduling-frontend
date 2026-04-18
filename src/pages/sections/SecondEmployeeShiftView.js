@@ -234,6 +234,19 @@ const SecondEmployeeShiftView = ({ employeePolish = false }) => {
   const [countdownTick, setCountdownTick] = useState(Date.now());
   const [shiftPage, setShiftPage] = useState(1);
   const [leavePage, setLeavePage] = useState(1);
+  const [shiftRange, setShiftRange] = useState(() => {
+    const today = new Date();
+    return {
+      startDate: format(addDays(today, -7), "yyyy-MM-dd"),
+      endDate: format(addDays(today, 7), "yyyy-MM-dd"),
+    };
+  });
+  const [fieldPhotosStatus, setFieldPhotosStatus] = useState(null);
+  const [fieldPhotoSummaries, setFieldPhotoSummaries] = useState({});
+  const [photoUploadShift, setPhotoUploadShift] = useState(null);
+  const [photoUploadFile, setPhotoUploadFile] = useState(null);
+  const [photoUploadNote, setPhotoUploadNote] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   // Leave-request dialog
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
@@ -359,11 +372,9 @@ const estimatedLeaveRequestHours = useMemo(
 
 const loadShifts = async () => {
   try {
-    const today = format(new Date(), "yyyy-MM-dd");
-    const in30 = format(addDays(new Date(), 30), "yyyy-MM-dd");
     const [res, leaveRes] = await Promise.all([
       api.get("/recruiter/calendar", {
-        params: { start_date: today, end_date: in30 },
+        params: { start_date: shiftRange.startDate, end_date: shiftRange.endDate },
         headers: authHeader,
       }),
       (async () => {
@@ -489,10 +500,69 @@ const loadShifts = async () => {
     });
 
     setShifts(combined);
+    const realShiftIds = combined.filter((row) => row.id && !row.on_leave && !row.is_leave_entry).slice(0, 30).map((row) => row.id);
+    const summaries = {};
+    await Promise.allSettled(realShiftIds.map(async (id) => {
+      const photoRes = await api.get(`/employee/shifts/${id}/field-photos`, { headers: authHeader });
+      summaries[id] = photoRes.data || {};
+    }));
+    setFieldPhotoSummaries(summaries);
   } catch (err) {
     setErrorMsg("Failed to fetch your shifts.");
   } finally {
     setLoading(false);
+  }
+};
+
+const loadFieldPhotosStatus = async () => {
+  try {
+    const res = await api.get("/employee/field-photos/status", { headers: authHeader });
+    setFieldPhotosStatus(res.data?.field_photos || null);
+  } catch {
+    setFieldPhotosStatus(null);
+  }
+};
+
+const canUploadFieldPhotoForShift = (shift) => {
+  if (!fieldPhotosStatus?.addon_active || !fieldPhotosStatus?.upload_enabled || fieldPhotosStatus?.read_only) return false;
+  if (!shift?.date || shift.on_leave || shift.is_leave_entry) return false;
+  const shiftDay = startOfDay(parseISO(shift.date));
+  const today = startOfDay(new Date());
+  return shiftDay >= addDays(today, -14) && shiftDay <= addDays(today, 7);
+};
+
+const openFieldPhotoUpload = (shift) => {
+  setPhotoUploadShift(shift);
+  setPhotoUploadFile(null);
+  setPhotoUploadNote("");
+};
+
+const submitFieldPhotoUpload = async () => {
+  if (!photoUploadShift?.id || !photoUploadFile) {
+    setSnackbar({ open: true, msg: "Choose a photo to upload.", error: true });
+    return;
+  }
+  setPhotoUploading(true);
+  try {
+    const formData = new FormData();
+    formData.append("file", photoUploadFile);
+    formData.append("note", photoUploadNote || "");
+    await api.post(`/employee/shifts/${photoUploadShift.id}/field-photos`, formData, {
+      headers: { ...authHeader, "Content-Type": "multipart/form-data" },
+    });
+    setSnackbar({ open: true, msg: "Photo uploaded. Security check in progress.", error: false });
+    setPhotoUploadShift(null);
+    setPhotoUploadFile(null);
+    setPhotoUploadNote("");
+    await loadShifts();
+  } catch (err) {
+    setSnackbar({
+      open: true,
+      msg: err?.response?.data?.error || "Unable to upload photo.",
+      error: true,
+    });
+  } finally {
+    setPhotoUploading(false);
   }
 };
 
@@ -557,10 +627,19 @@ useEffect(() => {
   loadPendingSwaps(showSwapHistory);
   loadOptOut();
   loadSmartShiftPolicy();
+  loadFieldPhotosStatus();
   loadTimeHistory();
   loadEmployeeLeaveRequests();
   loadEmployeeLeaveBalances();
 }, [userId]);
+
+// eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => {
+  if (drawerOpen && drawerPanel === "shifts") {
+    loadShifts();
+    setShiftPage(1);
+  }
+}, [shiftRange.startDate, shiftRange.endDate]);
 
 // eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
@@ -2389,6 +2468,41 @@ const polishedPanelSx = employeePolish
       <Divider sx={{ my: 2 }} />
 
       <Box sx={{ px: 2, mb: 2 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }} flexWrap="wrap" useFlexGap>
+          <Button size="small" variant="outlined" onClick={() => {
+            const today = new Date();
+            setShiftRange({ startDate: format(addDays(today, -7), "yyyy-MM-dd"), endDate: format(today, "yyyy-MM-dd") });
+          }}>
+            Past 7 days
+          </Button>
+          <Button size="small" variant="outlined" onClick={() => {
+            const today = new Date();
+            setShiftRange({ startDate: format(today, "yyyy-MM-dd"), endDate: format(today, "yyyy-MM-dd") });
+          }}>
+            Today
+          </Button>
+          <Button size="small" variant="outlined" onClick={() => {
+            const today = new Date();
+            setShiftRange({ startDate: format(today, "yyyy-MM-dd"), endDate: format(addDays(today, 7), "yyyy-MM-dd") });
+          }}>
+            Next 7 days
+          </Button>
+          <ThemedDateField
+            size="small"
+            label="From"
+            value={shiftRange.startDate}
+            onChange={(value) => setShiftRange((prev) => ({ ...prev, startDate: value }))}
+          />
+          <ThemedDateField
+            size="small"
+            label="To"
+            value={shiftRange.endDate}
+            onChange={(value) => setShiftRange((prev) => ({ ...prev, endDate: value }))}
+          />
+        </Stack>
+      </Box>
+
+      <Box sx={{ px: 2, mb: 2 }}>
         <Button
           fullWidth
           variant="contained"
@@ -2563,6 +2677,19 @@ const polishedPanelSx = employeePolish
                         sx={{ ...readableLightChipSx(theme), mt: 1 }}
                       />
                     )}
+                    {fieldPhotoSummaries[shift.id]?.count > 0 && (
+                      <Chip
+                        label={`${fieldPhotoSummaries[shift.id].count} photo${fieldPhotoSummaries[shift.id].count === 1 ? "" : "s"} uploaded`}
+                        size="small"
+                        icon={<UploadFileIcon />}
+                        sx={{ ...readableLightChipSx(theme), mt: 1, ml: 1 }}
+                      />
+                    )}
+                    {fieldPhotoSummaries[shift.id]?.latest_uploaded_at && (
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75 }}>
+                        Last photo: {format(parseISO(fieldPhotoSummaries[shift.id].latest_uploaded_at), "MMM d, h:mm a")}
+                      </Typography>
+                    )}
 
                     {/* Action buttons */}
                     {!shift.on_leave && (
@@ -2592,6 +2719,22 @@ const polishedPanelSx = employeePolish
                             sx={{ ml: 1 }}
                           >
                             Shift finalised
+                          </Typography>
+                        )}
+                        {canUploadFieldPhotoForShift(shift) && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<UploadFileIcon />}
+                            sx={{ mt: 1, ml: { xs: 0, sm: 1 } }}
+                            onClick={() => openFieldPhotoUpload(shift)}
+                          >
+                            Upload Photo
+                          </Button>
+                        )}
+                        {fieldPhotosStatus?.addon_active && !fieldPhotosStatus?.upload_enabled && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                            Photo uploads are temporarily unavailable. Please contact your manager.
                           </Typography>
                         )}
                       </>
@@ -3645,6 +3788,55 @@ const polishedPanelSx = employeePolish
           <ShiftSwapPanel token={token} headerStyle={{ fontWeight: "bold" }} />
         </>
       )}
+
+      <Dialog open={Boolean(photoUploadShift)} onClose={() => !photoUploading && setPhotoUploadShift(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Upload Photo</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+            {photoUploadShift && (
+              <Alert severity="info">
+                Uploading for {photoUploadShift.date ? format(parseISO(photoUploadShift.date), "EEE, MMM d") : "selected shift"}.
+              </Alert>
+            )}
+            <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={photoUploading}>
+              {photoUploadFile ? photoUploadFile.name : "Take or choose photo"}
+              <input
+                hidden
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                capture="environment"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  event.target.value = "";
+                  setPhotoUploadFile(file);
+                }}
+              />
+            </Button>
+            {photoUploadFile && (
+              <Typography variant="body2" color="text.secondary">
+                {photoUploadFile.name} · {(photoUploadFile.size / (1024 * 1024)).toFixed(1)} MB
+              </Typography>
+            )}
+            <TextField
+              label="Note (optional)"
+              value={photoUploadNote}
+              onChange={(event) => setPhotoUploadNote(event.target.value)}
+              multiline
+              minRows={2}
+              fullWidth
+            />
+            <Typography variant="caption" color="text.secondary">
+              Photos become available after the security check completes.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhotoUploadShift(null)} disabled={photoUploading}>Cancel</Button>
+          <Button variant="contained" onClick={submitFieldPhotoUpload} disabled={photoUploading || !photoUploadFile} startIcon={photoUploading ? <CircularProgress size={16} color="inherit" /> : <UploadFileIcon />}>
+            {photoUploading ? "Uploading..." : "Upload"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar */}
       <Snackbar

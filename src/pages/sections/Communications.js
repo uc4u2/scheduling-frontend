@@ -17,6 +17,7 @@ import {
   Grid,
   IconButton,
   InputLabel,
+  LinearProgress,
   MenuItem,
   Pagination,
   Select,
@@ -33,6 +34,7 @@ import ArticleIcon from "@mui/icons-material/Article";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import RestoreIcon from "@mui/icons-material/Restore";
 import SendIcon from "@mui/icons-material/Send";
@@ -157,6 +159,13 @@ const fileIsWaitingForScan = (file) => {
   if (!file) return false;
   const status = String(file.scan_status || file.download_status || "").toLowerCase();
   return status === "pending" || status === "scanning" || status === "processing";
+};
+
+const storagePercent = (summary) => {
+  const quota = Number(summary?.storage_quota_bytes || 0);
+  const used = Number(summary?.storage_used_bytes || 0);
+  if (!quota) return 0;
+  return Math.min(100, Math.round((used / quota) * 100));
 };
 
 const FileSummary = ({ file, label = "File" }) => {
@@ -352,6 +361,71 @@ const CommunicationCard = ({ type, row, onEdit, onArchive, onView, onDelete }) =
   );
 };
 
+const FieldPhotoCard = ({ row, onArchive, onDelete, onDownload }) => {
+  const theme = useTheme();
+  const waiting = fileIsWaitingForScan(row);
+  return (
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 1,
+        height: "100%",
+        borderColor: alpha(theme.palette.primary.main, 0.14),
+        background: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.055)}, ${alpha(theme.palette.background.paper, 0.96)})`,
+      }}
+    >
+      <CardContent sx={{ p: 2 }}>
+        <Stack spacing={1.15}>
+          <Stack direction="row" spacing={1.1} alignItems="flex-start">
+            <Box sx={{ width: 44, height: 44, borderRadius: 1, display: "grid", placeItems: "center", bgcolor: alpha(theme.palette.info.main, 0.13), color: theme.palette.info.dark }}>
+              <PhotoCameraIcon />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 950, ...lineClampSx(1) }}>
+                {row.uploaded_by || "Employee photo"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {row.shift?.date || "Shift"} {row.shift?.start_time ? `· ${row.shift.start_time}-${row.shift.end_time || ""}` : ""}
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={0.25}>
+              <Tooltip title="Download">
+                <span>
+                  <IconButton size="small" disabled={!row.is_download_ready} onClick={() => onDownload(row)}>
+                    <ArticleIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title={row.is_archived ? "Restore" : "Archive"}>
+                <IconButton size="small" onClick={() => onArchive(row)}>
+                  {row.is_archived ? <RestoreIcon fontSize="small" /> : <ArchiveIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon fontSize="small" /></IconButton>
+              </Tooltip>
+            </Stack>
+          </Stack>
+          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+            <Chip
+              size="small"
+              icon={waiting ? <CircularProgress size={12} thickness={5} color="inherit" /> : undefined}
+              label={row.security_status_label || downloadStatusText(row)}
+              {...readableChipProps(theme, fileStatusTone(row.scan_status))}
+            />
+            {row.file_size ? <Chip size="small" label={formatBytes(row.file_size)} {...readableChipProps(theme, "neutral")} /> : null}
+            {row.is_archived ? <Chip size="small" label="Archived" {...readableChipProps(theme, "neutral")} /> : null}
+          </Stack>
+          {row.note && <Typography variant="body2" color="text.secondary" sx={lineClampSx(2)}>{row.note}</Typography>}
+          <Typography variant="caption" color="text.secondary">Uploaded {formatDateTime(row.created_at)}</Typography>
+          {waiting && <Alert severity="info" sx={{ py: 0.3 }}>Uploaded. Security check in progress.</Alert>}
+          {String(row.scan_status || "").toLowerCase() === "blocked" && <Alert severity="error" sx={{ py: 0.3 }}>Blocked. Delete this photo or ask the employee to upload another one.</Alert>}
+        </Stack>
+      </CardContent>
+    </Card>
+  );
+};
+
 const PaginationBar = ({ pagination, onChange }) => {
   if (!pagination || Number(pagination.total || 0) <= Number(pagination.page_size || 20)) return null;
   return (
@@ -390,6 +464,8 @@ const Communications = () => {
   const [activeTab, setActiveTab] = useState("announcements");
   const [announcements, setAnnouncements] = useState({ items: [], context: {} });
   const [files, setFiles] = useState({ items: [], context: {} });
+  const [fieldPhotos, setFieldPhotos] = useState({ items: [], context: {}, summary: {} });
+  const [billingStatus, setBillingStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -401,8 +477,10 @@ const Communications = () => {
   const [search, setSearch] = useState("");
   const [announcementPage, setAnnouncementPage] = useState(1);
   const [filePage, setFilePage] = useState(1);
+  const [fieldPhotoPage, setFieldPhotoPage] = useState(1);
   const [announcementPageSize, setAnnouncementPageSize] = useState(12);
   const [filePageSize, setFilePageSize] = useState(12);
+  const [fieldPhotoPageSize, setFieldPhotoPageSize] = useState(12);
   const [announcementDialogOpen, setAnnouncementDialogOpen] = useState(false);
   const [fileDialogOpen, setFileDialogOpen] = useState(false);
   const [detailRow, setDetailRow] = useState(null);
@@ -415,6 +493,7 @@ const Communications = () => {
   const [cleanupDialogOpen, setCleanupDialogOpen] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [scanRefreshUntil, setScanRefreshUntil] = useState(0);
+  const [activatingFieldPhotos, setActivatingFieldPhotos] = useState(false);
 
   const context = activeTab === "announcements" ? announcements.context || {} : files.context || announcements.context || {};
   const departments = context.departments || [];
@@ -451,6 +530,20 @@ const Communications = () => {
       ]);
       setAnnouncements(announcementRes.data || { items: [], context: {} });
       setFiles(fileRes.data || { items: [], context: {} });
+      const [billingRes, photosRes] = await Promise.allSettled([
+        api.get("/billing/status"),
+        api.get("/manager/field-photos", {
+          params: {
+            page: fieldPhotoPage,
+            page_size: fieldPhotoPageSize,
+            status: scanFilter || undefined,
+            search: search || undefined,
+            archived: statusFilter === "archived" ? "true" : undefined,
+          },
+        }),
+      ]);
+      if (billingRes.status === "fulfilled") setBillingStatus(billingRes.value.data || null);
+      if (photosRes.status === "fulfilled") setFieldPhotos(photosRes.value.data || { items: [], context: {}, summary: {} });
     } catch (err) {
       if (!silent) setError(err?.response?.data?.error || "Unable to load communications.");
     } finally {
@@ -459,7 +552,7 @@ const Communications = () => {
   };
 
   useEffect(() => { loadData(); }, []);
-  useEffect(() => { loadData(); }, [statusFilter, priorityFilter, audienceFilter, categoryFilter, scanFilter, announcementPage, filePage, announcementPageSize, filePageSize]);
+  useEffect(() => { loadData(); }, [statusFilter, priorityFilter, audienceFilter, categoryFilter, scanFilter, announcementPage, filePage, fieldPhotoPage, announcementPageSize, filePageSize, fieldPhotoPageSize]);
 
   useEffect(() => {
     const annPagination = announcements.pagination;
@@ -468,13 +561,17 @@ const Communications = () => {
     const filePagination = files.pagination;
     if (filePagination && Number(filePagination.page || 1) > Math.max(1, Number(filePagination.total_pages || 1))) setFilePage(Math.max(1, filePagination.total_pages || 1));
     if (filePagination && Number(filePagination.total || 0) === 0 && Number(filePagination.page || 1) !== 1) setFilePage(1);
-  }, [announcements.pagination, files.pagination]);
+    const photoPagination = fieldPhotos.pagination;
+    if (photoPagination && Number(photoPagination.page || 1) > Math.max(1, Number(photoPagination.total_pages || 1))) setFieldPhotoPage(Math.max(1, photoPagination.total_pages || 1));
+    if (photoPagination && Number(photoPagination.total || 0) === 0 && Number(photoPagination.page || 1) !== 1) setFieldPhotoPage(1);
+  }, [announcements.pagination, files.pagination, fieldPhotos.pagination]);
 
-  const filteredRows = activeTab === "announcements" ? announcements.items || [] : files.items || [];
-  const activePagination = activeTab === "announcements" ? announcements.pagination : files.pagination;
-  const summary = activeTab === "announcements" ? announcements.summary || files.summary || {} : files.summary || announcements.summary || {};
+  const filteredRows = activeTab === "announcements" ? announcements.items || [] : activeTab === "files" ? files.items || [] : fieldPhotos.items || [];
+  const activePagination = activeTab === "announcements" ? announcements.pagination : activeTab === "files" ? files.pagination : fieldPhotos.pagination;
+  const summary = activeTab === "announcements" ? announcements.summary || files.summary || {} : activeTab === "files" ? files.summary || announcements.summary || {} : fieldPhotos.summary || billingStatus?.field_photos || {};
   const hasVisiblePendingScan = (announcements.items || []).some((row) => fileIsWaitingForScan(row.attachment_file))
-    || (files.items || []).some((row) => fileIsWaitingForScan(row.file));
+    || (files.items || []).some((row) => fileIsWaitingForScan(row.file))
+    || (fieldPhotos.items || []).some((row) => fileIsWaitingForScan(row));
 
   useEffect(() => {
     if (!hasVisiblePendingScan || !scanRefreshUntil || Date.now() > scanRefreshUntil) return undefined;
@@ -487,12 +584,14 @@ const Communications = () => {
   const refreshSearch = () => {
     setAnnouncementPage(1);
     setFilePage(1);
+    setFieldPhotoPage(1);
     loadData();
   };
 
   const resetPaginationForFilters = () => {
     setAnnouncementPage(1);
     setFilePage(1);
+    setFieldPhotoPage(1);
   };
 
   const openAnnouncementDialog = (row = null) => {
@@ -739,6 +838,7 @@ const Communications = () => {
   const tabs = [
     { key: "announcements", label: "Announcements" },
     { key: "files", label: "Shared Files" },
+    { key: "field_photos", label: "Field Photos" },
   ];
 
   const switchTab = (tabKey) => {
@@ -749,7 +849,72 @@ const Communications = () => {
       setAnnouncementPage(1);
     } else {
       setPriorityFilter("");
-      setFilePage(1);
+      if (tabKey === "files") setFilePage(1);
+      if (tabKey === "field_photos") {
+        setFilePage(1);
+        setFieldPhotoPage(1);
+      }
+    }
+  };
+
+  const activateFieldPhotos = async () => {
+    setActivatingFieldPhotos(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await api.post("/billing/field-photos/activate", {});
+      setBillingStatus(res.data || null);
+      setSuccess("Field Photos activated.");
+      loadData(true);
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to activate Field Photos.");
+    } finally {
+      setActivatingFieldPhotos(false);
+    }
+  };
+
+  const addFieldPhotoStorage = async () => {
+    setError("");
+    setSuccess("");
+    try {
+      const currentQty = Number(summary?.storage_addon_qty || 0);
+      const res = await api.post("/billing/field-photos/storage/set", { addon_qty: currentQty + 1 });
+      setBillingStatus(res.data || null);
+      setSuccess("Field Photos storage updated.");
+      loadData(true);
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to update Field Photos storage.");
+    }
+  };
+
+  const downloadFieldPhoto = async (row) => {
+    try {
+      const res = await api.get(`/manager/field-photos/${row.id}/download`);
+      const url = res?.data?.url;
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setError(err?.response?.data?.error || "Photo is not available yet.");
+    }
+  };
+
+  const archiveFieldPhoto = async (row) => {
+    try {
+      await api.post(`/manager/field-photos/${row.id}/archive`, { archived: !row.is_archived });
+      setSuccess(row.is_archived ? "Photo restored." : "Photo archived.");
+      loadData(true);
+    } catch (err) {
+      setError(err?.response?.data?.error || "Unable to update photo.");
+    }
+  };
+
+  const deleteFieldPhoto = async (row) => {
+    if (!window.confirm("Delete this field photo? This removes the row and stored image.")) return;
+    try {
+      await api.delete(`/manager/field-photos/${row.id}`);
+      setSuccess("Photo deleted.");
+      loadData();
+    } catch (err) {
+      setError(err?.response?.data?.error || "Unable to delete photo.");
     }
   };
 
@@ -766,12 +931,17 @@ const Communications = () => {
             <Typography variant="body2" color="text.secondary">Publish internal updates and share company files.</Typography>
           </Box>
           <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap justifyContent={{ xs: "flex-start", md: "flex-end" }}>
-            {[
+            {(activeTab === "field_photos" ? [
+              ["Storage used", `${storagePercent(summary)}%`, "primary"],
+              ["Photos", fieldPhotos.pagination?.total || 0, "info"],
+              ["Security checks", (fieldPhotos.items || []).filter((row) => fileIsWaitingForScan(row)).length, "warning"],
+              ["Blocked", (fieldPhotos.items || []).filter((row) => String(row.scan_status || "").toLowerCase() === "blocked").length, "error"],
+            ] : [
               ["Announcements", summary.total_announcements || 0, "warning"],
               ["Shared files", summary.total_shared_files || 0, "primary"],
               ["Pending scans", summary.pending_scan_files || 0, "warning"],
               ["Blocked", summary.blocked_files || 0, "error"],
-            ].map(([label, value, tone]) => (
+            ]).map(([label, value, tone]) => (
               <Chip
                 key={label}
                 label={`${label}: ${value}`}
@@ -828,7 +998,7 @@ const Communications = () => {
                       <MenuItem value="urgent">Urgent</MenuItem>
                     </Select>
                   </FormControl>
-                ) : (
+                ) : activeTab === "files" ? (
                   <>
                     <FormControl size="small" sx={{ minWidth: 145 }}>
                       <InputLabel>Category</InputLabel>
@@ -848,31 +1018,49 @@ const Communications = () => {
                       </Select>
                     </FormControl>
                   </>
+                ) : (
+                  <FormControl size="small" sx={{ minWidth: 165 }}>
+                    <InputLabel>Readiness</InputLabel>
+                    <Select label="Readiness" value={scanFilter} onChange={(event) => { resetPaginationForFilters(); setScanFilter(event.target.value); }}>
+                      <MenuItem value="">All photos</MenuItem>
+                      <MenuItem value="pending">Security check</MenuItem>
+                      <MenuItem value="scanning">Security check</MenuItem>
+                      <MenuItem value="clean">Ready</MenuItem>
+                      <MenuItem value="blocked">Blocked</MenuItem>
+                    </Select>
+                  </FormControl>
                 )}
                 <RowsPerPageSelect
-                  value={activeTab === "announcements" ? announcementPageSize : filePageSize}
+                  value={activeTab === "announcements" ? announcementPageSize : activeTab === "files" ? filePageSize : fieldPhotoPageSize}
                   onChange={(value) => {
                     if (activeTab === "announcements") {
                       setAnnouncementPage(1);
                       setAnnouncementPageSize(value);
-                    } else {
+                    } else if (activeTab === "files") {
                       setFilePage(1);
                       setFilePageSize(value);
+                    } else {
+                      setFieldPhotoPage(1);
+                      setFieldPhotoPageSize(value);
                     }
                   }}
                 />
-                <Tooltip title="Remove stale uploaded files that were never attached to an announcement or shared file.">
-                  <Button size="small" variant="text" color="warning" onClick={() => setCleanupDialogOpen(true)}>Maintenance</Button>
-                </Tooltip>
+                {activeTab !== "field_photos" && (
+                  <Tooltip title="Remove stale uploaded files that were never attached to an announcement or shared file.">
+                    <Button size="small" variant="text" color="warning" onClick={() => setCleanupDialogOpen(true)}>Maintenance</Button>
+                  </Tooltip>
+                )}
                 <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadData}>Refresh</Button>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => activeTab === "announcements" ? openAnnouncementDialog() : openFileDialog()}
-                  sx={{ fontWeight: 900 }}
-                >
-                  {activeTab === "announcements" ? "New announcement" : "Share file"}
-                </Button>
+                {activeTab !== "field_photos" && (
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => activeTab === "announcements" ? openAnnouncementDialog() : openFileDialog()}
+                    sx={{ fontWeight: 900 }}
+                  >
+                    {activeTab === "announcements" ? "New announcement" : "Share file"}
+                  </Button>
+                )}
               </Stack>
             </Stack>
           </CardContent>
@@ -881,7 +1069,79 @@ const Communications = () => {
         {error && <Alert severity="error" onClose={() => setError("")}>{error}</Alert>}
         {success && <Alert severity="success" onClose={() => setSuccess("")}>{success}</Alert>}
 
-        {loading ? (
+        {activeTab === "field_photos" && !(billingStatus?.field_photos?.addon_active || summary?.addon_active) ? (
+          <Card variant="outlined" sx={{ borderRadius: 1, borderColor: alpha(theme.palette.primary.main, 0.18), background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)}, ${alpha(theme.palette.background.paper, 0.98)})` }}>
+            <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+              <Stack spacing={2} alignItems="flex-start">
+                <Box sx={{ width: 46, height: 46, borderRadius: 1, display: "grid", placeItems: "center", bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main }}>
+                  <PhotoCameraIcon />
+                </Box>
+                <Box>
+                  <Typography variant="h5" sx={{ fontWeight: 950 }}>Field Photos</Typography>
+                  <Typography variant="body1" color="text.secondary" sx={{ mt: 0.75, maxWidth: 680 }}>
+                    Let staff upload proof-of-work photos from their phone so managers can review them in one place.
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                  {["Mobile photo upload", "Secure private storage", "Manager review page", "Shift-linked photos"].map((label) => (
+                    <Chip key={label} label={label} {...readableChipProps(theme, "primary")} />
+                  ))}
+                </Stack>
+                <Typography variant="h6" sx={{ fontWeight: 950 }}>$29/month</Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                  <Button variant="contained" onClick={activateFieldPhotos} disabled={activatingFieldPhotos} startIcon={activatingFieldPhotos ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}>
+                    {activatingFieldPhotos ? "Activating..." : "Activate Field Photos"}
+                  </Button>
+                  <Typography variant="body2" color="text.secondary">Need more storage later? You can upgrade anytime.</Typography>
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
+        ) : activeTab === "field_photos" ? (
+          <Stack spacing={1.5}>
+            <Card variant="outlined" sx={{ borderRadius: 1 }}>
+              <CardContent sx={{ p: 2 }}>
+                <Stack spacing={1}>
+                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 950 }}>Photo storage</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {formatBytes(summary?.storage_used_bytes)} of {formatBytes(summary?.storage_quota_bytes)} used · Photos are stored for {summary?.retention_days || 90} days.
+                      </Typography>
+                    </Box>
+                    {storagePercent(summary) >= 80 && (
+                      <Button size="small" variant="outlined" onClick={addFieldPhotoStorage}>Add 10 GB</Button>
+                    )}
+                  </Stack>
+                  <LinearProgress variant="determinate" value={storagePercent(summary)} sx={{ height: 7, borderRadius: 1 }} />
+                  {storagePercent(summary) >= 100 && <Alert severity="error">Photo storage is full. New uploads are paused until storage is upgraded or older photos are removed.</Alert>}
+                  {storagePercent(summary) >= 80 && storagePercent(summary) < 100 && <Alert severity="warning">You are getting close to your included Field Photos storage.</Alert>}
+                  {summary?.read_only && <Alert severity="warning">Field Photos has been cancelled. New uploads are disabled. Existing photos remain available during the read-only grace period.</Alert>}
+                </Stack>
+              </CardContent>
+            </Card>
+            {loading ? (
+              <Stack direction="row" spacing={1} alignItems="center"><CircularProgress size={20} /><Typography color="text.secondary">Loading field photos...</Typography></Stack>
+            ) : filteredRows.length ? (
+              <Stack spacing={1.5}>
+                <Grid container spacing={2}>
+                  {filteredRows.map((row) => (
+                    <Grid key={`field-photo-${row.id}`} item xs={12} md={6} lg={4}>
+                      <FieldPhotoCard row={row} onArchive={archiveFieldPhoto} onDelete={deleteFieldPhoto} onDownload={downloadFieldPhoto} />
+                    </Grid>
+                  ))}
+                </Grid>
+                <PaginationBar pagination={activePagination} onChange={(page) => setFieldPhotoPage(page)} />
+              </Stack>
+            ) : (
+              <Card variant="outlined" sx={{ borderRadius: 1 }}>
+                <CardContent sx={{ p: 3, textAlign: "center" }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>No field photos yet.</Typography>
+                </CardContent>
+              </Card>
+            )}
+          </Stack>
+        ) : loading ? (
           <Stack direction="row" spacing={1} alignItems="center"><CircularProgress size={20} /><Typography color="text.secondary">Loading communications...</Typography></Stack>
         ) : filteredRows.length ? (
           <Stack spacing={1.5}>
@@ -1171,7 +1431,7 @@ const Communications = () => {
                       <Grid item xs={6}><DetailRow label="File name" value={fileName(file)} /></Grid>
                       <Grid item xs={6}><DetailRow label="Size" value={formatBytes(file.file_size)} /></Grid>
                       <Grid item xs={6}><DetailRow label="Type" value={file.content_type} /></Grid>
-                      <Grid item xs={6}><DetailRow label="Scan status" value={file.scan_status} /></Grid>
+                      <Grid item xs={6}><DetailRow label="Security" value={downloadStatusText(file)} /></Grid>
                       <Grid item xs={6}><DetailRow label="Uploaded" value={formatDateTime(file.created_at)} /></Grid>
                       <Grid item xs={6}><DetailRow label="Download" value={downloadStatusText(file)} /></Grid>
                     </Grid>
