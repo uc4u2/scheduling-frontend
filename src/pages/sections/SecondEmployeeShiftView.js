@@ -2734,7 +2734,9 @@ const polishedPanelSx = employeePolish
                         )}
                         {fieldPhotosStatus?.addon_active && !fieldPhotosStatus?.upload_enabled && (
                           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                            Photo uploads are temporarily unavailable. Please contact your manager.
+                            {fieldPhotosStatus?.read_only
+                              ? "Photo uploads are currently unavailable. Please contact your manager."
+                              : "Photo uploads are temporarily unavailable. Please contact your manager."}
                           </Typography>
                         )}
                       </>

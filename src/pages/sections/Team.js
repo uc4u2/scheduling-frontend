@@ -54,7 +54,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { format, endOfMonth, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, MoreVert as MoreVertIcon } from "@mui/icons-material";
+import { Edit as EditIcon, Delete as DeleteIcon, Search as SearchIcon, MoreVert as MoreVertIcon, PhotoCamera as PhotoCameraIcon } from "@mui/icons-material";
 import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
@@ -102,6 +102,20 @@ const toTimeInputValue = (value) => {
 };
 const toArray = (raw) =>
   Array.isArray(raw) ? raw : raw && typeof raw === "object" ? Object.values(raw) : [];
+
+const formatFieldPhotoDateTime = (value) => {
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return value;
+  }
+};
 
 const defaultBreakPolicyForm = {
   breakMode: "none",
@@ -1842,6 +1856,8 @@ const [formData, setFormData] = useState({
   const [shiftTimeOffPreview, setShiftTimeOffPreview] = useState(null);
   const [shiftTimeOffPreviewLoading, setShiftTimeOffPreviewLoading] = useState(false);
   const [shiftTimeOffPreviewError, setShiftTimeOffPreviewError] = useState("");
+  const [fieldPhotoPreview, setFieldPhotoPreview] = useState({ count: 0, items: [] });
+  const [fieldPhotoPreviewLoading, setFieldPhotoPreviewLoading] = useState(false);
 
   /* ------------------------------- messaging -------------------------------- */
   const [successMsg, setSuccessMsg] = useState("");
@@ -2289,6 +2305,45 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
     const fallbackDate = formData.date || selectedDate || format(new Date(), "yyyy-MM-dd");
     fetchAvailabilityForModal(recruiterId, fallbackDate);
   }, [modalOpen, editingShift, selectedRecruiters, formData.date, selectedDate, fetchAvailabilityForModal]);
+
+  useEffect(() => {
+    let alive = true;
+    const loadRelatedPhotos = async () => {
+      if (!modalOpen || !editingShift?.id) {
+        setFieldPhotoPreview({ count: 0, items: [] });
+        return;
+      }
+      setFieldPhotoPreviewLoading(true);
+      try {
+        const res = await api.get(`/manager/shifts/${editingShift.id}/field-photos`, {
+          headers: getAuthHeaders(),
+        });
+        const payload = res.data || { count: 0, items: [] };
+        const items = await Promise.all(
+          (payload.items || []).slice(0, 5).map(async (item) => {
+            if (!item?.is_download_ready) return item;
+            try {
+              const download = await api.get(`/manager/field-photos/${item.id}/download`, {
+                headers: getAuthHeaders(),
+              });
+              return { ...item, preview_url: download?.data?.url || "" };
+            } catch {
+              return item;
+            }
+          })
+        );
+        if (alive) setFieldPhotoPreview({ ...payload, items });
+      } catch {
+        if (alive) setFieldPhotoPreview({ count: 0, items: [] });
+      } finally {
+        if (alive) setFieldPhotoPreviewLoading(false);
+      }
+    };
+    loadRelatedPhotos();
+    return () => {
+      alive = false;
+    };
+  }, [modalOpen, editingShift?.id, getAuthHeaders]);
 
   /* -------------------------------- transforms ------------------------------- */
   const filteredShifts = useMemo(
@@ -4767,6 +4822,84 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                   : "Select a single employee to link availability slots."}
               </FormHelperText>
             </FormControl>
+
+            {editingShift && (
+              <Box
+                mt={2}
+                sx={{
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  p: 1.5,
+                  bgcolor: "rgba(248,250,252,0.58)",
+                }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <PhotoCameraIcon fontSize="small" color="primary" />
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={700}>
+                        Related Photos
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {fieldPhotoPreviewLoading
+                          ? "Loading photos..."
+                          : `${fieldPhotoPreview.count || 0} photo${Number(fieldPhotoPreview.count || 0) === 1 ? "" : "s"} linked to this shift`}
+                        {fieldPhotoPreview.items?.[0]?.created_at
+                          ? ` · latest ${formatFieldPhotoDateTime(fieldPhotoPreview.items[0].created_at)}`
+                          : ""}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={!editingShift?.id}
+                    onClick={() => navigate(`/manager/communications?tab=field_photos&shift_id=${editingShift.id}`)}
+                  >
+                    View all photos
+                  </Button>
+                </Stack>
+                {fieldPhotoPreviewLoading ? (
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.5 }}>
+                    <CircularProgress size={16} />
+                    <Typography variant="body2" color="text.secondary">Checking linked photos...</Typography>
+                  </Stack>
+                ) : fieldPhotoPreview.items?.length ? (
+                  <Stack direction="row" spacing={1} sx={{ mt: 1.5, overflowX: "auto", pb: 0.5 }}>
+                    {fieldPhotoPreview.items.slice(0, 5).map((photo) => (
+                      <Tooltip key={photo.id} title={photo.security_status_label || "Field photo"}>
+                        <Box
+                          sx={{
+                            width: 58,
+                            height: 58,
+                            flex: "0 0 auto",
+                            borderRadius: 1,
+                            overflow: "hidden",
+                            border: "1px solid",
+                            borderColor: "divider",
+                            display: "grid",
+                            placeItems: "center",
+                            bgcolor: alpha(theme.palette.primary.main, 0.08),
+                            color: theme.palette.primary.main,
+                          }}
+                        >
+                          {photo.preview_url ? (
+                            <Box component="img" src={photo.preview_url} alt={photo.file_name || "Field photo"} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <PhotoCameraIcon fontSize="small" />
+                          )}
+                        </Box>
+                      </Tooltip>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    No photos have been uploaded for this shift yet.
+                  </Typography>
+                )}
+              </Box>
+            )}
 
             {editingShift && (
               <Box

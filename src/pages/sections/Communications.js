@@ -38,6 +38,7 @@ import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import RestoreIcon from "@mui/icons-material/Restore";
 import SendIcon from "@mui/icons-material/Send";
+import { useLocation, useNavigate } from "react-router-dom";
 import ManagementFrame from "../../components/ui/ManagementFrame";
 import api from "../../utils/api";
 
@@ -363,7 +364,25 @@ const CommunicationCard = ({ type, row, onEdit, onArchive, onView, onDelete }) =
 
 const FieldPhotoCard = ({ row, onArchive, onDelete, onDownload }) => {
   const theme = useTheme();
+  const [previewUrl, setPreviewUrl] = useState("");
   const waiting = fileIsWaitingForScan(row);
+
+  useEffect(() => {
+    let alive = true;
+    setPreviewUrl("");
+    if (!row?.id || !row?.is_download_ready) return undefined;
+    api.get(`/manager/field-photos/${row.id}/download`)
+      .then((res) => {
+        if (alive) setPreviewUrl(res?.data?.url || "");
+      })
+      .catch(() => {
+        if (alive) setPreviewUrl("");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [row?.id, row?.is_download_ready]);
+
   return (
     <Card
       variant="outlined"
@@ -377,8 +396,12 @@ const FieldPhotoCard = ({ row, onArchive, onDelete, onDownload }) => {
       <CardContent sx={{ p: 2 }}>
         <Stack spacing={1.15}>
           <Stack direction="row" spacing={1.1} alignItems="flex-start">
-            <Box sx={{ width: 44, height: 44, borderRadius: 1, display: "grid", placeItems: "center", bgcolor: alpha(theme.palette.info.main, 0.13), color: theme.palette.info.dark }}>
-              <PhotoCameraIcon />
+            <Box sx={{ width: 58, height: 58, borderRadius: 1, overflow: "hidden", display: "grid", placeItems: "center", bgcolor: alpha(theme.palette.info.main, 0.13), color: theme.palette.info.dark }}>
+              {previewUrl ? (
+                <Box component="img" src={previewUrl} alt={row.file_name || "Field photo"} sx={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <PhotoCameraIcon />
+              )}
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 950, ...lineClampSx(1) }}>
@@ -461,6 +484,9 @@ const DetailRow = ({ label, value }) => (
 
 const Communications = () => {
   const theme = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const initialParams = new URLSearchParams(location.search);
   const [activeTab, setActiveTab] = useState("announcements");
   const [announcements, setAnnouncements] = useState({ items: [], context: {} });
   const [files, setFiles] = useState({ items: [], context: {} });
@@ -481,6 +507,7 @@ const Communications = () => {
   const [announcementPageSize, setAnnouncementPageSize] = useState(12);
   const [filePageSize, setFilePageSize] = useState(12);
   const [fieldPhotoPageSize, setFieldPhotoPageSize] = useState(12);
+  const [fieldPhotoShiftFilter, setFieldPhotoShiftFilter] = useState(initialParams.get("shift_id") || "");
   const [announcementDialogOpen, setAnnouncementDialogOpen] = useState(false);
   const [fileDialogOpen, setFileDialogOpen] = useState(false);
   const [detailRow, setDetailRow] = useState(null);
@@ -538,6 +565,7 @@ const Communications = () => {
             page_size: fieldPhotoPageSize,
             status: scanFilter || undefined,
             search: search || undefined,
+            shift_id: fieldPhotoShiftFilter || undefined,
             archived: statusFilter === "archived" ? "true" : undefined,
           },
         }),
@@ -551,8 +579,17 @@ const Communications = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
-  useEffect(() => { loadData(); }, [statusFilter, priorityFilter, audienceFilter, categoryFilter, scanFilter, announcementPage, filePage, fieldPhotoPage, announcementPageSize, filePageSize, fieldPhotoPageSize]);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("tab") === "field_photos") {
+      setActiveTab("field_photos");
+      setFieldPhotoShiftFilter(params.get("shift_id") || "");
+      setFieldPhotoPage(1);
+    }
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => { loadData(); }, [statusFilter, priorityFilter, audienceFilter, categoryFilter, scanFilter, announcementPage, filePage, fieldPhotoPage, announcementPageSize, filePageSize, fieldPhotoPageSize, fieldPhotoShiftFilter]);
 
   useEffect(() => {
     const annPagination = announcements.pagination;
@@ -843,6 +880,10 @@ const Communications = () => {
 
   const switchTab = (tabKey) => {
     setActiveTab(tabKey);
+    if (tabKey !== "field_photos" && fieldPhotoShiftFilter) {
+      setFieldPhotoShiftFilter("");
+      navigate("/manager/communications", { replace: true });
+    }
     if (tabKey === "announcements") {
       setCategoryFilter("");
       setScanFilter("");
@@ -885,6 +926,12 @@ const Communications = () => {
     } catch (err) {
       setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to update Field Photos storage.");
     }
+  };
+
+  const clearFieldPhotoShiftFilter = () => {
+    setFieldPhotoShiftFilter("");
+    setFieldPhotoPage(1);
+    navigate("/manager/communications?tab=field_photos", { replace: true });
   };
 
   const downloadFieldPhoto = async (row) => {
@@ -1099,6 +1146,15 @@ const Communications = () => {
           </Card>
         ) : activeTab === "field_photos" ? (
           <Stack spacing={1.5}>
+            {fieldPhotoShiftFilter && (
+              <Alert
+                severity="info"
+                action={<Button size="small" onClick={clearFieldPhotoShiftFilter}>Clear</Button>}
+                sx={{ alignItems: "center" }}
+              >
+                Showing photos for shift #{fieldPhotoShiftFilter}.
+              </Alert>
+            )}
             <Card variant="outlined" sx={{ borderRadius: 1 }}>
               <CardContent sx={{ p: 2 }}>
                 <Stack spacing={1}>
