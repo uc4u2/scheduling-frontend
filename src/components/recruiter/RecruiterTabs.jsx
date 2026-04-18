@@ -15,6 +15,7 @@ const TAB_CONFIG = [
   { value: "my-time", labelKey: "recruiter.tabs.myTime", path: "/recruiter/my-time" },
   { value: "my-training", labelKey: "recruiter.tabs.myTraining", path: "/recruiter/my-training" },
   { value: "communications", label: "Communications", path: "/recruiter/communications" },
+  { value: "field-photos", label: "Field Photos", path: "/recruiter/field-photos" },
   { value: "candidate-search", labelKey: "recruiter.tabs.candidateSearch", path: "/employee/candidate-search" },
   { value: "public-link", labelKey: "recruiter.tabs.publicLink", path: "/recruiter/public-link" },
   { value: "job-postings", labelKey: "recruiter.tabs.jobPostings", path: "/manager/job-openings" },
@@ -41,6 +42,9 @@ const getPathValue = (locationPathname, searchParams, fallback) => {
   }
   if (locationPathname.startsWith("/recruiter/communications") || locationPathname.startsWith("/employee/communications")) {
     return "communications";
+  }
+  if (locationPathname.startsWith("/recruiter/field-photos") || locationPathname.startsWith("/employee/field-photos")) {
+    return "field-photos";
   }
   if (locationPathname.startsWith("/recruiter/candidate-search") || locationPathname.startsWith("/employee/candidate-search")) {
     return "candidate-search";
@@ -78,7 +82,7 @@ const RecruiterTabs = ({
   const tabs = useMemo(() => {
     if (hrAccess) return TAB_CONFIG;
     return TAB_CONFIG.filter((tab) =>
-      ["calendar", "my-time", "my-training", "communications"].includes(tab.value)
+      ["calendar", "my-time", "my-training", "communications", "field-photos"].includes(tab.value)
     );
   }, [hrAccess]);
 

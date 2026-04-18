@@ -4855,7 +4855,7 @@ format(asLocalDate(s.date), "yyyy-'W'II") === weekKey
                     size="small"
                     variant="outlined"
                     disabled={!editingShift?.id}
-                    onClick={() => navigate(`/manager/communications?tab=field_photos&shift_id=${editingShift.id}`)}
+                    onClick={() => navigate(`/manager/field-photos?shift_id=${editingShift.id}`)}
                   >
                     View all photos
                   </Button>

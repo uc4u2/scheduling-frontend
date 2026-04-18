@@ -559,21 +559,6 @@ const Communications = () => {
       ]);
       setAnnouncements(announcementRes.data || { items: [], context: {} });
       setFiles(fileRes.data || { items: [], context: {} });
-      const [billingRes, photosRes] = await Promise.allSettled([
-        api.get("/billing/status"),
-        api.get("/manager/field-photos", {
-          params: {
-            page: fieldPhotoPage,
-            page_size: fieldPhotoPageSize,
-            status: scanFilter || undefined,
-            search: search || undefined,
-            shift_id: fieldPhotoShiftFilter || undefined,
-            archived: statusFilter === "archived" ? "true" : undefined,
-          },
-        }),
-      ]);
-      if (billingRes.status === "fulfilled") setBillingStatus(billingRes.value.data || null);
-      if (photosRes.status === "fulfilled") setFieldPhotos(photosRes.value.data || { items: [], context: {}, summary: {} });
     } catch (err) {
       if (!silent) setError(err?.response?.data?.error || "Unable to load communications.");
     } finally {
@@ -584,9 +569,9 @@ const Communications = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("tab") === "field_photos") {
-      setActiveTab("field_photos");
-      setFieldPhotoShiftFilter(params.get("shift_id") || "");
-      setFieldPhotoPage(1);
+      const shift = params.get("shift_id");
+      navigate(`/manager/field-photos${shift ? `?shift_id=${shift}` : ""}`, { replace: true });
+      return;
     }
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -609,8 +594,7 @@ const Communications = () => {
   const activePagination = activeTab === "announcements" ? announcements.pagination : activeTab === "files" ? files.pagination : fieldPhotos.pagination;
   const summary = activeTab === "announcements" ? announcements.summary || files.summary || {} : activeTab === "files" ? files.summary || announcements.summary || {} : fieldPhotos.summary || billingStatus?.field_photos || {};
   const hasVisiblePendingScan = (announcements.items || []).some((row) => fileIsWaitingForScan(row.attachment_file))
-    || (files.items || []).some((row) => fileIsWaitingForScan(row.file))
-    || (fieldPhotos.items || []).some((row) => fileIsWaitingForScan(row));
+    || (files.items || []).some((row) => fileIsWaitingForScan(row.file));
 
   useEffect(() => {
     if (!hasVisiblePendingScan || !scanRefreshUntil || Date.now() > scanRefreshUntil) return undefined;
@@ -877,7 +861,6 @@ const Communications = () => {
   const tabs = [
     { key: "announcements", label: "Announcements" },
     { key: "files", label: "Shared Files" },
-    { key: "field_photos", label: "Field Photos" },
   ];
 
   const switchTab = (tabKey) => {

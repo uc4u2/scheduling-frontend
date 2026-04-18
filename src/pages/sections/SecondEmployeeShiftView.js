@@ -244,9 +244,10 @@ const SecondEmployeeShiftView = ({ employeePolish = false }) => {
   const [fieldPhotosStatus, setFieldPhotosStatus] = useState(null);
   const [fieldPhotoSummaries, setFieldPhotoSummaries] = useState({});
   const [photoUploadShift, setPhotoUploadShift] = useState(null);
-  const [photoUploadFile, setPhotoUploadFile] = useState(null);
+  const [photoUploadFiles, setPhotoUploadFiles] = useState([]);
   const [photoUploadNote, setPhotoUploadNote] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoUploadProgress, setPhotoUploadProgress] = useState("");
 
   // Leave-request dialog
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
@@ -555,26 +556,52 @@ const canUploadFieldPhotoForShift = (shift) => {
 
 const openFieldPhotoUpload = (shift) => {
   setPhotoUploadShift(shift);
-  setPhotoUploadFile(null);
+  setPhotoUploadFiles([]);
   setPhotoUploadNote("");
+  setPhotoUploadProgress("");
 };
 
 const submitFieldPhotoUpload = async () => {
-  if (!photoUploadShift?.id || !photoUploadFile) {
-    setSnackbar({ open: true, msg: "Choose a photo to upload.", error: true });
+  if (!photoUploadShift?.id || !photoUploadFiles.length) {
+    setSnackbar({ open: true, msg: "Choose one or more photos to upload.", error: true });
     return;
   }
   setPhotoUploading(true);
+  setPhotoUploadProgress(`Preparing ${photoUploadFiles.length} photo${photoUploadFiles.length === 1 ? "" : "s"}...`);
+  let uploaded = 0;
+  const failed = [];
   try {
-    const formData = new FormData();
-    formData.append("file", photoUploadFile);
-    formData.append("note", photoUploadNote || "");
-    await api.post(`/employee/shifts/${photoUploadShift.id}/field-photos`, formData, {
-      headers: { ...authHeader, "Content-Type": "multipart/form-data" },
-    });
-    setSnackbar({ open: true, msg: "Photo uploaded. Security check in progress.", error: false });
+    const locationPayload = await getPunchLocationPayload();
+    for (let index = 0; index < photoUploadFiles.length; index += 1) {
+      const file = photoUploadFiles[index];
+      setPhotoUploadProgress(`Uploading ${index + 1} of ${photoUploadFiles.length}`);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("note", photoUploadNote || "");
+      const loc = locationPayload?.location || {};
+      Object.entries(loc).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          formData.append(`location[${key}]`, value);
+        }
+      });
+      try {
+        await api.post(`/employee/shifts/${photoUploadShift.id}/field-photos`, formData, {
+          headers: { ...authHeader, "Content-Type": "multipart/form-data" },
+        });
+        uploaded += 1;
+      } catch (err) {
+        failed.push({
+          name: file.name,
+          message: err?.response?.data?.error || "Upload failed.",
+        });
+      }
+    }
+    const message = failed.length
+      ? `${uploaded} photo${uploaded === 1 ? "" : "s"} uploaded. ${failed.length} photo${failed.length === 1 ? "" : "s"} could not be uploaded.${failed.length <= 3 ? `\n${failed.map((item) => `${item.name}: ${item.message}`).join("\n")}` : ""}`
+      : `${uploaded} photo${uploaded === 1 ? "" : "s"} uploaded. Security check in progress.`;
+    setSnackbar({ open: true, msg: message, error: failed.length > 0 });
     setPhotoUploadShift(null);
-    setPhotoUploadFile(null);
+    setPhotoUploadFiles([]);
     setPhotoUploadNote("");
     await loadShifts();
   } catch (err) {
@@ -588,6 +615,7 @@ const submitFieldPhotoUpload = async () => {
     });
   } finally {
     setPhotoUploading(false);
+    setPhotoUploadProgress("");
   }
 };
 
@@ -2754,7 +2782,7 @@ const polishedPanelSx = employeePolish
                             sx={{ mt: 1, ml: { xs: 0, sm: 1 } }}
                             onClick={() => openFieldPhotoUpload(shift)}
                           >
-                            Upload Photo
+                            Upload Photos
                           </Button>
                         )}
                         {fieldPhotosStatus?.addon_active && !fieldPhotosStatus?.upload_enabled && (
@@ -3817,7 +3845,7 @@ const polishedPanelSx = employeePolish
       )}
 
       <Dialog open={Boolean(photoUploadShift)} onClose={() => !photoUploading && setPhotoUploadShift(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>Upload Photo</DialogTitle>
+        <DialogTitle>Upload Photos</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={1.5} sx={{ pt: 0.5 }}>
             {photoUploadShift && (
@@ -3825,24 +3853,61 @@ const polishedPanelSx = employeePolish
                 Uploading for {photoUploadShift.date ? format(parseISO(photoUploadShift.date), "EEE, MMM d") : "selected shift"}.
               </Alert>
             )}
-            <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={photoUploading}>
-              {photoUploadFile ? photoUploadFile.name : "Take or choose photo"}
-              <input
-                hidden
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                capture="environment"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] || null;
-                  event.target.value = "";
-                  setPhotoUploadFile(file);
-                }}
-              />
-            </Button>
-            {photoUploadFile && (
-              <Typography variant="body2" color="text.secondary">
-                {photoUploadFile.name} · {(photoUploadFile.size / (1024 * 1024)).toFixed(1)} MB
+            <Stack spacing={0.5} alignItems="flex-start">
+              <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} disabled={photoUploading}>
+                {photoUploadFiles.length ? `${photoUploadFiles.length} selected` : "Take photos or choose from gallery"}
+                <input
+                  hidden
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files || []);
+                    event.target.value = "";
+                    setPhotoUploadFiles((prev) => {
+                      const existing = new Set(prev.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+                      const next = [...prev];
+                      files.forEach((file) => {
+                        const key = `${file.name}-${file.size}-${file.lastModified}`;
+                        if (!existing.has(key)) next.push(file);
+                      });
+                      return next;
+                    });
+                  }}
+                />
+              </Button>
+              <Typography variant="caption" color="text.secondary">
+                Select one or more JPG, PNG, or WebP photos.
               </Typography>
+            </Stack>
+            {photoUploadFiles.length > 0 && (
+              <Stack spacing={0.75}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                    {photoUploadFiles.length} photo{photoUploadFiles.length === 1 ? "" : "s"} selected
+                  </Typography>
+                  <Button size="small" onClick={() => setPhotoUploadFiles([])} disabled={photoUploading}>Remove all</Button>
+                </Stack>
+                <Box sx={{ maxHeight: { xs: 180, sm: 240 }, overflowY: "auto", pr: 0.5 }}>
+                  <Stack spacing={0.5}>
+                    {photoUploadFiles.map((file, index) => (
+                      <Stack key={`${file.name}-${file.size}-${file.lastModified}`} direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ py: 0.5 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {file.name} · {(file.size / (1024 * 1024)).toFixed(1)} MB
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          disabled={photoUploading}
+                          onClick={() => setPhotoUploadFiles((prev) => prev.filter((_, fileIndex) => fileIndex !== index))}
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Box>
+              </Stack>
             )}
             <TextField
               label="Note (optional)"
@@ -3855,12 +3920,18 @@ const polishedPanelSx = employeePolish
             <Typography variant="caption" color="text.secondary">
               Photos become available after the security check completes.
             </Typography>
+            {photoUploading && (
+              <Stack spacing={0.75}>
+                <LinearProgress />
+                <Typography variant="caption" color="text.secondary">{photoUploadProgress || "Uploading photos..."}</Typography>
+              </Stack>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPhotoUploadShift(null)} disabled={photoUploading}>Cancel</Button>
-          <Button variant="contained" onClick={submitFieldPhotoUpload} disabled={photoUploading || !photoUploadFile} startIcon={photoUploading ? <CircularProgress size={16} color="inherit" /> : <UploadFileIcon />}>
-            {photoUploading ? "Uploading..." : "Upload"}
+          <Button variant="contained" onClick={submitFieldPhotoUpload} disabled={photoUploading || !photoUploadFiles.length} startIcon={photoUploading ? <CircularProgress size={16} color="inherit" /> : <UploadFileIcon />}>
+            {photoUploading ? "Uploading..." : `Upload${photoUploadFiles.length > 1 ? ` ${photoUploadFiles.length}` : ""}`}
           </Button>
         </DialogActions>
       </Dialog>

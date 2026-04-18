@@ -78,6 +78,7 @@ import {
   PersonAddAlt as PersonAddAltIcon,
   InfoOutlined,
   HelpOutline as HelpOutlineIcon,
+  PhotoCamera as PhotoCameraIcon,
 } from "@mui/icons-material";
 import RecruiterComparisonPanel from "./components/RecruiterComparisonPanel";
 import GlobalBillingBanner from "./components/billing/GlobalBillingBanner";
@@ -105,6 +106,7 @@ import LeaveRequests from "./pages/sections/LeaveRequests";
 import Meetings from "./pages/sections/Meetings";
 import Training from "./pages/sections/Training";
 import Communications from "./pages/sections/Communications";
+import FieldPhotos from "./pages/sections/FieldPhotos";
 import ROE from "./pages/sections/ROE";
 import T4 from "./pages/sections/T4";
 import W2 from "./pages/sections/W2";
@@ -179,6 +181,7 @@ const menuConfig = [
       { labelKey: "manager.menu.teamMeetings", key: "meetings", icon: <EventAvailable /> },
       { labelKey: "manager.menu.training", key: "training", icon: <Assignment /> },
       { label: "Communications", key: "communications", icon: <Article /> },
+      { label: "Field Photos", key: "field-photos", icon: <PhotoCameraIcon /> },
     ],
   },
 
@@ -3314,6 +3317,9 @@ const NewManagementDashboard = ({ token, initialView, sectionOnly = false, suppo
 
       case "communications":
         return <Communications token={token} />;
+
+      case "field-photos":
+        return <FieldPhotos token={token} />;
 
       case "leaves":
         return <LeaveRequests token={token} currentUserInfo={currentUserInfo} />;
