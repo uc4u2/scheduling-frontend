@@ -15,6 +15,7 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import api from "../../utils/api";
 import { openBillingPortal } from "./billingHelpers";
 import { formatBillingNextDateLabel } from "./billingLabels";
@@ -22,14 +23,14 @@ import { isMobileComplianceMode } from "../../utils/mobileCompliance";
 import MobileWebOnlyNotice from "../mobile/MobileWebOnlyNotice";
 
 const PREVIEW_ERROR_COPY = {
-  subscription_missing: "A company subscription is required before Field Photos can be activated.",
+  subscription_missing: "An active company subscription is required before Field Photos can be activated.",
   field_photos_price_missing: "Field Photos billing is not configured yet. Contact support.",
   field_photos_storage_price_missing: "Field Photos storage billing is not configured yet. Contact support.",
   preview_failed: "We could not load an estimate right now. You can still continue.",
 };
 
 const ACTION_ERROR_COPY = {
-  subscription_missing: "A company subscription is required before Field Photos can be changed.",
+  subscription_missing: "An active company subscription is required before Field Photos can be changed.",
   field_photos_price_missing: "Field Photos billing is not configured yet. Contact support.",
   field_photos_storage_price_missing: "Field Photos storage billing is not configured yet. Contact support.",
   field_photos_activation_failed: "Unable to activate Field Photos. Please try again or contact support.",
@@ -63,8 +64,12 @@ const FieldPhotosBillingModal = ({
   const itemLabel = isStorage ? "Field Photos Storage Expansion" : "Field Photos Add-on";
   const monthlyLabel = isStorage ? "$10/month" : "$29/month";
   const modalSubtitle = isStorage
-    ? "Add another 10 GB to keep employee photo uploads running without interruption."
+    ? "Expand storage for shift-linked proof photos."
     : "Enable secure, shift-linked proof photos for your team.";
+  const itemDescription = isStorage ? "+10 GB" : "Secure proof-of-work photo uploads";
+  const billingNotice = isStorage
+    ? "Confirming will add 10 GB of Field Photos storage to your company subscription. Your saved payment method may be charged today based on Stripe’s billing estimate."
+    : "Confirming will add this add-on to your company subscription. Your saved payment method may be charged today based on Stripe’s billing estimate.";
   const Icon = isStorage ? StorageOutlinedIcon : PhotoCameraIcon;
   const nextBillingLabel = formatBillingNextDateLabel({
     nextBillingDate: preview?.next_billing_date,
@@ -185,7 +190,7 @@ const FieldPhotosBillingModal = ({
               <Box>
                 <Typography variant="subtitle2" sx={{ fontWeight: 950 }}>{itemLabel}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {isStorage ? "Additional secure photo storage" : "Secure proof-of-work photo uploads"}
+                  {itemDescription}
                 </Typography>
               </Box>
               <Chip label={monthlyLabel} color="primary" variant="outlined" sx={{ fontWeight: 900 }} />
@@ -215,9 +220,30 @@ const FieldPhotosBillingModal = ({
               {previewError || "We could not load an estimate right now. You can still continue."}
             </Typography>
           )}
-          <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-            This change applies to your company subscription. You can review subscription details from Billing Settings.
-          </Typography>
+          <Box
+            sx={{
+              border: `1px solid ${alpha(theme.palette.info.main, 0.22)}`,
+              borderRadius: 1.25,
+              bgcolor: alpha(theme.palette.info.main, 0.07),
+              px: 1.4,
+              py: 1.1,
+            }}
+          >
+            <Stack direction="row" spacing={1} alignItems="flex-start">
+              <InfoOutlinedIcon fontSize="small" sx={{ color: theme.palette.info.main, mt: 0.15 }} />
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 850, color: theme.palette.text.primary }}>
+                  Billing confirmation
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.6, mt: 0.25 }}>
+                  {billingNotice}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", lineHeight: 1.6, mt: 0.5 }}>
+                  This add-on is billed through your company subscription. You can review subscription details in Billing Settings.
+                </Typography>
+              </Box>
+            </Stack>
+          </Box>
           {error && <Alert severity="error">{error}</Alert>}
           {success && <Alert severity="success">{success}</Alert>}
         </Stack>
