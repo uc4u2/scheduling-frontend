@@ -33,6 +33,14 @@ const fmt = (value) => {
   }
 };
 
+const connectedChipSx = {
+  bgcolor: "#15803d",
+  color: "#ffffff",
+  borderColor: "#166534",
+  fontWeight: 800,
+  "& .MuiChip-label": { px: 1 },
+};
+
 export default function RecruiterMyCalendarPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -160,7 +168,12 @@ export default function RecruiterMyCalendarPage() {
                   <Stack direction="row" spacing={1} alignItems="center">
                     <CalendarMonthIcon color="primary" />
                     <Typography variant="h6" fontWeight={900}>Google Calendar</Typography>
-                    <Chip size="small" color={connected ? "success" : "default"} label={connected ? "Connected" : "Not connected"} />
+                    <Chip
+                      size="small"
+                      color={connected ? "success" : "default"}
+                      label={connected ? "Connected" : "Not connected"}
+                      sx={connected ? connectedChipSx : undefined}
+                    />
                   </Stack>
                   <Typography variant="body2" color="text.secondary">
                     Authorize your own Google account so Schedulaa bookings assigned to you can be added to your selected calendar.

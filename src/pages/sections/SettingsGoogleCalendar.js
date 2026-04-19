@@ -38,6 +38,37 @@ const statusColor = (status) => {
   return "info";
 };
 
+const connectedChipSx = {
+  bgcolor: "#15803d",
+  color: "#ffffff",
+  borderColor: "#166534",
+  fontWeight: 800,
+  "& .MuiChip-label": { px: 1 },
+};
+
+const statusChipSx = (tone) => {
+  if (tone === "success") return connectedChipSx;
+  if (tone === "warning") {
+    return {
+      bgcolor: "#b45309",
+      color: "#ffffff",
+      borderColor: "#92400e",
+      fontWeight: 800,
+      "& .MuiChip-label": { px: 1 },
+    };
+  }
+  if (tone === "error") {
+    return {
+      bgcolor: "#b91c1c",
+      color: "#ffffff",
+      borderColor: "#991b1b",
+      fontWeight: 800,
+      "& .MuiChip-label": { px: 1 },
+    };
+  }
+  return { fontWeight: 800, "& .MuiChip-label": { px: 1 } };
+};
+
 export default function SettingsGoogleCalendar() {
   const [status, setStatus] = useState(null);
   const [calendars, setCalendars] = useState([]);
@@ -178,7 +209,12 @@ export default function SettingsGoogleCalendar() {
               <Stack direction="row" spacing={1} alignItems="center">
                 <CalendarMonthIcon color="primary" />
                 <Typography variant="h6">Staff Calendar Connections</Typography>
-                <Chip size="small" color={connected ? "success" : "default"} label={connected ? "Connected" : "Not connected"} />
+                <Chip
+                  size="small"
+                  color={connected ? "success" : "default"}
+                  label={connected ? "Connected" : "Not connected"}
+                  sx={connected ? connectedChipSx : undefined}
+                />
               </Stack>
               <Typography variant="body2" color="text.secondary">
                 Staff authorize their own Google accounts. Managers control how Schedulaa uses connected calendars for booking sync and optional busy-time blocking.
@@ -305,11 +341,30 @@ export default function SettingsGoogleCalendar() {
                     <Typography variant="caption" color="text.secondary">{employee.email}</Typography>
                   </Box>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <Chip size="small" color={rowConnected ? "success" : "default"} label={rowConnected ? "Connected" : "Not connected"} />
+                    <Chip
+                      size="small"
+                      color={rowConnected ? "success" : "default"}
+                      label={rowConnected ? "Connected" : "Not connected"}
+                      sx={rowConnected ? connectedChipSx : undefined}
+                    />
                     {rowConnected && <Chip size="small" variant="outlined" label={row.provider_email || "Google account"} />}
                     {rowConnected && <Chip size="small" variant="outlined" label={row.selected_calendar_name || row.selected_calendar_id || "Calendar selected"} />}
-                    {rowConnected && <Chip size="small" color={row.sync_enabled ? "success" : "default"} label={row.sync_enabled ? "Sync on" : "Sync off"} />}
-                    {rowConnected && <Chip size="small" color={row.busy_blocking_enabled ? "warning" : "default"} label={row.busy_blocking_enabled ? "Busy blocking on" : "Busy blocking off"} />}
+                    {rowConnected && (
+                      <Chip
+                        size="small"
+                        color={row.sync_enabled ? "success" : "default"}
+                        label={row.sync_enabled ? "Sync on" : "Sync off"}
+                        sx={row.sync_enabled ? statusChipSx("success") : statusChipSx("default")}
+                      />
+                    )}
+                    {rowConnected && (
+                      <Chip
+                        size="small"
+                        color={row.busy_blocking_enabled ? "warning" : "default"}
+                        label={row.busy_blocking_enabled ? "Busy blocking on" : "Busy blocking off"}
+                        sx={row.busy_blocking_enabled ? statusChipSx("warning") : statusChipSx("default")}
+                      />
+                    )}
                   </Stack>
                   <Box sx={{ minWidth: { md: 160 } }}>
                     <Typography variant="caption" color="text.secondary">Last sync</Typography>
@@ -332,7 +387,12 @@ export default function SettingsGoogleCalendar() {
             {activity.map((row) => (
               <Stack key={row.id} direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Chip size="small" color={statusColor(row.status)} label={row.status} />
+                  <Chip
+                    size="small"
+                    color={statusColor(row.status)}
+                    label={row.status}
+                    sx={statusChipSx(statusColor(row.status))}
+                  />
                   <Box>
                     <Typography variant="body2">{row.operation} · {row.object_type} #{row.object_id || "-"}</Typography>
                     {row.message && <Typography variant="caption" color="text.secondary">{row.message}</Typography>}

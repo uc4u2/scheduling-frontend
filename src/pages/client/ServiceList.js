@@ -295,6 +295,20 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
   }, [isMdDown, bookingOpen]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !bookingOpen) return undefined;
+    const eventName = "schedulaa:chatbot-suppression";
+    const detail = { source: "service-booking-modal", hidden: true };
+    window.dispatchEvent(new CustomEvent(eventName, { detail }));
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent(eventName, {
+          detail: { source: detail.source, hidden: false },
+        })
+      );
+    };
+  }, [bookingOpen]);
+
+  useEffect(() => {
     let active = true;
     setDeptLoading(true);
 

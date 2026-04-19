@@ -559,6 +559,31 @@ const AppContent = ({ token, setToken }) => {
   const tenantChatbotReady = Boolean(
     chatbotSlug && chatbotConfigLoaded && chatbotConfig && chatbotConfig.enabled === true
   );
+  const [chatbotSuppressedByOverlay, setChatbotSuppressedByOverlay] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const activeSources = new Set();
+    const handleSuppression = (event) => {
+      const source = String(event?.detail?.source || "global");
+      if (event?.detail?.hidden) {
+        activeSources.add(source);
+      } else {
+        activeSources.delete(source);
+      }
+      setChatbotSuppressedByOverlay(activeSources.size > 0);
+    };
+    window.addEventListener("schedulaa:chatbot-suppression", handleSuppression);
+    return () => {
+      window.removeEventListener("schedulaa:chatbot-suppression", handleSuppression);
+    };
+  }, []);
+  const chatbotSuppressedByRoute = Boolean(
+    matchPath({ path: "/booking-confirmation/:bookingId" }, location.pathname) ||
+      matchPath({ path: "/:slug/booking-confirmation/:bookingId" }, location.pathname) ||
+      matchPath({ path: "/client/booking-confirmation/:bookingId" }, location.pathname) ||
+      matchPath({ path: "/pay/:appointmentId" }, location.pathname) ||
+      matchPath({ path: "/:slug/pay/:appointmentId" }, location.pathname)
+  );
   const showChatBot = !isEmbed && !nativeRuntime && (marketingChatbot || tenantChatbotReady);
   const showAppChrome = !isEmbed && !nativeRuntime && !isCompanyRoute && !isNoChromeRoute;
   const rootAppRedirect = (() => {
@@ -989,7 +1014,7 @@ const AppContent = ({ token, setToken }) => {
       </Box>
 
       {showAppChrome && <Footer />}
-      {!isEmbed && showChatBot && (
+      {!isEmbed && showChatBot && !chatbotSuppressedByOverlay && !chatbotSuppressedByRoute && (
         <ChatBot
           token={token}
           companySlug={chatbotSlug}

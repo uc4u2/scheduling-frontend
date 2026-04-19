@@ -474,6 +474,20 @@ const MyBasketBase = ({ slugOverride, disableShell = false, pageStyleOverride = 
     };
   }, [checkoutOpen, modalVars]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !checkoutOpen) return undefined;
+    const eventName = "schedulaa:chatbot-suppression";
+    const detail = { source: "basket-checkout-modal", hidden: true };
+    window.dispatchEvent(new CustomEvent(eventName, { detail }));
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent(eventName, {
+          detail: { source: detail.source, hidden: false },
+        })
+      );
+    };
+  }, [checkoutOpen]);
+
 
   const content = (
     <Box
