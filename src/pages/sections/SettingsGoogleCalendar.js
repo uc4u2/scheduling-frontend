@@ -55,6 +55,7 @@ export default function SettingsGoogleCalendar() {
   }, [status, activeRecruiterId]);
   const connected = Boolean(activeConnection?.connected);
   const canManage = status?.permissions?.can_manage_integrations !== false;
+  const isSelf = String(activeRecruiterId || "") === String(status?.current_user_id || "");
 
   const load = useCallback(async (recruiterId = activeRecruiterId) => {
     setLoading(true);
@@ -176,11 +177,11 @@ export default function SettingsGoogleCalendar() {
             <Stack spacing={1}>
               <Stack direction="row" spacing={1} alignItems="center">
                 <CalendarMonthIcon color="primary" />
-                <Typography variant="h6">Google Calendar</Typography>
+                <Typography variant="h6">Staff Calendar Connections</Typography>
                 <Chip size="small" color={connected ? "success" : "default"} label={connected ? "Connected" : "Not connected"} />
               </Stack>
               <Typography variant="body2" color="text.secondary">
-                Add Schedulaa bookings to the selected staff calendar and optionally hide Google-busy times from public availability.
+                Staff authorize their own Google accounts. Managers control how Schedulaa uses connected calendars for booking sync and optional busy-time blocking.
               </Typography>
             </Stack>
             <Stack direction="row" spacing={1} alignItems="center">
@@ -191,7 +192,13 @@ export default function SettingsGoogleCalendar() {
                   <Button color="error" variant="outlined" startIcon={<LinkOffIcon />} disabled={!canManage || saving} onClick={handleDisconnect}>Disconnect</Button>
                 </>
               ) : (
-                <Button variant="contained" disabled={!canManage || saving || !status?.configured || !activeRecruiterId} onClick={handleConnect}>Connect Google</Button>
+                <Button
+                  variant="contained"
+                  disabled={!canManage || saving || !status?.configured || !activeRecruiterId || !isSelf}
+                  onClick={handleConnect}
+                >
+                  Connect my Google Calendar
+                </Button>
               )}
             </Stack>
           </Stack>
@@ -207,6 +214,10 @@ export default function SettingsGoogleCalendar() {
                 ))}
               </Select>
             </FormControl>
+
+            <Alert severity="info" variant="outlined">
+              For staff-owned personal Google accounts, the staff member should connect from Employee Dashboard → My Calendar. The manager connection button is only for your own calendar or owner-operator setups.
+            </Alert>
 
             {connected ? (
               <>
@@ -244,7 +255,7 @@ export default function SettingsGoogleCalendar() {
                     label="Sync new and updated Schedulaa bookings to Google Calendar"
                   />
                   <Alert severity="info" sx={{ alignItems: "flex-start" }}>
-                    Rollout order: test outbound booking sync first. Enable busy-time blocking only after create, reschedule, and cancel have been verified for this staff calendar.
+                    Rollout order: test outbound booking sync first. Enable busy-time blocking only if this staff member wants Google “busy” events, including personal busy blocks, to reduce their public Schedulaa availability.
                   </Alert>
                   <FormControlLabel
                     control={<Switch checked={Boolean(activeConnection?.busy_blocking_enabled)} onChange={(e) => saveSetting({ busy_blocking_enabled: e.target.checked })} disabled={!canManage || saving} />}
@@ -263,10 +274,52 @@ export default function SettingsGoogleCalendar() {
                 )}
               </>
             ) : (
-              <Alert severity="info">
-                Connect Google Calendar for this staff member to sync their Schedulaa bookings. Bookings continue to work even if Google is not connected.
+              <Alert severity={isSelf ? "info" : "warning"}>
+                {isSelf
+                  ? "Connect your own Google Calendar here, or use Employee Dashboard → My Calendar. Bookings continue to work even if Google is not connected."
+                  : "This staff member has not connected Google Calendar yet. Ask them to connect from Employee Dashboard → My Calendar; managers should not sign into an employee’s personal Google account."}
               </Alert>
             )}
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Card variant="outlined" sx={{ borderRadius: 3 }}>
+        <CardContent>
+          <Typography variant="subtitle1" fontWeight={800} gutterBottom>Staff connection status</Typography>
+          <Stack spacing={1}>
+            {employees.map((employee) => {
+              const row = (status?.connections || []).find((item) => String(item.recruiter_id) === String(employee.id));
+              const rowConnected = Boolean(row?.connected);
+              return (
+                <Stack
+                  key={employee.id}
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={1}
+                  justifyContent="space-between"
+                  alignItems={{ xs: "flex-start", md: "center" }}
+                  sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 2 }}
+                >
+                  <Box>
+                    <Typography variant="body2" fontWeight={800}>{employee.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">{employee.email}</Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip size="small" color={rowConnected ? "success" : "default"} label={rowConnected ? "Connected" : "Not connected"} />
+                    {rowConnected && <Chip size="small" variant="outlined" label={row.provider_email || "Google account"} />}
+                    {rowConnected && <Chip size="small" variant="outlined" label={row.selected_calendar_name || row.selected_calendar_id || "Calendar selected"} />}
+                    {rowConnected && <Chip size="small" color={row.sync_enabled ? "success" : "default"} label={row.sync_enabled ? "Sync on" : "Sync off"} />}
+                    {rowConnected && <Chip size="small" color={row.busy_blocking_enabled ? "warning" : "default"} label={row.busy_blocking_enabled ? "Busy blocking on" : "Busy blocking off"} />}
+                  </Stack>
+                  <Box sx={{ minWidth: { md: 160 } }}>
+                    <Typography variant="caption" color="text.secondary">Last sync</Typography>
+                    <Typography variant="body2">{fmt(row?.last_synced_at)}</Typography>
+                    {row?.last_error && <Typography variant="caption" color="warning.main">{row.last_error}</Typography>}
+                    {!rowConnected && <Typography variant="caption" color="text.secondary">Employee must connect their own Google account.</Typography>}
+                  </Box>
+                </Stack>
+              );
+            })}
           </Stack>
         </CardContent>
       </Card>

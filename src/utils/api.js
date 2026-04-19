@@ -608,6 +608,21 @@ export const googleCalendarIntegration = {
     api.post(`/integrations/google-calendar/events/${id}/retry`, {}, config).then((r) => r.data),
 };
 
+export const employeeGoogleCalendarIntegration = {
+  status: (config = {}) =>
+    api.get("/employee/integrations/google-calendar/status", config).then((r) => r.data),
+  connect: (config = {}) =>
+    api.post("/employee/integrations/google-calendar/connect", {}, config).then((r) => r.data),
+  disconnect: (config = {}) =>
+    api.post("/employee/integrations/google-calendar/disconnect", {}, config).then((r) => r.data),
+  saveSettings: (payload = {}, config = {}) =>
+    api.post("/employee/integrations/google-calendar/settings", payload, config).then((r) => r.data),
+  calendars: (config = {}) =>
+    api.get("/employee/integrations/google-calendar/calendars", config).then((r) => r.data),
+  testConnection: (config = {}) =>
+    api.post("/employee/integrations/google-calendar/test", {}, config).then((r) => r.data),
+};
+
 export const integrationActivity = {
   list: (params = {}, config = {}) =>
     api

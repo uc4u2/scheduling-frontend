@@ -120,6 +120,7 @@ import RecruiterPublicLinkPage from "./pages/recruiter/PublicLinkPage";
 import RecruiterMyTimePage from "./pages/recruiter/RecruiterMyTimePage";
 import RecruiterMyTrainingPage from "./pages/recruiter/RecruiterMyTrainingPage";
 import RecruiterCommunicationsPage from "./pages/recruiter/RecruiterCommunicationsPage";
+import RecruiterMyCalendarPage from "./pages/recruiter/RecruiterMyCalendarPage";
 import RecruiterFieldPhotosPage from "./pages/recruiter/RecruiterFieldPhotosPage";
 import RecruiterCandidateSearchPage from "./pages/recruiter/RecruiterCandidateSearchPage";
 import ManagerDashboard from "./ManagerDashboard";
@@ -835,6 +836,8 @@ const AppContent = ({ token, setToken }) => {
         <Route path="/employee/my-training" element={<RecruiterMyTrainingPage token={token} />} />
         <Route path="/recruiter/communications" element={<RecruiterCommunicationsPage token={token} />} />
         <Route path="/employee/communications" element={<RecruiterCommunicationsPage token={token} />} />
+        <Route path="/recruiter/my-calendar" element={<RecruiterMyCalendarPage token={token} />} />
+        <Route path="/employee/my-calendar" element={<RecruiterMyCalendarPage token={token} />} />
         <Route path="/recruiter/field-photos" element={<RecruiterFieldPhotosPage token={token} />} />
         <Route path="/employee/field-photos" element={<RecruiterFieldPhotosPage token={token} />} />
         <Route path="/recruiter/my-shifts" element={<Navigate to="/recruiter/my-time" replace />} />
