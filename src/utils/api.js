@@ -586,6 +586,28 @@ export const quickbooksIntegration = {
     api.post("/integrations/quickbooks/export-invoices", payload, config).then((r) => r.data),
 };
 
+/* --------------------------- Google Calendar Integration --------------------------- */
+export const googleCalendarIntegration = {
+  status: (params = {}, config = {}) =>
+    api.get("/integrations/google-calendar/status", { ...config, params }).then((r) => r.data),
+  connect: (payload = {}, config = {}) =>
+    api.post("/integrations/google-calendar/connect", payload, config).then((r) => r.data),
+  disconnect: (payload = {}, config = {}) =>
+    api.post("/integrations/google-calendar/disconnect", payload, config).then((r) => r.data),
+  saveSettings: (payload = {}, config = {}) =>
+    api.post("/integrations/google-calendar/settings", payload, config).then((r) => r.data),
+  calendars: (params = {}, config = {}) =>
+    api.get("/integrations/google-calendar/calendars", { ...config, params }).then((r) => r.data),
+  testConnection: (payload = {}, config = {}) =>
+    api.post("/integrations/google-calendar/test", payload, config).then((r) => r.data),
+  activity: (params = {}, config = {}) =>
+    api.get("/integrations/google-calendar/activity", { ...config, params }).then((r) => r.data),
+  retryFailed: (config = {}) =>
+    api.post("/integrations/google-calendar/retry", {}, config).then((r) => r.data),
+  retryEvent: (id, config = {}) =>
+    api.post(`/integrations/google-calendar/events/${id}/retry`, {}, config).then((r) => r.data),
+};
+
 export const integrationActivity = {
   list: (params = {}, config = {}) =>
     api

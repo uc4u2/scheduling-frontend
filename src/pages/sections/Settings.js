@@ -45,6 +45,7 @@ import SettingsClientVideo from "./SettingsClientVideo";
 import ZapierIntegrationPage from "../settings/ZapierIntegrationPage";
 import SettingsXero from "./SettingsXero";
 import SettingsQuickBooks from "./SettingsQuickBooks";
+import SettingsGoogleCalendar from "./SettingsGoogleCalendar";
 import SettingsBillingSubscription from "./SettingsBillingSubscription";
 import IntegrationActivityCard from "./IntegrationActivityCard";
 import ProfessionSettings from "./ProfessionSetting";
@@ -99,6 +100,8 @@ const Settings = () => {
       xero: 7,
       quickbooks: 7,
       qb: 7,
+      google: 7,
+      'google-calendar': 7,
       easypost: 7,
       'integration-activity': 7,
       activity: 7,
@@ -135,6 +138,7 @@ const Settings = () => {
 
   const integrationDefault = useMemo(() => {
     if (tabParam === "zapier") return "zapier";
+    if (tabParam === "google" || tabParam === "google-calendar") return "google-calendar";
     if (tabParam === "xero") return "xero";
     if (tabParam === "quickbooks" || tabParam === "qb") return "quickbooks";
     if (tabParam === "easypost") return "easypost";
@@ -184,6 +188,7 @@ const Settings = () => {
             label={t("settings.tabs.integrationActivity", "Integration activity")}
           />
           <Tab value="zapier" label={t("settings.tabs.zapier", "Zapier")} />
+          <Tab value="google-calendar" label={t("settings.tabs.googleCalendar", "Google Calendar")} />
           <Tab value="xero" label={t("settings.tabs.xero", "Xero")} />
           <Tab value="quickbooks" label={t("settings.tabs.quickbooks", "QuickBooks")} />
           <Tab value="easypost" label={t("settings.tabs.easypost", "EasyPost")} />
@@ -217,6 +222,16 @@ const Settings = () => {
               </Typography>
               <Box sx={{ mt: 2 }}>
                 <SettingsXero />
+              </Box>
+            </>
+          )}
+          {integrationExpanded === "google-calendar" && (
+            <>
+              <Typography variant="caption" color="text.secondary">
+                {t("settings.integrations.googleCalendarDescription", "Sync bookings to Google Calendar and block Google-busy times from public booking.")}
+              </Typography>
+              <Box sx={{ mt: 2 }}>
+                <SettingsGoogleCalendar />
               </Box>
             </>
           )}
