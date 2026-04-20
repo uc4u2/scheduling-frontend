@@ -94,7 +94,7 @@ export default function SettingsReviewsTips() {
       const safeDelay = Math.max(0, Math.floor(Number(delayHours || 0)));
       const safeWindow = Math.max(0, Math.min(90, Math.floor(Number(windowDays || 0)))); // cap to 90 just for sanity
 
-      await api.post(`/admin/review-tip-settings`, {
+      const { data } = await api.post(`/admin/review-tip-settings`, {
         enable_auto_review_emails: enableAuto,
         review_delay_hours: safeDelay,
         require_manager_approval: requireApproval,
@@ -113,6 +113,17 @@ export default function SettingsReviewsTips() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+
+      const savedSettings = data?.settings || {};
+      if (Object.prototype.hasOwnProperty.call(savedSettings, "review_redirect_url")) {
+        setReviewRedirectUrl(savedSettings.review_redirect_url || "");
+      }
+      if (Object.prototype.hasOwnProperty.call(savedSettings, "google_review_cta_enabled")) {
+        setGoogleReviewCtaEnabled(!!savedSettings.google_review_cta_enabled);
+      }
+      if (Object.prototype.hasOwnProperty.call(savedSettings, "google_review_cta_text")) {
+        setGoogleReviewCtaText(savedSettings.google_review_cta_text || "Leave a Google review");
+      }
 
       setMsg(t("settings.reviews.saveSuccess"));
     } catch (e) {
@@ -252,8 +263,21 @@ export default function SettingsReviewsTips() {
                 <Chip
                   size="small"
                   label={reviewRedirectUrl.trim() ? "Configured" : "Not configured"}
-                  color={reviewRedirectUrl.trim() ? "success" : "default"}
                   variant={reviewRedirectUrl.trim() ? "filled" : "outlined"}
+                  sx={reviewRedirectUrl.trim()
+                    ? {
+                        bgcolor: "#047857",
+                        color: "#ffffff",
+                        borderColor: "#047857",
+                        fontWeight: 800,
+                        boxShadow: "0 6px 14px rgba(4,120,87,0.18)",
+                      }
+                    : {
+                        bgcolor: "rgba(255,255,255,0.72)",
+                        color: "#334155",
+                        borderColor: "#94a3b8",
+                        fontWeight: 800,
+                      }}
                 />
               </Stack>
               <TextField
