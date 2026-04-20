@@ -39,31 +39,37 @@ const statusColor = (status) => {
 };
 
 const connectedChipSx = {
-  bgcolor: "#15803d",
-  color: "#ffffff",
-  borderColor: "#166534",
+  "&&": {
+    bgcolor: "#15803d",
+    color: "#ffffff",
+    borderColor: "#166534",
+  },
   fontWeight: 800,
-  "& .MuiChip-label": { px: 1 },
+  "& .MuiChip-label": { px: 1, color: "#ffffff" },
 };
 
 const statusChipSx = (tone) => {
   if (tone === "success") return connectedChipSx;
   if (tone === "warning") {
     return {
-      bgcolor: "#b45309",
-      color: "#ffffff",
-      borderColor: "#92400e",
+      "&&": {
+        bgcolor: "#b45309",
+        color: "#ffffff",
+        borderColor: "#92400e",
+      },
       fontWeight: 800,
-      "& .MuiChip-label": { px: 1 },
+      "& .MuiChip-label": { px: 1, color: "#ffffff" },
     };
   }
   if (tone === "error") {
     return {
-      bgcolor: "#b91c1c",
-      color: "#ffffff",
-      borderColor: "#991b1b",
+      "&&": {
+        bgcolor: "#b91c1c",
+        color: "#ffffff",
+        borderColor: "#991b1b",
+      },
       fontWeight: 800,
-      "& .MuiChip-label": { px: 1 },
+      "& .MuiChip-label": { px: 1, color: "#ffffff" },
     };
   }
   return { fontWeight: 800, "& .MuiChip-label": { px: 1 } };
