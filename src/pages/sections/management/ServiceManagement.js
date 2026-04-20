@@ -48,6 +48,7 @@ import {
 } from "@mui/icons-material";
 import api from "../../../utils/api";
 import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
+import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
 
 const emptyForm = {
   name: "",
@@ -107,6 +108,7 @@ const ServiceManagement = ({ token }) => {
   const [imageUploading, setImageUploading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [packageHelpOpen, setPackageHelpOpen] = useState(false);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
 
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -270,6 +272,31 @@ const ServiceManagement = ({ token }) => {
       console.error("ServiceManagement save error", err);
       setSnk({ open: true, key: "manager.service.messages.saveFailed" });
     }
+  };
+
+  const renameServiceCategory = async (oldName, newName) => {
+    const { data } = await api.patch(
+      `/booking/service-categories/${encodeURIComponent(oldName)}`,
+      { name: newName },
+      auth
+    );
+    await load();
+    setSnk({
+      open: true,
+      key: `${Number(data?.affected_count || 0)} services moved to ${data?.new_name || newName}.`,
+    });
+  };
+
+  const removeServiceCategory = async (name) => {
+    const { data } = await api.delete(
+      `/booking/service-categories/${encodeURIComponent(name)}`,
+      auth
+    );
+    await load();
+    setSnk({
+      open: true,
+      key: `${Number(data?.affected_count || 0)} services moved to Uncategorized.`,
+    });
   };
 
   const loadPackages = async () => {
@@ -461,6 +488,13 @@ const ServiceManagement = ({ token }) => {
         onClick={openPackages}
       >
         {t("manager.service.buttonPackages", "Packages")}
+      </Button>
+      <Button
+        variant="outlined"
+        sx={{ mb: 2, ml: 1 }}
+        onClick={() => setCategoryManagerOpen(true)}
+      >
+        Manage Categories
       </Button>
 
       <Paper>
@@ -1227,6 +1261,16 @@ const ServiceManagement = ({ token }) => {
         autoHideDuration={3000}
         message={snk.key ? t(snk.key) : ""}
         onClose={() => setSnk((prev) => ({ ...prev, open: false }))}
+      />
+      <CategoryManagerDialog
+        open={categoryManagerOpen}
+        title="Manage Service Categories"
+        categories={serviceCategories}
+        itemLabelSingular="service"
+        itemLabelPlural="services"
+        onClose={() => setCategoryManagerOpen(false)}
+        onRename={renameServiceCategory}
+        onRemove={removeServiceCategory}
       />
     </Box>
   );

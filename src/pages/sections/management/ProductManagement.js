@@ -40,6 +40,7 @@ import {
 } from "@mui/icons-material";
 import api from "../../../utils/api";
 import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
+import CategoryManagerDialog from "../../../components/common/CategoryManagerDialog";
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 
 const emptyForm = {
@@ -89,6 +90,7 @@ const ProductManagement = ({ token }) => {
   const [imageTarget, setImageTarget] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [lowStockSummary, setLowStockSummary] = useState({ count: 0, out_of_stock_count: 0, low_stock_count: 0 });
   const [lowStockItems, setLowStockItems] = useState([]);
   const [movementOpen, setMovementOpen] = useState(false);
@@ -287,6 +289,31 @@ const ProductManagement = ({ token }) => {
       notify(t("manager.product.messages.saveFailed"));
     }
   }, [auth, editing, form, handleClose, load, notify, t]);
+
+  const renameProductCategory = useCallback(
+    async (oldName, newName) => {
+      const { data } = await api.patch(
+        `/inventory/product-categories/${encodeURIComponent(oldName)}`,
+        { name: newName },
+        auth
+      );
+      await load();
+      notify(`${Number(data?.affected_count || 0)} products moved to ${data?.new_name || newName}.`);
+    },
+    [auth, load, notify]
+  );
+
+  const removeProductCategory = useCallback(
+    async (name) => {
+      const { data } = await api.delete(
+        `/inventory/product-categories/${encodeURIComponent(name)}`,
+        auth
+      );
+      await load();
+      notify(`${Number(data?.affected_count || 0)} products moved to Uncategorized.`);
+    },
+    [auth, load, notify]
+  );
 
   const handleDelete = useCallback(
     async (id) => {
@@ -533,6 +560,13 @@ const ProductManagement = ({ token }) => {
           onClick={() => setGlobalMovementOpen(true)}
         >
           Stock history
+        </Button>
+        <Button
+          variant="outlined"
+          color="inherit"
+          onClick={() => setCategoryManagerOpen(true)}
+        >
+          Manage Categories
         </Button>
         <Button
           startIcon={<HelpOutline />}
@@ -1245,6 +1279,16 @@ const ProductManagement = ({ token }) => {
         autoHideDuration={4000}
         onClose={() => setSnk((prev) => ({ ...prev, open: false }))}
         message={snk.message}
+      />
+      <CategoryManagerDialog
+        open={categoryManagerOpen}
+        title="Manage Product Categories"
+        categories={productCategories}
+        itemLabelSingular="product"
+        itemLabelPlural="products"
+        onClose={() => setCategoryManagerOpen(false)}
+        onRename={renameProductCategory}
+        onRemove={removeProductCategory}
       />
     </Box>
   );
