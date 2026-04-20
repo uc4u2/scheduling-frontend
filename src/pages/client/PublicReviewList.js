@@ -13,6 +13,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import { useParams } from "react-router-dom";
 import PublicPageShell from "./PublicPageShell";
 import { api } from "../../utils/api";
+import GoogleReviewCta from "../../components/public/GoogleReviewCta";
 
 export default function PublicReviewList({ slug, slugOverride, limit = 20, disableShell = false, compact = false }) {
   // slug can come from props or the route
@@ -39,6 +40,7 @@ export default function PublicReviewList({ slug, slugOverride, limit = 20, disab
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
   const [err, setErr] = useState("");
+  const [reviewSettings, setReviewSettings] = useState(null);
 
   // Client eligibility
   const [eligLoading, setEligLoading] = useState(false);
@@ -117,8 +119,23 @@ export default function PublicReviewList({ slug, slugOverride, limit = 20, disab
     }
   };
 
+  const loadReviewSettings = async () => {
+    if (!effectiveSlug) return;
+    try {
+      const enc = encodeURIComponent(effectiveSlug);
+      const { data } = await api.get(`/public/${enc}/reviews-settings`, {
+        noCompanyHeader: true,
+        noAuth: true,
+      });
+      setReviewSettings(data || null);
+    } catch {
+      setReviewSettings(null);
+    }
+  };
+
   useEffect(() => {
     loadReviews();
+    loadReviewSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSlug, limit]);
 
@@ -279,6 +296,15 @@ export default function PublicReviewList({ slug, slugOverride, limit = 20, disab
               Flexible, transparent service experiences built on {reviews.length || 0} live reviews.
             </Typography>
           </Stack>
+
+          {reviewSettings?.review_redirect_url && (
+            <GoogleReviewCta
+              variant="static"
+              reviewUrl={reviewSettings.review_redirect_url}
+              text={reviewSettings.google_review_cta_text || "Leave a Google review"}
+              storageKey={`reviews-page:${effectiveSlug}`}
+            />
+          )}
 
           <Stack
             direction={{ xs: "column", sm: "row" }}

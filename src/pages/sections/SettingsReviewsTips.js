@@ -6,6 +6,7 @@ import {
   Snackbar, Alert, Tooltip, IconButton, Chip
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import LaunchIcon from "@mui/icons-material/Launch";
 import api from "../../utils/api";
 import { useTranslation } from "react-i18next";
 
@@ -29,6 +30,8 @@ export default function SettingsReviewsTips() {
 
   // Optional redirect (e.g., Google reviews page)
   const [reviewRedirectUrl, setReviewRedirectUrl] = useState("");
+  const [googleReviewCtaEnabled, setGoogleReviewCtaEnabled] = useState(false);
+  const [googleReviewCtaText, setGoogleReviewCtaText] = useState("Leave a Google review");
 
   // Optional email subject/body overrides
   const [emailSubject, setEmailSubject] = useState("");
@@ -57,6 +60,8 @@ export default function SettingsReviewsTips() {
         setTipPresetsCsv(presets.join(","));
 
         setReviewRedirectUrl(data.review_redirect_url || "");
+        setGoogleReviewCtaEnabled(!!data.google_review_cta_enabled);
+        setGoogleReviewCtaText(data.google_review_cta_text || "Leave a Google review");
         setEmailSubject(data.email_subject_template || "");
         setEmailHtml(data.email_body_template || "");
 
@@ -97,6 +102,8 @@ export default function SettingsReviewsTips() {
         include_tip_checkout: includeTipCheckout,
         tip_presets,
         review_redirect_url: reviewRedirectUrl || null,
+        google_review_cta_enabled: !!googleReviewCtaEnabled,
+        google_review_cta_text: (googleReviewCtaText || "Leave a Google review").trim(),
         email_subject_template: emailSubject || null,
         email_body_template: emailHtml || null,
 
@@ -228,7 +235,7 @@ export default function SettingsReviewsTips() {
             />
           </Grid>
 
-          {/* Presets + Redirect */}
+          {/* Presets + Google review destination */}
           <Grid item xs={12} md={6}>
             <TextField
               label={t("settings.reviews.fields.tipPresets.label")}
@@ -239,12 +246,61 @@ export default function SettingsReviewsTips() {
             />
           </Grid>
           <Grid item xs={12} md={6}>
+            <Stack spacing={1}>
+              <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                <Typography variant="subtitle2" fontWeight={800}>Google Reviews</Typography>
+                <Chip
+                  size="small"
+                  label={reviewRedirectUrl.trim() ? "Configured" : "Not configured"}
+                  color={reviewRedirectUrl.trim() ? "success" : "default"}
+                  variant={reviewRedirectUrl.trim() ? "filled" : "outlined"}
+                />
+              </Stack>
+              <TextField
+                label="Google review link"
+                fullWidth
+                value={reviewRedirectUrl}
+                onChange={(e) => setReviewRedirectUrl(e.target.value)}
+                helperText="Paste the Google review link from your Google Business Profile. Visitors and clients can use this to leave a public review on Google."
+              />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LaunchIcon fontSize="small" />}
+                  component="a"
+                  href={reviewRedirectUrl.trim() || undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  disabled={!reviewRedirectUrl.trim()}
+                  sx={{ alignSelf: { xs: "stretch", sm: "flex-start" } }}
+                >
+                  Open link
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  No Google API is required. This opens the tenant's public Google review destination.
+                </Typography>
+              </Stack>
+            </Stack>
+          </Grid>
+
+          <Grid item xs={12} md={6}>
+            <FormControlLabel
+              control={<Switch checked={googleReviewCtaEnabled} onChange={(e) => setGoogleReviewCtaEnabled(e.target.checked)} />}
+              label="Show Google review CTA on website"
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: -1 }}>
+              Shows a subtle, dismissible floating Google review card on public website pages when a Google review link is configured.
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={6}>
             <TextField
-              label={t("settings.reviews.fields.redirectUrl.label")}
+              label="Google CTA button text"
               fullWidth
-              value={reviewRedirectUrl}
-              onChange={(e) => setReviewRedirectUrl(e.target.value)}
-              helperText={t("settings.reviews.fields.redirectUrl.helper")}
+              value={googleReviewCtaText}
+              onChange={(e) => setGoogleReviewCtaText(e.target.value)}
+              helperText="Default: Leave a Google review"
+              inputProps={{ maxLength: 80 }}
             />
           </Grid>
 

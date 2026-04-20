@@ -42,6 +42,7 @@ import { RenderSections } from "../../components/website/RenderSections";
 import VisualSiteBuilder from "../sections/management/VisualSiteBuilder";
 import ThemeRuntimeProvider from "../../components/website/ThemeRuntimeProvider";
 import PublicReviewList from "./PublicReviewList";
+import GoogleReviewCta from "../../components/public/GoogleReviewCta";
 import { resolveSiteHref, transformLinksDeep } from "../../components/website/linking";
 import { normalizeNavStyle, navStyleToCssVars, createNavButtonStyles } from "../../utils/navStyle";
 import { getLuminance, pickTextColorForBg } from "../../utils/color";
@@ -933,6 +934,7 @@ export default function CompanyPublic({ slugOverride }) {
   const [company, setCompany] = useState(null);
   const [sitePayload, setSitePayload] = useState(null);
   const [pages, setPages] = useState([]);
+  const [reviewSettings, setReviewSettings] = useState(null);
 
   const pageFromQuery = (searchParams.get("page") || "").trim();
   const jobFromQuery = (searchParams.get("job") || "").trim();
@@ -1109,6 +1111,27 @@ export default function CompanyPublic({ slugOverride }) {
     })();
     return () => { alive = false; };
   }, [slug, isCustomDomain]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!slug) {
+      setReviewSettings(null);
+      return () => {};
+    }
+    (async () => {
+      try {
+        const enc = encodeURIComponent(slug);
+        const { data } = await api.get(`/public/${enc}/reviews-settings`, {
+          noCompanyHeader: true,
+          noAuth: true,
+        });
+        if (alive) setReviewSettings(data || null);
+      } catch {
+        if (alive) setReviewSettings(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [slug]);
 
   useEffect(() => {
     if (isManagerForCompany && searchParams.get("edit") === "1") setEditorOpen(true);
@@ -1663,6 +1686,13 @@ export default function CompanyPublic({ slugOverride }) {
   }, [currentPage, renderOverride]);
   const isReviewsPage = currentPage && String(currentPage.slug || '').toLowerCase() === 'reviews';
   const shouldRenderPublicReviews = Boolean(isReviewsPage);
+  const showFloatingGoogleReviewCta = Boolean(
+    reviewSettings?.review_redirect_url &&
+      reviewSettings?.google_review_cta_enabled === true &&
+      !shouldRenderPublicReviews &&
+      renderOverride?.type !== "basket" &&
+      String(currentPage?.slug || "").toLowerCase() !== "my-bookings"
+  );
 
   const { bodySections, postReviewSections, footerSections } = useMemo(() => {
     if (!Array.isArray(patchedSections) || patchedSections.length === 0) {
@@ -2931,6 +2961,15 @@ const siteTitle = useMemo(() => {
         onClose={() => setForgotDialogOpen(false)}
         companySlug={slug}
       />
+
+      {showFloatingGoogleReviewCta && (
+        <GoogleReviewCta
+          variant="floating"
+          reviewUrl={reviewSettings.review_redirect_url}
+          text={reviewSettings.google_review_cta_text || "Leave a Google review"}
+          storageKey={`company-public:${slug}`}
+        />
+      )}
 
       {/* Full-screen editor (still rendered only for managers) */}
       {isManagerForCompany && (
