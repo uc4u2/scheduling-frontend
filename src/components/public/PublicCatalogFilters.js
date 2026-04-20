@@ -6,7 +6,6 @@ import {
   MenuItem,
   Stack,
   TextField,
-  Typography,
 } from "@mui/material";
 
 export const UNCATEGORIZED_VALUE = "__uncategorized__";
@@ -158,8 +157,6 @@ const PublicCatalogFilters = ({
   sortOptions = [],
   showSort = false,
   toggleNode = null,
-  resultSummary = "",
-  activeSummary = "",
   onClear,
   hasActiveFilters = false,
   showCategoryChips = true,
@@ -178,7 +175,7 @@ const PublicCatalogFilters = ({
         boxShadow: "0 12px 28px rgba(15,23,42,0.065)",
       }}
     >
-      <Stack spacing={1.2}>
+      <Stack spacing={1}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={1.25}
@@ -257,9 +254,12 @@ const PublicCatalogFilters = ({
           <Stack
             direction="row"
             spacing={0.85}
+            useFlexGap
             sx={{
-              overflowX: "auto",
-              pb: 0.35,
+              flexWrap: { xs: "nowrap", sm: "wrap" },
+              overflowX: { xs: "auto", sm: "visible" },
+              rowGap: 0.85,
+              pb: { xs: 0.35, sm: 0 },
               pt: 0.1,
               scrollbarWidth: "thin",
             }}
@@ -281,29 +281,20 @@ const PublicCatalogFilters = ({
                 sx={chipSx(categoryValue === category.value)}
               />
             ))}
-          </Stack>
-        )}
-
-        {(resultSummary || activeSummary || hasActiveFilters) && (
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            alignItems={{ xs: "flex-start", sm: "center" }}
-            justifyContent="space-between"
-          >
-            <Typography variant="body2" color="text.secondary">
-              {activeSummary || resultSummary}
-            </Typography>
             {hasActiveFilters && (
               <Button
                 size="small"
                 onClick={onClear}
                 sx={{
+                  flexShrink: 0,
+                  minHeight: 32,
                   textTransform: "none",
                   fontWeight: 700,
                   color: "rgba(30,41,59,0.82)",
-                  borderRadius: 1,
-                  px: 1.25,
+                  borderRadius: "9px",
+                  px: 1.35,
+                  border: "1px solid rgba(148,163,184,0.32)",
+                  bgcolor: "rgba(255,255,255,0.58)",
                   "&:hover": { bgcolor: "rgba(148,163,184,0.12)" },
                 }}
               >
