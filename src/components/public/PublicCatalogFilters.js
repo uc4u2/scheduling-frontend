@@ -170,15 +170,15 @@ const PublicCatalogFilters = ({
   return (
     <Box
       sx={{
-        mb: 3,
-        p: { xs: 1.75, md: 2.25 },
+        mb: { xs: 2.5, md: 3 },
+        p: { xs: 1.5, md: 1.85 },
         borderRadius: "12px",
         border: "1px solid rgba(148,163,184,0.26)",
         bgcolor: "rgba(255,255,255,0.94)",
-        boxShadow: "0 14px 34px rgba(15,23,42,0.075)",
+        boxShadow: "0 12px 28px rgba(15,23,42,0.065)",
       }}
     >
-      <Stack spacing={1.5}>
+      <Stack spacing={1.2}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={1.25}
@@ -259,8 +259,8 @@ const PublicCatalogFilters = ({
             spacing={0.85}
             sx={{
               overflowX: "auto",
-              pb: 0.5,
-              pt: 0.25,
+              pb: 0.35,
+              pt: 0.1,
               scrollbarWidth: "thin",
             }}
           >

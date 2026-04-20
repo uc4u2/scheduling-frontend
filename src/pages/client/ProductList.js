@@ -306,23 +306,55 @@ const ProductListBase = ({
 
   const pageStyleCssVars = useMemo(() => (pageStyleOverride ? pageStyleToCssVars(pageStyleOverride) : undefined), [pageStyleOverride]);
   const pageStyleBackground = useMemo(() => (pageStyleOverride ? pageStyleToBackgroundSx(pageStyleOverride) : {}), [pageStyleOverride]);
+  const catalogCardSx = {
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+    borderRadius: "14px",
+    backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.96))",
+    boxShadow: "0 14px 34px rgba(15,23,42,0.075)",
+    border: "1px solid rgba(148,163,184,0.2)",
+    color: "var(--page-body-color)",
+    overflow: "hidden",
+    transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease",
+    "&:hover": {
+      transform: "translateY(-2px)",
+      boxShadow: "0 18px 42px rgba(15,23,42,0.11)",
+      borderColor: "rgba(100,116,139,0.28)",
+    },
+  };
+  const catalogBadgeSx = {
+    height: 24,
+    borderRadius: "7px",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.015em",
+    "& .MuiChip-label": { px: 0.9 },
+  };
   const primaryButtonSx = {
-    borderRadius: "var(--page-btn-radius, 12px)",
+    borderRadius: "10px",
     backgroundColor: "var(--page-btn-bg, #2563eb)",
     color: "var(--page-btn-color, #fff)",
-    boxShadow: "var(--page-btn-shadow, none)",
+    minHeight: 42,
+    fontWeight: 750,
+    textTransform: "none",
+    boxShadow: "0 10px 22px rgba(15,23,42,0.12)",
     "&:hover": {
       backgroundColor: "var(--page-btn-bg, #2563eb)",
       filter: "brightness(0.95)",
+      boxShadow: "0 14px 28px rgba(15,23,42,0.16)",
     },
   };
   const outlineButtonSx = {
-    borderRadius: "var(--page-btn-radius, 12px)",
+    borderRadius: "10px",
     color: "var(--page-link-color, inherit)",
     borderColor: "var(--page-link-color, rgba(148,163,184,0.6))",
+    minHeight: 42,
+    fontWeight: 700,
+    textTransform: "none",
     "&:hover": {
       borderColor: "var(--page-link-color, currentColor)",
-      backgroundColor: "rgba(255,255,255,0.04)",
+      backgroundColor: "rgba(148,163,184,0.08)",
     },
   };
 
@@ -428,16 +460,7 @@ const ProductListBase = ({
               <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={product.id}>
                 <Card
                   variant="outlined"
-                  sx={{
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    borderRadius: "var(--page-card-radius, 18px)",
-                    backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.95))",
-                    boxShadow: "var(--page-card-shadow, 0 12px 32px rgba(15,23,42,0.08))",
-                    border: "1px solid rgba(148,163,184,0.18)",
-                    color: "var(--page-body-color)",
-                  }}
+                  sx={catalogCardSx}
                 >
                   <Box sx={{ position: "relative" }}>
                     {product.images && product.images.length > 0 ? (
@@ -469,8 +492,6 @@ const ProductListBase = ({
                             height: "100%",
                             objectFit: "cover",
                             objectPosition: "center 56%",
-                            borderTopLeftRadius: "var(--page-card-radius, 18px)",
-                            borderTopRightRadius: "var(--page-card-radius, 18px)",
                           }}
                         />
                       </Box>
@@ -505,23 +526,35 @@ const ProductListBase = ({
                       <Chip
                         label="Sold out"
                         size="small"
-                        sx={{ position: "absolute", top: 12, left: 12, bgcolor: "rgba(33,33,33,0.72)", color: "#fff" }}
+                        sx={{
+                          ...catalogBadgeSx,
+                          position: "absolute",
+                          top: 12,
+                          left: 12,
+                          bgcolor: "rgba(15,23,42,0.78)",
+                          color: "#fff",
+                        }}
                       />
                     )}
                     {!soldOut && lowStock && (
                       <Chip
                         label={`Only ${quantity} left`}
-                        color="warning"
                         size="small"
-                        sx={{ position: "absolute", top: 12, left: 12 }}
+                        sx={{
+                          ...catalogBadgeSx,
+                          position: "absolute",
+                          top: 12,
+                          left: 12,
+                          bgcolor: "rgba(245,158,11,0.92)",
+                          color: "#fff",
+                        }}
                       />
                     )}
                   </Box>
 
-                  <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
+                  <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column", p: 2.25 }}>
                     <Typography
                       variant="h6"
-                      fontWeight={700}
                       sx={{
                         color: "var(--page-heading-color, inherit)",
                         display: "-webkit-box",
@@ -530,23 +563,47 @@ const ProductListBase = ({
                         overflow: "hidden",
                         minHeight: "2.6em",
                         maxHeight: "2.6em",
-                        lineHeight: 1.3,
+                        lineHeight: 1.25,
+                        fontWeight: 760,
+                        letterSpacing: "-0.01em",
                       }}
                     >
                       {product.name}
                     </Typography>
                     <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap", rowGap: 0.75, mt: 0.75 }}>
-                      {product.category && <Chip label={product.category} size="small" variant="outlined" />}
-                      {product.is_digital && <Chip label="Digital" size="small" color="info" />}
+                      {product.category && (
+                        <Chip
+                          label={product.category}
+                          size="small"
+                          variant="outlined"
+                          sx={{
+                            ...catalogBadgeSx,
+                            bgcolor: "rgba(255,255,255,0.66)",
+                            borderColor: "rgba(148,163,184,0.42)",
+                            color: "rgba(51,65,85,0.86)",
+                          }}
+                        />
+                      )}
+                      {product.is_digital && (
+                        <Chip
+                          label="Digital"
+                          size="small"
+                          sx={{
+                            ...catalogBadgeSx,
+                            bgcolor: "rgba(14,165,233,0.12)",
+                            color: "rgba(3,105,161,0.95)",
+                          }}
+                        />
+                      )}
                     </Stack>
                     <Typography
                       variant="body2"
                       sx={{
                         mt: 1.2,
                         minHeight: 78,
-                        color: "var(--page-body-color, inherit)",
+                        color: "color-mix(in srgb, var(--page-body-color, #475569) 78%, transparent)",
                         display: "-webkit-box",
-                        WebkitLineClamp: 4,
+                        WebkitLineClamp: 3,
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
                         lineHeight: 1.45,
@@ -558,7 +615,7 @@ const ProductListBase = ({
                     {Array.isArray(product.tags) && product.tags.length > 0 && (
                       <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap", rowGap: 0.75, mt: 1 }}>
                         {product.tags.slice(0, 4).map((tag, index) => (
-                          <Chip key={`${product.id}-tag-${index}`} label={tag} size="small" variant="outlined" />
+                          <Chip key={`${product.id}-tag-${index}`} label={tag} size="small" variant="outlined" sx={catalogBadgeSx} />
                         ))}
                       </Stack>
                     )}
@@ -569,7 +626,8 @@ const ProductListBase = ({
                         sx={{
                           mt: 1.5,
                           color: "var(--page-link-color, inherit)",
-                          fontWeight: 700,
+                          fontWeight: 800,
+                          fontSize: 14,
                         }}
                       >
                         {money(product.price)}
@@ -577,9 +635,21 @@ const ProductListBase = ({
                       {product.track_stock && (
                         <Chip
                           label={soldOut ? "Out of stock" : lowStock ? `Only ${quantity} left` : `${quantity} in stock`}
-                          color={soldOut ? "default" : lowStock ? "warning" : "success"}
                           size="small"
-                          sx={{ mt: 1 }}
+                          sx={{
+                            ...catalogBadgeSx,
+                            mt: 1,
+                            bgcolor: soldOut
+                              ? "rgba(15,23,42,0.08)"
+                              : lowStock
+                              ? "rgba(245,158,11,0.14)"
+                              : "rgba(16,185,129,0.12)",
+                            color: soldOut
+                              ? "rgba(51,65,85,0.78)"
+                              : lowStock
+                              ? "rgba(146,64,14,0.95)"
+                              : "rgba(6,95,70,0.95)",
+                          }}
                         />
                       )}
                     </Box>

@@ -245,9 +245,47 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     [pageStyle]
   );
 
-  const buttonRadiusVar = "var(--page-btn-radius, 12px)";
-  const buttonShadowVar = "var(--page-btn-shadow, 0 16px 32px rgba(15,23,42,0.16))";
   const buttonShadowHoverVar = "var(--page-btn-shadow-hover, 0 20px 40px rgba(15,23,42,0.2))";
+  const catalogCardSx = {
+    height: "100%",
+    borderRadius: "14px",
+    backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.96))",
+    boxShadow: "0 14px 34px rgba(15,23,42,0.075)",
+    border: "1px solid rgba(148,163,184,0.2)",
+    transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease",
+    display: "flex",
+    flexDirection: "column",
+    color: "var(--page-body-color)",
+    overflow: "hidden",
+    "&:hover": {
+      transform: "translateY(-2px)",
+      boxShadow: "0 18px 42px rgba(15,23,42,0.11)",
+      borderColor: "rgba(100,116,139,0.28)",
+    },
+  };
+  const catalogBadgeSx = {
+    height: 24,
+    borderRadius: "7px",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.015em",
+    "& .MuiChip-label": { px: 0.9 },
+  };
+  const catalogPrimaryButtonSx = {
+    backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
+    color: "var(--page-btn-color, #ffffff)",
+    borderRadius: "10px",
+    fontWeight: 750,
+    textTransform: "none",
+    minHeight: 42,
+    py: 1,
+    boxShadow: "0 10px 22px rgba(15,23,42,0.12)",
+    "&:hover": {
+      backgroundColor: "var(--page-btn-bg-hover, var(--page-btn-bg, var(--sched-primary)))",
+      color: "var(--page-btn-color, #ffffff)",
+      boxShadow: buttonShadowHoverVar,
+    },
+  };
 
   useEffect(() => {
     if (!isModalView) return;
@@ -631,18 +669,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                 <Grid item xs={12} sm={6} md={4} lg={3} xl={2} key={service.id}>
                   <Card
                     variant="outlined"
-                    sx={{
-                      height: "100%",
-                      borderRadius: "var(--page-card-radius, 18px)",
-                      backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.95))",
-                      boxShadow: "var(--page-card-shadow, 0 12px 32px rgba(15,23,42,0.08))",
-                      border: "1px solid rgba(148,163,184,0.18)",
-                      transition: "0.25s",
-                      display: "flex",
-                      flexDirection: "column",
-                      color: "var(--page-body-color)",
-                      "&:hover": { transform: "translateY(-2px)" },
-                    }}
+                    sx={catalogCardSx}
                     onMouseEnter={() => prefetchService(service.id)}
                     onTouchStart={() => prefetchService(service.id)}
                   >
@@ -675,15 +702,22 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                             height: "100%",
                             objectFit: "cover",
                             objectPosition: "center 56%",
-                            borderTopLeftRadius: "var(--page-card-radius, 18px)",
-                            borderTopRightRadius: "var(--page-card-radius, 18px)",
                           }}
                         />
                       </Box>
                     )}
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-                        <Typography variant="h6" fontWeight={700} sx={{ color: "var(--page-heading-color, inherit)" }}>
+                    <CardContent sx={{ flexGrow: 1, p: 2.25 }}>
+                      <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1, flexWrap: "wrap", rowGap: 0.75 }}>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            color: "var(--page-heading-color, inherit)",
+                            fontWeight: 760,
+                            lineHeight: 1.22,
+                            letterSpacing: "-0.01em",
+                            mr: 0.25,
+                          }}
+                        >
                           {service.name}
                         </Typography>
                         {service.category && (
@@ -691,7 +725,12 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                             size="small"
                             label={service.category}
                             variant="outlined"
-                            sx={{ borderRadius: 999, fontWeight: 600 }}
+                            sx={{
+                              ...catalogBadgeSx,
+                              bgcolor: "rgba(255,255,255,0.66)",
+                              borderColor: "rgba(148,163,184,0.42)",
+                              color: "rgba(51,65,85,0.86)",
+                            }}
                           />
                         )}
                         {packageServiceIds.has(Number(service.id)) && (
@@ -699,8 +738,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                             size="small"
                             label="Package available"
                             sx={{
-                              fontWeight: 600,
-                              borderRadius: 999,
+                              ...catalogBadgeSx,
                               backgroundColor: "var(--page-btn-bg, rgba(15,23,42,0.12))",
                               color: "var(--page-btn-color, inherit)",
                             }}
@@ -710,13 +748,14 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                       <Typography
                         variant="body2"
                         sx={{
-                          mt: 1.2,
-                          minHeight: 56,
-                          color: "var(--page-body-color, inherit)",
+                          mt: 0.75,
+                          minHeight: 62,
+                          color: "color-mix(in srgb, var(--page-body-color, #475569) 78%, transparent)",
                           display: "-webkit-box",
-                          WebkitLineClamp: 4,
+                          WebkitLineClamp: 3,
                           WebkitBoxOrient: "vertical",
                           overflow: "hidden",
+                          lineHeight: 1.48,
                         }}
                       >
                         {service.description || "No description available."}
@@ -724,35 +763,24 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                       <Typography
                         variant="subtitle2"
                         sx={{
-                          mt: 1.5,
+                          mt: 1.75,
                           color: `var(--page-link-color, ${theme.palette.primary.main})`,
-                          fontWeight: 600,
+                          fontWeight: 760,
+                          fontSize: 13,
+                          letterSpacing: "0.01em",
                         }}
                       >
                         ⏱ {duration ? `${duration} min` : "—"} &nbsp; | &nbsp; {formatPrice(price)}
                       </Typography>
                     </CardContent>
-                    <CardActions sx={{ p: 2, pt: 0 }}>
+                    <CardActions sx={{ p: 2.25, pt: 0 }}>
                       <Button
                         fullWidth
                         variant="contained"
                         onClick={() => openService(service.id)}
                         onMouseEnter={() => prefetchService(service.id)}
                         onTouchStart={() => prefetchService(service.id)}
-                        sx={{
-                          backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
-                          color: "var(--page-btn-color, #ffffff)",
-                          borderRadius: buttonRadiusVar,
-                          fontWeight: 600,
-                          textTransform: "none",
-                          py: 1.1,
-                          boxShadow: buttonShadowVar,
-                          "&:hover": {
-                            backgroundColor: "var(--page-btn-bg-hover, var(--page-btn-bg, var(--sched-primary)))",
-                            color: "var(--page-btn-color, #ffffff)",
-                            boxShadow: buttonShadowHoverVar,
-                          },
-                        }}
+                        sx={catalogPrimaryButtonSx}
                       >
                         View & Book
                       </Button>
@@ -801,18 +829,9 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                     <Grid item xs={12} sm={6} md={4} lg={3} key={`pkg-${pkg.id}`}>
                       <Card
                         variant="outlined"
-                        sx={{
-                          height: "100%",
-                          borderRadius: "var(--page-card-radius, 18px)",
-                          backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.95))",
-                          boxShadow: "var(--page-card-shadow, 0 12px 32px rgba(15,23,42,0.08))",
-                          border: "1px solid rgba(148,163,184,0.18)",
-                          display: "flex",
-                          flexDirection: "column",
-                          color: "var(--page-body-color)",
-                        }}
+                        sx={catalogCardSx}
                       >
-                        <CardContent>
+                        <CardContent sx={{ p: 2.25 }}>
                           <Typography variant="overline" color="text.secondary">
                             {svcName}
                           </Typography>
@@ -835,18 +854,12 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                             </Typography>
                           )}
                         </CardContent>
-                        <CardActions sx={{ mt: "auto", px: 2, pb: 2 }}>
+                        <CardActions sx={{ mt: "auto", px: 2.25, pb: 2.25, pt: 0 }}>
                           <Button
                             fullWidth
                             variant="contained"
                             onClick={() => handleBuyPackage(pkg)}
-                            sx={{
-                              backgroundColor: "var(--page-btn-bg, var(--sched-primary))",
-                              color: "var(--page-btn-color, #fff)",
-                              textTransform: "none",
-                              fontWeight: 700,
-                              borderRadius: "var(--page-btn-radius, 12px)",
-                            }}
+                            sx={catalogPrimaryButtonSx}
                           >
                             Buy package
                           </Button>
