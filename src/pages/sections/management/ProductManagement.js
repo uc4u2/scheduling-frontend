@@ -39,6 +39,7 @@ import {
   History,
 } from "@mui/icons-material";
 import api from "../../../utils/api";
+import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
 import EasyPostShippingSettingsPanel from "./EasyPostShippingSettingsPanel";
 
 const emptyForm = {
@@ -77,6 +78,7 @@ const ProductManagement = ({ token }) => {
   const { t, i18n } = useTranslation();
 
   const [products, setProducts] = useState([]);
+  const [productCategories, setProductCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -120,7 +122,22 @@ const ProductManagement = ({ token }) => {
     setLoading(true);
     try {
       const { data } = await api.get(`/inventory/products`, auth);
-      setProducts(Array.isArray(data) ? data : []);
+      const productRows = Array.isArray(data) ? data : [];
+      setProducts(productRows);
+      try {
+        const { data: categoryPayload } = await api.get(`/inventory/product-categories`, auth);
+        setProductCategories(Array.isArray(categoryPayload?.categories) ? categoryPayload.categories : []);
+      } catch {
+        const fallback = Array.from(
+          new Map(
+            productRows
+              .map((row) => String(row.category || "").trim())
+              .filter(Boolean)
+              .map((name) => [name.toLowerCase(), { name, count: productRows.filter((row) => String(row.category || "").trim().toLowerCase() === name.toLowerCase()).length }])
+          ).values()
+        );
+        setProductCategories(fallback);
+      }
       try {
         const { data: shippingSettings } = await api.get(`/inventory/shipping-settings`, auth);
         setGlobalDeliveryPolicy({
@@ -238,6 +255,7 @@ const ProductManagement = ({ token }) => {
 
     const payload = {
       ...form,
+      category: String(form.category || "").trim(),
       price: form.price === "" ? "0" : form.price,
       cost: form.cost === "" ? null : form.cost,
       qty_on_hand: Number(form.qty_on_hand || 0),
@@ -378,7 +396,7 @@ const ProductManagement = ({ token }) => {
         field: "category",
         headerName: "Category",
         width: 140,
-        valueGetter: (params) => params.row.category || "",
+        valueGetter: (params) => params.row.category || "Uncategorized",
       },
       {
         field: "is_digital",
@@ -603,10 +621,11 @@ const ProductManagement = ({ token }) => {
               Catalog and SEO
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-              <TextField
+              <CategoryAutocomplete
                 label={fieldLabelWithTooltip("Category", "Use categories to group and filter products.")}
                 value={form.category}
-                onChange={handleChange("category")}
+                onChange={(value) => setForm((prev) => ({ ...prev, category: value }))}
+                categories={productCategories}
                 fullWidth
               />
               <TextField

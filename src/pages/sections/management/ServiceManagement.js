@@ -47,6 +47,7 @@ import {
   ExpandMore,
 } from "@mui/icons-material";
 import api from "../../../utils/api";
+import CategoryAutocomplete from "../../../components/common/CategoryAutocomplete";
 
 const emptyForm = {
   name: "",
@@ -90,6 +91,7 @@ const ServiceManagement = ({ token }) => {
   const { t, i18n } = useTranslation();
 
   const [services, setServices] = useState([]);
+  const [serviceCategories, setServiceCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -111,7 +113,12 @@ const ServiceManagement = ({ token }) => {
   const columns = useMemo(
     () => [
       { field: "name", headerName: t("manager.service.columns.name"), flex: 1 },
-      { field: "category", headerName: t("manager.service.columns.category"), flex: 1 },
+      {
+        field: "category",
+        headerName: t("manager.service.columns.category"),
+        flex: 1,
+        valueGetter: (params) => params.row.category || "Uncategorized",
+      },
       { field: "duration", headerName: t("manager.service.columns.duration"), width: 100 },
       {
         field: "booking_mode",
@@ -177,7 +184,27 @@ const ServiceManagement = ({ token }) => {
     setLoading(true);
     try {
       const { data } = await api.get(`/booking/services?active=true`, auth);
-      setServices(data);
+      const serviceRows = Array.isArray(data) ? data : [];
+      setServices(serviceRows);
+      try {
+        const { data: categoryPayload } = await api.get(`/booking/service-categories`, auth);
+        const categoryRows = Array.isArray(categoryPayload)
+          ? categoryPayload.map((name) => ({ name, count: serviceRows.filter((row) => String(row.category || "").trim().toLowerCase() === String(name || "").trim().toLowerCase()).length }))
+          : Array.isArray(categoryPayload?.categories)
+            ? categoryPayload.categories
+            : [];
+        setServiceCategories(categoryRows);
+      } catch {
+        const fallback = Array.from(
+          new Map(
+            serviceRows
+              .map((row) => String(row.category || "").trim())
+              .filter(Boolean)
+              .map((name) => [name.toLowerCase(), { name, count: serviceRows.filter((row) => String(row.category || "").trim().toLowerCase() === name.toLowerCase()).length }])
+          ).values()
+        );
+        setServiceCategories(fallback);
+      }
     } catch (err) {
       console.error("ServiceManagement load error", err);
       setSnk({ open: true, key: "manager.service.messages.loadError" });
@@ -225,12 +252,16 @@ const ServiceManagement = ({ token }) => {
   };
 
   const save = async () => {
+    const payload = {
+      ...form,
+      category: String(form.category || "").trim(),
+    };
     try {
       if (editing) {
-        await api.put(`/booking/services/${editing.id}`, form, auth);
+        await api.put(`/booking/services/${editing.id}`, payload, auth);
         setSnk({ open: true, key: "manager.service.messages.updated" });
       } else {
-        await api.post(`/booking/services`, form, auth);
+        await api.post(`/booking/services`, payload, auth);
         setSnk({ open: true, key: "manager.service.messages.added" });
       }
       handleCloseDialog();
@@ -458,12 +489,13 @@ const ServiceManagement = ({ token }) => {
             value={form.name}
             onChange={(event) => setForm({ ...form, name: event.target.value })}
           />
-          <TextField
+          <CategoryAutocomplete
             label={t("manager.service.dialog.category")}
             fullWidth
             margin="dense"
             value={form.category}
-            onChange={(event) => setForm({ ...form, category: event.target.value })}
+            onChange={(value) => setForm({ ...form, category: value })}
+            categories={serviceCategories}
           />
           <TextField
             label={t("manager.service.dialog.duration")}
