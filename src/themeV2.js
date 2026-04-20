@@ -231,21 +231,65 @@ const themeV2 = createTheme({
     MuiMenu: {
       styleOverrides: {
         paper: ({ theme }) => ({
-          backgroundColor: theme.palette.background.paper,
-          backgroundImage: "none",
+          backgroundColor: `${theme.palette.background.paper} !important`,
+          backgroundImage: "none !important",
+          color: theme.palette.text.primary,
           border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
           boxShadow: `0 18px 44px ${alpha(theme.palette.common.black, 0.14)}`,
+          opacity: 1,
         }),
         list: ({ theme }) => ({
+          backgroundColor: `${theme.palette.background.paper} !important`,
+          color: theme.palette.text.primary,
+        }),
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: ({ theme }) => ({
           backgroundColor: theme.palette.background.paper,
+          color: theme.palette.text.primary,
+          "&.Mui-selected": {
+            backgroundColor: `${theme.palette.action.selected} !important`,
+          },
+          "&.Mui-focusVisible, &:hover": {
+            backgroundColor: `${theme.palette.action.hover} !important`,
+          },
         }),
       },
     },
     MuiPopover: {
       styleOverrides: {
         paper: ({ theme }) => ({
-          backgroundColor: theme.palette.background.paper,
-          backgroundImage: "none",
+          backgroundColor: `${theme.palette.background.paper} !important`,
+          backgroundImage: "none !important",
+          color: theme.palette.text.primary,
+          opacity: 1,
+        }),
+      },
+    },
+    MuiAutocomplete: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          backgroundColor: `${theme.palette.background.paper} !important`,
+          backgroundImage: "none !important",
+          color: theme.palette.text.primary,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
+          boxShadow: `0 18px 44px ${alpha(theme.palette.common.black, 0.14)}`,
+          opacity: 1,
+        }),
+        listbox: ({ theme }) => ({
+          backgroundColor: `${theme.palette.background.paper} !important`,
+          color: theme.palette.text.primary,
+          "& .MuiAutocomplete-option": {
+            backgroundColor: theme.palette.background.paper,
+          },
+          "& .MuiAutocomplete-option.Mui-focused": {
+            backgroundColor: `${theme.palette.action.hover} !important`,
+          },
+          "& .MuiAutocomplete-option[aria-selected='true']": {
+            backgroundColor: `${theme.palette.action.selected} !important`,
+          },
         }),
       },
     },
