@@ -19,6 +19,14 @@ const clean = (value) => String(value || "").trim();
 
 const pluralize = (count, singular, plural) => (Number(count || 0) === 1 ? singular : plural);
 
+const normalizeCategoryKey = (value) =>
+  clean(value)
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+const toTitleCaseSuggestion = (value) =>
+  clean(value).replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+
 export default function CategoryManagerDialog({
   open,
   title = "Manage Categories",
@@ -37,21 +45,34 @@ export default function CategoryManagerDialog({
   const [confirmAction, setConfirmAction] = useState(null);
 
   const rows = useMemo(() => {
-    const seen = new Map();
-    for (const raw of categories || []) {
+    return (categories || [])
+      .map((raw) => {
+        const name = clean(raw?.name ?? raw);
+        if (!name) return null;
+        return { name, count: Number(raw?.count || 0) };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [categories]);
+
+  const duplicateGroups = useMemo(() => {
+    const groups = new Map();
+    for (const raw of rows) {
       const name = clean(raw?.name ?? raw);
       if (!name) continue;
-      const key = name.toLowerCase();
-      const count = Number(raw?.count || 0);
-      if (!seen.has(key)) {
-        seen.set(key, { name, count });
-      } else {
-        const existing = seen.get(key);
-        seen.set(key, { ...existing, count: existing.count + count });
-      }
+      const key = normalizeCategoryKey(name);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(name);
     }
-    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [categories]);
+    return Array.from(groups.entries())
+      .map(([key, names]) => ({
+        key,
+        names: Array.from(new Set(names)),
+        suggestion: toTitleCaseSuggestion(names[0]),
+      }))
+      .filter((group) => group.names.length > 1)
+      .slice(0, 3);
+  }, [rows]);
 
   const resetRename = () => {
     setRenaming(null);
@@ -146,6 +167,19 @@ export default function CategoryManagerDialog({
               </Box>
             ) : (
               <Stack spacing={1.5}>
+                {duplicateGroups.length > 0 && (
+                  <Alert severity="warning" sx={{ alignItems: "flex-start" }}>
+                    <Stack spacing={0.75}>
+                      <Typography variant="subtitle2">Possible duplicates found</Typography>
+                      {duplicateGroups.map((group) => (
+                        <Typography key={group.key} variant="body2">
+                          {group.names.join(" and ")} look like the same category. Use Rename to standardize them, for example{" "}
+                          <strong>{group.suggestion}</strong>.
+                        </Typography>
+                      ))}
+                    </Stack>
+                  </Alert>
+                )}
                 {rows.map((row) => {
                   const isRenaming = renaming === row.name;
                   return (
