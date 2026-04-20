@@ -11,8 +11,6 @@ import {
   Button,
   Typography,
   CircularProgress,
-  TextField,
-  MenuItem,
   Alert,
   Box,
   Chip,
@@ -32,6 +30,7 @@ import { useEmbedConfig } from "../../embed";
 import PublicPageShell, { usePublicSite } from "./PublicPageShell";
 import { getTenantHostMode } from "../../utils/tenant";
 import { addPackageToCart, CartErrorCodes } from "../../utils/cart";
+import PublicCatalogFilters, { UNCATEGORIZED_VALUE } from "../../components/public/PublicCatalogFilters";
 
 const isPlainObject = (val) => !!val && typeof val === "object" && !Array.isArray(val);
 
@@ -266,7 +265,9 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
 
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [services, setServices] = useState([]);
+  const [allServices, setAllServices] = useState([]);
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [packagesLoading, setPackagesLoading] = useState(true);
@@ -332,6 +333,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
         }
         if (Array.isArray(payload.services)) {
           setServices(payload.services);
+          setAllServices(payload.services);
           setLoading(false);
         }
         if (Array.isArray(payload.packages)) {
@@ -365,15 +367,59 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     }
   };
 
+  const serviceCategoryOptions = useMemo(() => {
+    const counts = new Map();
+    (Array.isArray(allServices) ? allServices : []).forEach((service) => {
+      const name = String(service?.category || "").trim();
+      if (!name) {
+        counts.set(UNCATEGORIZED_VALUE, (counts.get(UNCATEGORIZED_VALUE) || 0) + 1);
+        return;
+      }
+      counts.set(name, (counts.get(name) || 0) + 1);
+    });
+    const named = Array.from(counts.entries())
+      .filter(([name]) => name !== UNCATEGORIZED_VALUE)
+      .map(([name, count]) => ({ value: name, label: name, count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    if (counts.has(UNCATEGORIZED_VALUE)) {
+      named.push({ value: UNCATEGORIZED_VALUE, label: "Uncategorized", count: counts.get(UNCATEGORIZED_VALUE) });
+    }
+    return named;
+  }, [allServices]);
+
+  const departmentOptions = useMemo(
+    () => departments.map((d) => ({ value: String(d.id), label: d.name })),
+    [departments]
+  );
+
+  const selectedCategoryLabel = useMemo(() => {
+    if (categoryFilter === "all") return "";
+    return serviceCategoryOptions.find((item) => item.value === categoryFilter)?.label || categoryFilter;
+  }, [categoryFilter, serviceCategoryOptions]);
+
+  const serviceFiltersActive = Boolean(selectedDept || categoryFilter !== "all");
+  const clearServiceFilters = () => {
+    setSelectedDept("");
+    setCategoryFilter("all");
+  };
+
   useEffect(() => {
-    if (!selectedDept) return;
+    if (!effectiveSlug || !bootstrapLoaded) return;
+    if (!selectedDept && categoryFilter === "all") {
+      setServices(allServices);
+      setLoading(false);
+      setError("");
+      return;
+    }
     let active = true;
     setLoading(true);
     setError("");
 
-    const url = `/public/${effectiveSlug}/services?department_id=${selectedDept}`;
+    const params = {};
+    if (selectedDept) params.department_id = selectedDept;
+    if (categoryFilter !== "all") params.category = categoryFilter;
     api
-      .get(url, { noCompanyHeader: true })
+      .get(`/public/${effectiveSlug}/services`, { noCompanyHeader: true, params })
       .then((res) => {
         if (!active) return;
         setServices(Array.isArray(res.data) ? res.data : []);
@@ -388,7 +434,7 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
     return () => {
       active = false;
     };
-  }, [effectiveSlug, selectedDept]);
+  }, [effectiveSlug, selectedDept, categoryFilter, bootstrapLoaded, allServices]);
 
   useEffect(() => {
     if (!effectiveSlug) return;
@@ -528,39 +574,33 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
           mx: "auto",
         }}
       >
-        <Box
-          sx={{
-            mb: 3,
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            gap: 2,
-            justifyContent: "space-between",
-          }}
-        >
+        <Box sx={{ mb: 3 }}>
           <Typography variant="h4" fontWeight={800} sx={{ color: "var(--page-heading-color, inherit)" }}>
             {serviceHeading}
           </Typography>
-
-          {departments.length > 0 && (
-            <TextField
-              select
-              size="small"
-              label="Department"
-              value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              sx={{ minWidth: 220 }}
-              disabled={deptLoading}
-            >
-              <MenuItem value="">All Departments</MenuItem>
-              {departments.map((d) => (
-                <MenuItem key={d.id} value={d.id}>
-                  {d.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
         </Box>
+
+        <PublicCatalogFilters
+          categoryValue={categoryFilter}
+          onCategoryChange={setCategoryFilter}
+          categoryOptions={serviceCategoryOptions}
+          showCategory={serviceCategoryOptions.length > 0}
+          departmentValue={selectedDept}
+          onDepartmentChange={setSelectedDept}
+          departmentOptions={departmentOptions}
+          showDepartment={departments.length > 0}
+          resultSummary={`Showing ${services.length} ${services.length === 1 ? "service" : "services"}`}
+          activeSummary={
+            serviceFiltersActive
+              ? `Showing ${services.length} ${services.length === 1 ? "service" : "services"}${
+                  selectedCategoryLabel ? ` in ${selectedCategoryLabel}` : ""
+                }`
+              : ""
+          }
+          hasActiveFilters={serviceFiltersActive}
+          onClear={clearServiceFilters}
+          showCategoryChips={serviceCategoryOptions.length > 0}
+        />
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -569,9 +609,16 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
         )}
 
         {services.length === 0 ? (
-          <Typography color="text.secondary">
-            No services available{selectedDept ? " in this department" : ""}.
-          </Typography>
+          <Box sx={{ py: 6, textAlign: "center" }}>
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              No services match these filters.
+            </Typography>
+            {serviceFiltersActive && (
+              <Button variant="outlined" onClick={clearServiceFilters} sx={{ textTransform: "none" }}>
+                Clear filters
+              </Button>
+            )}
+          </Box>
         ) : (
           <Grid container spacing={3} justifyContent="center">
             {services.map((service) => {
@@ -639,6 +686,14 @@ const ServiceListContent = ({ effectiveSlug, isModalView, disableModal, origin, 
                         <Typography variant="h6" fontWeight={700} sx={{ color: "var(--page-heading-color, inherit)" }}>
                           {service.name}
                         </Typography>
+                        {service.category && (
+                          <Chip
+                            size="small"
+                            label={service.category}
+                            variant="outlined"
+                            sx={{ borderRadius: 999, fontWeight: 600 }}
+                          />
+                        )}
                         {packageServiceIds.has(Number(service.id)) && (
                           <Chip
                             size="small"

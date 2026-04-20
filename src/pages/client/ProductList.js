@@ -15,11 +15,9 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
-  MenuItem,
   Snackbar,
   Stack,
   Switch,
-  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -30,6 +28,7 @@ import SiteFrame from "../../components/website/SiteFrame";
 import { pageStyleToCssVars, pageStyleToBackgroundSx } from "./ServiceList";
 import { addProductToCart, loadCart, CartErrorCodes } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
+import PublicCatalogFilters, { UNCATEGORIZED_VALUE } from "../../components/public/PublicCatalogFilters";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
@@ -224,10 +223,23 @@ const ProductListBase = ({
 
   const categoryOptions = useMemo(() => {
     const source = Array.isArray(allProducts) && allProducts.length ? allProducts : products;
-    const raw = (Array.isArray(source) ? source : [])
-      .map((item) => String(item?.category || "").trim())
-      .filter(Boolean);
-    return Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b));
+    const counts = new Map();
+    (Array.isArray(source) ? source : []).forEach((item) => {
+      const name = String(item?.category || "").trim();
+      if (!name) {
+        counts.set(UNCATEGORIZED_VALUE, (counts.get(UNCATEGORIZED_VALUE) || 0) + 1);
+        return;
+      }
+      counts.set(name, (counts.get(name) || 0) + 1);
+    });
+    const named = Array.from(counts.entries())
+      .filter(([name]) => name !== UNCATEGORIZED_VALUE)
+      .map(([name, count]) => ({ value: name, label: name, count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    if (counts.has(UNCATEGORIZED_VALUE)) {
+      named.push({ value: UNCATEGORIZED_VALUE, label: "Uncategorized", count: counts.get(UNCATEGORIZED_VALUE) });
+    }
+    return named;
   }, [allProducts, products]);
 
   const visibleProducts = useMemo(() => {
@@ -267,6 +279,30 @@ const ProductListBase = ({
   };
 
   const hasCartItems = loadCart().length > 0;
+  const productSortOptions = [
+    { value: "featured", label: "Featured" },
+    { value: "newest", label: "Newest" },
+    { value: "price-asc", label: "Price: Low to High" },
+    { value: "price-desc", label: "Price: High to Low" },
+    { value: "name-asc", label: "Name: A to Z" },
+    { value: "name-desc", label: "Name: Z to A" },
+  ];
+  const selectedCategoryLabel = useMemo(() => {
+    if (categoryFilter === "all") return "";
+    return categoryOptions.find((item) => item.value === categoryFilter)?.label || categoryFilter;
+  }, [categoryFilter, categoryOptions]);
+  const productFiltersActive = Boolean(
+    String(searchText || "").trim() ||
+      categoryFilter !== "all" ||
+      sortKey !== "featured" ||
+      inStockOnly
+  );
+  const clearProductFilters = () => {
+    setSearchText("");
+    setCategoryFilter("all");
+    setSortKey("featured");
+    setInStockOnly(false);
+  };
 
   const pageStyleCssVars = useMemo(() => (pageStyleOverride ? pageStyleToCssVars(pageStyleOverride) : undefined), [pageStyleOverride]);
   const pageStyleBackground = useMemo(() => (pageStyleOverride ? pageStyleToBackgroundSx(pageStyleOverride) : {}), [pageStyleOverride]);
@@ -321,65 +357,45 @@ const ProductListBase = ({
         )}
       </Box>
 
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
-        justifyContent={{ xs: "flex-start", md: "space-between" }}
-        alignItems={{ xs: "stretch", md: "center" }}
-        sx={{ mb: 3 }}
-      >
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ width: "100%" }}>
-          <TextField
-            label="Search products"
-            size="small"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            placeholder="Search by name or SKU"
-            sx={{ minWidth: { xs: "100%", sm: 220 } }}
+      <PublicCatalogFilters
+        showSearch
+        searchLabel="Search products"
+        searchPlaceholder="Search by name or SKU"
+        searchValue={searchText}
+        onSearchChange={setSearchText}
+        categoryValue={categoryFilter}
+        onCategoryChange={setCategoryFilter}
+        categoryOptions={categoryOptions}
+        showCategory={categoryOptions.length > 0}
+        showSort
+        sortValue={sortKey}
+        onSortChange={setSortKey}
+        sortOptions={productSortOptions}
+        toggleNode={
+          <FormControlLabel
+            control={
+              <Switch
+                checked={inStockOnly}
+                onChange={(event) => setInStockOnly(event.target.checked)}
+                color="primary"
+              />
+            }
+            label="Hide out-of-stock"
+            sx={{ mr: 0 }}
           />
-          <TextField
-            select
-            label="Category"
-            size="small"
-            value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value)}
-            sx={{ minWidth: { xs: "100%", sm: 180 } }}
-          >
-            <MenuItem value="all">All categories</MenuItem>
-            {categoryOptions.map((category) => (
-              <MenuItem key={category} value={category}>
-                {category}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            label="Sort by"
-            size="small"
-            value={sortKey}
-            onChange={(event) => setSortKey(event.target.value)}
-            sx={{ minWidth: { xs: "100%", sm: 180 } }}
-          >
-            <MenuItem value="featured">Featured</MenuItem>
-            <MenuItem value="newest">Newest</MenuItem>
-            <MenuItem value="price-asc">Price: Low to High</MenuItem>
-            <MenuItem value="price-desc">Price: High to Low</MenuItem>
-            <MenuItem value="name-asc">Name: A to Z</MenuItem>
-            <MenuItem value="name-desc">Name: Z to A</MenuItem>
-          </TextField>
-        </Stack>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={inStockOnly}
-              onChange={(event) => setInStockOnly(event.target.checked)}
-              color="primary"
-            />
-          }
-          label="Hide out-of-stock"
-          sx={{ mr: 0 }}
-        />
-      </Stack>
+        }
+        resultSummary={`Showing ${visibleProducts.length} ${visibleProducts.length === 1 ? "product" : "products"}`}
+        activeSummary={
+          productFiltersActive
+            ? `Showing ${visibleProducts.length} ${visibleProducts.length === 1 ? "product" : "products"}${
+                selectedCategoryLabel ? ` in ${selectedCategoryLabel}` : ""
+              }`
+            : ""
+        }
+        hasActiveFilters={productFiltersActive}
+        onClear={clearProductFilters}
+        showCategoryChips={categoryOptions.length > 0}
+      />
 
       {loading ? (
         <Box sx={{ py: 8, textAlign: "center" }}>
@@ -390,11 +406,16 @@ const ProductListBase = ({
           {error}
         </Typography>
       ) : visibleProducts.length === 0 ? (
-        <Typography textAlign="center">
-          {inStockOnly
-            ? "No products currently in stock for this filter."
-            : "No products found for the selected filters."}
-        </Typography>
+        <Box sx={{ py: 6, textAlign: "center" }}>
+          <Typography textAlign="center" color="text.secondary" sx={{ mb: 2 }}>
+            No products match these filters.
+          </Typography>
+          {productFiltersActive && (
+            <Button variant="outlined" onClick={clearProductFilters} sx={{ textTransform: "none" }}>
+              Clear filters
+            </Button>
+          )}
+        </Box>
       ) : (
         <Grid container spacing={3} justifyContent="center">
           {visibleProducts.map((product) => {
