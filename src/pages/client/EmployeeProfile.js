@@ -32,7 +32,7 @@ const PRESERVED_QUERY_KEYS = [
 ];
 
 const EmployeeProfile = ({ slugOverride }) => {
-  const { slug: routeSlug, employeeId } = useParams();
+  const { slug: routeSlug, employeeId, serviceId: routeServiceId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -50,7 +50,7 @@ const EmployeeProfile = ({ slugOverride }) => {
   const basePath = isCustomDomain ? "" : `/${effectiveSlug}`;
 
   const isEmbed = searchParams.get("embed") === "1";
-  const serviceId = searchParams.get("service_id");
+  const serviceId = searchParams.get("service_id") || routeServiceId;
   const departmentId = searchParams.get("department_id") || "";
 
   const [profile, setProfile] = useState(null);
