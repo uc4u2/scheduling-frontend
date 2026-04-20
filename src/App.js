@@ -551,14 +551,6 @@ const AppContent = ({ token, setToken }) => {
     };
   }, [chatbotSlug, isCustomDomain, tenantLoaded, tenantSlug]);
 
-  if (isCustomDomain && !tenantLoaded) {
-    return null;
-  }
-
-  const marketingChatbot = MARKETING_PATHS.includes(location.pathname);
-  const tenantChatbotReady = Boolean(
-    chatbotSlug && chatbotConfigLoaded && chatbotConfig && chatbotConfig.enabled === true
-  );
   const [chatbotSuppressedByOverlay, setChatbotSuppressedByOverlay] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -577,6 +569,15 @@ const AppContent = ({ token, setToken }) => {
       window.removeEventListener("schedulaa:chatbot-suppression", handleSuppression);
     };
   }, []);
+
+  if (isCustomDomain && !tenantLoaded) {
+    return null;
+  }
+
+  const marketingChatbot = MARKETING_PATHS.includes(location.pathname);
+  const tenantChatbotReady = Boolean(
+    chatbotSlug && chatbotConfigLoaded && chatbotConfig && chatbotConfig.enabled === true
+  );
   const chatbotSuppressedByRoute = Boolean(
     matchPath({ path: "/booking-confirmation/:bookingId" }, location.pathname) ||
       matchPath({ path: "/:slug/booking-confirmation/:bookingId" }, location.pathname) ||
