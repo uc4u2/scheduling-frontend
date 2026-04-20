@@ -1,11 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Box, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import LaunchIcon from "@mui/icons-material/Launch";
-import RateReviewIcon from "@mui/icons-material/RateReview";
-
-const DISMISS_PREFIX = "schedulaa_google_review_cta_dismissed";
 
 const isSafeReviewUrl = (url) => {
   try {
@@ -20,37 +17,25 @@ export default function GoogleReviewCta({
   reviewUrl,
   text = "Leave a Google review",
   variant = "static",
-  storageKey = "default",
   onDismiss,
 }) {
   const theme = useTheme();
   const safeUrl = isSafeReviewUrl(reviewUrl) ? String(reviewUrl).trim() : "";
-  const dismissKey = useMemo(() => `${DISMISS_PREFIX}:${storageKey || "default"}`, [storageKey]);
   const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    if (variant !== "floating") return;
-    try {
-      setDismissed(sessionStorage.getItem(dismissKey) === "1");
-    } catch {
-      setDismissed(false);
-    }
-  }, [dismissKey, variant]);
 
   if (!safeUrl || (variant === "floating" && dismissed)) return null;
 
   const handleDismiss = () => {
-    try {
-      sessionStorage.setItem(dismissKey, "1");
-    } catch {
-      /* noop */
-    }
     setDismissed(true);
     onDismiss?.();
   };
 
   const isFloating = variant === "floating";
-  const accent = "#4285F4";
+  const tenantAccent = "var(--page-link-color, var(--page-accent-color, #4285F4))";
+  const tenantAccentSoft = "color-mix(in srgb, var(--page-link-color, #4285F4) 18%, transparent)";
+  const tenantText = "var(--page-text-color, var(--page-body-color, inherit))";
+  const tenantMuted = "var(--page-muted-color, rgba(71,85,105,0.82))";
+  const tenantCardBg = "var(--page-card-bg, rgba(255,255,255,0.98))";
   const googleColors = ["#4285F4", "#DB4437", "#F4B400", "#4285F4", "#0F9D58", "#DB4437"];
   const buttonLabel = isFloating
     ? "Leave a review"
@@ -60,23 +45,36 @@ export default function GoogleReviewCta({
     <Box
       aria-hidden
       sx={{
-        width: isFloating ? 30 : 38,
-        height: isFloating ? 30 : 38,
+        width: isFloating ? 32 : 42,
+        height: isFloating ? 32 : 42,
         borderRadius: "50%",
         display: "grid",
         placeItems: "center",
         flexShrink: 0,
-        bgcolor: "#fff",
-        border: "1px solid",
-        borderColor: alpha(theme.palette.common.black, 0.1),
+        background:
+          "conic-gradient(from -35deg, #4285F4 0 24%, #0F9D58 24% 44%, #F4B400 44% 68%, #DB4437 68% 86%, #4285F4 86% 100%)",
+        p: "2px",
         boxShadow: "0 8px 18px rgba(15,23,42,0.10)",
-        fontWeight: 900,
-        fontSize: isFloating ? 16 : 20,
-        lineHeight: 1,
-        fontFamily: "Arial, sans-serif",
       }}
     >
-      <Box component="span" sx={{ color: "#4285F4" }}>G</Box>
+      <Box
+        sx={{
+          width: "100%",
+          height: "100%",
+          borderRadius: "50%",
+          display: "grid",
+          placeItems: "center",
+          bgcolor: "#fff",
+          color: "#4285F4",
+          fontWeight: 900,
+          fontSize: isFloating ? 15 : 19,
+          lineHeight: 1,
+          fontFamily: "Arial, sans-serif",
+          letterSpacing: "-0.08em",
+        }}
+      >
+        G
+      </Box>
     </Box>
   );
 
@@ -98,13 +96,15 @@ export default function GoogleReviewCta({
         overflow: "hidden",
         borderRadius: isFloating ? 2 : 3,
         border: "1px solid",
-        borderColor: alpha(theme.palette.common.black, 0.1),
+        borderColor: isFloating ? tenantAccentSoft : alpha(theme.palette.common.black, 0.1),
+        color: tenantText,
+        bgcolor: tenantCardBg,
         background:
           theme.palette.mode === "dark"
             ? "linear-gradient(145deg, rgba(15,23,42,0.98), rgba(30,41,59,0.95))"
-            : "linear-gradient(145deg, rgba(255,255,255,0.99), rgba(248,250,252,0.98))",
+            : "linear-gradient(145deg, var(--page-card-bg, rgba(255,255,255,0.99)), rgba(248,250,252,0.96))",
         boxShadow: isFloating
-          ? "0 16px 36px rgba(15,23,42,0.16)"
+          ? `0 16px 36px rgba(15,23,42,0.16), 0 0 0 4px ${tenantAccentSoft}`
           : "0 20px 50px rgba(15,23,42,0.10)",
         p: isFloating ? 1.5 : { xs: 2.25, md: 3 },
         maxWidth: isFloating ? 318 : "100%",
@@ -124,7 +124,13 @@ export default function GoogleReviewCta({
           size="small"
           aria-label="Dismiss Google review prompt"
           onClick={handleDismiss}
-          sx={{ position: "absolute", top: 7, right: 7, color: "text.secondary" }}
+          sx={{
+            position: "absolute",
+            top: 7,
+            right: 7,
+            color: tenantMuted,
+            "&:hover": { bgcolor: tenantAccentSoft, color: tenantText },
+          }}
         >
           <CloseIcon fontSize="small" />
         </IconButton>
@@ -137,7 +143,7 @@ export default function GoogleReviewCta({
               <Typography
                 variant="overline"
                 sx={{
-                  color: "text.secondary",
+                  color: tenantMuted,
                   letterSpacing: "0.15em",
                   lineHeight: 1.1,
                   fontWeight: 850,
@@ -148,11 +154,15 @@ export default function GoogleReviewCta({
               </Typography>
               {starRow}
             </Stack>
-            <Typography variant={isFloating ? "body1" : "h6"} fontWeight={850} sx={{ lineHeight: 1.18 }}>
+            <Typography
+              variant={isFloating ? "body1" : "h6"}
+              fontWeight={850}
+              sx={{ lineHeight: 1.18, color: tenantText }}
+            >
               {isFloating ? "Share your experience" : "Loved your visit? Share your experience on Google."}
             </Typography>
             {!isFloating && (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: tenantMuted }}>
                 Your public review helps future clients choose with confidence. Opens Google in a new tab.
               </Typography>
             )}
@@ -174,8 +184,13 @@ export default function GoogleReviewCta({
               textTransform: "none",
               fontWeight: 800,
               fontSize: isFloating ? "0.78rem" : undefined,
-              bgcolor: accent,
-              "&:hover": { bgcolor: "#3367D6" },
+              bgcolor: tenantAccent,
+              boxShadow: `0 10px 22px ${tenantAccentSoft}`,
+              "&:hover": {
+                bgcolor: tenantAccent,
+                filter: "brightness(0.93)",
+                boxShadow: `0 12px 26px ${tenantAccentSoft}`,
+              },
             }}
           >
             {buttonLabel}
