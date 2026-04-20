@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Autocomplete, Box, Chip, Stack, TextField } from "@mui/material";
+import { Autocomplete, Box, Chip, Paper, Stack, TextField } from "@mui/material";
 
 const cleanCategory = (value) => String(value || "").trim();
 
@@ -13,6 +13,31 @@ const normalizeOption = (option) => {
   if (!name) return null;
   return { name, count: option.count ?? null };
 };
+
+const CategoryAutocompletePaper = (props) => (
+  <Paper
+    {...props}
+    elevation={8}
+    sx={{
+      mt: 0.5,
+      backgroundColor: "background.paper",
+      color: "text.primary",
+      border: "1px solid",
+      borderColor: "divider",
+      boxShadow: "0 18px 48px rgba(15, 23, 42, 0.18)",
+      "& .MuiAutocomplete-option": {
+        backgroundColor: "background.paper",
+      },
+      "& .MuiAutocomplete-option.Mui-focused": {
+        backgroundColor: "action.hover",
+      },
+      "& .MuiAutocomplete-option[aria-selected='true']": {
+        backgroundColor: "action.selected",
+      },
+      ...props.sx,
+    }}
+  />
+);
 
 export default function CategoryAutocomplete({
   label = "Category",
@@ -62,6 +87,7 @@ export default function CategoryAutocomplete({
         disabled={disabled}
         options={optionNames}
         value={selected}
+        PaperComponent={CategoryAutocompletePaper}
         onChange={(_event, nextValue) => commit(nextValue)}
         onInputChange={(_event, nextValue, reason) => {
           if (reason === "input" || reason === "clear") {
@@ -96,4 +122,3 @@ export default function CategoryAutocomplete({
     </Box>
   );
 }
-

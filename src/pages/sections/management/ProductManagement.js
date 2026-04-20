@@ -1319,6 +1319,7 @@ const ProductManagement = ({ token }) => {
         open={categoryManagerOpen}
         title="Manage Product Categories"
         categories={productCategories}
+        loading={loading}
         itemLabelSingular="product"
         itemLabelPlural="products"
         onClose={() => setCategoryManagerOpen(false)}

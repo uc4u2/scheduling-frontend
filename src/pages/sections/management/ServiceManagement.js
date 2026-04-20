@@ -1294,6 +1294,7 @@ const ServiceManagement = ({ token }) => {
         open={categoryManagerOpen}
         title="Manage Service Categories"
         categories={serviceCategories}
+        loading={loading}
         itemLabelSingular="service"
         itemLabelPlural="services"
         onClose={() => setCategoryManagerOpen(false)}
