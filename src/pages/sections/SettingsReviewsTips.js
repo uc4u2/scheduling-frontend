@@ -31,6 +31,7 @@ export default function SettingsReviewsTips() {
   // Optional redirect (e.g., Google reviews page)
   const [reviewRedirectUrl, setReviewRedirectUrl] = useState("");
   const [googleReviewCtaEnabled, setGoogleReviewCtaEnabled] = useState(false);
+  const [googleReviewPageCtaEnabled, setGoogleReviewPageCtaEnabled] = useState(true);
   const [googleReviewCtaText, setGoogleReviewCtaText] = useState("Leave a Google review");
 
   // Optional email subject/body overrides
@@ -61,6 +62,7 @@ export default function SettingsReviewsTips() {
 
         setReviewRedirectUrl(data.review_redirect_url || "");
         setGoogleReviewCtaEnabled(!!data.google_review_cta_enabled);
+        setGoogleReviewPageCtaEnabled(data.google_review_page_cta_enabled !== false);
         setGoogleReviewCtaText(data.google_review_cta_text || "Leave a Google review");
         setEmailSubject(data.email_subject_template || "");
         setEmailHtml(data.email_body_template || "");
@@ -103,6 +105,7 @@ export default function SettingsReviewsTips() {
         tip_presets,
         review_redirect_url: reviewRedirectUrl || null,
         google_review_cta_enabled: !!googleReviewCtaEnabled,
+        google_review_page_cta_enabled: !!googleReviewPageCtaEnabled,
         google_review_cta_text: (googleReviewCtaText || "Leave a Google review").trim(),
         email_subject_template: emailSubject || null,
         email_body_template: emailHtml || null,
@@ -120,6 +123,9 @@ export default function SettingsReviewsTips() {
       }
       if (Object.prototype.hasOwnProperty.call(savedSettings, "google_review_cta_enabled")) {
         setGoogleReviewCtaEnabled(!!savedSettings.google_review_cta_enabled);
+      }
+      if (Object.prototype.hasOwnProperty.call(savedSettings, "google_review_page_cta_enabled")) {
+        setGoogleReviewPageCtaEnabled(savedSettings.google_review_page_cta_enabled !== false);
       }
       if (Object.prototype.hasOwnProperty.call(savedSettings, "google_review_cta_text")) {
         setGoogleReviewCtaText(savedSettings.google_review_cta_text || "Leave a Google review");
@@ -281,49 +287,79 @@ export default function SettingsReviewsTips() {
                 />
               </Stack>
               <TextField
-                label="Google review link"
+                label={(
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <span>Google review link</span>
+                    <Tooltip title="Paste the Google review link from your Google Business Profile. Visitors and clients can use this to leave a public review on Google.">
+                      <InfoOutlinedIcon fontSize="small" color="action" />
+                    </Tooltip>
+                  </Stack>
+                )}
                 fullWidth
                 value={reviewRedirectUrl}
                 onChange={(e) => setReviewRedirectUrl(e.target.value)}
-                helperText="Paste the Google review link from your Google Business Profile. Visitors and clients can use this to leave a public review on Google."
               />
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "stretch", sm: "center" }}>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<LaunchIcon fontSize="small" />}
-                  component="a"
-                  href={reviewRedirectUrl.trim() || undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  disabled={!reviewRedirectUrl.trim()}
-                  sx={{ alignSelf: { xs: "stretch", sm: "flex-start" } }}
-                >
-                  Open link
-                </Button>
-                <Typography variant="caption" color="text.secondary">
-                  No Google API is required. This opens the tenant's public Google review destination.
-                </Typography>
+                <Tooltip title="No Google API is required. This opens the tenant's public Google review destination.">
+                  <span>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<LaunchIcon fontSize="small" />}
+                      component="a"
+                      href={reviewRedirectUrl.trim() || undefined}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      disabled={!reviewRedirectUrl.trim()}
+                      sx={{ alignSelf: { xs: "stretch", sm: "flex-start" } }}
+                    >
+                      Open link
+                    </Button>
+                  </span>
+                </Tooltip>
               </Stack>
             </Stack>
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <FormControlLabel
-              control={<Switch checked={googleReviewCtaEnabled} onChange={(e) => setGoogleReviewCtaEnabled(e.target.checked)} />}
-              label="Show Google review CTA on website"
-            />
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: -1 }}>
-              Shows a subtle, dismissible floating Google review card on public website pages when a Google review link is configured.
-            </Typography>
+            <Tooltip title="Shows a subtle, dismissible floating Google review card on public website pages when a Google review link is configured.">
+              <FormControlLabel
+                control={<Switch checked={googleReviewCtaEnabled} onChange={(e) => setGoogleReviewCtaEnabled(e.target.checked)} />}
+                label={(
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <span>Show Google review CTA on website</span>
+                    <InfoOutlinedIcon fontSize="small" color="action" />
+                  </Stack>
+                )}
+              />
+            </Tooltip>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Tooltip title="Shows the static Google review card above internal Schedulaa reviews when a Google review link is configured.">
+              <FormControlLabel
+                control={<Switch checked={googleReviewPageCtaEnabled} onChange={(e) => setGoogleReviewPageCtaEnabled(e.target.checked)} />}
+                label={(
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <span>Show Google review card on Reviews page</span>
+                    <InfoOutlinedIcon fontSize="small" color="action" />
+                  </Stack>
+                )}
+              />
+            </Tooltip>
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField
-              label="Google CTA button text"
+              label={(
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <span>Google CTA button text</span>
+                  <Tooltip title="Default: Leave a Google review">
+                    <InfoOutlinedIcon fontSize="small" color="action" />
+                  </Tooltip>
+                </Stack>
+              )}
               fullWidth
               value={googleReviewCtaText}
               onChange={(e) => setGoogleReviewCtaText(e.target.value)}
-              helperText="Default: Leave a Google review"
               inputProps={{ maxLength: 80 }}
             />
           </Grid>

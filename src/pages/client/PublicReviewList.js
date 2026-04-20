@@ -297,7 +297,7 @@ export default function PublicReviewList({ slug, slugOverride, limit = 20, disab
             </Typography>
           </Stack>
 
-          {reviewSettings?.review_redirect_url && (
+          {reviewSettings?.review_redirect_url && reviewSettings?.google_review_page_cta_enabled !== false && (
             <GoogleReviewCta
               variant="static"
               reviewUrl={reviewSettings.review_redirect_url}

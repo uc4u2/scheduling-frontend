@@ -108,6 +108,11 @@ export default function GoogleReviewCta({
           : "0 20px 50px rgba(15,23,42,0.10)",
         p: isFloating ? 1.5 : { xs: 2.25, md: 3 },
         maxWidth: isFloating ? 318 : "100%",
+        transform: "translateY(0)",
+        transition: isFloating
+          ? "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease"
+          : "box-shadow 180ms ease, border-color 180ms ease",
+        animation: isFloating ? "googleReviewCtaIn 320ms ease-out both" : "none",
         "&::before": {
           content: '""',
           position: "absolute",
@@ -117,6 +122,31 @@ export default function GoogleReviewCta({
           height: isFloating ? 3 : 4,
           background: `linear-gradient(90deg, ${googleColors.join(", ")})`,
         },
+        ...(isFloating
+          ? {
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                inset: 0,
+                pointerEvents: "none",
+                background:
+                  "radial-gradient(circle at 18% 18%, rgba(66,133,244,0.10), transparent 34%), radial-gradient(circle at 92% 8%, rgba(244,180,0,0.12), transparent 30%), radial-gradient(circle at 80% 86%, var(--page-link-color, rgba(66,133,244,0.10)), transparent 34%)",
+                opacity: 0.42,
+                transition: "opacity 180ms ease",
+              },
+              "&:hover, &:focus-within": {
+                transform: "translateY(-2px)",
+                boxShadow: `0 20px 44px rgba(15,23,42,0.20), 0 0 0 4px ${tenantAccentSoft}`,
+              },
+              "&:hover::after, &:focus-within::after": {
+                opacity: 0.62,
+              },
+              "@keyframes googleReviewCtaIn": {
+                "0%": { opacity: 0, transform: "translateY(10px) scale(0.985)" },
+                "100%": { opacity: 1, transform: "translateY(0) scale(1)" },
+              },
+            }
+          : {}),
       }}
     >
       {isFloating && (
@@ -128,14 +158,36 @@ export default function GoogleReviewCta({
             position: "absolute",
             top: 7,
             right: 7,
+            zIndex: 2,
+            width: 24,
+            height: 24,
+            opacity: { xs: 0.64, md: 0 },
+            transform: { xs: "scale(1)", md: "scale(0.88)" },
             color: tenantMuted,
-            "&:hover": { bgcolor: tenantAccentSoft, color: tenantText },
+            bgcolor: "rgba(255,255,255,0.62)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(148,163,184,0.26)",
+            transition: "opacity 160ms ease, transform 160ms ease, background-color 160ms ease, color 160ms ease",
+            ".MuiPaper-root:hover &, .MuiPaper-root:focus-within &": {
+              opacity: 1,
+              transform: "scale(1)",
+            },
+            "&:hover": {
+              bgcolor: tenantAccentSoft,
+              color: tenantText,
+              borderColor: tenantAccentSoft,
+            },
           }}
         >
           <CloseIcon fontSize="small" />
         </IconButton>
       )}
-      <Stack direction="row" spacing={isFloating ? 1.2 : 1.6} alignItems="flex-start" sx={{ pr: isFloating ? 3 : 0 }}>
+      <Stack
+        direction="row"
+        spacing={isFloating ? 1.2 : 1.6}
+        alignItems="flex-start"
+        sx={{ pr: isFloating ? 3 : 0, position: "relative", zIndex: 1 }}
+      >
         {GoogleMark}
         <Stack spacing={isFloating ? 0.75 : 1} sx={{ minWidth: 0 }}>
           <Stack spacing={isFloating ? 0.35 : 0.5}>
