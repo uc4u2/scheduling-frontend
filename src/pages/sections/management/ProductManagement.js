@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogActions,
   FormControlLabel,
+  MenuItem,
   TextField,
   Typography,
   IconButton,
@@ -91,6 +92,7 @@ const ProductManagement = ({ token }) => {
   const [imageUploading, setImageUploading] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [lowStockSummary, setLowStockSummary] = useState({ count: 0, out_of_stock_count: 0, low_stock_count: 0 });
   const [lowStockItems, setLowStockItems] = useState([]);
   const [movementOpen, setMovementOpen] = useState(false);
@@ -123,7 +125,11 @@ const ProductManagement = ({ token }) => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/inventory/products`, auth);
+      const params = new URLSearchParams();
+      if (categoryFilter) {
+        params.set("category", categoryFilter);
+      }
+      const { data } = await api.get(`/inventory/products${params.toString() ? `?${params.toString()}` : ""}`, auth);
       const productRows = Array.isArray(data) ? data : [];
       setProducts(productRows);
       try {
@@ -170,7 +176,7 @@ const ProductManagement = ({ token }) => {
     } finally {
       setLoading(false);
     }
-  }, [auth, notify, t]);
+  }, [auth, categoryFilter, notify, t]);
 
   useEffect(() => {
     load();
@@ -297,10 +303,14 @@ const ProductManagement = ({ token }) => {
         { name: newName },
         auth
       );
-      await load();
+      if (categoryFilter === oldName) {
+        setCategoryFilter(data?.new_name || newName);
+      } else {
+        await load();
+      }
       notify(`${Number(data?.affected_count || 0)} products moved to ${data?.new_name || newName}.`);
     },
-    [auth, load, notify]
+    [auth, categoryFilter, load, notify]
   );
 
   const removeProductCategory = useCallback(
@@ -309,10 +319,14 @@ const ProductManagement = ({ token }) => {
         `/inventory/product-categories/${encodeURIComponent(name)}`,
         auth
       );
-      await load();
+      if (categoryFilter === name) {
+        setCategoryFilter("");
+      } else {
+        await load();
+      }
       notify(`${Number(data?.affected_count || 0)} products moved to Uncategorized.`);
     },
-    [auth, load, notify]
+    [auth, categoryFilter, load, notify]
   );
 
   const handleDelete = useCallback(
@@ -539,7 +553,12 @@ const ProductManagement = ({ token }) => {
         {t("manager.product.title")}
       </Typography>
 
-      <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={1.5}
+        alignItems={{ xs: "stretch", md: "center" }}
+        sx={{ mb: 2 }}
+      >
         <Button startIcon={<Add />} variant="contained" onClick={() => handleOpen()}>
           {t("manager.product.buttonAdd")}
         </Button>
@@ -576,6 +595,22 @@ const ProductManagement = ({ token }) => {
         >
           Help
         </Button>
+        <TextField
+          select
+          size="small"
+          label="Category"
+          value={categoryFilter}
+          onChange={(event) => setCategoryFilter(event.target.value)}
+          sx={{ minWidth: { xs: "100%", md: 220 }, ml: { md: "auto" } }}
+        >
+          <MenuItem value="">All categories</MenuItem>
+          <MenuItem value="__uncategorized__">Uncategorized</MenuItem>
+          {productCategories.map((category) => (
+            <MenuItem key={category.name} value={category.name}>
+              {category.name}
+            </MenuItem>
+          ))}
+        </TextField>
       </Stack>
 
       <Paper sx={{ mb: 2, p: 1.5 }}>

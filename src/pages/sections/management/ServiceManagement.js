@@ -109,6 +109,7 @@ const ServiceManagement = ({ token }) => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [packageHelpOpen, setPackageHelpOpen] = useState(false);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -185,7 +186,11 @@ const ServiceManagement = ({ token }) => {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/booking/services?active=true`, auth);
+      const params = new URLSearchParams({ active: "true" });
+      if (categoryFilter) {
+        params.set("category", categoryFilter);
+      }
+      const { data } = await api.get(`/booking/services?${params.toString()}`, auth);
       const serviceRows = Array.isArray(data) ? data : [];
       setServices(serviceRows);
       try {
@@ -217,7 +222,7 @@ const ServiceManagement = ({ token }) => {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [categoryFilter]);
 
   const show = (row = null) => {
     setEditing(row);
@@ -280,7 +285,11 @@ const ServiceManagement = ({ token }) => {
       { name: newName },
       auth
     );
-    await load();
+    if (categoryFilter === oldName) {
+      setCategoryFilter(data?.new_name || newName);
+    } else {
+      await load();
+    }
     setSnk({
       open: true,
       key: `${Number(data?.affected_count || 0)} services moved to ${data?.new_name || newName}.`,
@@ -292,7 +301,11 @@ const ServiceManagement = ({ token }) => {
       `/booking/service-categories/${encodeURIComponent(name)}`,
       auth
     );
-    await load();
+    if (categoryFilter === name) {
+      setCategoryFilter("");
+    } else {
+      await load();
+    }
     setSnk({
       open: true,
       key: `${Number(data?.affected_count || 0)} services moved to Uncategorized.`,
@@ -479,23 +492,38 @@ const ServiceManagement = ({ token }) => {
         </Button>
       </Stack>
 
-      <Button startIcon={<Add />} variant="contained" sx={{ mb: 2 }} onClick={() => show()}>
-        {t("manager.service.buttonAdd")}
-      </Button>
-      <Button
-        variant="outlined"
-        sx={{ mb: 2, ml: 1 }}
-        onClick={openPackages}
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={1.5}
+        alignItems={{ xs: "stretch", md: "center" }}
+        sx={{ mb: 2 }}
       >
-        {t("manager.service.buttonPackages", "Packages")}
-      </Button>
-      <Button
-        variant="outlined"
-        sx={{ mb: 2, ml: 1 }}
-        onClick={() => setCategoryManagerOpen(true)}
-      >
-        Manage Categories
-      </Button>
+        <Button startIcon={<Add />} variant="contained" onClick={() => show()}>
+          {t("manager.service.buttonAdd")}
+        </Button>
+        <Button variant="outlined" onClick={openPackages}>
+          {t("manager.service.buttonPackages", "Packages")}
+        </Button>
+        <Button variant="outlined" onClick={() => setCategoryManagerOpen(true)}>
+          Manage Categories
+        </Button>
+        <TextField
+          select
+          size="small"
+          label="Category"
+          value={categoryFilter}
+          onChange={(event) => setCategoryFilter(event.target.value)}
+          sx={{ minWidth: { xs: "100%", md: 220 }, ml: { md: "auto" } }}
+        >
+          <MenuItem value="">All categories</MenuItem>
+          <MenuItem value="__uncategorized__">Uncategorized</MenuItem>
+          {serviceCategories.map((category) => (
+            <MenuItem key={category.name} value={category.name}>
+              {category.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
 
       <Paper>
         <DataGrid
