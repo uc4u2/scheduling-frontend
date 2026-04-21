@@ -29,6 +29,7 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import EditIcon from "@mui/icons-material/Edit";
 import BrushIcon from "@mui/icons-material/Brush";
 import PublishIcon from "@mui/icons-material/Publish";
@@ -871,6 +872,7 @@ function ClientRegisterDialog({ open, onClose, onRegisterSuccess, onOpenLogin, o
 }
 
 export default function CompanyPublic({ slugOverride }) {
+  const theme = useTheme();
   const { slug: routeSlug } = useParams();
   const slug = slugOverride || routeSlug;
   const isCustomDomain = getTenantHostMode() === "custom";
@@ -2849,8 +2851,16 @@ const siteTitle = useMemo(() => {
             pt: 2,
             pb: 3,
             px: 2.5,
-            backgroundColor: resolvedHeaderBg || "#ffffff",
+            backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.98))",
+            backgroundImage:
+              theme.palette.mode === "dark"
+                ? "linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.92))"
+                : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96))",
             color: resolvedHeaderTextColor,
+            backdropFilter: "blur(18px)",
+            WebkitBackdropFilter: "blur(18px)",
+            borderBottom: "1px solid rgba(148,163,184,0.18)",
+            boxShadow: "0 16px 36px rgba(15,23,42,0.12)",
           },
         }}
       >

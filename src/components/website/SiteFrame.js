@@ -1373,7 +1373,15 @@ export default function SiteFrame({
               pt: 2,
               pb: 3,
               px: 2.5,
-              backgroundColor: theme.palette.background.paper,
+              backgroundColor: "var(--page-card-bg, rgba(255,255,255,0.98))",
+              backgroundImage:
+                theme.palette.mode === "dark"
+                  ? "linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.92))"
+                  : "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96))",
+              backdropFilter: "blur(18px)",
+              WebkitBackdropFilter: "blur(18px)",
+              borderBottom: "1px solid rgba(148,163,184,0.18)",
+              boxShadow: "0 16px 36px rgba(15,23,42,0.12)",
             },
           }}
         >
