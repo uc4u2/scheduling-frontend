@@ -45,8 +45,8 @@ export default function GoogleReviewCta({
     <Box
       aria-hidden
       sx={{
-        width: isFloating ? 32 : 42,
-        height: isFloating ? 32 : 42,
+        width: isFloating ? { xs: 28, sm: 32 } : 42,
+        height: isFloating ? { xs: 28, sm: 32 } : 42,
         borderRadius: "50%",
         display: "grid",
         placeItems: "center",
@@ -67,7 +67,7 @@ export default function GoogleReviewCta({
           bgcolor: "#fff",
           color: "#4285F4",
           fontWeight: 900,
-          fontSize: isFloating ? 15 : 19,
+          fontSize: isFloating ? { xs: 13, sm: 15 } : 19,
           lineHeight: 1,
           fontFamily: "Arial, sans-serif",
           letterSpacing: "-0.08em",
@@ -81,7 +81,11 @@ export default function GoogleReviewCta({
   const starRow = (
     <Stack direction="row" spacing={0.2} aria-label="Five star visual" sx={{ color: "#F4B400", lineHeight: 1 }}>
       {[0, 1, 2, 3, 4].map((item) => (
-        <Box key={item} component="span" sx={{ fontSize: isFloating ? 13 : 15, letterSpacing: "-0.04em" }}>
+        <Box
+          key={item}
+          component="span"
+          sx={{ fontSize: isFloating ? { xs: 11.5, sm: 13 } : 15, letterSpacing: "-0.04em" }}
+        >
           ★
         </Box>
       ))}
@@ -106,7 +110,7 @@ export default function GoogleReviewCta({
         boxShadow: isFloating
           ? `0 16px 36px rgba(15,23,42,0.16), 0 0 0 4px ${tenantAccentSoft}`
           : "0 20px 50px rgba(15,23,42,0.10)",
-        p: isFloating ? 1.5 : { xs: 2.25, md: 3 },
+        p: isFloating ? { xs: 1.1, sm: 1.5 } : { xs: 2.25, md: 3 },
         maxWidth: isFloating ? 318 : "100%",
         transform: "translateY(0)",
         transition: isFloating
@@ -156,11 +160,11 @@ export default function GoogleReviewCta({
           onClick={handleDismiss}
           sx={{
             position: "absolute",
-            top: 7,
-            right: 7,
+            top: { xs: 5, sm: 7 },
+            right: { xs: 5, sm: 7 },
             zIndex: 2,
-            width: 24,
-            height: 24,
+            width: { xs: 20, sm: 24 },
+            height: { xs: 20, sm: 24 },
             opacity: { xs: 0.64, md: 0 },
             transform: { xs: "scale(1)", md: "scale(0.88)" },
             color: tenantMuted,
@@ -184,14 +188,18 @@ export default function GoogleReviewCta({
       )}
       <Stack
         direction="row"
-        spacing={isFloating ? 1.2 : 1.6}
+        spacing={isFloating ? { xs: 0.85, sm: 1.2 } : 1.6}
         alignItems="flex-start"
-        sx={{ pr: isFloating ? 3 : 0, position: "relative", zIndex: 1 }}
+        sx={{
+          pr: isFloating ? { xs: 2.2, sm: 3 } : 0,
+          position: "relative",
+          zIndex: 1,
+        }}
       >
         {GoogleMark}
-        <Stack spacing={isFloating ? 0.75 : 1} sx={{ minWidth: 0 }}>
-          <Stack spacing={isFloating ? 0.35 : 0.5}>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+        <Stack spacing={isFloating ? { xs: 0.5, sm: 0.75 } : 1} sx={{ minWidth: 0 }}>
+          <Stack spacing={isFloating ? { xs: 0.2, sm: 0.35 } : 0.5}>
+            <Stack direction="row" spacing={{ xs: 0.55, sm: 1 }} alignItems="center" flexWrap="wrap">
               <Typography
                 variant="overline"
                 sx={{
@@ -199,7 +207,7 @@ export default function GoogleReviewCta({
                   letterSpacing: "0.15em",
                   lineHeight: 1.1,
                   fontWeight: 850,
-                  fontSize: isFloating ? "0.63rem" : "0.72rem",
+                  fontSize: isFloating ? { xs: "0.56rem", sm: "0.63rem" } : "0.72rem",
                 }}
               >
                 Google Reviews
@@ -209,7 +217,11 @@ export default function GoogleReviewCta({
             <Typography
               variant={isFloating ? "body1" : "h6"}
               fontWeight={850}
-              sx={{ lineHeight: 1.18, color: tenantText }}
+              sx={{
+                lineHeight: 1.18,
+                color: tenantText,
+                fontSize: isFloating ? { xs: "0.94rem", sm: "1rem" } : undefined,
+              }}
             >
               {isFloating ? "Share your experience" : "Loved your visit? Share your experience on Google."}
             </Typography>
@@ -230,12 +242,12 @@ export default function GoogleReviewCta({
             sx={{
               alignSelf: "flex-start",
               borderRadius: 1.25,
-              minHeight: isFloating ? 30 : 36,
-              px: isFloating ? 1.5 : 2,
-              py: isFloating ? 0.45 : 0.75,
+              minHeight: isFloating ? { xs: 28, sm: 30 } : 36,
+              px: isFloating ? { xs: 1.15, sm: 1.5 } : 2,
+              py: isFloating ? { xs: 0.34, sm: 0.45 } : 0.75,
               textTransform: "none",
               fontWeight: 800,
-              fontSize: isFloating ? "0.78rem" : undefined,
+              fontSize: isFloating ? { xs: "0.72rem", sm: "0.78rem" } : undefined,
               bgcolor: tenantAccent,
               boxShadow: `0 10px 22px ${tenantAccentSoft}`,
               "&:hover": {
@@ -258,10 +270,10 @@ export default function GoogleReviewCta({
     <Box
       sx={{
         position: "fixed",
-        left: { xs: 14, md: 24 },
-        bottom: { xs: 82, md: 24 },
+        left: { xs: 18, sm: 14, md: 24 },
+        bottom: { xs: 92, sm: 82, md: 24 },
         zIndex: 25,
-        width: { xs: "calc(100vw - 28px)", sm: 318 },
+        width: { xs: "min(272px, calc(100vw - 36px))", sm: 318 },
         pointerEvents: "auto",
       }}
     >
