@@ -178,12 +178,14 @@ const ServiceAssignment = ({ token }) => {
       return;
     }
 
+    const useSharedOverrides = editing || selectedServices.length === 1;
+
     const buildPayload = (service) => ({
       recruiter_id:            form.recruiter.id,
       service_id:              service.id,
-      price_override:          form.price_override    === "" ? null : Number(form.price_override),
-      duration_override:       form.duration_override === "" ? null : Number(form.duration_override),
-      cooling_time_override:   form.cooling_override  === "" ? null : Number(form.cooling_override),
+      price_override:          useSharedOverrides && form.price_override !== "" ? Number(form.price_override) : null,
+      duration_override:       useSharedOverrides && form.duration_override !== "" ? Number(form.duration_override) : null,
+      cooling_time_override:   useSharedOverrides && form.cooling_override !== "" ? Number(form.cooling_override) : null,
     });
 
     try {
@@ -478,6 +480,8 @@ const ServiceAssignment = ({ token }) => {
                 margin="dense"
                 value={form.price_override}
                 onChange={e => setForm({ ...form, price_override: e.target.value })}
+                disabled={!editing && form.services.length > 1}
+                helperText={!editing && form.services.length > 1 ? "Bulk assign keeps each service's own base price." : undefined}
               />
 
               <TextField
@@ -487,6 +491,8 @@ const ServiceAssignment = ({ token }) => {
                 margin="dense"
                 value={form.duration_override}
                 onChange={e => setForm({ ...form, duration_override: e.target.value })}
+                disabled={!editing && form.services.length > 1}
+                helperText={!editing && form.services.length > 1 ? "Bulk assign keeps each service's own duration." : undefined}
               />
 
               <TextField
@@ -496,6 +502,8 @@ const ServiceAssignment = ({ token }) => {
                 margin="dense"
                 value={form.cooling_override}
                 onChange={e => setForm({ ...form, cooling_override: e.target.value })}
+                disabled={!editing && form.services.length > 1}
+                helperText={!editing && form.services.length > 1 ? "Bulk assign keeps each service's own cooling time." : undefined}
               />
 
               {/* one‑off slot */}
