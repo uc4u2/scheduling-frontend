@@ -52,7 +52,7 @@ const ServiceAssignment = ({ token }) => {
   const [editing,    setEditing]    = useState(null);
   const [form, setForm] = useState({
     recruiter: null,
-    service: null,
+    services: [],
     price_override:    "",
     duration_override: "",
     cooling_override:  "",
@@ -141,9 +141,10 @@ const ServiceAssignment = ({ token }) => {
   const openDialog = (row = null) => {
     setEditing(row);
     if (row) {
+      const selectedService = services.find(s => s.id === row.service_id) || null;
       setForm({
         recruiter:         employees.find(e => e.id === row.recruiter_id) || null,
-        service:           services.find(s => s.id === row.service_id)    || null,
+        services:          selectedService ? [selectedService] : [],
         price_override:    row.price,
         duration_override: row.duration,
         cooling_override:  row.cooling,
@@ -151,7 +152,7 @@ const ServiceAssignment = ({ token }) => {
     } else {
       setForm({
         recruiter: null,
-        service:   null,
+        services:  [],
         price_override:    "",
         duration_override: "",
         cooling_override:  "",
@@ -163,23 +164,57 @@ const ServiceAssignment = ({ token }) => {
   };
 
   const handleSave = async () => {
-    if (!form.recruiter || !form.service) return;
+    if (!form.recruiter) {
+      setSnackbar({ open: true, msg: "Employee is required." });
+      return;
+    }
 
-    const payload = {
+    const selectedServices = Array.from(
+      new Map((form.services || []).filter(Boolean).map((svc) => [svc.id, svc])).values()
+    );
+
+    if (!editing && !selectedServices.length) {
+      setSnackbar({ open: true, msg: "Select at least one service." });
+      return;
+    }
+
+    const buildPayload = (service) => ({
       recruiter_id:            form.recruiter.id,
-      service_id:              form.service.id,
+      service_id:              service.id,
       price_override:          form.price_override    === "" ? null : Number(form.price_override),
       duration_override:       form.duration_override === "" ? null : Number(form.duration_override),
       cooling_time_override:   form.cooling_override  === "" ? null : Number(form.cooling_override),
-    };
+    });
 
     try {
       if (editing) {
-        await api.put(`/booking/employee-services/${editing.id}`, payload, auth);
+        const editService = selectedServices[0];
+        if (!editService) {
+          setSnackbar({ open: true, msg: "Service is required." });
+          return;
+        }
+        await api.put(`/booking/employee-services/${editing.id}`, buildPayload(editService), auth);
         setSnackbar({ open: true, msg: "Updated!" });
       } else {
-        await api.post(`/booking/employee-services`, payload, auth);
-        setSnackbar({ open: true, msg: "Added!" });
+        const results = await Promise.allSettled(
+          selectedServices.map((service) =>
+            api.post(`/booking/employee-services`, buildPayload(service), auth)
+          )
+        );
+        const successCount = results.filter((r) => r.status === "fulfilled").length;
+        const failureCount = results.length - successCount;
+
+        if (failureCount === 0) {
+          setSnackbar({
+            open: true,
+            msg: `${successCount} ${successCount === 1 ? "service" : "services"} assigned successfully.`,
+          });
+        } else {
+          setSnackbar({
+            open: true,
+            msg: `${successCount} succeeded, ${failureCount} failed.`,
+          });
+        }
       }
       setDialogOpen(false);
       fetchAll();
@@ -203,14 +238,14 @@ const ServiceAssignment = ({ token }) => {
      ADD ONE‑OFF SERVICE SLOT
   ================================================================= */
   const handleAddServiceSlot = async () => {
-    if (!form.recruiter || !form.service || !slotDate || !slotStartTime) {
+    if (!form.recruiter || form.services.length !== 1 || !slotDate || !slotStartTime) {
       setSnackbar({ open: true, msg: "Please fill all service slot fields." });
       return;
     }
     try {
       await api.post(
         `/api/manager/employees/${form.recruiter.id}/add-service-slot`,
-        { service_id: form.service.id, date: slotDate, start_time: slotStartTime },
+        { service_id: form.services[0]?.id, date: slotDate, start_time: slotStartTime },
         auth
       );
       setSnackbar({ open: true, msg: "Service slot added!" });
@@ -354,32 +389,84 @@ const ServiceAssignment = ({ token }) => {
                 getOptionLabel={o => o.full_name || `${o.first_name} ${o.last_name}`}
                 value={form.recruiter}
                 onChange={(_, v) => setForm({ ...form, recruiter: v })}
-                renderInput={params => <TextField {...params} label="Employee" margin="dense" />}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Employee"
+                    margin="dense"
+                    helperText={editing ? "Employee cannot be changed while editing this assignment." : undefined}
+                  />
+                )}
                 sx={{ mt: 1 }}
+                disabled={Boolean(editing)}
               />
 
               <Autocomplete
+                multiple
                 options={services}
                 getOptionLabel={o => formatServiceLabel(o)}
-                value={form.service}
-                onChange={(_, v) =>
+                value={form.services}
+                onChange={(_, nextValue) => {
+                  const deduped = Array.from(
+                    new Map((nextValue || []).filter(Boolean).map((svc) => [svc.id, svc])).values()
+                  );
+                  const applied = editing ? deduped.slice(-1) : deduped;
+                  const primary = applied[0] || null;
                   setForm({
                     ...form,
-                    service: v,
-                    price_override:    v ? v.base_price    : "",
-                    duration_override: v ? v.duration      : "",
-                    cooling_override:  v ? v.cooling_time  : "",
-                  })
-                }
-                renderInput={params => <TextField {...params} label="Service" margin="dense" />}
+                    services: applied,
+                    price_override: applied.length === 1 && primary ? primary.base_price   : form.price_override,
+                    duration_override: applied.length === 1 && primary ? primary.duration   : form.duration_override,
+                    cooling_override: applied.length === 1 && primary ? primary.cooling_time : form.cooling_override,
+                  });
+                }}
+                disableCloseOnSelect={!editing}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Service"
+                    margin="dense"
+                    helperText={
+                      editing
+                        ? "Edit mode keeps this assignment tied to one existing service."
+                        : `${form.services.length} service${form.services.length === 1 ? "" : "s"} selected`
+                    }
+                  />
+                )}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                disabled={Boolean(editing)}
                 sx={{ mt: 2 }}
               />
-              {form.service && (
+              {!editing && (
+                <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        services: Array.from(new Map(services.map((svc) => [svc.id, svc])).values()),
+                      }))
+                    }
+                  >
+                    Select all services
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => setForm((prev) => ({ ...prev, services: [] }))}
+                    disabled={!form.services.length}
+                  >
+                    Clear all
+                  </Button>
+                </Stack>
+              )}
+              {form.services.length === 1 && (
                 <Typography variant="caption" color="text.secondary">
                   Booking type:{" "}
-                  {form.service.booking_mode === "group" ? "Group / Class" : "One-to-one"}
-                  {form.service.booking_mode === "group" && (
-                    <> • Capacity {Number(form.service.default_capacity || 1)}</>
+                  {form.services[0].booking_mode === "group" ? "Group / Class" : "One-to-one"}
+                  {form.services[0].booking_mode === "group" && (
+                    <> • Capacity {Number(form.services[0].default_capacity || 1)}</>
                   )}
                 </Typography>
               )}
@@ -436,7 +523,7 @@ const ServiceAssignment = ({ token }) => {
                 sx={{ mt: 1 }}
                 variant="outlined"
                 onClick={handleAddServiceSlot}
-                disabled={!form.recruiter || !form.service || !slotDate || !slotStartTime}
+                disabled={!form.recruiter || form.services.length !== 1 || !slotDate || !slotStartTime}
               >
                 Add Service Slot
               </Button>
