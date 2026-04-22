@@ -24,6 +24,8 @@ import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import LaunchIcon from "@mui/icons-material/Launch";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import AndroidIcon from "@mui/icons-material/Android";
+import DownloadIcon from "@mui/icons-material/Download";
 import { Link as RouterLink } from "react-router-dom";
 import Meta from "../../components/Meta";
 import FloatingBlob from "../../components/ui/FloatingBlob";
@@ -55,6 +57,9 @@ const DEMO_VIDEO_SERVICE_SRC =
 const DEMO_VIDEO_INVITES_SRC =
   process.env.REACT_APP_DEMO_VIDEO_INVITES ||
   "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/videos/invitations.schedulaa.mp4";
+const ANDROID_APK_URL =
+  process.env.REACT_APP_ANDROID_APK_URL ||
+  "https://pub-6cbed1dd8177417b96763fc4eb930d09.r2.dev/assets/apk/releases/schedulaa-staff-2026-04-22.apk";
 
 const QUICK_ACTIONS = [
 ];
@@ -137,6 +142,18 @@ const DemoPage = () => {
               </Button>
               <Button component={RouterLink} to="/contact" variant="outlined" color="primary" sx={{ borderRadius: 999, px: 4 }}>
                 Talk to our rollout team
+              </Button>
+              <Button
+                component="a"
+                href={ANDROID_APK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outlined"
+                color="secondary"
+                startIcon={<AndroidIcon />}
+                sx={{ borderRadius: 999, px: 4 }}
+              >
+                Download Android APK
               </Button>
             </Stack>
           </Stack>
@@ -451,6 +468,49 @@ const DemoPage = () => {
                       Your browser does not support the video tag.
                     </Box>
                   </Stack>
+                </Stack>
+              </Paper>
+            </Grid>
+            <Grid item xs={12}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: 3, md: 3.5 },
+                  borderRadius: 4,
+                  border: (t) => `1px solid ${alpha(t.palette.secondary.main, 0.22)}`,
+                  background: (t) =>
+                    `linear-gradient(135deg, ${alpha(t.palette.secondary.main, 0.08)}, ${alpha(t.palette.background.paper, 0.98)})`,
+                }}
+              >
+                <Stack
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={2}
+                  alignItems={{ xs: "flex-start", md: "center" }}
+                  justifyContent="space-between"
+                >
+                  <Stack spacing={0.75}>
+                    <Stack direction="row" spacing={1.25} alignItems="center">
+                      <AndroidIcon color="secondary" />
+                      <Typography variant="h6" fontWeight={700}>
+                        Install the Android app directly
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 820 }}>
+                      Download the latest Schedulaa Android APK directly from our secure public asset host. This is the same lightweight Cloudflare R2 public-assets lane used for demo media.
+                    </Typography>
+                  </Stack>
+                  <Button
+                    component="a"
+                    href={ANDROID_APK_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<DownloadIcon />}
+                    sx={{ borderRadius: 999, px: 3.5, whiteSpace: "nowrap" }}
+                  >
+                    Download APK
+                  </Button>
                 </Stack>
               </Paper>
             </Grid>
